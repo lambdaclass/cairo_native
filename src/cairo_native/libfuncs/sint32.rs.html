@@ -1081,7 +1081,7 @@
     </span><span class="kw">let </span>zero_const = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">0</span>.into(), values_type).into(),
+            IntegerAttribute::new(values_type, <span class="number">0</span>.into()).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1180,7 +1180,7 @@
 
     <span class="kw">let </span>op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(<span class="number">0</span>, arg0.r#type()).into(),
+        IntegerAttribute::new(arg0.r#type(), <span class="number">0</span>).into(),
         location,
     ));
     <span class="kw">let </span>const_0 = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();

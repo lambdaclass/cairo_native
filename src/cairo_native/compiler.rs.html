@@ -1415,7 +1415,7 @@
                                 op0,
                                 index::constant(
                                     context,
-                                    IntegerAttribute::new(<span class="number">0</span>, Type::index(context)),
+                                    IntegerAttribute::new(Type::index(context), <span class="number">0</span>),
                                     Location::unknown(context),
                                 ),
                             );
@@ -1499,7 +1499,7 @@
                             ));
                             <span class="kw">let </span>op1 = block.append_operation(index::constant(
                                 context,
-                                IntegerAttribute::new(<span class="number">0</span>, Type::index(context)),
+                                IntegerAttribute::new(Type::index(context), <span class="number">0</span>),
                                 Location::unknown(context),
                             ));
                             <span class="kw">let </span>op2 = block.append_operation(index::cmp(
@@ -1512,7 +1512,7 @@
 
                             <span class="kw">let </span>op3 = block.append_operation(index::constant(
                                 context,
-                                IntegerAttribute::new(<span class="number">1</span>, Type::index(context)),
+                                IntegerAttribute::new(Type::index(context), <span class="number">1</span>),
                                 Location::unknown(context),
                             ));
                             <span class="kw">let </span>op4 = block.append_operation(index::sub(
@@ -1573,9 +1573,9 @@
                                                         Location::unknown(context),
                                                         LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(
                                                             IntegerAttribute::new(
-                                                                layout.align() <span class="kw">as </span>i64,
                                                                 IntegerType::new(context, <span class="number">64</span>)
                                                                     .into(),
+                                                                layout.align() <span class="kw">as </span>i64,
                                                             ),
                                                         )),
                                                     ))
@@ -1624,8 +1624,8 @@
                                 .append_operation(arith::constant(
                                     context,
                                     IntegerAttribute::new(
-                                        ret_layout.size() <span class="kw">as </span>i64,
                                         IntegerType::new(context, <span class="number">64</span>).into(),
+                                        ret_layout.size() <span class="kw">as </span>i64,
                                     )
                                     .into(),
                                     Location::unknown(context),
@@ -1638,7 +1638,7 @@
                                     pre_entry_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
                                     ptr,
                                     num_bytes,
-                                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
+                                    IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
                                     Location::unknown(context),
                                 )
                                 .into(),
@@ -1661,8 +1661,8 @@
                                             Location::unknown(context),
                                             LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(
                                                 IntegerAttribute::new(
-                                                    layout.align() <span class="kw">as </span>i64,
                                                     IntegerType::new(context, <span class="number">64</span>).into(),
+                                                    layout.align() <span class="kw">as </span>i64,
                                                 ),
                                             )),
                                         ))

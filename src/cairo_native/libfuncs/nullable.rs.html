@@ -413,7 +413,7 @@
             .add_operands(<span class="kw-2">&amp;</span>[arg, nullptr])
             .add_attributes(<span class="kw-2">&amp;</span>[(
                 Identifier::new(context, <span class="string">"predicate"</span>),
-                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>).into(),
             )])
             .add_results(<span class="kw-2">&amp;</span>[IntegerType::new(context, <span class="number">1</span>).into()])
             .build()<span class="question-mark">?</span>,

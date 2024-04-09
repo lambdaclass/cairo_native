@@ -3862,7 +3862,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -3875,8 +3875,8 @@
                     (
                         Identifier::new(context, <span class="string">"alignment"</span>),
                         IntegerAttribute::new(
-                            result_layout.align().try_into()<span class="question-mark">?</span>,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            result_layout.align().try_into()<span class="question-mark">?</span>,
                         )
                         .into(),
                     ),
@@ -3911,8 +3911,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        result_layout.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        result_layout.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -3947,8 +3947,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -3978,8 +3978,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -4199,7 +4199,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -4212,8 +4212,8 @@
                     (
                         Identifier::new(context, <span class="string">"alignment"</span>),
                         IntegerAttribute::new(
-                            result_layout.align().try_into()<span class="question-mark">?</span>,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            result_layout.align().try_into()<span class="question-mark">?</span>,
                         )
                         .into(),
                     ),
@@ -4248,8 +4248,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        result_layout.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        result_layout.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -4303,8 +4303,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -4355,8 +4355,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -4588,7 +4588,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -4601,8 +4601,8 @@
                     (
                         Identifier::new(context, <span class="string">"alignment"</span>),
                         IntegerAttribute::new(
-                            result_layout.align().try_into()<span class="question-mark">?</span>,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            result_layout.align().try_into()<span class="question-mark">?</span>,
                         )
                         .into(),
                     ),
@@ -4637,8 +4637,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        result_layout.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        result_layout.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -4692,8 +4692,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -4730,8 +4730,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -4963,7 +4963,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -4976,8 +4976,8 @@
                     (
                         Identifier::new(context, <span class="string">"alignment"</span>),
                         IntegerAttribute::new(
-                            result_layout.align().try_into()<span class="question-mark">?</span>,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            result_layout.align().try_into()<span class="question-mark">?</span>,
                         )
                         .into(),
                     ),
@@ -5012,8 +5012,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        result_layout.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        result_layout.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -5053,8 +5053,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -5323,7 +5323,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -5336,8 +5336,8 @@
                     (
                         Identifier::new(context, <span class="string">"alignment"</span>),
                         IntegerAttribute::new(
-                            result_layout.align().try_into()<span class="question-mark">?</span>,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            result_layout.align().try_into()<span class="question-mark">?</span>,
                         )
                         .into(),
                     ),
@@ -5372,8 +5372,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        result_layout.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        result_layout.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -5427,8 +5427,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -5694,7 +5694,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -5707,8 +5707,8 @@
                     (
                         Identifier::new(context, <span class="string">"alignment"</span>),
                         IntegerAttribute::new(
-                            result_layout.align().try_into()<span class="question-mark">?</span>,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            result_layout.align().try_into()<span class="question-mark">?</span>,
                         )
                         .into(),
                     ),
@@ -5743,8 +5743,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        result_layout.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        result_layout.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -5779,8 +5779,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -5810,8 +5810,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -6031,7 +6031,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -6044,8 +6044,8 @@
                     (
                         Identifier::new(context, <span class="string">"alignment"</span>),
                         IntegerAttribute::new(
-                            result_layout.align().try_into()<span class="question-mark">?</span>,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            result_layout.align().try_into()<span class="question-mark">?</span>,
                         )
                         .into(),
                     ),
@@ -6080,8 +6080,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        result_layout.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        result_layout.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -6135,8 +6135,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -6187,8 +6187,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -6420,7 +6420,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -6433,8 +6433,8 @@
                     (
                         Identifier::new(context, <span class="string">"alignment"</span>),
                         IntegerAttribute::new(
-                            result_layout.align().try_into()<span class="question-mark">?</span>,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            result_layout.align().try_into()<span class="question-mark">?</span>,
                         )
                         .into(),
                     ),
@@ -6469,8 +6469,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        result_layout.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        result_layout.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -6524,8 +6524,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -6562,8 +6562,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -6795,7 +6795,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -6808,8 +6808,8 @@
                     (
                         Identifier::new(context, <span class="string">"alignment"</span>),
                         IntegerAttribute::new(
-                            result_layout.align().try_into()<span class="question-mark">?</span>,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            result_layout.align().try_into()<span class="question-mark">?</span>,
                         )
                         .into(),
                     ),
@@ -6844,8 +6844,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        result_layout.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        result_layout.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -6885,8 +6885,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])
@@ -7155,7 +7155,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -7168,8 +7168,8 @@
                     (
                         Identifier::new(context, <span class="string">"alignment"</span>),
                         IntegerAttribute::new(
-                            result_layout.align().try_into()<span class="question-mark">?</span>,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            result_layout.align().try_into()<span class="question-mark">?</span>,
                         )
                         .into(),
                     ),
@@ -7204,8 +7204,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        result_layout.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        result_layout.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -7259,8 +7259,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        get_integer_layout(<span class="number">128</span>).align().try_into().unwrap(),
                     )
                     .into(),
                 )])

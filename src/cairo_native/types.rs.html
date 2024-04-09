@@ -1791,7 +1791,7 @@
                     <span class="kw">let </span>tag = entry
                         .append_operation(arith::constant(
                             context,
-                            IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()).into(),
+                            IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>).into(),
                             location,
                         ))
                         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1827,7 +1827,7 @@
             <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">252</span>).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1842,7 +1842,7 @@
             <span class="self">Self</span>::Uint8(<span class="kw">_</span>) =&gt; entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">8</span>).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, <span class="number">8</span>).into(), <span class="number">0</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1850,7 +1850,7 @@
             <span class="self">Self</span>::Uint16(<span class="kw">_</span>) =&gt; entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">16</span>).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, <span class="number">16</span>).into(), <span class="number">0</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1858,7 +1858,7 @@
             <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">32</span>).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, <span class="number">32</span>).into(), <span class="number">0</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1866,7 +1866,7 @@
             <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1874,7 +1874,7 @@
             <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">128</span>).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?

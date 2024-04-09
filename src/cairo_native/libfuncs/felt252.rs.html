@@ -904,13 +904,13 @@
     .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>attr_cmp_uge = IntegerAttribute::new(
-        CmpiPredicate::Uge <span class="kw">as </span>i64,
         IntegerType::new(context, <span class="number">64</span>).into(),
+        CmpiPredicate::Uge <span class="kw">as </span>i64,
     )
     .into();
     <span class="kw">let </span>attr_cmp_ult = IntegerAttribute::new(
-        CmpiPredicate::Ult <span class="kw">as </span>i64,
         IntegerType::new(context, <span class="number">64</span>).into(),
+        CmpiPredicate::Ult <span class="kw">as </span>i64,
     )
     .into();
 
@@ -1026,7 +1026,7 @@
             </span><span class="kw">let </span>prev_inverse = start_block
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, i512).into(),
+                    IntegerAttribute::new(i512, <span class="number">0</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1034,7 +1034,7 @@
             <span class="kw">let </span>inverse = start_block
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">1</span>, i512).into(),
+                    IntegerAttribute::new(i512, <span class="number">1</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1079,7 +1079,7 @@
             </span><span class="kw">let </span>zero = loop_block
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, i512).into(),
+                    IntegerAttribute::new(i512, <span class="number">0</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1110,7 +1110,7 @@
             </span><span class="kw">let </span>zero = negative_check_block
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">0</span>, i512).into(),
+                    IntegerAttribute::new(i512, <span class="number">0</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1243,7 +1243,7 @@
 
     <span class="kw">let </span>op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(<span class="number">0</span>, arg0.r#type()).into(),
+        IntegerAttribute::new(arg0.r#type(), <span class="number">0</span>).into(),
         location,
     ));
     <span class="kw">let </span>const_0 = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();

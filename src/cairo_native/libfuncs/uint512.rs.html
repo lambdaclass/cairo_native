@@ -684,7 +684,7 @@
     <span class="kw">let </span>k128 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">128</span>, i512_ty).into(),
+            IntegerAttribute::new(i512_ty, <span class="number">128</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -692,7 +692,7 @@
     <span class="kw">let </span>k256 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">256</span>, i512_ty).into(),
+            IntegerAttribute::new(i512_ty, <span class="number">256</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -700,7 +700,7 @@
     <span class="kw">let </span>k384 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">384</span>, i512_ty).into(),
+            IntegerAttribute::new(i512_ty, <span class="number">384</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?

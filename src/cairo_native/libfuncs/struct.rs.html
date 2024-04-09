@@ -333,8 +333,8 @@
                     type_info.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>param_sig.ty)<span class="question-mark">?</span>,
                     location,
                     LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                        type_info.layout(registry)<span class="question-mark">?</span>.align() <span class="kw">as </span>i64,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        type_info.layout(registry)<span class="question-mark">?</span>.align() <span class="kw">as </span>i64,
                     ))),
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -357,7 +357,7 @@
             .init_block()
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -371,8 +371,8 @@
                 location,
                 AllocaOptions::new()
                     .align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                        layout.align() <span class="kw">as </span>i64,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        layout.align() <span class="kw">as </span>i64,
                     )))
                     .elem_type(<span class="prelude-val">Some</span>(TypeAttribute::new(struct_ty))),
             ))
@@ -385,8 +385,8 @@
             stack_ptr,
             location,
             LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                layout.align() <span class="kw">as </span>i64,
                 IntegerType::new(context, <span class="number">64</span>).into(),
+                layout.align() <span class="kw">as </span>i64,
             ))),
         ));
 
@@ -425,8 +425,8 @@
                 struct_ty,
                 location,
                 LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                    type_info.layout(registry)<span class="question-mark">?</span>.align() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
+                    type_info.layout(registry)<span class="question-mark">?</span>.align() <span class="kw">as </span>i64,
                 ))),
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -458,7 +458,7 @@
                 .init_block()
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -472,8 +472,8 @@
                     location,
                     AllocaOptions::new()
                         .align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                            layout.align() <span class="kw">as </span>i64,
                             IntegerType::new(context, <span class="number">64</span>).into(),
+                            layout.align() <span class="kw">as </span>i64,
                         )))
                         .elem_type(<span class="prelude-val">Some</span>(TypeAttribute::new(field_ty))),
                 ))
@@ -486,8 +486,8 @@
                 stack_ptr,
                 location,
                 LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                    layout.align() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
+                    layout.align() <span class="kw">as </span>i64,
                 ))),
             ));
 

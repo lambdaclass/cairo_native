@@ -456,8 +456,8 @@
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                elem_stride.try_into()<span class="question-mark">?</span>,
                 IntegerType::new(context, <span class="number">64</span>).into(),
+                elem_stride.try_into()<span class="question-mark">?</span>,
             )
             .into(),
             location,
@@ -543,8 +543,8 @@
                     elem_ty,
                     location,
                     LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                        elem_layout.align() <span class="kw">as </span>i64,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        elem_layout.align() <span class="kw">as </span>i64,
                     ))),
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -559,8 +559,8 @@
                 dst_ptr,
                 location,
                 LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                    elem_layout.align() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
+                    elem_layout.align() <span class="kw">as </span>i64,
                 ))),
             ));
         }
@@ -571,7 +571,7 @@
                     dst_ptr,
                     src_ptr,
                     dst_len_bytes,
-                    IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
+                    IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
                     location,
                 )
                 .into(),
@@ -587,7 +587,7 @@
     <span class="kw">let </span>k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">32</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">32</span>).into(), <span class="number">0</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?

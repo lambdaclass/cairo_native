@@ -1033,7 +1033,6 @@
 <a href="#1032" id="1032">1032</a>
 <a href="#1033" id="1033">1033</a>
 <a href="#1034" id="1034">1034</a>
-<a href="#1035" id="1035">1035</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u16`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -1057,13 +1056,13 @@
 <span class="kw">use </span>melior::{
     dialect::{
         arith::{<span class="self">self</span>, CmpiPredicate},
-        cf, llvm, scf,
+        cf, llvm, ods, scf,
     },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Identifier, Location, Region, Value, ValueLike,
+        Attribute, Block, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -1248,7 +1247,7 @@
 
     <span class="kw">let </span>op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(<span class="number">0</span>, arg0.r#type()).into(),
+        IntegerAttribute::new(arg0.r#type(), <span class="number">0</span>).into(),
         location,
     ));
     <span class="kw">let </span>const_0 = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -1372,7 +1371,7 @@
     <span class="kw">let </span>k1 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, i16_ty).into(),
+            IntegerAttribute::new(i16_ty, <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1408,7 +1407,7 @@
                 <span class="kw">let </span>k16 = entry
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(<span class="number">16</span>, i16_ty).into(),
+                        IntegerAttribute::new(i16_ty, <span class="number">16</span>).into(),
                         location,
                     ))
                     .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1416,15 +1415,14 @@
 
                 <span class="kw">let </span>leading_zeros = block
                     .append_operation(
-                        OperationBuilder::new(<span class="string">"llvm.intr.ctlz"</span>, location)
-                            .add_attributes(<span class="kw-2">&amp;</span>[(
-                                Identifier::new(context, <span class="string">"is_zero_poison"</span>),
-                                IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">1</span>).into())
-                                    .into(),
-                            )])
-                            .add_operands(<span class="kw-2">&amp;</span>[entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into()])
-                            .add_results(<span class="kw-2">&amp;</span>[i16_ty])
-                            .build()<span class="question-mark">?</span>,
+                        ods::llvm::intr_ctlz(
+                            context,
+                            i16_ty,
+                            entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
+                            IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">1</span>),
+                            location,
+                        )
+                        .into(),
                     )
                     .result(<span class="number">0</span>)<span class="question-mark">?
                     </span>.into();
@@ -1442,7 +1440,7 @@
                 <span class="kw">let </span>parity_mask = block
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(-<span class="number">2</span>, i16_ty).into(),
+                        IntegerAttribute::new(i16_ty, -<span class="number">2</span>).into(),
                         location,
                     ))
                     .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1455,7 +1453,7 @@
                 <span class="kw">let </span>k0 = block
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(<span class="number">0</span>, i16_ty).into(),
+                        IntegerAttribute::new(i16_ty, <span class="number">0</span>).into(),
                         location,
                     ))
                     .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1545,7 +1543,7 @@
                             <span class="kw">let </span>k2 = block
                                 .append_operation(arith::constant(
                                     context,
-                                    IntegerAttribute::new(<span class="number">2</span>, i16_ty).into(),
+                                    IntegerAttribute::new(i16_ty, <span class="number">2</span>).into(),
                                     location,
                                 ))
                                 .result(<span class="number">0</span>)<span class="question-mark">?

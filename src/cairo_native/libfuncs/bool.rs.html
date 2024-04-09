@@ -640,7 +640,7 @@
 
     <span class="kw">let </span>op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(<span class="number">1</span>, tag_ty).into(),
+        IntegerAttribute::new(tag_ty, <span class="number">1</span>).into(),
         location,
     ));
     <span class="kw">let </span>const_1 = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();

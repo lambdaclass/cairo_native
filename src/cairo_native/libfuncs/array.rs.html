@@ -2469,7 +2469,7 @@
     <span class="kw">let </span>k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">32</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">32</span>).into(), <span class="number">0</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2562,7 +2562,7 @@
     <span class="kw">let </span>k1 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">32</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">32</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2571,7 +2571,7 @@
     <span class="kw">let </span>elem_stride = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(elem_stride <span class="kw">as </span>i64, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), elem_stride <span class="kw">as </span>i64).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2628,7 +2628,7 @@
         <span class="kw">let </span>k0 = handle_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">32</span>).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">32</span>).into(), <span class="number">0</span>).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2735,7 +2735,7 @@
                 dst_ptr,
                 src_ptr,
                 memmove_len,
-                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
                 location,
             )
             .into(),
@@ -2744,7 +2744,7 @@
         <span class="kw">let </span>k0 = memmove_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(<span class="number">0</span>, len_ty).into(),
+                IntegerAttribute::new(len_ty, <span class="number">0</span>).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2777,7 +2777,7 @@
         <span class="kw">let </span>k8 = realloc_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(<span class="number">8</span>, IntegerType::new(context, <span class="number">32</span>).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">32</span>).into(), <span class="number">8</span>).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2785,7 +2785,7 @@
         <span class="kw">let </span>k1024 = realloc_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(<span class="number">1024</span>, IntegerType::new(context, <span class="number">32</span>).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">32</span>).into(), <span class="number">1024</span>).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -2924,8 +2924,8 @@
             ptr,
             location,
             LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                elem_layout.align() <span class="kw">as </span>i64,
                 IntegerType::new(context, <span class="number">64</span>).into(),
+                elem_layout.align() <span class="kw">as </span>i64,
             ))),
         ));
 
@@ -3121,7 +3121,7 @@
         <span class="kw">let </span>elem_stride = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(elem_stride <span class="kw">as </span>i64, IntegerType::new(context, <span class="number">64</span>).into())
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), elem_stride <span class="kw">as </span>i64)
                     .into(),
                 location,
             ))
@@ -3148,8 +3148,8 @@
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
+                    elem_layout.size() <span class="kw">as </span>i64,
                 )
                 .into(),
                 location,
@@ -3185,7 +3185,7 @@
                 target_ptr,
                 elem_ptr,
                 elem_size,
-                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
                 location,
             )
             .into(),
@@ -3287,8 +3287,8 @@
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
+                    elem_layout.size() <span class="kw">as </span>i64,
                 )
                 .into(),
                 location,
@@ -3346,7 +3346,7 @@
                 target_ptr,
                 ptr,
                 elem_size,
-                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
                 location,
             )
             .into(),
@@ -3355,7 +3355,7 @@
         <span class="kw">let </span>k1 = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">32</span>).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">32</span>).into(), <span class="number">1</span>).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -3486,7 +3486,7 @@
         <span class="kw">let </span>k1 = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">32</span>).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">32</span>).into(), <span class="number">1</span>).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -3511,8 +3511,8 @@
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
+                    elem_layout.size() <span class="kw">as </span>i64,
                 )
                 .into(),
                 location,
@@ -3570,7 +3570,7 @@
                 target_ptr,
                 ptr,
                 elem_size,
-                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
                 location,
             )
             .into(),
@@ -3705,8 +3705,8 @@
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.pad_to_align().size() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
+                    elem_layout.pad_to_align().size() <span class="kw">as </span>i64,
                 )
                 .into(),
                 location,
@@ -3785,7 +3785,7 @@
                 dst_ptr,
                 src_ptr,
                 dst_size,
-                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">1</span>).into()),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
                 location,
             )
             .into(),
@@ -3794,7 +3794,7 @@
         <span class="kw">let </span>k0 = slice_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(<span class="number">0</span>, len_ty).into(),
+                IntegerAttribute::new(len_ty, <span class="number">0</span>).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -3881,8 +3881,8 @@
                 struct_ty,
                 location,
                 LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                    struct_type_info.layout(registry)<span class="question-mark">?</span>.align() <span class="kw">as </span>i64,
                     IntegerType::new(context, <span class="number">64</span>).into(),
+                    struct_type_info.layout(registry)<span class="question-mark">?</span>.align() <span class="kw">as </span>i64,
                 ))),
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -3906,7 +3906,7 @@
     <span class="kw">let </span>array_len_value = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(fields.len().try_into().unwrap(), len_ty).into(),
+            IntegerAttribute::new(len_ty, fields.len().try_into().unwrap()).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -3920,7 +3920,7 @@
     <span class="kw">let </span>k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">0</span>, len_ty).into(),
+            IntegerAttribute::new(len_ty, <span class="number">0</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -3968,8 +3968,8 @@
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                field_stride.try_into().unwrap(),
                 IntegerType::new(context, <span class="number">64</span>).into(),
+                field_stride.try_into().unwrap(),
             )
             .into(),
             location,
@@ -4051,7 +4051,7 @@
     <span class="kw">let </span>k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?

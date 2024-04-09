@@ -564,7 +564,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -575,8 +575,8 @@
             .add_attributes(<span class="kw-2">&amp;</span>[(
                 Identifier::new(context, <span class="string">"alignment"</span>),
                 IntegerAttribute::new(
-                    key_layout.align().try_into()<span class="question-mark">?</span>,
                     IntegerType::new(context, <span class="number">64</span>).into(),
+                    key_layout.align().try_into()<span class="question-mark">?</span>,
                 )
                 .into(),
             )])
@@ -593,8 +593,8 @@
         key_ptr,
         location,
         LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            key_layout.align() <span class="kw">as </span>i64,
             IntegerType::new(context, <span class="number">64</span>).into(),
+            key_layout.align() <span class="kw">as </span>i64,
         ))),
     ));
 
@@ -619,7 +619,7 @@
             .add_operands(<span class="kw-2">&amp;</span>[result_ptr, null_ptr])
             .add_attributes(<span class="kw-2">&amp;</span>[(
                 Identifier::new(context, <span class="string">"predicate"</span>),
-                IntegerAttribute::new(<span class="number">0</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>).into(),
             )])
             .add_results(<span class="kw-2">&amp;</span>[IntegerType::new(context, <span class="number">1</span>).into()])
             .build()<span class="question-mark">?</span>,
@@ -649,8 +649,8 @@
         <span class="kw">let </span>op = block_is_null.append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                value_layout.size() <span class="kw">as </span>i64,
                 IntegerType::new(context, <span class="number">64</span>).into(),
+                value_layout.size() <span class="kw">as </span>i64,
             )
             .into(),
             location,
@@ -685,8 +685,8 @@
             value_ty,
             location,
             LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                value_layout.align() <span class="kw">as </span>i64,
                 IntegerType::new(context, <span class="number">64</span>).into(),
+                value_layout.align() <span class="kw">as </span>i64,
             ))),
         ));
         <span class="kw">let </span>loaded_value = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
@@ -782,8 +782,8 @@
         value_ptr,
         location,
         LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            value_layout.align() <span class="kw">as </span>i64,
             IntegerType::new(context, <span class="number">64</span>).into(),
+            value_layout.align() <span class="kw">as </span>i64,
         ))),
     ));
 
@@ -791,7 +791,7 @@
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -802,8 +802,8 @@
             .add_attributes(<span class="kw-2">&amp;</span>[(
                 Identifier::new(context, <span class="string">"alignment"</span>),
                 IntegerAttribute::new(
-                    key_layout.align().try_into()<span class="question-mark">?</span>,
                     IntegerType::new(context, <span class="number">64</span>).into(),
+                    key_layout.align().try_into()<span class="question-mark">?</span>,
                 )
                 .into(),
             )])
@@ -820,8 +820,8 @@
         key_ptr,
         location,
         LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            key_layout.align() <span class="kw">as </span>i64,
             IntegerType::new(context, <span class="number">64</span>).into(),
+            key_layout.align() <span class="kw">as </span>i64,
         ))),
     ));
 

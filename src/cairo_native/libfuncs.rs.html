@@ -1006,7 +1006,7 @@
     <span class="kw">let </span>k1 = block
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?

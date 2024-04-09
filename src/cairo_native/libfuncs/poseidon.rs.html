@@ -404,7 +404,7 @@
     </span><span class="kw">let </span>const_1 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(<span class="number">1</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -416,8 +416,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        layout_i256.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        layout_i256.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -433,8 +433,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        layout_i256.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        layout_i256.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -450,8 +450,8 @@
                 .add_attributes(<span class="kw-2">&amp;</span>[(
                     Identifier::new(context, <span class="string">"alignment"</span>),
                     IntegerAttribute::new(
-                        layout_i256.align().try_into()<span class="question-mark">?</span>,
                         IntegerType::new(context, <span class="number">64</span>).into(),
+                        layout_i256.align().try_into()<span class="question-mark">?</span>,
                     )
                     .into(),
                 )])
@@ -494,8 +494,8 @@
         op0_ptr,
         location,
         LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            layout_i256.align().try_into()<span class="question-mark">?</span>,
             IntegerType::new(context, <span class="number">64</span>).into(),
+            layout_i256.align().try_into()<span class="question-mark">?</span>,
         ))),
     ));
     entry.append_operation(llvm::store(
@@ -504,8 +504,8 @@
         op1_ptr,
         location,
         LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            layout_i256.align().try_into()<span class="question-mark">?</span>,
             IntegerType::new(context, <span class="number">64</span>).into(),
+            layout_i256.align().try_into()<span class="question-mark">?</span>,
         ))),
     ));
     entry.append_operation(llvm::store(
@@ -514,8 +514,8 @@
         op2_ptr,
         location,
         LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            layout_i256.align().try_into()<span class="question-mark">?</span>,
             IntegerType::new(context, <span class="number">64</span>).into(),
+            layout_i256.align().try_into()<span class="question-mark">?</span>,
         ))),
     ));
 
@@ -533,8 +533,8 @@
             i256_ty,
             location,
             LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                layout_i256.align().try_into()<span class="question-mark">?</span>,
                 IntegerType::new(context, <span class="number">64</span>).into(),
+                layout_i256.align().try_into()<span class="question-mark">?</span>,
             ))),
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -546,8 +546,8 @@
             i256_ty,
             location,
             LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                layout_i256.align().try_into()<span class="question-mark">?</span>,
                 IntegerType::new(context, <span class="number">64</span>).into(),
+                layout_i256.align().try_into()<span class="question-mark">?</span>,
             ))),
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
@@ -559,8 +559,8 @@
             i256_ty,
             location,
             LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                layout_i256.align().try_into()<span class="question-mark">?</span>,
                 IntegerType::new(context, <span class="number">64</span>).into(),
+                layout_i256.align().try_into()<span class="question-mark">?</span>,
             ))),
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?

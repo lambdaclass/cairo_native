@@ -870,7 +870,7 @@
         <span class="kw">let </span>k64 = block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(<span class="number">64</span>, IntegerType::new(context, <span class="number">64</span>).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">64</span>).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1047,7 +1047,7 @@
         <span class="kw">let </span>k64 = block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(<span class="number">64</span>, IntegerType::new(context, <span class="number">128</span>).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">64</span>).into(),
                 location,
             ))
             .result(<span class="number">0</span>)<span class="question-mark">?
