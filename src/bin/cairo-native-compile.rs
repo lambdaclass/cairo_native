@@ -1,6 +1,9 @@
 use anyhow::Context;
 use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
-use cairo_native::{context::NativeContext, module_to_object, object_to_shared_lib, OptLevel};
+use cairo_native::{
+    context::NativeContext, module_to_object, object_to_shared_lib,
+    utils::cairo_to_sierra_with_debug_info, OptLevel,
+};
 use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -49,17 +52,14 @@ fn main() -> anyhow::Result<()> {
     // Check if args.path is a file or a directory.
     check_compiler_path(args.single_file, &args.path)?;
 
-    let sierra_program = compile_cairo_project_at_path(
-        &args.path,
-        CompilerConfig {
-            replace_ids: args.replace_ids,
-            ..CompilerConfig::default()
-        },
-    )?;
     let native_context = NativeContext::new();
+    let (sierra_program, debug_locations) =
+        cairo_to_sierra_with_debug_info(native_context.context(), &args.path)?;
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context.compile(&sierra_program).unwrap();
+    let native_module = native_context
+        .compile(&sierra_program, Some(debug_locations))
+        .unwrap();
 
     let opt_level = match args.opt_level {
         0 => OptLevel::None,

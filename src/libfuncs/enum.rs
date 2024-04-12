@@ -219,6 +219,7 @@ pub fn build_match<'ctx, 'this>(
     let variant_ids = type_info.variants().unwrap();
     match variant_ids.len() {
         0 | 1 => {
+            dbg!(info.branch_signatures().len());
             entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
         }
         _ => {
