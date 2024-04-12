@@ -1,5 +1,4 @@
 use anyhow::Context;
-use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
 use cairo_native::{
     context::NativeContext, module_to_object, object_to_shared_lib,
     utils::cairo_to_sierra_with_debug_info, OptLevel,
