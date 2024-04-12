@@ -155,18 +155,6 @@ impl DebugUtils {
     }
 
     /// Prints the given &str.
-    ///
-    /// Example usage:
-    /// ```
-    /// #[cfg(feature = "with-debug-utils")]
-    /// {
-    ///    metadata
-    ///        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-    ///        .unwrap()
-    ///        .debug_print(context, helper, entry, &format!("handling variant {:?}", variant_ty), location)
-    ///        .unwrap();
-    /// }
-    /// ```
     pub fn debug_print<'c, 'a>(
         &mut self,
         context: &'c Context,
