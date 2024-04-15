@@ -891,7 +891,7 @@ dependencies = [
  "educe",
  "id-arena",
  "itertools 0.12.1",
- "lambdaworks-math 0.5.0",
+ "lambdaworks-math",
  "lazy_static",
  "libc",
  "libloading",
@@ -1829,20 +1829,14 @@ dependencies = [
 
 [[package]]
 name = "lambdaworks-math"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ee7dcab3968c71896b8ee4dc829147acc918cffe897af6265b1894527fe3add"
+checksum = "6c74ce6f0d9cb672330b6ca59e85a6c3607a3329e0372ab0d3fe38c2d38e50f9"
 dependencies = [
  "rayon",
  "serde",
  "serde_json",
 ]
-
-[[package]]
-name = "lambdaworks-math"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c74ce6f0d9cb672330b6ca59e85a6c3607a3329e0372ab0d3fe38c2d38e50f9"
 
 [[package]]
 name = "lazy_static"
@@ -3016,7 +3010,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1051b4f4af0bb9b546388a404873ee1e6b9787b9d5b0b3319ecbfadf315ef276"
 dependencies = [
  "bitvec",
- "lambdaworks-math 0.6.0",
+ "lambdaworks-math",
  "num-bigint",
  "num-integer",
  "num-traits 0.2.18",
