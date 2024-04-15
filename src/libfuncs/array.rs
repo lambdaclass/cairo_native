@@ -607,7 +607,6 @@ pub fn build_len<'ctx, 'this>(
     )?;
 
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
-    dbg!(&info.param_signatures()[0].ty.debug_name);
 
     let array_start = entry
         .append_operation(llvm::extract_value(
