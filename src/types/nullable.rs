@@ -67,7 +67,7 @@ fn snapshot_take<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
     src_value: Value<'ctx, 'this>,
-) -> Result<Value<'ctx, 'this>> {
+) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
@@ -114,7 +114,8 @@ fn snapshot_take<'ctx, 'this>(
         ))
         .result(0)?
         .into();
-    Ok(entry
+
+    let value = entry
         .append_operation(scf::r#if(
             is_null,
             &[llvm::r#type::opaque_pointer(context)],
@@ -167,5 +168,7 @@ fn snapshot_take<'ctx, 'this>(
             location,
         ))
         .result(0)?
-        .into())
+        .into();
+
+    Ok((entry, value))
 }

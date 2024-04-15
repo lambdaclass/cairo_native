@@ -247,7 +247,7 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
             felts
         }
         JitValue::Enum {
-            value: _,
+            value,
             tag,
             debug_name,
         } => {
@@ -255,7 +255,10 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
                 if debug_name == "core::bool" {
                     vec![(*tag == 1).into()]
                 } else {
-                    todo!()
+                    felts.push((*tag).into());
+                    let felt = jitvalue_to_felt(value);
+                    felts.extend(felt);
+                    felts
                 }
             } else {
                 todo!()
