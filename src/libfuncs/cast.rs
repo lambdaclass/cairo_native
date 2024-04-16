@@ -94,7 +94,7 @@ pub fn build_downcast<'ctx, 'this>(
         let k0 = block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                 location,
             ))
             .result(0)?

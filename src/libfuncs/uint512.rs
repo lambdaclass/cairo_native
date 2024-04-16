@@ -162,7 +162,7 @@ pub fn build_divmod_u256<'ctx, 'this>(
     let k128 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(128, i512_ty).into(),
+            IntegerAttribute::new(i512_ty, 128).into(),
             location,
         ))
         .result(0)?
@@ -170,7 +170,7 @@ pub fn build_divmod_u256<'ctx, 'this>(
     let k256 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(256, i512_ty).into(),
+            IntegerAttribute::new(i512_ty, 256).into(),
             location,
         ))
         .result(0)?
@@ -178,7 +178,7 @@ pub fn build_divmod_u256<'ctx, 'this>(
     let k384 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(384, i512_ty).into(),
+            IntegerAttribute::new(i512_ty, 384).into(),
             location,
         ))
         .result(0)?

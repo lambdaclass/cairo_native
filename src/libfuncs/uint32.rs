@@ -21,13 +21,13 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        cf, llvm, scf,
+        cf, llvm, ods, scf,
     },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Identifier, Location, Region, Value, ValueLike,
+        Attribute, Block, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -212,7 +212,7 @@ pub fn build_is_zero<'ctx, 'this>(
 
     let op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(0, arg0.r#type()).into(),
+        IntegerAttribute::new(arg0.r#type(), 0).into(),
         location,
     ));
     let const_0 = op.result(0)?.into();
@@ -336,7 +336,7 @@ pub fn build_square_root<'ctx, 'this>(
     let k1 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, i32_ty).into(),
+            IntegerAttribute::new(i32_ty, 1).into(),
             location,
         ))
         .result(0)?
@@ -372,7 +372,7 @@ pub fn build_square_root<'ctx, 'this>(
                 let k32 = entry
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(32, i32_ty).into(),
+                        IntegerAttribute::new(i32_ty, 32).into(),
                         location,
                     ))
                     .result(0)?
@@ -380,15 +380,14 @@ pub fn build_square_root<'ctx, 'this>(
 
                 let leading_zeros = block
                     .append_operation(
-                        OperationBuilder::new("llvm.intr.ctlz", location)
-                            .add_attributes(&[(
-                                Identifier::new(context, "is_zero_poison"),
-                                IntegerAttribute::new(1, IntegerType::new(context, 1).into())
-                                    .into(),
-                            )])
-                            .add_operands(&[entry.argument(1)?.into()])
-                            .add_results(&[i32_ty])
-                            .build()?,
+                        ods::llvm::intr_ctlz(
+                            context,
+                            i32_ty,
+                            entry.argument(1)?.into(),
+                            IntegerAttribute::new(IntegerType::new(context, 1).into(), 1),
+                            location,
+                        )
+                        .into(),
                     )
                     .result(0)?
                     .into();
@@ -406,7 +405,7 @@ pub fn build_square_root<'ctx, 'this>(
                 let parity_mask = block
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(-2, i32_ty).into(),
+                        IntegerAttribute::new(i32_ty, -2).into(),
                         location,
                     ))
                     .result(0)?
@@ -419,7 +418,7 @@ pub fn build_square_root<'ctx, 'this>(
                 let k0 = block
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(0, i32_ty).into(),
+                        IntegerAttribute::new(i32_ty, 0).into(),
                         location,
                     ))
                     .result(0)?
@@ -509,7 +508,7 @@ pub fn build_square_root<'ctx, 'this>(
                             let k2 = block
                                 .append_operation(arith::constant(
                                     context,
-                                    IntegerAttribute::new(2, i32_ty).into(),
+                                    IntegerAttribute::new(i32_ty, 2).into(),
                                     location,
                                 ))
                                 .result(0)?

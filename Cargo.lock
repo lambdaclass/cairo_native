@@ -986,9 +986,9 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
 name = "cc"
-version = "1.0.90"
+version = "1.0.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cd6604a82acf3039f1144f54b8eb34e91ffba622051189e71b781822d5ee1f5"
+checksum = "2678b2e3449475e95b0aa6f9b506a28e61b3dc8996592b983695e8ebb58a8b41"
 
 [[package]]
 name = "cexpr"
@@ -1997,9 +1997,9 @@ dependencies = [
 
 [[package]]
 name = "melior"
-version = "0.16.2"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e76dd7ff903474595023aebb93f8287667a2fe95132c65e1c77efdb99c64a973"
+checksum = "672be978c3550fd9c329987c9457e60e4452049b24518a5acb2d3f14cf6d2777"
 dependencies = [
  "dashmap",
  "melior-macro",

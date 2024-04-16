@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
 use crate::{
+    debug_info::DebugLocations,
     error::Error,
     ffi::{get_data_layout_rep, get_target_triple},
     metadata::{
@@ -23,8 +24,9 @@ use llvm_sys::target::{
 use melior::{
     dialect::DialectRegistry,
     ir::{
-        attribute::StringAttribute, operation::OperationBuilder, Block, Identifier, Location,
-        Module, Region,
+        attribute::StringAttribute,
+        operation::{OperationBuilder, OperationPrintingFlags},
+        Block, Identifier, Location, Module, Region,
     },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
@@ -57,7 +59,11 @@ impl NativeContext {
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
-    pub fn compile(&self, program: &Program) -> Result<NativeModule, Error> {
+    pub fn compile(
+        &self,
+        program: &Program,
+        debug_locations: Option<DebugLocations>,
+    ) -> Result<NativeModule, Error> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
@@ -73,19 +79,22 @@ impl NativeContext {
 
         let data_layout_ret = &get_data_layout_rep()?;
 
-        let op = OperationBuilder::new("builtin.module", Location::unknown(&self.context))
-            .add_attributes(&[
-                (
-                    Identifier::new(&self.context, "llvm.target_triple"),
-                    StringAttribute::new(&self.context, &target_triple).into(),
-                ),
-                (
-                    Identifier::new(&self.context, "llvm.data_layout"),
-                    StringAttribute::new(&self.context, data_layout_ret).into(),
-                ),
-            ])
-            .add_regions([module_region])
-            .build()?;
+        let op = OperationBuilder::new(
+            "builtin.module",
+            Location::name(&self.context, "module", Location::unknown(&self.context)),
+        )
+        .add_attributes(&[
+            (
+                Identifier::new(&self.context, "llvm.target_triple"),
+                StringAttribute::new(&self.context, &target_triple).into(),
+            ),
+            (
+                Identifier::new(&self.context, "llvm.data_layout"),
+                StringAttribute::new(&self.context, data_layout_ret).into(),
+            ),
+        ])
+        .add_regions([module_region])
+        .build()?;
         assert!(op.verify(), "module operation is not valid");
 
         let mut module = Module::from_operation(op).expect("module failed to create");
@@ -117,10 +126,38 @@ impl NativeContext {
             program,
             &registry,
             &mut metadata,
-            None,
+            debug_locations.as_ref(),
         )?;
 
+        if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP_PREPASS") {
+            if x == "1" || x == "true" {
+                std::fs::write("dump-prepass.mlir", module.as_operation().to_string())
+                    .expect("should work");
+                std::fs::write(
+                    "dump-prepass-debug.mlir",
+                    module.as_operation().to_string_with_flags(
+                        OperationPrintingFlags::new().enable_debug_info(true, true),
+                    )?,
+                )
+                .expect("should work");
+            }
+        }
+
         run_pass_manager(&self.context, &mut module)?;
+
+        if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
+            if x == "1" || x == "true" {
+                std::fs::write("dump.mlir", module.as_operation().to_string())
+                    .expect("should work");
+                std::fs::write(
+                    "dump-debug.mlir",
+                    module.as_operation().to_string_with_flags(
+                        OperationPrintingFlags::new().enable_debug_info(true, true),
+                    )?,
+                )
+                .expect("should work");
+            }
+        }
 
         // The func to llvm pass has a bug where it sets the data layout string to ""
         // This works around it by setting it again.

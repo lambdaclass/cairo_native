@@ -111,7 +111,7 @@ pub fn build_is_zero<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 252).into(), 0).into(),
             location,
         ))
         .result(0)?
@@ -188,7 +188,7 @@ pub fn build_neg<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 252).into(), 0).into(),
             location,
         ))
         .result(0)?
@@ -253,7 +253,7 @@ pub fn build_point_from_x<'ctx, 'this>(
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -264,8 +264,8 @@ pub fn build_point_from_x<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        get_integer_layout(252).align().try_into()?,
                     )
                     .into(),
                 )])
@@ -359,7 +359,7 @@ pub fn build_state_add<'ctx, 'this>(
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -370,8 +370,8 @@ pub fn build_state_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        get_integer_layout(252).align().try_into()?,
                     )
                     .into(),
                 )])
@@ -387,8 +387,8 @@ pub fn build_state_add<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        get_integer_layout(252).align().try_into()?,
                     )
                     .into(),
                 )])
@@ -459,7 +459,7 @@ pub fn build_state_add_mul<'ctx, 'this>(
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -470,8 +470,8 @@ pub fn build_state_add_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        get_integer_layout(252).align().try_into()?,
                     )
                     .into(),
                 )])
@@ -487,8 +487,8 @@ pub fn build_state_add_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        get_integer_layout(252).align().try_into()?,
                     )
                     .into(),
                 )])
@@ -504,8 +504,8 @@ pub fn build_state_add_mul<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        get_integer_layout(252).align().try_into()?,
                     )
                     .into(),
                 )])
@@ -582,7 +582,7 @@ pub fn build_state_finalize<'ctx, 'this>(
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -593,8 +593,8 @@ pub fn build_state_finalize<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        get_integer_layout(252).align().try_into()?,
                     )
                     .into(),
                 )])
@@ -610,8 +610,8 @@ pub fn build_state_finalize<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        get_integer_layout(252).align().try_into()?,
                     )
                     .into(),
                 )])
@@ -763,7 +763,7 @@ pub fn build_try_new<'ctx, 'this>(
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -774,8 +774,8 @@ pub fn build_try_new<'ctx, 'this>(
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
-                        get_integer_layout(252).align().try_into()?,
                         IntegerType::new(context, 64).into(),
+                        get_integer_layout(252).align().try_into()?,
                     )
                     .into(),
                 )])
@@ -902,7 +902,7 @@ pub fn build_zero<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 252).into(), 0).into(),
             location,
         ))
         .result(0)?

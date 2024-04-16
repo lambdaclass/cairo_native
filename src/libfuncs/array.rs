@@ -107,7 +107,7 @@ pub fn build_new<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
             location,
         ))
         .result(0)?
@@ -200,7 +200,7 @@ pub fn build_append<'ctx, 'this>(
     let k1 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -209,7 +209,7 @@ pub fn build_append<'ctx, 'this>(
     let elem_stride = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(elem_stride as i64, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), elem_stride as i64).into(),
             location,
         ))
         .result(0)?
@@ -266,7 +266,7 @@ pub fn build_append<'ctx, 'this>(
         let k0 = handle_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
                 location,
             ))
             .result(0)?
@@ -373,7 +373,7 @@ pub fn build_append<'ctx, 'this>(
                 dst_ptr,
                 src_ptr,
                 memmove_len,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                 location,
             )
             .into(),
@@ -382,7 +382,7 @@ pub fn build_append<'ctx, 'this>(
         let k0 = memmove_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, len_ty).into(),
+                IntegerAttribute::new(len_ty, 0).into(),
                 location,
             ))
             .result(0)?
@@ -415,7 +415,7 @@ pub fn build_append<'ctx, 'this>(
         let k8 = realloc_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(8, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 8).into(),
                 location,
             ))
             .result(0)?
@@ -423,7 +423,7 @@ pub fn build_append<'ctx, 'this>(
         let k1024 = realloc_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1024, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1024).into(),
                 location,
             ))
             .result(0)?
@@ -562,8 +562,8 @@ pub fn build_append<'ctx, 'this>(
             ptr,
             location,
             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                elem_layout.align() as i64,
                 IntegerType::new(context, 64).into(),
+                elem_layout.align() as i64,
             ))),
         ));
 
@@ -588,7 +588,7 @@ pub fn build_append<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `array_append` libfunc.
+/// Generate MLIR operations for the `array_len` libfunc.
 pub fn build_len<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -759,7 +759,7 @@ pub fn build_get<'ctx, 'this>(
         let elem_stride = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(elem_stride as i64, IntegerType::new(context, 64).into())
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), elem_stride as i64)
                     .into(),
                 location,
             ))
@@ -786,8 +786,8 @@ pub fn build_get<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.size() as i64,
                 )
                 .into(),
                 location,
@@ -823,7 +823,7 @@ pub fn build_get<'ctx, 'this>(
                 target_ptr,
                 elem_ptr,
                 elem_size,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                 location,
             )
             .into(),
@@ -925,8 +925,8 @@ pub fn build_pop_front<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.size() as i64,
                 )
                 .into(),
                 location,
@@ -984,7 +984,7 @@ pub fn build_pop_front<'ctx, 'this>(
                 target_ptr,
                 ptr,
                 elem_size,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                 location,
             )
             .into(),
@@ -993,7 +993,7 @@ pub fn build_pop_front<'ctx, 'this>(
         let k1 = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
                 location,
             ))
             .result(0)?
@@ -1124,7 +1124,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
         let k1 = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
                 location,
             ))
             .result(0)?
@@ -1149,8 +1149,8 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.size() as i64,
                 )
                 .into(),
                 location,
@@ -1208,7 +1208,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
                 target_ptr,
                 ptr,
                 elem_size,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                 location,
             )
             .into(),
@@ -1343,8 +1343,8 @@ pub fn build_slice<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.pad_to_align().size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.pad_to_align().size() as i64,
                 )
                 .into(),
                 location,
@@ -1423,7 +1423,7 @@ pub fn build_slice<'ctx, 'this>(
                 dst_ptr,
                 src_ptr,
                 dst_size,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                 location,
             )
             .into(),
@@ -1432,7 +1432,7 @@ pub fn build_slice<'ctx, 'this>(
         let k0 = slice_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, len_ty).into(),
+                IntegerAttribute::new(len_ty, 0).into(),
                 location,
             ))
             .result(0)?
@@ -1519,8 +1519,8 @@ pub fn build_span_from_tuple<'ctx, 'this>(
                 struct_ty,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    struct_type_info.layout(registry)?.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    struct_type_info.layout(registry)?.align() as i64,
                 ))),
             ))
             .result(0)?
@@ -1544,7 +1544,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let array_len_value = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(fields.len().try_into().unwrap(), len_ty).into(),
+            IntegerAttribute::new(len_ty, fields.len().try_into().unwrap()).into(),
             location,
         ))
         .result(0)?
@@ -1558,7 +1558,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, len_ty).into(),
+            IntegerAttribute::new(len_ty, 0).into(),
             location,
         ))
         .result(0)?
@@ -1606,8 +1606,8 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                field_stride.try_into().unwrap(),
                 IntegerType::new(context, 64).into(),
+                field_stride.try_into().unwrap(),
             )
             .into(),
             location,
@@ -1689,7 +1689,7 @@ fn assert_nonnull<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             location,
         ))
         .result(0)?
@@ -2338,6 +2338,7 @@ mod test {
             },
         );
     }
+
     #[test]
     fn array_pop_back_state() {
         let program = load_cairo!(
@@ -2357,5 +2358,67 @@ mod test {
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_struct!([1u32, 2u32].into()));
+    }
+
+    #[test]
+    fn array_empty_span() {
+        // Tests snapshot_take on a empty array.
+        let program = load_cairo!(
+            fn run_test() -> Span<u32> {
+                let x = ArrayTrait::new();
+                x.span()
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            jit_struct!(JitValue::Array(vec![])),
+        );
+    }
+
+    #[test]
+    fn array_span_modify_span() {
+        // Tests pop_back on a span.
+        let program = load_cairo!(
+            use core::array::SpanTrait;
+            fn pop_elem(mut self: Span<u64>) -> Option<@u64> {
+                let x = self.pop_back();
+                x
+            }
+
+            fn run_test() -> Option<@u64> {
+                let mut data = array![2].span();
+                let x = pop_elem(data);
+                x
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            jit_enum!(0, 2u64.into()),
+        );
+    }
+
+    #[test]
+    fn array_span_check_array() {
+        // Tests pop back on a span not modifying the original array.
+        let program = load_cairo!(
+            use core::array::SpanTrait;
+            fn pop_elem(mut self: Span<u64>) -> Option<@u64> {
+                let x = self.pop_back();
+                x
+            }
+
+            fn run_test() -> Array<u64> {
+                let mut data = array![1, 2];
+                let _x = pop_elem(data.span());
+                data
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::Array(vec![1u64.into(), 2u64.into()]),
+        );
     }
 }

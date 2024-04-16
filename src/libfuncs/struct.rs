@@ -111,8 +111,8 @@ pub fn build_struct_value<'ctx, 'this>(
                     type_info.build(context, helper, registry, metadata, field_ty)?,
                     location,
                     LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                        type_info.layout(registry)?.align() as i64,
                         IntegerType::new(context, 64).into(),
+                        type_info.layout(registry)?.align() as i64,
                     ))),
                 ))
                 .result(0)?
@@ -135,7 +135,7 @@ pub fn build_struct_value<'ctx, 'this>(
             .init_block()
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
                 location,
             ))
             .result(0)?
@@ -149,8 +149,8 @@ pub fn build_struct_value<'ctx, 'this>(
                 location,
                 AllocaOptions::new()
                     .align(Some(IntegerAttribute::new(
-                        layout.align() as i64,
                         IntegerType::new(context, 64).into(),
+                        layout.align() as i64,
                     )))
                     .elem_type(Some(TypeAttribute::new(struct_ty))),
             ))
@@ -163,8 +163,8 @@ pub fn build_struct_value<'ctx, 'this>(
             stack_ptr,
             location,
             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                layout.align() as i64,
                 IntegerType::new(context, 64).into(),
+                layout.align() as i64,
             ))),
         ));
 
@@ -201,8 +201,8 @@ pub fn build_deconstruct<'ctx, 'this>(
                 struct_ty,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    type_info.layout(registry)?.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    type_info.layout(registry)?.align() as i64,
                 ))),
             ))
             .result(0)?
@@ -234,7 +234,7 @@ pub fn build_deconstruct<'ctx, 'this>(
                 .init_block()
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
                     location,
                 ))
                 .result(0)?
@@ -248,8 +248,8 @@ pub fn build_deconstruct<'ctx, 'this>(
                     location,
                     AllocaOptions::new()
                         .align(Some(IntegerAttribute::new(
-                            layout.align() as i64,
                             IntegerType::new(context, 64).into(),
+                            layout.align() as i64,
                         )))
                         .elem_type(Some(TypeAttribute::new(field_ty))),
                 ))
@@ -262,8 +262,8 @@ pub fn build_deconstruct<'ctx, 'this>(
                 stack_ptr,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    layout.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    layout.align() as i64,
                 ))),
             ));
 

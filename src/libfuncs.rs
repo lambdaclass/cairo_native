@@ -501,7 +501,7 @@ pub fn increment_builtin_counter<'ctx: 'a, 'a>(
     let k1 = block
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
         ))
         .result(0)?

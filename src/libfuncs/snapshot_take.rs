@@ -30,7 +30,7 @@ pub fn build<'ctx, 'this>(
     // Handle non-trivially-copyable types (ex. arrays) by invoking their override or just copy the
     // original value otherwise.
     let original_value = entry.argument(0)?.into();
-    let cloned_value = match metadata
+    let (entry, cloned_value) = match metadata
         .get_mut::<SnapshotClonesMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.signature.param_signatures[0].ty))
     {
@@ -43,7 +43,7 @@ pub fn build<'ctx, 'this>(
             metadata,
             original_value,
         )?,
-        None => original_value,
+        None => (entry, original_value),
     };
 
     entry.append_operation(helper.br(0, &[original_value, cloned_value], location));

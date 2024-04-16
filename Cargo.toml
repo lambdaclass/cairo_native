@@ -3,6 +3,7 @@ name = "cairo-native"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
+description = "A compiler to convert Cairo's intermediate representation Sierra code to MLIR."
 repository = "https://github.com/lambdaclass/cairo_native"
 readme = "README.md"
 keywords = ["starknet", "cairo", "compiler", "mlir"]
@@ -44,9 +45,9 @@ educe = "0.5.11"
 id-arena = "2.2"
 itertools = "0.12"
 lazy_static = "1.4"
-libc = "0.2.147"
+libc = "0.2.153"
 llvm-sys = "170.0.0"
-melior = { version = "0.16.2", features = ["ods-dialects"] }
+melior = { version = "0.17.0", features = ["ods-dialects"] }
 mlir-sys = "0.2.1"
 num-bigint = "0.4.4"
 num-traits = "0.2"
@@ -90,7 +91,7 @@ walkdir = "2"
 serde_json = { version = "1.0" }
 
 [build-dependencies]
-cc = "1.0.90"
+cc = "1.0.92"
 
 [profile.optimized-dev]
 inherits = "dev"

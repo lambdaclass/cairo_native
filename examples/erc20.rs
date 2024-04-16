@@ -296,7 +296,7 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(&sierra_program).unwrap();
+    let native_program = native_context.compile(&sierra_program, None).unwrap();
 
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();

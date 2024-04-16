@@ -20,7 +20,7 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(&sierra_program).unwrap();
+    let native_program = native_context.compile(&sierra_program, None).unwrap();
 
     // Call the echo function from the contract using the generated wrapper.
 
