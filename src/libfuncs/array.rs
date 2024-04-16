@@ -588,7 +588,7 @@ pub fn build_append<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `array_append` libfunc.
+/// Generate MLIR operations for the `array_len` libfunc.
 pub fn build_len<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -2338,6 +2338,7 @@ mod test {
             },
         );
     }
+
     #[test]
     fn array_pop_back_state() {
         let program = load_cairo!(
@@ -2357,5 +2358,67 @@ mod test {
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_struct!([1u32, 2u32].into()));
+    }
+
+    #[test]
+    fn array_empty_span() {
+        // Tests snapshot_take on a empty array.
+        let program = load_cairo!(
+            fn run_test() -> Span<u32> {
+                let x = ArrayTrait::new();
+                x.span()
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            jit_struct!(JitValue::Array(vec![])),
+        );
+    }
+
+    #[test]
+    fn array_span_modify_span() {
+        // Tests pop_back on a span.
+        let program = load_cairo!(
+            use core::array::SpanTrait;
+            fn pop_elem(mut self: Span<u64>) -> Option<@u64> {
+                let x = self.pop_back();
+                x
+            }
+
+            fn run_test() -> Option<@u64> {
+                let mut data = array![2].span();
+                let x = pop_elem(data);
+                x
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            jit_enum!(0, 2u64.into()),
+        );
+    }
+
+    #[test]
+    fn array_span_check_array() {
+        // Tests pop back on a span not modifying the original array.
+        let program = load_cairo!(
+            use core::array::SpanTrait;
+            fn pop_elem(mut self: Span<u64>) -> Option<@u64> {
+                let x = self.pop_back();
+                x
+            }
+
+            fn run_test() -> Array<u64> {
+                let mut data = array![1, 2];
+                let _x = pop_elem(data.span());
+                data
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::Array(vec![1u64.into(), 2u64.into()]),
+        );
     }
 }
