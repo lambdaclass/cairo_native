@@ -237,7 +237,11 @@ impl StarknetSyscallHandler for SyscallHandler {
         payload: &[Felt],
         _remaining_gas: &mut u128,
     ) -> SyscallResult<()> {
-        assert_eq!(to_address, 3.into(), "send_message_to_l1 to_address mismatch");
+        assert_eq!(
+            to_address,
+            3.into(),
+            "send_message_to_l1 to_address mismatch"
+        );
         assert_eq!(payload, &[2.into()], "send_message_to_l1 payload mismatch");
         Ok(())
     }
