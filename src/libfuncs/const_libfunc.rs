@@ -87,8 +87,8 @@ pub fn build_const_as_box<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                inner_layout.pad_to_align().size().try_into()?,
                 IntegerType::new(context, 64).into(),
+                inner_layout.pad_to_align().size().try_into()?,
             )
             .into(),
             location,
@@ -122,7 +122,7 @@ pub fn build_const_as_box<'ctx, 'this>(
                     ptr,
                     value,
                     value_len,
-                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()),
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                     location,
                 )
                 .into(),
@@ -135,8 +135,8 @@ pub fn build_const_as_box<'ctx, 'this>(
                 ptr,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    inner_layout.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    inner_layout.align() as i64,
                 ))),
             ));
         }
