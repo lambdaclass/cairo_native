@@ -317,6 +317,7 @@ pub fn build_call_contract<'ctx, 'this>(
                     llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
+                    IntegerType::new(context, 32).into(),
                 ],
                 false,
             )],
@@ -1661,6 +1662,7 @@ pub fn build_emit_event<'ctx, 'this>(
                     llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
+                    IntegerType::new(context, 32).into(),
                 ],
                 false,
             )],
@@ -1698,6 +1700,7 @@ pub fn build_emit_event<'ctx, 'this>(
                 context,
                 &[
                     llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                    IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
                 ],
@@ -2959,6 +2962,7 @@ pub fn build_deploy<'ctx, 'this>(
                     llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
+                    IntegerType::new(context, 32).into(),
                 ],
                 false,
             )],
@@ -3317,6 +3321,7 @@ pub fn build_keccak<'ctx, 'this>(
             context,
             &[
                 llvm::r#type::pointer(IntegerType::new(context, 64).into(), 0),
+                IntegerType::new(context, 32).into(),
                 IntegerType::new(context, 32).into(),
                 IntegerType::new(context, 32).into(),
             ],
@@ -3688,6 +3693,7 @@ pub fn build_library_call<'ctx, 'this>(
                 context,
                 &[
                     llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                    IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
                 ],
