@@ -102,10 +102,11 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context;
-<span class="kw">use </span>cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
-<span class="kw">use </span>cairo_native::{context::NativeContext, module_to_object, object_to_shared_lib, OptLevel};
+<span class="kw">use </span>cairo_native::{
+    context::NativeContext, module_to_object, object_to_shared_lib,
+    utils::cairo_to_sierra_with_debug_info, OptLevel,
+};
 <span class="kw">use </span>clap::{Parser, ValueEnum};
 <span class="kw">use </span>std::path::{Path, PathBuf};
 <span class="kw">use </span>tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -154,17 +155,14 @@
     <span class="comment">// Check if args.path is a file or a directory.
     </span>check_compiler_path(args.single_file, <span class="kw-2">&amp;</span>args.path)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>sierra_program = compile_cairo_project_at_path(
-        <span class="kw-2">&amp;</span>args.path,
-        CompilerConfig {
-            replace_ids: args.replace_ids,
-            ..CompilerConfig::default()
-        },
-    )<span class="question-mark">?</span>;
     <span class="kw">let </span>native_context = NativeContext::new();
+    <span class="kw">let </span>(sierra_program, debug_locations) =
+        cairo_to_sierra_with_debug_info(native_context.context(), <span class="kw-2">&amp;</span>args.path)<span class="question-mark">?</span>;
 
     <span class="comment">// Compile the sierra program into a MLIR module.
-    </span><span class="kw">let </span>native_module = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
+    </span><span class="kw">let </span>native_module = native_context
+        .compile(<span class="kw-2">&amp;</span>sierra_program, <span class="prelude-val">Some</span>(debug_locations))
+        .unwrap();
 
     <span class="kw">let </span>opt_level = <span class="kw">match </span>args.opt_level {
         <span class="number">0 </span>=&gt; OptLevel::None,

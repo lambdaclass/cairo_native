@@ -127,7 +127,7 @@
             module,
             registry,
             metadata,
-        } = <span class="self">self</span>.context.compile(program).expect(<span class="string">"should compile"</span>);
+        } = <span class="self">self</span>.context.compile(program, <span class="prelude-val">None</span>).expect(<span class="string">"should compile"</span>);
 
         <span class="comment">// Compile module into an object.
         </span><span class="kw">let </span>object_data = <span class="kw">crate</span>::ffi::module_to_object(<span class="kw-2">&amp;</span>module, opt_level).unwrap();

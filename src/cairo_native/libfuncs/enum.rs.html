@@ -630,6 +630,7 @@
 <a href="#629" id="629">629</a>
 <a href="#630" id="630">630</a>
 <a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -851,6 +852,7 @@
     <span class="kw">let </span>variant_ids = type_info.variants().unwrap();
     <span class="kw">match </span>variant_ids.len() {
         <span class="number">0 </span>| <span class="number">1 </span>=&gt; {
+            <span class="macro">dbg!</span>(info.branch_signatures().len());
             entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
         }
         <span class="kw">_ </span>=&gt; {

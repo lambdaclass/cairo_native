@@ -156,7 +156,7 @@
         program: <span class="kw-2">&amp;</span>Program,
         opt_level: OptLevel,
     ) -&gt; Rc&lt;JitNativeExecutor&lt;<span class="lifetime">'a</span>&gt;&gt; {
-        <span class="kw">let </span>module = <span class="self">self</span>.context.compile(program).expect(<span class="string">"should compile"</span>);
+        <span class="kw">let </span>module = <span class="self">self</span>.context.compile(program, <span class="prelude-val">None</span>).expect(<span class="string">"should compile"</span>);
         <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, opt_level);
 
         <span class="kw">let </span>executor = Rc::new(executor);

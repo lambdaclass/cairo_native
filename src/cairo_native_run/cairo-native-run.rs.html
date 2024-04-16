@@ -283,6 +283,21 @@
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::{bail, Context};
 <span class="kw">use </span>cairo_lang_compiler::{
     db::RootDatabase, diagnostics::DiagnosticsReporter, project::setup_project,
@@ -297,6 +312,7 @@
 <span class="kw">use </span>cairo_lang_starknet::contract::get_contracts_info;
 <span class="kw">use </span>cairo_native::{
     context::NativeContext,
+    debug_info::{DebugInfo, DebugLocations},
     execution_result::ExecutionResult,
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
@@ -378,8 +394,22 @@
 
     <span class="kw">let </span>native_context = NativeContext::new();
 
+    <span class="kw">let </span>debug_locations = {
+        <span class="kw">let </span>debug_info = DebugInfo::extract(db, <span class="kw-2">&amp;</span>sierra_program)
+            .map_err(|<span class="kw">_</span>| {
+                <span class="kw">let </span><span class="kw-2">mut </span>buffer = String::new();
+                <span class="macro">assert!</span>(DiagnosticsReporter::write_to_string(<span class="kw-2">&amp;mut </span>buffer).check(db));
+                buffer
+            })
+            .unwrap();
+
+        DebugLocations::extract(native_context.context(), db, <span class="kw-2">&amp;</span>debug_info)
+    };
+
     <span class="comment">// Compile the sierra program into a MLIR module.
-    </span><span class="kw">let </span>native_module = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
+    </span><span class="kw">let </span>native_module = native_context
+        .compile(<span class="kw-2">&amp;</span>sierra_program, <span class="prelude-val">Some</span>(debug_locations))
+        .unwrap();
 
     <span class="kw">let </span>opt_level = <span class="kw">match </span>args.opt_level {
         <span class="number">0 </span>=&gt; OptLevel::None,

@@ -118,7 +118,7 @@
 //! let native_context = NativeContext::new();
 //!
 //! // Compile the sierra program into a MLIR module.
-//! let native_program = native_context.compile(&amp;sierra_program).unwrap();
+//! let native_program = native_context.compile(&amp;sierra_program, None).unwrap();
 //!
 //! // The parameters of the entry point.
 //! let params = &amp;[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];

@@ -230,14 +230,14 @@
     <span class="comment">// Load the program.
     </span><span class="kw">let </span>context = NativeContext::new();
     <span class="comment">// TODO: Reconnect debug information.
-    </span><span class="kw">let </span>(program, _debug_info) = load_program(
+    </span><span class="kw">let </span>(program, debug_info) = load_program(
         Path::new(<span class="kw-2">&amp;</span>args.input),
         <span class="prelude-val">Some</span>(context.context()),
         args.starknet,
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Compile the program.
-    </span><span class="kw">let </span>module = context.compile(<span class="kw-2">&amp;</span>program)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>module = context.compile(<span class="kw-2">&amp;</span>program, debug_info)<span class="question-mark">?</span>;
 
     <span class="comment">// Write the output.
     </span><span class="kw">let </span>output_str = module

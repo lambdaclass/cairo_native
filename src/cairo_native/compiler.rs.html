@@ -1039,6 +1039,29 @@
 <a href="#1038" id="1038">1038</a>
 <a href="#1039" id="1039">1039</a>
 <a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
@@ -1361,7 +1384,11 @@
                         .iter(),
                     )<span class="question-mark">?
                     </span>.<span class="number">1</span>,
-                    Location::unknown(context),
+                    Location::name(
+                        context,
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"landing_block(stmt_idx={})"</span>, statement_idx),
+                        Location::unknown(context),
+                    ),
                 ));
             }
 
@@ -1371,6 +1398,8 @@
                         <span class="string">"Implementing the invocation statement at {statement_idx}: {}."</span>,
                         invocation.libfunc_id
                     );
+                    <span class="kw">let </span>libfunc_name =
+                        <span class="macro">format!</span>(<span class="string">"{}(stmt_idx={})"</span>, invocation.libfunc_id, statement_idx);
 
                     <span class="kw">let </span>(state, <span class="kw">_</span>) = edit_state::take_args(state, invocation.args.iter())<span class="question-mark">?</span>;
 
@@ -1400,7 +1429,12 @@
                             <span class="comment">// TODO: Defer insertions until after the recursion has been confirmed
                             //   (when removing the meta, if a return target is set).
                             // TODO: Explore replacing the `memref` counter with a normal variable.
-                            </span><span class="kw">let </span>op0 = pre_entry_block.insert_operation(
+                            </span><span class="kw">let </span>location = Location::name(
+                                context,
+                                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"recursion_counter({})"</span>, libfunc_name),
+                                Location::unknown(context),
+                            );
+                            <span class="kw">let </span>op0 = pre_entry_block.insert_operation(
                                 <span class="number">0</span>,
                                 memref::alloca(
                                     context,
@@ -1408,7 +1442,7 @@
                                     <span class="kw-2">&amp;</span>[],
                                     <span class="kw-2">&amp;</span>[],
                                     <span class="prelude-val">None</span>,
-                                    Location::unknown(context),
+                                    location,
                                 ),
                             );
                             <span class="kw">let </span>op1 = pre_entry_block.insert_operation_after(
@@ -1416,7 +1450,7 @@
                                 index::constant(
                                     context,
                                     IntegerAttribute::new(Type::index(context), <span class="number">0</span>),
-                                    Location::unknown(context),
+                                    location,
                                 ),
                             );
                             pre_entry_block.insert_operation_after(
@@ -1425,7 +1459,7 @@
                                     op1.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
                                     op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
                                     <span class="kw-2">&amp;</span>[],
-                                    Location::unknown(context),
+                                    location,
                                 ),
                             );
 
@@ -1439,11 +1473,15 @@
                         context,
                         registry,
                         block,
-                        debug_info
-                            .and_then(|debug_info| {
-                                debug_info.statements.get(<span class="kw-2">&amp;</span>statement_idx).copied()
-                            })
-                            .unwrap_or_else(|| Location::unknown(context)),
+                        Location::name(
+                            context,
+                            <span class="kw-2">&amp;</span>libfunc_name,
+                            debug_info
+                                .and_then(|debug_info| {
+                                    debug_info.statements.get(<span class="kw-2">&amp;</span>statement_idx).copied()
+                                })
+                                .unwrap_or_else(|| Location::unknown(context)),
+                        ),
                         <span class="kw-2">&amp;</span>helper,
                         metadata,
                     )<span class="question-mark">?</span>;
@@ -1483,48 +1521,56 @@
                 Statement::Return(var_ids) =&gt; {
                     <span class="macro">tracing::trace!</span>(<span class="string">"Implementing the return statement at {statement_idx}"</span>);
 
+                    <span class="kw">let </span>location = Location::name(
+                        context,
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"return(stmt_idx={})"</span>, statement_idx),
+                        Location::unknown(context),
+                    );
+
                     <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw-2">mut </span>values) = edit_state::take_args(state, var_ids.iter())<span class="question-mark">?</span>;
 
                     <span class="kw">let </span><span class="kw-2">mut </span>block = <span class="kw-2">*</span>block;
                     <span class="kw">if </span>!tailrec_state.is_empty() {
+                        <span class="kw">let </span>location = Location::name(
+                            context,
+                            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"return(stmt_idx={}, tail_recursion)"</span>, statement_idx),
+                            Location::unknown(context),
+                        );
                         <span class="comment">// Perform tail recursion.
                         </span><span class="kw">for </span>counter_idx <span class="kw">in </span>tailrec_state.into_values() {
                             <span class="kw">let </span>cont_block = region.insert_block_after(block, Block::new(<span class="kw-2">&amp;</span>[]));
 
                             <span class="kw">let </span>(depth_counter, return_target) = tailrec_storage[counter_idx];
-                            <span class="kw">let </span>op0 = block.append_operation(memref::load(
-                                depth_counter,
-                                <span class="kw-2">&amp;</span>[],
-                                Location::unknown(context),
-                            ));
+                            <span class="kw">let </span>op0 =
+                                block.append_operation(memref::load(depth_counter, <span class="kw-2">&amp;</span>[], location));
                             <span class="kw">let </span>op1 = block.append_operation(index::constant(
                                 context,
                                 IntegerAttribute::new(Type::index(context), <span class="number">0</span>),
-                                Location::unknown(context),
+                                location,
                             ));
                             <span class="kw">let </span>op2 = block.append_operation(index::cmp(
                                 context,
                                 CmpiPredicate::Eq,
                                 op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
                                 op1.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                                Location::unknown(context),
+                                location,
                             ));
 
                             <span class="kw">let </span>op3 = block.append_operation(index::constant(
                                 context,
                                 IntegerAttribute::new(Type::index(context), <span class="number">1</span>),
-                                Location::unknown(context),
+                                location,
                             ));
                             <span class="kw">let </span>op4 = block.append_operation(index::sub(
                                 op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
                                 op3.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                                Location::unknown(context),
+                                location,
                             ));
                             block.append_operation(memref::store(
                                 op4.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
                                 depth_counter,
                                 <span class="kw-2">&amp;</span>[],
-                                Location::unknown(context),
+                                location,
                             ));
 
                             <span class="kw">let </span>recursive_values = <span class="kw">match </span>has_return_ptr {
@@ -1570,7 +1616,7 @@
                                                         context,
                                                         value,
                                                         ty,
-                                                        Location::unknown(context),
+                                                        location,
                                                         LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(
                                                             IntegerAttribute::new(
                                                                 IntegerType::new(context, <span class="number">64</span>)
@@ -1598,7 +1644,7 @@
                                 <span class="kw-2">&amp;</span>return_target,
                                 <span class="kw-2">&amp;</span>[],
                                 <span class="kw-2">&amp;</span>recursive_values,
-                                Location::unknown(context),
+                                location,
                             ));
 
                             block = cont_block;
@@ -1628,7 +1674,7 @@
                                         ret_layout.size() <span class="kw">as </span>i64,
                                     )
                                     .into(),
-                                    Location::unknown(context),
+                                    location,
                                 ))
                                 .result(<span class="number">0</span>)<span class="question-mark">?
                                 </span>.into();
@@ -1639,7 +1685,7 @@
                                     ptr,
                                     num_bytes,
                                     IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
-                                    Location::unknown(context),
+                                    location,
                                 )
                                 .into(),
                             );
@@ -1658,7 +1704,7 @@
                                             type_info.build(
                                                 context, module, registry, metadata, type_id,
                                             )<span class="question-mark">?</span>,
-                                            Location::unknown(context),
+                                            location,
                                             LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(
                                                 IntegerAttribute::new(
                                                     IntegerType::new(context, <span class="number">64</span>).into(),
@@ -1674,7 +1720,7 @@
                         <span class="prelude-val">None </span>=&gt; {}
                     }
 
-                    block.append_operation(func::r#return(<span class="kw-2">&amp;</span>values, Location::unknown(context)));
+                    block.append_operation(func::r#return(<span class="kw-2">&amp;</span>values, location));
 
                     Vec::new()
                 }
