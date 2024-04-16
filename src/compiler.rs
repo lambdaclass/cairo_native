@@ -330,6 +330,8 @@ fn compile_func(
                         "Implementing the invocation statement at {statement_idx}: {}.",
                         invocation.libfunc_id
                     );
+                    let libfunc_name =
+                        format!("{}(stmt_idx={})", invocation.libfunc_id, statement_idx);
 
                     let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
@@ -359,6 +361,11 @@ fn compile_func(
                             // TODO: Defer insertions until after the recursion has been confirmed
                             //   (when removing the meta, if a return target is set).
                             // TODO: Explore replacing the `memref` counter with a normal variable.
+                            let location = Location::name(
+                                context,
+                                &format!("recursion_counter({})", libfunc_name),
+                                Location::unknown(context),
+                            );
                             let op0 = pre_entry_block.insert_operation(
                                 0,
                                 memref::alloca(
@@ -367,7 +374,7 @@ fn compile_func(
                                     &[],
                                     &[],
                                     None,
-                                    Location::unknown(context),
+                                    location,
                                 ),
                             );
                             let op1 = pre_entry_block.insert_operation_after(
@@ -375,7 +382,7 @@ fn compile_func(
                                 index::constant(
                                     context,
                                     IntegerAttribute::new(Type::index(context), 0),
-                                    Location::unknown(context),
+                                    location,
                                 ),
                             );
                             pre_entry_block.insert_operation_after(
@@ -384,7 +391,7 @@ fn compile_func(
                                     op1.result(0)?.into(),
                                     op0.result(0)?.into(),
                                     &[],
-                                    Location::unknown(context),
+                                    location,
                                 ),
                             );
 
@@ -398,11 +405,15 @@ fn compile_func(
                         context,
                         registry,
                         block,
-                        debug_info
-                            .and_then(|debug_info| {
-                                debug_info.statements.get(&statement_idx).copied()
-                            })
-                            .unwrap_or_else(|| Location::unknown(context)),
+                        Location::name(
+                            context,
+                            &libfunc_name,
+                            debug_info
+                                .and_then(|debug_info| {
+                                    debug_info.statements.get(&statement_idx).copied()
+                                })
+                                .unwrap_or_else(|| Location::unknown(context)),
+                        ),
                         &helper,
                         metadata,
                     )?;
