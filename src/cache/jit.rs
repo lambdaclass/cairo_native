@@ -45,7 +45,7 @@ where
         program: &Program,
         opt_level: OptLevel,
     ) -> Rc<JitNativeExecutor<'a>> {
-        let module = self.context.compile(program).expect("should compile");
+        let module = self.context.compile(program, None).expect("should compile");
         let executor = JitNativeExecutor::from_native_module(module, opt_level);
 
         let executor = Rc::new(executor);

@@ -1,11 +1,15 @@
 //! # Various utilities
 
 use crate::{
+    debug_info::{DebugInfo, DebugLocations},
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
     OptLevel,
 };
-use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_compiler::{
+    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
+    project::setup_project, CompilerConfig,
+};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::{ConcreteTypeId, FunctionId},
@@ -106,6 +110,37 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
                 .unwrap(),
         )
     }
+}
+
+pub fn cairo_to_sierra_with_debug_info<'ctx>(
+    context: &'ctx Context,
+    program: &Path,
+) -> Result<(Program, DebugLocations<'ctx>), crate::error::Error> {
+    let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
+    let main_crate_ids = setup_project(&mut db, program).unwrap();
+    let program = compile_prepared_db(
+        &mut db,
+        main_crate_ids,
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let debug_locations = {
+        let debug_info = DebugInfo::extract(&db, &program)
+            .map_err(|_| {
+                let mut buffer = String::new();
+                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
+                buffer
+            })
+            .unwrap();
+
+        DebugLocations::extract(context, &db, &debug_info)
+    };
+
+    Ok((program, debug_locations))
 }
 
 /// Returns the given entry point if present.
