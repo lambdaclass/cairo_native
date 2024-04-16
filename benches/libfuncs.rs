@@ -50,14 +50,14 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 |b, program| {
                     let native_context = NativeContext::new();
                     b.iter(|| {
-                        let module = native_context.compile(program).unwrap();
+                        let module = native_context.compile(program, None).unwrap();
                         // pass manager internally verifies the MLIR output is correct.
                         let native_executor =
                             JitNativeExecutor::from_native_module(module, Default::default());
 
                         // Execute the program.
                         let result = native_executor
-                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128), None)
+                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128))
                             .unwrap();
                         black_box(result)
                     })
@@ -69,7 +69,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 program,
                 |b, program| {
                     let native_context = NativeContext::new();
-                    let module = native_context.compile(program).unwrap();
+                    let module = native_context.compile(program, None).unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                     let native_executor =
                         JitNativeExecutor::from_native_module(module, Default::default());
@@ -77,14 +77,14 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                     // warmup
                     for _ in 0..5 {
                         native_executor
-                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128), None)
+                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128))
                             .unwrap();
                     }
 
                     b.iter(|| {
                         // Execute the program.
                         let result = native_executor
-                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128), None)
+                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128))
                             .unwrap();
                         black_box(result)
                     })

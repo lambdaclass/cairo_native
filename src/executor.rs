@@ -1,8 +1,8 @@
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
-    error::jit_engine::RunnerError,
+    error::Error,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
-    metadata::syscall_handler::SyscallHandlerMeta,
+    starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::get_integer_layout,
     values::JitValue,
@@ -35,11 +35,12 @@ global_asm!(include_str!("arch/aarch64.s"));
 global_asm!(include_str!("arch/x86_64.s"));
 
 extern "C" {
-    /// Invoke an AOT-compiled function.
+    /// Invoke an AOT or JIT-compiled function.
     ///
     /// The `ret_ptr` argument is only used when the first argument (the actual return pointer) is
     /// unused. Used for u8, u16, u32, u64, u128 and felt252, but not for arrays, enums or structs.
-    fn aot_trampoline(
+    #[cfg_attr(not(target_os = "macos"), link_name = "_invoke_trampoline")]
+    fn invoke_trampoline(
         fn_ptr: *const c_void,
         args_ptr: *const u64,
         args_len: usize,
@@ -59,15 +60,33 @@ impl<'a> NativeExecutor<'a> {
         function_id: &FunctionId,
         args: &[JitValue],
         gas: Option<u128>,
-        syscall_handler: Option<&SyscallHandlerMeta>,
-    ) -> Result<ExecutionResult, RunnerError> {
+    ) -> Result<ExecutionResult, Error> {
         match self {
-            NativeExecutor::Aot(executor) => {
-                executor.invoke_dynamic(function_id, args, gas, syscall_handler)
-            }
-            NativeExecutor::Jit(executor) => {
-                executor.invoke_dynamic(function_id, args, gas, syscall_handler)
-            }
+            NativeExecutor::Aot(executor) => executor.invoke_dynamic(function_id, args, gas),
+            NativeExecutor::Jit(executor) => executor.invoke_dynamic(function_id, args, gas),
+        }
+    }
+
+    pub fn invoke_dynamic_with_syscall_handler(
+        &self,
+        function_id: &FunctionId,
+        args: &[JitValue],
+        gas: Option<u128>,
+        syscall_handler: impl StarknetSyscallHandler,
+    ) -> Result<ExecutionResult, Error> {
+        match self {
+            NativeExecutor::Aot(executor) => executor.invoke_dynamic_with_syscall_handler(
+                function_id,
+                args,
+                gas,
+                syscall_handler,
+            ),
+            NativeExecutor::Jit(executor) => executor.invoke_dynamic_with_syscall_handler(
+                function_id,
+                args,
+                gas,
+                syscall_handler,
+            ),
         }
     }
 
@@ -76,8 +95,8 @@ impl<'a> NativeExecutor<'a> {
         function_id: &FunctionId,
         args: &[Felt],
         gas: Option<u128>,
-        syscall_handler: Option<&SyscallHandlerMeta>,
-    ) -> Result<ContractExecutionResult, RunnerError> {
+        syscall_handler: impl StarknetSyscallHandler,
+    ) -> Result<ContractExecutionResult, Error> {
         match self {
             NativeExecutor::Aot(executor) => {
                 executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)
@@ -107,7 +126,7 @@ fn invoke_dynamic(
     function_signature: &FunctionSignature,
     args: &[JitValue],
     gas: u128,
-    syscall_handler: Option<NonNull<()>>,
+    mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
@@ -176,13 +195,19 @@ fn invoke_dynamic(
                 get_integer_layout(128).align(),
                 &[gas as u64, (gas >> 64) as u64],
             ),
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match syscall_handler {
-                Some(syscall_handler) => invoke_data.push_aligned(
-                    get_integer_layout(64).align(),
-                    &[syscall_handler.as_ptr() as u64],
-                ),
-                None => panic!("Syscall handler is required"),
-            },
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+                match syscall_handler.as_mut() {
+                    Some(syscall_handler) => {
+                        let syscall_handler =
+                            arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
+                        invoke_data.push_aligned(
+                            get_integer_layout(64).align(),
+                            &[syscall_handler as *mut _ as u64],
+                        )
+                    }
+                    None => panic!("Syscall handler is required"),
+                }
+            }
             _ if is_builtin(type_info) => invoke_data
                 .push(type_id, type_info, &JitValue::Uint64(0))
                 .unwrap(),
@@ -199,7 +224,7 @@ fn invoke_dynamic(
     let mut ret_registers = [0; 4];
 
     unsafe {
-        aot_trampoline(
+        invoke_trampoline(
             function_ptr,
             invoke_data.invoke_data().as_ptr(),
             invoke_data.invoke_data().len(),
@@ -374,7 +399,7 @@ impl<'a> ArgumentMapper<'a> {
 
                 self.push_aligned(
                     get_integer_layout(64).align(),
-                    &[ptr as u64, values.len() as u64, values.len() as u64],
+                    &[ptr as u64, 0, values.len() as u64, values.len() as u64],
                 );
             }
             (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {

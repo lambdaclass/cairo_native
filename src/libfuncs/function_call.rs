@@ -5,7 +5,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::Result,
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
     utils::generate_function_name,
@@ -91,7 +91,7 @@ pub fn build<'ctx, 'this>(
             .init_block()
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
                 location,
             ))
             .result(0)?
@@ -105,8 +105,8 @@ pub fn build<'ctx, 'this>(
                 location,
                 AllocaOptions::new()
                     .align(Some(IntegerAttribute::new(
-                        layout.align() as i64,
                         IntegerType::new(context, 64).into(),
+                        layout.align() as i64,
                     )))
                     .elem_type(Some(TypeAttribute::new(
                         type_info.build(context, helper, registry, metadata, type_id)?,
@@ -129,7 +129,7 @@ pub fn build<'ctx, 'this>(
         let op0 = entry.append_operation(memref::load(tailrec_meta.depth_counter(), &[], location));
         let op1 = entry.append_operation(index::constant(
             context,
-            IntegerAttribute::new(1, Type::index(context)),
+            IntegerAttribute::new(Type::index(context), 1),
             location,
         ));
         let op2 = entry.append_operation(index::add(
@@ -190,7 +190,7 @@ pub fn build<'ctx, 'this>(
                         .init_block()
                         .append_operation(arith::constant(
                             context,
-                            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+                            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
                             location,
                         ))
                         .result(0)?
@@ -204,8 +204,8 @@ pub fn build<'ctx, 'this>(
                             location,
                             AllocaOptions::new()
                                 .align(Some(IntegerAttribute::new(
-                                    layout.align() as i64,
                                     IntegerType::new(context, 64).into(),
+                                    layout.align() as i64,
                                 )))
                                 .elem_type(Some(TypeAttribute::new(ty))),
                         ))
@@ -218,8 +218,8 @@ pub fn build<'ctx, 'this>(
                         stack_ptr,
                         location,
                         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                            layout.align() as i64,
                             IntegerType::new(context, 64).into(),
+                            layout.align() as i64,
                         ))),
                     ));
 
@@ -311,7 +311,7 @@ pub fn build<'ctx, 'this>(
                                 .init_block()
                                 .append_operation(arith::constant(
                                     context,
-                                    IntegerAttribute::new(1, IntegerType::new(context, 64).into())
+                                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 1)
                                         .into(),
                                     location,
                                 ))
@@ -326,8 +326,8 @@ pub fn build<'ctx, 'this>(
                                     location,
                                     AllocaOptions::new()
                                         .align(Some(IntegerAttribute::new(
-                                            layout.align() as i64,
                                             IntegerType::new(context, 64).into(),
+                                            layout.align() as i64,
                                         )))
                                         .elem_type(Some(TypeAttribute::new(ty))),
                                 ))
@@ -340,8 +340,8 @@ pub fn build<'ctx, 'this>(
                                 stack_ptr,
                                 location,
                                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                                    layout.align() as i64,
                                     IntegerType::new(context, 64).into(),
+                                    layout.align() as i64,
                                 ))),
                             ));
 

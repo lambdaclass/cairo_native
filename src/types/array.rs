@@ -10,15 +10,16 @@
 //! | Index | Type           | Description              |
 //! | ----- | -------------- | ------------------------ |
 //! |   0   | `!llvm.ptr<T>` | Pointer to the data[^1]. |
-//! |   1   | `i32`          | Array length[^2].        |
+//! |   1   | `i32`          | Array start offset[^2].  |
+//! |   1   | `i32`          | Array end offset[^2].    |
 //! |   2   | `i32`          | Allocated capacity[^2].  |
 //!
 //! [^1]: When capacity is zero, this field is not guaranteed to be valid.
-//! [^2]: Both numbers are number of items, **not bytes**.
+//! [^2]: Those numbers are number of items, **not bytes**.
 
-use super::WithSelf;
+use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::{libfuncs, types::Result},
+    error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
@@ -33,11 +34,15 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
+    dialect::{
+        arith, cf,
+        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        ods,
+    },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
-        Block, Location, Module, Type, Value,
+        Block, Location, Module, Type, Value, ValueLike,
     },
     Context,
 };
@@ -47,8 +52,8 @@ use melior::{
 /// Check out [the module](self) for more info.
 pub fn build<'ctx>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _module: &Module<'ctx>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
@@ -63,14 +68,12 @@ pub fn build<'ctx>(
             },
         );
 
-    let elem_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
-
-    let ptr_ty = llvm::r#type::pointer(elem_ty, 0);
+    let ptr_ty = llvm::r#type::opaque_pointer(context);
     let len_ty = IntegerType::new(context, 32).into();
 
     Ok(llvm::r#type::r#struct(
         context,
-        &[ptr_ty, len_ty, len_ty],
+        &[ptr_ty, len_ty, len_ty, len_ty],
         false,
     ))
 }
@@ -85,7 +88,7 @@ fn snapshot_take<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
     src_value: Value<'ctx, 'this>,
-) -> libfuncs::Result<Value<'ctx, 'this>> {
+) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
@@ -94,25 +97,36 @@ fn snapshot_take<'ctx, 'this>(
         .get::<SnapshotClonesMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.ty));
 
-    let (elem_ty, elem_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+    let elem_ty = registry.get_type(&info.ty)?;
+    let elem_layout = elem_ty.layout(registry)?;
     let elem_stride = elem_layout.pad_to_align().size();
+    let elem_ty = elem_ty.build(context, helper, registry, metadata, &info.ty)?;
 
     let src_ptr = entry
         .append_operation(llvm::extract_value(
             context,
             src_value,
             DenseI64ArrayAttribute::new(context, &[0]),
-            llvm::r#type::pointer(elem_ty, 0),
+            llvm::r#type::opaque_pointer(context),
             location,
         ))
         .result(0)?
         .into();
-    let array_len = entry
+    let array_start = entry
         .append_operation(llvm::extract_value(
             context,
             src_value,
             DenseI64ArrayAttribute::new(context, &[1]),
+            IntegerType::new(context, 32).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let array_end = entry
+        .append_operation(llvm::extract_value(
+            context,
+            src_value,
+            DenseI64ArrayAttribute::new(context, &[2]),
             IntegerType::new(context, 32).into(),
             location,
         ))
@@ -123,8 +137,8 @@ fn snapshot_take<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                elem_stride.try_into()?,
                 IntegerType::new(context, 64).into(),
+                elem_stride.try_into()?,
             )
             .into(),
             location,
@@ -134,79 +148,180 @@ fn snapshot_take<'ctx, 'this>(
 
     let array_ty = registry.build_type(context, helper, registry, metadata, info.self_ty())?;
 
-    let dst_len_bytes = {
-        let array_len = entry
-            .append_operation(arith::extui(
-                array_len,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+    let array_len: Value = entry
+        .append_operation(arith::subi(array_end, array_start, location))
+        .result(0)?
+        .into();
 
-        entry
-            .append_operation(arith::muli(array_len, elem_stride, location))
-            .result(0)?
-            .into()
-    };
+    let k0 = entry
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(array_len.r#type(), 0).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let is_len_zero = entry
+        .append_operation(arith::cmpi(
+            context,
+            arith::CmpiPredicate::Eq,
+            array_len,
+            k0,
+            location,
+        ))
+        .result(0)?
+        .into();
 
-    let dst_ptr = {
-        let dst_ptr = entry
-            .append_operation(llvm::nullptr(
+    let null_ptr = entry
+        .append_operation(llvm::nullptr(
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let block_realloc = helper.append_block(Block::new(&[]));
+    let block_finish = helper.append_block(Block::new(&[(opaque_pointer(context), location)]));
+
+    entry.append_operation(cf::cond_br(
+        context,
+        is_len_zero,
+        block_finish,
+        block_realloc,
+        &[null_ptr],
+        &[],
+        location,
+    ));
+
+    {
+        // realloc
+        let dst_len_bytes: Value = {
+            let array_len = block_realloc
+                .append_operation(arith::extui(
+                    array_len,
+                    IntegerType::new(context, 64).into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+
+            block_realloc
+                .append_operation(arith::muli(array_len, elem_stride, location))
+                .result(0)?
+                .into()
+        };
+
+        let dst_ptr = {
+            let dst_ptr = null_ptr;
+
+            block_realloc
+                .append_operation(ReallocBindingsMeta::realloc(
+                    context,
+                    dst_ptr,
+                    dst_len_bytes,
+                    location,
+                ))
+                .result(0)?
+                .into()
+        };
+
+        let src_ptr_offset = {
+            let array_start = block_realloc
+                .append_operation(arith::extui(
+                    array_start,
+                    IntegerType::new(context, 64).into(),
+                    location,
+                ))
+                .result(0)?
+                .into();
+
+            block_realloc
+                .append_operation(arith::muli(array_start, elem_stride, location))
+                .result(0)?
+                .into()
+        };
+        let src_ptr = block_realloc
+            .append_operation(llvm::get_element_ptr_dynamic(
+                context,
+                src_ptr,
+                &[src_ptr_offset],
+                IntegerType::new(context, 8).into(),
                 llvm::r#type::opaque_pointer(context),
                 location,
             ))
             .result(0)?
             .into();
 
-        let dst_ptr = entry
-            .append_operation(ReallocBindingsMeta::realloc(
-                context,
-                dst_ptr,
-                dst_len_bytes,
-                location,
-            ))
-            .result(0)?
-            .into();
+        match elem_snapshot_take {
+            Some(elem_snapshot_take) => {
+                let value = block_realloc
+                    .append_operation(llvm::load(
+                        context,
+                        src_ptr,
+                        elem_ty,
+                        location,
+                        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                            IntegerType::new(context, 64).into(),
+                            elem_layout.align() as i64,
+                        ))),
+                    ))
+                    .result(0)?
+                    .into();
 
-        entry
-            .append_operation(llvm::bitcast(
-                dst_ptr,
-                llvm::r#type::pointer(elem_ty, 0),
-                location,
-            ))
-            .result(0)?
-            .into()
-    };
-
-    match elem_snapshot_take {
-        Some(_) => todo!(),
-        None => {
-            let is_volatile = entry
-                .append_operation(arith::constant(
+                let (block_relloc, value) = elem_snapshot_take(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                    registry,
+                    block_realloc,
                     location,
-                ))
-                .result(0)?
-                .into();
+                    helper,
+                    metadata,
+                    value,
+                )?;
 
-            entry.append_operation(llvm::call_intrinsic(
-                context,
-                StringAttribute::new(context, "llvm.memcpy"),
-                &[dst_ptr, src_ptr, dst_len_bytes, is_volatile],
-                &[],
-                location,
-            ));
+                block_relloc.append_operation(llvm::store(
+                    context,
+                    value,
+                    dst_ptr,
+                    location,
+                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                        IntegerType::new(context, 64).into(),
+                        elem_layout.align() as i64,
+                    ))),
+                ));
+                block_relloc.append_operation(cf::br(block_finish, &[dst_ptr], location));
+            }
+            None => {
+                block_realloc.append_operation(
+                    ods::llvm::intr_memcpy(
+                        context,
+                        dst_ptr,
+                        src_ptr,
+                        dst_len_bytes,
+                        IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                        location,
+                    )
+                    .into(),
+                );
+                block_realloc.append_operation(cf::br(block_finish, &[dst_ptr], location));
+            }
         }
     }
 
-    let dst_value = entry
+    let dst_value = block_finish
         .append_operation(llvm::undef(array_ty, location))
         .result(0)?
         .into();
+    let dst_ptr = block_finish.argument(0)?.into();
 
-    let dst_value = entry
+    let k0 = block_finish
+        .append_operation(arith::constant(
+            context,
+            IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+    let dst_value = block_finish
         .append_operation(llvm::insert_value(
             context,
             dst_value,
@@ -216,17 +331,17 @@ fn snapshot_take<'ctx, 'this>(
         ))
         .result(0)?
         .into();
-    let dst_value = entry
+    let dst_value = block_finish
         .append_operation(llvm::insert_value(
             context,
             dst_value,
             DenseI64ArrayAttribute::new(context, &[1]),
-            array_len,
+            k0,
             location,
         ))
         .result(0)?
         .into();
-    let dst_value = entry
+    let dst_value = block_finish
         .append_operation(llvm::insert_value(
             context,
             dst_value,
@@ -236,6 +351,16 @@ fn snapshot_take<'ctx, 'this>(
         ))
         .result(0)?
         .into();
+    let dst_value = block_finish
+        .append_operation(llvm::insert_value(
+            context,
+            dst_value,
+            DenseI64ArrayAttribute::new(context, &[3]),
+            array_len,
+            location,
+        ))
+        .result(0)?
+        .into();
 
-    Ok(dst_value)
+    Ok((block_finish, dst_value))
 }

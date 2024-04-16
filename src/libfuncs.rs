@@ -2,7 +2,7 @@
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-use crate::{error::CoreLibfuncBuilderError, metadata::MetadataStorage};
+use crate::{error::Error as CoreLibfuncBuilderError, metadata::MetadataStorage};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
@@ -47,7 +47,7 @@ pub mod sint32;
 pub mod sint64;
 pub mod sint8;
 pub mod snapshot_take;
-pub mod stark_net;
+pub mod starknet;
 pub mod r#struct;
 pub mod uint128;
 pub mod uint16;
@@ -180,7 +180,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::SnapshotTake(info) => self::snapshot_take::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::StarkNet(selector) => self::stark_net::build(
+            Self::StarkNet(selector) => self::starknet::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Struct(selector) => self::r#struct::build(
@@ -492,11 +492,11 @@ pub fn increment_builtin_counter<'ctx: 'a, 'a>(
     block: &'ctx Block<'ctx>,
     location: Location<'ctx>,
     value: Value<'ctx, '_>,
-) -> crate::error::libfuncs::Result<Value<'ctx, 'a>> {
+) -> crate::error::Result<Value<'ctx, 'a>> {
     let k1 = block
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
         ))
         .result(0)?

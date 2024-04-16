@@ -14,7 +14,7 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::types::Result,
+    error::Result,
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     utils::ProgramRegistryExt,
 };

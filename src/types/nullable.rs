@@ -7,7 +7,7 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::{libfuncs, types::Result},
+    error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
@@ -23,13 +23,11 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm, scf,
+        llvm, ods, scf,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Block, Location, Module, Region, Type, Value,
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        Location, Module, Region, Type, Value,
     },
     Context,
 };
@@ -69,7 +67,7 @@ fn snapshot_take<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
     src_value: Value<'ctx, 'this>,
-) -> libfuncs::Result<Value<'ctx, 'this>> {
+) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
@@ -83,7 +81,7 @@ fn snapshot_take<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             location,
         ))
         .result(0)?
@@ -116,7 +114,8 @@ fn snapshot_take<'ctx, 'this>(
         ))
         .result(0)?
         .into();
-    Ok(entry
+
+    let value = entry
         .append_operation(scf::r#if(
             is_null,
             &[llvm::r#type::opaque_pointer(context)],
@@ -135,8 +134,8 @@ fn snapshot_take<'ctx, 'this>(
                     .append_operation(arith::constant(
                         context,
                         IntegerAttribute::new(
-                            elem_layout.size() as i64,
                             IntegerType::new(context, 64).into(),
+                            elem_layout.size() as i64,
                         )
                         .into(),
                         location,
@@ -151,21 +150,17 @@ fn snapshot_take<'ctx, 'this>(
                     .result(0)?
                     .into();
 
-                let is_volatile = block
-                    .append_operation(arith::constant(
+                block.append_operation(
+                    ods::llvm::intr_memcpy(
                         context,
-                        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                        cloned_ptr,
+                        src_value,
+                        alloc_len,
+                        IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                         location,
-                    ))
-                    .result(0)?
-                    .into();
-                block.append_operation(llvm::call_intrinsic(
-                    context,
-                    StringAttribute::new(context, "llvm.memcpy.inline"),
-                    &[cloned_ptr, src_value, alloc_len, is_volatile],
-                    &[],
-                    location,
-                ));
+                    )
+                    .into(),
+                );
 
                 block.append_operation(scf::r#yield(&[cloned_ptr], location));
                 region
@@ -173,5 +168,7 @@ fn snapshot_take<'ctx, 'this>(
             location,
         ))
         .result(0)?
-        .into())
+        .into();
+
+    Ok((entry, value))
 }

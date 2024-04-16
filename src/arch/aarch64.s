@@ -1,8 +1,8 @@
 .text
 
 
-.global _aot_trampoline
-_aot_trampoline:
+.global _invoke_trampoline
+_invoke_trampoline:
     // x0 <- fn_ptr: extern "C" fn()
     // x1 <- args_ptr: *const u64
     // x2 <- args_len: usize
@@ -15,7 +15,7 @@ _aot_trampoline:
     mov     x9,     x0                      // We'll need x0.
     add     x10,    x1,     x2,     lsl 3   // Move the pointer to the end (past last element).
 
-    cmp     x2,     8                       // Check if there are more than 8 arguments.
+    cmp     x2,     8                       // Check if there are more than 8 arguments.
     ble     2f                              // If there are less than 8, skip to register arguments.
 
     //
@@ -32,7 +32,7 @@ _aot_trampoline:
     ldr     x3,     [x10, #-8]!             // Decrement pointer, then load the value.
     str     x3,     [x4, #-8]!              // Reserve stack memory, then write the value.
 
-    cmp     x2,     8                       // Check if there are more than 8 arguments.
+    cmp     x2,     8                       // Check if there are more than 8 arguments.
     bgt     1b                              // If there still are, loop back and repeat.
 
     mov     sp,     x4

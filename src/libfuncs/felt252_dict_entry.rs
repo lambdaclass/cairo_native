@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result,
+    error::Result,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
@@ -97,7 +97,7 @@ pub fn build_get<'ctx, 'this>(
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -108,8 +108,8 @@ pub fn build_get<'ctx, 'this>(
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    key_layout.align().try_into()?,
                     IntegerType::new(context, 64).into(),
+                    key_layout.align().try_into()?,
                 )
                 .into(),
             )])
@@ -126,8 +126,8 @@ pub fn build_get<'ctx, 'this>(
         key_ptr,
         location,
         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            key_layout.align() as i64,
             IntegerType::new(context, 64).into(),
+            key_layout.align() as i64,
         ))),
     ));
 
@@ -152,7 +152,7 @@ pub fn build_get<'ctx, 'this>(
             .add_operands(&[result_ptr, null_ptr])
             .add_attributes(&[(
                 Identifier::new(context, "predicate"),
-                IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             )])
             .add_results(&[IntegerType::new(context, 1).into()])
             .build()?,
@@ -182,8 +182,8 @@ pub fn build_get<'ctx, 'this>(
         let op = block_is_null.append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                value_layout.size() as i64,
                 IntegerType::new(context, 64).into(),
+                value_layout.size() as i64,
             )
             .into(),
             location,
@@ -218,8 +218,8 @@ pub fn build_get<'ctx, 'this>(
             value_ty,
             location,
             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                value_layout.align() as i64,
                 IntegerType::new(context, 64).into(),
+                value_layout.align() as i64,
             ))),
         ));
         let loaded_value = op.result(0)?.into();
@@ -315,8 +315,8 @@ pub fn build_finalize<'ctx, 'this>(
         value_ptr,
         location,
         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            value_layout.align() as i64,
             IntegerType::new(context, 64).into(),
+            value_layout.align() as i64,
         ))),
     ));
 
@@ -324,7 +324,7 @@ pub fn build_finalize<'ctx, 'this>(
         .init_block()
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -335,8 +335,8 @@ pub fn build_finalize<'ctx, 'this>(
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    key_layout.align().try_into()?,
                     IntegerType::new(context, 64).into(),
+                    key_layout.align().try_into()?,
                 )
                 .into(),
             )])
@@ -353,8 +353,8 @@ pub fn build_finalize<'ctx, 'this>(
         key_ptr,
         location,
         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            key_layout.align() as i64,
             IntegerType::new(context, 64).into(),
+            key_layout.align() as i64,
         ))),
     ));
 

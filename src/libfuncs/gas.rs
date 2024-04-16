@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::{ErrorImpl, Result},
+    error::{Error, Result},
     metadata::{gas::GasCost, MetadataStorage},
     utils::ProgramRegistryExt,
 };
@@ -18,9 +18,9 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm,
+        llvm, ods,
     },
-    ir::{attribute::StringAttribute, r#type::IntegerType, Attribute, Block, Location, ValueLike},
+    ir::{r#type::IntegerType, Attribute, Block, Location},
     Context,
 };
 
@@ -90,7 +90,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type))
-                .ok_or(ErrorImpl::ParseAttributeError)?,
+                .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -108,13 +108,9 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         .into();
 
     let resulting_gas = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[current_gas, gas_cost_val],
-            &[gas_cost_val.r#type()],
-            location,
-        ))
+        .append_operation(
+            ods::llvm::intr_usub_sat(context, current_gas, gas_cost_val, location).into(),
+        )
         .result(0)?
         .into();
 
@@ -150,7 +146,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type))
-                .ok_or(ErrorImpl::ParseAttributeError)?,
+                .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -168,13 +164,9 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
         .into();
 
     let resulting_gas = entry
-        .append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.usub.sat"),
-            &[current_gas, gas_cost_val],
-            &[gas_cost_val.r#type()],
-            location,
-        ))
+        .append_operation(
+            ods::llvm::intr_usub_sat(context, current_gas, gas_cost_val, location).into(),
+        )
         .result(0)?
         .into();
 

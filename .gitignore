@@ -26,3 +26,6 @@ cairo-*.tar
 /cairo2
 *.dylib
 *.so
+*.a
+*.mlir
+/*.info

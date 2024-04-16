@@ -30,7 +30,7 @@
 //! let native_context = NativeContext::new();
 //!
 //! // Compile the sierra program into a MLIR module.
-//! let native_program = native_context.compile(&sierra_program).unwrap();
+//! let native_program = native_context.compile(&sierra_program, None).unwrap();
 //!
 //! // The parameters of the entry point.
 //! let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
@@ -44,13 +44,11 @@
 //!
 //! // Execute the program.
 //! let result = native_executor
-//!     .invoke_dynamic(entry_point_id, params, None, None)
+//!     .invoke_dynamic(entry_point_id, params, None)
 //!     .unwrap();
 //!
 //! println!("Cairo program was compiled and executed successfully.");
 //! println!("{:?}", result);
-//!
-//!
 //! ```
 //!
 //! ## Common definitions

@@ -1,11 +1,15 @@
 //! # Various utilities
 
 use crate::{
+    debug_info::{DebugInfo, DebugLocations},
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
     OptLevel,
 };
-use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_compiler::{
+    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
+    project::setup_project, CompilerConfig,
+};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::{ConcreteTypeId, FunctionId},
@@ -106,6 +110,37 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
                 .unwrap(),
         )
     }
+}
+
+pub fn cairo_to_sierra_with_debug_info<'ctx>(
+    context: &'ctx Context,
+    program: &Path,
+) -> Result<(Program, DebugLocations<'ctx>), crate::error::Error> {
+    let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
+    let main_crate_ids = setup_project(&mut db, program).unwrap();
+    let program = compile_prepared_db(
+        &mut db,
+        main_crate_ids,
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let debug_locations = {
+        let debug_info = DebugInfo::extract(&db, &program)
+            .map_err(|_| {
+                let mut buffer = String::new();
+                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
+                buffer
+            })
+            .unwrap();
+
+        DebugLocations::extract(context, &db, &debug_info)
+    };
+
+    Ok((program, debug_locations))
 }
 
 /// Returns the given entry point if present.
@@ -220,9 +255,9 @@ pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Er
     pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
     pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
     pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
     pass_manager.add_pass(pass::conversion::create_index_to_llvm());
     pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
     pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
     pass_manager.run(module)
 }
@@ -438,7 +473,7 @@ pub trait ProgramRegistryExt {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, super::error::types::Error>;
+    ) -> Result<Type<'ctx>, super::error::Error>;
 
     fn build_type_with_layout<'ctx>(
         &self,
@@ -447,7 +482,7 @@ pub trait ProgramRegistryExt {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), super::error::types::Error>;
+    ) -> Result<(Type<'ctx>, Layout), super::error::Error>;
 }
 
 impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
@@ -458,7 +493,7 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, super::error::types::Error> {
+    ) -> Result<Type<'ctx>, super::error::Error> {
         registry
             .get_type(id)?
             .build(context, module, registry, metadata, id)
@@ -471,7 +506,7 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), super::error::types::Error> {
+    ) -> Result<(Type<'ctx>, Layout), super::error::Error> {
         let concrete_type = registry.get_type(id)?;
 
         Ok((
@@ -612,12 +647,11 @@ pub mod test {
         metadata::{
             gas::{GasMetadata, MetadataComputationConfig},
             runtime_bindings::RuntimeBindingsMeta,
-            syscall_handler::SyscallHandlerMeta,
             MetadataStorage,
         },
         module::NativeModule,
         starknet::{
-            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarkNetSyscallHandler,
+            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarknetSyscallHandler,
             SyscallResult, TxInfo, TxV2Info, U256,
         },
         utils::*,
@@ -630,7 +664,9 @@ pub mod test {
     use cairo_lang_filesystem::db::init_dev_corelib;
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
+        ids::FunctionId,
         program::Program,
+        program::{FunctionSignature, GenFunction, StatementIdx},
         program_registry::ProgramRegistry,
     };
     use melior::{
@@ -641,7 +677,7 @@ pub mod test {
     };
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
-    use std::{env::var, fs, path::Path};
+    use std::{env::var, fmt::Formatter, fs, path::Path};
 
     macro_rules! load_cairo {
         ( $( $program:tt )+ ) => {
@@ -755,9 +791,6 @@ pub mod test {
 
         // Make the runtime library and syscall handler available.
         metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-        metadata
-            .insert(SyscallHandlerMeta::new(&mut TestSyscallHandler))
-            .unwrap();
 
         if program
             .type_declarations
@@ -784,17 +817,15 @@ pub mod test {
         run_pass_manager(&context, &mut module)
             .expect("Could not apply passes to the compiled test program.");
 
-        let syscall_handler = metadata.remove::<SyscallHandlerMeta>();
-
         let native_module = NativeModule::new(module, registry, metadata);
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
         let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
         executor
-            .invoke_dynamic(
+            .invoke_dynamic_with_syscall_handler(
                 entry_point_id,
                 args,
                 Some(u128::MAX),
-                syscall_handler.as_ref(),
+                TestSyscallHandler,
             )
             .unwrap()
     }
@@ -810,6 +841,9 @@ pub mod test {
         assert_eq!(result.return_value, output);
     }
 
+    // ==============================
+    // == TESTS: get_integer_layout
+    // ==============================
     /// Ensures that the host's `u8` is compatible with its compiled counterpart.
     #[test]
     fn test_alignment_compatibility_u8() {
@@ -859,10 +893,247 @@ pub mod test {
         assert_eq!(get_integer_layout(252).align(), 8);
     }
 
+    // ==============================
+    // == TESTS: find_entry_point
+    // ==============================
+    #[test]
+    fn test_find_entry_point_with_empty_program() {
+        let program = Program {
+            type_declarations: vec![],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![],
+        };
+        let entry_point = find_entry_point(&program, "entry_point");
+        assert!(entry_point.is_none());
+    }
+
+    #[test]
+    fn test_entry_point_not_found() {
+        let program = Program {
+            type_declarations: vec![],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![GenFunction {
+                id: FunctionId {
+                    id: 0,
+                    debug_name: Some("not_entry_point".into()),
+                },
+                signature: FunctionSignature {
+                    ret_types: vec![],
+                    param_types: vec![],
+                },
+                params: vec![],
+                entry_point: StatementIdx(0),
+            }],
+        };
+        let entry_point = find_entry_point(&program, "entry_point");
+        assert!(entry_point.is_none());
+    }
+
+    #[test]
+    fn test_entry_point_found() {
+        let program = Program {
+            type_declarations: vec![],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![GenFunction {
+                id: FunctionId {
+                    id: 0,
+                    debug_name: Some("entry_point".into()),
+                },
+                signature: FunctionSignature {
+                    ret_types: vec![],
+                    param_types: vec![],
+                },
+                params: vec![],
+                entry_point: StatementIdx(0),
+            }],
+        };
+        let entry_point = find_entry_point(&program, "entry_point");
+        assert!(entry_point.is_some());
+        assert_eq!(entry_point.unwrap().id.id, 0);
+    }
+
+    // ====================================
+    // == TESTS: find_entry_point_by_idx
+    // ====================================
+    #[test]
+    fn test_find_entry_point_by_idx_with_empty_program() {
+        let program = Program {
+            type_declarations: vec![],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![],
+        };
+        let entry_point = find_entry_point_by_idx(&program, 0);
+        assert!(entry_point.is_none());
+    }
+
+    #[test]
+    fn test_entry_point_not_found_by_id() {
+        let program = Program {
+            type_declarations: vec![],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![GenFunction {
+                id: FunctionId {
+                    id: 0,
+                    debug_name: Some("some_name".into()),
+                },
+                signature: FunctionSignature {
+                    ret_types: vec![],
+                    param_types: vec![],
+                },
+                params: vec![],
+                entry_point: StatementIdx(0),
+            }],
+        };
+        let entry_point = find_entry_point_by_idx(&program, 1);
+        assert!(entry_point.is_none());
+    }
+
+    #[test]
+    fn test_entry_point_found_by_id() {
+        let program = Program {
+            type_declarations: vec![],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![GenFunction {
+                id: FunctionId {
+                    id: 15,
+                    debug_name: Some("some_name".into()),
+                },
+                signature: FunctionSignature {
+                    ret_types: vec![],
+                    param_types: vec![],
+                },
+                params: vec![],
+                entry_point: StatementIdx(0),
+            }],
+        };
+        let entry_point = find_entry_point_by_idx(&program, 15);
+        assert!(entry_point.is_some());
+        assert_eq!(entry_point.unwrap().id.id, 15);
+    }
+
+    // ==============================
+    // == TESTS: felt252_str
+    // ==============================
+    #[test]
+    #[should_panic(expected = "value must be a digit number")]
+    fn test_felt252_str_invalid_input() {
+        let value = "not_a_number";
+        felt252_str(value);
+    }
+
+    #[test]
+    fn test_felt252_str_positive_number() {
+        let value = "123";
+        let result = felt252_str(value);
+        assert_eq!(result, [123, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_felt252_str_negative_number() {
+        let value = "-123";
+        let result = felt252_str(value);
+        assert_eq!(
+            result,
+            [
+                4294967174, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 16,
+                134217728
+            ]
+        );
+    }
+
+    #[test]
+    fn test_felt252_str_zero() {
+        let value = "0";
+        let result = felt252_str(value);
+        assert_eq!(result, [0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    // ==============================
+    // == TESTS: felt252_short_str
+    // ==============================
+    #[test]
+    fn test_felt252_short_str_short_numeric_string() {
+        let value = "12345";
+        let result = felt252_short_str(value);
+        assert_eq!(result, [842216501, 49, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_felt252_short_str_short_string_with_non_numeric_characters() {
+        let value = "hello";
+        let result = felt252_short_str(value);
+        assert_eq!(result, [1701604463, 104, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_felt252_short_str_long_numeric_string() {
+        let value = "1234567890123456789012345678901234567890";
+        let result = felt252_short_str(value);
+        assert_eq!(
+            result,
+            [
+                926431536, 859059510, 959459634, 892745528, 825373492, 926431536, 859059510,
+                959459634
+            ]
+        );
+    }
+
+    #[test]
+    fn test_felt252_short_str_empty_string() {
+        let value = "";
+        let result = felt252_short_str(value);
+        assert_eq!(result, [0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_felt252_short_str_string_with_non_ascii_characters() {
+        let value = "h€llø";
+        let result = felt252_short_str(value);
+        assert_eq!(result, [6843500, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    // ==============================
+    // == TESTS: debug_with
+    // ==============================
+    #[test]
+    fn test_debug_with_empty_closure() {
+        let closure = |_f: &mut Formatter| -> fmt::Result { Ok(()) };
+        let debug_wrapper = debug_with(closure);
+        assert_eq!(format!("{:?}", debug_wrapper), "");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_debug_with_error_closure() {
+        let closure = |_f: &mut Formatter| -> Result<(), fmt::Error> { Err(fmt::Error) };
+        let debug_wrapper = debug_with(closure);
+        let _ = format!("{:?}", debug_wrapper);
+    }
+
+    #[test]
+    fn test_debug_with_simple_closure() {
+        let closure = |f: &mut fmt::Formatter| write!(f, "Hello, world!");
+        let debug_wrapper = debug_with(closure);
+        assert_eq!(format!("{:?}", debug_wrapper), "Hello, world!");
+    }
+
+    #[test]
+    fn test_debug_with_complex_closure() {
+        let closure = |f: &mut fmt::Formatter| write!(f, "Name: William, Age: {}", 28);
+        let debug_wrapper = debug_with(closure);
+        assert_eq!(format!("{:?}", debug_wrapper), "Name: William, Age: 28");
+    }
+
     #[derive(Debug)]
     struct TestSyscallHandler;
 
-    impl StarkNetSyscallHandler for TestSyscallHandler {
+    impl StarknetSyscallHandler for TestSyscallHandler {
         fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
             Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
         }

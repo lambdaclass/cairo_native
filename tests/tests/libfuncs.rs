@@ -1,5 +1,5 @@
-use crate::common::{compare_outputs, run_native_program, run_vm_program};
-use common::load_cairo;
+use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program};
+use cairo_native::starknet::DummySyscallHandler;
 
 #[test]
 fn enum_init() {
@@ -29,7 +29,13 @@ fn enum_init() {
     };
 
     let result_vm = run_vm_program(&program, "run_test", &[], None).unwrap();
-    let result_native = run_native_program(&program, "run_test", &[], None, None);
+    let result_native = run_native_program(
+        &program,
+        "run_test",
+        &[],
+        None,
+        Option::<DummySyscallHandler>::None,
+    );
 
     compare_outputs(
         &program.1,
@@ -75,7 +81,13 @@ fn enum_match() {
     };
 
     let result_vm = run_vm_program(&program, "match_a", &[], None).unwrap();
-    let result_native = run_native_program(&program, "match_a", &[], None, None);
+    let result_native = run_native_program(
+        &program,
+        "match_a",
+        &[],
+        None,
+        Option::<DummySyscallHandler>::None,
+    );
 
     compare_outputs(
         &program.1,
@@ -86,7 +98,13 @@ fn enum_match() {
     .unwrap();
 
     let result_vm = run_vm_program(&program, "match_b", &[], None).unwrap();
-    let result_native = run_native_program(&program, "match_b", &[], None, None);
+    let result_native = run_native_program(
+        &program,
+        "match_b",
+        &[],
+        None,
+        Option::<DummySyscallHandler>::None,
+    );
 
     compare_outputs(
         &program.1,

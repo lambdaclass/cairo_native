@@ -2,8 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::libfuncs::Result, metadata::MetadataStorage, types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -194,7 +193,7 @@ pub fn build_bool_not<'ctx, 'this>(
 
     let op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(1, tag_ty).into(),
+        IntegerAttribute::new(tag_ty, 1).into(),
         location,
     ));
     let const_1 = op.result(0)?.into();
