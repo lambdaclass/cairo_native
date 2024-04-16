@@ -801,3 +801,41 @@ cairo-native-test ./cairo-tests/
 ```
 
 This will run all the tests (functions marked with the `#[test]` attribute).
+
+## Debugging Tips
+
+### Useful environment variables
+
+These 2 env vars will dump the generated MLIR code from any compilation on the current working directory as:
+
+- `dump.mlir`: The MLIR code after passes without locations.
+- `dump-debug.mlir`: The MLIR code after passes with locations.
+- `dump-prepass.mlir`: The MLIR code before without locations.
+- `dump-prepass-debug.mlir`: The MLIR code before passes with locations.
+
+Do note that the MLIR with locations is in pretty form and thus not suitable to pass to `mlir-opt`.
+
+```bash
+export NATIVE_DEBUG_DUMP_PREPASS=1
+export NATIVE_DEBUG_DUMP=1
+```
+
+Enable logging to see the compilation process:
+
+```bash
+export RUST_LOG="cairo_native=trace"
+```
+
+Other tips:
+
+- Try to find the minimal program to reproduce an issue, the more isolated the easier to test.
+- Use the `debug_utils` print utilities, more info [here](https://lambdaclass.github.io/cairo_native/cairo_native/metadata/debug_utils/struct.DebugUtils.html):
+
+```rust
+#[cfg(feature = "with-debug-utils")]
+{
+    metadata.get_mut::<DebugUtils>()
+        .unwrap()
+        .print_pointer(context, helper, entry, ptr, location)?;
+}
+```

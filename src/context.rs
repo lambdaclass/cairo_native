@@ -129,16 +129,35 @@ impl NativeContext {
             debug_locations.as_ref(),
         )?;
 
-        std::fs::write(
-            "out.mlir",
-            module
-                .as_operation()
-                .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(true, false))
-                .unwrap(),
-        )
-        .unwrap();
+        if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP_PREPASS") {
+            if x == "1" || x == "true" {
+                std::fs::write("dump-prepass.mlir", module.as_operation().to_string())
+                    .expect("should work");
+                std::fs::write(
+                    "dump-prepass-debug.mlir",
+                    module.as_operation().to_string_with_flags(
+                        OperationPrintingFlags::new().enable_debug_info(true, true),
+                    )?,
+                )
+                .expect("should work");
+            }
+        }
 
         run_pass_manager(&self.context, &mut module)?;
+
+        if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
+            if x == "1" || x == "true" {
+                std::fs::write("dump.mlir", module.as_operation().to_string())
+                    .expect("should work");
+                std::fs::write(
+                    "dump-debug.mlir",
+                    module.as_operation().to_string_with_flags(
+                        OperationPrintingFlags::new().enable_debug_info(true, true),
+                    )?,
+                )
+                .expect("should work");
+            }
+        }
 
         // The func to llvm pass has a bug where it sets the data layout string to ""
         // This works around it by setting it again.
