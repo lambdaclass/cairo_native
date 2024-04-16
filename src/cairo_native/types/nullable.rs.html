@@ -170,6 +170,9 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Nullable type
 //!
 //! Nullable is represented as a pointer, usually the null value will point to a alloca in the stack.
@@ -239,7 +242,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;InfoAndTypeConcreteType&gt;,
     src_value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;, Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;)&gt; {
     <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
@@ -286,7 +289,8 @@
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
-    <span class="prelude-val">Ok</span>(entry
+
+    <span class="kw">let </span>value = entry
         .append_operation(scf::r#if(
             is_null,
             <span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)],
@@ -339,6 +343,8 @@
             location,
         ))
         .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into())
+        </span>.into();
+
+    <span class="prelude-val">Ok</span>((entry, value))
 }
 </code></pre></div></section></main></body></html>

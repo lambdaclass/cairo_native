@@ -280,6 +280,9 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::{bail, Context};
 <span class="kw">use </span>cairo_lang_compiler::{
     db::RootDatabase, diagnostics::DiagnosticsReporter, project::setup_project,
@@ -529,7 +532,7 @@
             felts
         }
         JitValue::Enum {
-            value: <span class="kw">_</span>,
+            value,
             tag,
             debug_name,
         } =&gt; {
@@ -537,7 +540,10 @@
                 <span class="kw">if </span>debug_name == <span class="string">"core::bool" </span>{
                     <span class="macro">vec!</span>[(<span class="kw-2">*</span>tag == <span class="number">1</span>).into()]
                 } <span class="kw">else </span>{
-                    <span class="macro">todo!</span>()
+                    felts.push((<span class="kw-2">*</span>tag).into());
+                    <span class="kw">let </span>felt = jitvalue_to_felt(value);
+                    felts.extend(felt);
+                    felts
                 }
             } <span class="kw">else </span>{
                 <span class="macro">todo!</span>()

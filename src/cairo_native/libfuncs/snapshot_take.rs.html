@@ -83,7 +83,7 @@
     <span class="comment">// Handle non-trivially-copyable types (ex. arrays) by invoking their override or just copy the
     // original value otherwise.
     </span><span class="kw">let </span>original_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>cloned_value = <span class="kw">match </span>metadata
+    <span class="kw">let </span>(entry, cloned_value) = <span class="kw">match </span>metadata
         .get_mut::&lt;SnapshotClonesMeta&gt;()
         .and_then(|meta| meta.wrap_invoke(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty))
     {
@@ -96,7 +96,7 @@
             metadata,
             original_value,
         )<span class="question-mark">?</span>,
-        <span class="prelude-val">None </span>=&gt; original_value,
+        <span class="prelude-val">None </span>=&gt; (entry, original_value),
     };
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[original_value, cloned_value], location));
