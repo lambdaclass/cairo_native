@@ -1,9 +1,9 @@
 //! Trait that extends the melior Block type to aid in codegen and consistency.
 
 use melior::{
-    dialect::ods,
+    dialect::{llvm::r#type::opaque_pointer, ods},
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
         Attribute, Block, Location, Operation, Type, Value, ValueLike,
     },
@@ -77,6 +77,25 @@ pub trait BlockExt<'ctx> {
         location: Location<'ctx>,
         addr: Value<'ctx, '_>,
         value_type: Type<'ctx>,
+        align: Option<usize>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    /// Allocates the given number of elements of type in memory on the stack, returning a opaque pointer.
+    fn alloca(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        elem_type: Type<'ctx>,
+        num_elems: Value<'ctx, '_>,
+        align: Option<usize>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    /// Allocates one element of the given type in memory on the stack, returning a opaque pointer.
+    fn alloca1(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        elem_type: Type<'ctx>,
         align: Option<usize>,
     ) -> Result<Value<'ctx, '_>, Error>;
 
@@ -277,5 +296,40 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
             )
             .into(),
         );
+    }
+
+    fn alloca(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        elem_type: Type<'ctx>,
+        num_elems: Value<'ctx, '_>,
+        align: Option<usize>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        let mut op = ods::llvm::alloca(context, opaque_pointer(context), num_elems, location);
+
+        op.set_elem_type(TypeAttribute::new(elem_type));
+
+        if let Some(align) = align {
+            op.set_alignment(IntegerAttribute::new(
+                IntegerType::new(context, 64).into(),
+                align.try_into().unwrap(),
+            ));
+        }
+
+        self.append_op_result(
+            ods::llvm::alloca(context, opaque_pointer(context), num_elems, location).into(),
+        )
+    }
+
+    fn alloca1(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        elem_type: Type<'ctx>,
+        align: Option<usize>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        let num_elems = self.const_int(context, location, 1, 64)?;
+        self.alloca(context, location, elem_type, num_elems, align)
     }
 }
