@@ -317,9 +317,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
             ));
         }
 
-        self.append_op_result(
-            ods::llvm::alloca(context, opaque_pointer(context), num_elems, location).into(),
-        )
+        self.append_op_result(op.into())
     }
 
     fn alloca1(
