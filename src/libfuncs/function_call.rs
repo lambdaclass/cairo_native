@@ -21,7 +21,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         cf, func, index,
-        llvm::{self, LoadStoreOptions},
+        llvm::{self},
         memref,
     },
     ir::{
