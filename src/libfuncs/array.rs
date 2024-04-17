@@ -617,17 +617,7 @@ pub fn build_get<'ctx, 'this>(
         )?;
 
         // TODO: Support clone-only types (those that are not copy).
-        valid_block.append_operation(
-            ods::llvm::intr_memcpy(
-                context,
-                target_ptr,
-                elem_ptr,
-                elem_size,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                location,
-            )
-            .into(),
-        );
+        valid_block.memcpy(context, location, elem_ptr, target_ptr, elem_size);
 
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
     }
@@ -741,17 +731,7 @@ pub fn build_pop_front<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        valid_block.append_operation(
-            ods::llvm::intr_memcpy(
-                context,
-                target_ptr,
-                ptr,
-                elem_size,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                location,
-            )
-            .into(),
-        );
+        valid_block.memcpy(context, location, ptr, target_ptr, elem_size);
 
         let k1 = valid_block.const_int(context, location, 1, 32)?;
         let new_start = valid_block
@@ -904,17 +884,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        valid_block.append_operation(
-            ods::llvm::intr_memcpy(
-                context,
-                target_ptr,
-                ptr,
-                elem_size,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                location,
-            )
-            .into(),
-        );
+        valid_block.memcpy(context, location, ptr, target_ptr, elem_size);
 
         let value = valid_block.insert_value(context, location, value, new_end, 2)?;
 
@@ -1062,17 +1032,7 @@ pub fn build_slice<'ctx, 'this>(
             location,
         ))?;
 
-        slice_block.append_operation(
-            ods::llvm::intr_memcpy(
-                context,
-                dst_ptr,
-                src_ptr,
-                dst_size,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                location,
-            )
-            .into(),
-        );
+        slice_block.memcpy(context, location, src_ptr, dst_ptr, dst_size);
 
         let k0 = slice_block.const_int_from_type(context, location, 0, len_ty)?;
 

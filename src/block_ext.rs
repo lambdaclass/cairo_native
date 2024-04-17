@@ -89,6 +89,16 @@ pub trait BlockExt<'ctx> {
         value: Value<'ctx, '_>,
         align: Option<usize>,
     );
+
+    /// Creates a memcpy operation.
+    fn memcpy(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        src: Value<'ctx, '_>,
+        dst: Value<'ctx, '_>,
+        len_bytes: Value<'ctx, '_>,
+    );
 }
 
 impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
@@ -246,5 +256,26 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         }
 
         self.append_op_result(op.into())
+    }
+
+    fn memcpy(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        src: Value<'ctx, '_>,
+        dst: Value<'ctx, '_>,
+        len_bytes: Value<'ctx, '_>,
+    ) {
+        self.append_operation(
+            ods::llvm::intr_memcpy(
+                context,
+                dst,
+                src,
+                len_bytes,
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                location,
+            )
+            .into(),
+        );
     }
 }
