@@ -20,14 +20,12 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{
-        arith, cf, func, index,
-        llvm::{self, AllocaOptions, LoadStoreOptions},
+        cf, func, index,
+        llvm::{self, LoadStoreOptions},
         memref,
     },
     ir::{
-        attribute::{
-            DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, TypeAttribute,
-        },
+        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute},
         r#type::IntegerType,
         Block, Location, Type, Value,
     },
@@ -183,7 +181,7 @@ pub fn build<'ctx, 'this>(
 
         cont_block.append_operation(helper.br(0, &results, location));
     } else {
-        let op0 = entry.append_operation(func::call(
+        let function_call_result = entry.append_operation(func::call(
             context,
             FlatSymbolRefAttribute::new(context, &generate_function_name(&info.function.id)),
             &arguments,
@@ -224,17 +222,13 @@ pub fn build<'ctx, 'this>(
                         results.push(if type_info.is_memory_allocated(registry) {
                             pointer_val
                         } else {
-                            entry
-                                .append_operation(llvm::load(
-                                    context,
-                                    pointer_val,
-                                    type_info
-                                        .build(context, helper, registry, metadata, type_id)?,
-                                    location,
-                                    LoadStoreOptions::new(),
-                                ))
-                                .result(0)?
-                                .into()
+                            entry.load(
+                                context,
+                                location,
+                                pointer_val,
+                                type_info.build(context, helper, registry, metadata, type_id)?,
+                                None,
+                            )?
                         });
                     }
                 }
@@ -250,7 +244,7 @@ pub fn build<'ctx, 'this>(
                     if type_info.is_builtin() && type_info.is_zst(registry) {
                         results.push(entry.argument(idx)?.into());
                     } else {
-                        let val = op0.result(count)?.into();
+                        let val = function_call_result.result(count)?.into();
                         count += 1;
 
                         results.push(if type_info.is_memory_allocated(registry) {
@@ -258,43 +252,14 @@ pub fn build<'ctx, 'this>(
                                 type_info.build(context, helper, registry, metadata, type_id)?;
                             let layout = type_info.layout(registry)?;
 
-                            let k1 = helper
-                                .init_block()
-                                .append_operation(arith::constant(
-                                    context,
-                                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 1)
-                                        .into(),
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-                            let stack_ptr = helper
-                                .init_block()
-                                .append_operation(llvm::alloca(
-                                    context,
-                                    k1,
-                                    llvm::r#type::opaque_pointer(context),
-                                    location,
-                                    AllocaOptions::new()
-                                        .align(Some(IntegerAttribute::new(
-                                            IntegerType::new(context, 64).into(),
-                                            layout.align() as i64,
-                                        )))
-                                        .elem_type(Some(TypeAttribute::new(ty))),
-                                ))
-                                .result(0)?
-                                .into();
-
-                            entry.append_operation(llvm::store(
+                            let stack_ptr = helper.init_block().alloca1(
                                 context,
-                                val,
-                                stack_ptr,
                                 location,
-                                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                                    IntegerType::new(context, 64).into(),
-                                    layout.align() as i64,
-                                ))),
-                            ));
+                                ty,
+                                Some(layout.align()),
+                            )?;
+
+                            entry.store(context, location, stack_ptr, val, Some(layout.align()));
 
                             stack_ptr
                         } else {
@@ -314,7 +279,7 @@ pub fn build<'ctx, 'this>(
                     if type_info.is_builtin() && type_info.is_zst(registry) {
                         results.push(entry.argument(idx)?.into());
                     } else {
-                        let value = op0.result(count)?.into();
+                        let value = function_call_result.result(count)?.into();
                         count += 1;
 
                         results.push(value);
