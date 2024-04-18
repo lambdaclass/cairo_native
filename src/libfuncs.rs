@@ -412,7 +412,7 @@ where
                         BranchArg::External(x) => x,
                         BranchArg::Returned(i) => default.1[i],
                     })
-                    .collect::<Vec<_>>();
+                    .collect();
 
                 (*successor, Cow::Owned(destination_operands))
             }
@@ -439,7 +439,7 @@ where
                             BranchArg::External(x) => x,
                             BranchArg::Returned(i) => default.1[i],
                         })
-                        .collect::<Vec<_>>();
+                        .collect();
 
                     (*successor, Cow::Owned(destination_operands))
                 }
@@ -506,4 +506,253 @@ pub fn increment_builtin_counter<'ctx: 'a, 'a>(
         .append_operation(arith::addi(value, k1, location))
         .result(0)?
         .into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use melior::dialect::DialectRegistry;
+    use melior::ir::Type;
+    use melior::utility::register_all_dialects;
+
+    /// Load all available MLIR dialects into the given context.
+    ///
+    /// This function initializes a new `DialectRegistry`, registers all available dialects
+    /// into it, appends the registry to the provided context, and then loads all available
+    /// dialects into the context.
+    pub fn load_all_dialects(context: &Context) {
+        let registry = DialectRegistry::new();
+        register_all_dialects(&registry);
+        context.append_dialect_registry(&registry);
+        context.load_all_available_dialects();
+    }
+
+    #[test]
+    fn switch_branch_arg_external_test() {
+        // Create a new context for MLIR operations
+        let context = Context::new();
+        // Load all available MLIR dialects into the context
+        load_all_dialects(&context);
+
+        // Create an unknown location in the context
+        let location = Location::unknown(&context);
+        // Create a new MLIR module with the unknown location
+        let module = Module::new(location);
+
+        // Create a new MLIR block and obtain its reference
+        let last_block = unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) };
+
+        // Initialize the LibfuncHelper struct with various parameters
+        let mut lib_func_helper = LibfuncHelper {
+            module: &module,
+            init_block: unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) },
+            region: &Region::new(),
+            blocks_arena: &Bump::new(),
+            last_block: Cell::new(last_block),
+            branches: Vec::new(),
+            results: Vec::new(),
+        };
+
+        // Create an integer type with 32 bits
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        // Create a default block with the integer type and the unknown location
+        let default_block = Block::new(&[(i32_type, location)]);
+
+        // Create a new MLIR block
+        let block = Block::new(&[]);
+
+        // Append a constant arithmetic operation to the block and obtain its result operand
+        let operand = block
+            .append_operation(arith::constant(
+                &context,
+                IntegerAttribute::new(i32_type, 1).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        // Loop to add branches and results to the LibfuncHelper struct
+        for _ in 0..20 {
+            // Push a default block and external operand to the branches vector
+            lib_func_helper
+                .branches
+                .push((&default_block, vec![BranchArg::External(operand)]));
+
+            // Push a new vector of result cells to the results vector
+            lib_func_helper.results.push([Cell::new(None)].into());
+        }
+
+        // Call the `switch` method of the LibfuncHelper struct and obtain the result
+        let cf_switch = block.append_operation(
+            lib_func_helper
+                .switch(
+                    &context,
+                    operand,
+                    (BranchTarget::Return(10), &[]),
+                    &[
+                        (0, BranchTarget::Return(10), &[]),
+                        (1, BranchTarget::Return(10), &[]),
+                    ],
+                    location,
+                )
+                .unwrap(),
+        );
+
+        // Assert that the switch operation is valid
+        assert!(cf_switch.verify());
+    }
+
+    #[test]
+    fn switch_branch_arg_returned_test() {
+        // Create a new context for MLIR operations
+        let context = Context::new();
+        // Load all available MLIR dialects into the context
+        load_all_dialects(&context);
+
+        // Create an unknown location in the context
+        let location = Location::unknown(&context);
+        // Create a new MLIR module with the unknown location
+        let module = Module::new(location);
+
+        // Create a new MLIR block and obtain its reference
+        let last_block = unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) };
+
+        // Initialize the LibfuncHelper struct with various parameters
+        let mut lib_func_helper = LibfuncHelper {
+            module: &module,
+            init_block: unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) },
+            region: &Region::new(),
+            blocks_arena: &Bump::new(),
+            last_block: Cell::new(last_block),
+            branches: Vec::new(),
+            results: Vec::new(),
+        };
+
+        // Create an integer type with 32 bits
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        // Create a default block with the integer type and the unknown location
+        let default_block = Block::new(&[(i32_type, location)]);
+
+        // Create a new MLIR block
+        let block = Block::new(&[]);
+
+        // Append a constant arithmetic operation to the block and obtain its result operand
+        let operand = block
+            .append_operation(arith::constant(
+                &context,
+                IntegerAttribute::new(i32_type, 1).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        // Loop to add branches and results to the LibfuncHelper struct
+        for _ in 0..20 {
+            // Push a default block and a returned operand index to the branches vector
+            lib_func_helper
+                .branches
+                .push((&default_block, vec![BranchArg::Returned(3)]));
+
+            // Push a new vector of result cells to the results vector
+            lib_func_helper.results.push([Cell::new(None)].into());
+        }
+
+        // Call the `switch` method of the LibfuncHelper struct and obtain the result
+        let cf_switch = block.append_operation(
+            lib_func_helper
+                .switch(
+                    &context,
+                    operand,
+                    (
+                        BranchTarget::Return(10),
+                        &[operand, operand, operand, operand],
+                    ),
+                    &[
+                        (0, BranchTarget::Return(10), &[]),
+                        (1, BranchTarget::Return(10), &[]),
+                    ],
+                    location,
+                )
+                .unwrap(),
+        );
+
+        // Assert that the switch operation is valid
+        assert!(cf_switch.verify());
+    }
+
+    #[test]
+    fn switch_branch_target_jump_test() {
+        // Create a new context for MLIR operations
+        let context = Context::new();
+        // Load all available MLIR dialects into the context
+        load_all_dialects(&context);
+
+        // Create an unknown location in the context
+        let location = Location::unknown(&context);
+        // Create a new MLIR module with the unknown location
+        let module = Module::new(location);
+
+        // Create a new MLIR block and obtain its reference
+        let last_block = unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) };
+
+        // Initialize the LibfuncHelper struct with various parameters
+        let mut lib_func_helper = LibfuncHelper {
+            module: &module,
+            init_block: unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) },
+            region: &Region::new(),
+            blocks_arena: &Bump::new(),
+            last_block: Cell::new(last_block),
+            branches: Vec::new(),
+            results: Vec::new(),
+        };
+
+        // Create an integer type with 32 bits
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        // Create a default block with the integer type and the unknown location
+        let default_block = Block::new(&[(i32_type, location)]);
+
+        // Create a new MLIR block
+        let block = Block::new(&[]);
+
+        // Append a constant arithmetic operation to the block and obtain its result operand
+        let operand = block
+            .append_operation(arith::constant(
+                &context,
+                IntegerAttribute::new(i32_type, 1).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        // Loop to add branches and results to the LibfuncHelper struct
+        for _ in 0..20 {
+            // Push a default block and an empty vector of operands to the branches vector
+            lib_func_helper.branches.push((&default_block, Vec::new()));
+
+            // Push a new vector of result cells to the results vector
+            lib_func_helper.results.push([Cell::new(None)].into());
+        }
+
+        // Call the `switch` method of the LibfuncHelper struct and obtain the result
+        let cf_switch = block.append_operation(
+            lib_func_helper
+                .switch(
+                    &context,
+                    operand,
+                    (BranchTarget::Jump(&default_block), &[operand]),
+                    &[
+                        (0, BranchTarget::Jump(&default_block), &[operand]),
+                        (1, BranchTarget::Jump(&default_block), &[operand]),
+                    ],
+                    location,
+                )
+                .unwrap(),
+        );
+
+        // Assert that the switch operation is valid
+        assert!(cf_switch.verify());
+    }
 }
