@@ -680,6 +680,12 @@ mod tests {
 
         // Assert that the switch operation is valid
         assert!(cf_switch.verify());
+
+        // Assert that the result in the LibfuncHelper at index 10 contains the expected operand
+        assert_eq!(lib_func_helper.results[10][0], Cell::new(Some(operand)));
+
+        // Assert that the length of the results vector at index 10 is 1
+        assert_eq!(lib_func_helper.results[10].len(), 1);
     }
 
     #[test]
