@@ -97,7 +97,7 @@ pub fn build_init<'ctx, 'this>(
             let tag_val = entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(info.index as i64, tag_ty).into(),
+                    IntegerAttribute::new(tag_ty, info.index as i64).into(),
                     location,
                 ))
                 .result(0)?
@@ -111,8 +111,8 @@ pub fn build_init<'ctx, 'this>(
                         variant_tys[info.index].0,
                         location,
                         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                            variant_tys[info.index].1.align() as i64,
                             IntegerType::new(context, 64).into(),
+                            variant_tys[info.index].1.align() as i64,
                         ))),
                     ))
                     .result(0)?
@@ -155,7 +155,7 @@ pub fn build_init<'ctx, 'this>(
                     .init_block()
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+                        IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
                         location,
                     ))
                     .result(0)?
@@ -169,8 +169,8 @@ pub fn build_init<'ctx, 'this>(
                         location,
                         AllocaOptions::new()
                             .align(Some(IntegerAttribute::new(
-                                layout.align() as i64,
                                 IntegerType::new(context, 64).into(),
+                                layout.align() as i64,
                             )))
                             .elem_type(Some(TypeAttribute::new(type_info.build(
                                 context,
@@ -189,8 +189,8 @@ pub fn build_init<'ctx, 'this>(
                     stack_ptr,
                     location,
                     LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                        layout.align() as i64,
                         IntegerType::new(context, 64).into(),
+                        layout.align() as i64,
                     ))),
                 ));
 
@@ -219,6 +219,7 @@ pub fn build_match<'ctx, 'this>(
     let variant_ids = type_info.variants().unwrap();
     match variant_ids.len() {
         0 | 1 => {
+            dbg!(info.branch_signatures().len());
             entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
         }
         _ => {
@@ -238,8 +239,8 @@ pub fn build_match<'ctx, 'this>(
                         tag_ty,
                         location,
                         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                            layout.align() as i64,
                             IntegerType::new(context, 64).into(),
+                            layout.align() as i64,
                         ))),
                     ))
                     .result(0)?
@@ -286,7 +287,7 @@ pub fn build_match<'ctx, 'this>(
                 let val = default_block
                     .append_operation(arith::constant(
                         context,
-                        IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                        IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                         location,
                     ))
                     .result(0)?
@@ -315,8 +316,8 @@ pub fn build_match<'ctx, 'this>(
                             enum_ty,
                             location,
                             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                                layout.align() as i64,
                                 IntegerType::new(context, 64).into(),
+                                layout.align() as i64,
                             ))),
                         ))
                         .result(0)?
@@ -353,7 +354,7 @@ pub fn build_match<'ctx, 'this>(
                         .init_block()
                         .append_operation(arith::constant(
                             context,
-                            IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+                            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
                             location,
                         ))
                         .result(0)?
@@ -367,8 +368,8 @@ pub fn build_match<'ctx, 'this>(
                             location,
                             AllocaOptions::new()
                                 .align(Some(IntegerAttribute::new(
-                                    payload_layout.align() as i64,
                                     IntegerType::new(context, 64).into(),
+                                    payload_layout.align() as i64,
                                 )))
                                 .elem_type(Some(TypeAttribute::new(payload_ty))),
                         ))
@@ -381,8 +382,8 @@ pub fn build_match<'ctx, 'this>(
                         stack_ptr,
                         location,
                         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                            payload_layout.align() as i64,
                             IntegerType::new(context, 64).into(),
+                            payload_layout.align() as i64,
                         ))),
                     ));
 
@@ -434,8 +435,8 @@ pub fn build_snapshot_match<'ctx, 'this>(
                 tag_ty,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    layout.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    layout.align() as i64,
                 ))),
             ))
             .result(0)?
@@ -482,7 +483,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
         let val = default_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                 location,
             ))
             .result(0)?
@@ -504,8 +505,8 @@ pub fn build_snapshot_match<'ctx, 'this>(
                     enum_ty,
                     location,
                     LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                        layout.align() as i64,
                         IntegerType::new(context, 64).into(),
+                        layout.align() as i64,
                     ))),
                 ))
                 .result(0)?

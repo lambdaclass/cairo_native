@@ -193,7 +193,7 @@ pub fn build_bool_not<'ctx, 'this>(
 
     let op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(1, tag_ty).into(),
+        IntegerAttribute::new(tag_ty, 1).into(),
         location,
     ));
     let const_1 = op.result(0)?.into();

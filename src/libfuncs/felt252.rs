@@ -104,13 +104,13 @@ pub fn build_binary_operation<'ctx, 'this>(
     .ok_or(Error::ParseAttributeError)?;
 
     let attr_cmp_uge = IntegerAttribute::new(
-        CmpiPredicate::Uge as i64,
         IntegerType::new(context, 64).into(),
+        CmpiPredicate::Uge as i64,
     )
     .into();
     let attr_cmp_ult = IntegerAttribute::new(
-        CmpiPredicate::Ult as i64,
         IntegerType::new(context, 64).into(),
+        CmpiPredicate::Ult as i64,
     )
     .into();
 
@@ -226,7 +226,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let prev_inverse = start_block
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, i512).into(),
+                    IntegerAttribute::new(i512, 0).into(),
                     location,
                 ))
                 .result(0)?
@@ -234,7 +234,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let inverse = start_block
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(1, i512).into(),
+                    IntegerAttribute::new(i512, 1).into(),
                     location,
                 ))
                 .result(0)?
@@ -279,7 +279,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let zero = loop_block
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, i512).into(),
+                    IntegerAttribute::new(i512, 0).into(),
                     location,
                 ))
                 .result(0)?
@@ -310,7 +310,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let zero = negative_check_block
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, i512).into(),
+                    IntegerAttribute::new(i512, 0).into(),
                     location,
                 ))
                 .result(0)?
@@ -443,7 +443,7 @@ pub fn build_is_zero<'ctx, 'this>(
 
     let op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(0, arg0.r#type()).into(),
+        IntegerAttribute::new(arg0.r#type(), 0).into(),
         location,
     ));
     let const_0 = op.result(0)?.into();

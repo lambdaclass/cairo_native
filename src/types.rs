@@ -809,7 +809,7 @@ impl TypeBuilder for CoreTypeConcrete {
                     let tag = entry
                         .append_operation(arith::constant(
                             context,
-                            IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                            IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
                             location,
                         ))
                         .result(0)?
@@ -845,7 +845,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Felt252(_) => entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 252).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, 252).into(), 0).into(),
                     location,
                 ))
                 .result(0)?
@@ -860,7 +860,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint8(_) => entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 8).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, 8).into(), 0).into(),
                     location,
                 ))
                 .result(0)?
@@ -868,7 +868,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint16(_) => entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 16).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, 16).into(), 0).into(),
                     location,
                 ))
                 .result(0)?
@@ -876,7 +876,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint32(_) => entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
                     location,
                 ))
                 .result(0)?
@@ -884,7 +884,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint64(_) => entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
                     location,
                 ))
                 .result(0)?
@@ -892,7 +892,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint128(_) => entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 128).into()).into(),
+                    IntegerAttribute::new(IntegerType::new(context, 128).into(), 0).into(),
                     location,
                 ))
                 .result(0)?

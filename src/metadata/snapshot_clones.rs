@@ -20,7 +20,7 @@ pub type CloneFn<P> = for<'ctx, 'this> fn(
     &mut MetadataStorage,
     WithSelf<P>,
     Value<'ctx, 'this>,
-) -> Result<Value<'ctx, 'this>>;
+) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)>;
 
 type CloneFnWrapper = Arc<
     dyn for<'ctx, 'this> Fn(
@@ -31,7 +31,7 @@ type CloneFnWrapper = Arc<
         &LibfuncHelper<'ctx, 'this>,
         &mut MetadataStorage,
         Value<'this, 'ctx>,
-    ) -> Result<Value<'ctx, 'this>>,
+    ) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)>,
 >;
 
 #[derive(Default)]

@@ -74,7 +74,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, func, index,
         llvm::{self, LoadStoreOptions},
-        memref,
+        memref, ods,
     },
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
@@ -320,7 +320,11 @@ fn compile_func(
                         .iter(),
                     )?
                     .1,
-                    Location::unknown(context),
+                    Location::name(
+                        context,
+                        &format!("landing_block(stmt_idx={})", statement_idx),
+                        Location::unknown(context),
+                    ),
                 ));
             }
 
@@ -330,6 +334,8 @@ fn compile_func(
                         "Implementing the invocation statement at {statement_idx}: {}.",
                         invocation.libfunc_id
                     );
+                    let libfunc_name =
+                        format!("{}(stmt_idx={})", invocation.libfunc_id, statement_idx);
 
                     let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
@@ -359,6 +365,11 @@ fn compile_func(
                             // TODO: Defer insertions until after the recursion has been confirmed
                             //   (when removing the meta, if a return target is set).
                             // TODO: Explore replacing the `memref` counter with a normal variable.
+                            let location = Location::name(
+                                context,
+                                &format!("recursion_counter({})", libfunc_name),
+                                Location::unknown(context),
+                            );
                             let op0 = pre_entry_block.insert_operation(
                                 0,
                                 memref::alloca(
@@ -367,15 +378,15 @@ fn compile_func(
                                     &[],
                                     &[],
                                     None,
-                                    Location::unknown(context),
+                                    location,
                                 ),
                             );
                             let op1 = pre_entry_block.insert_operation_after(
                                 op0,
                                 index::constant(
                                     context,
-                                    IntegerAttribute::new(0, Type::index(context)),
-                                    Location::unknown(context),
+                                    IntegerAttribute::new(Type::index(context), 0),
+                                    location,
                                 ),
                             );
                             pre_entry_block.insert_operation_after(
@@ -384,7 +395,7 @@ fn compile_func(
                                     op1.result(0)?.into(),
                                     op0.result(0)?.into(),
                                     &[],
-                                    Location::unknown(context),
+                                    location,
                                 ),
                             );
 
@@ -398,11 +409,15 @@ fn compile_func(
                         context,
                         registry,
                         block,
-                        debug_info
-                            .and_then(|debug_info| {
-                                debug_info.statements.get(&statement_idx).copied()
-                            })
-                            .unwrap_or_else(|| Location::unknown(context)),
+                        Location::name(
+                            context,
+                            &libfunc_name,
+                            debug_info
+                                .and_then(|debug_info| {
+                                    debug_info.statements.get(&statement_idx).copied()
+                                })
+                                .unwrap_or_else(|| Location::unknown(context)),
+                        ),
                         &helper,
                         metadata,
                     )?;
@@ -442,48 +457,56 @@ fn compile_func(
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
 
+                    let location = Location::name(
+                        context,
+                        &format!("return(stmt_idx={})", statement_idx),
+                        Location::unknown(context),
+                    );
+
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
                     let mut block = *block;
                     if !tailrec_state.is_empty() {
+                        let location = Location::name(
+                            context,
+                            &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
+                            Location::unknown(context),
+                        );
                         // Perform tail recursion.
                         for counter_idx in tailrec_state.into_values() {
                             let cont_block = region.insert_block_after(block, Block::new(&[]));
 
                             let (depth_counter, return_target) = tailrec_storage[counter_idx];
-                            let op0 = block.append_operation(memref::load(
-                                depth_counter,
-                                &[],
-                                Location::unknown(context),
-                            ));
+                            let op0 =
+                                block.append_operation(memref::load(depth_counter, &[], location));
                             let op1 = block.append_operation(index::constant(
                                 context,
-                                IntegerAttribute::new(0, Type::index(context)),
-                                Location::unknown(context),
+                                IntegerAttribute::new(Type::index(context), 0),
+                                location,
                             ));
                             let op2 = block.append_operation(index::cmp(
                                 context,
                                 CmpiPredicate::Eq,
                                 op0.result(0)?.into(),
                                 op1.result(0)?.into(),
-                                Location::unknown(context),
+                                location,
                             ));
 
                             let op3 = block.append_operation(index::constant(
                                 context,
-                                IntegerAttribute::new(1, Type::index(context)),
-                                Location::unknown(context),
+                                IntegerAttribute::new(Type::index(context), 1),
+                                location,
                             ));
                             let op4 = block.append_operation(index::sub(
                                 op0.result(0)?.into(),
                                 op3.result(0)?.into(),
-                                Location::unknown(context),
+                                location,
                             ));
                             block.append_operation(memref::store(
                                 op4.result(0)?.into(),
                                 depth_counter,
                                 &[],
-                                Location::unknown(context),
+                                location,
                             ));
 
                             let recursive_values = match has_return_ptr {
@@ -529,12 +552,12 @@ fn compile_func(
                                                         context,
                                                         value,
                                                         ty,
-                                                        Location::unknown(context),
+                                                        location,
                                                         LoadStoreOptions::new().align(Some(
                                                             IntegerAttribute::new(
-                                                                layout.align() as i64,
                                                                 IntegerType::new(context, 64)
                                                                     .into(),
+                                                                layout.align() as i64,
                                                             ),
                                                         )),
                                                     ))
@@ -557,7 +580,7 @@ fn compile_func(
                                 &return_target,
                                 &[],
                                 &recursive_values,
-                                Location::unknown(context),
+                                location,
                             ));
 
                             block = cont_block;
@@ -583,36 +606,25 @@ fn compile_func(
                                 .append_operation(arith::constant(
                                     context,
                                     IntegerAttribute::new(
-                                        ret_layout.size() as i64,
                                         IntegerType::new(context, 64).into(),
+                                        ret_layout.size() as i64,
                                     )
                                     .into(),
-                                    Location::unknown(context),
+                                    location,
                                 ))
                                 .result(0)?
                                 .into();
-                            let is_volatile = block
-                                .append_operation(arith::constant(
+                            block.append_operation(
+                                ods::llvm::intr_memcpy(
                                     context,
-                                    IntegerAttribute::new(0, IntegerType::new(context, 1).into())
-                                        .into(),
-                                    Location::unknown(context),
-                                ))
-                                .result(0)?
-                                .into();
-
-                            block.append_operation(llvm::call_intrinsic(
-                                context,
-                                StringAttribute::new(context, "llvm.memcpy.inline"),
-                                &[
                                     pre_entry_block.argument(0)?.into(),
                                     ptr,
                                     num_bytes,
-                                    is_volatile,
-                                ],
-                                &[],
-                                Location::unknown(context),
-                            ));
+                                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                                    location,
+                                )
+                                .into(),
+                            );
                         }
                         Some(false) => {
                             for (value, (type_id, type_info)) in
@@ -628,11 +640,11 @@ fn compile_func(
                                             type_info.build(
                                                 context, module, registry, metadata, type_id,
                                             )?,
-                                            Location::unknown(context),
+                                            location,
                                             LoadStoreOptions::new().align(Some(
                                                 IntegerAttribute::new(
-                                                    layout.align() as i64,
                                                     IntegerType::new(context, 64).into(),
+                                                    layout.align() as i64,
                                                 ),
                                             )),
                                         ))
@@ -644,7 +656,7 @@ fn compile_func(
                         None => {}
                     }
 
-                    block.append_operation(func::r#return(&values, Location::unknown(context)));
+                    block.append_operation(func::r#return(&values, location));
 
                     Vec::new()
                 }

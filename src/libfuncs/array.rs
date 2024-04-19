@@ -24,11 +24,10 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
         llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        ods,
     },
     ir::{
-        attribute::{
-            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, StringAttribute,
-        },
+        attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
         Block, Location, Value, ValueLike,
@@ -108,7 +107,7 @@ pub fn build_new<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
             location,
         ))
         .result(0)?
@@ -201,7 +200,7 @@ pub fn build_append<'ctx, 'this>(
     let k1 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -210,7 +209,7 @@ pub fn build_append<'ctx, 'this>(
     let elem_stride = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(elem_stride as i64, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), elem_stride as i64).into(),
             location,
         ))
         .result(0)?
@@ -267,7 +266,7 @@ pub fn build_append<'ctx, 'this>(
         let k0 = handle_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
                 location,
             ))
             .result(0)?
@@ -368,26 +367,22 @@ pub fn build_append<'ctx, 'this>(
             .append_operation(arith::muli(memmove_len, elem_stride, location))
             .result(0)?
             .into();
-        let is_volatile = memmove_block
-            .append_operation(arith::constant(
+        memmove_block.append_operation(
+            ods::llvm::intr_memmove(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                Location::unknown(context),
-            ))
-            .result(0)?
-            .into();
-        memmove_block.append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.memmove"),
-            &[dst_ptr, src_ptr, memmove_len, is_volatile],
-            &[],
-            location,
-        ));
+                dst_ptr,
+                src_ptr,
+                memmove_len,
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                location,
+            )
+            .into(),
+        );
 
         let k0 = memmove_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, len_ty).into(),
+                IntegerAttribute::new(len_ty, 0).into(),
                 location,
             ))
             .result(0)?
@@ -420,7 +415,7 @@ pub fn build_append<'ctx, 'this>(
         let k8 = realloc_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(8, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 8).into(),
                 location,
             ))
             .result(0)?
@@ -428,7 +423,7 @@ pub fn build_append<'ctx, 'this>(
         let k1024 = realloc_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1024, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1024).into(),
                 location,
             ))
             .result(0)?
@@ -567,8 +562,8 @@ pub fn build_append<'ctx, 'this>(
             ptr,
             location,
             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                elem_layout.align() as i64,
                 IntegerType::new(context, 64).into(),
+                elem_layout.align() as i64,
             ))),
         ));
 
@@ -593,7 +588,7 @@ pub fn build_append<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `array_append` libfunc.
+/// Generate MLIR operations for the `array_len` libfunc.
 pub fn build_len<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -764,7 +759,7 @@ pub fn build_get<'ctx, 'this>(
         let elem_stride = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(elem_stride as i64, IntegerType::new(context, 64).into())
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), elem_stride as i64)
                     .into(),
                 location,
             ))
@@ -791,8 +786,8 @@ pub fn build_get<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.size() as i64,
                 )
                 .into(),
                 location,
@@ -821,23 +816,18 @@ pub fn build_get<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        let is_volatile = valid_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                Location::unknown(context),
-            ))
-            .result(0)?
-            .into();
-
         // TODO: Support clone-only types (those that are not copy).
-        valid_block.append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.memcpy.inline"),
-            &[target_ptr, elem_ptr, elem_size, is_volatile],
-            &[],
-            location,
-        ));
+        valid_block.append_operation(
+            ods::llvm::intr_memcpy(
+                context,
+                target_ptr,
+                elem_ptr,
+                elem_size,
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                location,
+            )
+            .into(),
+        );
 
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
     }
@@ -935,8 +925,8 @@ pub fn build_pop_front<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.size() as i64,
                 )
                 .into(),
                 location,
@@ -988,27 +978,22 @@ pub fn build_pop_front<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        let is_volatile = valid_block
-            .append_operation(arith::constant(
+        valid_block.append_operation(
+            ods::llvm::intr_memcpy(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                Location::unknown(context),
-            ))
-            .result(0)?
-            .into();
-
-        valid_block.append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.memcpy.inline"),
-            &[target_ptr, ptr, elem_size, is_volatile],
-            &[],
-            location,
-        ));
+                target_ptr,
+                ptr,
+                elem_size,
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                location,
+            )
+            .into(),
+        );
 
         let k1 = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
                 location,
             ))
             .result(0)?
@@ -1139,7 +1124,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
         let k1 = valid_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
                 location,
             ))
             .result(0)?
@@ -1164,8 +1149,8 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.size() as i64,
                 )
                 .into(),
                 location,
@@ -1217,22 +1202,17 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        let is_volatile = valid_block
-            .append_operation(arith::constant(
+        valid_block.append_operation(
+            ods::llvm::intr_memcpy(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
-                Location::unknown(context),
-            ))
-            .result(0)?
-            .into();
-
-        valid_block.append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.memcpy.inline"),
-            &[target_ptr, ptr, elem_size, is_volatile],
-            &[],
-            location,
-        ));
+                target_ptr,
+                ptr,
+                elem_size,
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                location,
+            )
+            .into(),
+        );
 
         let value = valid_block
             .append_operation(llvm::insert_value(
@@ -1363,8 +1343,8 @@ pub fn build_slice<'ctx, 'this>(
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(
-                    elem_layout.pad_to_align().size() as i64,
                     IntegerType::new(context, 64).into(),
+                    elem_layout.pad_to_align().size() as i64,
                 )
                 .into(),
                 location,
@@ -1437,26 +1417,22 @@ pub fn build_slice<'ctx, 'this>(
             .result(0)?
             .into();
 
-        let is_volatile = slice_block
-            .append_operation(arith::constant(
+        slice_block.append_operation(
+            ods::llvm::intr_memcpy(
                 context,
-                IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                dst_ptr,
+                src_ptr,
+                dst_size,
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                 location,
-            ))
-            .result(0)?
-            .into();
-        slice_block.append_operation(llvm::call_intrinsic(
-            context,
-            StringAttribute::new(context, "llvm.memcpy"),
-            &[dst_ptr, src_ptr, dst_size, is_volatile],
-            &[],
-            location,
-        ));
+            )
+            .into(),
+        );
 
         let k0 = slice_block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(0, len_ty).into(),
+                IntegerAttribute::new(len_ty, 0).into(),
                 location,
             ))
             .result(0)?
@@ -1543,8 +1519,8 @@ pub fn build_span_from_tuple<'ctx, 'this>(
                 struct_ty,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    struct_type_info.layout(registry)?.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    struct_type_info.layout(registry)?.align() as i64,
                 ))),
             ))
             .result(0)?
@@ -1568,7 +1544,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let array_len_value = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(fields.len().try_into().unwrap(), len_ty).into(),
+            IntegerAttribute::new(len_ty, fields.len().try_into().unwrap()).into(),
             location,
         ))
         .result(0)?
@@ -1582,7 +1558,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, len_ty).into(),
+            IntegerAttribute::new(len_ty, 0).into(),
             location,
         ))
         .result(0)?
@@ -1630,8 +1606,8 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                field_stride.try_into().unwrap(),
                 IntegerType::new(context, 64).into(),
+                field_stride.try_into().unwrap(),
             )
             .into(),
             location,
@@ -1713,7 +1689,7 @@ fn assert_nonnull<'ctx, 'this>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 64).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             location,
         ))
         .result(0)?
@@ -2362,6 +2338,7 @@ mod test {
             },
         );
     }
+
     #[test]
     fn array_pop_back_state() {
         let program = load_cairo!(
@@ -2381,5 +2358,67 @@ mod test {
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_struct!([1u32, 2u32].into()));
+    }
+
+    #[test]
+    fn array_empty_span() {
+        // Tests snapshot_take on a empty array.
+        let program = load_cairo!(
+            fn run_test() -> Span<u32> {
+                let x = ArrayTrait::new();
+                x.span()
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            jit_struct!(JitValue::Array(vec![])),
+        );
+    }
+
+    #[test]
+    fn array_span_modify_span() {
+        // Tests pop_back on a span.
+        let program = load_cairo!(
+            use core::array::SpanTrait;
+            fn pop_elem(mut self: Span<u64>) -> Option<@u64> {
+                let x = self.pop_back();
+                x
+            }
+
+            fn run_test() -> Option<@u64> {
+                let mut data = array![2].span();
+                let x = pop_elem(data);
+                x
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            jit_enum!(0, 2u64.into()),
+        );
+    }
+
+    #[test]
+    fn array_span_check_array() {
+        // Tests pop back on a span not modifying the original array.
+        let program = load_cairo!(
+            use core::array::SpanTrait;
+            fn pop_elem(mut self: Span<u64>) -> Option<@u64> {
+                let x = self.pop_back();
+                x
+            }
+
+            fn run_test() -> Array<u64> {
+                let mut data = array![1, 2];
+                let _x = pop_elem(data.span());
+                data
+            }
+        );
+
+        assert_eq!(
+            run_program(&program, "run_test", &[]).return_value,
+            JitValue::Array(vec![1u64.into(), 2u64.into()]),
+        );
     }
 }

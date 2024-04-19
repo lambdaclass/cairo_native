@@ -4,15 +4,22 @@ use std::path::Path;
 
 fn main() {
     let program_path = Path::new("programs/examples/hello.cairo");
-    // Compile the cairo program to sierra.
-    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
     // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
     // initialization and compilation of sierra programs into a MLIR module.
     let native_context = NativeContext::new();
 
+    // Compile the cairo program to sierra.
+    let (sierra_program, debug_locations) = cairo_native::utils::cairo_to_sierra_with_debug_info(
+        native_context.context(),
+        program_path,
+    )
+    .unwrap();
+
     // Compile the sierra program into a MLIR module.
-    let native_program = native_context.compile(&sierra_program).unwrap();
+    let native_program = native_context
+        .compile(&sierra_program, Some(debug_locations))
+        .unwrap();
 
     // The parameters of the entry point.
     let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];

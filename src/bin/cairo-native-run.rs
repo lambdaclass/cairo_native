@@ -12,6 +12,7 @@ use cairo_lang_sierra_generator::{
 use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     context::NativeContext,
+    debug_info::{DebugInfo, DebugLocations},
     execution_result::ExecutionResult,
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
@@ -93,8 +94,22 @@ fn main() -> anyhow::Result<()> {
 
     let native_context = NativeContext::new();
 
+    let debug_locations = {
+        let debug_info = DebugInfo::extract(db, &sierra_program)
+            .map_err(|_| {
+                let mut buffer = String::new();
+                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(db));
+                buffer
+            })
+            .unwrap();
+
+        DebugLocations::extract(native_context.context(), db, &debug_info)
+    };
+
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context.compile(&sierra_program).unwrap();
+    let native_module = native_context
+        .compile(&sierra_program, Some(debug_locations))
+        .unwrap();
 
     let opt_level = match args.opt_level {
         0 => OptLevel::None,
@@ -247,7 +262,7 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
             felts
         }
         JitValue::Enum {
-            value: _,
+            value,
             tag,
             debug_name,
         } => {
@@ -255,7 +270,10 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
                 if debug_name == "core::bool" {
                     vec![(*tag == 1).into()]
                 } else {
-                    todo!()
+                    felts.push((*tag).into());
+                    let felt = jitvalue_to_felt(value);
+                    felts.extend(felt);
+                    felts
                 }
             } else {
                 todo!()

@@ -151,7 +151,7 @@ pub fn build_operation<'ctx, 'this>(
     let zero_const = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0.into(), values_type).into(),
+            IntegerAttribute::new(values_type, 0.into()).into(),
             location,
         ))
         .result(0)?
@@ -250,7 +250,7 @@ pub fn build_is_zero<'ctx, 'this>(
 
     let op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(0, arg0.r#type()).into(),
+        IntegerAttribute::new(arg0.r#type(), 0).into(),
         location,
     ));
     let const_0 = op.result(0)?.into();

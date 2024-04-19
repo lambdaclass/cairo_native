@@ -45,13 +45,13 @@ educe = "0.5.11"
 id-arena = "2.2"
 itertools = "0.12"
 lazy_static = "1.4"
-libc = "0.2.147"
+libc = "0.2.153"
 llvm-sys = "170.0.0"
-melior = { version = "0.16.0", features = ["ods-dialects"] }
+melior = { version = "0.17.0", features = ["ods-dialects"] }
 mlir-sys = "0.2.1"
 num-bigint = "0.4.4"
 num-traits = "0.2"
-starknet-types-core = { version = "0.0.9", default-features = false, features = [
+starknet-types-core = { version = "0.1.0", default-features = false, features = [
   "serde",
 ] }
 tempfile = "3.6"
@@ -82,7 +82,7 @@ cairo-felt = { version = "0.9.1", optional = true }
 cairo-felt = "0.9.1"
 cairo-lang-runner = "2.5.4"
 criterion = { version = "0.5.1", features = ["html_reports"] }
-lambdaworks-math = "0.5"
+lambdaworks-math = "0.6"
 pretty_assertions_sorted = "1.2.3"
 proptest = "1.4"
 test-case = "3.3"
@@ -90,7 +90,7 @@ walkdir = "2"
 serde_json = { version = "1.0" }
 
 [build-dependencies]
-cc = "1.0"
+cc = "1.0.92"
 
 [profile.optimized-dev]
 inherits = "dev"

@@ -23,9 +23,10 @@ use melior::{
     dialect::{
         arith,
         llvm::{self, r#type::opaque_pointer, AllocaOptions, LoadStoreOptions},
+        ods,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        attribute::{IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
         Block, Location,
     },
@@ -76,8 +77,8 @@ pub fn build_into_box<'ctx, 'this>(
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(
-                inner_layout.pad_to_align().size().try_into()?,
                 IntegerType::new(context, 64).into(),
+                inner_layout.pad_to_align().size().try_into()?,
             )
             .into(),
             location,
@@ -103,21 +104,17 @@ pub fn build_into_box<'ctx, 'this>(
                     .iter()
                     .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
         {
-            let is_volatile = entry
-                .append_operation(arith::constant(
+            entry.append_operation(
+                ods::llvm::intr_memcpy(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                    ptr,
+                    entry.argument(0)?.into(),
+                    value_len,
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                     location,
-                ))
-                .result(0)?
-                .into();
-            entry.append_operation(llvm::call_intrinsic(
-                context,
-                StringAttribute::new(context, "llvm.memcpy.inline"),
-                &[ptr, entry.argument(0)?.into(), value_len, is_volatile],
-                &[],
-                location,
-            ));
+                )
+                .into(),
+            );
         }
         _ => {
             entry.append_operation(llvm::store(
@@ -126,8 +123,8 @@ pub fn build_into_box<'ctx, 'this>(
                 ptr,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    inner_layout.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    inner_layout.align() as i64,
                 ))),
             ));
         }
@@ -163,8 +160,8 @@ pub fn build_unbox<'ctx, 'this>(
                 .append_operation(arith::constant(
                     context,
                     IntegerAttribute::new(
-                        inner_layout.size() as i64,
                         IntegerType::new(context, 64).into(),
+                        inner_layout.size() as i64,
                     )
                     .into(),
                     location,
@@ -180,29 +177,25 @@ pub fn build_unbox<'ctx, 'this>(
                     location,
                     AllocaOptions::new()
                         .align(Some(IntegerAttribute::new(
-                            inner_layout.align() as i64,
                             IntegerType::new(context, 64).into(),
+                            inner_layout.align() as i64,
                         )))
                         .elem_type(Some(TypeAttribute::new(inner_ty))),
                 ))
                 .result(0)?
                 .into();
 
-            let is_volatile = entry
-                .append_operation(arith::constant(
+            entry.append_operation(
+                ods::llvm::intr_memcpy(
                     context,
-                    IntegerAttribute::new(0, IntegerType::new(context, 1).into()).into(),
+                    stack_ptr,
+                    entry.argument(0)?.into(),
+                    value_len,
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                     location,
-                ))
-                .result(0)?
-                .into();
-            entry.append_operation(llvm::call_intrinsic(
-                context,
-                StringAttribute::new(context, "llvm.memcpy.inline"),
-                &[stack_ptr, entry.argument(0)?.into(), value_len, is_volatile],
-                &[],
-                location,
-            ));
+                )
+                .into(),
+            );
 
             stack_ptr
         }
@@ -213,8 +206,8 @@ pub fn build_unbox<'ctx, 'this>(
                 inner_ty,
                 location,
                 LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    inner_layout.align() as i64,
                     IntegerType::new(context, 64).into(),
+                    inner_layout.align() as i64,
                 ))),
             ))
             .result(0)?

@@ -964,9 +964,9 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
 name = "cc"
-version = "1.0.86"
+version = "1.0.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f9fa1897e4325be0d68d48df6aa1a71ac2ed4d27723887e7754192705350730"
+checksum = "2678b2e3449475e95b0aa6f9b506a28e61b3dc8996592b983695e8ebb58a8b41"
 
 [[package]]
 name = "cexpr"
@@ -1829,9 +1829,9 @@ dependencies = [
 
 [[package]]
 name = "lambdaworks-math"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ee7dcab3968c71896b8ee4dc829147acc918cffe897af6265b1894527fe3add"
+checksum = "6c74ce6f0d9cb672330b6ca59e85a6c3607a3329e0372ab0d3fe38c2d38e50f9"
 dependencies = [
  "rayon",
  "serde",
@@ -1976,9 +1976,9 @@ dependencies = [
 
 [[package]]
 name = "melior"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "533106578f7234ec19a7fc15930b6652581c8e6821bbf28d064432aef61411c4"
+checksum = "672be978c3550fd9c329987c9457e60e4452049b24518a5acb2d3f14cf6d2777"
 dependencies = [
  "dashmap",
  "melior-macro",
@@ -3005,13 +3005,12 @@ dependencies = [
 
 [[package]]
 name = "starknet-types-core"
-version = "0.0.9"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d53160556d1f23425100f42b3230df747ea05763efee685a2cd939dfb640701"
+checksum = "1051b4f4af0bb9b546388a404873ee1e6b9787b9d5b0b3319ecbfadf315ef276"
 dependencies = [
  "bitvec",
  "lambdaworks-math",
- "lazy_static",
  "num-bigint",
  "num-integer",
  "num-traits 0.2.18",

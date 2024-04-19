@@ -20,12 +20,11 @@ use melior::{
     dialect::{
         arith,
         llvm::{self, LoadStoreOptions},
+        ods,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Block, Identifier, Location,
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        Identifier, Location,
     },
     Context,
 };
@@ -81,7 +80,7 @@ pub fn build_pedersen<'ctx>(
 
     let op = entry.append_operation(arith::constant(
         context,
-        IntegerAttribute::new(1, IntegerType::new(context, 64).into()).into(),
+        IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
         location,
     ));
     let const_1 = op.result(0)?.into();
@@ -91,8 +90,8 @@ pub fn build_pedersen<'ctx>(
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    layout_i256.align().try_into()?,
                     IntegerType::new(context, 64).into(),
+                    layout_i256.align().try_into()?,
                 )
                 .into(),
             )])
@@ -107,8 +106,8 @@ pub fn build_pedersen<'ctx>(
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    layout_i256.align().try_into()?,
                     IntegerType::new(context, 64).into(),
+                    layout_i256.align().try_into()?,
                 )
                 .into(),
             )])
@@ -123,8 +122,8 @@ pub fn build_pedersen<'ctx>(
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
                 IntegerAttribute::new(
-                    layout_i256.align().try_into()?,
                     IntegerType::new(context, 64).into(),
+                    layout_i256.align().try_into()?,
                 )
                 .into(),
             )])
@@ -139,29 +138,15 @@ pub fn build_pedersen<'ctx>(
     let op = entry.append_operation(arith::extui(rhs, i256_ty, location));
     let rhs_i256 = op.result(0)?.into();
 
-    let op = entry.append_operation(
-        OperationBuilder::new("llvm.call_intrinsic", location)
-            .add_attributes(&[(
-                Identifier::new(context, "intrin"),
-                StringAttribute::new(context, "llvm.bswap").into(),
-            )])
-            .add_operands(&[lhs_i256])
-            .add_results(&[i256_ty])
-            .build()?,
-    );
-    let lhs_be = op.result(0)?.into();
+    let lhs_be = entry
+        .append_operation(ods::llvm::intr_bswap(context, lhs_i256, location).into())
+        .result(0)?
+        .into();
 
-    let op = entry.append_operation(
-        OperationBuilder::new("llvm.call_intrinsic", location)
-            .add_attributes(&[(
-                Identifier::new(context, "intrin"),
-                StringAttribute::new(context, "llvm.bswap").into(),
-            )])
-            .add_operands(&[rhs_i256])
-            .add_results(&[i256_ty])
-            .build()?,
-    );
-    let rhs_be = op.result(0)?.into();
+    let rhs_be = entry
+        .append_operation(ods::llvm::intr_bswap(context, rhs_i256, location).into())
+        .result(0)?
+        .into();
 
     entry.append_operation(llvm::store(
         context,
@@ -169,8 +154,8 @@ pub fn build_pedersen<'ctx>(
         lhs_ptr,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
+            layout_i256.align().try_into()?,
         ))),
     ));
     entry.append_operation(llvm::store(
@@ -179,8 +164,8 @@ pub fn build_pedersen<'ctx>(
         rhs_ptr,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
+            layout_i256.align().try_into()?,
         ))),
     ));
 
@@ -197,23 +182,16 @@ pub fn build_pedersen<'ctx>(
         i256_ty,
         location,
         LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            layout_i256.align().try_into()?,
             IntegerType::new(context, 64).into(),
+            layout_i256.align().try_into()?,
         ))),
     ));
     let result_be = op.result(0)?.into();
 
-    let op = entry.append_operation(
-        OperationBuilder::new("llvm.call_intrinsic", location)
-            .add_attributes(&[(
-                Identifier::new(context, "intrin"),
-                StringAttribute::new(context, "llvm.bswap").into(),
-            )])
-            .add_operands(&[result_be])
-            .add_results(&[i256_ty])
-            .build()?,
-    );
-    let result = op.result(0)?.into();
+    let result = entry
+        .append_operation(ods::llvm::intr_bswap(context, result_be, location).into())
+        .result(0)?
+        .into();
 
     let op = entry.append_operation(arith::trunci(result, felt252_ty, location));
     let result = op.result(0)?.into();

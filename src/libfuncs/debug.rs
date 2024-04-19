@@ -60,7 +60,7 @@ pub fn build_print<'ctx>(
     let stdout_fd = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(1, IntegerType::new(context, 32).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
             location,
         ))
         .result(0)?
@@ -136,7 +136,7 @@ pub fn build_print<'ctx>(
     let k0 = entry
         .append_operation(arith::constant(
             context,
-            IntegerAttribute::new(0, IntegerType::new(context, 32).into()).into(),
+            IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
             location,
         ))
         .result(0)?
