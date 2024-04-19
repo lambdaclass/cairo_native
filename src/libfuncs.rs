@@ -511,28 +511,14 @@ pub fn increment_builtin_counter<'ctx: 'a, 'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use melior::dialect::DialectRegistry;
+    use crate::context::NativeContext;
     use melior::ir::Type;
-    use melior::utility::register_all_dialects;
-
-    /// Load all available MLIR dialects into the given context.
-    ///
-    /// This function initializes a new `DialectRegistry`, registers all available dialects
-    /// into it, appends the registry to the provided context, and then loads all available
-    /// dialects into the context.
-    pub fn load_all_dialects(context: &Context) {
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        context.append_dialect_registry(&registry);
-        context.load_all_available_dialects();
-    }
 
     #[test]
     fn switch_branch_arg_external_test() {
         // Create a new context for MLIR operations
-        let context = Context::new();
-        // Load all available MLIR dialects into the context
-        load_all_dialects(&context);
+        let native_context = NativeContext::new();
+        let context = native_context.context();
 
         // Create an unknown location in the context
         let location = Location::unknown(&context);
@@ -606,9 +592,8 @@ mod tests {
     #[test]
     fn switch_branch_arg_returned_test() {
         // Create a new context for MLIR operations
-        let context = Context::new();
-        // Load all available MLIR dialects into the context
-        load_all_dialects(&context);
+        let native_context = NativeContext::new();
+        let context = native_context.context();
 
         // Create an unknown location in the context
         let location = Location::unknown(&context);
@@ -691,9 +676,8 @@ mod tests {
     #[test]
     fn switch_branch_target_jump_test() {
         // Create a new context for MLIR operations
-        let context = Context::new();
-        // Load all available MLIR dialects into the context
-        load_all_dialects(&context);
+        let native_context = NativeContext::new();
+        let context = native_context.context();
 
         // Create an unknown location in the context
         let location = Location::unknown(&context);
