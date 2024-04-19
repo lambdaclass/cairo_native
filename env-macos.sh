@@ -3,9 +3,9 @@
 # This script is only useful on macOS using brew.
 # It sets the LLVM environment variables.
 export LIBRARY_PATH=/opt/homebrew/lib
-MLIR_SYS_170_PREFIX="$(brew --prefix llvm@17)"
-LLVM_SYS_170_PREFIX="$(brew --prefix llvm@17)"
-TABLEGEN_170_PREFIX="$(brew --prefix llvm@17)"
+MLIR_SYS_170_PREFIX="$(brew --prefix llvm)"
+LLVM_SYS_170_PREFIX="$(brew --prefix llvm)"
+TABLEGEN_170_PREFIX="$(brew --prefix llvm)"
 CAIRO_NATIVE_RUNTIME_LIBDIR="$(pwd)/target/debug"
 
 export MLIR_SYS_170_PREFIX
