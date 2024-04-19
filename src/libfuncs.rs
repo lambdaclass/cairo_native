@@ -526,13 +526,15 @@ mod tests {
         let module = Module::new(location);
 
         // Create a new MLIR block and obtain its reference
-        let last_block = unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) };
+        let block = Block::new(&[]);
+        let region = Region::new();
+        let last_block = &region.append_block(block);
 
         // Initialize the LibfuncHelper struct with various parameters
         let mut lib_func_helper = LibfuncHelper {
             module: &module,
             init_block: unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) },
-            region: &Region::new(),
+            region: &region,
             blocks_arena: &Bump::new(),
             last_block: Cell::new(last_block),
             branches: Vec::new(),
@@ -601,13 +603,15 @@ mod tests {
         let module = Module::new(location);
 
         // Create a new MLIR block and obtain its reference
-        let last_block = unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) };
+        let block = Block::new(&[]);
+        let region = Region::new();
+        let last_block = &region.append_block(block);
 
         // Initialize the LibfuncHelper struct with various parameters
         let mut lib_func_helper = LibfuncHelper {
             module: &module,
             init_block: unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) },
-            region: &Region::new(),
+            region: &region,
             blocks_arena: &Bump::new(),
             last_block: Cell::new(last_block),
             branches: Vec::new(),
@@ -685,13 +689,15 @@ mod tests {
         let module = Module::new(location);
 
         // Create a new MLIR block and obtain its reference
-        let last_block = unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) };
+        let block = Block::new(&[]);
+        let region = Region::new();
+        let last_block = &region.append_block(block);
 
         // Initialize the LibfuncHelper struct with various parameters
         let mut lib_func_helper = LibfuncHelper {
             module: &module,
             init_block: unsafe { &BlockRef::from_raw(Block::new(&[]).into_raw()) },
-            region: &Region::new(),
+            region: &region,
             blocks_arena: &Bump::new(),
             last_block: Cell::new(last_block),
             branches: Vec::new(),
