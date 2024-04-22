@@ -847,14 +847,12 @@
 <a href="#846" id="846">846</a>
 <a href="#847" id="847">847</a>
 <a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `i128`-related libfuncs
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use </span>std::ops::Shr;
 
 <span class="kw">use crate</span>::{
+    block_ext::BlockExt,
     error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     utils::ProgramRegistryExt,
@@ -938,13 +936,9 @@
         <span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>op0 = entry.append_operation(arith::constant(
-        context,
-        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : {value_ty}"</span>))
-            .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
-        location,
-    ));
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
+    <span class="kw">let </span>value = entry.const_int_from_type(context, location, value, value_ty)<span class="question-mark">?</span>;
+
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
 
     <span class="prelude-val">Ok</span>(())
 }

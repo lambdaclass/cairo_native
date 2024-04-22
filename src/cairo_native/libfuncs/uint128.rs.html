@@ -1162,19 +1162,11 @@
 <a href="#1161" id="1161">1161</a>
 <a href="#1162" id="1162">1162</a>
 <a href="#1163" id="1163">1163</a>
-<a href="#1164" id="1164">1164</a>
-<a href="#1165" id="1165">1165</a>
-<a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
-<a href="#1169" id="1169">1169</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u128`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::{Error, <span class="prelude-ty">Result</span>},
-    metadata::MetadataStorage,
-    utils::{mlir_asm, ProgramRegistryExt},
+    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -1197,7 +1189,7 @@
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Location, Region, Value, ValueLike,
+        Block, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -1288,7 +1280,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>value = info.c;
 
-    <span class="kw">let </span>u128_ty = registry.build_type(
+    <span class="kw">let </span>value_ty = registry.build_type(
         context,
         helper,
         registry,
@@ -1296,14 +1288,10 @@
         <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : {u128_ty}"</span>))
-        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>;
+    <span class="kw">let </span>value = entry.const_int_from_type(context, location, value, value_ty)<span class="question-mark">?</span>;
 
-    <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
-        ; k0 = <span class="string">"arith.constant"</span>() { <span class="string">"value" </span>= attr_c } : () -&gt; u128_ty
-    }
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
 
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[k0], location));
     <span class="prelude-val">Ok</span>(())
 }
 
