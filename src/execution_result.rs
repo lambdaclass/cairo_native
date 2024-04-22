@@ -59,22 +59,28 @@ impl ContractExecutionResult {
                             } else {
                                 Err(Error::UnexpectedValue(format!(
                                     "wrong type, expect: array, value: {:?}",
-                                    value
+                                    &fields[0]
                                 )))?
                             }
                         } else {
                             Err(Error::UnexpectedValue(format!(
-                                "wrong type, expect: struct, value: {:?}",
-                                value
+                                "wrong type, expect: inner struct, value: {:?}",
+                                &fields[0]
                             )))?
                         }
                     } else {
                         Err(Error::UnexpectedValue(format!(
-                            "wrong type, expect: struct, value: {:?}",
+                            "wrong type, expect: outer struct, value: {:?}",
                             value
                         )))?
                     }
                 } else if let JitValue::Struct { fields, .. } = &**value {
+                    if fields.len() < 2 {
+                        Err(Error::UnexpectedValue(format!(
+                            "wrong type, expect: struct.fields.len() >= 2, value: {:?}",
+                            fields
+                        )))?
+                    }
                     if let JitValue::Array(data) = &fields[1] {
                         let felt_vec: Vec<_> = data
                             .iter()
@@ -100,7 +106,7 @@ impl ContractExecutionResult {
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "wrong type, expect: array, value: {:?}",
-                            value
+                            &fields[1]
                         )))?
                     }
                 } else {
