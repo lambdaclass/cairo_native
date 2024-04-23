@@ -4,6 +4,7 @@ use std::ops::Shr;
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::TypeBuilder,
@@ -91,15 +92,7 @@ pub fn build_downcast<'ctx, 'this>(
     let mut block = entry;
 
     let (is_in_range, result) = if src_ty == dst_ty {
-        let k0 = block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-
+        let k0 = block.constant_int(context, location, 0, 1);
         (k0, src_value)
     } else {
         // make unsigned felt into signed felt
@@ -224,53 +217,41 @@ pub fn build_downcast<'ctx, 'this>(
             (result, dst_ty)
         };
 
-        let max_value = block
-            .append_operation(arith::constant(
-                context,
-                Attribute::parse(
-                    context,
-                    &format!(
-                        "{}: {}",
-                        info.to_range
-                            .intersection(&info.from_range)
-                            .ok_or_else(|| Error::SierraAssert(
-                                "range should always interesct".to_string()
-                            ))?
-                            .upper,
-                        compare_ty
-                    ),
-                )
-                .ok_or_else(|| {
-                    Error::Error("downcast: failed to make max value attribute".to_string())
-                })?,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let max_val_parse = Attribute::parse(
+            context,
+            &format!(
+                "{}: {}",
+                info.to_range
+                    .intersection(&info.from_range)
+                    .ok_or_else(|| Error::SierraAssert(
+                        "range should always interesct".to_string()
+                    ))?
+                    .upper,
+                compare_ty
+            ),
+        )
+        .ok_or_else(|| Error::Error("downcast: failed to make max value attribute".to_string()))?;
 
-        let min_value = block
-            .append_operation(arith::constant(
-                context,
-                Attribute::parse(
-                    context,
-                    &format!(
-                        "{}: {}",
-                        info.to_range
-                            .intersection(&info.from_range)
-                            .ok_or_else(|| Error::SierraAssert(
-                                "range should always interesct".to_string()
-                            ))?
-                            .lower,
-                        compare_ty
-                    ),
-                )
-                .ok_or_else(|| {
-                    Error::Error("downcast: failed to make min value attribute".to_string())
-                })?,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let max_value =
+            block.const_int_from_type(context, location, max_value_parse, compare_ty)?;
+
+        let min_val_parse = Attribute::parse(
+            context,
+            &format!(
+                "{}: {}",
+                info.to_range
+                    .intersection(&info.from_range)
+                    .ok_or_else(|| Error::SierraAssert(
+                        "range should always interesct".to_string()
+                    ))?
+                    .lower,
+                compare_ty
+            ),
+        )
+        .ok_or_else(|| Error::Error("downcast: failed to make min value attribute".to_string()))?;
+
+        let min_value =
+            block.const_int_from_type(context, location, min_value_parse, compare_ty)?;
 
         let is_in_range_upper = block
             .append_operation(arith::cmpi(
@@ -429,6 +410,7 @@ pub fn build_upcast<'ctx, 'this>(
                     ))
                     .result(0)?
                     .into();
+
                 is_not_neg_block.append_operation(cf::br(final_block, &[result], location));
             }
 
