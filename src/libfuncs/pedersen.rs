@@ -195,7 +195,7 @@ pub fn build_pedersen<'ctx>(
         .into();
 
     let result = entry
-        .append_operation(arith::trunci(op, value_ty, location))?
+        .append_op_result(arith::trunci(op, value_ty, location))?
         .into();
 
     entry.append_operation(helper.br(0, &[pedersen_builtin, result], location));
