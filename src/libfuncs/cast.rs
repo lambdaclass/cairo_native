@@ -131,7 +131,7 @@ pub fn build_downcast<'ctx, 'this>(
             let is_not_neg_block = helper.append_block(Block::new(&[]));
             let final_block = helper.append_block(Block::new(&[(src_ty, location)]));
 
-            block.append_operation(cf::cond_br(
+            block.append_op_result(cf::cond_br(
                 context,
                 is_felt_neg,
                 is_neg_block,
@@ -139,11 +139,11 @@ pub fn build_downcast<'ctx, 'this>(
                 &[],
                 &[],
                 location,
-            ));
+            ))?;
 
             {
                 let prime = is_neg_block
-                    .append_operation(arith::constant(
+                    .append_op_result(arith::constant(
                         context,
                         Attribute::parse(
                             context,
@@ -158,34 +158,34 @@ pub fn build_downcast<'ctx, 'this>(
                         )
                         .ok_or(Error::ParseAttributeError)?,
                         location,
-                    ))
+                    ))?
                     .result(0)?
                     .into();
 
                 let mut src_value_is_neg: melior::ir::Value = is_neg_block
-                    .append_operation(arith::subi(prime, src_value, location))
+                    .append_op_result(arith::subi(prime, src_value, location))?
                     .result(0)?
                     .into();
 
                 let kneg1 = is_neg_block
-                    .append_operation(arith::constant(
+                    .append_op_result(arith::constant(
                         context,
                         Attribute::parse(context, &format!("-1 : {}", src_ty))
                             .ok_or(Error::ParseAttributeError)?,
                         location,
-                    ))
+                    ))?
                     .result(0)?
                     .into();
 
                 src_value_is_neg = is_neg_block
-                    .append_operation(arith::muli(src_value_is_neg, kneg1, location))
+                    .append_op_result(arith::muli(src_value_is_neg, kneg1, location))?
                     .result(0)?
                     .into();
 
-                is_neg_block.append_operation(cf::br(final_block, &[src_value_is_neg], location));
+                is_neg_block.append_op_result(cf::br(final_block, &[src_value_is_neg], location))?;
             }
 
-            is_not_neg_block.append_operation(cf::br(final_block, &[src_value], location));
+            is_not_neg_block.append_op_result(cf::br(final_block, &[src_value], location))?;
 
             block = final_block;
 
@@ -196,17 +196,17 @@ pub fn build_downcast<'ctx, 'this>(
 
         let result = if src_width > dst_width {
             block
-                .append_operation(arith::trunci(src_value, dst_ty, location))
+                .append_op_result(arith::trunci(src_value, dst_ty, location))?
                 .result(0)?
                 .into()
         } else if is_signed {
             block
-                .append_operation(arith::extsi(src_value, dst_ty, location))
+                .append_op_result(arith::extsi(src_value, dst_ty, location))?
                 .result(0)?
                 .into()
         } else {
             block
-                .append_operation(arith::extui(src_value, dst_ty, location))
+                .append_op_result(arith::extui(src_value, dst_ty, location))?
                 .result(0)?
                 .into()
         };
@@ -254,7 +254,7 @@ pub fn build_downcast<'ctx, 'this>(
             block.const_int_from_type(context, location, min_value_parse, compare_ty)?;
 
         let is_in_range_upper = block
-            .append_operation(arith::cmpi(
+            .append_op_result(arith::cmpi(
                 context,
                 if is_signed {
                     CmpiPredicate::Slt
@@ -264,12 +264,12 @@ pub fn build_downcast<'ctx, 'this>(
                 compare_value,
                 max_value,
                 location,
-            ))
+            ))?
             .result(0)?
             .into();
 
         let is_in_range_lower = block
-            .append_operation(arith::cmpi(
+            .append_op_result(arith::cmpi(
                 context,
                 if is_signed {
                     CmpiPredicate::Sge
@@ -279,25 +279,25 @@ pub fn build_downcast<'ctx, 'this>(
                 compare_value,
                 min_value,
                 location,
-            ))
+            ))?
             .result(0)?
             .into();
 
         let is_in_range = block
-            .append_operation(arith::andi(is_in_range_upper, is_in_range_lower, location))
+            .append_op_result(arith::andi(is_in_range_upper, is_in_range_lower, location))?
             .result(0)?
             .into();
 
         (is_in_range, result)
     };
 
-    block.append_operation(helper.cond_br(
+    block.append_op_result(helper.cond_br(
         context,
         is_in_range,
         [0, 1],
         [&[range_check, result], &[range_check]],
         location,
-    ));
+    ))?;
 
     Ok(())
 }
@@ -358,32 +358,32 @@ pub fn build_upcast<'ctx, 'this>(
     } else if is_signed {
         if is_felt {
             let result = block
-                .append_operation(arith::extsi(
+                .append_op_result(arith::extsi(
                     block.argument(0)?.into(),
                     IntegerType::new(context, dst_width.try_into()?).into(),
                     location,
-                ))
+                ))?
                 .result(0)?
                 .into();
 
             let kzero = block
-                .append_operation(arith::constant(
+                .append_op_result(arith::constant(
                     context,
                     Attribute::parse(context, &format!("0 : {}", dst_type))
                         .ok_or(Error::ParseAttributeError)?,
                     location,
-                ))
+                ))?
                 .result(0)?
                 .into();
 
             let is_neg = block
-                .append_operation(arith::cmpi(
+                .append_op_result(arith::cmpi(
                     context,
                     CmpiPredicate::Slt,
                     result,
                     kzero,
                     location,
-                ))
+                ))?
                 .result(0)?
                 .into();
 
@@ -391,7 +391,7 @@ pub fn build_upcast<'ctx, 'this>(
             let is_not_neg_block = helper.append_block(Block::new(&[]));
             let final_block = helper.append_block(Block::new(&[(dst_type, location)]));
 
-            block.append_operation(cf::cond_br(
+            block.append_op_result(cf::cond_br(
                 context,
                 is_neg,
                 is_neg_block,
@@ -399,32 +399,32 @@ pub fn build_upcast<'ctx, 'this>(
                 &[],
                 &[],
                 location,
-            ));
+            ))?;
 
             {
                 let result = is_not_neg_block
-                    .append_operation(arith::extui(
+                    .append_op_result(arith::extui(
                         entry.argument(0)?.into(),
                         IntegerType::new(context, dst_width.try_into()?).into(),
                         location,
-                    ))
+                    ))?
                     .result(0)?
                     .into();
 
-                is_not_neg_block.append_operation(cf::br(final_block, &[result], location));
+                is_not_neg_block.append_op_result(cf::br(final_block, &[result], location))?;
             }
 
             {
                 let mut result = is_neg_block
-                    .append_operation(arith::extsi(
+                    .append_op_result(arith::extsi(
                         entry.argument(0)?.into(),
                         IntegerType::new(context, dst_width.try_into()?).into(),
                         location,
-                    ))
+                    ))?
                     .result(0)?
                     .into();
                 let prime = is_neg_block
-                    .append_operation(arith::constant(
+                    .append_op_result(arith::constant(
                         context,
                         Attribute::parse(
                             context,
@@ -439,41 +439,41 @@ pub fn build_upcast<'ctx, 'this>(
                         )
                         .ok_or(Error::ParseAttributeError)?,
                         location,
-                    ))
+                    ))?
                     .result(0)?
                     .into();
                 result = is_neg_block
-                    .append_operation(arith::addi(result, prime, location))
+                    .append_op_result(arith::addi(result, prime, location))?
                     .result(0)?
                     .into();
-                is_neg_block.append_operation(cf::br(final_block, &[result], location));
+                is_neg_block.append_op_result(cf::br(final_block, &[result], location))?;
             }
 
             let result = final_block.argument(0)?.into();
-            final_block.append_operation(helper.br(0, &[result], location));
+            final_block.append_op_result(helper.br(0, &[result], location))?;
             return Ok(());
         } else {
             block
-                .append_operation(arith::extsi(
+                .append_op_result(arith::extsi(
                     entry.argument(0)?.into(),
                     IntegerType::new(context, dst_width.try_into()?).into(),
                     location,
-                ))
+                ))?
                 .result(0)?
                 .into()
         }
     } else {
         block
-            .append_operation(arith::extui(
+            .append_op_result(arith::extui(
                 block.argument(0)?.into(),
                 IntegerType::new(context, dst_width.try_into()?).into(),
                 location,
-            ))
+            ))?
             .result(0)?
             .into()
     };
 
-    block.append_operation(helper.br(0, &[result], location));
+    block.append_op_result(helper.br(0, &[result], location))?;
     Ok(())
 }
 
