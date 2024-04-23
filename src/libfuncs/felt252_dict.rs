@@ -2,8 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    block_ext::BlockExt, error::Result, metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage}
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -57,7 +56,7 @@ pub fn build_new<'ctx, 'this>(
     let op = runtime_bindings.dict_alloc_new(context, helper, entry, location)?;
     let dict_ptr = op.result(0)?.into();
 
-    entry.append_operation(helper.br(0, &[segment_arena, dict_ptr], location));
+    entry.append_op_result(helper.br(0, &[segment_arena, dict_ptr], location));
     Ok(())
 }
 
@@ -75,7 +74,7 @@ pub fn build_squash<'ctx, 'this>(
     let segment_arena =
         super::increment_builtin_counter(context, entry, location, entry.argument(2)?.into())?;
 
-    entry.append_operation(helper.br(
+    entry.append_op_result(helper.br(
         0,
         &[
             range_check,

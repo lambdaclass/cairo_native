@@ -114,16 +114,16 @@ pub fn build_get<'ctx, 'this>(
     let op = runtime_bindings.dict_get(context, helper, entry, dict_ptr, key_ptr, location)?;
     let result_ptr: Value = op.result(0)?.into();
 
-    let op = entry.append_operation(
+    let op = entry.append_op_result(
         OperationBuilder::new("llvm.mlir.null", location)
             .add_results(&[result_ptr.r#type()])
             .build()?,
-    );
+    )?;
 
     let null_ptr = op.result(0)?.into();
 
     // need llvm instead of arith to compare pointers
-    let op = entry.append_operation(
+    let op = entry.append_op_result(
         OperationBuilder::new("llvm.icmp", location)
             .add_operands(&[result_ptr, null_ptr])
             .add_attributes(&[(
@@ -132,7 +132,7 @@ pub fn build_get<'ctx, 'this>(
             )])
             .add_results(&[IntegerType::new(context, 1).into()])
             .build()?,
-    );
+    )?;
 
     let is_null_ptr = op.result(0)?.into();
 
@@ -143,7 +143,7 @@ pub fn build_get<'ctx, 'this>(
         (value_ty, location),
     ]));
 
-    entry.append_operation(cf::cond_br(
+    entry.append_op_result(cf::cond_br(
         context,
         is_null_ptr,
         block_is_null,
@@ -151,16 +151,16 @@ pub fn build_get<'ctx, 'this>(
         &[],
         &[],
         location,
-    ));
+    ))?;
 
     // null block
     {
         let alloc_size =
             block_is_null.const_int(context, location, value_layout.size() as i64, 64)?;
 
-        let op = block_is_null.append_operation(ReallocBindingsMeta::realloc(
+        let op = block_is_null.append_op_result(ReallocBindingsMeta::realloc(
             context, result_ptr, alloc_size, location,
-        ));
+        ))?;
         let value_ptr = op.result(0)?.into();
 
         let default_value = registry
@@ -175,7 +175,7 @@ pub fn build_get<'ctx, 'this>(
                 &info.branch_signatures()[0].vars[1].ty,
             )?;
 
-        block_is_null.append_operation(cf::br(block_final, &[value_ptr, default_value], location));
+        block_is_null.append_op_result(cf::br(block_final, &[value_ptr, default_value], location))?;
     }
 
     // found block
@@ -187,16 +187,16 @@ pub fn build_get<'ctx, 'this>(
             value_ty,
             value_layout.align() as i64,
         )?;
-        block_is_found.append_operation(cf::br(
+        block_is_found.append_op_result(cf::br(
             block_final,
             &[result_ptr, loaded_value_ptr],
             location,
-        ));
+        ))?;
     }
 
     // construct the struct
 
-    let op = block_final.append_operation(llvm::undef(entry_ty, location));
+    let op = block_final.append_op_result(llvm::undef(entry_ty, location))?;
     let entry_value = op.result(0)?.into();
 
     let value_ptr = block_final.argument(0)?.into();
@@ -208,7 +208,7 @@ pub fn build_get<'ctx, 'this>(
 
     let entry_value = block_final.insert_value(context, location, entry_value, dict_ptr, 2)?;
 
-    block_final.append_operation(helper.br(0, &[entry_value, value], location));
+    block_final.append_op_result(helper.br(0, &[entry_value, value], location))?;
 
     Ok(())
 }
@@ -270,7 +270,7 @@ pub fn build_finalize<'ctx, 'this>(
         context, helper, entry, dict_ptr, key_ptr, value_ptr, location,
     )?;
 
-    entry.append_operation(helper.br(0, &[dict_ptr], location));
+    entry.append_op_result(helper.br(0, &[dict_ptr], location))?;
 
     Ok(())
 }
