@@ -2,6 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::Result,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
@@ -93,43 +94,18 @@ pub fn build_get<'ctx, 'this>(
     let dict_ptr = entry.argument(0)?.into();
     let key_value = entry.argument(1)?.into();
 
-    let const_1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let key_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, key_ty, Some(key_layout.align()))?;
 
-    let op = helper.init_block().append_operation(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    key_layout.align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(key_ty, 0)])
-            .build()?,
-    );
-
-    let key_ptr = op.result(0)?.into();
-
-    entry.append_operation(llvm::store(
+    entry.store(
         context,
-        key_value,
-        key_ptr,
         location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            key_layout.align() as i64,
-        ))),
-    ));
+        key_ptr,
+        key_value,
+        Some(key_layout.align()),
+    );
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -179,16 +155,8 @@ pub fn build_get<'ctx, 'this>(
 
     // null block
     {
-        let op = block_is_null.append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                value_layout.size() as i64,
-            )
-            .into(),
-            location,
-        ));
-        let alloc_size = op.result(0)?.into();
+        let alloc_size =
+            block_is_null.const_int(context, location, value_layout.size() as i64, 64)?;
 
         let op = block_is_null.append_operation(ReallocBindingsMeta::realloc(
             context, result_ptr, alloc_size, location,
@@ -212,18 +180,18 @@ pub fn build_get<'ctx, 'this>(
 
     // found block
     {
-        let op = block_is_found.append_operation(llvm::load(
+        let loaded_val_ptr = block_is_found.load(
             context,
+            location,
             result_ptr,
             value_ty,
+            value_layout.align() as i64,
+        )?;
+        block_is_found.append_operation(cf::br(
+            block_final,
+            &[result_ptr, loaded_value_ptr],
             location,
-            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                value_layout.align() as i64,
-            ))),
         ));
-        let loaded_value = op.result(0)?.into();
-        block_is_found.append_operation(cf::br(block_final, &[result_ptr, loaded_value], location));
     }
 
     // construct the struct
@@ -234,30 +202,11 @@ pub fn build_get<'ctx, 'this>(
     let value_ptr = block_final.argument(0)?.into();
     let value = block_final.argument(1)?.into();
 
-    let op = block_final.append_operation(llvm::insert_value(
-        context,
-        entry_value,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        key_value,
-        location,
-    ));
-    let entry_value = op.result(0)?.into();
-    let op = block_final.append_operation(llvm::insert_value(
-        context,
-        entry_value,
-        DenseI64ArrayAttribute::new(context, &[1]),
-        value_ptr,
-        location,
-    ));
-    let entry_value = op.result(0)?.into();
-    let op = block_final.append_operation(llvm::insert_value(
-        context,
-        entry_value,
-        DenseI64ArrayAttribute::new(context, &[2]),
-        dict_ptr,
-        location,
-    ));
-    let entry_value = op.result(0)?.into();
+    let entry_value = block_final.insert_value(context, location, entry_value, key_value, 0)?;
+
+    let entry_value = block_final.insert_value(context, location, entry_value, value_ptr, 1)?;
+
+    let entry_value = block_final.insert_value(context, location, entry_value, dict_ptr, 2)?;
 
     block_final.append_operation(helper.br(0, &[entry_value, value], location));
 
@@ -282,81 +231,34 @@ pub fn build_finalize<'ctx, 'this>(
     let entry_value = entry.argument(0)?.into();
     let new_value = entry.argument(1)?.into();
 
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        entry_value,
-        DenseI64ArrayAttribute::new(context, &[0]),
-        key_ty,
-        location,
-    ));
-    let key_value = op.result(0)?.into();
+    let key_value = entry.extract_value(context, location, entry_value, key_ty, 0)?;
 
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        entry_value,
-        DenseI64ArrayAttribute::new(context, &[1]),
-        opaque_pointer(context),
-        location,
-    ));
-    let value_ptr = op.result(0)?.into();
+    let value_ptr =
+        entry.extract_value(context, location, entry_value, opaque_pointer(context), 1)?;
 
-    let op = entry.append_operation(llvm::extract_value(
-        context,
-        entry_value,
-        DenseI64ArrayAttribute::new(context, &[2]),
-        opaque_pointer(context),
-        location,
-    ));
-    let dict_ptr = op.result(0)?.into();
+    let dict_ptr =
+        entry.extract_value(context, location, entry_value, opaque_pointer(context), 2)?;
 
-    entry.append_operation(llvm::store(
+    entry.store(
         context,
-        new_value,
+        location,
         value_ptr,
-        location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            value_layout.align() as i64,
-        ))),
-    ));
-
-    let const_1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-
-    let op = helper.init_block().append_operation(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    key_layout.align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(key_ty, 0)])
-            .build()?,
+        new_value,
+        value_layout.align() as i64,
     );
 
-    let key_ptr = op.result(0)?.into();
+    let key_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, key_ty, Some(key_layout.align()))?;
 
-    entry.append_operation(llvm::store(
+    entry.store(
         context,
-        key_value,
-        key_ptr,
         location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            key_layout.align() as i64,
-        ))),
-    ));
+        key_ptr,
+        key_value,
+        Some(key_layout.align()),
+    );
 
     // call insert
 
