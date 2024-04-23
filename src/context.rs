@@ -79,6 +79,7 @@ impl NativeContext {
 
         let data_layout_ret = &get_data_layout_rep()?;
 
+        // create a new module and add the target triple and data layout
         let op = OperationBuilder::new(
             "builtin.module",
             Location::name(&self.context, "module", Location::unknown(&self.context)),
@@ -99,14 +100,18 @@ impl NativeContext {
 
         let mut module = Module::from_operation(op).expect("module failed to create");
 
+        // create the metadata storage, this is used to store and share
+        // data across the compilation pipeline
+        let mut metadata = MetadataStorage::new();
+        // Make the runtime library available.
+        metadata.insert(RuntimeBindingsMeta::default());
+
+        // check if the sierra program uses the gas builtin
         let has_gas_builtin = program
             .type_declarations
             .iter()
             .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin");
 
-        let mut metadata = MetadataStorage::new();
-        // Make the runtime library available.
-        metadata.insert(RuntimeBindingsMeta::default());
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
         let gas_metadata = if has_gas_builtin {
             GasMetadata::new(program, Some(MetadataComputationConfig::default()))
@@ -117,7 +122,7 @@ impl NativeContext {
         // already some metadata of the same type.
         metadata.insert(gas_metadata);
 
-        // Create the Sierra program registry
+        // Create the Sierra program registry. This allow us to perform type and function lookups.
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 
         crate::compile(
