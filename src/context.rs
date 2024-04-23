@@ -207,6 +207,12 @@ impl NativeContext {
 }
 
 /// Initialize an MLIR context.
+/// This involves:
+/// - Creating the context.
+/// - Registering all relevant MLIR dialects into the context.
+/// - Loading the dialects into the context.
+/// - Registering all passes into the context.
+/// - Registering all translations to LLVM IR into the context.
 pub fn initialize_mlir() -> Context {
     let context = Context::new();
     context.append_dialect_registry(&{
