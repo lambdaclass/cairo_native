@@ -31,13 +31,13 @@ pub fn build<'ctx, 'this>(
     let lhs = entry.argument(1)?.into();
     let rhs = entry.argument(2)?.into();
 
-    let logical_and = entry.append_op_result(arith::andi(lhs, rhs, location));
-    let logical_xor = entry.append_op_result(arith::xori(lhs, rhs, location));
-    let logical_or = entry.append_op_result(arith::ori(lhs, rhs, location));
+    let logical_and = entry.append_op_result(arith::andi(lhs, rhs, location))?;
+    let logical_xor = entry.append_op_result(arith::xori(lhs, rhs, location))?;
+    let logical_or = entry.append_op_result(arith::ori(lhs, rhs, location))?;
 
     entry.append_operation(helper.br(
         0,
-        &[bitwise, logical_and?, logical_xor?, logical_or?],
+        &[bitwise, logical_and, logical_xor, logical_or],
         location,
     ));
     Ok(())
