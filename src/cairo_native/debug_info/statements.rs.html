@@ -185,7 +185,7 @@
         map_sierra_to_pre_sierra_statements(function.entry_point, statements, <span class="kw-2">&amp;</span>function_impl.body);
 
     <span class="comment">// Remove Sierra-specific invocations (they have no location since they are compiler-generated).
-    </span><span class="kw">let </span>sierra_to_pre_sierra_mappings: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = sierra_to_pre_sierra_mappings
+    </span><span class="kw">let </span>sierra_to_pre_sierra_mappings = sierra_to_pre_sierra_mappings
         .into_iter()
         .filter(|(<span class="kw">_</span>, statement)| {
             <span class="kw">if let </span>GenStatement::Invocation(invocation) = statement {
