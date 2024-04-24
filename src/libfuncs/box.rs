@@ -4,6 +4,7 @@
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
@@ -21,15 +22,10 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{
-        arith,
-        llvm::{self, r#type::opaque_pointer, AllocaOptions, LoadStoreOptions},
+        llvm::{self, r#type::opaque_pointer},
         ods,
     },
-    ir::{
-        attribute::{IntegerAttribute, TypeAttribute},
-        r#type::IntegerType,
-        Block, Location,
-    },
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -73,18 +69,7 @@ pub fn build_into_box<'ctx, 'this>(
     let inner_type = registry.get_type(&info.ty)?;
     let inner_layout = inner_type.layout(registry)?;
 
-    let value_len = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                inner_layout.pad_to_align().size().try_into()?,
-            )
-            .into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let value_len = entry.const_int(context, location, inner_layout.size() as i64, 64)?;
 
     let ptr = entry
         .append_operation(llvm::nullptr(opaque_pointer(context), location))
@@ -117,16 +102,13 @@ pub fn build_into_box<'ctx, 'this>(
             );
         }
         _ => {
-            entry.append_operation(llvm::store(
+            entry.store(
                 context,
-                entry.argument(0)?.into(),
-                ptr,
                 location,
-                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    inner_layout.align() as i64,
-                ))),
-            ));
+                ptr,
+                entry.argument(0)?.into(),
+                Some(inner_layout.align()),
+            );
         }
     }
 
@@ -155,35 +137,14 @@ pub fn build_unbox<'ctx, 'this>(
                     .iter()
                     .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
         {
-            let value_len = helper
-                .init_block()
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        inner_layout.size() as i64,
-                    )
-                    .into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
-            let stack_ptr = helper
-                .init_block()
-                .append_operation(llvm::alloca(
-                    context,
-                    value_len,
-                    llvm::r#type::opaque_pointer(context),
-                    location,
-                    AllocaOptions::new()
-                        .align(Some(IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            inner_layout.align() as i64,
-                        )))
-                        .elem_type(Some(TypeAttribute::new(inner_ty))),
-                ))
-                .result(0)?
-                .into();
+            let value_len = entry.const_int(context, location, inner_layout.size() as i64, 64)?;
+            let stack_ptr = entry.alloca(
+                context,
+                location,
+                inner_ty,
+                value_len,
+                Some(inner_layout.align()),
+            )?;
 
             entry.append_operation(
                 ods::llvm::intr_memcpy(
@@ -199,19 +160,13 @@ pub fn build_unbox<'ctx, 'this>(
 
             stack_ptr
         }
-        _ => entry
-            .append_operation(llvm::load(
-                context,
-                entry.argument(0)?.into(),
-                inner_ty,
-                location,
-                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    inner_layout.align() as i64,
-                ))),
-            ))
-            .result(0)?
-            .into(),
+        _ => entry.load(
+            context,
+            location,
+            entry.argument(0)?.into(),
+            inner_ty,
+            Some(inner_layout.align()),
+        )?,
     };
 
     entry.append_operation(ReallocBindingsMeta::free(
