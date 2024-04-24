@@ -148,11 +148,7 @@ fn invoke_dynamic(
         .iter()
         .filter(|id| {
             let info = registry.get_type(id).unwrap();
-
-            let is_builtin = <CoreTypeConcrete as TypeBuilder>::is_builtin;
-            let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
-
-            !(is_builtin(info) && is_zst(info, registry))
+            !(info.is_builtin() && info.is_zst(registry))
         })
         .peekable();
 
@@ -185,12 +181,10 @@ fn invoke_dynamic(
     let mut iter = args.iter();
     for type_id in function_signature.param_types.iter().filter(|id| {
         let info = registry.get_type(id).unwrap();
-        !<CoreTypeConcrete as TypeBuilder>::is_zst(info, registry)
+        !info.is_zst(registry)
     }) {
-        let type_info = registry.get_type(type_id).unwrap();
-
         // Process gas requirements and syscall handler.
-        match type_info {
+        match registry.get_type(type_id).unwrap() {
             CoreTypeConcrete::GasBuiltin(_) => invoke_data.push_aligned(
                 get_integer_layout(128).align(),
                 &[gas as u64, (gas >> 64) as u64],
@@ -208,11 +202,16 @@ fn invoke_dynamic(
                     None => panic!("Syscall handler is required"),
                 }
             }
-            _ if is_builtin(type_info) => invoke_data
-                .push(type_id, type_info, &JitValue::Uint64(0))
-                .unwrap(),
-            _ => invoke_data
-                .push(type_id, type_info, iter.next().unwrap())
+            type_info => invoke_data
+                .push(
+                    type_id,
+                    type_info,
+                    if type_info.is_builtin() {
+                        &JitValue::Uint64(0)
+                    } else {
+                        iter.next().unwrap()
+                    },
+                )
                 .unwrap(),
         }
     }
@@ -403,14 +402,16 @@ impl<'a> ArgumentMapper<'a> {
                 );
             }
             (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {
-                self.push_aligned(get_integer_layout(252).align(), &a.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &b.to_le_digits());
+                let align = get_integer_layout(252).align();
+                self.push_aligned(align, &a.to_le_digits());
+                self.push_aligned(align, &b.to_le_digits());
             }
             (CoreTypeConcrete::EcState(_), JitValue::EcState(a, b, c, d)) => {
-                self.push_aligned(get_integer_layout(252).align(), &a.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &b.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &c.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &d.to_le_digits());
+                let align = get_integer_layout(252).align();
+                self.push_aligned(align, &a.to_le_digits());
+                self.push_aligned(align, &b.to_le_digits());
+                self.push_aligned(align, &c.to_le_digits());
+                self.push_aligned(align, &d.to_le_digits());
             }
             (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
                 if type_info.is_memory_allocated(self.registry) {
