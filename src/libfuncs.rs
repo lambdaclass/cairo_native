@@ -521,7 +521,7 @@ mod tests {
         let context = native_context.context();
 
         // Create an unknown location in the context
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new MLIR module with the unknown location
         let module = Module::new(location);
 
@@ -541,7 +541,7 @@ mod tests {
         };
 
         // Create an integer type with 32 bits
-        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let i32_type: Type = IntegerType::new(context, 32).into();
         // Create a default block with the integer type and the unknown location
         let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
 
@@ -551,7 +551,7 @@ mod tests {
         // Append a constant arithmetic operation to the block and obtain its result operand
         let operand = block
             .append_operation(arith::constant(
-                &context,
+                context,
                 IntegerAttribute::new(i32_type, 1).into(),
                 location,
             ))
@@ -574,7 +574,7 @@ mod tests {
         let cf_switch = block.append_operation(
             lib_func_helper
                 .switch(
-                    &context,
+                    context,
                     operand,
                     (BranchTarget::Return(10), &[]),
                     &[
@@ -597,7 +597,7 @@ mod tests {
         let context = native_context.context();
 
         // Create an unknown location in the context
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new MLIR module with the unknown location
         let module = Module::new(location);
 
@@ -617,7 +617,7 @@ mod tests {
         };
 
         // Create an integer type with 32 bits
-        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let i32_type: Type = IntegerType::new(context, 32).into();
         // Create a default block with the integer type and the unknown location
         let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
 
@@ -627,7 +627,7 @@ mod tests {
         // Append a constant arithmetic operation to the block and obtain its result operand
         let operand = block
             .append_operation(arith::constant(
-                &context,
+                context,
                 IntegerAttribute::new(i32_type, 1).into(),
                 location,
             ))
@@ -650,7 +650,7 @@ mod tests {
         let cf_switch = block.append_operation(
             lib_func_helper
                 .switch(
-                    &context,
+                    context,
                     operand,
                     (
                         BranchTarget::Return(10),
@@ -682,7 +682,7 @@ mod tests {
         let context = native_context.context();
 
         // Create an unknown location in the context
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new MLIR module with the unknown location
         let module = Module::new(location);
 
@@ -702,7 +702,7 @@ mod tests {
         };
 
         // Create an integer type with 32 bits
-        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let i32_type: Type = IntegerType::new(context, 32).into();
         // Create a default block with the integer type and the unknown location
         let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
 
@@ -712,7 +712,7 @@ mod tests {
         // Append a constant arithmetic operation to the block and obtain its result operand
         let operand = block
             .append_operation(arith::constant(
-                &context,
+                context,
                 IntegerAttribute::new(i32_type, 1).into(),
                 location,
             ))
@@ -733,12 +733,12 @@ mod tests {
         let cf_switch = block.append_operation(
             lib_func_helper
                 .switch(
-                    &context,
+                    context,
                     operand,
-                    (BranchTarget::Jump(&default_block), &[operand]),
+                    (BranchTarget::Jump(default_block), &[operand]),
                     &[
-                        (0, BranchTarget::Jump(&default_block), &[operand]),
-                        (1, BranchTarget::Jump(&default_block), &[operand]),
+                        (0, BranchTarget::Jump(default_block), &[operand]),
+                        (1, BranchTarget::Jump(default_block), &[operand]),
                     ],
                     location,
                 )
