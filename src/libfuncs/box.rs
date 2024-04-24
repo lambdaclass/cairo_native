@@ -69,7 +69,7 @@ pub fn build_into_box<'ctx, 'this>(
     let inner_type = registry.get_type(&info.ty)?;
     let inner_layout = inner_type.layout(registry)?;
 
-    let value_len = entry.const_int(context, location, inner_layout.size() as i64, 64)?;
+    let value_len = entry.const_int(context, location, inner_layout.size(), 64)?;
 
     let ptr = entry
         .append_operation(llvm::nullptr(opaque_pointer(context), location))
@@ -137,8 +137,11 @@ pub fn build_unbox<'ctx, 'this>(
                     .iter()
                     .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
         {
-            let value_len = entry.const_int(context, location, inner_layout.size() as i64, 64)?;
-            let stack_ptr = entry.alloca(
+            let value_len =
+                helper
+                    .init_block()
+                    .const_int(context, location, inner_layout.size() as i64, 64)?;
+            let stack_ptr = helper.init_block().alloca(
                 context,
                 location,
                 inner_ty,
