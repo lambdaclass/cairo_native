@@ -4831,6 +4831,13 @@
 <a href="#4830" id="4830">4830</a>
 <a href="#4831" id="4831">4831</a>
 <a href="#4832" id="4832">4832</a>
+<a href="#4833" id="4833">4833</a>
+<a href="#4834" id="4834">4834</a>
+<a href="#4835" id="4835">4835</a>
+<a href="#4836" id="4836">4836</a>
+<a href="#4837" id="4837">4837</a>
+<a href="#4838" id="4838">4838</a>
+<a href="#4839" id="4839">4839</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Starknet libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -5148,6 +5155,7 @@
                 context,
                 <span class="kw-2">&amp;</span>[
                     llvm::r#type::pointer(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>),
+                    IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                 ],
@@ -6494,6 +6502,7 @@
                     llvm::r#type::pointer(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
+                    IntegerType::new(context, <span class="number">32</span>).into(),
                 ],
                 <span class="bool-val">false</span>,
             )],
@@ -6531,6 +6540,7 @@
                 context,
                 <span class="kw-2">&amp;</span>[
                     llvm::r#type::pointer(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>),
+                    IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                 ],
@@ -7792,6 +7802,7 @@
                     llvm::r#type::pointer(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
+                    IntegerType::new(context, <span class="number">32</span>).into(),
                 ],
                 <span class="bool-val">false</span>,
             )],
@@ -8150,6 +8161,7 @@
             context,
             <span class="kw-2">&amp;</span>[
                 llvm::r#type::pointer(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>),
+                IntegerType::new(context, <span class="number">32</span>).into(),
                 IntegerType::new(context, <span class="number">32</span>).into(),
                 IntegerType::new(context, <span class="number">32</span>).into(),
             ],
@@ -8521,6 +8533,7 @@
                 context,
                 <span class="kw-2">&amp;</span>[
                     llvm::r#type::pointer(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>),
+                    IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                 ],
@@ -9188,6 +9201,7 @@
                 context,
                 <span class="kw-2">&amp;</span>[
                     llvm::r#type::pointer(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>),
+                    IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                 ],
