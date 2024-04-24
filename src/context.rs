@@ -190,6 +190,7 @@ impl NativeContext {
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
 
+        // Insert the gas metadata into the context's metadata
         let gas_metadata = GasMetadata::new(program, Some(metadata_config))?;
         metadata.insert(gas_metadata);
 

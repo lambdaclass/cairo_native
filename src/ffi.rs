@@ -252,6 +252,7 @@ pub fn get_target_triple() -> String {
     target_triple
 }
 
+/// Returns the data layout string based on the host machine target.
 pub fn get_data_layout_rep() -> Result<String, CompileError> {
     unsafe {
         let mut null = null_mut();

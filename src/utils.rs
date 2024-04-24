@@ -248,6 +248,8 @@ pub fn create_engine(
     engine
 }
 
+/// Runs the different passes on the module.
+/// This converts from MLIR to LLVM IR and optimize the result, among other things.
 pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Error> {
     let pass_manager = PassManager::new(context);
     pass_manager.enable_verifier(true);
