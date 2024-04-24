@@ -159,11 +159,11 @@ pub fn build_downcast<'ctx, 'this>(
         };
 
         let result = if src_width > dst_width {
-            block.append_operation(arith::trunci(src_value, dst_ty, location))
+            block.append_op_result(arith::trunci(src_value, dst_ty, location))?
         } else if is_signed {
-            block.append_operation(arith::extsi(src_value, dst_ty, location))
+            block.append_op_result(arith::extsi(src_value, dst_ty, location))?
         } else {
-            block.append_operation(arith::extui(src_value, dst_ty, location))
+            block.append_op_result(arith::extui(src_value, dst_ty, location))?
         };
 
         let (compare_value, compare_ty) = if src_width > dst_width {
