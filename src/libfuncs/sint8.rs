@@ -3,6 +3,7 @@ use super::LibfuncHelper;
 use std::ops::Shr;
 
 use crate::{
+    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     utils::ProgramRegistryExt,
@@ -87,13 +88,9 @@ pub fn build_const<'ctx, 'this>(
         &info.signature.branch_signatures[0].vars[0].ty,
     )?;
 
-    let op0 = entry.append_operation(arith::constant(
-        context,
-        Attribute::parse(context, &format!("{value} : {value_ty}"))
-            .ok_or(Error::ParseAttributeError)?,
-        location,
-    ));
-    entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
+    let value = entry.const_int_from_type(context, location, value, value_ty)?;
+
+    entry.append_operation(helper.br(0, &[value], location));
 
     Ok(())
 }

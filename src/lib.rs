@@ -70,6 +70,7 @@ pub use self::{
     ffi::{module_to_object, object_to_shared_lib, LLVMCompileError, OptLevel},
 };
 
+pub(crate) mod block_ext;
 pub mod cache;
 mod compiler;
 pub mod context;
