@@ -2,7 +2,8 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt, error::Result, metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage}
+    error::Result,
+    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
     extensions::{

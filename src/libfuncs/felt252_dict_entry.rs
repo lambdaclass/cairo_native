@@ -22,14 +22,12 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{
-        arith, cf,
-        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        cf,
+        llvm::{self, r#type::opaque_pointer},
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Block, Identifier, Location, Value, ValueLike,
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        Identifier, Location, Value, ValueLike,
     },
     Context,
 };
@@ -114,16 +112,14 @@ pub fn build_get<'ctx, 'this>(
     let op = runtime_bindings.dict_get(context, helper, entry, dict_ptr, key_ptr, location)?;
     let result_ptr: Value = op.result(0)?.into();
 
-    let op = entry.append_op_result(
+    let null_ptr = entry.append_op_result(
         OperationBuilder::new("llvm.mlir.null", location)
             .add_results(&[result_ptr.r#type()])
             .build()?,
     )?;
 
-    let null_ptr = op.result(0)?.into();
-
     // need llvm instead of arith to compare pointers
-    let op = entry.append_op_result(
+    let is_null_ptr = entry.append_op_result(
         OperationBuilder::new("llvm.icmp", location)
             .add_operands(&[result_ptr, null_ptr])
             .add_attributes(&[(
@@ -133,8 +129,6 @@ pub fn build_get<'ctx, 'this>(
             .add_results(&[IntegerType::new(context, 1).into()])
             .build()?,
     )?;
-
-    let is_null_ptr = op.result(0)?.into();
 
     let block_is_null = helper.append_block(Block::new(&[]));
     let block_is_found = helper.append_block(Block::new(&[]));
@@ -155,13 +149,11 @@ pub fn build_get<'ctx, 'this>(
 
     // null block
     {
-        let alloc_size =
-            block_is_null.const_int(context, location, value_layout.size(), 64)?;
+        let alloc_size = block_is_null.const_int(context, location, value_layout.size(), 64)?;
 
-        let op = block_is_null.append_op_result(ReallocBindingsMeta::realloc(
+        let value_ptr = block_is_null.append_op_result(ReallocBindingsMeta::realloc(
             context, result_ptr, alloc_size, location,
         ))?;
-        let value_ptr = op.result(0)?.into();
 
         let default_value = registry
             .get_type(&info.branch_signatures()[0].vars[1].ty)?
@@ -189,7 +181,7 @@ pub fn build_get<'ctx, 'this>(
         )?;
         block_is_found.append_operation(cf::br(
             block_final,
-            &[result_ptr, loaded_value_ptr],
+            &[result_ptr, loaded_val_ptr],
             location,
         ));
     }
