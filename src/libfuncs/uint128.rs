@@ -2,9 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result},
-    metadata::MetadataStorage,
-    utils::{mlir_asm, ProgramRegistryExt},
+    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,7 +25,7 @@ use melior::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Location, Region, Value, ValueLike,
+        Block, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -118,7 +116,7 @@ pub fn build_const<'ctx, 'this>(
 ) -> Result<()> {
     let value = info.c;
 
-    let u128_ty = registry.build_type(
+    let value_ty = registry.build_type(
         context,
         helper,
         registry,
@@ -126,14 +124,10 @@ pub fn build_const<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let attr_c = Attribute::parse(context, &format!("{value} : {u128_ty}"))
-        .ok_or(Error::ParseAttributeError)?;
+    let value = entry.const_int_from_type(context, location, value, value_ty)?;
 
-    mlir_asm! { context, entry, location =>
-        ; k0 = "arith.constant"() { "value" = attr_c } : () -> u128_ty
-    }
+    entry.append_operation(helper.br(0, &[value], location));
 
-    entry.append_operation(helper.br(0, &[k0], location));
     Ok(())
 }
 
