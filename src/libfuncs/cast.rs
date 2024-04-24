@@ -23,10 +23,11 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 use starknet_types_core::felt::Felt;
+use num_bigint::ToBigInt;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -92,17 +93,17 @@ pub fn build_downcast<'ctx, 'this>(
     let mut block = entry;
 
     let (is_in_range, result) = if src_ty == dst_ty {
-        let k0 = block.constant_int(context, location, 0, 1);
+        let k0 = block.const_int(context, location, 0, 1)?;
         (k0, src_value)
     } else {
         // make unsigned felt into signed felt
         // felt > half prime = negative
         let src_value = if is_felt {
             let attr_halfprime_i252 = metadata
-            .get::<PrimeModuloMeta<Felt>>()
-            .ok_or(Error::MissingMetadata)?
-            .prime()
-            .shr(1);
+                .get::<PrimeModuloMeta<Felt>>()
+                .ok_or(Error::MissingMetadata)?
+                .prime()
+                .shr(1);
 
             let half_prime =
                 block.const_int_from_type(context, location, attr_halfprime_i252, src_ty)?;
@@ -133,7 +134,8 @@ pub fn build_downcast<'ctx, 'this>(
                     .get::<PrimeModuloMeta<Felt>>()
                     .ok_or(Error::MissingMetadata)?
                     .prime();
-                let prime = is_neg_block.const_int_from_type(context, location, value, src_ty)?;
+                let prime =
+                    is_neg_block.const_int_from_type(context, location, value.to_bigint().unwrap(), src_ty)?;
 
                 let mut src_value_is_neg =
                     is_neg_block.append_op_result(arith::subi(prime, src_value, location))?;
@@ -334,13 +336,16 @@ pub fn build_upcast<'ctx, 'this>(
                     IntegerType::new(context, dst_width.try_into()?).into(),
                     location,
                 ))?;
+
+                let value = metadata
+                .get::<PrimeModuloMeta<Felt>>()
+                .ok_or(Error::MissingMetadata)?
+                .prime().to_bigint().unwrap();
+
                 let prime = is_neg_block.const_int_from_type(
                     context,
                     location,
-                    metadata
-                        .get::<PrimeModuloMeta<Felt>>()
-                        .ok_or(Error::MissingMetadata)?
-                        .prime(),
+                    value,
                     dst_type,
                 )?;
 
@@ -352,18 +357,18 @@ pub fn build_upcast<'ctx, 'this>(
             final_block.append_operation(helper.br(0, &[result], location));
             return Ok(());
         } else {
-            block.append_operation(arith::extsi(
+            block.append_op_result(arith::extsi(
                 entry.argument(0)?.into(),
                 IntegerType::new(context, dst_width.try_into()?).into(),
                 location,
-            ));
+            ))?
         }
     } else {
-        block.append_operation(arith::extui(
+        block.append_op_result(arith::extui(
             block.argument(0)?.into(),
             IntegerType::new(context, dst_width.try_into()?).into(),
             location,
-        ));
+        ))?
     };
 
     block.append_operation(helper.br(0, &[result], location));
