@@ -654,7 +654,8 @@ impl TypeBuilder for CoreTypeConcrete {
                     .expect("should always fit u32"),
             ),
             CoreTypeConcrete::Const(_) => todo!(),
-        })
+        }
+        .pad_to_align())
     }
 
     fn is_memory_allocated(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
