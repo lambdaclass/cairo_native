@@ -98,35 +98,27 @@ pub fn build_downcast<'ctx, 'this>(
         // make unsigned felt into signed felt
         // felt > half prime = negative
         let src_value = if is_felt {
-            let attr_halfprime_i252 = Attribute::parse(
-                context,
-                &format!(
-                    "{} : {}",
-                    metadata
-                        .get::<PrimeModuloMeta<Felt>>()
-                        .ok_or(Error::MissingMetadata)?
-                        .prime()
-                        .shr(1),
-                    src_ty
-                ),
-            )
-            .ok_or(Error::ParseAttributeError)?;
-            let half_prime = block
-                .append_op_result(arith::constant(context, attr_halfprime_i252, location))?;
+            let attr_halfprime_i252 = metadata
+            .get::<PrimeModuloMeta<Felt>>()
+            .ok_or(Error::MissingMetadata)?
+            .prime()
+            .shr(1);
 
-            let is_felt_neg = block
-                .append_op_result(arith::cmpi(
-                    context,
-                    CmpiPredicate::Ugt,
-                    src_value,
-                    half_prime,
-                    location,
-                ))?;
+            let half_prime =
+                block.const_int_from_type(context, location, attr_halfprime_i252, src_ty)?;
+
+            let is_felt_neg = block.append_op_result(arith::cmpi(
+                context,
+                CmpiPredicate::Ugt,
+                src_value,
+                half_prime,
+                location,
+            ))?;
             let is_neg_block = helper.append_block(Block::new(&[]));
             let is_not_neg_block = helper.append_block(Block::new(&[]));
             let final_block = helper.append_block(Block::new(&[(src_ty, location)]));
 
-            block.append_op_result(cf::cond_br(
+            block.append_operation(cf::cond_br(
                 context,
                 is_felt_neg,
                 is_neg_block,
@@ -134,45 +126,30 @@ pub fn build_downcast<'ctx, 'this>(
                 &[],
                 &[],
                 location,
-            ))?;
+            ));
 
             {
-                let prime = is_neg_block
-                    .append_op_result(arith::constant(
-                        context,
-                        Attribute::parse(
-                            context,
-                            &format!(
-                                "{} : {}",
-                                metadata
-                                    .get::<PrimeModuloMeta<Felt>>()
-                                    .ok_or(Error::MissingMetadata)?
-                                    .prime(),
-                                src_ty
-                            ),
-                        )
-                        .ok_or(Error::ParseAttributeError)?,
-                        location,
-                    ))?;
+                let value = metadata
+                    .get::<PrimeModuloMeta<Felt>>()
+                    .ok_or(Error::MissingMetadata)?
+                    .prime();
+                let prime = is_neg_block.const_int_from_type(context, location, value, src_ty)?;
 
-                let mut src_value_is_neg = is_neg_block
-                    .append_op_result(arith::subi(prime, src_value, location))?;
+                let mut src_value_is_neg =
+                    is_neg_block.append_op_result(arith::subi(prime, src_value, location))?;
 
-                let kneg1 = is_neg_block
-                    .append_op_result(arith::constant(
-                        context,
-                        Attribute::parse(context, &format!("-1 : {}", src_ty))
-                            .ok_or(Error::ParseAttributeError)?,
-                        location,
-                    ))?;
+                let kneg1 = is_neg_block.const_int_from_type(context, location, -1, src_ty)?;
 
-                src_value_is_neg = is_neg_block
-                    .append_op_result(arith::muli(src_value_is_neg, kneg1, location))?;
+                src_value_is_neg = is_neg_block.append_op_result(arith::muli(
+                    src_value_is_neg,
+                    kneg1,
+                    location,
+                ))?;
 
-                is_neg_block.append_op_result(cf::br(final_block, &[src_value_is_neg], location))?;
+                is_neg_block.append_operation(cf::br(final_block, &[src_value_is_neg], location));
             }
 
-            is_not_neg_block.append_op_result(cf::br(final_block, &[src_value], location))?;
+            is_not_neg_block.append_operation(cf::br(final_block, &[src_value], location));
 
             block = final_block;
 
@@ -182,14 +159,11 @@ pub fn build_downcast<'ctx, 'this>(
         };
 
         let result = if src_width > dst_width {
-            block
-                .append_op_result(arith::trunci(src_value, dst_ty, location))?
+            block.append_operation(arith::trunci(src_value, dst_ty, location))
         } else if is_signed {
-            block
-                .append_op_result(arith::extsi(src_value, dst_ty, location))?
+            block.append_operation(arith::extsi(src_value, dst_ty, location))
         } else {
-            block
-                .append_op_result(arith::extui(src_value, dst_ty, location))?
+            block.append_operation(arith::extui(src_value, dst_ty, location))
         };
 
         let (compare_value, compare_ty) = if src_width > dst_width {
@@ -198,81 +172,63 @@ pub fn build_downcast<'ctx, 'this>(
             (result, dst_ty)
         };
 
-        let max_val_parse = Attribute::parse(
+        let max_value = block.const_int_from_type(
             context,
-            &format!(
-                "{}: {}",
-                info.to_range
-                    .intersection(&info.from_range)
-                    .ok_or_else(|| Error::SierraAssert(
-                        "range should always interesct".to_string()
-                    ))?
-                    .upper,
-                compare_ty
-            ),
-        )
-        .ok_or_else(|| Error::Error("downcast: failed to make max value attribute".to_string()))?;
+            location,
+            info.to_range
+                .intersection(&info.from_range)
+                .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
+                .upper,
+            compare_ty,
+        )?;
 
-        let max_value =
-            block.const_int_from_type(context, location, max_value_parse, compare_ty)?;
-
-        let min_val_parse = Attribute::parse(
+        let min_value = block.const_int_from_type(
             context,
-            &format!(
-                "{}: {}",
-                info.to_range
-                    .intersection(&info.from_range)
-                    .ok_or_else(|| Error::SierraAssert(
-                        "range should always interesct".to_string()
-                    ))?
-                    .lower,
-                compare_ty
-            ),
-        )
-        .ok_or_else(|| Error::Error("downcast: failed to make min value attribute".to_string()))?;
+            location,
+            info.to_range
+                .intersection(&info.from_range)
+                .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
+                .lower,
+            compare_ty,
+        )?;
 
-        let min_value =
-            block.const_int_from_type(context, location, min_value_parse, compare_ty)?;
+        let is_in_range_upper = block.append_op_result(arith::cmpi(
+            context,
+            if is_signed {
+                CmpiPredicate::Slt
+            } else {
+                CmpiPredicate::Ult
+            },
+            compare_value,
+            max_value,
+            location,
+        ))?;
 
-        let is_in_range_upper = block
-            .append_op_result(arith::cmpi(
-                context,
-                if is_signed {
-                    CmpiPredicate::Slt
-                } else {
-                    CmpiPredicate::Ult
-                },
-                compare_value,
-                max_value,
-                location,
-            ))?;
+        let is_in_range_lower = block.append_op_result(arith::cmpi(
+            context,
+            if is_signed {
+                CmpiPredicate::Sge
+            } else {
+                CmpiPredicate::Uge
+            },
+            compare_value,
+            min_value,
+            location,
+        ))?;
 
-        let is_in_range_lower = block
-            .append_op_result(arith::cmpi(
-                context,
-                if is_signed {
-                    CmpiPredicate::Sge
-                } else {
-                    CmpiPredicate::Uge
-                },
-                compare_value,
-                min_value,
-                location,
-            ))?;
-
-        let is_in_range = block
-            .append_op_result(arith::andi(is_in_range_upper, is_in_range_lower, location))?;
+        let is_in_range =
+            block.append_op_result(arith::andi(is_in_range_upper, is_in_range_lower, location))?;
 
         (is_in_range, result)
     };
 
-    block.append_op_result(helper.cond_br(
+    block.append_operation(helper.cond_br(
         context,
         is_in_range,
         [0, 1],
         [&[range_check, result], &[range_check]],
         location,
-    ))?;
+    ));
 
     Ok(())
 }
@@ -332,35 +288,27 @@ pub fn build_upcast<'ctx, 'this>(
         block.argument(0)?.into()
     } else if is_signed {
         if is_felt {
-            let result = block
-                .append_op_result(arith::extsi(
-                    block.argument(0)?.into(),
-                    IntegerType::new(context, dst_width.try_into()?).into(),
-                    location,
-                ))?;
+            let result = block.append_op_result(arith::extsi(
+                block.argument(0)?.into(),
+                IntegerType::new(context, dst_width.try_into()?).into(),
+                location,
+            ))?;
 
-            let kzero = block
-                .append_op_result(arith::constant(
-                    context,
-                    Attribute::parse(context, &format!("0 : {}", dst_type))
-                        .ok_or(Error::ParseAttributeError)?,
-                    location,
-                ))?;
+            let kzero = block.const_int_from_type(context, location, 0, dst_type)?;
 
-            let is_neg = block
-                .append_op_result(arith::cmpi(
-                    context,
-                    CmpiPredicate::Slt,
-                    result,
-                    kzero,
-                    location,
-                ))?;
+            let is_neg = block.append_op_result(arith::cmpi(
+                context,
+                CmpiPredicate::Slt,
+                result,
+                kzero,
+                location,
+            ))?;
 
             let is_neg_block = helper.append_block(Block::new(&[]));
             let is_not_neg_block = helper.append_block(Block::new(&[]));
             let final_block = helper.append_block(Block::new(&[(dst_type, location)]));
 
-            block.append_op_result(cf::cond_br(
+            block.append_operation(cf::cond_br(
                 context,
                 is_neg,
                 is_neg_block,
@@ -368,69 +316,57 @@ pub fn build_upcast<'ctx, 'this>(
                 &[],
                 &[],
                 location,
-            ))?;
+            ));
 
             {
-                let result = is_not_neg_block
-                    .append_op_result(arith::extui(
-                        entry.argument(0)?.into(),
-                        IntegerType::new(context, dst_width.try_into()?).into(),
-                        location,
-                    ))?;
-
-                is_not_neg_block.append_op_result(cf::br(final_block, &[result], location))?;
-            }
-
-            {
-                let mut result = is_neg_block
-                    .append_op_result(arith::extsi(
-                        entry.argument(0)?.into(),
-                        IntegerType::new(context, dst_width.try_into()?).into(),
-                        location,
-                    ))?;
-                let prime = is_neg_block
-                    .append_op_result(arith::constant(
-                        context,
-                        Attribute::parse(
-                            context,
-                            &format!(
-                                "{} : {}",
-                                metadata
-                                    .get::<PrimeModuloMeta<Felt>>()
-                                    .ok_or(Error::MissingMetadata)?
-                                    .prime(),
-                                dst_type
-                            ),
-                        )
-                        .ok_or(Error::ParseAttributeError)?,
-                        location,
-                    ))?;
-                result = is_neg_block
-                    .append_op_result(arith::addi(result, prime, location))?;
-                is_neg_block.append_op_result(cf::br(final_block, &[result], location))?;
-            }
-
-            let result = final_block.argument(0)?.into();
-            final_block.append_op_result(helper.br(0, &[result], location))?;
-            return Ok(());
-        } else {
-            block
-                .append_op_result(arith::extsi(
+                let result = is_not_neg_block.append_op_result(arith::extui(
                     entry.argument(0)?.into(),
                     IntegerType::new(context, dst_width.try_into()?).into(),
                     location,
                 ))?;
-        }
-    } else {
-        block
-            .append_op_result(arith::extui(
-                block.argument(0)?.into(),
+
+                is_not_neg_block.append_operation(cf::br(final_block, &[result], location));
+            }
+
+            {
+                let mut result = is_neg_block.append_op_result(arith::extsi(
+                    entry.argument(0)?.into(),
+                    IntegerType::new(context, dst_width.try_into()?).into(),
+                    location,
+                ))?;
+                let prime = is_neg_block.const_int_from_type(
+                    context,
+                    location,
+                    metadata
+                        .get::<PrimeModuloMeta<Felt>>()
+                        .ok_or(Error::MissingMetadata)?
+                        .prime(),
+                    dst_type,
+                )?;
+
+                result = is_neg_block.append_op_result(arith::addi(result, prime, location))?;
+                is_neg_block.append_operation(cf::br(final_block, &[result], location));
+            }
+
+            let result = final_block.argument(0)?.into();
+            final_block.append_operation(helper.br(0, &[result], location));
+            return Ok(());
+        } else {
+            block.append_operation(arith::extsi(
+                entry.argument(0)?.into(),
                 IntegerType::new(context, dst_width.try_into()?).into(),
                 location,
-            ))?;
+            ));
+        }
+    } else {
+        block.append_operation(arith::extui(
+            block.argument(0)?.into(),
+            IntegerType::new(context, dst_width.try_into()?).into(),
+            location,
+        ));
     };
 
-    block.append_op_result(helper.br(0, &[result], location))?;
+    block.append_operation(helper.br(0, &[result], location));
     Ok(())
 }
 
