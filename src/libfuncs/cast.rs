@@ -26,8 +26,8 @@ use melior::{
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
-use starknet_types_core::felt::Felt;
 use num_bigint::ToBigInt;
+use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -134,8 +134,12 @@ pub fn build_downcast<'ctx, 'this>(
                     .get::<PrimeModuloMeta<Felt>>()
                     .ok_or(Error::MissingMetadata)?
                     .prime();
-                let prime =
-                    is_neg_block.const_int_from_type(context, location, value.to_bigint().unwrap(), src_ty)?;
+                let prime = is_neg_block.const_int_from_type(
+                    context,
+                    location,
+                    value.to_bigint().unwrap(),
+                    src_ty,
+                )?;
 
                 let mut src_value_is_neg =
                     is_neg_block.append_op_result(arith::subi(prime, src_value, location))?;
@@ -338,16 +342,13 @@ pub fn build_upcast<'ctx, 'this>(
                 ))?;
 
                 let value = metadata
-                .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(Error::MissingMetadata)?
-                .prime().to_bigint().unwrap();
+                    .get::<PrimeModuloMeta<Felt>>()
+                    .ok_or(Error::MissingMetadata)?
+                    .prime()
+                    .to_bigint()
+                    .unwrap();
 
-                let prime = is_neg_block.const_int_from_type(
-                    context,
-                    location,
-                    value,
-                    dst_type,
-                )?;
+                let prime = is_neg_block.const_int_from_type(context, location, value, dst_type)?;
 
                 result = is_neg_block.append_op_result(arith::addi(result, prime, location))?;
                 is_neg_block.append_operation(cf::br(final_block, &[result], location));
