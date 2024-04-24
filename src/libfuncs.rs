@@ -543,10 +543,10 @@ mod tests {
         // Create an integer type with 32 bits
         let i32_type: Type = IntegerType::new(&context, 32).into();
         // Create a default block with the integer type and the unknown location
-        let default_block = Block::new(&[(i32_type, location)]);
+        let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
 
         // Create a new MLIR block
-        let block = Block::new(&[]);
+        let block = lib_func_helper.append_block(Block::new(&[]));
 
         // Append a constant arithmetic operation to the block and obtain its result operand
         let operand = block
@@ -619,10 +619,10 @@ mod tests {
         // Create an integer type with 32 bits
         let i32_type: Type = IntegerType::new(&context, 32).into();
         // Create a default block with the integer type and the unknown location
-        let default_block = Block::new(&[(i32_type, location)]);
+        let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
 
         // Create a new MLIR block
-        let block = Block::new(&[]);
+        let block = lib_func_helper.append_block(Block::new(&[]));
 
         // Append a constant arithmetic operation to the block and obtain its result operand
         let operand = block
@@ -704,10 +704,10 @@ mod tests {
         // Create an integer type with 32 bits
         let i32_type: Type = IntegerType::new(&context, 32).into();
         // Create a default block with the integer type and the unknown location
-        let default_block = Block::new(&[(i32_type, location)]);
+        let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
 
         // Create a new MLIR block
-        let block = Block::new(&[]);
+        let block = lib_func_helper.append_block(Block::new(&[]));
 
         // Append a constant arithmetic operation to the block and obtain its result operand
         let operand = block
