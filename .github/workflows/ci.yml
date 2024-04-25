@@ -69,7 +69,7 @@ jobs:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ✔️ Code is now correctly formatted.
+            ✅ Code is now correctly formatted.
           edit-mode: replace
 
   # Check for unnecessary dependencies.
