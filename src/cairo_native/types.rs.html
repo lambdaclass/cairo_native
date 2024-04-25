@@ -980,6 +980,7 @@
 <a href="#979" id="979">979</a>
 <a href="#980" id="980">980</a>
 <a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -1636,7 +1637,8 @@
                     .expect(<span class="string">"should always fit u32"</span>),
             ),
             CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        })
+        }
+        .pad_to_align())
     }
 
     <span class="kw">fn </span>is_memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool {
