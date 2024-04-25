@@ -42,6 +42,35 @@ jobs:
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
+      - name: Find Comment
+        continue-on-error: true
+        if: success() || failure()
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: Format
+      - name: Create or update comment
+        continue-on-error: true
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ❌ Code is not formatted! Please run `cargo format` and push the changes.
+          edit-mode: replace
+      - name: Create or update comment
+        continue-on-error: true
+        if: success()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✔️ Code is now correctly formatted.
+          edit-mode: replace
 
   # Check for unnecessary dependencies.
   udeps:

@@ -1173,7 +1173,7 @@ pub fn build_storage_write<'ctx, 'this>(
         )
         .result(0)?
         .into();
-    entry.append_operation(llvm::store(
+        entry.append_operation(llvm::store(
         context,
         entry.argument(4)?.into(),
         value_arg_ptr,
