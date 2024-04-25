@@ -981,6 +981,39 @@
 <a href="#980" id="980">980</a>
 <a href="#981" id="981">981</a>
 <a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
+<a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -1961,6 +1994,39 @@
 
     <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
         <span class="self">self</span>.inner
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>test {
+    <span class="kw">use </span><span class="kw">super</span>::TypeBuilder;
+    <span class="kw">use </span><span class="kw">crate</span>::utils::test::load_cairo;
+    <span class="kw">use </span>cairo_lang_sierra::{
+        extensions::core::{CoreLibfunc, CoreType},
+        program_registry::ProgramRegistry,
+    };
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>ensure_padded_layouts() {
+        <span class="kw">let </span>(<span class="kw">_</span>, program) = <span class="macro">load_cairo! </span>{
+            <span class="attr">#[derive(Drop)]
+            </span><span class="kw">struct </span>A {}
+            <span class="attr">#[derive(Drop)]
+            </span><span class="kw">struct </span>B { a: u8 }
+            <span class="attr">#[derive(Drop)]
+            </span><span class="kw">struct </span>C { a: u8, b: u16 }
+            <span class="attr">#[derive(Drop)]
+            </span><span class="kw">struct </span>D { a: u16, b: u8 }
+
+            <span class="kw">fn </span>main(a: A, b: B, c: C, d: D) {}
+        };
+
+        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
+        <span class="kw">for </span>ty <span class="kw">in </span><span class="kw-2">&amp;</span>program.type_declarations {
+            <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>ty.id).unwrap();
+            <span class="kw">let </span>layout = ty.layout(<span class="kw-2">&amp;</span>registry).unwrap();
+            <span class="macro">assert_eq!</span>(layout, layout.pad_to_align());
+        }
     }
 }
 </code></pre></div></section></main></body></html>
