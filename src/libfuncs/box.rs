@@ -69,7 +69,7 @@ pub fn build_into_box<'ctx, 'this>(
     let inner_type = registry.get_type(&info.ty)?;
     let inner_layout = inner_type.layout(registry)?;
 
-    let value_len = entry.const_int(context, location, inner_layout.size(), 64)?;
+    let value_len = entry.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
 
     let ptr = entry
         .append_operation(llvm::nullptr(opaque_pointer(context), location))
