@@ -1,7 +1,7 @@
 //! # Bytes31-related libfuncs
 
 use super::LibfuncHelper;
-use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         bytes31::Bytes31ConcreteLibfunc,
@@ -55,7 +55,7 @@ pub fn build_const<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
-    let value = &info.c;
+    let value = info.c.clone();
     let value_ty = registry.build_type(
         context,
         helper,
@@ -63,13 +63,15 @@ pub fn build_const<'ctx, 'this>(
         metadata,
         &info.signature.branch_signatures[0].vars[0].ty,
     )?;
-
-    let op0 = entry.append_operation(arith::constant(
+    
+    let constant_value = entry.const_int_from_type(
         context,
-        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
         location,
-    ));
-    entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
+        value,
+        value_ty,
+    )?;
+
+    entry.append_operation(helper.br(0, &[constant_value.into()], location));
 
     Ok(())
 }
