@@ -51,7 +51,7 @@ fn find_statement_locations(
         map_sierra_to_pre_sierra_statements(function.entry_point, statements, &function_impl.body);
 
     // Remove Sierra-specific invocations (they have no location since they are compiler-generated).
-    let sierra_to_pre_sierra_mappings: HashMap<_, _> = sierra_to_pre_sierra_mappings
+    let sierra_to_pre_sierra_mappings = sierra_to_pre_sierra_mappings
         .into_iter()
         .filter(|(_, statement)| {
             if let GenStatement::Invocation(invocation) = statement {

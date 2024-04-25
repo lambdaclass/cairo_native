@@ -5,6 +5,7 @@
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
@@ -23,12 +24,11 @@ use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
         cf,
-        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        llvm::{self, r#type::opaque_pointer},
         ods,
     },
     ir::{
         attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute},
-        operation::OperationBuilder,
         r#type::IntegerType,
         Block, Location, Value, ValueLike,
     },
@@ -197,44 +197,13 @@ pub fn build_append<'ctx, 'this>(
     let elem_layout = elem_ty.layout(registry)?;
     let elem_stride = elem_layout.pad_to_align().size();
 
-    let k1 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let k1 = entry.const_int(context, location, 1, 32)?;
 
-    let elem_stride = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), elem_stride as i64).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let elem_stride = entry.const_int(context, location, elem_stride, 64)?;
 
-    let array_end = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[2]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let array_capacity = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[3]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let array_end = entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 2)?;
+    let array_capacity =
+        entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 3)?;
 
     let has_tail_space = entry
         .append_operation(arith::cmpi(
@@ -263,24 +232,9 @@ pub fn build_append<'ctx, 'this>(
     ));
 
     {
-        let k0 = handle_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-        let array_start = handle_block
-            .append_operation(llvm::extract_value(
-                context,
-                entry.argument(0)?.into(),
-                DenseI64ArrayAttribute::new(context, &[1]),
-                len_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let k0 = handle_block.const_int(context, location, 0, 32)?;
+        let array_start =
+            handle_block.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
 
         let has_head_space = handle_block
             .append_operation(arith::cmpi(
@@ -304,16 +258,8 @@ pub fn build_append<'ctx, 'this>(
     }
 
     {
-        let array_start = memmove_block
-            .append_operation(llvm::extract_value(
-                context,
-                entry.argument(0)?.into(),
-                DenseI64ArrayAttribute::new(context, &[1]),
-                len_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let array_start =
+            memmove_block.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
 
         let start_offset = memmove_block
             .append_operation(arith::extui(
@@ -328,16 +274,8 @@ pub fn build_append<'ctx, 'this>(
             .result(0)?
             .into();
 
-        let dst_ptr = memmove_block
-            .append_operation(llvm::extract_value(
-                context,
-                entry.argument(0)?.into(),
-                DenseI64ArrayAttribute::new(context, &[0]),
-                ptr_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let dst_ptr =
+            memmove_block.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
         let src_ptr = memmove_block
             .append_operation(llvm::get_element_ptr_dynamic(
                 context,
@@ -379,55 +317,17 @@ pub fn build_append<'ctx, 'this>(
             .into(),
         );
 
-        let k0 = memmove_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(len_ty, 0).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-        let value = memmove_block
-            .append_operation(llvm::insert_value(
-                context,
-                entry.argument(0)?.into(),
-                DenseI64ArrayAttribute::new(context, &[1]),
-                k0,
-                location,
-            ))
-            .result(0)?
-            .into();
-        let value = memmove_block
-            .append_operation(llvm::insert_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[2]),
-                array_len,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let k0 = memmove_block.const_int_from_type(context, location, 0, len_ty)?;
+        let value =
+            memmove_block.insert_value(context, location, entry.argument(0)?.into(), k0, 1)?;
+        let value = memmove_block.insert_value(context, location, value, array_len, 2)?;
 
         memmove_block.append_operation(cf::br(append_block, &[value], location));
     }
 
     {
-        let k8 = realloc_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(IntegerType::new(context, 32).into(), 8).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-        let k1024 = realloc_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1024).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let k8 = realloc_block.const_int(context, location, 8, 32)?;
+        let k1024 = realloc_block.const_int(context, location, 1024, 32)?;
 
         // Array allocation growth formula:
         //   new_len = max(8, old_len + min(1024, 2 * old_len));
@@ -463,16 +363,8 @@ pub fn build_append<'ctx, 'this>(
                 .into()
         };
 
-        let ptr = realloc_block
-            .append_operation(llvm::extract_value(
-                context,
-                entry.argument(0)?.into(),
-                DenseI64ArrayAttribute::new(context, &[0]),
-                ptr_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let ptr =
+            realloc_block.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
         let ptr = realloc_block
             .append_operation(ReallocBindingsMeta::realloc(
                 context,
@@ -486,51 +378,28 @@ pub fn build_append<'ctx, 'this>(
         // No need to memmove, guaranteed by the fact that if we needed to memmove we'd have gone
         // through the memmove block instead of reallocating.
 
-        let value = realloc_block
-            .append_operation(llvm::insert_value(
-                context,
-                entry.argument(0)?.into(),
-                DenseI64ArrayAttribute::new(context, &[0]),
-                ptr,
-                location,
-            ))
-            .result(0)?
-            .into();
-        let value = realloc_block
-            .append_operation(llvm::insert_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[3]),
-                new_capacity,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let value =
+            realloc_block.insert_value(context, location, entry.argument(0)?.into(), ptr, 0)?;
+        let value = realloc_block.insert_value(context, location, value, new_capacity, 3)?;
 
         realloc_block.append_operation(cf::br(append_block, &[value], location));
     }
 
     {
-        let ptr = append_block
-            .append_operation(llvm::extract_value(
-                context,
-                append_block.argument(0)?.into(),
-                DenseI64ArrayAttribute::new(context, &[0]),
-                ptr_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
-        let array_end = append_block
-            .append_operation(llvm::extract_value(
-                context,
-                append_block.argument(0)?.into(),
-                DenseI64ArrayAttribute::new(context, &[2]),
-                len_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let ptr = append_block.extract_value(
+            context,
+            location,
+            append_block.argument(0)?.into(),
+            ptr_ty,
+            0,
+        )?;
+        let array_end = append_block.extract_value(
+            context,
+            location,
+            append_block.argument(0)?.into(),
+            len_ty,
+            2,
+        )?;
 
         let offset = append_block
             .append_operation(arith::extui(
@@ -556,31 +425,25 @@ pub fn build_append<'ctx, 'this>(
             .result(0)?
             .into();
 
-        append_block.append_operation(llvm::store(
+        append_block.store(
             context,
-            entry.argument(1)?.into(),
-            ptr,
             location,
-            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                elem_layout.align() as i64,
-            ))),
-        ));
+            ptr,
+            entry.argument(1)?.into(),
+            Some(elem_layout.align()),
+        );
 
         let array_len = append_block
             .append_operation(arith::addi(array_end, k1, location))
             .result(0)?
             .into();
-        let value = append_block
-            .append_operation(llvm::insert_value(
-                context,
-                append_block.argument(0)?.into(),
-                DenseI64ArrayAttribute::new(context, &[2]),
-                array_len,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let value = append_block.insert_value(
+            context,
+            location,
+            append_block.argument(0)?.into(),
+            array_len,
+            2,
+        )?;
 
         append_block.append_operation(helper.br(0, &[value], location));
     }
@@ -607,27 +470,10 @@ pub fn build_len<'ctx, 'this>(
     )?;
 
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+    let array_value = entry.argument(0)?.into();
 
-    let array_start = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[1]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let array_end = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[2]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let array_start = entry.extract_value(context, location, array_value, len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, array_value, len_ty, 2)?;
 
     let array_len = entry
         .append_operation(arith::subi(array_end, array_start, location))
@@ -673,26 +519,8 @@ pub fn build_get<'ctx, 'this>(
     let value = entry.argument(1)?.into();
     let index = entry.argument(2)?.into();
 
-    let array_start = entry
-        .append_operation(llvm::extract_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let array_end = entry
-        .append_operation(llvm::extract_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[2]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let array_start = entry.extract_value(context, location, value, len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
 
     let array_len = entry
         .append_operation(arith::subi(array_end, array_start, location))
@@ -722,16 +550,7 @@ pub fn build_get<'ctx, 'this>(
     ));
 
     {
-        let ptr = valid_block
-            .append_operation(llvm::extract_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[0]),
-                ptr_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let ptr = valid_block.extract_value(context, location, value, ptr_ty, 0)?;
 
         let index = {
             let array_start = valid_block
@@ -756,15 +575,7 @@ pub fn build_get<'ctx, 'this>(
                 .into()
         };
 
-        let elem_stride = valid_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(IntegerType::new(context, 64).into(), elem_stride as i64)
-                    .into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let elem_stride = valid_block.const_int(context, location, elem_stride, 64)?;
         let elem_offset = valid_block
             .append_operation(arith::muli(elem_stride, index, location))
             .result(0)?
@@ -782,18 +593,7 @@ pub fn build_get<'ctx, 'this>(
             .result(0)?
             .into();
 
-        let elem_size = valid_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    elem_layout.size() as i64,
-                )
-                .into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
 
         let target_ptr = valid_block
             .append_operation(llvm::nullptr(
@@ -817,17 +617,7 @@ pub fn build_get<'ctx, 'this>(
         )?;
 
         // TODO: Support clone-only types (those that are not copy).
-        valid_block.append_operation(
-            ods::llvm::intr_memcpy(
-                context,
-                target_ptr,
-                elem_ptr,
-                elem_size,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                location,
-            )
-            .into(),
-        );
+        valid_block.memcpy(context, location, elem_ptr, target_ptr, elem_size);
 
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
     }
@@ -866,26 +656,9 @@ pub fn build_pop_front<'ctx, 'this>(
 
     let value = entry.argument(0)?.into();
 
-    let array_start = entry
-        .append_operation(llvm::extract_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let array_end = entry
-        .append_operation(llvm::extract_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[2]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let array_start = entry.extract_value(context, location, value, len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
+
     let is_empty = entry
         .append_operation(arith::cmpi(
             context,
@@ -910,29 +683,9 @@ pub fn build_pop_front<'ctx, 'this>(
     ));
 
     {
-        let ptr = valid_block
-            .append_operation(llvm::extract_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[0]),
-                ptr_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let ptr = valid_block.extract_value(context, location, value, ptr_ty, 0)?;
 
-        let elem_size = valid_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    elem_layout.size() as i64,
-                )
-                .into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
         let elem_offset = valid_block
             .append_operation(arith::extui(
                 array_start,
@@ -978,40 +731,14 @@ pub fn build_pop_front<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        valid_block.append_operation(
-            ods::llvm::intr_memcpy(
-                context,
-                target_ptr,
-                ptr,
-                elem_size,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                location,
-            )
-            .into(),
-        );
+        valid_block.memcpy(context, location, ptr, target_ptr, elem_size);
 
-        let k1 = valid_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let k1 = valid_block.const_int(context, location, 1, 32)?;
         let new_start = valid_block
             .append_operation(arith::addi(array_start, k1, location))
             .result(0)?
             .into();
-        let value = valid_block
-            .append_operation(llvm::insert_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[1]),
-                new_start,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let value = valid_block.insert_value(context, location, value, new_start, 1)?;
 
         valid_block.append_operation(helper.br(0, &[value, target_ptr], location));
     }
@@ -1077,26 +804,8 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
 
     let value = entry.argument(0)?.into();
 
-    let array_start = entry
-        .append_operation(llvm::extract_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let array_end = entry
-        .append_operation(llvm::extract_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[2]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let array_start = entry.extract_value(context, location, value, len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
     let is_empty = entry
         .append_operation(arith::cmpi(
             context,
@@ -1121,42 +830,15 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
     ));
 
     {
-        let k1 = valid_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let k1 = valid_block.const_int(context, location, 1, 32)?;
         let new_end = valid_block
             .append_operation(arith::subi(array_end, k1, location))
             .result(0)?
             .into();
 
-        let ptr = valid_block
-            .append_operation(llvm::extract_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[0]),
-                ptr_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let ptr = valid_block.extract_value(context, location, value, ptr_ty, 0)?;
 
-        let elem_size = valid_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    elem_layout.size() as i64,
-                )
-                .into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
         let elem_offset = valid_block
             .append_operation(arith::extui(
                 new_end,
@@ -1202,28 +884,9 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        valid_block.append_operation(
-            ods::llvm::intr_memcpy(
-                context,
-                target_ptr,
-                ptr,
-                elem_size,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                location,
-            )
-            .into(),
-        );
+        valid_block.memcpy(context, location, ptr, target_ptr, elem_size);
 
-        let value = valid_block
-            .append_operation(llvm::insert_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[2]),
-                new_end,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let value = valid_block.insert_value(context, location, value, new_end, 2)?;
 
         valid_block.append_operation(helper.br(0, &[value, target_ptr], location));
     }
@@ -1270,26 +933,9 @@ pub fn build_slice<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let array_start = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(1)?.into(),
-            DenseI64ArrayAttribute::new(context, &[1]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let array_end = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(1)?.into(),
-            DenseI64ArrayAttribute::new(context, &[2]),
-            len_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let array_start =
+        entry.extract_value(context, location, entry.argument(1)?.into(), len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, entry.argument(1)?.into(), len_ty, 2)?;
 
     let slice_since = entry
         .append_operation(arith::addi(slice_since, array_start, location))
@@ -1339,18 +985,8 @@ pub fn build_slice<'ctx, 'this>(
     ));
 
     {
-        let elem_size = slice_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    elem_layout.pad_to_align().size() as i64,
-                )
-                .into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let elem_size =
+            slice_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
         let dst_size = slice_block
             .append_operation(arith::extui(
                 slice_length,
@@ -1359,129 +995,54 @@ pub fn build_slice<'ctx, 'this>(
             ))
             .result(0)?
             .into();
-        let dst_size = slice_block
-            .append_operation(arith::muli(dst_size, elem_size, location))
-            .result(0)?
-            .into();
+        let dst_size = slice_block.append_op_result(arith::muli(dst_size, elem_size, location))?;
 
-        let dst_ptr = slice_block
-            .append_operation(llvm::nullptr(
-                llvm::r#type::opaque_pointer(context),
-                location,
-            ))
-            .result(0)?
-            .into();
-        let dst_ptr = slice_block
-            .append_operation(ReallocBindingsMeta::realloc(
-                context, dst_ptr, dst_size, location,
-            ))
-            .result(0)?
-            .into();
+        let dst_ptr = slice_block.append_op_result(llvm::nullptr(
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))?;
+        let dst_ptr = slice_block.append_op_result(ReallocBindingsMeta::realloc(
+            context, dst_ptr, dst_size, location,
+        ))?;
 
         // TODO: Find out if we need to clone stuff using the snapshot clone meta.
         let src_offset = {
-            let slice_since = slice_block
-                .append_operation(arith::extui(
-                    slice_since,
-                    IntegerType::new(context, 64).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
+            let slice_since = slice_block.append_op_result(arith::extui(
+                slice_since,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))?;
 
-            slice_block
-                .append_operation(arith::muli(slice_since, elem_size, location))
-                .result(0)?
-                .into()
+            slice_block.append_op_result(arith::muli(slice_since, elem_size, location))?
         };
 
-        let src_ptr = slice_block
-            .append_operation(llvm::extract_value(
-                context,
-                entry.argument(1)?.into(),
-                DenseI64ArrayAttribute::new(context, &[0]),
-                llvm::r#type::opaque_pointer(context),
-                location,
-            ))
-            .result(0)?
-            .into();
-        let src_ptr = slice_block
-            .append_operation(llvm::get_element_ptr_dynamic(
-                context,
-                src_ptr,
-                &[src_offset],
-                IntegerType::new(context, 8).into(),
-                llvm::r#type::opaque_pointer(context),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let src_ptr = slice_block.extract_value(
+            context,
+            location,
+            entry.argument(1)?.into(),
+            opaque_pointer(context),
+            0,
+        )?;
+        let src_ptr = slice_block.append_op_result(llvm::get_element_ptr_dynamic(
+            context,
+            src_ptr,
+            &[src_offset],
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::opaque_pointer(context),
+            location,
+        ))?;
 
-        slice_block.append_operation(
-            ods::llvm::intr_memcpy(
-                context,
-                dst_ptr,
-                src_ptr,
-                dst_size,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                location,
-            )
-            .into(),
-        );
+        slice_block.memcpy(context, location, src_ptr, dst_ptr, dst_size);
 
-        let k0 = slice_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(len_ty, 0).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let k0 = slice_block.const_int_from_type(context, location, 0, len_ty)?;
 
-        let value = slice_block
-            .append_operation(llvm::undef(array_ty, location))
-            .result(0)?
-            .into();
-        let value = slice_block
-            .append_operation(llvm::insert_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[0]),
-                dst_ptr,
-                location,
-            ))
-            .result(0)?
-            .into();
-        let value = slice_block
-            .append_operation(llvm::insert_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[1]),
-                k0,
-                location,
-            ))
-            .result(0)?
-            .into();
-        let value = slice_block
-            .append_operation(llvm::insert_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[2]),
-                slice_length,
-                location,
-            ))
-            .result(0)?
-            .into();
-        let value = slice_block
-            .append_operation(llvm::insert_value(
-                context,
-                value,
-                DenseI64ArrayAttribute::new(context, &[3]),
-                slice_length,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let value = slice_block.append_op_result(llvm::undef(array_ty, location))?;
+        let value = slice_block.insert_values(
+            context,
+            location,
+            value,
+            &[dst_ptr, k0, slice_length, slice_length],
+        )?;
 
         slice_block.append_operation(helper.br(0, &[range_check, value], location));
     }
@@ -1512,19 +1073,13 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     let container: Value = {
         // load box
-        entry
-            .append_operation(llvm::load(
-                context,
-                entry.argument(0)?.into(),
-                struct_ty,
-                location,
-                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    struct_type_info.layout(registry)?.align() as i64,
-                ))),
-            ))
-            .result(0)?
-            .into()
+        entry.load(
+            context,
+            location,
+            entry.argument(0)?.into(),
+            struct_ty,
+            Some(struct_type_info.layout(registry)?.align()),
+        )?
     };
 
     let fields = struct_type_info.fields().expect("should have fields");
@@ -1541,59 +1096,17 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     )?;
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
-    let array_len_value = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(len_ty, fields.len().try_into().unwrap()).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let array_len_value = entry.const_int_from_type(context, location, fields.len(), len_ty)?;
 
-    let array_container = entry
-        .append_operation(llvm::undef(array_ty, location))
-        .result(0)?
-        .into();
+    let array_container = entry.append_op_result(llvm::undef(array_ty, location))?;
 
-    let k0 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(len_ty, 0).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
 
-    let array_container = entry
-        .append_operation(llvm::insert_value(
-            context,
-            array_container,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            k0,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let array_container = entry
-        .append_operation(llvm::insert_value(
-            context,
-            array_container,
-            DenseI64ArrayAttribute::new(context, &[2]),
-            array_len_value,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let array_container = entry
-        .append_operation(llvm::insert_value(
-            context,
-            array_container,
-            DenseI64ArrayAttribute::new(context, &[3]),
-            array_len_value,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let array_container = entry.insert_value(context, location, array_container, k0, 1)?;
+    let array_container =
+        entry.insert_value(context, location, array_container, array_len_value, 2)?;
+    let array_container =
+        entry.insert_value(context, location, array_container, array_len_value, 3)?;
 
     let opaque_ptr_ty = opaque_pointer(context);
 
@@ -1602,18 +1115,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let field_size: Value = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                field_stride.try_into().unwrap(),
-            )
-            .into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let field_size: Value = entry.const_int(context, location, field_stride, 64)?;
     let array_len_value_i64 = entry
         .append_operation(arith::extui(array_len_value, field_size.r#type(), location))
         .result(0)?
@@ -1631,16 +1133,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         .into();
 
     for (i, _) in fields.iter().enumerate() {
-        let value: Value = entry
-            .append_operation(llvm::extract_value(
-                context,
-                container,
-                DenseI64ArrayAttribute::new(context, &[i.try_into()?]),
-                field_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let value: Value = entry.extract_value(context, location, container, field_ty, i)?;
 
         let target_ptr = entry
             .append_operation(llvm::get_element_ptr(
@@ -1654,25 +1147,10 @@ pub fn build_span_from_tuple<'ctx, 'this>(
             .result(0)?
             .into();
 
-        entry.append_operation(llvm::store(
-            context,
-            value,
-            target_ptr,
-            location,
-            LoadStoreOptions::default(),
-        ));
+        entry.store(context, location, target_ptr, value, None);
     }
 
-    let array_container = entry
-        .append_operation(llvm::insert_value(
-            context,
-            array_container,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            ptr,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let array_container = entry.insert_value(context, location, array_container, ptr, 0)?;
 
     entry.append_operation(helper.br(0, &[array_container], location));
 
@@ -1686,23 +1164,10 @@ fn assert_nonnull<'ctx, 'this>(
     ptr: Value<'ctx, 'this>,
     msg: &str,
 ) -> Result<()> {
-    let k0 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let ptr_value = entry
-        .append_operation(
-            OperationBuilder::new("llvm.ptrtoint", location)
-                .add_operands(&[ptr])
-                .add_results(&[IntegerType::new(context, 64).into()])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let k0 = entry.const_int(context, location, 0, 64)?;
+    let ptr_value = entry.append_op_result(
+        ods::llvm::ptrtoint(context, IntegerType::new(context, 64).into(), ptr, location).into(),
+    )?;
 
     let ptr_is_not_null = entry
         .append_operation(arith::cmpi(

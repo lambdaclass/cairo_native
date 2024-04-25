@@ -4362,6 +4362,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
+                    IntegerType::new(context, 32).into(),
                 ],
                 false,
             )))),

@@ -128,6 +128,7 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      LIBRARY_PATH: /opt/homebrew/lib
       MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
       LLVM_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
       TABLEGEN_170_PREFIX: /opt/homebrew/opt/llvm@17

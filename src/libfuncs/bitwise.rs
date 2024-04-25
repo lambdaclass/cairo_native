@@ -1,7 +1,7 @@
 //! # Bitwise libfuncs
 
 use super::LibfuncHelper;
-use crate::{error::Result, metadata::MetadataStorage};
+use crate::{block_ext::BlockExt, error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -31,18 +31,9 @@ pub fn build<'ctx, 'this>(
     let lhs = entry.argument(1)?.into();
     let rhs = entry.argument(2)?.into();
 
-    let logical_and = entry
-        .append_operation(arith::andi(lhs, rhs, location))
-        .result(0)?
-        .into();
-    let logical_xor = entry
-        .append_operation(arith::xori(lhs, rhs, location))
-        .result(0)?
-        .into();
-    let logical_or = entry
-        .append_operation(arith::ori(lhs, rhs, location))
-        .result(0)?
-        .into();
+    let logical_and = entry.append_op_result(arith::andi(lhs, rhs, location))?;
+    let logical_xor = entry.append_op_result(arith::xori(lhs, rhs, location))?;
+    let logical_or = entry.append_op_result(arith::ori(lhs, rhs, location))?;
 
     entry.append_operation(helper.br(
         0,

@@ -662,7 +662,8 @@ impl TypeBuilder for CoreTypeConcrete {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
             CoreTypeConcrete::Coupon(_) => todo!(),
-        })
+        }
+        .pad_to_align())
     }
 
     fn is_memory_allocated(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
