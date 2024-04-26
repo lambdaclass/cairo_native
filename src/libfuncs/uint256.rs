@@ -1234,5 +1234,10 @@ mod test {
             (5, 0),
             jit_enum!(0, jit_struct!(1u128.into(), 0u128.into())),
         );
+        run(
+            (2, 0),
+            (7, 0),
+            jit_enum!(0, jit_struct!(4u128.into(), 0u128.into())),
+        );
     }
 }
