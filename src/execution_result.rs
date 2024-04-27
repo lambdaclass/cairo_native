@@ -58,19 +58,19 @@ impl ContractExecutionResult {
                                 felt_vec
                             } else {
                                 Err(Error::UnexpectedValue(format!(
-                                    "wrong type, expect: array, value: {:?}",
-                                    &fields[0]
+                                    "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
+                                    value
                                 )))?
                             }
                         } else {
                             Err(Error::UnexpectedValue(format!(
-                                "wrong type, expect: inner struct, value: {:?}",
-                                &fields[0]
+                                "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
+                                value
                             )))?
                         }
                     } else {
                         Err(Error::UnexpectedValue(format!(
-                            "wrong type, expect: outer struct, value: {:?}",
+                            "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
                             value
                         )))?
                     }
@@ -105,13 +105,13 @@ impl ContractExecutionResult {
                         felt_vec
                     } else {
                         Err(Error::UnexpectedValue(format!(
-                            "wrong type, expect: array, value: {:?}",
-                            &fields[1]
+                            "wrong type, expected: Struct {{ [X, Array<felt252>] }}, value: {:?}",
+                            value
                         )))?
                     }
                 } else {
                     Err(Error::UnexpectedValue(format!(
-                        "wrong type, expect: struct, value: {:?}",
+                        "wrong type, expected: Struct {{ [X, Array<felt252>] }}, value: {:?}",
                         value
                     )))?
                 }
