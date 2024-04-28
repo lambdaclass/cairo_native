@@ -863,15 +863,13 @@ pub fn build_storage_write<'ctx, 'this>(
 ) -> Result<()> {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::load(
+        .load(
             context,
+            location,
             entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+            None,
+        )?;
 
     // Allocate space for the return value.
     let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
@@ -996,13 +994,6 @@ pub fn build_storage_write<'ctx, 'this>(
         entry.argument(4)?.into(),
         None,
     );
-    entry.append_operation(llvm::store(
-        context,
-        entry.argument(4)?.into(),
-        value_arg_ptr,
-        location,
-        LoadStoreOptions::default(),
-    ));
 
     // Extract function pointer.
     let fn_ptr_ty = llvm::r#type::function(
@@ -2265,16 +2256,13 @@ pub fn build_deploy<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // Extract self pointer.
-    let ptr = entry
-        .append_operation(llvm::load(
-            context,
-            entry.argument(1)?.into(),
-            llvm::r#type::opaque_pointer(context),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    let ptr = entry.load(
+        context,
+        location,
+        entry.argument(1)?.into(),
+        llvm::r#type::opaque_pointer(context),
+        None,
+    )?;
 
     // Allocate space for the return value.
     let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) = {
@@ -2332,137 +2320,113 @@ pub fn build_deploy<'ctx, 'this>(
         (layout, (tag_ty, tag_layout), output)
     };
 
-    let k1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let result_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "alignment"),
-                        IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            result_layout.align().try_into()?,
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, "elem_type"),
-                        TypeAttribute::new(llvm::r#type::r#struct(
-                            context,
-                            &[
-                                result_tag_ty,
-                                llvm::r#type::array(
-                                    IntegerType::new(context, 8).into(),
-                                    (result_layout.size() - 1).try_into()?,
-                                ),
-                            ],
-                            false,
-                        ))
-                        .into(),
-                    ),
-                ])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-
-    // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
+    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
+    let result_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[
+                (
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
                         IntegerType::new(context, 64).into(),
-                        get_integer_layout(64).align().try_into()?,
+                        result_layout.align().try_into()?,
                     )
                     .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 128).into(),
-                    0,
-                )])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
+                ),
+                (
+                    Identifier::new(context, "elem_type"),
+                    TypeAttribute::new(llvm::r#type::r#struct(
+                        context,
+                        &[
+                            result_tag_ty,
+                            llvm::r#type::array(
+                                IntegerType::new(context, 8).into(),
+                                (result_layout.size() - 1).try_into()?,
+                            ),
+                        ],
+                        false,
+                    ))
+                    .into(),
+                ),
+            ])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::opaque_pointer(context)])
+            .build()?,
+    )?;
+
+    // Allocate space and write the current gas.
+    let gas_builtin_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(64).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(
+                IntegerType::new(context, 128).into(),
+                0,
+            )])
+            .build()?,
+    )?;
+    entry.store(
         context,
-        entry.argument(0)?.into(),
-        gas_builtin_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        gas_builtin_ptr,
+        entry.argument(0)?.into(),
+        None,
+    );
 
     // Allocate `class_hash` argument and write the value.
     let class_hash_arg_ptr_ty = llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0);
-    let class_hash_arg_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[class_hash_arg_ptr_ty])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
+    let class_hash_arg_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[class_hash_arg_ptr_ty])
+            .build()?,
+    )?;
+    entry.store(
         context,
-        entry.argument(2)?.into(),
-        class_hash_arg_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        class_hash_arg_ptr,
+        entry.argument(2)?.into(),
+        None,
+    );
 
     // Allocate `entry_point_selector` argument and write the value.
     let contract_address_salt_arg_ptr_ty =
         llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0);
-    let contract_address_salt_arg_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into().unwrap(),
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[contract_address_salt_arg_ptr_ty])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
+    let contract_address_salt_arg_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into().unwrap(),
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[contract_address_salt_arg_ptr_ty])
+            .build()?,
+    )?;
+    entry.store(
         context,
-        entry.argument(3)?.into(),
-        contract_address_salt_arg_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        contract_address_salt_arg_ptr,
+        entry.argument(3)?.into(),
+        None,
+    );
 
     // Allocate `calldata` argument and write the value.
     let calldata_arg_ptr_ty = llvm::r#type::pointer(
@@ -2482,27 +2446,23 @@ pub fn build_deploy<'ctx, 'this>(
         ),
         0,
     );
-    let calldata_arg_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 8).into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[calldata_arg_ptr_ty])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
+    let calldata_arg_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 8).into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[calldata_arg_ptr_ty])
+            .build()?,
+    )?;
+    entry.store(
         context,
-        entry.argument(4)?.into(),
-        calldata_arg_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        calldata_arg_ptr,
+        entry.argument(4)?.into(),
+        None,
+    );
 
     // Extract function pointer.
     let fn_ptr_ty = llvm::r#type::function(
@@ -2518,30 +2478,24 @@ pub fn build_deploy<'ctx, 'this>(
         ],
         false,
     );
-    let fn_ptr = entry
-        .append_operation(llvm::get_element_ptr(
+    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+        context,
+        entry.argument(1)?.into(),
+        DenseI32ArrayAttribute::new(
             context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(
-                context,
-                &[StarknetSyscallHandlerCallbacks::<()>::DEPLOY.try_into()?],
-            ),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let fn_ptr = entry
-        .append_operation(llvm::load(
-            context,
-            fn_ptr,
-            llvm::r#type::pointer(fn_ptr_ty, 0),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+            &[StarknetSyscallHandlerCallbacks::<()>::DEPLOY.try_into()?],
+        ),
+        llvm::r#type::opaque_pointer(context),
+        llvm::r#type::opaque_pointer(context),
+        location,
+    ))?;
+    let fn_ptr = entry.load(
+        context,
+        location,
+        fn_ptr,
+        llvm::r#type::pointer(fn_ptr_ty, 0),
+        None,
+    )?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -2554,167 +2508,124 @@ pub fn build_deploy<'ctx, 'this>(
                 contract_address_salt_arg_ptr,
                 calldata_arg_ptr,
                 entry
-                    .append_operation(llvm::extract_value(
+                    .extract_value(
                         context,
-                        entry.argument(5)?.into(),
-                        DenseI64ArrayAttribute::new(context, &[0]),
-                        IntegerType::new(context, 1).into(),
                         location,
-                    ))
-                    .result(0)?
-                    .into(),
+                        entry.argument(5)?.into(),
+                        IntegerType::new(context, 1).into(),
+                        0,
+                    )?,
             ])
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+        None,
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
-        let ptr = entry
-            .append_operation(
-                OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[
-                        (
-                            Identifier::new(context, "rawConstantIndices"),
-                            DenseI32ArrayAttribute::new(
-                                context,
-                                &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
-                            )
-                            .into(),
-                        ),
-                        (
-                            Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                        ),
-                    ])
-                    .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build()?,
-            )
-            .result(0)?
-            .into();
-        entry
-            .append_operation(llvm::load(
-                context,
-                ptr,
-                variant_tys[0].0,
-                location,
-                LoadStoreOptions::default(),
-            ))
-            .result(0)?
-            .into()
+        let ptr = entry.append_op_result(
+            OperationBuilder::new("llvm.getelementptr", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "rawConstantIndices"),
+                        DenseI32ArrayAttribute::new(
+                            context,
+                            &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
+                        )
+                        .into(),
+                    ),
+                    (
+                        Identifier::new(context, "elem_type"),
+                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                    ),
+                ])
+                .add_operands(&[result_ptr])
+                .add_results(&[llvm::r#type::opaque_pointer(context)])
+                .build()?,
+        )?;
+        entry.load(context, location, ptr, variant_tys[0].0, None)?
     };
     let payload_err = {
-        let ptr = entry
-            .append_operation(
-                OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[
-                        (
-                            Identifier::new(context, "rawConstantIndices"),
-                            DenseI32ArrayAttribute::new(
-                                context,
-                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                            )
-                            .into(),
-                        ),
-                        (
-                            Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                        ),
-                    ])
-                    .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build()?,
-            )
-            .result(0)?
-            .into();
-        entry
-            .append_operation(llvm::load(
-                context,
-                ptr,
-                variant_tys[1].0,
-                location,
-                LoadStoreOptions::default(),
-            ))
-            .result(0)?
-            .into()
+        let ptr = entry.append_op_result(
+            OperationBuilder::new("llvm.getelementptr", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "rawConstantIndices"),
+                        DenseI32ArrayAttribute::new(
+                            context,
+                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                        )
+                        .into(),
+                    ),
+                    (
+                        Identifier::new(context, "elem_type"),
+                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                    ),
+                ])
+                .add_operands(&[result_ptr])
+                .add_results(&[llvm::r#type::opaque_pointer(context)])
+                .build()?,
+        )?;
+        entry.load(context, location, ptr, variant_tys[1].0, None)?
     };
 
-    let remaining_gas = entry
-        .append_operation(llvm::load(
-            context,
-            gas_builtin_ptr,
-            IntegerType::new(context, 128).into(),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    let remaining_gas = entry.load(
+        context,
+        location,
+        gas_builtin_ptr,
+        IntegerType::new(context, 128).into(),
+        None,
+    )?;
 
-    entry.append_operation(
-        helper.cond_br(
-            context,
-            result_tag,
-            [1, 0],
-            [
-                &[remaining_gas, entry.argument(1)?.into(), payload_err],
-                &[
-                    remaining_gas,
-                    entry.argument(1)?.into(),
-                    entry
-                        .append_operation(llvm::extract_value(
-                            context,
-                            payload_ok,
-                            DenseI64ArrayAttribute::new(context, &[0]),
-                            get_struct_field_type_at(&variant_tys[0].0, 0),
-                            location,
-                        ))
-                        .result(0)?
-                        .into(),
-                    entry
-                        .append_operation(llvm::extract_value(
-                            context,
-                            payload_ok,
-                            DenseI64ArrayAttribute::new(context, &[1]),
-                            get_struct_field_type_at(&variant_tys[0].0, 1),
-                            location,
-                        ))
-                        .result(0)?
-                        .into(),
-                ],
+    entry.append_operation(helper.cond_br(
+        context,
+        result_tag,
+        [1, 0],
+        [
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[
+                remaining_gas,
+                entry.argument(1)?.into(),
+                entry.extract_value(
+                    context,
+                    location,
+                    payload_ok,
+                    get_struct_field_type_at(&variant_tys[0].0, 0),
+                    0,
+                )?,
+                entry.extract_value(
+                    context,
+                    location,
+                    payload_ok,
+                    get_struct_field_type_at(&variant_tys[0].0, 1),
+                    1,
+                )?,
             ],
-            location,
-        ),
-    );
+        ],
+        location,
+    ));
     Ok(())
 }
 
@@ -2728,16 +2639,13 @@ pub fn build_keccak<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // Extract self pointer.
-    let ptr = entry
-        .append_operation(llvm::load(
-            context,
-            entry.argument(1)?.into(),
-            llvm::r#type::opaque_pointer(context),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    let ptr = entry.load(
+        context,
+        location,
+        entry.argument(1)?.into(),
+        llvm::r#type::opaque_pointer(context),
+        None,
+    )?;
 
     // Allocate space for the return value.
     let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
@@ -2752,80 +2660,64 @@ pub fn build_keccak<'ctx, 'this>(
             ],
         )?;
 
-    let k1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let result_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "alignment"),
-                        IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            result_layout.align().try_into()?,
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, "elem_type"),
-                        TypeAttribute::new(llvm::r#type::r#struct(
-                            context,
-                            &[
-                                result_tag_ty,
-                                llvm::r#type::array(
-                                    IntegerType::new(context, 8).into(),
-                                    (result_layout.size() - 1).try_into()?,
-                                ),
-                            ],
-                            false,
-                        ))
-                        .into(),
-                    ),
-                ])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-
-    // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
+    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
+    let result_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[
+                (
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
                         IntegerType::new(context, 64).into(),
                         result_layout.align().try_into()?,
                     )
                     .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 128).into(),
-                    0,
-                )])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
+                ),
+                (
+                    Identifier::new(context, "elem_type"),
+                    TypeAttribute::new(llvm::r#type::r#struct(
+                        context,
+                        &[
+                            result_tag_ty,
+                            llvm::r#type::array(
+                                IntegerType::new(context, 8).into(),
+                                (result_layout.size() - 1).try_into()?,
+                            ),
+                        ],
+                        false,
+                    ))
+                    .into(),
+                ),
+            ])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::opaque_pointer(context)])
+            .build()?,
+    )?;
+
+    // Allocate space and write the current gas.
+    let gas_builtin_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    result_layout.align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(
+                IntegerType::new(context, 128).into(),
+                0,
+            )])
+            .build()?,
+    )?;
+    entry.store(
         context,
-        entry.argument(0)?.into(),
-        gas_builtin_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        gas_builtin_ptr,
+        entry.argument(0)?.into(),
+        None,
+    );
 
     // Allocate `input` argument and write the value.
     let input_arg_ptr_ty = llvm::r#type::pointer(
@@ -2841,27 +2733,23 @@ pub fn build_keccak<'ctx, 'this>(
         ),
         0,
     );
-    let input_arg_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 8).into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[input_arg_ptr_ty])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
+    let input_arg_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 8).into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[input_arg_ptr_ty])
+            .build()?,
+    )?;
+    entry.store(
         context,
-        entry.argument(2)?.into(),
-        input_arg_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        input_arg_ptr,
+        entry.argument(2)?.into(),
+        None,
+    );
 
     // Extract function pointer.
     let fn_ptr_ty = llvm::r#type::function(
@@ -2874,30 +2762,24 @@ pub fn build_keccak<'ctx, 'this>(
         ],
         false,
     );
-    let fn_ptr = entry
-        .append_operation(llvm::get_element_ptr(
+    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+        context,
+        entry.argument(1)?.into(),
+        DenseI32ArrayAttribute::new(
             context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(
-                context,
-                &[StarknetSyscallHandlerCallbacks::<()>::KECCAK.try_into()?],
-            ),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let fn_ptr = entry
-        .append_operation(llvm::load(
-            context,
-            fn_ptr,
-            llvm::r#type::pointer(fn_ptr_ty, 0),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+            &[StarknetSyscallHandlerCallbacks::<()>::KECCAK.try_into()?],
+        ),
+        llvm::r#type::opaque_pointer(context),
+        llvm::r#type::opaque_pointer(context),
+        location,
+    ))?;
+    let fn_ptr = entry.load(
+        context,
+        location,
+        fn_ptr,
+        llvm::r#type::pointer(fn_ptr_ty, 0),
+        None,
+    )?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -2905,118 +2787,85 @@ pub fn build_keccak<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+        None,
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
-        let ptr = entry
-            .append_operation(
-                OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[
-                        (
-                            Identifier::new(context, "rawConstantIndices"),
-                            DenseI32ArrayAttribute::new(
-                                context,
-                                &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
-                            )
-                            .into(),
-                        ),
-                        (
-                            Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                        ),
-                    ])
-                    .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build()?,
-            )
-            .result(0)?
-            .into();
-        entry
-            .append_operation(llvm::load(
-                context,
-                ptr,
-                variant_tys[0].0,
-                location,
-                LoadStoreOptions::default(),
-            ))
-            .result(0)?
-            .into()
+        let ptr = entry.append_op_result(
+            OperationBuilder::new("llvm.getelementptr", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "rawConstantIndices"),
+                        DenseI32ArrayAttribute::new(
+                            context,
+                            &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
+                        )
+                        .into(),
+                    ),
+                    (
+                        Identifier::new(context, "elem_type"),
+                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                    ),
+                ])
+                .add_operands(&[result_ptr])
+                .add_results(&[llvm::r#type::opaque_pointer(context)])
+                .build()?,
+        )?;
+        entry.load(context, location, ptr, variant_tys[0].0, None)?
     };
     let payload_err = {
-        let ptr = entry
-            .append_operation(
-                OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[
-                        (
-                            Identifier::new(context, "rawConstantIndices"),
-                            DenseI32ArrayAttribute::new(
-                                context,
-                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                            )
-                            .into(),
-                        ),
-                        (
-                            Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                        ),
-                    ])
-                    .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build()?,
-            )
-            .result(0)?
-            .into();
-        entry
-            .append_operation(llvm::load(
-                context,
-                ptr,
-                variant_tys[1].0,
-                location,
-                LoadStoreOptions::default(),
-            ))
-            .result(0)?
-            .into()
+        let ptr = entry.append_op_result(
+            OperationBuilder::new("llvm.getelementptr", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "rawConstantIndices"),
+                        DenseI32ArrayAttribute::new(
+                            context,
+                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                        )
+                        .into(),
+                    ),
+                    (
+                        Identifier::new(context, "elem_type"),
+                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                    ),
+                ])
+                .add_operands(&[result_ptr])
+                .add_results(&[llvm::r#type::opaque_pointer(context)])
+                .build()?,
+        )?;
+        entry.load(context, location, ptr, variant_tys[1].0, None)?
     };
 
-    let remaining_gas = entry
-        .append_operation(llvm::load(
-            context,
-            gas_builtin_ptr,
-            IntegerType::new(context, 128).into(),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    let remaining_gas = entry.load(
+        context,
+        location,
+        gas_builtin_ptr,
+        IntegerType::new(context, 128).into(),
+        None,
+    )?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -3041,17 +2890,13 @@ pub fn build_library_call<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // Extract self pointer.
-    let ptr = entry
-        .append_operation(llvm::load(
-            context,
-            entry.argument(1)?.into(),
-            llvm::r#type::opaque_pointer(context),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-
+    let ptr = entry.load(
+        context,
+        location,
+        entry.argument(1)?.into(),
+        llvm::r#type::opaque_pointer(context),
+        None,
+    )?;
     // Allocate space for the return value.
     let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
         crate::types::r#enum::get_type_for_variants(
@@ -3065,137 +2910,113 @@ pub fn build_library_call<'ctx, 'this>(
             ],
         )?;
 
-    let k1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let result_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "alignment"),
-                        IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            result_layout.align().try_into()?,
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, "elem_type"),
-                        TypeAttribute::new(llvm::r#type::r#struct(
-                            context,
-                            &[
-                                result_tag_ty,
-                                llvm::r#type::array(
-                                    IntegerType::new(context, 8).into(),
-                                    (result_layout.size() - 1).try_into()?,
-                                ),
-                            ],
-                            false,
-                        ))
-                        .into(),
-                    ),
-                ])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-
-    // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
+    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
+    let result_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[
+                (
                     Identifier::new(context, "alignment"),
                     IntegerAttribute::new(
                         IntegerType::new(context, 64).into(),
                         result_layout.align().try_into()?,
                     )
                     .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 128).into(),
-                    0,
-                )])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
+                ),
+                (
+                    Identifier::new(context, "elem_type"),
+                    TypeAttribute::new(llvm::r#type::r#struct(
+                        context,
+                        &[
+                            result_tag_ty,
+                            llvm::r#type::array(
+                                IntegerType::new(context, 8).into(),
+                                (result_layout.size() - 1).try_into()?,
+                            ),
+                        ],
+                        false,
+                    ))
+                    .into(),
+                ),
+            ])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::opaque_pointer(context)])
+            .build()?,
+    )?;
+
+    // Allocate space and write the current gas.
+    let gas_builtin_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    result_layout.align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(
+                IntegerType::new(context, 128).into(),
+                0,
+            )])
+            .build()?,
+    )?;
+    entry.store(
         context,
-        entry.argument(0)?.into(),
-        gas_builtin_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        gas_builtin_ptr,
+        entry.argument(0)?.into(),
+        None,
+    );
 
     // Allocate `class_hash` argument and write the value.
     let class_hash_arg_ptr_ty = llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0);
-    let class_hash_arg_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into().unwrap(),
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[class_hash_arg_ptr_ty])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
+    let class_hash_arg_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into().unwrap(),
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[class_hash_arg_ptr_ty])
+            .build()?,
+    )?;
+    entry.store(
         context,
-        entry.argument(2)?.into(),
-        class_hash_arg_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        class_hash_arg_ptr,
+        entry.argument(2)?.into(),
+        None,
+    );
 
     // Allocate `entry_point_selector` argument and write the value.
     let function_selector_arg_ptr_ty =
         llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0);
-    let function_selector_arg_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into().unwrap(),
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[function_selector_arg_ptr_ty])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
+    let function_selector_arg_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into().unwrap(),
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[function_selector_arg_ptr_ty])
+            .build()?,
+    )?;
+    entry.store(
         context,
-        entry.argument(3)?.into(),
-        function_selector_arg_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        function_selector_arg_ptr,
+        entry.argument(3)?.into(),
+        None,
+    );
 
     // Allocate `calldata` argument and write the value.
     let calldata_arg_ptr_ty = llvm::r#type::pointer(
@@ -3215,27 +3036,23 @@ pub fn build_library_call<'ctx, 'this>(
         ),
         0,
     );
-    let calldata_arg_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 8).into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[calldata_arg_ptr_ty])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
+    let calldata_arg_ptr = helper.init_block().append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 8).into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[calldata_arg_ptr_ty])
+            .build()?,
+    )?;
+    entry.store(
         context,
-        entry.argument(4)?.into(),
-        calldata_arg_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        calldata_arg_ptr,
+        entry.argument(4)?.into(),
+        None,
+    );
 
     // Extract function pointer.
     let fn_ptr_ty = llvm::r#type::function(
@@ -3250,31 +3067,24 @@ pub fn build_library_call<'ctx, 'this>(
         ],
         false,
     );
-    let fn_ptr = entry
-        .append_operation(llvm::get_element_ptr(
+    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+        context,
+        entry.argument(1)?.into(),
+        DenseI32ArrayAttribute::new(
             context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(
-                context,
-                &[StarknetSyscallHandlerCallbacks::<()>::LIBRARY_CALL.try_into()?],
-            ),
-            llvm::r#type::opaque_pointer(context),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let fn_ptr = entry
-        .append_operation(llvm::load(
-            context,
-            fn_ptr,
-            llvm::r#type::pointer(fn_ptr_ty, 0),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-
+            &[StarknetSyscallHandlerCallbacks::<()>::LIBRARY_CALL.try_into()?],
+        ),
+        llvm::r#type::opaque_pointer(context),
+        llvm::r#type::opaque_pointer(context),
+        location,
+    ))?;
+    let fn_ptr = entry.load(
+        context,
+        location,
+        fn_ptr,
+        llvm::r#type::pointer(fn_ptr_ty, 0),
+        None,
+    )?;
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
             .add_operands(&[
@@ -3289,118 +3099,85 @@ pub fn build_library_call<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+        None,
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
-        let ptr = entry
-            .append_operation(
-                OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[
-                        (
-                            Identifier::new(context, "rawConstantIndices"),
-                            DenseI32ArrayAttribute::new(
-                                context,
-                                &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
-                            )
-                            .into(),
-                        ),
-                        (
-                            Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                        ),
-                    ])
-                    .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build()?,
-            )
-            .result(0)?
-            .into();
-        entry
-            .append_operation(llvm::load(
-                context,
-                ptr,
-                variant_tys[0].0,
-                location,
-                LoadStoreOptions::default(),
-            ))
-            .result(0)?
-            .into()
+        let ptr = entry.append_op_result(
+            OperationBuilder::new("llvm.getelementptr", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "rawConstantIndices"),
+                        DenseI32ArrayAttribute::new(
+                            context,
+                            &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
+                        )
+                        .into(),
+                    ),
+                    (
+                        Identifier::new(context, "elem_type"),
+                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                    ),
+                ])
+                .add_operands(&[result_ptr])
+                .add_results(&[llvm::r#type::opaque_pointer(context)])
+                .build()?,
+        )?;
+        entry.load(context, location, ptr, variant_tys[0].0, None)?
     };
     let payload_err = {
-        let ptr = entry
-            .append_operation(
-                OperationBuilder::new("llvm.getelementptr", location)
-                    .add_attributes(&[
-                        (
-                            Identifier::new(context, "rawConstantIndices"),
-                            DenseI32ArrayAttribute::new(
-                                context,
-                                &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-                            )
-                            .into(),
-                        ),
-                        (
-                            Identifier::new(context, "elem_type"),
-                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                        ),
-                    ])
-                    .add_operands(&[result_ptr])
-                    .add_results(&[llvm::r#type::opaque_pointer(context)])
-                    .build()?,
-            )
-            .result(0)?
-            .into();
-        entry
-            .append_operation(llvm::load(
-                context,
-                ptr,
-                variant_tys[1].0,
-                location,
-                LoadStoreOptions::default(),
-            ))
-            .result(0)?
-            .into()
+        let ptr = entry.append_op_result(
+            OperationBuilder::new("llvm.getelementptr", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "rawConstantIndices"),
+                        DenseI32ArrayAttribute::new(
+                            context,
+                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                        )
+                        .into(),
+                    ),
+                    (
+                        Identifier::new(context, "elem_type"),
+                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                    ),
+                ])
+                .add_operands(&[result_ptr])
+                .add_results(&[llvm::r#type::opaque_pointer(context)])
+                .build()?,
+        )?;
+        entry.load(context, location, ptr, variant_tys[1].0, None)?;
     };
 
-    let remaining_gas = entry
-        .append_operation(llvm::load(
-            context,
-            gas_builtin_ptr,
-            IntegerType::new(context, 128).into(),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    let remaining_gas = entry.load(
+        context,
+        location,
+        gas_builtin_ptr,
+        IntegerType::new(context, 128).into(),
+        None,
+    )?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -3426,15 +3203,13 @@ pub fn build_replace_class<'ctx, 'this>(
 ) -> Result<()> {
     // Extract self pointer.
     let ptr = entry
-        .append_operation(llvm::load(
+        .load(
             context,
+            location,
             entry.argument(1)?.into(),
             llvm::r#type::opaque_pointer(context),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+            None,
+        )?;
 
     // Allocate space for the return value.
     let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
@@ -3455,16 +3230,15 @@ pub fn build_replace_class<'ctx, 'this>(
 
     let k1 = helper
         .init_block()
-        .append_operation(arith::constant(
+        .const_int(
             context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
             location,
-        ))
-        .result(0)?
-        .into();
+            1,
+            64
+        )?;
     let result_ptr = helper
         .init_block()
-        .append_operation(
+        .append_op_result(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[
                     (
@@ -3494,14 +3268,12 @@ pub fn build_replace_class<'ctx, 'this>(
                 .add_operands(&[k1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
                 .build()?,
-        )
-        .result(0)?
-        .into();
+        )?;
 
     // Allocate space and write the current gas.
     let gas_builtin_ptr = helper
         .init_block()
-        .append_operation(
+        .append_op_result(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
                     Identifier::new(context, "alignment"),
@@ -3517,9 +3289,7 @@ pub fn build_replace_class<'ctx, 'this>(
                     0,
                 )])
                 .build()?,
-        )
-        .result(0)?
-        .into();
+        )?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(0)?.into(),
