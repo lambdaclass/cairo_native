@@ -161,7 +161,7 @@ impl DebugUtils {
         context: &'c Context,
         module: &Module,
         block: &'a Block<'c>,
-        helper: &'a LibfuncHelper<'c>,
+        helper: &'a LibfuncHelper<'c, 'c>,
         message: &str,
         location: Location<'c>,
     ) -> Result<()>
