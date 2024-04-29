@@ -82,7 +82,7 @@ pub fn build_pedersen<'ctx>(
     // We must extend to i256 because bswap must be an even number of bytes.
 
     let const_1 = entry
-        .const_int_from_type(context, location, value, i64_ty)?
+        .const_int_from_type(context, location, 1, i64_ty)?
         .into();
 
     let lhs_ptr = entry
