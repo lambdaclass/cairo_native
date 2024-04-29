@@ -82,7 +82,6 @@
 //! ```
 
 #![cfg(feature = "with-debug-utils")]
-
 use crate::error::Result;
 use melior::{
     dialect::{
@@ -100,6 +99,7 @@ use melior::{
 };
 use num_bigint::BigUint;
 use std::collections::HashSet;
+use LibfuncHelper;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum DebugBinding {
@@ -161,6 +161,7 @@ impl DebugUtils {
         context: &'c Context,
         module: &Module,
         block: &'a Block<'c>,
+        helper: &'a LibfuncHelper<'c>,
         message: &str,
         location: Location<'c>,
     ) -> Result<()>
@@ -205,7 +206,8 @@ impl DebugUtils {
             .result(0)?
             .into();
 
-        let ptr = block
+        let ptr = helper
+            .init_block()
             .append_operation(
                 {
                     let mut op = ods::llvm::alloca(context, opaque_pointer(context), k1, location);
