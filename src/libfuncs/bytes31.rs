@@ -1,7 +1,9 @@
 //! # Bytes31-related libfuncs
 
 use super::LibfuncHelper;
-use crate::{block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{
+    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
+};
 use cairo_lang_sierra::{
     extensions::{
         bytes31::Bytes31ConcreteLibfunc,
@@ -69,6 +71,7 @@ pub fn build_const<'ctx, 'this>(
         Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
         location,
     ));
+
     entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
 
     Ok(())
@@ -93,7 +96,7 @@ pub fn build_to_felt252<'ctx, 'this>(
     )?;
     let value: Value = entry.argument(0)?.into();
 
-    let result = entry.append_op_result(arith::extui(value, felt252_ty, location)).into();
+    let result = entry.append_op_result(arith::extui(value, felt252_ty, location))?;
 
     entry.append_operation(helper.br(0, &[result], location));
 
@@ -136,7 +139,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         context,
         Attribute::parse(context, &format!("{} : {}", max_value, felt252_ty)).unwrap(),
         location,
-    )).into();
+    ))?;
 
     let is_ule = entry.append_op_result(arith::cmpi(
         context,
@@ -144,7 +147,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         value,
         const_max,
         location,
-    )).into();
+    ))?;
 
     let block_success = helper.append_block(Block::new(&[]));
     let block_failure = helper.append_block(Block::new(&[]));
@@ -159,8 +162,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         location,
     ));
 
-    let value = block_success.append_op_result(arith::trunci(value, result_ty, location)).into();
-    
+    let value = block_success.append_op_result(arith::trunci(value, result_ty, location))?;
     block_success.append_operation(helper.br(0, &[range_check, value], location));
 
     block_failure.append_operation(helper.br(1, &[range_check], location));
