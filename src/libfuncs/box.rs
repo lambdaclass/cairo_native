@@ -147,6 +147,9 @@ pub fn build_unbox<'ctx, 'this>(
     let inner_type = registry.get_type(&info.ty)?;
     let inner_ty = inner_type.build(context, helper, registry, metadata, &info.ty)?;
     let inner_layout = inner_type.layout(registry)?;
+    dbg!(inner_type.is_memory_allocated(registry));
+    dbg!(inner_ty);
+    dbg!(inner_layout);
 
     let value = match inner_type.variants() {
         Some(variants)
@@ -199,7 +202,8 @@ pub fn build_unbox<'ctx, 'this>(
 
             stack_ptr
         }
-        _ => entry
+        _ => {
+            entry
             .append_operation(llvm::load(
                 context,
                 entry.argument(0)?.into(),
@@ -211,7 +215,8 @@ pub fn build_unbox<'ctx, 'this>(
                 ))),
             ))
             .result(0)?
-            .into(),
+            .into()
+        },
     };
 
     entry.append_operation(ReallocBindingsMeta::free(

@@ -64,6 +64,17 @@ impl NativeContext {
         program: &Program,
         debug_locations: Option<DebugLocations>,
     ) -> Result<NativeModule, Error> {
+        self.compile_with_metadata(program, debug_locations, None)
+    }
+
+    /// Compiles a sierra program into MLIR and then lowers to LLVM. Using the given metadata.
+    /// Returns the corresponding NativeModule struct.
+    pub fn compile_with_metadata(
+        &self,
+        program: &Program,
+        debug_locations: Option<DebugLocations>,
+        metadata_config: Option<MetadataComputationConfig>,
+    ) -> Result<NativeModule, Error> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
@@ -109,9 +120,9 @@ impl NativeContext {
         metadata.insert(RuntimeBindingsMeta::default());
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
         let gas_metadata = if has_gas_builtin {
-            GasMetadata::new(program, Some(MetadataComputationConfig::default()))
+            GasMetadata::new(program, Some(metadata_config.unwrap_or_default()))
         } else {
-            GasMetadata::new(program, None)
+            GasMetadata::new(program, metadata_config)
         }?;
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
@@ -168,39 +179,6 @@ impl NativeContext {
                 StringAttribute::new(&self.context, data_layout_ret).into(),
             );
         }
-
-        Ok(NativeModule::new(module, registry, metadata))
-    }
-
-    /// Compiles a sierra program into MLIR and then lowers to LLVM. Using the given metadata.
-    /// Returns the corresponding NativeModule struct.
-    pub fn compile_with_metadata(
-        &self,
-        program: &Program,
-        metadata_config: MetadataComputationConfig,
-    ) -> Result<NativeModule, Error> {
-        let mut module = Module::new(Location::unknown(&self.context));
-
-        let mut metadata = MetadataStorage::new();
-        // Make the runtime library available.
-        metadata.insert(RuntimeBindingsMeta::default());
-
-        let gas_metadata = GasMetadata::new(program, Some(metadata_config))?;
-        metadata.insert(gas_metadata);
-
-        // Create the Sierra program registry
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
-
-        crate::compile(
-            &self.context,
-            &module,
-            program,
-            &registry,
-            &mut metadata,
-            None,
-        )?;
-
-        run_pass_manager(&self.context, &mut module)?;
 
         Ok(NativeModule::new(module, registry, metadata))
     }
