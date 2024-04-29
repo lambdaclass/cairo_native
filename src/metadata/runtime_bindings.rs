@@ -581,7 +581,7 @@ impl RuntimeBindingsMeta {
                         context,
                         &[
                             llvm::r#type::opaque_pointer(context),
-                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                            llvm::r#type::opaque_pointer(context),
                         ],
                         &[llvm::r#type::opaque_pointer(context)],
                     )
@@ -633,7 +633,7 @@ impl RuntimeBindingsMeta {
                         context,
                         &[
                             llvm::r#type::opaque_pointer(context),
-                            llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                            llvm::r#type::opaque_pointer(context),
                             llvm::r#type::opaque_pointer(context),
                         ],
                         &[llvm::r#type::opaque_pointer(context)],
