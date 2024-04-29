@@ -4,6 +4,7 @@
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
@@ -11,7 +12,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        enm::{EnumConcreteLibfunc, EnumInitConcreteLibfunc},
+        enm::{EnumConcreteLibfunc, EnumFromBoundedIntConcreteLibfunc, EnumInitConcreteLibfunc},
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc,
     },
@@ -22,6 +23,7 @@ use melior::{
     dialect::{
         arith, cf,
         llvm::{self, AllocaOptions, LoadStoreOptions},
+        ods,
     },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
@@ -52,7 +54,9 @@ pub fn build<'ctx, 'this>(
         EnumConcreteLibfunc::SnapshotMatch(info) => {
             build_snapshot_match(context, registry, entry, location, helper, metadata, info)
         }
-        EnumConcreteLibfunc::FromBoundedInt(_) => todo!(),
+        EnumConcreteLibfunc::FromBoundedInt(info) => {
+            build_from_bounded_int(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -233,6 +237,65 @@ pub fn build_enum_value<'ctx, 'this>(
     })
 }
 
+/// Generate MLIR operations for the `enum_init` libfunc.
+pub fn build_from_bounded_int<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &EnumFromBoundedIntConcreteLibfunc,
+) -> Result<()> {
+    let inp_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+    let varaint_selector_type: IntegerType = inp_ty
+        .build(
+            context,
+            helper,
+            registry,
+            metadata,
+            &info.param_signatures()[0].ty,
+        )?
+        .try_into()?;
+    let enum_type = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
+    // we assume its never memory allocated since its always a enum with only a tag
+    assert!(!enum_type.is_memory_allocated(registry));
+
+    let enum_ty = enum_type.build(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
+
+    let tag_bits = info.n_variants.next_power_of_two().trailing_zeros();
+    let tag_type = IntegerType::new(context, tag_bits);
+
+    let mut tag_value: Value = entry.argument(0)?.into();
+
+    match tag_type.width().cmp(&varaint_selector_type.width()) {
+        std::cmp::Ordering::Less => {
+            tag_value = entry.append_op_result(
+                ods::llvm::trunc(context, tag_type.into(), tag_value, location).into(),
+            )?;
+        }
+        std::cmp::Ordering::Equal => {}
+        std::cmp::Ordering::Greater => {
+            tag_value = entry.append_op_result(
+                ods::llvm::zext(context, tag_type.into(), tag_value, location).into(),
+            )?;
+        }
+    };
+
+    let value = entry.append_op_result(llvm::undef(enum_ty, location))?;
+    let value = entry.insert_value(context, location, value, tag_value, 0)?;
+
+    entry.append_operation(helper.br(0, &[value], location));
+
+    Ok(())
+}
+
 /// Generate MLIR operations for the `enum_match` libfunc.
 pub fn build_match<'ctx, 'this>(
     context: &'ctx Context,
@@ -248,7 +311,6 @@ pub fn build_match<'ctx, 'this>(
     let variant_ids = type_info.variants().unwrap();
     match variant_ids.len() {
         0 | 1 => {
-            dbg!(info.branch_signatures().len());
             entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
         }
         _ => {

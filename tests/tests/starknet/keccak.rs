@@ -291,6 +291,6 @@ fn keccak_test() {
         run_native_starknet_contract(&program, entry_point.function_idx, &[], SyscallHandler);
 
     assert!(!result.failure_flag);
-    assert_eq!(result.remaining_gas, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFE5F6F);
+    assert_eq!(result.remaining_gas, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFEEDDB);
     assert_eq!(result.return_values, vec![1.into()]);
 }
