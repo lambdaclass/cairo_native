@@ -135,7 +135,6 @@ fn test_bool_dict() {
 }
 
 #[test]
-#[ignore]
 fn test_array_dict() {
     let mut dict = Default::default();
     dict.insert(10, NullableTrait::new(array![1, 2, 3]));
