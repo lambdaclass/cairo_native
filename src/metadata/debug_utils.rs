@@ -100,7 +100,6 @@ use melior::{
 };
 use num_bigint::BigUint;
 use std::collections::HashSet;
-use LibfuncHelper;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum DebugBinding {
