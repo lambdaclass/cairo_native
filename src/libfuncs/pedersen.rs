@@ -71,6 +71,8 @@ pub fn build_pedersen<'ctx>(
         &info.param_signatures()[1].ty,
     )?;
 
+    let i64_ty = IntegerType::new(context, 64).into();
+
     let i256_ty = IntegerType::new(context, 256).into();
     let layout_i256 = get_integer_layout(256);
 
@@ -80,7 +82,7 @@ pub fn build_pedersen<'ctx>(
     // We must extend to i256 because bswap must be an even number of bytes.
 
     let const_1 = entry
-        .const_int_from_type(context, location, value, felt252_ty)?
+        .const_int_from_type(context, location, value, i64_ty)?
         .into();
 
     let lhs_ptr = entry
@@ -195,7 +197,7 @@ pub fn build_pedersen<'ctx>(
         .into();
 
     let result = entry
-        .append_op_result(arith::trunci(op, value_ty, location))?
+        .append_op_result(arith::trunci(op, felt252_ty, location))?
         .into();
 
     entry.append_operation(helper.br(0, &[pedersen_builtin, result], location));
