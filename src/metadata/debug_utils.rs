@@ -83,6 +83,7 @@
 
 #![cfg(feature = "with-debug-utils")]
 use crate::error::Result;
+use crate::libfuncs::LibfuncHelper;
 use melior::{
     dialect::{
         arith, func,
@@ -99,7 +100,6 @@ use melior::{
 };
 use num_bigint::BigUint;
 use std::collections::HashSet;
-use LibfuncHelper;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum DebugBinding {
