@@ -197,7 +197,8 @@ impl DebugUtils {
             message.len().try_into().unwrap(),
         );
 
-        let k1 = block
+        let k1 = helper
+            .init_block()
             .append_operation(arith::constant(
                 context,
                 IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
