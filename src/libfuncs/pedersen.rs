@@ -63,7 +63,7 @@ pub fn build_pedersen<'ctx>(
     let pedersen_builtin =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
-    let value_ty = registry.build_type(
+    let felt252_ty = registry.build_type(
         context,
         helper,
         registry,
@@ -80,7 +80,7 @@ pub fn build_pedersen<'ctx>(
     // We must extend to i256 because bswap must be an even number of bytes.
 
     let const_1 = entry
-        .const_int_from_type(context, location, value, value_ty)?
+        .const_int_from_type(context, location, value, felt252_ty)?
         .into();
 
     let lhs_ptr = entry
