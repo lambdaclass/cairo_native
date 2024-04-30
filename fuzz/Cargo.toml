@@ -9,8 +9,10 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
+cairo-lang-compiler = "2.6.3"
+cairo-lang-starknet = "2.6.3"
+starknet-types-core = "0.1.0"
 cairo-native = { path = "../"}
-
 
 [[bin]]
 name = "fuzz-sierra"
@@ -18,3 +20,5 @@ path = "src/fuzz_sierra.rs"
 test = false
 doc = false
 bench = false
+
+
