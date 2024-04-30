@@ -60,7 +60,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     edit_state,
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         gas::CostTokenType,
         ConcreteLibfunc,
     },
@@ -259,7 +259,26 @@ fn compile_func(
                 } else {
                     let value = entry_block.argument(count)?.into();
                     count += 1;
-                    value
+
+                    if !matches!(type_info, CoreTypeConcrete::Enum(_))
+                        && type_info.is_memory_allocated(registry)
+                    {
+                        pre_entry_block
+                            .append_operation(llvm::load(
+                                context,
+                                value,
+                                type_info.build(context, module, registry, metadata, &param.ty)?,
+                                Location::unknown(context),
+                                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                                    IntegerType::new(context, 64).into(),
+                                    type_info.layout(registry)?.align() as i64,
+                                ))),
+                            ))
+                            .result(0)?
+                            .into()
+                    } else {
+                        value
+                    }
                 },
             ));
         }
@@ -602,35 +621,55 @@ fn compile_func(
 
                             let ptr = values.remove(0);
 
-                            let num_bytes = block
-                                .append_operation(arith::constant(
-                                    context,
-                                    IntegerAttribute::new(
-                                        IntegerType::new(context, 64).into(),
-                                        ret_layout.size() as i64,
+                            if matches!(ret_type_info, CoreTypeConcrete::Enum(_))
+                                && ret_type_info.is_memory_allocated(registry)
+                            {
+                                let num_bytes = block
+                                    .append_operation(arith::constant(
+                                        context,
+                                        IntegerAttribute::new(
+                                            IntegerType::new(context, 64).into(),
+                                            ret_layout.size() as i64,
+                                        )
+                                        .into(),
+                                        location,
+                                    ))
+                                    .result(0)?
+                                    .into();
+                                block.append_operation(
+                                    ods::llvm::intr_memcpy(
+                                        context,
+                                        pre_entry_block.argument(0)?.into(),
+                                        ptr,
+                                        num_bytes,
+                                        IntegerAttribute::new(
+                                            IntegerType::new(context, 1).into(),
+                                            0,
+                                        ),
+                                        location,
                                     )
                                     .into(),
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-                            block.append_operation(
-                                ods::llvm::intr_memcpy(
+                                );
+                            } else {
+                                block.append_operation(llvm::store(
                                     context,
-                                    pre_entry_block.argument(0)?.into(),
                                     ptr,
-                                    num_bytes,
-                                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                                    pre_entry_block.argument(0)?.into(),
                                     location,
-                                )
-                                .into(),
-                            );
+                                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                                        IntegerType::new(context, 64).into(),
+                                        ret_layout.align() as i64,
+                                    ))),
+                                ));
+                            }
                         }
                         Some(false) => {
                             for (value, (type_id, type_info)) in
                                 values.iter_mut().zip(&return_types)
                             {
-                                if type_info.is_memory_allocated(registry) {
+                                if matches!(type_info, CoreTypeConcrete::Enum(_))
+                                    && type_info.is_memory_allocated(registry)
+                                {
                                     let layout = type_info.layout(registry)?;
 
                                     *value = block
@@ -722,7 +761,8 @@ fn generate_function_structure<'c, 'a>(
                     &param.id,
                     (
                         type_info.build(context, module, registry, metadata_storage, ty)?,
-                        type_info.is_memory_allocated(registry),
+                        matches!(type_info, CoreTypeConcrete::Enum(_))
+                            && type_info.is_memory_allocated(registry),
                     ),
                 ))
             })
@@ -794,7 +834,8 @@ fn generate_function_structure<'c, 'a>(
                                                     metadata_storage,
                                                     &var_info.ty,
                                                 )?,
-                                                type_info.is_memory_allocated(registry),
+                                                matches!(type_info, CoreTypeConcrete::Enum(_))
+                                                    && type_info.is_memory_allocated(registry),
                                             ))
                                         })
                                         .collect::<Result<Vec<_>, _>>()?,
