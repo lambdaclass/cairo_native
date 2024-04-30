@@ -1,25 +1,20 @@
 [package]
-name = "cairo-native-runtime-fuzz"
-version = "0.0.0"
+name = "cairo-native-fuzz"
+version = "0.0.1"
 publish = false
 edition = "2021"
 
 [package.metadata]
 cargo-fuzz = true
 
-
-[workspace]
-members = ["."]
-
 [dependencies]
 libfuzzer-sys = "0.4"
+cairo-native = { path = "../"}
 
-[dependencies.cairo-native-runtime]
-path = ".."
 
 [[bin]]
-name = "fuzz_target_1"
-path = "fuzz_targets/fuzz_target_1.rs"
+name = "fuzz-sierra"
+path = "src/fuzz_sierra.rs"
 test = false
 doc = false
 bench = false
