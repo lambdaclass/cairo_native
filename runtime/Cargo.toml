@@ -14,6 +14,6 @@ starknet-types-core = { version = "0.1.0", default-features = false, features = 
 ] }
 cairo-lang-runner = "2.5.4"
 libc = "0.2"
-starknet-crypto = "0.6"
-starknet-curve = "0.4"
+starknet-crypto = "0.6.2"
+starknet-curve = "0.4.2"
 lazy_static = "1.4"
