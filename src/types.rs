@@ -654,7 +654,8 @@ impl TypeBuilder for CoreTypeConcrete {
                     .expect("should always fit u32"),
             ),
             CoreTypeConcrete::Const(_) => todo!(),
-        })
+        }
+        .pad_to_align())
     }
 
     fn is_memory_allocated(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
@@ -977,5 +978,38 @@ impl<'a, T> Deref for WithSelf<'a, T> {
 
     fn deref(&self) -> &T {
         self.inner
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::TypeBuilder;
+    use crate::utils::test::load_cairo;
+    use cairo_lang_sierra::{
+        extensions::core::{CoreLibfunc, CoreType},
+        program_registry::ProgramRegistry,
+    };
+
+    #[test]
+    fn ensure_padded_layouts() {
+        let (_, program) = load_cairo! {
+            #[derive(Drop)]
+            struct A {}
+            #[derive(Drop)]
+            struct B { a: u8 }
+            #[derive(Drop)]
+            struct C { a: u8, b: u16 }
+            #[derive(Drop)]
+            struct D { a: u16, b: u8 }
+
+            fn main(a: A, b: B, c: C, d: D) {}
+        };
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        for ty in &program.type_declarations {
+            let ty = registry.get_type(&ty.id).unwrap();
+            let layout = ty.layout(&registry).unwrap();
+            assert_eq!(layout, layout.pad_to_align());
+        }
     }
 }
