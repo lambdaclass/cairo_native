@@ -133,7 +133,18 @@ pub fn build_init<'ctx, 'this>(
                     ))
                     .result(0)?
                     .into();
-            let stack_ptr = helper.alloca(context, location, k1, Some(layout.align()))?;
+            let stack_ptr = helper.init_block().alloca1(
+                context,
+                location,
+                type_info.build(
+                    context,
+                    helper,
+                    registry,
+                    metadata,
+                    &info.branch_signatures()[0].vars[0].ty,
+                )?,
+                Some(layout.align()),
+            )?;
 
             entry.store(context, location, stack_ptr, val, Some(layout.align()));
 
@@ -281,7 +292,7 @@ pub fn build_match<'ctx, 'this>(
                         ))
                         .result(0)?
                         .into();
-                    let stack_ptr = helper.alloca(context, location, k1, Some(payload_layout.align()))?;
+                    let stack_ptr = helper.init_block().alloca1(context, location, payload_layout.element_type(), Some(payload_layout.align()))?;
 
                     block.store(context, location, stack_ptr, payload_val, Some(payload_layout.align()))?;
 
