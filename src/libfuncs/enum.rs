@@ -21,10 +21,10 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith, cf,
-        llvm::{self, AllocaOptions, LoadStoreOptions},
+        llvm::{self, LoadStoreOptions},
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
         Block, Location, Value, ValueLike,
     },
@@ -124,7 +124,7 @@ pub fn build_init<'ctx, 'this>(
             };
 
             if type_info.is_memory_allocated(registry) {
-                let k1 = helper
+                let k1: i64 = helper
                     .init_block()
                     .append_operation(arith::constant(
                         context,
@@ -292,9 +292,9 @@ pub fn build_match<'ctx, 'this>(
                         ))
                         .result(0)?
                         .into();
-                    let stack_ptr = helper.init_block().alloca1(context, location, payload_layout.element_type(), Some(payload_layout.align()))?;
+                    let stack_ptr = helper.init_block().alloca1(context, location, payload_layout, Some(payload_layout.align()))?;
 
-                    block.store(context, location, stack_ptr, payload_val, Some(payload_layout.align()))?;
+                    block.store(context, location, stack_ptr, payload_val, Some(payload_layout.align()));
 
                     stack_ptr
                 } else {
