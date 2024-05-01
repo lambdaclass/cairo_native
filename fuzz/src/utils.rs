@@ -1,6 +1,48 @@
-use cairo_native::starknet::{StarknetSyscallHandler, SyscallResult, U256, ExecutionInfo};
+use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_starknet::contract_class::compile_path;
+use cairo_native::{
+    context::NativeContext,
+    executor::NativeExecutor,
+    metadata::syscall_handler::SyscallHandlerMeta,
+    starknet::{BlockInfo, ExecutionInfo, StarknetSyscallHandler, SyscallResult, TxInfo, U256},
+    utils::find_entry_point_by_idx,
+    values::JitValue,
+};
+use libfuzzer_sys::{
+    arbitrary::{Arbitrary, Unstructured},
+    fuzz_target,
+};
 use starknet_types_core::felt::Felt;
 
+pub fn setup_program(program_path: &str) -> NativeExecutor {
+    let path = Path::new(program_path);
+
+    let contract = compile_path(
+        path,
+        None,
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )?;
+
+    let entry_point = contract.entry_points_by_type.constructor.get(0)?;
+    let sierra_program = contract.extract_sierra_program()?;
+    let native_context = NativeContext::new();
+
+    let mut native_program = native_context.compile(&sierra_program).unwrap();
+    native_program
+        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
+        .unwrap();
+
+    // Call the echo function from the contract using the generated wrapper.
+    let entry_point_fn =
+        find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
+
+    let fn_id = &entry_point_fn.id;
+
+    let native_executor = NativeExecutor::new(native_program);
+}
 
 #[derive(Debug)]
 pub struct SyscallHandler;
@@ -18,8 +60,10 @@ impl StarknetSyscallHandler for SyscallHandler {
         todo!()
     }
 
-    fn get_execution_info_v2(&mut self, remaining_gas: &mut u128)
-        -> SyscallResult<cairo_native::starknet::ExecutionInfoV2> {
+    fn get_execution_info_v2(
+        &mut self,
+        remaining_gas: &mut u128,
+    ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV2> {
         todo!()
     }
 
