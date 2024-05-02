@@ -258,7 +258,8 @@ pub fn build_point_from_x<'ctx, 'this>(
         ))
         .result(0)?
         .into();
-    let point_ptr = entry
+    let point_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
@@ -364,7 +365,8 @@ pub fn build_state_add<'ctx, 'this>(
         ))
         .result(0)?
         .into();
-    let state_ptr = entry
+    let state_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
@@ -381,7 +383,8 @@ pub fn build_state_add<'ctx, 'this>(
         )
         .result(0)?
         .into();
-    let point_ptr = entry
+    let point_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
@@ -464,7 +467,8 @@ pub fn build_state_add_mul<'ctx, 'this>(
         ))
         .result(0)?
         .into();
-    let state_ptr = entry
+    let state_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
@@ -481,7 +485,8 @@ pub fn build_state_add_mul<'ctx, 'this>(
         )
         .result(0)?
         .into();
-    let scalar_ptr = entry
+    let scalar_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
@@ -498,7 +503,8 @@ pub fn build_state_add_mul<'ctx, 'this>(
         )
         .result(0)?
         .into();
-    let point_ptr = entry
+    let point_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
@@ -587,7 +593,8 @@ pub fn build_state_finalize<'ctx, 'this>(
         ))
         .result(0)?
         .into();
-    let point_ptr = entry
+    let point_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
@@ -604,7 +611,8 @@ pub fn build_state_finalize<'ctx, 'this>(
         )
         .result(0)?
         .into();
-    let state_ptr = entry
+    let state_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
@@ -768,7 +776,8 @@ pub fn build_try_new<'ctx, 'this>(
         ))
         .result(0)?
         .into();
-    let point_ptr = entry
+    let point_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
