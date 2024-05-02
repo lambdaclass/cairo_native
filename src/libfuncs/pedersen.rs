@@ -87,8 +87,14 @@ pub fn build_pedersen<'ctx>(
         location,
     ));
     let const_1 = op.result(0)?.into();
+    let op = helper.init_block().append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
+        location,
+    ));
+    let const_1 = op.result(0)?.into();
 
-    let lhs_ptr = helper.init_block().append_op_result(
+    let op = helper.init_block().append_operation(
         OperationBuilder::new("llvm.alloca", location)
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
@@ -103,7 +109,7 @@ pub fn build_pedersen<'ctx>(
             .build()?,
     )?;
 
-    let rhs_ptr = helper.init_block().append_op_result(
+    let op = helper.init_block().append_operation(
         OperationBuilder::new("llvm.alloca", location)
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
@@ -118,7 +124,7 @@ pub fn build_pedersen<'ctx>(
             .build()?,
     )?;
 
-    let dst_ptr = helper.init_block().append_op_result(
+    let op = helper.init_block().append_operation(
         OperationBuilder::new("llvm.alloca", location)
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
