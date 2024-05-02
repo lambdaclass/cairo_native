@@ -79,7 +79,8 @@ pub fn build_hades_permutation<'ctx>(
 
     // We must extend to i256 because bswap must be an even number of bytes.
 
-    let const_1 = entry
+    let const_1 = helper
+        .init_block()
         .append_operation(arith::constant(
             context,
             IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
@@ -88,7 +89,8 @@ pub fn build_hades_permutation<'ctx>(
         .result(0)?
         .into();
 
-    let op0_ptr = entry
+    let op0_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
@@ -105,7 +107,8 @@ pub fn build_hades_permutation<'ctx>(
         )
         .result(0)?
         .into();
-    let op1_ptr = entry
+    let op1_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
@@ -122,7 +125,8 @@ pub fn build_hades_permutation<'ctx>(
         )
         .result(0)?
         .into();
-    let op2_ptr = entry
+    let op2_ptr = helper
+        .init_block()
         .append_operation(
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[(
