@@ -199,7 +199,9 @@ fn invoke_dynamic(
                             &[syscall_handler as *mut _ as u64],
                         )
                     }
-                    None => panic!("Syscall handler is required"),
+                    None => {
+                        panic!("Syscall handler is required");
+                    }
                 }
             }
             type_info => invoke_data
