@@ -95,7 +95,7 @@ pub fn build_init<'ctx, 'this>(
                 false,
             );
 
-            let tag_val = entry.const_int(context, location, info.index as i64, 64)?;
+            let tag_val = entry.const_int_from_type(context, location, tag_ty, info.index)?;
 
             let payload_val = if payload_type_info.is_memory_allocated(registry) {
                 entry.load(context, location, entry.argument(0)?.into(), variant_tys[info.index].0, Some(variant_tys[info.index].1.align()))?
@@ -124,23 +124,14 @@ pub fn build_init<'ctx, 'this>(
             };
 
             if type_info.is_memory_allocated(registry) {
-                let k1: i64 = helper
-                    .init_block()
-                    .append_operation(arith::constant(
-                        context,
-                        IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
-            let stack_ptr = helper.init_block().alloca1(
-                context,
-                location,
-                type_info.build(
+                let stack_ptr = helper.init_block().alloca1(
                     context,
-                    helper,
-                    registry,
-                    metadata,
+                    location,
+                    type_info.build(
+                        context,
+                        helper,
+                        registry,
+                        metadata,
                     &info.branch_signatures()[0].vars[0].ty,
                 )?,
                 Some(layout.align()),
@@ -292,7 +283,7 @@ pub fn build_match<'ctx, 'this>(
                         ))
                         .result(0)?
                         .into();
-                    let stack_ptr = helper.init_block().alloca1(context, location, payload_layout, Some(payload_layout.align()))?;
+                    let stack_ptr = helper.init_block().alloca1(context, location, payload_ty, Some(payload_layout.align()))?;
 
                     block.store(context, location, stack_ptr, payload_val, Some(payload_layout.align()));
 
