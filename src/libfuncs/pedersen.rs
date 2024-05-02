@@ -78,14 +78,14 @@ pub fn build_pedersen<'ctx>(
 
     // We must extend to i256 because bswap must be an even number of bytes.
 
-    let op = entry.append_operation(arith::constant(
+    let op = helper.init_block().append_operation(arith::constant(
         context,
         IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
         location,
     ));
     let const_1 = op.result(0)?.into();
 
-    let op = entry.append_operation(
+    let op = helper.init_block().append_operation(
         OperationBuilder::new("llvm.alloca", location)
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
@@ -101,7 +101,7 @@ pub fn build_pedersen<'ctx>(
     );
     let lhs_ptr = op.result(0)?.into();
 
-    let op = entry.append_operation(
+    let op = helper.init_block().append_operation(
         OperationBuilder::new("llvm.alloca", location)
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
@@ -117,7 +117,7 @@ pub fn build_pedersen<'ctx>(
     );
     let rhs_ptr = op.result(0)?.into();
 
-    let op = entry.append_operation(
+    let op = helper.init_block().append_operation(
         OperationBuilder::new("llvm.alloca", location)
             .add_attributes(&[(
                 Identifier::new(context, "alignment"),
