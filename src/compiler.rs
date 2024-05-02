@@ -260,9 +260,7 @@ fn compile_func(
                     let value = entry_block.argument(count)?.into();
                     count += 1;
 
-                    if !matches!(type_info, CoreTypeConcrete::Enum(_))
-                        && type_info.is_memory_allocated(registry)
-                    {
+                    if type_info.is_memory_allocated(registry) {
                         pre_entry_block
                             .append_operation(llvm::load(
                                 context,
