@@ -81,7 +81,12 @@ pub fn build_pedersen<'ctx>(
 
     // We must extend to i256 because bswap must be an even number of bytes.
 
-    let const_1 = entry.const_int_from_type(context, location, 1, i64_ty)?;
+    let op = helper.init_block().append_operation(arith::constant(
+        context,
+        IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
+        location,
+    ));
+    let const_1 = op.result(0)?.into();
 
     let lhs_ptr = helper.init_block().append_op_result(
         OperationBuilder::new("llvm.alloca", location)
