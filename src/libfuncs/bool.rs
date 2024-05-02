@@ -2,6 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
@@ -104,36 +105,24 @@ fn build_bool_binary<'ctx, 'this>(
     let lhs = entry.argument(0)?.into();
     let rhs = entry.argument(1)?.into();
 
-    let lhs_tag = entry
-        .append_operation(llvm::extract_value(
+    let lhs_tag = entry.extract_value(
             context,
+            location,
             lhs,
-            DenseI64ArrayAttribute::new(context, &[0]),
             tag_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let rhs_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            rhs,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            tag_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
+            0,
+        )?;
 
-    let op = match bin_op {
-        BoolOp::And => entry.append_operation(arith::andi(lhs_tag, rhs_tag, location)),
-        BoolOp::Xor => entry.append_operation(arith::xori(lhs_tag, rhs_tag, location)),
-        BoolOp::Or => entry.append_operation(arith::ori(lhs_tag, rhs_tag, location)),
+    let rhs_tag = entry.extract_value(context, location, rhs, tag_ty, 0)?;
+
+    let new_tag_value = match bin_op {
+        BoolOp::And => entry.append_op_result(arith::andi(lhs_tag, rhs_tag, location))?,
+        BoolOp::Xor => entry.append_op_result(arith::xori(lhs_tag, rhs_tag, location))?,
+        BoolOp::Or => entry.append_op_result(arith::ori(lhs_tag, rhs_tag, location))?,
     };
-    let new_tag_value = op.result(0)?.into();
 
     let res = entry
-        .append_operation(llvm::undef(
+        .append_op_result(llvm::undef(
             enum_ty.build(
                 context,
                 helper,
@@ -142,19 +131,9 @@ fn build_bool_binary<'ctx, 'this>(
                 &info.param_signatures()[0].ty,
             )?,
             location,
-        ))
-        .result(0)?
-        .into();
-    let res = entry
-        .append_operation(llvm::insert_value(
-            context,
-            res,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            new_tag_value,
-            location,
-        ))
-        .result(0)?
-        .into();
+        ))?;
+
+    let res = entry.insert_value(context, location, res, new_tag_value, 0)?;
 
     entry.append_operation(helper.br(0, &[res], location));
     Ok(())
@@ -180,29 +159,19 @@ pub fn build_bool_not<'ctx, 'this>(
     let tag_ty = IntegerType::new(context, tag_bits).into();
 
     let value = entry.argument(0)?.into();
-    let tag_value = entry
-        .append_operation(llvm::extract_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            tag_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let tag_value = entry.extract_value(context, location, value, tag_ty, 0)?;
 
-    let op = entry.append_operation(arith::constant(
+    let const_1 = entry.const_int_from_type(
         context,
-        IntegerAttribute::new(tag_ty, 1).into(),
         location,
-    ));
-    let const_1 = op.result(0)?.into();
+        1,
+        tag_ty
+    )?;
 
-    let op = entry.append_operation(arith::xori(tag_value, const_1, location));
-    let new_tag_value = op.result(0)?.into();
+    let new_tag_value = entry.append_op_result(arith::xori(tag_value, const_1, location))?;
 
     let res = entry
-        .append_operation(llvm::undef(
+        .append_op_result(llvm::undef(
             enum_ty.build(
                 context,
                 helper,
@@ -211,19 +180,8 @@ pub fn build_bool_not<'ctx, 'this>(
                 &info.param_signatures()[0].ty,
             )?,
             location,
-        ))
-        .result(0)?
-        .into();
-    let res = entry
-        .append_operation(llvm::insert_value(
-            context,
-            res,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            new_tag_value,
-            location,
-        ))
-        .result(0)?
-        .into();
+        ))?;
+    let res = entry.insert_value(context, location, res, new_tag_value, 0)?;
 
     entry.append_operation(helper.br(0, &[res], location));
     Ok(())
@@ -257,20 +215,9 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
     let tag_ty = IntegerType::new(context, tag_bits).into();
 
     let value = entry.argument(0)?.into();
-    let tag_value = entry
-        .append_operation(llvm::extract_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            tag_ty,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let tag_value = entry.extract_value(context, location, value, tag_ty, 0)?;
 
-    let op = entry.append_operation(arith::extui(tag_value, felt252_ty, location));
-
-    let result = op.result(0)?.into();
+    let result = entry.append_op_result(arith::extui(tag_value, felt252_ty, location))?;
 
     entry.append_operation(helper.br(0, &[result], location));
     Ok(())
