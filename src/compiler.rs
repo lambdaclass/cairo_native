@@ -604,8 +604,25 @@ fn compile_func(
     // Load arguments and jump to the entry block.
     {
         let mut arg_values = Vec::with_capacity(function.signature.param_types.len());
-        for (i, type_id) in function.signature.param_types.iter().enumerate() {
-            let type_info = registry.get_type(type_id)?;
+        for (i, type_id_and_info) in function
+            .signature
+            .param_types
+            .iter()
+            .filter_map(|type_id| {
+                registry
+                    .get_type(type_id)
+                    .map(|type_info| {
+                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                            None
+                        } else {
+                            Some((type_id, type_info))
+                        }
+                    })
+                    .transpose()
+            })
+            .enumerate()
+        {
+            let (type_id, type_info) = type_id_and_info?;
 
             let mut value = pre_entry_block
                 .argument((has_return_ptr == Some(true)) as usize + i)?
