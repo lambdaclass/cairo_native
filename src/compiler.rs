@@ -831,15 +831,7 @@ fn generate_function_structure<'c, 'a>(
                                 .map(|(var_id, ty)| (var_id.id, *ty))
                                 .collect::<BTreeMap<_, _>>()
                                 .into_values()
-                                .map(|ty| {
-                                    (
-                                        // if is_memory_allocated {
-                                        //     llvm::r#type::opaque_pointer(context)
-                                        // } else {
-                                        ty, // }
-                                        Location::unknown(context),
-                                    )
-                                })
+                                .map(|ty| (ty, Location::unknown(context)))
                                 .collect::<Vec<_>>(),
                         ),
                     ),
