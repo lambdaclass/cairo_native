@@ -632,6 +632,9 @@ impl DebugUtils {
         Ok(())
     }
 
+    /// Dump a memory region at runtime.
+    ///
+    /// Requires the pointer (at runtime) and its length in bytes (at compile-time).
     pub fn dump_mem<'c, 'a>(
         &mut self,
         context: &'c Context,
