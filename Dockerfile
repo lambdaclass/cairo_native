@@ -33,3 +33,8 @@ ENV LLVM_SYS_170_PREFIX=/usr/lib/llvm-17
 ENV TABLEGEN_170_PREFIX=/usr/lib/llvm-17
 RUN make deps
 RUN make build
+
+# Exécuter les tests Rust
+CMD cargo test --package cairo-native --lib -- utils::test::test_alignment_compatibility_u128 --exact --show-output --ignored
+
+

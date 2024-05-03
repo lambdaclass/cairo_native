@@ -76,7 +76,11 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 64 {
         Layout::new::<u64>()
     } else if width <= 128 {
-        Layout::new::<u128>()
+        if cfg!(target_arch = "x86_64") {
+            Layout::from_size_align(16, 16).unwrap()
+        } else {
+            Layout::new::<u128>()
+        }
     } else {
         Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap()
     }
@@ -870,7 +874,6 @@ pub mod test {
 
     /// Ensures that the host's `u128` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_u128() {
         // FIXME: Uncomment once LLVM fixes its u128 alignment issues.
         assert_eq!(get_integer_layout(128).align(), 16);
