@@ -138,7 +138,7 @@ pub fn build_init<'ctx, 'this>(
                 ))
                 .result(0)?
                 .into();
-            let val = if payload_type_info.is_zst(registry) {
+            let mut val = if payload_type_info.is_zst(registry) {
                 val
             } else {
                 entry
@@ -196,11 +196,22 @@ pub fn build_init<'ctx, 'this>(
                         layout.align() as i64,
                     ))),
                 ));
+                val = entry.load(
+                    context,
+                    location,
+                    stack_ptr,
+                    type_info.build(
+                        context,
+                        helper,
+                        registry,
+                        metadata,
+                        &info.branch_signatures()[0].vars[0].ty,
+                    )?,
+                    Some(layout.align()),
+                )?;
+            };
 
-                entry.append_operation(helper.br(0, &[stack_ptr], location));
-            } else {
-                entry.append_operation(helper.br(0, &[val], location));
-            }
+            entry.append_operation(helper.br(0, &[val], location));
         }
     }
 

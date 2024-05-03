@@ -6,7 +6,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
         structure::StructConcreteLibfunc,
         ConcreteLibfunc,
@@ -14,15 +14,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith,
-        llvm::{self, AllocaOptions, LoadStoreOptions},
-    },
-    ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
-        r#type::IntegerType,
-        Block, Location, Value,
-    },
+    dialect::llvm,
+    ir::{attribute::DenseI64ArrayAttribute, Block, Location, Value},
     Context,
 };
 
@@ -68,34 +61,12 @@ pub fn build_construct<'ctx, 'this>(
     )?;
 
     let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
-    for (i, param_sig) in info.param_signatures().iter().enumerate() {
-        let type_info = registry.get_type(&param_sig.ty)?;
-
-        let value = if matches!(type_info, CoreTypeConcrete::Enum(_))
-            && type_info.is_memory_allocated(registry)
-        {
-            entry
-                .append_operation(llvm::load(
-                    context,
-                    entry.argument(i)?.into(),
-                    type_info.build(context, helper, registry, metadata, &param_sig.ty)?,
-                    location,
-                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        type_info.layout(registry)?.align() as i64,
-                    ))),
-                ))
-                .result(0)?
-                .into()
-        } else {
-            entry.argument(i)?.into()
-        };
-
+    for i in 0..info.param_signatures().len() {
         acc = entry.append_operation(llvm::insert_value(
             context,
             acc.result(0)?.into(),
             DenseI64ArrayAttribute::new(context, &[i as _]),
-            value,
+            entry.argument(i)?.into(),
             location,
         ));
     }
@@ -132,50 +103,7 @@ pub fn build_deconstruct<'ctx, 'this>(
             .result(0)?
             .into();
 
-        fields.push(if type_info.is_memory_allocated(registry) {
-            let layout = type_info.layout(registry)?;
-
-            let k1 = helper
-                .init_block()
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
-            let stack_ptr = helper
-                .init_block()
-                .append_operation(llvm::alloca(
-                    context,
-                    k1,
-                    llvm::r#type::opaque_pointer(context),
-                    location,
-                    AllocaOptions::new()
-                        .align(Some(IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            layout.align() as i64,
-                        )))
-                        .elem_type(Some(TypeAttribute::new(field_ty))),
-                ))
-                .result(0)?
-                .into();
-
-            entry.append_operation(llvm::store(
-                context,
-                value,
-                stack_ptr,
-                location,
-                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    layout.align() as i64,
-                ))),
-            ));
-
-            stack_ptr
-        } else {
-            value
-        });
+        fields.push(value);
     }
 
     entry.append_operation(helper.br(0, &fields, location));

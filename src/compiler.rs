@@ -60,7 +60,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     edit_state,
     extensions::{
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         gas::CostTokenType,
         ConcreteLibfunc,
     },
@@ -71,10 +71,10 @@ use cairo_lang_sierra::{
 use itertools::Itertools;
 use melior::{
     dialect::{
-        arith::{self, CmpiPredicate},
+        arith::CmpiPredicate,
         cf, func, index,
         llvm::{self, LoadStoreOptions},
-        memref, ods,
+        memref,
     },
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
@@ -612,85 +612,21 @@ fn compile_func(
                         }
                     }
 
-                    match has_return_ptr {
-                        Some(true) => {
-                            let (_ret_type_id, ret_type_info) = return_types[0];
-                            let ret_layout = ret_type_info.layout(registry)?;
+                    if let Some(true) = has_return_ptr {
+                        let (_ret_type_id, ret_type_info) = return_types[0];
+                        let ret_layout = ret_type_info.layout(registry)?;
 
-                            let ptr = values.remove(0);
-
-                            if matches!(ret_type_info, CoreTypeConcrete::Enum(_))
-                                && ret_type_info.is_memory_allocated(registry)
-                            {
-                                let num_bytes = block
-                                    .append_operation(arith::constant(
-                                        context,
-                                        IntegerAttribute::new(
-                                            IntegerType::new(context, 64).into(),
-                                            ret_layout.size() as i64,
-                                        )
-                                        .into(),
-                                        location,
-                                    ))
-                                    .result(0)?
-                                    .into();
-                                block.append_operation(
-                                    ods::llvm::intr_memcpy(
-                                        context,
-                                        pre_entry_block.argument(0)?.into(),
-                                        ptr,
-                                        num_bytes,
-                                        IntegerAttribute::new(
-                                            IntegerType::new(context, 1).into(),
-                                            0,
-                                        ),
-                                        location,
-                                    )
-                                    .into(),
-                                );
-                            } else {
-                                block.append_operation(llvm::store(
-                                    context,
-                                    ptr,
-                                    pre_entry_block.argument(0)?.into(),
-                                    location,
-                                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                                        IntegerType::new(context, 64).into(),
-                                        ret_layout.align() as i64,
-                                    ))),
-                                ));
-                            }
-                        }
-                        Some(false) => {
-                            for (value, (type_id, type_info)) in
-                                values.iter_mut().zip(&return_types)
-                            {
-                                if matches!(type_info, CoreTypeConcrete::Enum(_))
-                                    && type_info.is_memory_allocated(registry)
-                                {
-                                    let layout = type_info.layout(registry)?;
-
-                                    *value = block
-                                        .append_operation(llvm::load(
-                                            context,
-                                            *value,
-                                            type_info.build(
-                                                context, module, registry, metadata, type_id,
-                                            )?,
-                                            location,
-                                            LoadStoreOptions::new().align(Some(
-                                                IntegerAttribute::new(
-                                                    IntegerType::new(context, 64).into(),
-                                                    layout.align() as i64,
-                                                ),
-                                            )),
-                                        ))
-                                        .result(0)?
-                                        .into();
-                                }
-                            }
-                        }
-                        None => {}
+                        let ptr = values.remove(0);
+                        block.append_operation(llvm::store(
+                            context,
+                            ptr,
+                            pre_entry_block.argument(0)?.into(),
+                            location,
+                            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                                IntegerType::new(context, 64).into(),
+                                ret_layout.align() as i64,
+                            ))),
+                        ));
                     }
 
                     block.append_operation(func::r#return(&values, location));
@@ -747,7 +683,7 @@ fn generate_function_structure<'c, 'a>(
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
 ) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Error> {
-    let initial_state = edit_state::put_results::<(Type, bool)>(
+    let initial_state = edit_state::put_results::<Type>(
         HashMap::new(),
         function
             .params
@@ -757,11 +693,7 @@ fn generate_function_structure<'c, 'a>(
                 let type_info = registry.get_type(ty)?;
                 Ok((
                     &param.id,
-                    (
-                        type_info.build(context, module, registry, metadata_storage, ty)?,
-                        matches!(type_info, CoreTypeConcrete::Enum(_))
-                            && type_info.is_memory_allocated(registry),
-                    ),
+                    type_info.build(context, module, registry, metadata_storage, ty)?,
                 ))
             })
             .collect::<Result<Vec<_>, Error>>()?
@@ -798,15 +730,8 @@ fn generate_function_structure<'c, 'a>(
                     let (state, types) =
                         edit_state::take_args(state.clone(), invocation.args.iter())?;
 
-                    for (ty, is_memory_allocated) in types {
-                        block.add_argument(
-                            if is_memory_allocated {
-                                llvm::r#type::opaque_pointer(context)
-                            } else {
-                                ty
-                            },
-                            Location::unknown(context),
-                        );
+                    for ty in types {
+                        block.add_argument(ty, Location::unknown(context));
                     }
 
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
@@ -822,19 +747,13 @@ fn generate_function_structure<'c, 'a>(
                                         .vars
                                         .iter()
                                         .map(|var_info| -> Result<_, Error> {
-                                            let type_info = registry.get_type(&var_info.ty)?;
-
-                                            Ok((
-                                                type_info.build(
-                                                    context,
-                                                    module,
-                                                    registry,
-                                                    metadata_storage,
-                                                    &var_info.ty,
-                                                )?,
-                                                matches!(type_info, CoreTypeConcrete::Enum(_))
-                                                    && type_info.is_memory_allocated(registry),
-                                            ))
+                                            registry.get_type(&var_info.ty)?.build(
+                                                context,
+                                                module,
+                                                registry,
+                                                metadata_storage,
+                                                &var_info.ty,
+                                            )
                                         })
                                         .collect::<Result<Vec<_>, _>>()?,
                                 ),
@@ -863,15 +782,8 @@ fn generate_function_structure<'c, 'a>(
                         "State must be empty after a return statement."
                     );
 
-                    for (ty, is_memory_allocated) in types {
-                        block.add_argument(
-                            if is_memory_allocated {
-                                llvm::r#type::opaque_pointer(context)
-                            } else {
-                                ty
-                            },
-                            Location::unknown(context),
-                        );
+                    for ty in types {
+                        block.add_argument(ty, Location::unknown(context));
                     }
 
                     Vec::new()
@@ -940,13 +852,12 @@ fn generate_function_structure<'c, 'a>(
                                 .map(|(var_id, ty)| (var_id.id, *ty))
                                 .collect::<BTreeMap<_, _>>()
                                 .into_values()
-                                .map(|(ty, is_memory_allocated)| {
+                                .map(|ty| {
                                     (
-                                        if is_memory_allocated {
-                                            llvm::r#type::opaque_pointer(context)
-                                        } else {
-                                            ty
-                                        },
+                                        // if is_memory_allocated {
+                                        //     llvm::r#type::opaque_pointer(context)
+                                        // } else {
+                                        ty, // }
                                         Location::unknown(context),
                                     )
                                 })

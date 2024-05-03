@@ -19,11 +19,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        cf, func, index,
-        llvm::{self},
-        memref,
-    },
+    dialect::{cf, func, index, llvm, memref},
     ir::{
         attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute},
         r#type::IntegerType,
@@ -50,7 +46,27 @@ pub fn build<'ctx, 'this>(
         let type_info = registry.get_type(type_id)?;
 
         if !(type_info.is_builtin() && type_info.is_zst(registry)) {
-            arguments.push(entry.argument(idx)?.into());
+            arguments.push(if type_info.is_memory_allocated(registry) {
+                let elem_ty = type_info.build(context, helper, registry, metadata, type_id)?;
+                let stack_ptr = helper.init_block().alloca1(
+                    context,
+                    location,
+                    elem_ty,
+                    Some(type_info.layout(registry)?.align()),
+                )?;
+
+                entry.store(
+                    context,
+                    location,
+                    stack_ptr,
+                    entry.argument(idx)?.into(),
+                    Some(type_info.layout(registry)?.align()),
+                );
+
+                stack_ptr
+            } else {
+                entry.argument(idx)?.into()
+            });
         }
     }
 
@@ -219,17 +235,13 @@ pub fn build<'ctx, 'this>(
                             .result(0)?
                             .into();
 
-                        results.push(if type_info.is_memory_allocated(registry) {
-                            pointer_val
-                        } else {
-                            entry.load(
-                                context,
-                                location,
-                                pointer_val,
-                                type_info.build(context, helper, registry, metadata, type_id)?,
-                                None,
-                            )?
-                        });
+                        results.push(entry.load(
+                            context,
+                            location,
+                            pointer_val,
+                            type_info.build(context, helper, registry, metadata, type_id)?,
+                            None,
+                        )?);
                     }
                 }
             }
@@ -247,24 +259,7 @@ pub fn build<'ctx, 'this>(
                         let val = function_call_result.result(count)?.into();
                         count += 1;
 
-                        results.push(if type_info.is_memory_allocated(registry) {
-                            let ty =
-                                type_info.build(context, helper, registry, metadata, type_id)?;
-                            let layout = type_info.layout(registry)?;
-
-                            let stack_ptr = helper.init_block().alloca1(
-                                context,
-                                location,
-                                ty,
-                                Some(layout.align()),
-                            )?;
-
-                            entry.store(context, location, stack_ptr, val, Some(layout.align()));
-
-                            stack_ptr
-                        } else {
-                            val
-                        });
+                        results.push(val);
                     }
                 }
             }
