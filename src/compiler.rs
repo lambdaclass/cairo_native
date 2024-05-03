@@ -798,7 +798,7 @@ fn generate_function_structure<'c, 'a>(
 
     tracing::trace!("Generating function entry block.");
     let entry_block = region.append_block(Block::new(&{
-        let args = extract_types(
+        extract_types(
             context,
             module,
             &function.signature.param_types,
@@ -806,32 +806,7 @@ fn generate_function_structure<'c, 'a>(
             metadata_storage,
         )
         .map(|ty| Ok((ty?, Location::unknown(context))))
-        .collect::<Result<Vec<_>, Error>>()?;
-
-        // for (type_info, (ty, _)) in function
-        //     .signature
-        //     .param_types
-        //     .iter()
-        //     .filter_map(|type_id| {
-        //         let type_info = match registry.get_type(type_id) {
-        //             Ok(x) => x,
-        //             Err(e) => return Some(Err(e)),
-        //         };
-
-        //         if type_info.is_builtin() && type_info.is_zst(registry) {
-        //             None
-        //         } else {
-        //             Some(Ok(type_info))
-        //         }
-        //     })
-        //     .zip(args.iter_mut())
-        // {
-        //     if type_info?.is_memory_allocated(registry) {
-        //         *ty = llvm::r#type::opaque_pointer(context);
-        //     }
-        // }
-
-        args
+        .collect::<Result<Vec<_>, Error>>()?
     }));
 
     let blocks = blocks
