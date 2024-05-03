@@ -23,7 +23,6 @@ lazy_static! {
 
 proptest! {
     #[test]
-    #[ignore = "gas mismatch in dicts"]
     fn dict_get_insert_proptest(a in any_felt(), b in any_felt()) {
         let program = &DICT_GET_INSERT;
         let result_vm = run_vm_program(
