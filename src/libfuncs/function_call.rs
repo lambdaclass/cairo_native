@@ -39,87 +39,40 @@ pub fn build<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &FunctionCallConcreteLibfunc,
 ) -> Result<()> {
-    let mut arguments = Vec::new();
-    let mut result_types = Vec::new();
+    let mut tailrec_meta = metadata.remove::<TailRecursionMeta>();
 
+    let mut arguments = Vec::new();
     for (idx, type_id) in info.function.signature.param_types.iter().enumerate() {
         let type_info = registry.get_type(type_id)?;
 
         if !(type_info.is_builtin() && type_info.is_zst(registry)) {
-            arguments.push(if type_info.is_memory_allocated(registry) {
-                let elem_ty = type_info.build(context, helper, registry, metadata, type_id)?;
-                let stack_ptr = helper.init_block().alloca1(
-                    context,
-                    location,
-                    elem_ty,
-                    Some(type_info.layout(registry)?.align()),
-                )?;
+            arguments.push(
+                if tailrec_meta.is_none() && type_info.is_memory_allocated(registry) {
+                    let elem_ty = type_info.build(context, helper, registry, metadata, type_id)?;
+                    let stack_ptr = helper.init_block().alloca1(
+                        context,
+                        location,
+                        elem_ty,
+                        Some(type_info.layout(registry)?.align()),
+                    )?;
 
-                entry.store(
-                    context,
-                    location,
-                    stack_ptr,
-                    entry.argument(idx)?.into(),
-                    Some(type_info.layout(registry)?.align()),
-                );
+                    entry.store(
+                        context,
+                        location,
+                        stack_ptr,
+                        entry.argument(idx)?.into(),
+                        Some(type_info.layout(registry)?.align()),
+                    );
 
-                stack_ptr
-            } else {
-                entry.argument(idx)?.into()
-            });
+                    stack_ptr
+                } else {
+                    entry.argument(idx)?.into()
+                },
+            );
         }
     }
 
-    let return_types = info
-        .function
-        .signature
-        .ret_types
-        .iter()
-        .filter_map(|type_id| {
-            let type_info = registry.get_type(type_id).unwrap();
-            if type_info.is_builtin() && type_info.is_zst(registry) {
-                None
-            } else {
-                Some((type_id, type_info))
-            }
-        })
-        .collect::<Vec<_>>();
-    let has_return_ptr = if return_types.len() > 1 {
-        result_types.extend(
-            return_types
-                .iter()
-                .map(|(type_id, type_info)| {
-                    type_info.build(context, helper, registry, metadata, type_id)
-                })
-                .collect::<std::result::Result<Vec<_>, _>>()?,
-        );
-
-        Some(false)
-    } else if return_types
-        .first()
-        .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
-    {
-        let (type_id, type_info) = return_types[0];
-        let layout = type_info.layout(registry)?;
-
-        let stack_ptr = helper.init_block().alloca1(
-            context,
-            location,
-            type_info.build(context, helper, registry, metadata, type_id)?,
-            Some(layout.align()),
-        )?;
-
-        arguments.insert(0, stack_ptr);
-
-        Some(true)
-    } else {
-        let (type_id, type_info) = return_types[0];
-        result_types.push(type_info.build(context, helper, registry, metadata, type_id)?);
-
-        None
-    };
-
-    if let Some(tailrec_meta) = metadata.get_mut::<TailRecursionMeta>() {
+    if let Some(tailrec_meta) = &mut tailrec_meta {
         let depth_counter =
             entry.append_op_result(memref::load(tailrec_meta.depth_counter(), &[], location))?;
 
@@ -141,19 +94,26 @@ pub fn build<'ctx, 'this>(
 
         entry.append_operation(cf::br(
             &tailrec_meta.recursion_target(),
-            &arguments
-                .iter()
-                .skip(has_return_ptr.is_some_and(|x| x) as usize)
-                .copied()
-                .collect::<Vec<_>>(),
+            &arguments,
             location,
         ));
 
         let cont_block = helper.append_block(Block::new(
-            &result_types
+            &info
+                .function
+                .signature
+                .ret_types
                 .iter()
-                .copied()
-                .map(|ty| (ty, location))
+                .map(|ty| {
+                    (
+                        registry
+                            .get_type(ty)
+                            .unwrap()
+                            .build(context, helper, registry, metadata, ty)
+                            .unwrap(),
+                        location,
+                    )
+                })
                 .collect::<Vec<_>>(),
         ));
         tailrec_meta.set_return_target(cont_block);
@@ -183,6 +143,56 @@ pub fn build<'ctx, 'this>(
 
         cont_block.append_operation(helper.br(0, &results, location));
     } else {
+        let mut result_types = Vec::new();
+        let return_types = info
+            .function
+            .signature
+            .ret_types
+            .iter()
+            .filter_map(|type_id| {
+                let type_info = registry.get_type(type_id).unwrap();
+                if type_info.is_builtin() && type_info.is_zst(registry) {
+                    None
+                } else {
+                    Some((type_id, type_info))
+                }
+            })
+            .collect::<Vec<_>>();
+        let has_return_ptr = if return_types.len() > 1 {
+            result_types.extend(
+                return_types
+                    .iter()
+                    .map(|(type_id, type_info)| {
+                        type_info.build(context, helper, registry, metadata, type_id)
+                    })
+                    .collect::<std::result::Result<Vec<_>, _>>()?,
+            );
+
+            Some(false)
+        } else if return_types
+            .first()
+            .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
+        {
+            let (type_id, type_info) = return_types[0];
+            let layout = type_info.layout(registry)?;
+
+            let stack_ptr = helper.init_block().alloca1(
+                context,
+                location,
+                type_info.build(context, helper, registry, metadata, type_id)?,
+                Some(layout.align()),
+            )?;
+
+            arguments.insert(0, stack_ptr);
+
+            Some(true)
+        } else {
+            let (type_id, type_info) = return_types[0];
+            result_types.push(type_info.build(context, helper, registry, metadata, type_id)?);
+
+            None
+        };
+
         let function_call_result = entry.append_operation(func::call(
             context,
             FlatSymbolRefAttribute::new(context, &generate_function_name(&info.function.id)),
@@ -270,6 +280,10 @@ pub fn build<'ctx, 'this>(
         }
 
         entry.append_operation(helper.br(0, &results, location));
+    }
+
+    if let Some(tailrec_meta) = tailrec_meta {
+        metadata.insert(tailrec_meta);
     }
 
     Ok(())

@@ -242,7 +242,7 @@ fn compile_func(
     let initial_state = edit_state::put_results(HashMap::<_, Value>::new(), {
         let mut values = Vec::new();
 
-        let mut count = (has_return_ptr == Some(true)) as usize;
+        let mut count = 0;
         for param in &function.params {
             let type_info = registry.get_type(&param.ty)?;
 
@@ -257,26 +257,10 @@ fn compile_func(
                         .result(0)?
                         .into()
                 } else {
-                    let value = pre_entry_block.argument(count)?.into();
+                    let value = entry_block.argument(count)?.into();
                     count += 1;
 
-                    if type_info.is_memory_allocated(registry) {
-                        pre_entry_block
-                            .append_operation(llvm::load(
-                                context,
-                                value,
-                                type_info.build(context, module, registry, metadata, &param.ty)?,
-                                Location::unknown(context),
-                                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                                    IntegerType::new(context, 64).into(),
-                                    type_info.layout(registry)?.align() as i64,
-                                ))),
-                            ))
-                            .result(0)?
-                            .into()
-                    } else {
-                        value
-                    }
+                    value
                 },
             ));
         }
@@ -617,17 +601,40 @@ fn compile_func(
         },
     )?;
 
-    pre_entry_block.append_operation(cf::br(
-        &entry_block,
-        &(0..entry_block.argument_count())
-            .map(|i| {
-                Ok(pre_entry_block
-                    .argument((has_return_ptr == Some(true)) as usize + i)?
-                    .into())
-            })
-            .collect::<Result<Vec<_>, Error>>()?,
-        Location::unknown(context),
-    ));
+    // Load arguments and jump to the entry block.
+    {
+        let mut arg_values = Vec::with_capacity(function.signature.param_types.len());
+        for (i, type_id) in function.signature.param_types.iter().enumerate() {
+            let type_info = registry.get_type(type_id)?;
+
+            let mut value = pre_entry_block
+                .argument((has_return_ptr == Some(true)) as usize + i)?
+                .into();
+            if type_info.is_memory_allocated(registry) {
+                value = pre_entry_block
+                    .append_operation(llvm::load(
+                        context,
+                        value,
+                        type_info.build(context, module, registry, metadata, type_id)?,
+                        Location::unknown(context),
+                        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                            IntegerType::new(context, 64).into(),
+                            type_info.layout(registry)?.align() as i64,
+                        ))),
+                    ))
+                    .result(0)?
+                    .into();
+            }
+
+            arg_values.push(value);
+        }
+
+        pre_entry_block.append_operation(cf::br(
+            &entry_block,
+            &arg_values,
+            Location::unknown(context),
+        ));
+    }
 
     let function_name = generate_function_name(&function.id);
     tracing::debug!("Creating the actual function, named `{function_name}`.");
@@ -774,7 +781,7 @@ fn generate_function_structure<'c, 'a>(
 
     tracing::trace!("Generating function entry block.");
     let entry_block = region.append_block(Block::new(&{
-        let mut args = extract_types(
+        let args = extract_types(
             context,
             module,
             &function.signature.param_types,
@@ -784,28 +791,28 @@ fn generate_function_structure<'c, 'a>(
         .map(|ty| Ok((ty?, Location::unknown(context))))
         .collect::<Result<Vec<_>, Error>>()?;
 
-        for (type_info, (ty, _)) in function
-            .signature
-            .param_types
-            .iter()
-            .filter_map(|type_id| {
-                let type_info = match registry.get_type(type_id) {
-                    Ok(x) => x,
-                    Err(e) => return Some(Err(e)),
-                };
+        // for (type_info, (ty, _)) in function
+        //     .signature
+        //     .param_types
+        //     .iter()
+        //     .filter_map(|type_id| {
+        //         let type_info = match registry.get_type(type_id) {
+        //             Ok(x) => x,
+        //             Err(e) => return Some(Err(e)),
+        //         };
 
-                if type_info.is_builtin() && type_info.is_zst(registry) {
-                    None
-                } else {
-                    Some(Ok(type_info))
-                }
-            })
-            .zip(args.iter_mut())
-        {
-            if type_info?.is_memory_allocated(registry) {
-                *ty = llvm::r#type::opaque_pointer(context);
-            }
-        }
+        //         if type_info.is_builtin() && type_info.is_zst(registry) {
+        //             None
+        //         } else {
+        //             Some(Ok(type_info))
+        //         }
+        //     })
+        //     .zip(args.iter_mut())
+        // {
+        //     if type_info?.is_memory_allocated(registry) {
+        //         *ty = llvm::r#type::opaque_pointer(context);
+        //     }
+        // }
 
         args
     }));
