@@ -2,8 +2,8 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
-    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
+    block_ext::BlockExt, error::Result, metadata::MetadataStorage, types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -16,10 +16,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
-    ir::{
-        r#type::IntegerType,
-        Block, Location,
-    },
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -104,13 +101,7 @@ fn build_bool_binary<'ctx, 'this>(
     let lhs = entry.argument(0)?.into();
     let rhs = entry.argument(1)?.into();
 
-    let lhs_tag = entry.extract_value(
-            context,
-            location,
-            lhs,
-            tag_ty,
-            0,
-        )?;
+    let lhs_tag = entry.extract_value(context, location, lhs, tag_ty, 0)?;
 
     let rhs_tag = entry.extract_value(context, location, rhs, tag_ty, 0)?;
 
@@ -120,17 +111,16 @@ fn build_bool_binary<'ctx, 'this>(
         BoolOp::Or => entry.append_op_result(arith::ori(lhs_tag, rhs_tag, location))?,
     };
 
-    let res = entry
-        .append_op_result(llvm::undef(
-            enum_ty.build(
-                context,
-                helper,
-                registry,
-                metadata,
-                &info.param_signatures()[0].ty,
-            )?,
-            location,
-        ))?;
+    let res = entry.append_op_result(llvm::undef(
+        enum_ty.build(
+            context,
+            helper,
+            registry,
+            metadata,
+            &info.param_signatures()[0].ty,
+        )?,
+        location,
+    ))?;
 
     let res = entry.insert_value(context, location, res, new_tag_value, 0)?;
 
@@ -160,26 +150,20 @@ pub fn build_bool_not<'ctx, 'this>(
     let value = entry.argument(0)?.into();
     let tag_value = entry.extract_value(context, location, value, tag_ty, 0)?;
 
-    let const_1 = entry.const_int_from_type(
-        context,
-        location,
-        1,
-        tag_ty
-    )?;
+    let const_1 = entry.const_int_from_type(context, location, 1, tag_ty)?;
 
     let new_tag_value = entry.append_op_result(arith::xori(tag_value, const_1, location))?;
 
-    let res = entry
-        .append_op_result(llvm::undef(
-            enum_ty.build(
-                context,
-                helper,
-                registry,
-                metadata,
-                &info.param_signatures()[0].ty,
-            )?,
-            location,
-        ))?;
+    let res = entry.append_op_result(llvm::undef(
+        enum_ty.build(
+            context,
+            helper,
+            registry,
+            metadata,
+            &info.param_signatures()[0].ty,
+        )?,
+        location,
+    ))?;
     let res = entry.insert_value(context, location, res, new_tag_value, 0)?;
 
     entry.append_operation(helper.br(0, &[res], location));
