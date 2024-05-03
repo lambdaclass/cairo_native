@@ -242,7 +242,7 @@ fn compile_func(
     let initial_state = edit_state::put_results(HashMap::<_, Value>::new(), {
         let mut values = Vec::new();
 
-        let mut count = 0;
+        let mut count = (has_return_ptr == Some(true)) as usize;
         for param in &function.params {
             let type_info = registry.get_type(&param.ty)?;
 
@@ -257,7 +257,7 @@ fn compile_func(
                         .result(0)?
                         .into()
                 } else {
-                    let value = entry_block.argument(count)?.into();
+                    let value = pre_entry_block.argument(count)?.into();
                     count += 1;
 
                     if type_info.is_memory_allocated(registry) {
@@ -494,33 +494,43 @@ fn compile_func(
                             let cont_block = region.insert_block_after(block, Block::new(&[]));
 
                             let (depth_counter, return_target) = tailrec_storage[counter_idx];
-                            let op0 =
-                                block.append_operation(memref::load(depth_counter, &[], location));
-                            let op1 = block.append_operation(index::constant(
-                                context,
-                                IntegerAttribute::new(Type::index(context), 0),
-                                location,
-                            ));
-                            let op2 = block.append_operation(index::cmp(
-                                context,
-                                CmpiPredicate::Eq,
-                                op0.result(0)?.into(),
-                                op1.result(0)?.into(),
-                                location,
-                            ));
+                            let depth_counter_value = block
+                                .append_operation(memref::load(depth_counter, &[], location))
+                                .result(0)?
+                                .into();
+                            let k0 = block
+                                .append_operation(index::constant(
+                                    context,
+                                    IntegerAttribute::new(Type::index(context), 0),
+                                    location,
+                                ))
+                                .result(0)?
+                                .into();
+                            let is_zero_depth = block
+                                .append_operation(index::cmp(
+                                    context,
+                                    CmpiPredicate::Eq,
+                                    depth_counter_value,
+                                    k0,
+                                    location,
+                                ))
+                                .result(0)?
+                                .into();
 
-                            let op3 = block.append_operation(index::constant(
-                                context,
-                                IntegerAttribute::new(Type::index(context), 1),
-                                location,
-                            ));
-                            let op4 = block.append_operation(index::sub(
-                                op0.result(0)?.into(),
-                                op3.result(0)?.into(),
-                                location,
-                            ));
+                            let k1 = block
+                                .append_operation(index::constant(
+                                    context,
+                                    IntegerAttribute::new(Type::index(context), 1),
+                                    location,
+                                ))
+                                .result(0)?
+                                .into();
+                            let depth_counter_value = block
+                                .append_operation(index::sub(depth_counter_value, k1, location))
+                                .result(0)?
+                                .into();
                             block.append_operation(memref::store(
-                                op4.result(0)?.into(),
+                                depth_counter_value,
                                 depth_counter,
                                 &[],
                                 location,
@@ -553,37 +563,7 @@ fn compile_func(
                                         if type_info.is_zst(registry) {
                                             None
                                         } else {
-                                            let value = *value;
-
-                                            Some(if type_info.is_memory_allocated(registry) {
-                                                let ty = type_info
-                                                    .build(
-                                                        context, module, registry, metadata,
-                                                        type_id,
-                                                    )
-                                                    .unwrap();
-                                                let layout = type_info.layout(registry).unwrap();
-
-                                                block
-                                                    .append_operation(llvm::load(
-                                                        context,
-                                                        value,
-                                                        ty,
-                                                        location,
-                                                        LoadStoreOptions::new().align(Some(
-                                                            IntegerAttribute::new(
-                                                                IntegerType::new(context, 64)
-                                                                    .into(),
-                                                                layout.align() as i64,
-                                                            ),
-                                                        )),
-                                                    ))
-                                                    .result(0)
-                                                    .unwrap()
-                                                    .into()
-                                            } else {
-                                                value
-                                            })
+                                            Some(*value)
                                         }
                                     })
                                     .collect::<Vec<_>>(),
@@ -592,7 +572,7 @@ fn compile_func(
 
                             block.append_operation(cf::cond_br(
                                 context,
-                                op2.result(0)?.into(),
+                                is_zero_depth,
                                 &cont_block,
                                 &return_target,
                                 &[],

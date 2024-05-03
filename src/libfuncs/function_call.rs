@@ -177,21 +177,7 @@ pub fn build<'ctx, 'this>(
                 let val = cont_block.argument(count)?.into();
                 count += 1;
 
-                results.push(if type_info.is_memory_allocated(registry) {
-                    let ty = type_info.build(context, helper, registry, metadata, &var_info.ty)?;
-                    let layout = type_info.layout(registry)?;
-
-                    let stack_ptr =
-                        helper
-                            .init_block()
-                            .alloca1(context, location, ty, Some(layout.align()))?;
-
-                    cont_block.store(context, location, stack_ptr, val, Some(layout.align()));
-
-                    stack_ptr
-                } else {
-                    val
-                });
+                results.push(val);
             }
         }
 

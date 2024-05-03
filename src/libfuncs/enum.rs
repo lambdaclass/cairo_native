@@ -11,7 +11,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         enm::{EnumConcreteLibfunc, EnumInitConcreteLibfunc},
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc,
@@ -104,26 +104,6 @@ pub fn build_init<'ctx, 'this>(
                 .result(0)?
                 .into();
 
-            let payload_val = if matches!(payload_type_info, CoreTypeConcrete::Enum(_))
-                && payload_type_info.is_memory_allocated(registry)
-            {
-                entry
-                    .append_operation(llvm::load(
-                        context,
-                        entry.argument(0)?.into(),
-                        variant_tys[info.index].0,
-                        location,
-                        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            variant_tys[info.index].1.align() as i64,
-                        ))),
-                    ))
-                    .result(0)?
-                    .into()
-            } else {
-                entry.argument(0)?.into()
-            };
-
             let val = entry
                 .append_operation(llvm::undef(enum_ty, location))
                 .result(0)?
@@ -146,7 +126,7 @@ pub fn build_init<'ctx, 'this>(
                         context,
                         val,
                         DenseI64ArrayAttribute::new(context, &[1]),
-                        payload_val,
+                        entry.argument(0)?.into(),
                         location,
                     ))
                     .result(0)?
