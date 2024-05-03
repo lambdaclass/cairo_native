@@ -185,6 +185,31 @@
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -201,7 +226,8 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    ir::{Block, Location},
+    dialect::arith,
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -254,19 +280,43 @@
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    _metadata: <span class="kw-2">&amp;</span>MetadataStorage,
+    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check =
         <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>segment_arena =
         <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>dict_ptr = entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into();
+
+    <span class="kw">let </span>runtime_bindings = metadata
+        .get_mut::&lt;RuntimeBindingsMeta&gt;()
+        .expect(<span class="string">"Runtime library not available."</span>);
+
+    <span class="kw">let </span>gas_refund = runtime_bindings
+        .dict_gas_refund(context, helper, entry, dict_ptr, location)<span class="question-mark">?
+        </span>.result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+    <span class="kw">let </span>gas_refund = entry
+        .append_operation(arith::extui(
+            gas_refund,
+            IntegerType::new(context, <span class="number">128</span>).into(),
+            location,
+        ))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
+
+    <span class="kw">let </span>new_gas_builtin = entry
+        .append_operation(arith::addi(gas_builtin, gas_refund, location))
+        .result(<span class="number">0</span>)<span class="question-mark">?
+        </span>.into();
 
     entry.append_operation(helper.br(
         <span class="number">0</span>,
         <span class="kw-2">&amp;</span>[
             range_check,
-            entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
+            new_gas_builtin,
             segment_arena,
             entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
         ],

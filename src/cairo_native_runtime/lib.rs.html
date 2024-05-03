@@ -459,9 +459,34 @@
 <a href="#458" id="458">458</a>
 <a href="#459" id="459">459</a>
 <a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
-</span><span class="kw">use </span>lazy_static::lazy_static;
+</span><span class="kw">use </span>cairo_lang_sierra_gas::core_libfunc_cost::{
+    DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
+};
+<span class="kw">use </span>lazy_static::lazy_static;
 <span class="kw">use </span>starknet_crypto::FieldElement;
 <span class="kw">use </span>starknet_curve::AffinePoint;
 <span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -472,6 +497,8 @@
         <span class="string">"1809251394333065606848661391547535052811553607665798349986546028067936010240"
     </span>)
     .unwrap();
+    <span class="kw">pub static </span><span class="kw-2">ref </span>DICT_GAS_REFUND_PER_ACCESS: u64 =
+        (DICT_SQUASH_UNIQUE_KEY_COST.cost() - DICT_SQUASH_REPEATED_ACCESS_COST.cost()) <span class="kw">as </span>u64;
 }
 
 <span class="doccomment">/// Based on `cairo-lang-runner`'s implementation.
@@ -613,7 +640,7 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__alloc_dict() -&gt; <span class="kw-2">*mut </span>std::ffi::c_void {
-    Box::into_raw(Box::&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;::default()) <span class="kw">as _
+    Box::into_raw(Box::&lt;(HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;, u64)&gt;::default()) <span class="kw">as _
 </span>}
 
 <span class="doccomment">/// Frees the dictionary.
@@ -624,17 +651,18 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_free(
-    ptr: <span class="kw-2">*mut </span>HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;,
+    ptr: <span class="kw-2">*mut </span>(HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;, u64),
 ) {
     <span class="kw">let </span><span class="kw-2">mut </span>map = Box::from_raw(ptr);
 
     <span class="comment">// Free the entries manually.
-    </span><span class="kw">for </span>(<span class="kw">_</span>, entry) <span class="kw">in </span>map.drain() {
+    </span><span class="kw">for </span>(<span class="kw">_</span>, entry) <span class="kw">in </span>map.as_mut().<span class="number">0</span>.drain() {
         libc::free(entry.as_ptr().cast());
     }
 }
 
 <span class="doccomment">/// Gets the value for a given key, the returned pointer is null if not found.
+/// Increments the access count.
 ///
 /// # Safety
 ///
@@ -642,10 +670,12 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_get(
-    ptr: <span class="kw-2">*const </span>HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;,
+    ptr: <span class="kw-2">*mut </span>(HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;, u64),
     key: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
-) -&gt; <span class="kw-2">*const </span>std::ffi::c_void {
-    <span class="kw">let </span>map: <span class="kw-2">&amp;</span>HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt; = <span class="kw-2">&amp;*</span>ptr;
+) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void {
+    <span class="kw">let </span>dict: <span class="kw-2">&amp;mut </span>(HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;, u64) = <span class="kw-2">&amp;mut *</span>ptr;
+    <span class="kw">let </span>map = <span class="kw-2">&amp;</span>dict.<span class="number">0</span>;
+    dict.<span class="number">1 </span>+= <span class="number">1</span>;
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = map.get(key) {
         v.as_ptr()
@@ -662,18 +692,32 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_insert(
-    ptr: <span class="kw-2">*mut </span>HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;,
+    ptr: <span class="kw-2">*mut </span>(HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;, u64),
     key: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
     value: NonNull&lt;std::ffi::c_void&gt;,
 ) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void {
-    <span class="kw">let </span>ptr = ptr.cast::&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;();
-    <span class="kw">let </span>old_ptr = (<span class="kw-2">*</span>ptr).insert(<span class="kw-2">*</span>key, value);
+    <span class="kw">let </span>dict = <span class="kw-2">&amp;mut *</span>ptr;
+    <span class="kw">let </span>old_ptr = dict.<span class="number">0</span>.insert(<span class="kw-2">*</span>key, value);
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = old_ptr {
         v.as_ptr()
     } <span class="kw">else </span>{
         std::ptr::null_mut()
     }
+}
+
+<span class="doccomment">/// Compute the total gas refund for the dictionary at squash time.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+</span><span class="attr">#[no_mangle]
+</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_gas_refund(
+    ptr: <span class="kw-2">*const </span>(HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;, u64),
+) -&gt; u64 {
+    <span class="kw">let </span>dict = <span class="kw-2">&amp;*</span>ptr;
+    (dict.<span class="number">1 </span>- dict.<span class="number">0</span>.len() <span class="kw">as </span>u64) * <span class="kw-2">*</span>DICT_GAS_REFUND_PER_ACCESS
 }
 
 <span class="doccomment">/// Compute `ec_point_from_x_nz(x)` and store it.

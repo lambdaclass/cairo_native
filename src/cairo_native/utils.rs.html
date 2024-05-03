@@ -1381,6 +1381,13 @@
 <a href="#1380" id="1380">1380</a>
 <a href="#1381" id="1381">1381</a>
 <a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1726,6 +1733,13 @@
                     <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
                     NonNull&lt;std::ffi::c_void&gt;,
                 ) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void <span class="kw">as </span><span class="kw-2">*mut </span>(),
+        );
+
+        engine.register_symbol(
+            <span class="string">"cairo_native__dict_gas_refund"</span>,
+            cairo_native_runtime::cairo_native__dict_gas_refund
+                <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*const </span>std::ffi::c_void, NonNull&lt;std::ffi::c_void&gt;) -&gt; u64
+                <span class="kw">as </span><span class="kw-2">*mut </span>(),
         );
     }
 }
