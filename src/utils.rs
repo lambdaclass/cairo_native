@@ -344,6 +344,13 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
                     NonNull<std::ffi::c_void>,
                 ) -> *mut std::ffi::c_void as *mut (),
         );
+
+        engine.register_symbol(
+            "cairo_native__dict_gas_refund",
+            cairo_native_runtime::cairo_native__dict_gas_refund
+                as *const fn(*const std::ffi::c_void, NonNull<std::ffi::c_void>) -> u64
+                as *mut (),
+        );
     }
 }
 
