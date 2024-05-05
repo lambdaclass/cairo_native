@@ -1,5 +1,8 @@
 #![allow(non_snake_case)]
 
+use cairo_lang_sierra_gas::core_libfunc_cost::{
+    DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
+};
 use lazy_static::lazy_static;
 use starknet_crypto::FieldElement;
 use starknet_curve::AffinePoint;
@@ -11,6 +14,8 @@ lazy_static! {
         "1809251394333065606848661391547535052811553607665798349986546028067936010240"
     )
     .unwrap();
+    pub static ref DICT_GAS_REFUND_PER_ACCESS: u64 =
+        (DICT_SQUASH_UNIQUE_KEY_COST.cost() - DICT_SQUASH_REPEATED_ACCESS_COST.cost()) as u64;
 }
 
 /// Based on `cairo-lang-runner`'s implementation.
@@ -152,7 +157,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
-    Box::into_raw(Box::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>::default()) as _
+    Box::into_raw(Box::<(HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>::default()) as _
 }
 
 /// Frees the dictionary.
@@ -163,17 +168,18 @@ pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_free(
-    ptr: *mut HashMap<[u8; 32], NonNull<std::ffi::c_void>>,
+    ptr: *mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
 ) {
     let mut map = Box::from_raw(ptr);
 
     // Free the entries manually.
-    for (_, entry) in map.drain() {
+    for (_, entry) in map.as_mut().0.drain() {
         libc::free(entry.as_ptr().cast());
     }
 }
 
 /// Gets the value for a given key, the returned pointer is null if not found.
+/// Increments the access count.
 ///
 /// # Safety
 ///
@@ -181,10 +187,12 @@ pub unsafe extern "C" fn cairo_native__dict_free(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_get(
-    ptr: *const HashMap<[u8; 32], NonNull<std::ffi::c_void>>,
+    ptr: *mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
     key: &[u8; 32],
-) -> *const std::ffi::c_void {
-    let map: &HashMap<[u8; 32], NonNull<std::ffi::c_void>> = &*ptr;
+) -> *mut std::ffi::c_void {
+    let dict: &mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64) = &mut *ptr;
+    let map = &dict.0;
+    dict.1 += 1;
 
     if let Some(v) = map.get(key) {
         v.as_ptr()
@@ -201,18 +209,32 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_insert(
-    ptr: *mut HashMap<[u8; 32], NonNull<std::ffi::c_void>>,
+    ptr: *mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
     key: &[u8; 32],
     value: NonNull<std::ffi::c_void>,
 ) -> *mut std::ffi::c_void {
-    let ptr = ptr.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>();
-    let old_ptr = (*ptr).insert(*key, value);
+    let dict = &mut *ptr;
+    let old_ptr = dict.0.insert(*key, value);
 
     if let Some(v) = old_ptr {
         v.as_ptr()
     } else {
         std::ptr::null_mut()
     }
+}
+
+/// Compute the total gas refund for the dictionary at squash time.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__dict_gas_refund(
+    ptr: *const (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
+) -> u64 {
+    let dict = &*ptr;
+    (dict.1 - dict.0.len() as u64) * *DICT_GAS_REFUND_PER_ACCESS
 }
 
 /// Compute `ec_point_from_x_nz(x)` and store it.

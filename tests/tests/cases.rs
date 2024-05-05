@@ -42,7 +42,7 @@ use test_case::test_case;
 #[test_case("tests/cases/returns/simple.cairo")]
 #[test_case("tests/cases/returns/tuple.cairo")]
 // dict
-#[test_case("tests/cases/dict/insert_get.cairo" => ignore["gas mismatch"])]
+#[test_case("tests/cases/dict/insert_get.cairo")]
 // uint
 #[test_case("tests/cases/uint/compare.cairo")]
 #[test_case("tests/cases/uint/consts.cairo")]
