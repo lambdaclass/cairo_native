@@ -321,8 +321,6 @@ pub fn run_native_starknet_contract(
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares
 /// the results automatically, triggering a proptest assert if there is a mismatch.
 ///
-/// If ignore_gas is false, it will check whether the resulting gas matches.
-///
 /// Left of report of the assert is the cairo vm result, right side is cairo native
 #[track_caller]
 pub fn compare_outputs(
@@ -546,6 +544,14 @@ pub fn compare_outputs(
         .as_ref()
         .map(|x| x.starts_with("core::panics::PanicResult"))
         .unwrap_or(false);
+
+    assert_eq!(
+        vm_result
+            .gas_counter
+            .clone()
+            .unwrap_or_else(|| Felt252::from(0)),
+        Felt252::from(native_result.remaining_gas.unwrap_or(0)),
+    );
 
     let vm_result = match &vm_result.value {
         RunResultValue::Success(values) => {

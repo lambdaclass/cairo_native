@@ -72,10 +72,6 @@ fn snapshot_take<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    // let elem_snapshot_take = metadata
-    //     .get::<SnapshotClonesMeta<TType, TLibfunc>>()
-    //     .and_then(|meta| meta.wrap_invoke(&info.ty));
-
     let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
 
     let k0 = entry
