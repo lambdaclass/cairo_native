@@ -27,6 +27,7 @@ enum RuntimeBinding {
     EcStateTryFinalizeNz,
     DictNew,
     DictGet,
+    DictGasRefund,
     DictInsert,
     DictFree,
 }
@@ -654,6 +655,53 @@ impl RuntimeBindingsMeta {
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_insert"),
             &[dict_ptr, key_ptr, value_ptr],
             &[llvm::r#type::opaque_pointer(context)],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `dict_gas_refund()` function.
+    ///
+    /// Compute the total gas refund for the dictionary.
+    ///
+    /// Returns a u64 of the result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dict_gas_refund<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        dict_ptr: Value<'c, 'a>, // ptr to the dict
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::DictGasRefund) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__dict_gas_refund"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[llvm::r#type::opaque_pointer(context)],
+                        &[IntegerType::new(context, 64).into()],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_gas_refund"),
+            &[dict_ptr],
+            &[IntegerType::new(context, 64).into()],
             location,
         )))
     }
