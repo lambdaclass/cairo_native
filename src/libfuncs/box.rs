@@ -5,8 +5,9 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
+    ffi::get_mlir_layout,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
-    types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -65,8 +66,8 @@ pub fn build_into_box<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let inner_type = registry.get_type(&info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
+    let inner_type = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let inner_layout = get_mlir_layout(helper, inner_type);
 
     let value_len = entry
         .append_operation(arith::constant(
@@ -117,9 +118,8 @@ pub fn build_unbox<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let inner_type = registry.get_type(&info.ty)?;
-    let inner_ty = inner_type.build(context, helper, registry, metadata, &info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
+    let inner_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let inner_layout = get_mlir_layout(helper, inner_ty);
 
     let value = entry
         .append_operation(llvm::load(

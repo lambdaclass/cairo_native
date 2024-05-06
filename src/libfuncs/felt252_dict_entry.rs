@@ -4,6 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
     error::Result,
+    ffi::get_mlir_layout,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
@@ -213,8 +214,14 @@ pub fn build_finalize<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let value_type = registry.get_type(&info.param_signatures()[1].ty)?;
-    let value_layout = value_type.layout(registry)?;
+    let value_type = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[1].ty,
+    )?;
+    let value_layout = get_mlir_layout(helper, value_type);
 
     let key_ty = IntegerType::new(context, 252).into();
     let key_layout = get_integer_layout(252);

@@ -7,6 +7,7 @@ use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
     error::Result,
+    ffi::get_mlir_layout,
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
     utils::generate_function_name,
@@ -44,6 +45,10 @@ pub fn build<'ctx, 'this>(
     let mut arguments = Vec::new();
     for (idx, type_id) in info.function.signature.param_types.iter().enumerate() {
         let type_info = registry.get_type(type_id)?;
+        let type_layout = get_mlir_layout(
+            helper,
+            type_info.build(context, helper, registry, metadata, type_id)?,
+        );
 
         if !(type_info.is_builtin() && type_info.is_zst(registry)) {
             arguments.push(
@@ -53,7 +58,7 @@ pub fn build<'ctx, 'this>(
                         context,
                         location,
                         elem_ty,
-                        Some(type_info.layout(registry)?.align()),
+                        Some(type_layout.align()),
                     )?;
 
                     entry.store(
@@ -61,7 +66,7 @@ pub fn build<'ctx, 'this>(
                         location,
                         stack_ptr,
                         entry.argument(idx)?.into(),
-                        Some(type_info.layout(registry)?.align()),
+                        Some(type_layout.align()),
                     );
 
                     stack_ptr
@@ -174,7 +179,10 @@ pub fn build<'ctx, 'this>(
             .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
         {
             let (type_id, type_info) = return_types[0];
-            let layout = type_info.layout(registry)?;
+            let layout = get_mlir_layout(
+                helper,
+                type_info.build(context, helper, registry, metadata, type_id)?,
+            );
 
             let stack_ptr = helper.init_block().alloca1(
                 context,
@@ -216,7 +224,10 @@ pub fn build<'ctx, 'this>(
                         let val = arguments[0];
 
                         let offset;
-                        let ret_layout = type_info.layout(registry)?;
+                        let ret_layout = get_mlir_layout(
+                            helper,
+                            type_info.build(context, helper, registry, metadata, type_id)?,
+                        );
                         (layout, offset) = layout.extend(ret_layout)?;
 
                         let pointer_val = entry
