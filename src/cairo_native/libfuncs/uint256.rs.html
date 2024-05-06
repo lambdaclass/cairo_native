@@ -1237,6 +1237,48 @@
 <a href="#1236" id="1236">1236</a>
 <a href="#1237" id="1237">1237</a>
 <a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u256`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -2084,8 +2126,45 @@
         location,
     ));
 
+    <span class="kw">let </span>inv = result.result(<span class="number">3</span>)<span class="question-mark">?</span>.into();
+
     <span class="kw">let </span>inv = entry
-        .append_operation(arith::remui(result.result(<span class="number">3</span>)<span class="question-mark">?</span>.into(), rhs, location))
+        .append_operation(scf::r#if(
+            entry
+                .append_operation(arith::cmpi(context, CmpiPredicate::Slt, inv, k0, location))
+                .result(<span class="number">0</span>)<span class="question-mark">?
+                </span>.into(),
+            <span class="kw-2">&amp;</span>[i256_ty],
+            {
+                <span class="kw">let </span>region = Region::new();
+                <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+
+                block.append_operation(scf::r#yield(
+                    <span class="kw-2">&amp;</span>[entry
+                        .append_operation(arith::addi(inv, rhs, location))
+                        .result(<span class="number">0</span>)<span class="question-mark">?
+                        </span>.into()],
+                    location,
+                ));
+
+                region
+            },
+            {
+                <span class="kw">let </span>region = Region::new();
+                <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+
+                block.append_operation(scf::r#yield(
+                    <span class="kw-2">&amp;</span>[entry
+                        .append_operation(arith::remui(inv, rhs, location))
+                        .result(<span class="number">0</span>)<span class="question-mark">?
+                        </span>.into()],
+                    location,
+                ));
+
+                region
+            },
+            location,
+        ))
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
@@ -2472,6 +2551,11 @@
             (<span class="number">1</span>, <span class="number">0</span>),
             (<span class="number">5</span>, <span class="number">0</span>),
             <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(<span class="number">1u128</span>.into(), <span class="number">0u128</span>.into())),
+        );
+        run(
+            (<span class="number">2</span>, <span class="number">0</span>),
+            (<span class="number">5</span>, <span class="number">0</span>),
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(<span class="number">3u128</span>.into(), <span class="number">0u128</span>.into())),
         );
     }
 }
