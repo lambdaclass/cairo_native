@@ -83,9 +83,9 @@ impl From<usize> for OptLevel {
     }
 }
 
-impl Into<usize> for OptLevel {
-    fn into(self) -> usize {
-        match self {
+impl From<OptLevel> for usize {
+    fn from(val: OptLevel) -> Self {
+        match val {
             OptLevel::None => 0,
             OptLevel::Less => 1,
             OptLevel::Default => 2,
