@@ -127,6 +127,12 @@
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{error::Error, values::JitValue};
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 
@@ -187,23 +193,29 @@
                                 felt_vec
                             } <span class="kw">else </span>{
                                 <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
-                                    <span class="string">"wrong type, expect: array, value: {:?}"</span>,
+                                    <span class="string">"wrong type, expected: Struct {{ Struct {{ Array&lt;felt252&gt; }} }}, value: {:?}"</span>,
                                     value
                                 )))<span class="question-mark">?
                             </span>}
                         } <span class="kw">else </span>{
                             <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
-                                <span class="string">"wrong type, expect: struct, value: {:?}"</span>,
+                                <span class="string">"wrong type, expected: Struct {{ Struct {{ Array&lt;felt252&gt; }} }}, value: {:?}"</span>,
                                 value
                             )))<span class="question-mark">?
                         </span>}
                     } <span class="kw">else </span>{
                         <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
-                            <span class="string">"wrong type, expect: struct, value: {:?}"</span>,
+                            <span class="string">"wrong type, expected: Struct {{ Struct {{ Array&lt;felt252&gt; }} }}, value: {:?}"</span>,
                             value
                         )))<span class="question-mark">?
                     </span>}
                 } <span class="kw">else if let </span>JitValue::Struct { fields, .. } = <span class="kw-2">&amp;**</span>value {
+                    <span class="kw">if </span>fields.len() &lt; <span class="number">2 </span>{
+                        <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
+                            <span class="string">"wrong type, expect: struct.fields.len() &gt;= 2, value: {:?}"</span>,
+                            fields
+                        )))<span class="question-mark">?
+                    </span>}
                     <span class="kw">if let </span>JitValue::Array(data) = <span class="kw-2">&amp;</span>fields[<span class="number">1</span>] {
                         <span class="kw">let </span>felt_vec: Vec&lt;<span class="kw">_</span>&gt; = data
                             .iter()
@@ -228,13 +240,13 @@
                         felt_vec
                     } <span class="kw">else </span>{
                         <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
-                            <span class="string">"wrong type, expect: array, value: {:?}"</span>,
+                            <span class="string">"wrong type, expected: Struct {{ [X, Array&lt;felt252&gt;] }}, value: {:?}"</span>,
                             value
                         )))<span class="question-mark">?
                     </span>}
                 } <span class="kw">else </span>{
                     <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
-                        <span class="string">"wrong type, expect: struct, value: {:?}"</span>,
+                        <span class="string">"wrong type, expected: Struct {{ [X, Array&lt;felt252&gt;] }}, value: {:?}"</span>,
                         value
                     )))<span class="question-mark">?
                 </span>}
