@@ -1,5 +1,3 @@
-use std::sync::OnceLock;
-
 use crate::{
     debug_info::DebugLocations,
     error::Error,
@@ -31,11 +29,15 @@ use melior::{
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
+use std::sync::OnceLock;
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
 pub struct NativeContext {
     context: Context,
+
+    target_triple: String,
+    data_layout: String,
 }
 
 unsafe impl Send for NativeContext {}
@@ -50,11 +52,41 @@ impl Default for NativeContext {
 impl NativeContext {
     pub fn new() -> Self {
         let context = initialize_mlir();
-        Self { context }
+
+        Self {
+            context,
+            target_triple: get_target_triple(),
+            data_layout: get_data_layout_rep().unwrap(),
+        }
     }
 
     pub fn context(&self) -> &Context {
         &self.context
+    }
+
+    pub fn new_module(&self) -> Module {
+        let module_op = OperationBuilder::new("builtin.module", Location::unknown(&self.context))
+            .add_attributes(&[
+                (
+                    Identifier::new(&self.context, "llvm.target_triple"),
+                    StringAttribute::new(&self.context, &self.target_triple).into(),
+                ),
+                (
+                    Identifier::new(&self.context, "llvm.data_layout"),
+                    StringAttribute::new(&self.context, &self.data_layout).into(),
+                ),
+            ])
+            .add_regions([{
+                let region = Region::new();
+                region.append_block(Block::new(&[]));
+                region
+            }])
+            .build()
+            .unwrap();
+        eprintln!("{module_op}");
+        assert!(module_op.verify(), "module operation is not valid");
+
+        Module::from_operation(module_op).unwrap()
     }
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
@@ -64,40 +96,7 @@ impl NativeContext {
         program: &Program,
         debug_locations: Option<DebugLocations>,
     ) -> Result<NativeModule, Error> {
-        static INITIALIZED: OnceLock<()> = OnceLock::new();
-        INITIALIZED.get_or_init(|| unsafe {
-            LLVM_InitializeAllTargets();
-            LLVM_InitializeAllTargetInfos();
-            LLVM_InitializeAllTargetMCs();
-            LLVM_InitializeAllAsmPrinters();
-            tracing::debug!("initialized llvm targets");
-        });
-        let target_triple = get_target_triple();
-
-        let module_region = Region::new();
-        module_region.append_block(Block::new(&[]));
-
-        let data_layout_ret = &get_data_layout_rep()?;
-
-        let op = OperationBuilder::new(
-            "builtin.module",
-            Location::name(&self.context, "module", Location::unknown(&self.context)),
-        )
-        .add_attributes(&[
-            (
-                Identifier::new(&self.context, "llvm.target_triple"),
-                StringAttribute::new(&self.context, &target_triple).into(),
-            ),
-            (
-                Identifier::new(&self.context, "llvm.data_layout"),
-                StringAttribute::new(&self.context, data_layout_ret).into(),
-            ),
-        ])
-        .add_regions([module_region])
-        .build()?;
-        assert!(op.verify(), "module operation is not valid");
-
-        let mut module = Module::from_operation(op).expect("module failed to create");
+        let mut module = self.new_module();
 
         let has_gas_builtin = program
             .type_declarations
@@ -165,7 +164,7 @@ impl NativeContext {
             let mut op = module.as_operation_mut();
             op.set_attribute(
                 "llvm.data_layout",
-                StringAttribute::new(&self.context, data_layout_ret).into(),
+                StringAttribute::new(&self.context, &self.data_layout).into(),
             );
         }
 
@@ -179,7 +178,7 @@ impl NativeContext {
         program: &Program,
         metadata_config: MetadataComputationConfig,
     ) -> Result<NativeModule, Error> {
-        let mut module = Module::new(Location::unknown(&self.context));
+        let mut module = self.new_module();
 
         let mut metadata = MetadataStorage::new();
         // Make the runtime library available.
@@ -215,7 +214,19 @@ pub fn initialize_mlir() -> Context {
         registry
     });
     context.load_all_available_dialects();
-    register_all_passes();
-    register_all_llvm_translations(&context);
+
+    static INITIALIZED: OnceLock<()> = OnceLock::new();
+    INITIALIZED.get_or_init(|| unsafe {
+        register_all_passes();
+        register_all_llvm_translations(&context);
+
+        LLVM_InitializeAllTargets();
+        LLVM_InitializeAllTargetInfos();
+        LLVM_InitializeAllTargetMCs();
+        LLVM_InitializeAllAsmPrinters();
+
+        tracing::debug!("Initialized LLVM targets.");
+    });
+
     context
 }

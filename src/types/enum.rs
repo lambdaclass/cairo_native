@@ -541,15 +541,15 @@ pub fn get_type_for_variants<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{metadata::MetadataStorage, types::TypeBuilder, utils::test::load_cairo};
+    use crate::{
+        context::NativeContext, metadata::MetadataStorage, types::TypeBuilder,
+        utils::test::load_cairo,
+    };
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,
     };
-    use melior::{
-        ir::{r#type::IntegerType, Location, Module},
-        Context,
-    };
+    use melior::ir::r#type::IntegerType;
 
     #[test]
     fn enum_type_single_variant_no_i0() {
@@ -563,19 +563,19 @@ mod test {
             }
         };
 
-        let context = Context::new();
+        let context = NativeContext::new();
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        let module = Module::new(Location::unknown(&context));
+        let module = context.new_module();
         let mut metadata = MetadataStorage::new();
 
-        let i0_ty = IntegerType::new(&context, 0).into();
+        let i0_ty = IntegerType::new(context.context(), 0).into();
         program
             .type_declarations
             .iter()
             .map(|ty| (&ty.id, registry.get_type(&ty.id).unwrap()))
             .map(|(id, ty)| {
-                ty.build(&context, &module, &registry, &mut metadata, id)
+                ty.build(context.context(), &module, &registry, &mut metadata, id)
                     .unwrap()
             })
             .any(|width| width == i0_ty);
