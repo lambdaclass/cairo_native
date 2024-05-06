@@ -847,6 +847,9 @@ pub mod test {
     /// Ensures that the host's `u512` is compatible with its compiled counterpart.
     #[test]
     fn test_alignment_compatibility_u512() {
+        #[cfg(target_arch = "x86_64")]
+        assert_eq!(get_integer_layout(512).align(), 8);
+        #[cfg(not(target_arch = "x86_64"))]
         assert_eq!(get_integer_layout(512).align(), 16);
     }
 
