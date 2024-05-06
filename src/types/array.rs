@@ -17,9 +17,10 @@
 //! [^1]: When capacity is zero, this field is not guaranteed to be valid.
 //! [^2]: Those numbers are number of items, **not bytes**.
 
-use super::{TypeBuilder, WithSelf};
+use super::WithSelf;
 use crate::{
     error::Result,
+    ffi::get_mlir_layout,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
@@ -97,10 +98,9 @@ fn snapshot_take<'ctx, 'this>(
         .get::<SnapshotClonesMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.ty));
 
-    let elem_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_ty.layout(registry)?;
+    let elem_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let elem_layout = get_mlir_layout(helper, elem_ty);
     let elem_stride = elem_layout.pad_to_align().size();
-    let elem_ty = elem_ty.build(context, helper, registry, metadata, &info.ty)?;
 
     let src_ptr = entry
         .append_operation(llvm::extract_value(

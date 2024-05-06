@@ -404,6 +404,7 @@
 use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
+    ffi::get_mlir_layout,
     metadata::MetadataStorage,
     utils::{get_integer_layout, ProgramRegistryExt},
 };
@@ -440,7 +441,12 @@ pub fn build<'ctx>(
     let tag_layout = get_integer_layout(tag_bits);
     let layout = info.variants.iter().fold(tag_layout, |acc, id| {
         let layout = tag_layout
-            .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
+            .extend(get_mlir_layout(
+                module,
+                registry
+                    .build_type(context, module, registry, metadata, id)
+                    .unwrap(),
+            ))
             .unwrap()
             .0;
 

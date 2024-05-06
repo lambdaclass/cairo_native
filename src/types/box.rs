@@ -16,11 +16,12 @@ use super::WithSelf;
 use crate::{
     block_ext::BlockExt,
     error::Result,
+    ffi::get_mlir_layout,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
-    types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -81,9 +82,8 @@ fn snapshot_take<'ctx, 'this>(
         .get::<SnapshotClonesMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.ty));
 
-    let inner_type = registry.get_type(&info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
-    let inner_ty = inner_type.build(context, helper, registry, metadata, info.self_ty())?;
+    let inner_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let inner_layout = get_mlir_layout(helper, inner_ty);
 
     let value_len = entry.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
 

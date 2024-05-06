@@ -5,13 +5,15 @@
 //! A nullable is functionally equivalent to Rust's `Option<Box<T>>`. Since it's always paired with
 //! `Box<T>` we can reuse its pointer, just leaving it null when there's no value.
 
-use super::{TypeBuilder, WithSelf};
+use super::WithSelf;
 use crate::{
     error::Result,
+    ffi::get_mlir_layout,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -72,7 +74,10 @@ fn snapshot_take<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
+    let elem_layout = get_mlir_layout(
+        helper,
+        registry.build_type(context, helper, registry, metadata, &info.ty)?,
+    );
 
     let k0 = entry
         .append_operation(arith::constant(
