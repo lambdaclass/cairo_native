@@ -78,7 +78,7 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 128 {
         Layout::new::<u128>()
     } else {
-        Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap()
+        Layout::array::<u128>(next_multiple_of_u32(width, 128) as usize >> 7).unwrap()
     }
 }
 
@@ -842,7 +842,7 @@ pub mod test {
     /// Ensures that the host's `u512` is compatible with its compiled counterpart.
     #[test]
     fn test_alignment_compatibility_u512() {
-        assert_eq!(get_integer_layout(512).align(), 8);
+        assert_eq!(get_integer_layout(512).align(), 16);
     }
 
     /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
