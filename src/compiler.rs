@@ -198,7 +198,7 @@ fn compile_func(
             if type_info.is_builtin() && type_info.is_zst(registry) {
                 None
             } else {
-                Some((type_id, type_info))
+                Some(type_info)
             }
         })
         .collect::<Vec<_>>();
@@ -210,7 +210,7 @@ fn compile_func(
         Some(false)
     } else if return_types
         .first()
-        .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
+        .is_some_and(|type_info| type_info.is_memory_allocated(registry))
     {
         assert_eq!(ret_types.len(), 1);
 
@@ -466,6 +466,7 @@ fn compile_func(
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
+
                     let mut block = *block;
                     if !tailrec_state.is_empty() {
                         let location = Location::name(
@@ -577,7 +578,7 @@ fn compile_func(
                     }
 
                     if let Some(true) = has_return_ptr {
-                        let (_ret_type_id, ret_type_info) = return_types[0];
+                        let ret_type_info = return_types[0];
                         let ret_layout = ret_type_info.layout(registry)?;
 
                         let ptr = values.remove(0);
