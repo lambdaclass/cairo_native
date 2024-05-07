@@ -83,7 +83,6 @@ impl NativeContext {
             }])
             .build()
             .unwrap();
-        eprintln!("{module_op}");
         assert!(module_op.verify(), "module operation is not valid");
 
         Module::from_operation(module_op).unwrap()
