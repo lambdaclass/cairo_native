@@ -252,6 +252,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         self.append_operation(op.into());
     }
 
+    // Use this only when returning the result. Otherwise, append_operation is fine.
     #[inline]
     fn append_op_result(&self, operation: Operation<'ctx>) -> Result<Value<'ctx, '_>, Error> {
         Ok(self.append_operation(operation).result(0)?.into())
