@@ -183,7 +183,7 @@ fn compile_func(
             }))
     {
         if type_info.is_memory_allocated(registry) {
-            *ty = llvm::r#type::opaque_pointer(context);
+            *ty = llvm::r#type::pointer(context, 0);
         }
     }
 
@@ -215,7 +215,7 @@ fn compile_func(
         assert_eq!(ret_types.len(), 1);
 
         ret_types.remove(0);
-        arg_types.insert(0, llvm::r#type::opaque_pointer(context));
+        arg_types.insert(0, llvm::r#type::pointer(context, 0));
 
         Some(true)
     } else {
@@ -763,7 +763,7 @@ fn generate_function_structure<'c, 'a>(
                     for (ty, is_memory_allocated) in types {
                         block.add_argument(
                             if is_memory_allocated {
-                                llvm::r#type::opaque_pointer(context)
+                                llvm::r#type::pointer(context, 0)
                             } else {
                                 ty
                             },
@@ -827,7 +827,7 @@ fn generate_function_structure<'c, 'a>(
                     for (ty, is_memory_allocated) in types {
                         block.add_argument(
                             if is_memory_allocated {
-                                llvm::r#type::opaque_pointer(context)
+                                llvm::r#type::pointer(context, 0)
                             } else {
                                 ty
                             },
@@ -872,7 +872,7 @@ fn generate_function_structure<'c, 'a>(
             .zip(args.iter_mut())
         {
             if type_info?.is_memory_allocated(registry) {
-                *ty = llvm::r#type::opaque_pointer(context);
+                *ty = llvm::r#type::pointer(context, 0);
             }
         }
 
@@ -904,7 +904,7 @@ fn generate_function_structure<'c, 'a>(
                                 .map(|(ty, is_memory_allocated)| {
                                     (
                                         if is_memory_allocated {
-                                            llvm::r#type::opaque_pointer(context)
+                                            llvm::r#type::pointer(context, 0)
                                         } else {
                                             ty
                                         },

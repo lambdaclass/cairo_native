@@ -22,7 +22,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith,
-        llvm::{self, r#type::opaque_pointer, AllocaOptions, LoadStoreOptions},
+        llvm::{self, r#type::pointer, AllocaOptions, LoadStoreOptions},
         ods,
     },
     ir::{
@@ -87,7 +87,7 @@ pub fn build_into_box<'ctx, 'this>(
         .into();
 
     let ptr = entry
-        .append_operation(llvm::nullptr(opaque_pointer(context), location))
+        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
         .result(0)?
         .into();
     let ptr = entry
@@ -173,7 +173,7 @@ pub fn build_unbox<'ctx, 'this>(
                 .append_operation(llvm::alloca(
                     context,
                     value_len,
-                    llvm::r#type::opaque_pointer(context),
+                    llvm::r#type::pointer(context, 0),
                     location,
                     AllocaOptions::new()
                         .align(Some(IntegerAttribute::new(

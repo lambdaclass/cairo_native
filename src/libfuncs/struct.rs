@@ -115,7 +115,7 @@ pub fn build_construct<'ctx, 'this>(
             .append_operation(llvm::alloca(
                 context,
                 k1,
-                llvm::r#type::opaque_pointer(context),
+                llvm::r#type::pointer(context, 0),
                 location,
                 AllocaOptions::new()
                     .align(Some(IntegerAttribute::new(
@@ -216,7 +216,7 @@ pub fn build_deconstruct<'ctx, 'this>(
                 .append_operation(llvm::alloca(
                     context,
                     k1,
-                    llvm::r#type::opaque_pointer(context),
+                    llvm::r#type::pointer(context, 0),
                     location,
                     AllocaOptions::new()
                         .align(Some(IntegerAttribute::new(

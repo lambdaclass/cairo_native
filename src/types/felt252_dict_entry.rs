@@ -40,8 +40,8 @@ pub fn build<'ctx>(
         context,
         &[
             IntegerType::new(context, 252).into(), // entry key
-            llvm::r#type::opaque_pointer(context), // value ptr
-            llvm::r#type::opaque_pointer(context), // dict ptr
+            llvm::r#type::pointer(context, 0),     // value ptr
+            llvm::r#type::pointer(context, 0),     // dict ptr
         ],
         false,
     ))

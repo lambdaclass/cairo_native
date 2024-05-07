@@ -64,7 +64,7 @@ impl RuntimeBindingsMeta {
                         context,
                         &[
                             IntegerType::new(context, 32).into(),
-                            llvm::r#type::opaque_pointer(context),
+                            llvm::r#type::pointer(context, 0),
                             IntegerType::new(context, 32).into(),
                         ],
                         &[IntegerType::new(context, 32).into()],
@@ -115,9 +115,9 @@ impl RuntimeBindingsMeta {
                     FunctionType::new(
                         context,
                         &[
-                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
-                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
-                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
                         ],
                         &[],
                     )
@@ -165,9 +165,9 @@ impl RuntimeBindingsMeta {
                     FunctionType::new(
                         context,
                         &[
-                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
-                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
-                            llvm::r#type::pointer(IntegerType::new(context, 256).into(), 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
                         ],
                         &[],
                     )
@@ -203,15 +203,6 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let ec_point_ty = llvm::r#type::r#struct(
-            context,
-            &[
-                IntegerType::new(context, 252).into(),
-                IntegerType::new(context, 252).into(),
-            ],
-            false,
-        );
-
         if self.active_map.insert(RuntimeBinding::EcPointFromXNz) {
             module.body().append_operation(func::func(
                 context,
@@ -219,7 +210,7 @@ impl RuntimeBindingsMeta {
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
-                        &[llvm::r#type::pointer(ec_point_ty, 0)],
+                        &[llvm::r#type::pointer(context, 0)],
                         &[IntegerType::new(context, 1).into()],
                     )
                     .into(),
@@ -254,15 +245,6 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let ec_point_ty = llvm::r#type::r#struct(
-            context,
-            &[
-                IntegerType::new(context, 252).into(),
-                IntegerType::new(context, 252).into(),
-            ],
-            false,
-        );
-
         if self.active_map.insert(RuntimeBinding::EcPointTryNewNz) {
             module.body().append_operation(func::func(
                 context,
@@ -270,7 +252,7 @@ impl RuntimeBindingsMeta {
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
-                        &[llvm::r#type::pointer(ec_point_ty, 0)],
+                        &[llvm::r#type::pointer(context, 0)],
                         &[IntegerType::new(context, 1).into()],
                     )
                     .into(),
@@ -306,25 +288,6 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let ec_state_ty = llvm::r#type::r#struct(
-            context,
-            &[
-                IntegerType::new(context, 252).into(),
-                IntegerType::new(context, 252).into(),
-                IntegerType::new(context, 252).into(),
-                IntegerType::new(context, 252).into(),
-            ],
-            false,
-        );
-        let ec_point_ty = llvm::r#type::r#struct(
-            context,
-            &[
-                IntegerType::new(context, 252).into(),
-                IntegerType::new(context, 252).into(),
-            ],
-            false,
-        );
-
         if self.active_map.insert(RuntimeBinding::EcStateAdd) {
             module.body().append_operation(func::func(
                 context,
@@ -333,8 +296,8 @@ impl RuntimeBindingsMeta {
                     FunctionType::new(
                         context,
                         &[
-                            llvm::r#type::pointer(ec_state_ty, 0),
-                            llvm::r#type::pointer(ec_point_ty, 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
                         ],
                         &[],
                     )
@@ -373,14 +336,6 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let felt252_ty = IntegerType::new(context, 252).into();
-        let ec_state_ty = llvm::r#type::r#struct(
-            context,
-            &[felt252_ty, felt252_ty, felt252_ty, felt252_ty],
-            false,
-        );
-        let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
-
         if self.active_map.insert(RuntimeBinding::EcStateAddMul) {
             module.body().append_operation(func::func(
                 context,
@@ -389,9 +344,9 @@ impl RuntimeBindingsMeta {
                     FunctionType::new(
                         context,
                         &[
-                            llvm::r#type::pointer(ec_state_ty, 0),
-                            llvm::r#type::pointer(felt252_ty, 0),
-                            llvm::r#type::pointer(ec_point_ty, 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
                         ],
                         &[],
                     )
@@ -427,14 +382,6 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let felt252_ty = IntegerType::new(context, 252).into();
-        let ec_state_ty = llvm::r#type::r#struct(
-            context,
-            &[felt252_ty, felt252_ty, felt252_ty, felt252_ty],
-            false,
-        );
-        let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
-
         if self.active_map.insert(RuntimeBinding::EcStateTryFinalizeNz) {
             module.body().append_operation(func::func(
                 context,
@@ -446,8 +393,8 @@ impl RuntimeBindingsMeta {
                     FunctionType::new(
                         context,
                         &[
-                            llvm::r#type::pointer(ec_point_ty, 0),
-                            llvm::r#type::pointer(ec_state_ty, 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
                         ],
                         &[IntegerType::new(context, 1).into()],
                     )
@@ -493,8 +440,7 @@ impl RuntimeBindingsMeta {
                 context,
                 StringAttribute::new(context, "cairo_native__alloc_dict"),
                 TypeAttribute::new(
-                    FunctionType::new(context, &[], &[llvm::r#type::opaque_pointer(context)])
-                        .into(),
+                    FunctionType::new(context, &[], &[llvm::r#type::pointer(context, 0)]).into(),
                 ),
                 Region::new(),
                 &[(
@@ -509,7 +455,7 @@ impl RuntimeBindingsMeta {
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__alloc_dict"),
             &[],
-            &[llvm::r#type::opaque_pointer(context)],
+            &[llvm::r#type::pointer(context, 0)],
             location,
         )))
     }
@@ -534,8 +480,7 @@ impl RuntimeBindingsMeta {
                 context,
                 StringAttribute::new(context, "cairo_native__dict_free"),
                 TypeAttribute::new(
-                    FunctionType::new(context, &[llvm::r#type::opaque_pointer(context)], &[])
-                        .into(),
+                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
                 ),
                 Region::new(),
                 &[(
@@ -581,10 +526,10 @@ impl RuntimeBindingsMeta {
                     FunctionType::new(
                         context,
                         &[
-                            llvm::r#type::opaque_pointer(context),
-                            llvm::r#type::opaque_pointer(context),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
                         ],
-                        &[llvm::r#type::opaque_pointer(context)],
+                        &[llvm::r#type::pointer(context, 0)],
                     )
                     .into(),
                 ),
@@ -601,7 +546,7 @@ impl RuntimeBindingsMeta {
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_get"),
             &[dict_ptr, key_ptr],
-            &[llvm::r#type::opaque_pointer(context)],
+            &[llvm::r#type::pointer(context, 0)],
             location,
         )))
     }
@@ -633,11 +578,11 @@ impl RuntimeBindingsMeta {
                     FunctionType::new(
                         context,
                         &[
-                            llvm::r#type::opaque_pointer(context),
-                            llvm::r#type::opaque_pointer(context),
-                            llvm::r#type::opaque_pointer(context),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
                         ],
-                        &[llvm::r#type::opaque_pointer(context)],
+                        &[llvm::r#type::pointer(context, 0)],
                     )
                     .into(),
                 ),
@@ -654,7 +599,7 @@ impl RuntimeBindingsMeta {
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_insert"),
             &[dict_ptr, key_ptr, value_ptr],
-            &[llvm::r#type::opaque_pointer(context)],
+            &[llvm::r#type::pointer(context, 0)],
             location,
         )))
     }
