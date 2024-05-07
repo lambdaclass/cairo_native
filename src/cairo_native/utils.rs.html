@@ -1335,16 +1335,6 @@
 <a href="#1334" id="1334">1334</a>
 <a href="#1335" id="1335">1335</a>
 <a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1576,17 +1566,7 @@
     opt_level: OptLevel,
 ) -&gt; ExecutionEngine {
     <span class="comment">// Create the JIT engine.
-    </span><span class="kw">let </span>engine = ExecutionEngine::new(
-        module,
-        <span class="kw">match </span>opt_level {
-            OptLevel::None =&gt; <span class="number">0</span>,
-            OptLevel::Less =&gt; <span class="number">1</span>,
-            OptLevel::Default =&gt; <span class="number">2</span>,
-            OptLevel::Aggressive =&gt; <span class="number">3</span>,
-        },
-        <span class="kw-2">&amp;</span>[],
-        <span class="bool-val">false</span>,
-    );
+    </span><span class="kw">let </span>engine = ExecutionEngine::new(module, opt_level.into(), <span class="kw-2">&amp;</span>[], <span class="bool-val">false</span>);
 
     <span class="attr">#[cfg(feature = <span class="string">"with-runtime"</span>)]
     </span>register_runtime_symbols(<span class="kw-2">&amp;</span>engine);

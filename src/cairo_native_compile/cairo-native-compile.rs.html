@@ -95,17 +95,10 @@
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_native::{
     context::NativeContext, module_to_object, object_to_shared_lib,
-    utils::cairo_to_sierra_with_debug_info, OptLevel,
+    utils::cairo_to_sierra_with_debug_info,
 };
 <span class="kw">use </span>clap::{Parser, ValueEnum};
 <span class="kw">use </span>std::path::{Path, PathBuf};
@@ -164,13 +157,6 @@
         .compile(<span class="kw-2">&amp;</span>sierra_program, <span class="prelude-val">Some</span>(debug_locations))
         .unwrap();
 
-    <span class="kw">let </span>opt_level = <span class="kw">match </span>args.opt_level {
-        <span class="number">0 </span>=&gt; OptLevel::None,
-        <span class="number">1 </span>=&gt; OptLevel::Less,
-        <span class="number">2 </span>=&gt; OptLevel::Default,
-        <span class="kw">_ </span>=&gt; OptLevel::Aggressive,
-    };
-
     <span class="kw">let </span>output_mlir = args
         .output_mlir
         .unwrap_or_else(|| PathBuf::from(<span class="string">"out.mlir"</span>));
@@ -182,7 +168,7 @@
     .context(<span class="string">"Failed to write output."</span>)<span class="question-mark">?</span>;
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(output_library) = <span class="kw-2">&amp;</span>args.output_library {
-        <span class="kw">let </span>object_data = module_to_object(native_module.module(), opt_level)
+        <span class="kw">let </span>object_data = module_to_object(native_module.module(), args.opt_level.into())
             .context(<span class="string">"Failed to convert module to object."</span>)<span class="question-mark">?</span>;
         object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, output_library)
             .context(<span class="string">"Failed to write shared library."</span>)<span class="question-mark">?</span>;

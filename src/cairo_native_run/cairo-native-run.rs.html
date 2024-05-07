@@ -294,10 +294,6 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::{bail, Context};
 <span class="kw">use </span>cairo_lang_compiler::{
     db::RootDatabase, diagnostics::DiagnosticsReporter, project::setup_project,
@@ -317,7 +313,6 @@
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
     values::JitValue,
-    OptLevel,
 };
 <span class="kw">use </span>clap::{Parser, ValueEnum};
 <span class="kw">use </span>itertools::Itertools;
@@ -411,16 +406,13 @@
         .compile(<span class="kw-2">&amp;</span>sierra_program, <span class="prelude-val">Some</span>(debug_locations))
         .unwrap();
 
-    <span class="kw">let </span>opt_level = <span class="kw">match </span>args.opt_level {
-        <span class="number">0 </span>=&gt; OptLevel::None,
-        <span class="number">1 </span>=&gt; OptLevel::Less,
-        <span class="number">2 </span>=&gt; OptLevel::Default,
-        <span class="kw">_ </span>=&gt; OptLevel::Aggressive,
-    };
-
     <span class="kw">let </span>native_executor: NativeExecutor = <span class="kw">match </span>args.run_mode {
-        RunMode::Aot =&gt; AotNativeExecutor::from_native_module(native_module, opt_level).into(),
-        RunMode::Jit =&gt; JitNativeExecutor::from_native_module(native_module, opt_level).into(),
+        RunMode::Aot =&gt; {
+            AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+        }
+        RunMode::Jit =&gt; {
+            JitNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+        }
     };
 
     <span class="kw">let </span>gas_metadata =

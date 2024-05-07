@@ -1111,10 +1111,6 @@
 <a href="#1110" id="1110">1110</a>
 <a href="#1111" id="1111">1111</a>
 <a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::{bail, Context};
 <span class="kw">use </span>cairo_felt::Felt252;
 <span class="kw">use </span>cairo_lang_compiler::{
@@ -1141,7 +1137,6 @@
     metadata::gas::{GasMetadata, MetadataComputationConfig},
     starknet::{Secp256k1Point, Secp256r1Point, StarknetSyscallHandler, SyscallResult, U256},
     values::JitValue,
-    OptLevel,
 };
 <span class="kw">use </span>clap::{Parser, ValueEnum};
 <span class="kw">use </span>colored::Colorize;
@@ -1512,16 +1507,13 @@
         )
         .unwrap();
 
-    <span class="kw">let </span>opt_level = <span class="kw">match </span>args.opt_level {
-        <span class="number">0 </span>=&gt; OptLevel::None,
-        <span class="number">1 </span>=&gt; OptLevel::Less,
-        <span class="number">2 </span>=&gt; OptLevel::Default,
-        <span class="kw">_ </span>=&gt; OptLevel::Aggressive,
-    };
-
     <span class="kw">let </span>native_executor: NativeExecutor = <span class="kw">match </span>args.run_mode {
-        RunMode::Aot =&gt; AotNativeExecutor::from_native_module(native_module, opt_level).into(),
-        RunMode::Jit =&gt; JitNativeExecutor::from_native_module(native_module, opt_level).into(),
+        RunMode::Aot =&gt; {
+            AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+        }
+        RunMode::Jit =&gt; {
+            JitNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+        }
     };
 
     <span class="kw">let </span>gas_metadata = GasMetadata::new(
