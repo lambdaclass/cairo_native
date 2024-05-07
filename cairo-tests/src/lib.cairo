@@ -17,3 +17,6 @@ mod num_test;
 mod panics_test;
 mod test_utils;
 mod result_test;
+mod testing_test;
+mod plugins_test;
+mod print_test;
