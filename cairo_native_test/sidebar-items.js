@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["RunMode","TestStatus"],"fn":["check_compiler_path","filter_test_cases","find_function","format_for_panic","jitvalue_to_felt","main","result_to_runresult","run_tests"],"struct":["Args","TestResult","TestsSummary"]};
+window.SIDEBAR_ITEMS = {"enum":["RunMode","TestStatus"],"fn":["check_compiler_path","filter_test_cases","find_function","format_for_panic","jitvalue_to_felt","main","result_to_runresult","run_tests"],"struct":["Args","TestResult","TestSyscallHandler","TestsSummary"]};
