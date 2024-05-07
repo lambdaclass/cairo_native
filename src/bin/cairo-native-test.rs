@@ -24,7 +24,6 @@ use cairo_native::{
     metadata::gas::{GasMetadata, MetadataComputationConfig},
     starknet::{Secp256k1Point, Secp256r1Point, StarknetSyscallHandler, SyscallResult, U256},
     values::JitValue,
-    OptLevel,
 };
 use clap::{Parser, ValueEnum};
 use colored::Colorize;
@@ -395,16 +394,13 @@ fn run_tests(
         )
         .unwrap();
 
-    let opt_level = match args.opt_level {
-        0 => OptLevel::None,
-        1 => OptLevel::Less,
-        2 => OptLevel::Default,
-        _ => OptLevel::Aggressive,
-    };
-
     let native_executor: NativeExecutor = match args.run_mode {
-        RunMode::Aot => AotNativeExecutor::from_native_module(native_module, opt_level).into(),
-        RunMode::Jit => JitNativeExecutor::from_native_module(native_module, opt_level).into(),
+        RunMode::Aot => {
+            AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+        }
+        RunMode::Jit => {
+            JitNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+        }
     };
 
     let gas_metadata = GasMetadata::new(
