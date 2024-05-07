@@ -1345,49 +1345,6 @@
 <a href="#1344" id="1344">1344</a>
 <a href="#1345" id="1345">1345</a>
 <a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
-<a href="#1353" id="1353">1353</a>
-<a href="#1354" id="1354">1354</a>
-<a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
-<a href="#1360" id="1360">1360</a>
-<a href="#1361" id="1361">1361</a>
-<a href="#1362" id="1362">1362</a>
-<a href="#1363" id="1363">1363</a>
-<a href="#1364" id="1364">1364</a>
-<a href="#1365" id="1365">1365</a>
-<a href="#1366" id="1366">1366</a>
-<a href="#1367" id="1367">1367</a>
-<a href="#1368" id="1368">1368</a>
-<a href="#1369" id="1369">1369</a>
-<a href="#1370" id="1370">1370</a>
-<a href="#1371" id="1371">1371</a>
-<a href="#1372" id="1372">1372</a>
-<a href="#1373" id="1373">1373</a>
-<a href="#1374" id="1374">1374</a>
-<a href="#1375" id="1375">1375</a>
-<a href="#1376" id="1376">1376</a>
-<a href="#1377" id="1377">1377</a>
-<a href="#1378" id="1378">1378</a>
-<a href="#1379" id="1379">1379</a>
-<a href="#1380" id="1380">1380</a>
-<a href="#1381" id="1381">1381</a>
-<a href="#1382" id="1382">1382</a>
-<a href="#1383" id="1383">1383</a>
-<a href="#1384" id="1384">1384</a>
-<a href="#1385" id="1385">1385</a>
-<a href="#1386" id="1386">1386</a>
-<a href="#1387" id="1387">1387</a>
-<a href="#1388" id="1388">1388</a>
-<a href="#1389" id="1389">1389</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1468,7 +1425,12 @@
     } <span class="kw">else if </span>width &lt;= <span class="number">128 </span>{
         Layout::new::&lt;u128&gt;()
     } <span class="kw">else </span>{
-        Layout::array::&lt;u64&gt;(next_multiple_of_u32(width, <span class="number">64</span>) <span class="kw">as </span>usize &gt;&gt; <span class="number">6</span>).unwrap()
+        <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
+        </span><span class="kw">let </span>value = Layout::array::&lt;u64&gt;(next_multiple_of_u32(width, <span class="number">64</span>) <span class="kw">as </span>usize &gt;&gt; <span class="number">6</span>).unwrap();
+        <span class="attr">#[cfg(not(target_arch = <span class="string">"x86_64"</span>))]
+        </span><span class="kw">let </span>value = Layout::array::&lt;u128&gt;(next_multiple_of_u32(width, <span class="number">128</span>) <span class="kw">as </span>usize &gt;&gt; <span class="number">7</span>).unwrap();
+
+        value
     }
 }
 
@@ -2039,14 +2001,9 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>test {
     <span class="kw">use crate</span>::{
+        context::NativeContext,
         execution_result::ExecutionResult,
         executor::JitNativeExecutor,
-        metadata::{
-            gas::{GasMetadata, MetadataComputationConfig},
-            runtime_bindings::RuntimeBindingsMeta,
-            MetadataStorage,
-        },
-        module::NativeModule,
         starknet::{
             BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarknetSyscallHandler,
             SyscallResult, TxInfo, TxV2Info, U256,
@@ -2060,17 +2017,9 @@
     };
     <span class="kw">use </span>cairo_lang_filesystem::db::init_dev_corelib;
     <span class="kw">use </span>cairo_lang_sierra::{
-        extensions::core::{CoreLibfunc, CoreType},
         ids::FunctionId,
         program::Program,
         program::{FunctionSignature, GenFunction, StatementIdx},
-        program_registry::ProgramRegistry,
-    };
-    <span class="kw">use </span>melior::{
-        dialect::DialectRegistry,
-        ir::{Location, Module},
-        utility::{register_all_dialects, register_all_passes},
-        Context,
     };
     <span class="kw">use </span>pretty_assertions_sorted::assert_eq;
     <span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -2164,9 +2113,6 @@
         <span class="kw">let </span>entry_point = <span class="macro">format!</span>(<span class="string">"{0}::{0}::{1}"</span>, program.<span class="number">0</span>, entry_point);
         <span class="kw">let </span>program = <span class="kw-2">&amp;</span>program.<span class="number">1</span>;
 
-        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(program)
-            .expect(<span class="string">"Could not create the test program registry."</span>);
-
         <span class="kw">let </span>entry_point_id = <span class="kw-2">&amp;</span>program
             .funcs
             .iter()
@@ -2174,49 +2120,14 @@
             .expect(<span class="string">"Test program entry point not found."</span>)
             .id;
 
-        <span class="kw">let </span>context = Context::new();
-        context.append_dialect_registry(<span class="kw-2">&amp;</span>{
-            <span class="kw">let </span>registry = DialectRegistry::new();
-            register_all_dialects(<span class="kw-2">&amp;</span>registry);
-            registry
-        });
-        context.load_all_available_dialects();
-        register_all_passes();
+        <span class="kw">let </span>context = NativeContext::new();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>module = Module::new(Location::unknown(<span class="kw-2">&amp;</span>context));
-        <span class="kw">let </span><span class="kw-2">mut </span>metadata = MetadataStorage::new();
-
-        <span class="comment">// Make the runtime library and syscall handler available.
-        </span>metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-        <span class="kw">if </span>program
-            .type_declarations
-            .iter()
-            .any(|decl| decl.long_id.generic_id.<span class="number">0 </span>== <span class="string">"GasBuiltin"</span>)
-        {
-            <span class="kw">let </span>gas_metadata =
-                GasMetadata::new(program, <span class="prelude-val">Some</span>(MetadataComputationConfig::default())).unwrap();
-            metadata.insert(gas_metadata);
-        } <span class="kw">else </span>{
-            <span class="kw">let </span>gas_metadata = GasMetadata::new(program, <span class="prelude-val">None</span>).unwrap();
-            metadata.insert(gas_metadata);
-        }
-
-        <span class="kw">crate</span>::compile(<span class="kw-2">&amp;</span>context, <span class="kw-2">&amp;</span>module, program, <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;mut </span>metadata, <span class="prelude-val">None</span>)
+        <span class="kw">let </span>module = context
+            .compile(program, <span class="prelude-val">None</span>)
             .expect(<span class="string">"Could not compile test program to MLIR."</span>);
 
-        <span class="macro">assert!</span>(
-            module.as_operation().verify(),
-            <span class="string">"Test program generated invalid MLIR:\n{}"</span>,
-            module.as_operation()
-        );
-
-        run_pass_manager(<span class="kw-2">&amp;</span>context, <span class="kw-2">&amp;mut </span>module)
-            .expect(<span class="string">"Could not apply passes to the compiled test program."</span>);
-
-        <span class="kw">let </span>native_module = NativeModule::new(module, registry, metadata);
         <span class="comment">// FIXME: There are some bugs with non-zero LLVM optimization levels.
-        </span><span class="kw">let </span>executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
+        </span><span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
         executor
             .invoke_dynamic_with_syscall_handler(
                 entry_point_id,
@@ -2283,7 +2194,10 @@
     <span class="doccomment">/// Ensures that the host's `u512` is compatible with its compiled counterpart.
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_alignment_compatibility_u512() {
-        <span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">512</span>).align(), <span class="number">8</span>);
+        <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
+        </span><span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">512</span>).align(), <span class="number">8</span>);
+        <span class="attr">#[cfg(not(target_arch = <span class="string">"x86_64"</span>))]
+        </span><span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">512</span>).align(), <span class="number">16</span>);
     }
 
     <span class="doccomment">/// Ensures that the host's `Felt` is compatible with its compiled counterpart.

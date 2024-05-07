@@ -3743,7 +3743,47 @@
 <a href="#3742" id="3742">3742</a>
 <a href="#3743" id="3743">3743</a>
 <a href="#3744" id="3744">3744</a>
+<a href="#3745" id="3745">3745</a>
+<a href="#3746" id="3746">3746</a>
+<a href="#3747" id="3747">3747</a>
+<a href="#3748" id="3748">3748</a>
+<a href="#3749" id="3749">3749</a>
+<a href="#3750" id="3750">3750</a>
+<a href="#3751" id="3751">3751</a>
+<a href="#3752" id="3752">3752</a>
+<a href="#3753" id="3753">3753</a>
+<a href="#3754" id="3754">3754</a>
+<a href="#3755" id="3755">3755</a>
+<a href="#3756" id="3756">3756</a>
+<a href="#3757" id="3757">3757</a>
+<a href="#3758" id="3758">3758</a>
+<a href="#3759" id="3759">3759</a>
+<a href="#3760" id="3760">3760</a>
+<a href="#3761" id="3761">3761</a>
+<a href="#3762" id="3762">3762</a>
+<a href="#3763" id="3763">3763</a>
+<a href="#3764" id="3764">3764</a>
+<a href="#3765" id="3765">3765</a>
+<a href="#3766" id="3766">3766</a>
+<a href="#3767" id="3767">3767</a>
+<a href="#3768" id="3768">3768</a>
+<a href="#3769" id="3769">3769</a>
+<a href="#3770" id="3770">3770</a>
+<a href="#3771" id="3771">3771</a>
+<a href="#3772" id="3772">3772</a>
+<a href="#3773" id="3773">3773</a>
+<a href="#3774" id="3774">3774</a>
+<a href="#3775" id="3775">3775</a>
+<a href="#3776" id="3776">3776</a>
+<a href="#3777" id="3777">3777</a>
+<a href="#3778" id="3778">3778</a>
+<a href="#3779" id="3779">3779</a>
+<a href="#3780" id="3780">3780</a>
+<a href="#3781" id="3781">3781</a>
+<a href="#3782" id="3782">3782</a>
+<a href="#3783" id="3783">3783</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    block_ext::BlockExt,
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
@@ -4078,29 +4118,38 @@
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
-    <span class="kw">let </span>payload_ok = entry
-        .append_operation(
-            OperationBuilder::new(<span class="string">"llvm.getelementptr"</span>, location)
-                .add_attributes(<span class="kw-2">&amp;</span>[
-                    (
-                        Identifier::new(context, <span class="string">"rawConstantIndices"</span>),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            <span class="kw-2">&amp;</span>[result_tag_layout.extend(variant_tys[<span class="number">0</span>].<span class="number">1</span>)<span class="question-mark">?</span>.<span class="number">1</span>.try_into()<span class="question-mark">?</span>],
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, <span class="string">"elem_type"</span>),
-                        TypeAttribute::new(IntegerType::new(context, <span class="number">8</span>).into()).into(),
-                    ),
-                ])
-                .add_operands(<span class="kw-2">&amp;</span>[result_ptr])
-                .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)])
-                .build()<span class="question-mark">?</span>,
-        )
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>payload_ok = {
+        <span class="kw">let </span>ptr = entry
+            .append_operation(
+                OperationBuilder::new(<span class="string">"llvm.getelementptr"</span>, location)
+                    .add_attributes(<span class="kw-2">&amp;</span>[
+                        (
+                            Identifier::new(context, <span class="string">"rawConstantIndices"</span>),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                <span class="kw-2">&amp;</span>[result_tag_layout.extend(variant_tys[<span class="number">0</span>].<span class="number">1</span>)<span class="question-mark">?</span>.<span class="number">1</span>.try_into()<span class="question-mark">?</span>],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, <span class="string">"elem_type"</span>),
+                            TypeAttribute::new(IntegerType::new(context, <span class="number">8</span>).into()).into(),
+                        ),
+                    ])
+                    .add_operands(<span class="kw-2">&amp;</span>[result_ptr])
+                    .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)])
+                    .build()<span class="question-mark">?</span>,
+            )
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into();
+        entry.load(
+            context,
+            location,
+            ptr,
+            variant_tys[<span class="number">0</span>].<span class="number">0</span>,
+            <span class="prelude-val">Some</span>(variant_tys[<span class="number">0</span>].<span class="number">1</span>.align()),
+        )<span class="question-mark">?
+    </span>};
     <span class="kw">let </span>payload_err = {
         <span class="kw">let </span>ptr = entry
             .append_operation(
@@ -5173,29 +5222,39 @@
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
-    <span class="kw">let </span>payload_ok = entry
-        .append_operation(
-            OperationBuilder::new(<span class="string">"llvm.getelementptr"</span>, location)
-                .add_attributes(<span class="kw-2">&amp;</span>[
-                    (
-                        Identifier::new(context, <span class="string">"rawConstantIndices"</span>),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            <span class="kw-2">&amp;</span>[result_tag_layout.extend(variant_tys[<span class="number">0</span>].<span class="number">1</span>)<span class="question-mark">?</span>.<span class="number">1</span>.try_into()<span class="question-mark">?</span>],
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, <span class="string">"elem_type"</span>),
-                        TypeAttribute::new(IntegerType::new(context, <span class="number">8</span>).into()).into(),
-                    ),
-                ])
-                .add_operands(<span class="kw-2">&amp;</span>[result_ptr])
-                .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)])
-                .build()<span class="question-mark">?</span>,
-        )
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="comment">// Load the two variants of the result returned by the syscall handler.
+    </span><span class="kw">let </span>payload_ok = {
+        <span class="kw">let </span>ptr = entry
+            .append_operation(
+                OperationBuilder::new(<span class="string">"llvm.getelementptr"</span>, location)
+                    .add_attributes(<span class="kw-2">&amp;</span>[
+                        (
+                            Identifier::new(context, <span class="string">"rawConstantIndices"</span>),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                <span class="kw-2">&amp;</span>[result_tag_layout.extend(variant_tys[<span class="number">0</span>].<span class="number">1</span>)<span class="question-mark">?</span>.<span class="number">1</span>.try_into()<span class="question-mark">?</span>],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, <span class="string">"elem_type"</span>),
+                            TypeAttribute::new(IntegerType::new(context, <span class="number">8</span>).into()).into(),
+                        ),
+                    ])
+                    .add_operands(<span class="kw-2">&amp;</span>[result_ptr])
+                    .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)])
+                    .build()<span class="question-mark">?</span>,
+            )
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into();
+        entry.load(
+            context,
+            location,
+            ptr,
+            variant_tys[<span class="number">0</span>].<span class="number">0</span>,
+            <span class="prelude-val">Some</span>(variant_tys[<span class="number">0</span>].<span class="number">1</span>.align()),
+        )<span class="question-mark">?
+    </span>};
     <span class="kw">let </span>payload_err = {
         <span class="kw">let </span>ptr = entry
             .append_operation(
@@ -5910,29 +5969,39 @@
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
-    <span class="kw">let </span>payload_ok = entry
-        .append_operation(
-            OperationBuilder::new(<span class="string">"llvm.getelementptr"</span>, location)
-                .add_attributes(<span class="kw-2">&amp;</span>[
-                    (
-                        Identifier::new(context, <span class="string">"rawConstantIndices"</span>),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            <span class="kw-2">&amp;</span>[result_tag_layout.extend(variant_tys[<span class="number">0</span>].<span class="number">1</span>)<span class="question-mark">?</span>.<span class="number">1</span>.try_into()<span class="question-mark">?</span>],
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, <span class="string">"elem_type"</span>),
-                        TypeAttribute::new(IntegerType::new(context, <span class="number">8</span>).into()).into(),
-                    ),
-                ])
-                .add_operands(<span class="kw-2">&amp;</span>[result_ptr])
-                .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)])
-                .build()<span class="question-mark">?</span>,
-        )
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="comment">// Load the two variants of the result returned by the syscall handler.
+    </span><span class="kw">let </span>payload_ok = {
+        <span class="kw">let </span>ptr = entry
+            .append_operation(
+                OperationBuilder::new(<span class="string">"llvm.getelementptr"</span>, location)
+                    .add_attributes(<span class="kw-2">&amp;</span>[
+                        (
+                            Identifier::new(context, <span class="string">"rawConstantIndices"</span>),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                <span class="kw-2">&amp;</span>[result_tag_layout.extend(variant_tys[<span class="number">0</span>].<span class="number">1</span>)<span class="question-mark">?</span>.<span class="number">1</span>.try_into()<span class="question-mark">?</span>],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, <span class="string">"elem_type"</span>),
+                            TypeAttribute::new(IntegerType::new(context, <span class="number">8</span>).into()).into(),
+                        ),
+                    ])
+                    .add_operands(<span class="kw-2">&amp;</span>[result_ptr])
+                    .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)])
+                    .build()<span class="question-mark">?</span>,
+            )
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into();
+        entry.load(
+            context,
+            location,
+            ptr,
+            variant_tys[<span class="number">0</span>].<span class="number">0</span>,
+            <span class="prelude-val">Some</span>(variant_tys[<span class="number">0</span>].<span class="number">1</span>.align()),
+        )<span class="question-mark">?
+    </span>};
     <span class="kw">let </span>payload_err = {
         <span class="kw">let </span>ptr = entry
             .append_operation(
@@ -7005,29 +7074,38 @@
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
-    <span class="kw">let </span>payload_ok = entry
-        .append_operation(
-            OperationBuilder::new(<span class="string">"llvm.getelementptr"</span>, location)
-                .add_attributes(<span class="kw-2">&amp;</span>[
-                    (
-                        Identifier::new(context, <span class="string">"rawConstantIndices"</span>),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            <span class="kw-2">&amp;</span>[result_tag_layout.extend(variant_tys[<span class="number">0</span>].<span class="number">1</span>)<span class="question-mark">?</span>.<span class="number">1</span>.try_into()<span class="question-mark">?</span>],
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, <span class="string">"elem_type"</span>),
-                        TypeAttribute::new(IntegerType::new(context, <span class="number">8</span>).into()).into(),
-                    ),
-                ])
-                .add_operands(<span class="kw-2">&amp;</span>[result_ptr])
-                .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)])
-                .build()<span class="question-mark">?</span>,
-        )
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>payload_ok = {
+        <span class="kw">let </span>ptr = entry
+            .append_operation(
+                OperationBuilder::new(<span class="string">"llvm.getelementptr"</span>, location)
+                    .add_attributes(<span class="kw-2">&amp;</span>[
+                        (
+                            Identifier::new(context, <span class="string">"rawConstantIndices"</span>),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                <span class="kw-2">&amp;</span>[result_tag_layout.extend(variant_tys[<span class="number">0</span>].<span class="number">1</span>)<span class="question-mark">?</span>.<span class="number">1</span>.try_into()<span class="question-mark">?</span>],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, <span class="string">"elem_type"</span>),
+                            TypeAttribute::new(IntegerType::new(context, <span class="number">8</span>).into()).into(),
+                        ),
+                    ])
+                    .add_operands(<span class="kw-2">&amp;</span>[result_ptr])
+                    .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::opaque_pointer(context)])
+                    .build()<span class="question-mark">?</span>,
+            )
+            .result(<span class="number">0</span>)<span class="question-mark">?
+            </span>.into();
+        entry.load(
+            context,
+            location,
+            ptr,
+            variant_tys[<span class="number">0</span>].<span class="number">0</span>,
+            <span class="prelude-val">Some</span>(variant_tys[<span class="number">0</span>].<span class="number">1</span>.align()),
+        )<span class="question-mark">?
+    </span>};
     <span class="kw">let </span>payload_err = {
         <span class="kw">let </span>ptr = entry
             .append_operation(

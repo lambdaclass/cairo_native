@@ -292,8 +292,6 @@
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Function call libfuncs
 //!
 //! Includes logic for handling direct tail recursive function calls. More information on this topic
@@ -315,11 +313,7 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{
-        cf, func, index,
-        llvm::{<span class="self">self</span>},
-        memref,
-    },
+    dialect::{cf, func, index, llvm, memref},
     ir::{
         attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute},
         r#type::IntegerType,
@@ -339,67 +333,40 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>FunctionCallConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>arguments = Vec::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>result_types = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>tailrec_meta = metadata.remove::&lt;TailRecursionMeta&gt;();
 
+    <span class="kw">let </span><span class="kw-2">mut </span>arguments = Vec::new();
     <span class="kw">for </span>(idx, type_id) <span class="kw">in </span>info.function.signature.param_types.iter().enumerate() {
         <span class="kw">let </span>type_info = registry.get_type(type_id)<span class="question-mark">?</span>;
 
         <span class="kw">if </span>!(type_info.is_builtin() &amp;&amp; type_info.is_zst(registry)) {
-            arguments.push(entry.argument(idx)<span class="question-mark">?</span>.into());
+            arguments.push(
+                <span class="kw">if </span>tailrec_meta.is_none() &amp;&amp; type_info.is_memory_allocated(registry) {
+                    <span class="kw">let </span>elem_ty = type_info.build(context, helper, registry, metadata, type_id)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>stack_ptr = helper.init_block().alloca1(
+                        context,
+                        location,
+                        elem_ty,
+                        <span class="prelude-val">Some</span>(type_info.layout(registry)<span class="question-mark">?</span>.align()),
+                    )<span class="question-mark">?</span>;
+
+                    entry.store(
+                        context,
+                        location,
+                        stack_ptr,
+                        entry.argument(idx)<span class="question-mark">?</span>.into(),
+                        <span class="prelude-val">Some</span>(type_info.layout(registry)<span class="question-mark">?</span>.align()),
+                    );
+
+                    stack_ptr
+                } <span class="kw">else </span>{
+                    entry.argument(idx)<span class="question-mark">?</span>.into()
+                },
+            );
         }
     }
 
-    <span class="kw">let </span>return_types = info
-        .function
-        .signature
-        .ret_types
-        .iter()
-        .filter_map(|type_id| {
-            <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
-            <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
-                <span class="prelude-val">None
-            </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>((type_id, type_info))
-            }
-        })
-        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-    <span class="kw">let </span>has_return_ptr = <span class="kw">if </span>return_types.len() &gt; <span class="number">1 </span>{
-        result_types.extend(
-            return_types
-                .iter()
-                .map(|(type_id, type_info)| {
-                    type_info.build(context, helper, registry, metadata, type_id)
-                })
-                .collect::&lt;std::result::Result&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
-        );
-
-        <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)
-    } <span class="kw">else if </span>return_types
-        .first()
-        .is_some_and(|(<span class="kw">_</span>, type_info)| type_info.is_memory_allocated(registry))
-    {
-        <span class="kw">let </span>(type_id, type_info) = return_types[<span class="number">0</span>];
-        <span class="kw">let </span>layout = type_info.layout(registry)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>stack_ptr = helper.init_block().alloca1(
-            context,
-            location,
-            type_info.build(context, helper, registry, metadata, type_id)<span class="question-mark">?</span>,
-            <span class="prelude-val">Some</span>(layout.align()),
-        )<span class="question-mark">?</span>;
-
-        arguments.insert(<span class="number">0</span>, stack_ptr);
-
-        <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)
-    } <span class="kw">else </span>{
-        <span class="kw">let </span>(type_id, type_info) = return_types[<span class="number">0</span>];
-        result_types.push(type_info.build(context, helper, registry, metadata, type_id)<span class="question-mark">?</span>);
-
-        <span class="prelude-val">None
-    </span>};
-
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(tailrec_meta) = metadata.get_mut::&lt;TailRecursionMeta&gt;() {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(tailrec_meta) = <span class="kw-2">&amp;mut </span>tailrec_meta {
         <span class="kw">let </span>depth_counter =
             entry.append_op_result(memref::load(tailrec_meta.depth_counter(), <span class="kw-2">&amp;</span>[], location))<span class="question-mark">?</span>;
 
@@ -421,19 +388,26 @@
 
         entry.append_operation(cf::br(
             <span class="kw-2">&amp;</span>tailrec_meta.recursion_target(),
-            <span class="kw-2">&amp;</span>arguments
-                .iter()
-                .skip(has_return_ptr.is_some_and(|x| x) <span class="kw">as </span>usize)
-                .copied()
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+            <span class="kw-2">&amp;</span>arguments,
             location,
         ));
 
         <span class="kw">let </span>cont_block = helper.append_block(Block::new(
-            <span class="kw-2">&amp;</span>result_types
+            <span class="kw-2">&amp;</span>info
+                .function
+                .signature
+                .ret_types
                 .iter()
-                .copied()
-                .map(|ty| (ty, location))
+                .map(|ty| {
+                    (
+                        registry
+                            .get_type(ty)
+                            .unwrap()
+                            .build(context, helper, registry, metadata, ty)
+                            .unwrap(),
+                        location,
+                    )
+                })
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         ));
         tailrec_meta.set_return_target(cont_block);
@@ -457,26 +431,65 @@
                 <span class="kw">let </span>val = cont_block.argument(count)<span class="question-mark">?</span>.into();
                 count += <span class="number">1</span>;
 
-                results.push(<span class="kw">if </span>type_info.is_memory_allocated(registry) {
-                    <span class="kw">let </span>ty = type_info.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>layout = type_info.layout(registry)<span class="question-mark">?</span>;
-
-                    <span class="kw">let </span>stack_ptr =
-                        helper
-                            .init_block()
-                            .alloca1(context, location, ty, <span class="prelude-val">Some</span>(layout.align()))<span class="question-mark">?</span>;
-
-                    cont_block.store(context, location, stack_ptr, val, <span class="prelude-val">Some</span>(layout.align()));
-
-                    stack_ptr
-                } <span class="kw">else </span>{
-                    val
-                });
+                results.push(val);
             }
         }
 
         cont_block.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>results, location));
     } <span class="kw">else </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>result_types = Vec::new();
+        <span class="kw">let </span>return_types = info
+            .function
+            .signature
+            .ret_types
+            .iter()
+            .filter_map(|type_id| {
+                <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
+                <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
+                    <span class="prelude-val">None
+                </span>} <span class="kw">else </span>{
+                    <span class="prelude-val">Some</span>((type_id, type_info))
+                }
+            })
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="comment">// A function has a return pointer if either:
+        //   - There are multiple return values.
+        //   - The return value is memory allocated.
+        </span><span class="kw">let </span>has_return_ptr = <span class="kw">if </span>return_types.len() &gt; <span class="number">1 </span>{
+            result_types.extend(
+                return_types
+                    .iter()
+                    .map(|(type_id, type_info)| {
+                        type_info.build(context, helper, registry, metadata, type_id)
+                    })
+                    .collect::&lt;std::result::Result&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
+            );
+
+            <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)
+        } <span class="kw">else if </span>return_types
+            .first()
+            .is_some_and(|(<span class="kw">_</span>, type_info)| type_info.is_memory_allocated(registry))
+        {
+            <span class="kw">let </span>(type_id, type_info) = return_types[<span class="number">0</span>];
+            <span class="kw">let </span>layout = type_info.layout(registry)<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>stack_ptr = helper.init_block().alloca1(
+                context,
+                location,
+                type_info.build(context, helper, registry, metadata, type_id)<span class="question-mark">?</span>,
+                <span class="prelude-val">Some</span>(layout.align()),
+            )<span class="question-mark">?</span>;
+
+            arguments.insert(<span class="number">0</span>, stack_ptr);
+
+            <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>(type_id, type_info) = return_types[<span class="number">0</span>];
+            result_types.push(type_info.build(context, helper, registry, metadata, type_id)<span class="question-mark">?</span>);
+
+            <span class="prelude-val">None
+        </span>};
+
         <span class="kw">let </span>function_call_result = entry.append_operation(func::call(
             context,
             FlatSymbolRefAttribute::new(context, <span class="kw-2">&amp;</span>generate_function_name(<span class="kw-2">&amp;</span>info.function.id)),
@@ -515,17 +528,13 @@
                             .result(<span class="number">0</span>)<span class="question-mark">?
                             </span>.into();
 
-                        results.push(<span class="kw">if </span>type_info.is_memory_allocated(registry) {
-                            pointer_val
-                        } <span class="kw">else </span>{
-                            entry.load(
-                                context,
-                                location,
-                                pointer_val,
-                                type_info.build(context, helper, registry, metadata, type_id)<span class="question-mark">?</span>,
-                                <span class="prelude-val">None</span>,
-                            )<span class="question-mark">?
-                        </span>});
+                        results.push(entry.load(
+                            context,
+                            location,
+                            pointer_val,
+                            type_info.build(context, helper, registry, metadata, type_id)<span class="question-mark">?</span>,
+                            <span class="prelude-val">None</span>,
+                        )<span class="question-mark">?</span>);
                     }
                 }
             }
@@ -543,24 +552,7 @@
                         <span class="kw">let </span>val = function_call_result.result(count)<span class="question-mark">?</span>.into();
                         count += <span class="number">1</span>;
 
-                        results.push(<span class="kw">if </span>type_info.is_memory_allocated(registry) {
-                            <span class="kw">let </span>ty =
-                                type_info.build(context, helper, registry, metadata, type_id)<span class="question-mark">?</span>;
-                            <span class="kw">let </span>layout = type_info.layout(registry)<span class="question-mark">?</span>;
-
-                            <span class="kw">let </span>stack_ptr = helper.init_block().alloca1(
-                                context,
-                                location,
-                                ty,
-                                <span class="prelude-val">Some</span>(layout.align()),
-                            )<span class="question-mark">?</span>;
-
-                            entry.store(context, location, stack_ptr, val, <span class="prelude-val">Some</span>(layout.align()));
-
-                            stack_ptr
-                        } <span class="kw">else </span>{
-                            val
-                        });
+                        results.push(val);
                     }
                 }
             }
@@ -585,6 +577,10 @@
         }
 
         entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>results, location));
+    }
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(tailrec_meta) = tailrec_meta {
+        metadata.insert(tailrec_meta);
     }
 
     <span class="prelude-val">Ok</span>(())

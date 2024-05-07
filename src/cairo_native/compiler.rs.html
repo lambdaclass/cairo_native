@@ -984,84 +984,6 @@
 <a href="#983" id="983">983</a>
 <a href="#984" id="984">984</a>
 <a href="#985" id="985">985</a>
-<a href="#986" id="986">986</a>
-<a href="#987" id="987">987</a>
-<a href="#988" id="988">988</a>
-<a href="#989" id="989">989</a>
-<a href="#990" id="990">990</a>
-<a href="#991" id="991">991</a>
-<a href="#992" id="992">992</a>
-<a href="#993" id="993">993</a>
-<a href="#994" id="994">994</a>
-<a href="#995" id="995">995</a>
-<a href="#996" id="996">996</a>
-<a href="#997" id="997">997</a>
-<a href="#998" id="998">998</a>
-<a href="#999" id="999">999</a>
-<a href="#1000" id="1000">1000</a>
-<a href="#1001" id="1001">1001</a>
-<a href="#1002" id="1002">1002</a>
-<a href="#1003" id="1003">1003</a>
-<a href="#1004" id="1004">1004</a>
-<a href="#1005" id="1005">1005</a>
-<a href="#1006" id="1006">1006</a>
-<a href="#1007" id="1007">1007</a>
-<a href="#1008" id="1008">1008</a>
-<a href="#1009" id="1009">1009</a>
-<a href="#1010" id="1010">1010</a>
-<a href="#1011" id="1011">1011</a>
-<a href="#1012" id="1012">1012</a>
-<a href="#1013" id="1013">1013</a>
-<a href="#1014" id="1014">1014</a>
-<a href="#1015" id="1015">1015</a>
-<a href="#1016" id="1016">1016</a>
-<a href="#1017" id="1017">1017</a>
-<a href="#1018" id="1018">1018</a>
-<a href="#1019" id="1019">1019</a>
-<a href="#1020" id="1020">1020</a>
-<a href="#1021" id="1021">1021</a>
-<a href="#1022" id="1022">1022</a>
-<a href="#1023" id="1023">1023</a>
-<a href="#1024" id="1024">1024</a>
-<a href="#1025" id="1025">1025</a>
-<a href="#1026" id="1026">1026</a>
-<a href="#1027" id="1027">1027</a>
-<a href="#1028" id="1028">1028</a>
-<a href="#1029" id="1029">1029</a>
-<a href="#1030" id="1030">1030</a>
-<a href="#1031" id="1031">1031</a>
-<a href="#1032" id="1032">1032</a>
-<a href="#1033" id="1033">1033</a>
-<a href="#1034" id="1034">1034</a>
-<a href="#1035" id="1035">1035</a>
-<a href="#1036" id="1036">1036</a>
-<a href="#1037" id="1037">1037</a>
-<a href="#1038" id="1038">1038</a>
-<a href="#1039" id="1039">1039</a>
-<a href="#1040" id="1040">1040</a>
-<a href="#1041" id="1041">1041</a>
-<a href="#1042" id="1042">1042</a>
-<a href="#1043" id="1043">1043</a>
-<a href="#1044" id="1044">1044</a>
-<a href="#1045" id="1045">1045</a>
-<a href="#1046" id="1046">1046</a>
-<a href="#1047" id="1047">1047</a>
-<a href="#1048" id="1048">1048</a>
-<a href="#1049" id="1049">1049</a>
-<a href="#1050" id="1050">1050</a>
-<a href="#1051" id="1051">1051</a>
-<a href="#1052" id="1052">1052</a>
-<a href="#1053" id="1053">1053</a>
-<a href="#1054" id="1054">1054</a>
-<a href="#1055" id="1055">1055</a>
-<a href="#1056" id="1056">1056</a>
-<a href="#1057" id="1057">1057</a>
-<a href="#1058" id="1058">1058</a>
-<a href="#1059" id="1059">1059</a>
-<a href="#1060" id="1060">1060</a>
-<a href="#1061" id="1061">1061</a>
-<a href="#1062" id="1062">1062</a>
-<a href="#1063" id="1063">1063</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
@@ -1135,10 +1057,10 @@
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>melior::{
     dialect::{
-        arith::{<span class="self">self</span>, CmpiPredicate},
+        arith::CmpiPredicate,
         cf, func, index,
         llvm::{<span class="self">self</span>, LoadStoreOptions},
-        memref, ods,
+        memref,
     },
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
@@ -1323,6 +1245,7 @@
                 } <span class="kw">else </span>{
                     <span class="kw">let </span>value = entry_block.argument(count)<span class="question-mark">?</span>.into();
                     count += <span class="number">1</span>;
+
                     value
                 },
             ));
@@ -1541,33 +1464,43 @@
                             <span class="kw">let </span>cont_block = region.insert_block_after(block, Block::new(<span class="kw-2">&amp;</span>[]));
 
                             <span class="kw">let </span>(depth_counter, return_target) = tailrec_storage[counter_idx];
-                            <span class="kw">let </span>op0 =
-                                block.append_operation(memref::load(depth_counter, <span class="kw-2">&amp;</span>[], location));
-                            <span class="kw">let </span>op1 = block.append_operation(index::constant(
-                                context,
-                                IntegerAttribute::new(Type::index(context), <span class="number">0</span>),
-                                location,
-                            ));
-                            <span class="kw">let </span>op2 = block.append_operation(index::cmp(
-                                context,
-                                CmpiPredicate::Eq,
-                                op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                                op1.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                                location,
-                            ));
+                            <span class="kw">let </span>depth_counter_value = block
+                                .append_operation(memref::load(depth_counter, <span class="kw-2">&amp;</span>[], location))
+                                .result(<span class="number">0</span>)<span class="question-mark">?
+                                </span>.into();
+                            <span class="kw">let </span>k0 = block
+                                .append_operation(index::constant(
+                                    context,
+                                    IntegerAttribute::new(Type::index(context), <span class="number">0</span>),
+                                    location,
+                                ))
+                                .result(<span class="number">0</span>)<span class="question-mark">?
+                                </span>.into();
+                            <span class="kw">let </span>is_zero_depth = block
+                                .append_operation(index::cmp(
+                                    context,
+                                    CmpiPredicate::Eq,
+                                    depth_counter_value,
+                                    k0,
+                                    location,
+                                ))
+                                .result(<span class="number">0</span>)<span class="question-mark">?
+                                </span>.into();
 
-                            <span class="kw">let </span>op3 = block.append_operation(index::constant(
-                                context,
-                                IntegerAttribute::new(Type::index(context), <span class="number">1</span>),
-                                location,
-                            ));
-                            <span class="kw">let </span>op4 = block.append_operation(index::sub(
-                                op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                                op3.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                                location,
-                            ));
+                            <span class="kw">let </span>k1 = block
+                                .append_operation(index::constant(
+                                    context,
+                                    IntegerAttribute::new(Type::index(context), <span class="number">1</span>),
+                                    location,
+                                ))
+                                .result(<span class="number">0</span>)<span class="question-mark">?
+                                </span>.into();
+                            <span class="kw">let </span>depth_counter_value = block
+                                .append_operation(index::sub(depth_counter_value, k1, location))
+                                .result(<span class="number">0</span>)<span class="question-mark">?
+                                </span>.into();
                             block.append_operation(memref::store(
-                                op4.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                                depth_counter_value,
                                 depth_counter,
                                 <span class="kw-2">&amp;</span>[],
                                 location,
@@ -1600,37 +1533,7 @@
                                         <span class="kw">if </span>type_info.is_zst(registry) {
                                             <span class="prelude-val">None
                                         </span>} <span class="kw">else </span>{
-                                            <span class="kw">let </span>value = <span class="kw-2">*</span>value;
-
-                                            <span class="prelude-val">Some</span>(<span class="kw">if </span>type_info.is_memory_allocated(registry) {
-                                                <span class="kw">let </span>ty = type_info
-                                                    .build(
-                                                        context, module, registry, metadata,
-                                                        type_id,
-                                                    )
-                                                    .unwrap();
-                                                <span class="kw">let </span>layout = type_info.layout(registry).unwrap();
-
-                                                block
-                                                    .append_operation(llvm::load(
-                                                        context,
-                                                        value,
-                                                        ty,
-                                                        location,
-                                                        LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(
-                                                            IntegerAttribute::new(
-                                                                IntegerType::new(context, <span class="number">64</span>)
-                                                                    .into(),
-                                                                layout.align() <span class="kw">as </span>i64,
-                                                            ),
-                                                        )),
-                                                    ))
-                                                    .result(<span class="number">0</span>)
-                                                    .unwrap()
-                                                    .into()
-                                            } <span class="kw">else </span>{
-                                                value
-                                            })
+                                            <span class="prelude-val">Some</span>(<span class="kw-2">*</span>value)
                                         }
                                     })
                                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
@@ -1639,7 +1542,7 @@
 
                             block.append_operation(cf::cond_br(
                                 context,
-                                op2.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                                is_zero_depth,
                                 <span class="kw-2">&amp;</span>cont_block,
                                 <span class="kw-2">&amp;</span>return_target,
                                 <span class="kw-2">&amp;</span>[],
@@ -1659,65 +1562,22 @@
                         }
                     }
 
-                    <span class="kw">match </span>has_return_ptr {
-                        <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; {
-                            <span class="kw">let </span>(_ret_type_id, ret_type_info) = return_types[<span class="number">0</span>];
-                            <span class="kw">let </span>ret_layout = ret_type_info.layout(registry)<span class="question-mark">?</span>;
+                    <span class="comment">// Store the return value in the return pointer, if there's one.
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="bool-val">true</span>) = has_return_ptr {
+                        <span class="kw">let </span>(_ret_type_id, ret_type_info) = return_types[<span class="number">0</span>];
+                        <span class="kw">let </span>ret_layout = ret_type_info.layout(registry)<span class="question-mark">?</span>;
 
-                            <span class="kw">let </span>ptr = values.remove(<span class="number">0</span>);
-
-                            <span class="kw">let </span>num_bytes = block
-                                .append_operation(arith::constant(
-                                    context,
-                                    IntegerAttribute::new(
-                                        IntegerType::new(context, <span class="number">64</span>).into(),
-                                        ret_layout.size() <span class="kw">as </span>i64,
-                                    )
-                                    .into(),
-                                    location,
-                                ))
-                                .result(<span class="number">0</span>)<span class="question-mark">?
-                                </span>.into();
-                            block.append_operation(
-                                ods::llvm::intr_memcpy(
-                                    context,
-                                    pre_entry_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                                    ptr,
-                                    num_bytes,
-                                    IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
-                                    location,
-                                )
-                                .into(),
-                            );
-                        }
-                        <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; {
-                            <span class="kw">for </span>(value, (type_id, type_info)) <span class="kw">in
-                                </span>values.iter_mut().zip(<span class="kw-2">&amp;</span>return_types)
-                            {
-                                <span class="kw">if </span>type_info.is_memory_allocated(registry) {
-                                    <span class="kw">let </span>layout = type_info.layout(registry)<span class="question-mark">?</span>;
-
-                                    <span class="kw-2">*</span>value = block
-                                        .append_operation(llvm::load(
-                                            context,
-                                            <span class="kw-2">*</span>value,
-                                            type_info.build(
-                                                context, module, registry, metadata, type_id,
-                                            )<span class="question-mark">?</span>,
-                                            location,
-                                            LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(
-                                                IntegerAttribute::new(
-                                                    IntegerType::new(context, <span class="number">64</span>).into(),
-                                                    layout.align() <span class="kw">as </span>i64,
-                                                ),
-                                            )),
-                                        ))
-                                        .result(<span class="number">0</span>)<span class="question-mark">?
-                                        </span>.into();
-                                }
-                            }
-                        }
-                        <span class="prelude-val">None </span>=&gt; {}
+                        <span class="kw">let </span>ptr = values.remove(<span class="number">0</span>);
+                        block.append_operation(llvm::store(
+                            context,
+                            ptr,
+                            pre_entry_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                            location,
+                            LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                                IntegerType::new(context, <span class="number">64</span>).into(),
+                                ret_layout.align() <span class="kw">as </span>i64,
+                            ))),
+                        ));
                     }
 
                     block.append_operation(func::r#return(<span class="kw-2">&amp;</span>values, location));
@@ -1728,17 +1588,57 @@
         },
     )<span class="question-mark">?</span>;
 
-    pre_entry_block.append_operation(cf::br(
-        <span class="kw-2">&amp;</span>entry_block,
-        <span class="kw-2">&amp;</span>(<span class="number">0</span>..entry_block.argument_count())
-            .map(|i| {
-                <span class="prelude-val">Ok</span>(pre_entry_block
-                    .argument((has_return_ptr == <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) <span class="kw">as </span>usize + i)<span class="question-mark">?
-                    </span>.into())
+    <span class="comment">// Load arguments and jump to the entry block.
+    </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>arg_values = Vec::with_capacity(function.signature.param_types.len());
+        <span class="kw">for </span>(i, type_id_and_info) <span class="kw">in </span>function
+            .signature
+            .param_types
+            .iter()
+            .filter_map(|type_id| {
+                registry
+                    .get_type(type_id)
+                    .map(|type_info| {
+                        <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
+                            <span class="prelude-val">None
+                        </span>} <span class="kw">else </span>{
+                            <span class="prelude-val">Some</span>((type_id, type_info))
+                        }
+                    })
+                    .transpose()
             })
-            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, Error&gt;&gt;()<span class="question-mark">?</span>,
-        Location::unknown(context),
-    ));
+            .enumerate()
+        {
+            <span class="kw">let </span>(type_id, type_info) = type_id_and_info<span class="question-mark">?</span>;
+
+            <span class="kw">let </span><span class="kw-2">mut </span>value = pre_entry_block
+                .argument((has_return_ptr == <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) <span class="kw">as </span>usize + i)<span class="question-mark">?
+                </span>.into();
+            <span class="kw">if </span>type_info.is_memory_allocated(registry) {
+                value = pre_entry_block
+                    .append_operation(llvm::load(
+                        context,
+                        value,
+                        type_info.build(context, module, registry, metadata, type_id)<span class="question-mark">?</span>,
+                        Location::unknown(context),
+                        LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
+                            IntegerType::new(context, <span class="number">64</span>).into(),
+                            type_info.layout(registry)<span class="question-mark">?</span>.align() <span class="kw">as </span>i64,
+                        ))),
+                    ))
+                    .result(<span class="number">0</span>)<span class="question-mark">?
+                    </span>.into();
+            }
+
+            arg_values.push(value);
+        }
+
+        pre_entry_block.append_operation(cf::br(
+            <span class="kw-2">&amp;</span>entry_block,
+            <span class="kw-2">&amp;</span>arg_values,
+            Location::unknown(context),
+        ));
+    }
 
     <span class="kw">let </span>function_name = generate_function_name(<span class="kw-2">&amp;</span>function.id);
     <span class="macro">tracing::debug!</span>(<span class="string">"Creating the actual function, named `{function_name}`."</span>);
@@ -1774,7 +1674,7 @@
     statements: <span class="kw-2">&amp;</span>[Statement],
     metadata_storage: <span class="kw-2">&amp;mut </span>MetadataStorage,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(BlockRef&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;, BlockStorage&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;), Error&gt; {
-    <span class="kw">let </span>initial_state = edit_state::put_results::&lt;(Type, bool)&gt;(
+    <span class="kw">let </span>initial_state = edit_state::put_results::&lt;Type&gt;(
         HashMap::new(),
         function
             .params
@@ -1784,10 +1684,7 @@
                 <span class="kw">let </span>type_info = registry.get_type(ty)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>((
                     <span class="kw-2">&amp;</span>param.id,
-                    (
-                        type_info.build(context, module, registry, metadata_storage, ty)<span class="question-mark">?</span>,
-                        type_info.is_memory_allocated(registry),
-                    ),
+                    type_info.build(context, module, registry, metadata_storage, ty)<span class="question-mark">?</span>,
                 ))
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, Error&gt;&gt;()<span class="question-mark">?
@@ -1824,15 +1721,8 @@
                     <span class="kw">let </span>(state, types) =
                         edit_state::take_args(state.clone(), invocation.args.iter())<span class="question-mark">?</span>;
 
-                    <span class="kw">for </span>(ty, is_memory_allocated) <span class="kw">in </span>types {
-                        block.add_argument(
-                            <span class="kw">if </span>is_memory_allocated {
-                                llvm::r#type::opaque_pointer(context)
-                            } <span class="kw">else </span>{
-                                ty
-                            },
-                            Location::unknown(context),
-                        );
+                    <span class="kw">for </span>ty <span class="kw">in </span>types {
+                        block.add_argument(ty, Location::unknown(context));
                     }
 
                     <span class="kw">let </span>libfunc = registry.get_libfunc(<span class="kw-2">&amp;</span>invocation.libfunc_id)<span class="question-mark">?</span>;
@@ -1848,18 +1738,13 @@
                                         .vars
                                         .iter()
                                         .map(|var_info| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, Error&gt; {
-                                            <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>;
-
-                                            <span class="prelude-val">Ok</span>((
-                                                type_info.build(
-                                                    context,
-                                                    module,
-                                                    registry,
-                                                    metadata_storage,
-                                                    <span class="kw-2">&amp;</span>var_info.ty,
-                                                )<span class="question-mark">?</span>,
-                                                type_info.is_memory_allocated(registry),
-                                            ))
+                                            registry.get_type(<span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>.build(
+                                                context,
+                                                module,
+                                                registry,
+                                                metadata_storage,
+                                                <span class="kw-2">&amp;</span>var_info.ty,
+                                            )
                                         })
                                         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
                                 ),
@@ -1888,15 +1773,8 @@
                         <span class="string">"State must be empty after a return statement."
                     </span>);
 
-                    <span class="kw">for </span>(ty, is_memory_allocated) <span class="kw">in </span>types {
-                        block.add_argument(
-                            <span class="kw">if </span>is_memory_allocated {
-                                llvm::r#type::opaque_pointer(context)
-                            } <span class="kw">else </span>{
-                                ty
-                            },
-                            Location::unknown(context),
-                        );
+                    <span class="kw">for </span>ty <span class="kw">in </span>types {
+                        block.add_argument(ty, Location::unknown(context));
                     }
 
                     Vec::new()
@@ -1907,7 +1785,7 @@
 
     <span class="macro">tracing::trace!</span>(<span class="string">"Generating function entry block."</span>);
     <span class="kw">let </span>entry_block = region.append_block(Block::new(<span class="kw-2">&amp;</span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>args = extract_types(
+        extract_types(
             context,
             module,
             <span class="kw-2">&amp;</span>function.signature.param_types,
@@ -1915,33 +1793,8 @@
             metadata_storage,
         )
         .map(|ty| <span class="prelude-val">Ok</span>((ty<span class="question-mark">?</span>, Location::unknown(context))))
-        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, Error&gt;&gt;()<span class="question-mark">?</span>;
-
-        <span class="kw">for </span>(type_info, (ty, <span class="kw">_</span>)) <span class="kw">in </span>function
-            .signature
-            .param_types
-            .iter()
-            .filter_map(|type_id| {
-                <span class="kw">let </span>type_info = <span class="kw">match </span>registry.get_type(type_id) {
-                    <span class="prelude-val">Ok</span>(x) =&gt; x,
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e)),
-                };
-
-                <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
-                    <span class="prelude-val">None
-                </span>} <span class="kw">else </span>{
-                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(type_info))
-                }
-            })
-            .zip(args.iter_mut())
-        {
-            <span class="kw">if </span>type_info<span class="question-mark">?</span>.is_memory_allocated(registry) {
-                <span class="kw-2">*</span>ty = llvm::r#type::opaque_pointer(context);
-            }
-        }
-
-        args
-    }));
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, Error&gt;&gt;()<span class="question-mark">?
+    </span>}));
 
     <span class="kw">let </span>blocks = blocks
         .into_iter()
@@ -1965,16 +1818,7 @@
                                 .map(|(var_id, ty)| (var_id.id, <span class="kw-2">*</span>ty))
                                 .collect::&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()
                                 .into_values()
-                                .map(|(ty, is_memory_allocated)| {
-                                    (
-                                        <span class="kw">if </span>is_memory_allocated {
-                                            llvm::r#type::opaque_pointer(context)
-                                        } <span class="kw">else </span>{
-                                            ty
-                                        },
-                                        Location::unknown(context),
-                                    )
-                                })
+                                .map(|ty| (ty, Location::unknown(context)))
                                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
                         ),
                     ),
