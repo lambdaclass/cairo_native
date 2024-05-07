@@ -17,7 +17,6 @@ use cairo_native::{
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
     values::JitValue,
-    OptLevel,
 };
 use clap::{Parser, ValueEnum};
 use itertools::Itertools;
@@ -111,16 +110,13 @@ fn main() -> anyhow::Result<()> {
         .compile(&sierra_program, Some(debug_locations))
         .unwrap();
 
-    let opt_level = match args.opt_level {
-        0 => OptLevel::None,
-        1 => OptLevel::Less,
-        2 => OptLevel::Default,
-        _ => OptLevel::Aggressive,
-    };
-
     let native_executor: NativeExecutor = match args.run_mode {
-        RunMode::Aot => AotNativeExecutor::from_native_module(native_module, opt_level).into(),
-        RunMode::Jit => JitNativeExecutor::from_native_module(native_module, opt_level).into(),
+        RunMode::Aot => {
+            AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+        }
+        RunMode::Jit => {
+            JitNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+        }
     };
 
     let gas_metadata =

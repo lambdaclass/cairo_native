@@ -1,7 +1,7 @@
 use anyhow::Context;
 use cairo_native::{
     context::NativeContext, module_to_object, object_to_shared_lib,
-    utils::cairo_to_sierra_with_debug_info, OptLevel,
+    utils::cairo_to_sierra_with_debug_info,
 };
 use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
@@ -60,13 +60,6 @@ fn main() -> anyhow::Result<()> {
         .compile(&sierra_program, Some(debug_locations))
         .unwrap();
 
-    let opt_level = match args.opt_level {
-        0 => OptLevel::None,
-        1 => OptLevel::Less,
-        2 => OptLevel::Default,
-        _ => OptLevel::Aggressive,
-    };
-
     let output_mlir = args
         .output_mlir
         .unwrap_or_else(|| PathBuf::from("out.mlir"));
@@ -78,7 +71,7 @@ fn main() -> anyhow::Result<()> {
     .context("Failed to write output.")?;
 
     if let Some(output_library) = &args.output_library {
-        let object_data = module_to_object(native_module.module(), opt_level)
+        let object_data = module_to_object(native_module.module(), args.opt_level.into())
             .context("Failed to convert module to object.")?;
         object_to_shared_lib(&object_data, output_library)
             .context("Failed to write shared library.")?;
