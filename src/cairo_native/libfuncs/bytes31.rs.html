@@ -209,12 +209,12 @@
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Bytes31-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
-<span class="kw">use crate</span>::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+<span class="kw">use crate</span>::{
+    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
+};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         bytes31::Bytes31ConcreteLibfunc,
@@ -282,6 +282,7 @@
         Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : {value_ty}"</span>)).unwrap(),
         location,
     ));
+
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
 
     <span class="prelude-val">Ok</span>(())
@@ -306,9 +307,7 @@
     )<span class="question-mark">?</span>;
     <span class="kw">let </span>value: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>op = entry.append_operation(arith::extui(value, felt252_ty, location));
-
-    <span class="kw">let </span>result = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>result = entry.append_op_result(arith::extui(value, felt252_ty, location))<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
 
@@ -347,21 +346,19 @@
 
     <span class="kw">let </span>max_value = BigUint::from(<span class="number">2u32</span>).pow(<span class="number">248</span>) - <span class="number">1u32</span>;
 
-    <span class="kw">let </span>op = entry.append_operation(arith::constant(
+    <span class="kw">let </span>const_max = entry.append_op_result(arith::constant(
         context,
         Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{} : {}"</span>, max_value, felt252_ty)).unwrap(),
         location,
-    ));
-    <span class="kw">let </span>const_max = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    ))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>op = entry.append_operation(arith::cmpi(
+    <span class="kw">let </span>is_ule = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Ule,
         value,
         const_max,
         location,
-    ));
-    <span class="kw">let </span>is_ule = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    ))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>block_success = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     <span class="kw">let </span>block_failure = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
@@ -376,8 +373,7 @@
         location,
     ));
 
-    <span class="kw">let </span>op = block_success.append_operation(arith::trunci(value, result_ty, location));
-    <span class="kw">let </span>value = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value = block_success.append_op_result(arith::trunci(value, result_ty, location))<span class="question-mark">?</span>;
     block_success.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, value], location));
 
     block_failure.append_operation(helper.br(<span class="number">1</span>, <span class="kw-2">&amp;</span>[range_check], location));
