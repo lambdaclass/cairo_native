@@ -58,23 +58,29 @@ impl ContractExecutionResult {
                                 felt_vec
                             } else {
                                 Err(Error::UnexpectedValue(format!(
-                                    "wrong type, expect: array, value: {:?}",
+                                    "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
                                     value
                                 )))?
                             }
                         } else {
                             Err(Error::UnexpectedValue(format!(
-                                "wrong type, expect: struct, value: {:?}",
+                                "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
                                 value
                             )))?
                         }
                     } else {
                         Err(Error::UnexpectedValue(format!(
-                            "wrong type, expect: struct, value: {:?}",
+                            "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
                             value
                         )))?
                     }
                 } else if let JitValue::Struct { fields, .. } = &**value {
+                    if fields.len() < 2 {
+                        Err(Error::UnexpectedValue(format!(
+                            "wrong type, expect: struct.fields.len() >= 2, value: {:?}",
+                            fields
+                        )))?
+                    }
                     if let JitValue::Array(data) = &fields[1] {
                         let felt_vec: Vec<_> = data
                             .iter()
@@ -99,13 +105,13 @@ impl ContractExecutionResult {
                         felt_vec
                     } else {
                         Err(Error::UnexpectedValue(format!(
-                            "wrong type, expect: array, value: {:?}",
+                            "wrong type, expected: Struct {{ [X, Array<felt252>] }}, value: {:?}",
                             value
                         )))?
                     }
                 } else {
                     Err(Error::UnexpectedValue(format!(
-                        "wrong type, expect: struct, value: {:?}",
+                        "wrong type, expected: Struct {{ [X, Array<felt252>] }}, value: {:?}",
                         value
                     )))?
                 }

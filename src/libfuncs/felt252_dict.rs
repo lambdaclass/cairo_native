@@ -14,7 +14,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Block, Location},
+    dialect::arith,
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -67,19 +68,43 @@ pub fn build_squash<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &MetadataStorage,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let gas_builtin = entry.argument(1)?.into();
     let segment_arena =
         super::increment_builtin_counter(context, entry, location, entry.argument(2)?.into())?;
+    let dict_ptr = entry.argument(3)?.into();
+
+    let runtime_bindings = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .expect("Runtime library not available.");
+
+    let gas_refund = runtime_bindings
+        .dict_gas_refund(context, helper, entry, dict_ptr, location)?
+        .result(0)?
+        .into();
+    let gas_refund = entry
+        .append_operation(arith::extui(
+            gas_refund,
+            IntegerType::new(context, 128).into(),
+            location,
+        ))
+        .result(0)?
+        .into();
+
+    let new_gas_builtin = entry
+        .append_operation(arith::addi(gas_builtin, gas_refund, location))
+        .result(0)?
+        .into();
 
     entry.append_operation(helper.br(
         0,
         &[
             range_check,
-            entry.argument(1)?.into(),
+            new_gas_builtin,
             segment_arena,
             entry.argument(3)?.into(),
         ],

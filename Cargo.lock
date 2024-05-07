@@ -933,7 +933,7 @@ dependencies = [
 name = "cairo-native-runtime"
 version = "0.1.0"
 dependencies = [
- "cairo-lang-runner",
+ "cairo-lang-sierra-gas",
  "lazy_static",
  "libc",
  "starknet-crypto",
