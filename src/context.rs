@@ -214,11 +214,11 @@ pub fn initialize_mlir() -> Context {
         registry
     });
     context.load_all_available_dialects();
+    register_all_llvm_translations(&context);
 
     static INITIALIZED: OnceLock<()> = OnceLock::new();
     INITIALIZED.get_or_init(|| unsafe {
         register_all_passes();
-        register_all_llvm_translations(&context);
 
         LLVM_InitializeAllTargets();
         LLVM_InitializeAllTargetInfos();
