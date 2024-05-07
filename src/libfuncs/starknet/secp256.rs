@@ -134,7 +134,6 @@ pub fn build_k1_new<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::SECP256K1_NEW,
         &[x_arg_ptr, y_arg_ptr],
-        false,
     )
 }
 
@@ -230,7 +229,6 @@ pub fn build_k1_add<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::SECP256K1_ADD,
         &[p0_arg_ptr, p1_arg_ptr],
-        true,
     )
 }
 
@@ -311,7 +309,6 @@ pub fn build_k1_mul<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::SECP256K1_MUL,
         &[p_arg_ptr, scalar_arg_ptr],
-        true,
     )
 }
 
@@ -367,7 +364,6 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::SECP256K1_GET_POINT_FROM_X,
         &[x_arg_ptr, y_parity_arg_ptr],
-        false,
     )
 }
 
@@ -784,7 +780,6 @@ pub fn build_r1_new<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::SECP256R1_NEW,
         &[x_arg_ptr, y_arg_ptr],
-        false,
     )
 }
 
@@ -879,7 +874,6 @@ pub fn build_r1_add<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::SECP256R1_ADD,
         &[p0_arg_ptr, p1_arg_ptr],
-        true,
     )
 }
 
@@ -961,7 +955,6 @@ pub fn build_r1_mul<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::SECP256R1_MUL,
         &[p_arg_ptr, scalar_arg_ptr],
-        true,
     )
 }
 
@@ -1016,7 +1009,6 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::SECP256R1_GET_POINT_FROM_X,
         &[x_arg_ptr, y_parity_arg_ptr],
-        false,
     )
 }
 

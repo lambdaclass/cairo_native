@@ -147,7 +147,6 @@ pub fn build_generic_syscall<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
     function_offset: usize,
     arguments: &[Value],
-    load_payload_ok: bool,
 ) -> Result<()> {
     // Extract self pointer.
     let ptr = entry
@@ -260,6 +259,7 @@ pub fn build_generic_syscall<'ctx, 'this>(
         0,
     )?;
 
+    // Load the two variants of the result returned by the syscall handler.
     let payload_ok = {
         let ptr = entry
             .append_operation(
@@ -284,20 +284,16 @@ pub fn build_generic_syscall<'ctx, 'this>(
             )
             .result(0)?
             .into();
-        if load_payload_ok {
-            entry
-                .append_operation(llvm::load(
-                    context,
-                    ptr,
-                    variant_tys[0].0,
-                    location,
-                    LoadStoreOptions::default(),
-                ))
-                .result(0)?
-                .into()
-        } else {
-            ptr
-        }
+        entry
+            .append_operation(llvm::load(
+                context,
+                ptr,
+                variant_tys[0].0,
+                location,
+                LoadStoreOptions::default(),
+            ))
+            .result(0)?
+            .into()
     };
     let payload_err = {
         let ptr = entry
@@ -416,7 +412,6 @@ pub fn build_call_contract<'ctx, 'this>(
             entry_point_selector_arg_ptr,
             calldata_arg_ptr,
         ],
-        true,
     )
 }
 
@@ -623,7 +618,6 @@ pub fn build_storage_read<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::STORAGE_READ,
         &[address_arg_ptr],
-        true,
     )
 }
 
@@ -666,7 +660,6 @@ pub fn build_storage_write<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::STORAGE_WRITE,
         &[address_arg_ptr, value_arg_ptr],
-        true,
     )
 }
 
@@ -918,7 +911,6 @@ pub fn build_emit_event<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::EMIT_EVENT,
         &[keys_arg_ptr, data_arg_ptr],
-        true,
     )
 }
 
@@ -941,7 +933,6 @@ pub fn build_get_block_hash<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::GET_BLOCK_HASH,
         &[entry.argument(2)?.into()],
-        true,
     )
 }
 
@@ -964,7 +955,6 @@ pub fn build_get_execution_info<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFO,
         &[],
-        true,
     )
 }
 
@@ -987,7 +977,6 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFOV2,
         &[],
-        true,
     )
 }
 
@@ -1062,7 +1051,6 @@ pub fn build_deploy<'ctx, 'this>(
             contract_address_salt_arg_ptr,
             calldata_arg_ptr,
         ],
-        true,
     )
 }
 
@@ -1109,7 +1097,6 @@ pub fn build_keccak<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::KECCAK,
         &[input_arg_ptr],
-        true,
     )
 }
 
@@ -1184,7 +1171,6 @@ pub fn build_library_call<'ctx, 'this>(
             function_selector_arg_ptr,
             calldata_arg_ptr,
         ],
-        true,
     )
 }
 
@@ -1217,7 +1203,6 @@ pub fn build_replace_class<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::REPLACE_CLASS,
         &[class_hash_arg_ptr],
-        true,
     )
 }
 
@@ -1278,7 +1263,6 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         info,
         StarknetSyscallHandlerCallbacks::<()>::SEND_MESSAGE_TO_L1,
         &[to_address_arg_ptr, payload_arg_ptr],
-        true,
     )
 }
 

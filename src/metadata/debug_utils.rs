@@ -112,6 +112,7 @@ enum DebugBinding {
     PrintI128,
     PrintPointer,
     PrintFelt252,
+    DumpMemRegion,
 }
 
 #[derive(Debug, Default)]
@@ -606,6 +607,57 @@ impl DebugUtils {
         Ok(())
     }
 
+    /// Dump a memory region at runtime.
+    ///
+    /// Requires the pointer (at runtime) and its length in bytes (at compile-time).
+    pub fn dump_mem<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        ptr: Value<'c, '_>,
+        len: usize,
+        location: Location<'c>,
+    ) -> Result<()>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(DebugBinding::DumpMemRegion) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "__debug__dump_mem"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::opaque_pointer(context),
+                            IntegerType::new(context, 64).into(),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                location,
+            ));
+        }
+
+        let len = block.const_int(context, location, len, 64)?;
+        block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "__debug__dump_mem"),
+            &[ptr, len],
+            &[],
+            location,
+        ));
+
+        Ok(())
+    }
+
     pub fn register_impls(&self, engine: &ExecutionEngine) {
         if self.active_map.contains(&DebugBinding::BreakpointMarker) {
             unsafe {
@@ -683,7 +735,16 @@ impl DebugUtils {
             unsafe {
                 engine.register_symbol(
                     "__debug__print_felt252",
-                    print_pointer_felt252 as *const fn(u64, u64, u64, u64) -> () as *mut (),
+                    print_felt252 as *const fn(u64, u64, u64, u64) -> () as *mut (),
+                );
+            }
+        }
+
+        if self.active_map.contains(&DebugBinding::DumpMemRegion) {
+            unsafe {
+                engine.register_symbol(
+                    "__debug__dump_mem",
+                    dump_mem_impl as *const fn(*const (), u64) as *mut (),
                 );
             }
         }
@@ -731,7 +792,18 @@ extern "C" fn print_pointer_impl(value: *const ()) {
     println!("[DEBUG] {value:018x?}");
 }
 
-extern "C" fn print_pointer_felt252(l0: u64, l1: u64, l2: u64, l3: u64) {
+unsafe extern "C" fn dump_mem_impl(ptr: *const (), len: u64) {
+    println!("[DEBUG] Memory dump at {ptr:?}:");
+    for chunk in (0..len).step_by(8) {
+        print!("  {ptr:?}:");
+        for offset in chunk..chunk + 8 {
+            print!(" {:02x}", ptr.byte_add(offset as usize).cast::<u8>().read());
+        }
+        println!();
+    }
+}
+
+extern "C" fn print_felt252(l0: u64, l1: u64, l2: u64, l3: u64) {
     println!(
         "[DEBUG] {}",
         BigUint::from_bytes_le(
