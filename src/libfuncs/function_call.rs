@@ -158,6 +158,9 @@ pub fn build<'ctx, 'this>(
                 }
             })
             .collect::<Vec<_>>();
+        // A function has a return pointer if either:
+        //   - There are multiple return values.
+        //   - The return value is memory allocated.
         let has_return_ptr = if return_types.len() > 1 {
             result_types.extend(
                 return_types
