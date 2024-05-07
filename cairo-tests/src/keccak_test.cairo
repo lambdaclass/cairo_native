@@ -1,9 +1,7 @@
 use starknet::SyscallResultTrait;
 use core::test::test_utils::{assert_eq, assert_ne};
 
-// TODO: requires syscall handler on cairo-native-test
 #[test]
-#[ignore]
 fn test_keccak_syscall() {
     let input = array![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
     assert_eq(
@@ -15,7 +13,6 @@ fn test_keccak_syscall() {
 
 // TODO: requires syscall handler on cairo-native-test
 #[test]
-#[ignore]
 fn test_keccak_hash() {
     let res = keccak::keccak_u256s_le_inputs(array![1].span());
     assert_eq(@res.low, @0x587f7cc3722e9654ea3963d5fe8c0748, 'Wrong hash low 1');
@@ -37,7 +34,6 @@ fn test_keccak_hash() {
 // Same input as in `test_keccak_hash` but as a u64 array.
 // TODO: requires syscall handler on cairo-native-test
 #[test]
-#[ignore]
 fn test_keccak_u64() {
     let mut input = array![
         0x0000000000000001, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000
@@ -51,7 +47,6 @@ fn test_keccak_u64() {
 
 // TODO: requires syscall handler on cairo-native-test
 #[test]
-#[ignore]
 fn test_keccak_u64_full_block() {
     let mut input = array![
         0x0000000000000001,
@@ -79,9 +74,7 @@ fn test_keccak_u64_full_block() {
     assert_eq(@res.high, @0x210740d45b1fe2ac908a497ef45509f5, 'Wrong hash high');
 }
 
-// TODO: requires syscall handler on cairo-native-test
 #[test]
-#[ignore]
 fn test_keccak_u64_full_block_minus_byte() {
     let mut input = array![
         0x0000000000000001,
@@ -117,9 +110,7 @@ fn test_keccak_u64_full_block_minus_byte() {
     assert_eq(@res.high, @0xc98592786514c87f1a1a3d567b4dcd75, 'Wrong hash high 2');
 }
 
-// TODO: requires syscall handler on cairo-native-test
 #[test]
-#[ignore]
 fn test_keccak_u64_full_block_minus_word() {
     let mut input = array![
         0x0000000000000001,
@@ -146,9 +137,7 @@ fn test_keccak_u64_full_block_minus_word() {
     assert_eq(@res.high, @0x6851f2dbbfb3bfadff94db3ad476164f, 'Wrong hash high');
 }
 
-// TODO: requires syscall handler on cairo-native-test
 #[test]
-#[ignore]
 fn test_keccak_u64_full_block_minus_word_minus_byte() {
     let mut input = array![
         0x0000000000000001,
@@ -183,9 +172,7 @@ fn test_keccak_u64_full_block_minus_word_minus_byte() {
     assert_eq(@res.high, @0xdd7e11698dc8b37323c854a53abcd330, 'Wrong hash high 2');
 }
 
-// TODO: requires syscall handler on cairo-native-test
 #[test]
-#[ignore]
 fn test_keccak_u64_full_block_minus_3_words_minus_4_bytes() {
     let mut input = array![
         0x0000000000000001,
