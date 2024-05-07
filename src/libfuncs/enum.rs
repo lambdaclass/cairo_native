@@ -30,7 +30,6 @@ use melior::{
     },
     Context,
 };
-use std::num::TryFromIntError;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -272,7 +271,7 @@ pub fn build_match<'ctx, 'this>(
 
             let case_values = (0..variant_tys.len())
                 .map(i64::try_from)
-                .collect::<std::result::Result<Vec<_>, TryFromIntError>>()?;
+                .collect::<std::result::Result<Vec<_>, _>>()?;
 
             entry.append_operation(cf::switch(
                 context,
@@ -428,7 +427,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
 
             let case_values = (0..variant_tys.len())
                 .map(i64::try_from)
-                .collect::<std::result::Result<Vec<_>, TryFromIntError>>()?;
+                .collect::<std::result::Result<Vec<_>, _>>()?;
 
             entry.append_operation(cf::switch(
                 context,

@@ -95,7 +95,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
         Ok((
             class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + Felt::from(1)).collect(),
+            calldata.iter().map(|x| x + Felt::ONE).collect(),
         ))
     }
 
@@ -310,7 +310,7 @@ fn main() {
             &[
                 Felt::from_bytes_be_slice(b"name"),
                 Felt::from_bytes_be_slice(b"symbol"),
-                Felt::from(0),
+                Felt::ZERO,
                 Felt::from(i64::MAX),
                 Felt::from(4),
                 Felt::from(6),

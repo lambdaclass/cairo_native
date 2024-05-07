@@ -17,7 +17,7 @@ pub fn prepare_programs(path: &str) -> Vec<(Arc<Program>, String)> {
                 _ => None,
             }
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
 
 #[allow(unused)] // its used but clippy doesn't detect it well

@@ -39,7 +39,7 @@ impl DebugInfo {
                     .map(|x| x.map(|location| (type_declaration.id.clone(), location)))
                     .transpose()
             })
-            .collect::<Result<HashMap<_, _>, DiagnosticAdded>>()?;
+            .collect::<Result<_, _>>()?;
 
         let libfunc_declarations = program
             .libfunc_declarations
@@ -49,7 +49,7 @@ impl DebugInfo {
                     .map(|x| x.map(|location| (libfunc_declaration.id.clone(), location)))
                     .transpose()
             })
-            .collect::<Result<HashMap<_, _>, DiagnosticAdded>>()?;
+            .collect::<Result<HashMap<_, _>, _>>()?;
 
         let statements =
             find_all_statements(db, |id| libfunc_declarations.contains_key(id), program)?;
@@ -58,7 +58,7 @@ impl DebugInfo {
             .funcs
             .iter()
             .map(|function| Ok((function.id.clone(), find_func(db, function)?)))
-            .collect::<Result<HashMap<_, _>, DiagnosticAdded>>()?;
+            .collect::<Result<_, _>>()?;
 
         Ok(Self {
             type_declarations,

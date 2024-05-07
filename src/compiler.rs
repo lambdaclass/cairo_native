@@ -857,7 +857,7 @@ fn generate_function_structure<'c, 'a>(
                 (
                     k,
                     (
-                        v.0.map(|x| (x.0, x.1.into_iter().map(|x| x.0).collect::<Vec<_>>())),
+                        v.0.map(|x| (x.0, x.1.into_iter().map(|x| x.0).collect())),
                         v.1,
                     ),
                 )
@@ -954,7 +954,7 @@ where
                                 None => BranchArg::External(state[var_id]),
                             }
                         })
-                        .collect::<Vec<_>>();
+                        .collect();
 
                     (landing_block.deref(), target_vars)
                 }
@@ -975,7 +975,7 @@ where
                             None => BranchArg::External(state[var_id]),
                         }
                     })
-                    .collect::<Vec<_>>();
+                    .collect();
 
                     (block.deref(), target_vars)
                 }

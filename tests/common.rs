@@ -89,8 +89,9 @@ pub const fn casm_variant_to_sierra(idx: i64, num_variants: i64) -> i64 {
 
 pub fn get_run_result(r: &RunResultValue) -> Vec<String> {
     match r {
-        RunResultValue::Success(x) => x.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
-        RunResultValue::Panic(x) => x.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
+        RunResultValue::Success(x) | RunResultValue::Panic(x) => {
+            x.iter().map(ToString::to_string).collect()
+        }
     }
 }
 

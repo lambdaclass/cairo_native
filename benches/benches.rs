@@ -21,13 +21,13 @@ fn criterion_benchmark(c: &mut Criterion) {
     let fibonacci = load_contract("programs/benches/fib_2M.cairo");
     let logistic_map = load_contract("programs/benches/logistic_map.cairo");
 
-    let aot_factorial = aot_cache.compile_and_insert(Felt::from(0), &factorial, OptLevel::None);
-    let aot_fibonacci = aot_cache.compile_and_insert(Felt::from(1), &fibonacci, OptLevel::None);
+    let aot_factorial = aot_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::None);
+    let aot_fibonacci = aot_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::None);
     let aot_logistic_map =
         aot_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::None);
 
-    let jit_factorial = jit_cache.compile_and_insert(Felt::from(0), &factorial, OptLevel::None);
-    let jit_fibonacci = jit_cache.compile_and_insert(Felt::from(1), &fibonacci, OptLevel::None);
+    let jit_factorial = jit_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::None);
+    let jit_fibonacci = jit_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::None);
     let jit_logistic_map =
         jit_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::None);
 
