@@ -20,13 +20,13 @@ extern "C" const void *LLVMStructType_getFieldTypeAt(const void *ty_ptr, unsigne
     return type.getBody()[index].getAsOpaquePointer();
 }
 
-extern "C" uint64_t DataLayout_getTypeABIAlignment(MlirOperation module, MlirType type)
+extern "C" uint64_t DataLayout_getTypePreferredAlignment(MlirOperation module, MlirType type)
 {
     mlir::Operation *moduleOp = unwrap(module);
     mlir::Type typeInfo = unwrap(type);
 
     mlir::DataLayout dataLayout(moduleOp->getParentOfType<mlir::DataLayoutOpInterface>());
-    return dataLayout.getTypeABIAlignment(typeInfo);
+    return dataLayout.getTypePreferredAlignment(typeInfo);
 }
 
 extern "C" uint64_t DataLayout_getTypeSize(MlirOperation module, MlirType type)

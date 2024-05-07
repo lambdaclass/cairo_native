@@ -35,7 +35,7 @@ use tempfile::NamedTempFile;
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
 
-    fn DataLayout_getTypeABIAlignment(module: MlirModule, r#type: MlirType) -> u64;
+    fn DataLayout_getTypePreferredAlignment(module: MlirModule, r#type: MlirType) -> u64;
     fn DataLayout_getTypeSize(module: MlirModule, r#type: MlirType) -> u64;
 
     /// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module
@@ -55,14 +55,15 @@ pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c>
     unsafe { Type::from_raw(ty_ptr) }
 }
 
-pub fn get_mlir_layout(module: &Module, r#type: Type) -> Layout {
+pub fn get_mlir_layout(module: &Module, type_mlir: Type) -> Layout {
     let module = module.to_raw();
-    let r#type = r#type.to_raw();
+    let r#type = type_mlir.to_raw();
 
     unsafe {
         let size = DataLayout_getTypeSize(module, r#type) as usize;
-        let align = DataLayout_getTypeABIAlignment(module, r#type) as usize;
+        let align = DataLayout_getTypePreferredAlignment(module, r#type) as usize;
 
+        eprintln!("Type {} has align {align}.", type_mlir);
         Layout::from_size_align(size, align).expect("a valid MLIR layout")
     }
 }
