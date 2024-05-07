@@ -630,7 +630,7 @@ impl DebugUtils {
                     FunctionType::new(
                         context,
                         &[
-                            llvm::r#type::opaque_pointer(context),
+                            llvm::r#type::pointer(context, 0),
                             IntegerType::new(context, 64).into(),
                         ],
                         &[],

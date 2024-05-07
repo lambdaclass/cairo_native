@@ -22,7 +22,8 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith,
-        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        llvm::{self, r#type::pointer, LoadStoreOptions},
+        ods,
     },
     ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
