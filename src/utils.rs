@@ -2,6 +2,7 @@
 
 use crate::{
     debug_info::{DebugInfo, DebugLocations},
+    ffi::get_mlir_layout,
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
     OptLevel,
@@ -519,12 +520,8 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
     ) -> Result<(Type<'ctx>, Layout), super::error::Error> {
-        let concrete_type = registry.get_type(id)?;
-
-        Ok((
-            concrete_type.build(context, module, registry, metadata, id)?,
-            concrete_type.layout(registry)?,
-        ))
+        let concrete_type = registry.build_type(context, module, registry, metadata, id)?;
+        Ok((concrete_type, get_mlir_layout(module, concrete_type)))
     }
 }
 
