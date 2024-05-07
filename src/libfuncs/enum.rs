@@ -164,7 +164,7 @@ pub fn build_enum_value<'ctx, 'this>(
                         context,
                         val,
                         DenseI64ArrayAttribute::new(context, &[1]),
-                        payload_value,
+                        entry.argument(0)?.into(),
                         location,
                     ))
                     .result(0)?
@@ -215,64 +215,17 @@ pub fn build_enum_value<'ctx, 'this>(
                     context,
                     location,
                     stack_ptr,
-                    type_info.build(context, helper, registry, metadata, enum_type)?,
+                    type_info.build(
+                        context,
+                        helper,
+                        registry,
+                        metadata,
+                        &info.branch_signatures()[0].vars[0].ty,
+                    )?,
                     Some(layout.align()),
                 )?;
             };
-
-            val
-        }
-    })
-}
-
-/// Generate MLIR operations for the `enum_init` libfunc.
-pub fn build_from_bounded_int<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &EnumFromBoundedIntConcreteLibfunc,
-) -> Result<()> {
-    let inp_ty = registry.get_type(&info.param_signatures()[0].ty)?;
-    let varaint_selector_type: IntegerType = inp_ty
-        .build(
-            context,
-            helper,
-            registry,
-            metadata,
-            &info.param_signatures()[0].ty,
-        )?
-        .try_into()?;
-    let enum_type = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    // we assume its never memory allocated since its always a enum with only a tag
-    assert!(!enum_type.is_memory_allocated(registry));
-
-    let enum_ty = enum_type.build(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.branch_signatures()[0].vars[0].ty,
-    )?;
-
-    let tag_bits = info.n_variants.next_power_of_two().trailing_zeros();
-    let tag_type = IntegerType::new(context, tag_bits);
-
-    let mut tag_value: Value = entry.argument(0)?.into();
-
-    match tag_type.width().cmp(&varaint_selector_type.width()) {
-        std::cmp::Ordering::Less => {
-            tag_value = entry.append_op_result(
-                ods::llvm::trunc(context, tag_type.into(), tag_value, location).into(),
-            )?;
-        }
-        std::cmp::Ordering::Equal => {}
-        std::cmp::Ordering::Greater => {
-            tag_value = entry.append_op_result(
-                ods::llvm::zext(context, tag_type.into(), tag_value, location).into(),
-            )?;
+            entry.append_operation(helper.br(0, &[val], location));
         }
     };
 

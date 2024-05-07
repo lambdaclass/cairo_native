@@ -53,13 +53,7 @@ pub fn build_construct<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let mut fields = Vec::new();
-
-    for (i, _) in info.param_signatures().iter().enumerate() {
-        fields.push(entry.argument(i).unwrap().into());
-    }
-
-    let value = build_struct_value(
+    let struct_ty = registry.build_type(
         context,
         registry,
         entry,
@@ -90,17 +84,18 @@ pub fn build_struct_value<'ctx, 'this>(
     let struct_ty = registry.build_type(context, helper, registry, metadata, struct_type)?;
 
     let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
-    for (i, field) in fields.iter().enumerate() {
+    for i in 0..info.param_signatures().len() {
         acc = entry.append_operation(llvm::insert_value(
             context,
             acc.result(0)?.into(),
             DenseI64ArrayAttribute::new(context, &[i as _]),
-            *field,
+            entry.argument(i)?.into(),
             location,
         ));
     }
 
-    Ok(acc.result(0)?.into())
+    entry.append_operation(helper.br(0, &[acc.result(0)?.into()], location));
+    Ok(())
 }
 
 /// Generate MLIR operations for the `struct_deconstruct` libfunc.
@@ -113,6 +108,7 @@ pub fn build_deconstruct<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let container = entry.argument(0)?.into();
     let container = entry.argument(0)?.into();
 
     let mut fields = Vec::<Value>::with_capacity(info.branch_signatures()[0].vars.len());
