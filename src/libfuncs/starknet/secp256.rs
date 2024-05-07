@@ -1,4 +1,5 @@
 use crate::{
+    block_ext::BlockExt,
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
@@ -333,29 +334,38 @@ pub fn build_k1_new<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let payload_ok = entry
-        .append_operation(
-            OperationBuilder::new("llvm.getelementptr", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, "elem_type"),
-                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                    ),
-                ])
-                .add_operands(&[result_ptr])
-                .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let payload_ok = {
+        let ptr = entry
+            .append_operation(
+                OperationBuilder::new("llvm.getelementptr", location)
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                        ),
+                    ])
+                    .add_operands(&[result_ptr])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
+                    .build()?,
+            )
+            .result(0)?
+            .into();
+        entry.load(
+            context,
+            location,
+            ptr,
+            variant_tys[0].0,
+            Some(variant_tys[0].1.align()),
+        )?
+    };
     let payload_err = {
         let ptr = entry
             .append_operation(
@@ -1428,29 +1438,39 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let payload_ok = entry
-        .append_operation(
-            OperationBuilder::new("llvm.getelementptr", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, "elem_type"),
-                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                    ),
-                ])
-                .add_operands(&[result_ptr])
-                .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    // Load the two variants of the result returned by the syscall handler.
+    let payload_ok = {
+        let ptr = entry
+            .append_operation(
+                OperationBuilder::new("llvm.getelementptr", location)
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                        ),
+                    ])
+                    .add_operands(&[result_ptr])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
+                    .build()?,
+            )
+            .result(0)?
+            .into();
+        entry.load(
+            context,
+            location,
+            ptr,
+            variant_tys[0].0,
+            Some(variant_tys[0].1.align()),
+        )?
+    };
     let payload_err = {
         let ptr = entry
             .append_operation(
@@ -2165,29 +2185,39 @@ pub fn build_r1_new<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let payload_ok = entry
-        .append_operation(
-            OperationBuilder::new("llvm.getelementptr", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, "elem_type"),
-                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                    ),
-                ])
-                .add_operands(&[result_ptr])
-                .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    // Load the two variants of the result returned by the syscall handler.
+    let payload_ok = {
+        let ptr = entry
+            .append_operation(
+                OperationBuilder::new("llvm.getelementptr", location)
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                        ),
+                    ])
+                    .add_operands(&[result_ptr])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
+                    .build()?,
+            )
+            .result(0)?
+            .into();
+        entry.load(
+            context,
+            location,
+            ptr,
+            variant_tys[0].0,
+            Some(variant_tys[0].1.align()),
+        )?
+    };
     let payload_err = {
         let ptr = entry
             .append_operation(
@@ -3260,29 +3290,38 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let payload_ok = entry
-        .append_operation(
-            OperationBuilder::new("llvm.getelementptr", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "rawConstantIndices"),
-                        DenseI32ArrayAttribute::new(
-                            context,
-                            &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, "elem_type"),
-                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-                    ),
-                ])
-                .add_operands(&[result_ptr])
-                .add_results(&[llvm::r#type::opaque_pointer(context)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let payload_ok = {
+        let ptr = entry
+            .append_operation(
+                OperationBuilder::new("llvm.getelementptr", location)
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "rawConstantIndices"),
+                            DenseI32ArrayAttribute::new(
+                                context,
+                                &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
+                            )
+                            .into(),
+                        ),
+                        (
+                            Identifier::new(context, "elem_type"),
+                            TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                        ),
+                    ])
+                    .add_operands(&[result_ptr])
+                    .add_results(&[llvm::r#type::opaque_pointer(context)])
+                    .build()?,
+            )
+            .result(0)?
+            .into();
+        entry.load(
+            context,
+            location,
+            ptr,
+            variant_tys[0].0,
+            Some(variant_tys[0].1.align()),
+        )?
+    };
     let payload_err = {
         let ptr = entry
             .append_operation(
