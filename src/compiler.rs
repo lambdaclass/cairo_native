@@ -975,7 +975,7 @@ where
                             None => BranchArg::External(state[var_id]),
                         }
                     })
-                    .collect();
+                    .collect::<Vec<_>>();
 
                     (block.deref(), target_vars)
                 }
