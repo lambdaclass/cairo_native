@@ -50,7 +50,7 @@ lazy_static = "1.4"
 libc = "0.2.153"
 llvm-sys = "170.0.0"
 melior = { version = "0.17.1", features = ["ods-dialects"] }
-mlir-sys = "0.2.1"
+mlir-sys = "=0.2.1" # 0.2.2 is llvm 18
 num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "0.1.1", default-features = false, features = [
