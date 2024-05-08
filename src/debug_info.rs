@@ -58,7 +58,7 @@ impl DebugInfo {
             .funcs
             .iter()
             .map(|function| Ok((function.id.clone(), find_func(db, function)?)))
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<HashMap<_, _>, DiagnosticAdded>>()?;
 
         Ok(Self {
             type_declarations,
