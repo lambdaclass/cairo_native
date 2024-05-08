@@ -109,38 +109,16 @@ pub fn build_const_as_box<'ctx, 'this>(
 
     // Store constant in box
 
-    match const_ty.variants() {
-        Some(variants)
-            if variants.len() > 1
-                && !variants
-                    .iter()
-                    .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
-        {
-            entry.append_operation(
-                ods::llvm::intr_memcpy(
-                    context,
-                    ptr,
-                    value,
-                    value_len,
-                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                    location,
-                )
-                .into(),
-            );
-        }
-        _ => {
-            entry.append_operation(llvm::store(
-                context,
-                value,
-                ptr,
-                location,
-                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    inner_layout.align() as i64,
-                ))),
-            ));
-        }
-    }
+    entry.append_operation(llvm::store(
+        context,
+        value,
+        ptr,
+        location,
+        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+            IntegerType::new(context, 64).into(),
+            inner_layout.align() as i64,
+        ))),
+    ));
 
     entry.append_operation(helper.br(0, &[ptr], location));
     Ok(())
