@@ -857,7 +857,7 @@ fn generate_function_structure<'c, 'a>(
                 (
                     k,
                     (
-                        v.0.map(|x| (x.0, x.1.into_iter().map(|x| x.0).collect())),
+                        v.0.map(|x| (x.0, x.1.into_iter().map(|x| x.0).collect::<Vec<_>>())),
                         v.1,
                     ),
                 )
