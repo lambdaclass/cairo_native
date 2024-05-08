@@ -13,6 +13,7 @@ starknet-types-core = { version = "0.1.1", default-features = false, features = 
   "serde",
 ] }
 cairo-lang-runner = "2.6.3"
+cairo-lang-sierra-gas = "2.6.3"
 libc = "0.2"
 starknet-crypto = "0.6.2"
 starknet-curve = "0.4.2"

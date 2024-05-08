@@ -152,13 +152,13 @@ impl<T: Into<JitValue> + Clone> From<&[T]> for JitValue {
 
 impl<T: Into<JitValue>> From<Vec<T>> for JitValue {
     fn from(value: Vec<T>) -> Self {
-        Self::Array(value.into_iter().map(|x| x.into()).collect())
+        Self::Array(value.into_iter().map(Into::into).collect())
     }
 }
 
 impl<T: Into<JitValue>, const N: usize> From<[T; N]> for JitValue {
     fn from(value: [T; N]) -> Self {
-        Self::Array(value.into_iter().map(|x| x.into()).collect())
+        Self::Array(value.into_iter().map(Into::into).collect())
     }
 }
 
@@ -748,5 +748,171 @@ impl JitValue {
         };
 
         Self::Felt252(Felt::from(&value))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use cairo_lang_sierra::extensions::types::{InfoAndTypeConcreteType, TypeInfo};
+    use cairo_lang_sierra::program::ConcreteTypeLongId;
+    use cairo_lang_sierra::program::Program;
+    use cairo_lang_sierra::program::TypeDeclaration;
+
+    #[test]
+    fn test_jit_value_conversion_felt() {
+        let felt_value: Felt = 42.into();
+        let jit_value: JitValue = felt_value.into();
+        assert_eq!(jit_value, JitValue::Felt252(Felt::from(42)));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u8() {
+        let u8_value: u8 = 10;
+        let jit_value: JitValue = u8_value.into();
+        assert_eq!(jit_value, JitValue::Uint8(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u16() {
+        let u8_value: u16 = 10;
+        let jit_value: JitValue = u8_value.into();
+        assert_eq!(jit_value, JitValue::Uint16(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u32() {
+        let u32_value: u32 = 10;
+        let jit_value: JitValue = u32_value.into();
+        assert_eq!(jit_value, JitValue::Uint32(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u64() {
+        let u64_value: u64 = 10;
+        let jit_value: JitValue = u64_value.into();
+        assert_eq!(jit_value, JitValue::Uint64(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u128() {
+        let u128_value: u128 = 10;
+        let jit_value: JitValue = u128_value.into();
+        assert_eq!(jit_value, JitValue::Uint128(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i8() {
+        let i8_value: i8 = -10;
+        let jit_value: JitValue = i8_value.into();
+        assert_eq!(jit_value, JitValue::Sint8(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i16() {
+        let i16_value: i16 = -10;
+        let jit_value: JitValue = i16_value.into();
+        assert_eq!(jit_value, JitValue::Sint16(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i32() {
+        let i32_value: i32 = -10;
+        let jit_value: JitValue = i32_value.into();
+        assert_eq!(jit_value, JitValue::Sint32(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i64() {
+        let i64_value: i64 = -10;
+        let jit_value: JitValue = i64_value.into();
+        assert_eq!(jit_value, JitValue::Sint64(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i128() {
+        let i128_value: i128 = -10;
+        let jit_value: JitValue = i128_value.into();
+        assert_eq!(jit_value, JitValue::Sint128(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_array_from_slice() {
+        let array_slice: &[u8] = &[1, 2, 3];
+        let jit_value: JitValue = array_slice.into();
+        assert_eq!(
+            jit_value,
+            JitValue::Array(vec![
+                JitValue::Uint8(1),
+                JitValue::Uint8(2),
+                JitValue::Uint8(3)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_jit_value_conversion_array_from_vec() {
+        let array_vec: Vec<u8> = vec![1, 2, 3];
+        let jit_value: JitValue = array_vec.into();
+        assert_eq!(
+            jit_value,
+            JitValue::Array(vec![
+                JitValue::Uint8(1),
+                JitValue::Uint8(2),
+                JitValue::Uint8(3)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_jit_value_conversion_array_from_fixed_size_array() {
+        let array_fixed: [u8; 3] = [1, 2, 3];
+        let jit_value: JitValue = array_fixed.into();
+        assert_eq!(
+            jit_value,
+            JitValue::Array(vec![
+                JitValue::Uint8(1),
+                JitValue::Uint8(2),
+                JitValue::Uint8(3)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_resolve_type_snapshot() {
+        let ty = CoreTypeConcrete::Snapshot(InfoAndTypeConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+            ty: "test_id".into(),
+        });
+
+        let program = Program {
+            type_declarations: vec![TypeDeclaration {
+                id: "test_id".into(),
+                long_id: ConcreteTypeLongId {
+                    generic_id: "u128".into(),
+                    generic_args: vec![],
+                },
+                declared_type_info: None,
+            }],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![],
+        };
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            JitValue::resolve_type(&ty, &registry).integer_width(),
+            Some(128)
+        );
     }
 }

@@ -30,9 +30,7 @@ enum EnumExample {
     BoolValue: bool,
 }
 
-// TODO: fails with double free
 #[test]
-#[ignore]
 fn test_format_debug() {
     let ba: ByteArray = "hello";
     assert(format!("{:?}", ba) == "\"hello\"", 'byte array bad formatting');

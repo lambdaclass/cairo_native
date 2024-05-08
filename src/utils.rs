@@ -78,7 +78,12 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 128 {
         Layout::new::<u128>()
     } else {
-        Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap()
+        #[cfg(target_arch = "x86_64")]
+        let value = Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap();
+        #[cfg(not(target_arch = "x86_64"))]
+        let value = Layout::array::<u128>(next_multiple_of_u32(width, 128) as usize >> 7).unwrap();
+
+        value
     }
 }
 
@@ -224,17 +229,7 @@ pub fn create_engine(
     opt_level: OptLevel,
 ) -> ExecutionEngine {
     // Create the JIT engine.
-    let engine = ExecutionEngine::new(
-        module,
-        match opt_level {
-            OptLevel::None => 0,
-            OptLevel::Less => 1,
-            OptLevel::Default => 2,
-            OptLevel::Aggressive => 3,
-        },
-        &[],
-        false,
-    );
+    let engine = ExecutionEngine::new(module, opt_level.into(), &[], false);
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
@@ -343,6 +338,13 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
                     &[u8; 32],
                     NonNull<std::ffi::c_void>,
                 ) -> *mut std::ffi::c_void as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_gas_refund",
+            cairo_native_runtime::cairo_native__dict_gas_refund
+                as *const fn(*const std::ffi::c_void, NonNull<std::ffi::c_void>) -> u64
+                as *mut (),
         );
     }
 }
@@ -835,7 +837,10 @@ pub mod test {
     /// Ensures that the host's `u512` is compatible with its compiled counterpart.
     #[test]
     fn test_alignment_compatibility_u512() {
+        #[cfg(target_arch = "x86_64")]
         assert_eq!(get_integer_layout(512).align(), 8);
+        #[cfg(not(target_arch = "x86_64"))]
+        assert_eq!(get_integer_layout(512).align(), 16);
     }
 
     /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
