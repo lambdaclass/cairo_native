@@ -28,7 +28,7 @@ use melior::{
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
-        Block, Location,
+        Block, Location, Value,
     },
     Context,
 };
@@ -215,7 +215,7 @@ pub fn build_enum_value<'ctx, 'this>(
                     context,
                     location,
                     stack_ptr,
-                    type_info.build(context, helper, registry, metadata, &type_info)?,
+                    type_info.build(context, helper, registry, metadata, enum_type)?,
                     Some(layout.align()),
                 )?;
             };
