@@ -205,7 +205,6 @@ pub fn build_const_type_value<'ctx, 'this>(
                             _ => unreachable!(),
                         };
 
-                        let field_ty = const_field_type.inner_ty.clone();
                         let field_value = build_const_type_value(
                             context,
                             registry,
@@ -215,7 +214,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                             metadata,
                             const_field_type,
                         )?;
-                        fields.push((field_ty, field_value));
+                        fields.push(field_value);
                     }
                     _ => return Err(Error::ConstDataMismatch),
                 }

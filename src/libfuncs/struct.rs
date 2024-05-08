@@ -55,8 +55,8 @@ pub fn build_construct<'ctx, 'this>(
 ) -> Result<()> {
     let mut fields = Vec::new();
 
-    for (i, param) in info.param_signatures().iter().enumerate() {
-        fields.push((param.ty.clone(), entry.argument(i).unwrap().into()));
+    for (i, _) in info.param_signatures().iter().enumerate() {
+        fields.push(entry.argument(i).unwrap().into());
     }
 
     let value = build_struct_value(
@@ -85,17 +85,17 @@ pub fn build_struct_value<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     struct_type: &ConcreteTypeId,
-    fields: &[(ConcreteTypeId, Value<'ctx, 'this>)],
+    fields: &[Value<'ctx, 'this>],
 ) -> Result<Value<'ctx, 'this>> {
     let struct_ty = registry.build_type(context, helper, registry, metadata, struct_type)?;
 
     let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
-    for i in 0..fields.len() {
+    for (i, field) in fields.iter().enumerate() {
         acc = entry.append_operation(llvm::insert_value(
             context,
             acc.result(0)?.into(),
             DenseI64ArrayAttribute::new(context, &[i as _]),
-            entry.argument(i)?.into(),
+            *field,
             location,
         ));
     }

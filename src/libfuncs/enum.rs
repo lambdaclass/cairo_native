@@ -164,7 +164,7 @@ pub fn build_enum_value<'ctx, 'this>(
                         context,
                         val,
                         DenseI64ArrayAttribute::new(context, &[1]),
-                        entry.argument(0)?.into(),
+                        payload_value,
                         location,
                     ))
                     .result(0)?
