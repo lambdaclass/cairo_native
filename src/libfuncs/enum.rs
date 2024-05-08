@@ -30,6 +30,7 @@ use melior::{
     },
     Context,
 };
+use std::num::TryFromIntError;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
