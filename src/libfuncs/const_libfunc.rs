@@ -25,7 +25,6 @@ use melior::{
     dialect::{
         arith,
         llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
-        ods,
     },
     ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value},
     Context,
