@@ -647,6 +647,7 @@ dependencies = [
  "cairo-lang-plugins",
  "cairo-lang-proc-macros",
  "cairo-lang-syntax",
+ "cairo-lang-test-utils",
  "cairo-lang-utils",
  "id-arena",
  "indoc",
@@ -857,6 +858,18 @@ dependencies = [
  "num-bigint",
  "num-traits 0.2.18",
  "serde",
+]
+
+[[package]]
+name = "cairo-lang-test-utils"
+version = "2.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ab221aa0119b6e613992127687a1352a896d30a2e55a9295c52eb9598bcc78"
+dependencies = [
+ "cairo-lang-utils",
+ "colored",
+ "log",
+ "pretty_assertions",
 ]
 
 [[package]]
