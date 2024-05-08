@@ -39,7 +39,7 @@ impl DebugInfo {
                     .map(|x| x.map(|location| (type_declaration.id.clone(), location)))
                     .transpose()
             })
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<HashMap<_, _>, DiagnosticAdded>>()?;
 
         let libfunc_declarations = program
             .libfunc_declarations
