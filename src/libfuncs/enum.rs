@@ -427,7 +427,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
 
             let case_values = (0..variant_tys.len())
                 .map(i64::try_from)
-                .collect::<std::result::Result<Vec<_>, _>>()?;
+                .collect::<std::result::Result<Vec<_>, TryFromIntError>>()?;
 
             entry.append_operation(cf::switch(
                 context,
