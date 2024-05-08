@@ -49,7 +49,7 @@ impl DebugInfo {
                     .map(|x| x.map(|location| (libfunc_declaration.id.clone(), location)))
                     .transpose()
             })
-            .collect::<Result<HashMap<_, _>, _>>()?;
+            .collect::<Result<HashMap<_, _>, DiagnosticAdded>>()?;
 
         let statements =
             find_all_statements(db, |id| libfunc_declarations.contains_key(id), program)?;
