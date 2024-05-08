@@ -8,6 +8,7 @@ pub mod ec;
 pub mod felt252;
 pub mod libfuncs;
 pub mod programs;
+pub mod result;
 pub mod starknet;
 pub mod trampoline;
 pub mod uint;

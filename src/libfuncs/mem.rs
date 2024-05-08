@@ -4,7 +4,9 @@
 //! segments. Because of this, all of the memory-related libfuncs here are no-ops.
 
 use super::LibfuncHelper;
-use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{
+    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -82,8 +84,7 @@ pub fn build_alloc_local<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let op = entry.append_operation(llvm::undef(target_type, location));
-    let value_undef = op.result(0)?.into();
+    let value_undef = entry.append_op_result(llvm::undef(target_type, location))?;
 
     entry.append_operation(helper.br(0, &[value_undef], location));
 
