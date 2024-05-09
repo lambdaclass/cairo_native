@@ -283,18 +283,6 @@ pub fn build_call_contract<'ctx, 'this>(
     ));
 
     // Extract function pointer.
-    let fn_ptr_ty = llvm::r#type::function(
-        llvm::r#type::void(context),
-        &[
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-        ],
-        false,
-    );
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
             context,
@@ -739,17 +727,6 @@ pub fn build_storage_read<'ctx, 'this>(
     );
 
     // Extract function pointer.
-    let fn_ptr_ty = llvm::r#type::function(
-        llvm::r#type::void(context),
-        &[
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            IntegerType::new(context, 32).into(),
-            llvm::r#type::pointer(context, 0),
-        ],
-        false,
-    );
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
             context,
@@ -1790,16 +1767,6 @@ pub fn build_get_block_hash<'ctx, 'this>(
     ));
 
     // Extract function pointer.
-    let fn_ptr_ty = llvm::r#type::function(
-        llvm::r#type::void(context),
-        &[
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            IntegerType::new(context, 64).into(),
-        ],
-        false,
-    );
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
             context,
@@ -2058,15 +2025,6 @@ pub fn build_get_execution_info<'ctx, 'this>(
     ));
 
     // Extract function pointer.
-    let fn_ptr_ty = llvm::r#type::function(
-        llvm::r#type::void(context),
-        &[
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-        ],
-        false,
-    );
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
             context,
@@ -2319,15 +2277,6 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
     ));
 
     // Extract function pointer.
-    let fn_ptr_ty = llvm::r#type::function(
-        llvm::r#type::void(context),
-        &[
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-        ],
-        false,
-    );
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
             context,

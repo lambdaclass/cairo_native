@@ -24,12 +24,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm,
     },
-    ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Attribute, Block, Location,
-    },
+    ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location},
     Context,
 };
 use num_bigint::{BigInt, ToBigInt};
