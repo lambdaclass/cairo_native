@@ -398,13 +398,13 @@ fn run_tests(
         RunMode::Aot => AotNativeExecutor::from_native_module(
             native_context.context(),
             native_module,
-            opt_level,
+            args.opt_level.into(),
         )
         .into(),
         RunMode::Jit => JitNativeExecutor::from_native_module(
             native_context.context(),
             native_module,
-            opt_level,
+            args.opt_level.into(),
         )
         .into(),
     };
