@@ -166,6 +166,7 @@ pub fn build_init<'ctx, 'this>(
                     .result(0)?
                     .into();
 
+                // Convert the enum from the concrete variant to the internal representation.
                 entry.append_operation(llvm::store(
                     context,
                     val,

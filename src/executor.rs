@@ -137,9 +137,6 @@ fn invoke_dynamic(
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
-    let is_builtin = <CoreTypeConcrete as TypeBuilder>::is_builtin;
-    let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
-
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper {
         arena: &arena,
@@ -286,8 +283,8 @@ fn invoke_dynamic(
                 },
                 None => {}
             },
-            _ if is_builtin(type_info) => {
-                if !is_zst(type_info, registry) {
+            _ if type_info.is_builtin() => {
+                if !type_info.is_zst(registry) {
                     let value = match &mut return_ptr {
                         Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
                         None => ret_registers[0],

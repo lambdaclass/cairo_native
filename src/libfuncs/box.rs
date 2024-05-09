@@ -121,6 +121,7 @@ pub fn build_unbox<'ctx, 'this>(
     let inner_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
     let inner_layout = get_mlir_layout(helper, inner_ty);
 
+    // Load the boxed value from memory.
     let value = entry
         .append_operation(llvm::load(
             context,

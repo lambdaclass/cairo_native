@@ -89,6 +89,39 @@ pub enum OptLevel {
     Aggressive,
 }
 
+impl From<usize> for OptLevel {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => OptLevel::None,
+            1 => OptLevel::Less,
+            2 => OptLevel::Default,
+            _ => OptLevel::Aggressive,
+        }
+    }
+}
+
+impl From<OptLevel> for usize {
+    fn from(val: OptLevel) -> Self {
+        match val {
+            OptLevel::None => 0,
+            OptLevel::Less => 1,
+            OptLevel::Default => 2,
+            OptLevel::Aggressive => 3,
+        }
+    }
+}
+
+impl From<u8> for OptLevel {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => OptLevel::None,
+            1 => OptLevel::Less,
+            2 => OptLevel::Default,
+            _ => OptLevel::Aggressive,
+        }
+    }
+}
+
 /// Make sure to call
 pub fn module_to_object(
     module: &Module<'_>,

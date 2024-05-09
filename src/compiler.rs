@@ -62,7 +62,6 @@ use cairo_lang_sierra::{
     edit_state,
     extensions::{
         core::{CoreLibfunc, CoreType},
-        gas::CostTokenType,
         ConcreteLibfunc,
     },
     ids::{ConcreteTypeId, VarId},
@@ -289,8 +288,7 @@ fn compile_func(
         (initial_state, BTreeMap::<usize, usize>::new()),
         |statement_idx, (mut state, mut tailrec_state)| {
             if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
-                let gas_cost =
-                    gas_metadata.get_gas_cost_for_statement(statement_idx, CostTokenType::Const);
+                let gas_cost = gas_metadata.get_gas_cost_for_statement(statement_idx);
                 metadata.remove::<GasCost>();
                 metadata.insert(GasCost(gas_cost));
             }
@@ -577,6 +575,7 @@ fn compile_func(
                         }
                     }
 
+                    // Store the return value in the return pointer, if there's one.
                     if let Some(true) = has_return_ptr {
                         let (ret_type_id, ret_type_info) = return_types[0];
                         let ret_layout = get_mlir_layout(
