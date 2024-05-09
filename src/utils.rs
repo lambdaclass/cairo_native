@@ -229,17 +229,7 @@ pub fn create_engine(
     opt_level: OptLevel,
 ) -> ExecutionEngine {
     // Create the JIT engine.
-    let engine = ExecutionEngine::new(
-        module,
-        match opt_level {
-            OptLevel::None => 0,
-            OptLevel::Less => 1,
-            OptLevel::Default => 2,
-            OptLevel::Aggressive => 3,
-        },
-        &[],
-        false,
-    );
+    let engine = ExecutionEngine::new(module, opt_level.into(), &[], false);
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);

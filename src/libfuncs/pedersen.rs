@@ -92,15 +92,11 @@ pub fn build_pedersen<'ctx>(
     let lhs_i256 = entry.append_op_result(arith::extui(lhs, i256_ty, location))?;
     let rhs_i256 = entry.append_op_result(arith::extui(rhs, i256_ty, location))?;
 
-    let lhs_be = entry
-        .append_operation(ods::llvm::intr_bswap(context, lhs_i256, location).into())
-        .result(0)?
-        .into();
+    let lhs_be =
+        entry.append_op_result(ods::llvm::intr_bswap(context, lhs_i256, location).into())?;
 
-    let rhs_be = entry
-        .append_operation(ods::llvm::intr_bswap(context, rhs_i256, location).into())
-        .result(0)?
-        .into();
+    let rhs_be =
+        entry.append_op_result(ods::llvm::intr_bswap(context, rhs_i256, location).into())?;
 
     entry.append_operation(llvm::store(
         context,
@@ -130,7 +126,7 @@ pub fn build_pedersen<'ctx>(
     runtime_bindings
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)?;
 
-    let op = entry.append_operation(llvm::load(
+    let result_be = entry.append_op_result(llvm::load(
         context,
         dst_ptr,
         i256_ty,
@@ -139,16 +135,11 @@ pub fn build_pedersen<'ctx>(
             IntegerType::new(context, 64).into(),
             layout_i256.align().try_into()?,
         ))),
-    ));
-    let result_be = op.result(0)?.into();
+    ))?;
 
-    let result = entry
-        .append_operation(ods::llvm::intr_bswap(context, result_be, location).into())
-        .result(0)?
-        .into();
+    let op = entry.append_op_result(ods::llvm::intr_bswap(context, result_be, location).into())?;
 
-    let op = entry.append_operation(arith::trunci(result, felt252_ty, location));
-    let result = op.result(0)?.into();
+    let result = entry.append_op_result(arith::trunci(op, felt252_ty, location))?;
 
     entry.append_operation(helper.br(0, &[pedersen_builtin, result], location));
 
