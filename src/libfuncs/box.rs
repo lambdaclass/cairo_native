@@ -21,11 +21,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith,
-        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
-    },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    dialect::llvm::{self, r#type::opaque_pointer},
+    ir::{Block, Location},
     Context,
 };
 
@@ -82,13 +79,13 @@ pub fn build_into_box<'ctx, 'this>(
         .result(0)?
         .into();
 
-        entry.store(
-            context,
-            location,
-            ptr,
-            entry.argument(0)?.into(),
-            Some(inner_layout.align()),
-        );
+    entry.store(
+        context,
+        location,
+        ptr,
+        entry.argument(0)?.into(),
+        Some(inner_layout.align()),
+    );
 
     entry.append_operation(helper.br(0, &[ptr], location));
     Ok(())
@@ -115,7 +112,7 @@ pub fn build_unbox<'ctx, 'this>(
         entry.argument(0)?.into(),
         inner_ty,
         Some(inner_layout.align()),
-    )?
+    )?;
 
     entry.append_operation(ReallocBindingsMeta::free(
         context,
