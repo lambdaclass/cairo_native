@@ -4024,7 +4024,6 @@ mod test {
     }
 
     #[test]
-    #[cfg_attr(target_arch = "aarch64", ignore = "LLVM code generation bug")]
     fn storage_base_address_from_felt252() {
         run_program_assert_output(
             &STORAGE_BASE_ADDRESS_FROM_FELT252,
