@@ -1,7 +1,7 @@
 use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::gas::GasMetadata,
+    metadata::{gas::GasMetadata, MetadataStorage},
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::generate_function_name,
@@ -17,35 +17,34 @@ use cairo_lang_sierra::{
 use educe::Educe;
 use libc::c_void;
 use libloading::Library;
+use melior::{ir::Module, Context};
 use starknet_types_core::felt::Felt;
+use std::cell::RefCell;
 use tempfile::NamedTempFile;
 
 #[derive(Educe)]
 #[educe(Debug)]
-pub struct AotNativeExecutor {
-    #[educe(Debug(ignore))]
-    library: Library,
+pub struct AotNativeExecutor<'c> {
+    context: &'c Context,
+
+    module: Module<'c>,
+    metadata: RefCell<MetadataStorage>,
+
     #[educe(Debug(ignore))]
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    #[educe(Debug(ignore))]
+    library: Library,
 
     gas_metadata: GasMetadata,
 }
 
-impl AotNativeExecutor {
-    pub fn new(
-        library: Library,
-        registry: ProgramRegistry<CoreType, CoreLibfunc>,
-        gas_metadata: GasMetadata,
-    ) -> Self {
-        Self {
-            library,
-            registry,
-            gas_metadata,
-        }
-    }
-
+impl<'c> AotNativeExecutor<'c> {
     /// Utility to convert a [`NativeModule`] into an [`AotNativeExecutor`].
-    pub fn from_native_module(module: NativeModule, opt_level: OptLevel) -> Self {
+    pub fn from_native_module(
+        context: &'c Context,
+        module: NativeModule<'c>,
+        opt_level: OptLevel,
+    ) -> Self {
         let NativeModule {
             module,
             registry,
@@ -57,10 +56,14 @@ impl AotNativeExecutor {
         let object_data = crate::module_to_object(&module, opt_level).unwrap();
         crate::object_to_shared_lib(&object_data, &library_path).unwrap();
 
+        let gas_metadata = metadata.remove().unwrap();
         Self {
-            library: unsafe { Library::new(library_path).unwrap() },
+            context,
+            module,
+            metadata: RefCell::new(metadata),
             registry,
-            gas_metadata: metadata.remove().unwrap(),
+            library: unsafe { Library::new(library_path).unwrap() },
+            gas_metadata,
         }
     }
 
@@ -76,7 +79,10 @@ impl AotNativeExecutor {
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
         Ok(super::invoke_dynamic(
+            self.context,
             &self.registry,
+            &self.module,
+            &mut self.metadata.borrow_mut(),
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
@@ -98,7 +104,10 @@ impl AotNativeExecutor {
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
         Ok(super::invoke_dynamic(
+            self.context,
             &self.registry,
+            &self.module,
+            &mut self.metadata.borrow_mut(),
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
@@ -120,7 +129,10 @@ impl AotNativeExecutor {
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
+            self.context,
             &self.registry,
+            &self.module,
+            &mut self.metadata.borrow_mut(),
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             &[JitValue::Struct {

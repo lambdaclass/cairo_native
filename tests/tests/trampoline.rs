@@ -16,7 +16,7 @@ fn run_program(program: &Program, entry_point: &str, args: &[JitValue]) -> Execu
     let context = NativeContext::new();
     let module = context.compile(program, None).unwrap();
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
-    let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
+    let executor = JitNativeExecutor::from_native_module(context.context(), module, OptLevel::None);
 
     executor.invoke_dynamic(entry_point_id, args, None).unwrap()
 }

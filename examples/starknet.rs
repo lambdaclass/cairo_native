@@ -302,7 +302,11 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor = JitNativeExecutor::from_native_module(
+        native_context.context(),
+        native_program,
+        Default::default(),
+    );
 
     let result = native_executor
         .invoke_contract_dynamic(fn_id, &[Felt::from(1)], Some(u128::MAX), SyscallHandler)

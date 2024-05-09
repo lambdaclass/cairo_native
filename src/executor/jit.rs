@@ -1,7 +1,7 @@
 use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::gas::GasMetadata,
+    metadata::{gas::GasMetadata, MetadataStorage},
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{create_engine, generate_function_name},
@@ -15,15 +15,19 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
-use melior::{ir::Module, ExecutionEngine};
+use melior::{ir::Module, Context, ExecutionEngine};
 use starknet_types_core::felt::Felt;
+use std::cell::RefCell;
 
 /// A MLIR JIT execution engine in the context of Cairo Native.
 pub struct JitNativeExecutor<'m> {
-    engine: ExecutionEngine,
+    context: &'m Context,
 
     module: Module<'m>,
+    metadata: RefCell<MetadataStorage>,
+
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
+    engine: ExecutionEngine,
 
     gas_metadata: GasMetadata,
 }
@@ -38,18 +42,27 @@ impl std::fmt::Debug for JitNativeExecutor<'_> {
 }
 
 impl<'m> JitNativeExecutor<'m> {
-    pub fn from_native_module(native_module: NativeModule<'m>, opt_level: OptLevel) -> Self {
+    pub fn from_native_module(
+        context: &'m Context,
+        module: NativeModule<'m>,
+        opt_level: OptLevel,
+    ) -> Self {
         let NativeModule {
             module,
             registry,
-            metadata,
-        } = native_module;
+            mut metadata,
+        } = module;
+
+        let gas_metadata = metadata.remove().unwrap();
+        let engine = create_engine(&module, &metadata, opt_level);
 
         Self {
-            engine: create_engine(&module, &metadata, opt_level),
+            context,
             module,
+            metadata: RefCell::new(metadata),
             registry,
-            gas_metadata: metadata.get::<GasMetadata>().cloned().unwrap(),
+            engine,
+            gas_metadata,
         }
     }
 
@@ -76,7 +89,10 @@ impl<'m> JitNativeExecutor<'m> {
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
         Ok(super::invoke_dynamic(
+            self.context,
             &self.registry,
+            &self.module,
+            &mut self.metadata.borrow_mut(),
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
@@ -101,7 +117,10 @@ impl<'m> JitNativeExecutor<'m> {
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
         Ok(super::invoke_dynamic(
+            self.context,
             &self.registry,
+            &self.module,
+            &mut self.metadata.borrow_mut(),
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
@@ -123,7 +142,10 @@ impl<'m> JitNativeExecutor<'m> {
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
         // TODO: Check signature for contract interface.
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
+            self.context,
             &self.registry,
+            &self.module,
+            &mut self.metadata.borrow_mut(),
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             &[JitValue::Struct {

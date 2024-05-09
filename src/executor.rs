@@ -2,9 +2,11 @@ pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::Error,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
+    ffi::get_mlir_layout,
+    metadata::MetadataStorage,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
     values::JitValue,
 };
 use bumpalo::Bump;
@@ -18,6 +20,7 @@ use cairo_lang_sierra::{
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
 use libc::c_void;
+use melior::{ir::Module, Context};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -50,7 +53,7 @@ extern "C" {
 
 #[derive(Debug, Clone)]
 pub enum NativeExecutor<'m> {
-    Aot(Rc<AotNativeExecutor>),
+    Aot(Rc<AotNativeExecutor<'m>>),
     Jit(Rc<JitNativeExecutor<'m>>),
 }
 
@@ -108,8 +111,8 @@ impl<'a> NativeExecutor<'a> {
     }
 }
 
-impl<'m> From<AotNativeExecutor> for NativeExecutor<'m> {
-    fn from(value: AotNativeExecutor) -> Self {
+impl<'m> From<AotNativeExecutor<'m>> for NativeExecutor<'m> {
+    fn from(value: AotNativeExecutor<'m>) -> Self {
         Self::Aot(Rc::new(value))
     }
 }
@@ -120,8 +123,12 @@ impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn invoke_dynamic(
+    context: &Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    module: &Module,
+    metadata: &mut MetadataStorage,
     function_ptr: *const c_void,
     function_signature: &FunctionSignature,
     args: &[JitValue],
@@ -134,7 +141,14 @@ fn invoke_dynamic(
     let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
 
     let arena = Bump::new();
-    let mut invoke_data = ArgumentMapper::new(&arena, registry);
+    let mut invoke_data = ArgumentMapper {
+        arena: &arena,
+        context,
+        module,
+        registry,
+        metadata,
+        invoke_data: Vec::new(),
+    };
 
     // Generate return pointer (if necessary).
     //
@@ -161,7 +175,12 @@ fn invoke_dynamic(
         let layout = ret_types_iter.fold(Layout::new::<()>(), |layout, id| {
             let type_info = registry.get_type(id).unwrap();
             layout
-                .extend(type_info.layout(registry).unwrap())
+                .extend(get_mlir_layout(
+                    module,
+                    type_info
+                        .build(context, module, registry, invoke_data.metadata, id)
+                        .unwrap(),
+                ))
                 .unwrap()
                 .0
         });
@@ -291,8 +310,11 @@ fn invoke_dynamic(
 
     // Parse return values.
     let return_value = parse_result(
+        context,
         function_signature.ret_types.last().unwrap(),
         registry,
+        module,
+        metadata,
         return_ptr,
         ret_registers,
     );
@@ -307,22 +329,18 @@ fn invoke_dynamic(
     }
 }
 
-pub struct ArgumentMapper<'a> {
-    arena: &'a Bump,
-    registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
+struct ArgumentMapper<'a> {
+    pub arena: &'a Bump,
 
-    invoke_data: Vec<u64>,
+    pub context: &'a Context,
+    pub module: &'a Module<'a>,
+    pub registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
+    pub metadata: &'a mut MetadataStorage,
+
+    pub invoke_data: Vec<u64>,
 }
 
 impl<'a> ArgumentMapper<'a> {
-    pub fn new(arena: &'a Bump, registry: &'a ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
-        Self {
-            arena,
-            registry,
-            invoke_data: Vec::new(),
-        }
-    }
-
     pub fn invoke_data(&self) -> &[u64] {
         &self.invoke_data
     }
@@ -374,8 +392,19 @@ impl<'a> ArgumentMapper<'a> {
             (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
                 // TODO: Assert that `info.ty` matches all the values' types.
 
-                let type_info = self.registry.get_type(&info.ty)?;
-                let type_layout = type_info.layout(self.registry).unwrap().pad_to_align();
+                let type_layout = get_mlir_layout(
+                    self.module,
+                    self.registry
+                        .build_type(
+                            self.context,
+                            self.module,
+                            self.registry,
+                            self.metadata,
+                            &info.ty,
+                        )
+                        .unwrap(),
+                )
+                .pad_to_align();
 
                 // This needs to be a heap-allocated pointer because it's the actual array data.
                 let ptr = if values.is_empty() {
@@ -571,8 +600,11 @@ impl<'a> ArgumentMapper<'a> {
 }
 
 fn parse_result(
+    context: &Context,
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    module: &Module,
+    metadata: &mut MetadataStorage,
     mut return_ptr: Option<NonNull<()>>,
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
@@ -581,7 +613,12 @@ fn parse_result(
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
-        let layout = type_info.layout(registry).unwrap();
+        let layout = get_mlir_layout(
+            module,
+            type_info
+                .build(context, module, registry, metadata, type_id)
+                .unwrap(),
+        );
         let align_offset = return_ptr
             .cast::<u8>()
             .as_ptr()
@@ -668,9 +705,15 @@ fn parse_result(
                 JitValue::Sint128(((ret_registers[1] as i128) << 64) | ret_registers[0] as i128)
             }
         },
-        CoreTypeConcrete::NonZero(info) => {
-            parse_result(&info.ty, registry, return_ptr, ret_registers)
-        }
+        CoreTypeConcrete::NonZero(info) => parse_result(
+            context,
+            &info.ty,
+            registry,
+            module,
+            metadata,
+            return_ptr,
+            ret_registers,
+        ),
         CoreTypeConcrete::Nullable(info) => unsafe {
             let ptr = return_ptr.map_or(ret_registers[0] as *mut (), |x| {
                 *x.cast::<*mut ()>().as_ref()
@@ -735,8 +778,11 @@ fn parse_result(
                 Err(offset) => {
                     ret_registers.copy_within(offset.., 0);
                     Box::new(parse_result(
+                        context,
                         &info.variants[tag],
                         registry,
+                        module,
+                        metadata,
                         None,
                         ret_registers,
                     ))

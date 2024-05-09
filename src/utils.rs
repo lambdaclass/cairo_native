@@ -777,7 +777,8 @@ pub mod test {
             .expect("Could not compile test program to MLIR.");
 
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
+        let executor =
+            JitNativeExecutor::from_native_module(context.context(), module, OptLevel::None);
         executor
             .invoke_dynamic_with_syscall_handler(
                 entry_point_id,

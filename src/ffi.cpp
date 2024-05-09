@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 
@@ -26,7 +27,18 @@ extern "C" uint64_t DataLayout_getTypePreferredAlignment(MlirOperation module, M
     mlir::Type typeInfo = unwrap(type);
 
     mlir::DataLayout dataLayout(moduleOp->getParentOfType<mlir::DataLayoutOpInterface>());
-    return dataLayout.getTypePreferredAlignment(typeInfo);
+    if (typeInfo.isa<mlir::LLVM::LLVMStructType>())
+    {
+        mlir::LLVM::LLVMStructType concreteTypeInfo = typeInfo.cast<mlir::LLVM::LLVMStructType>();
+
+        uint64_t typeAlign = 1;
+        for (const mlir::Type &ty : concreteTypeInfo.getBody())
+            typeAlign = std::max(typeAlign, (uint64_t) dataLayout.getTypePreferredAlignment(ty));
+
+        return typeAlign;
+    }
+    else
+        return dataLayout.getTypePreferredAlignment(typeInfo);
 }
 
 extern "C" uint64_t DataLayout_getTypeSize(MlirOperation module, MlirType type)

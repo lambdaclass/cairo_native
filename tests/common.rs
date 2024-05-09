@@ -206,7 +206,7 @@ pub fn run_native_program(
     );
 
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
-    let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
+    let executor = JitNativeExecutor::from_native_module(context.context(), module, OptLevel::None);
     match syscall_handler {
         Some(syscall_handler) => executor
             .invoke_dynamic_with_syscall_handler(entry_point_id, args, gas, syscall_handler)
@@ -268,7 +268,11 @@ pub fn run_native_starknet_contract(
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor = JitNativeExecutor::from_native_module(
+        native_context.context(),
+        native_program,
+        Default::default(),
+    );
     native_executor
         .invoke_contract_dynamic(entry_point_id, args, u128::MAX.into(), handler)
         .expect("failed to execute the given contract")

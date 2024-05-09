@@ -119,8 +119,18 @@ fn main() -> anyhow::Result<()> {
     };
 
     let native_executor: NativeExecutor = match args.run_mode {
-        RunMode::Aot => AotNativeExecutor::from_native_module(native_module, opt_level).into(),
-        RunMode::Jit => JitNativeExecutor::from_native_module(native_module, opt_level).into(),
+        RunMode::Aot => AotNativeExecutor::from_native_module(
+            native_context.context(),
+            native_module,
+            opt_level,
+        )
+        .into(),
+        RunMode::Jit => JitNativeExecutor::from_native_module(
+            native_context.context(),
+            native_module,
+            opt_level,
+        )
+        .into(),
     };
 
     let gas_metadata =

@@ -46,7 +46,8 @@ where
         opt_level: OptLevel,
     ) -> Rc<JitNativeExecutor<'a>> {
         let module = self.context.compile(program, None).expect("should compile");
-        let executor = JitNativeExecutor::from_native_module(module, opt_level);
+        let executor =
+            JitNativeExecutor::from_native_module(self.context.context(), module, opt_level);
 
         let executor = Rc::new(executor);
         self.cache.insert(key, executor.clone());
