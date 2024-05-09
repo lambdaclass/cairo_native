@@ -58,34 +58,41 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 /// This assumes the platform's maximum (effective) alignment is 8 bytes, and that every integer
 /// with a size in bytes of a power of two has the same alignment as its size.
 pub fn get_integer_layout(width: u32) -> Layout {
-    // TODO: Fix integer layouts properly.
-    if width == 248 || width == 252 || width == 256 {
-        #[cfg(target_arch = "x86_64")]
-        return Layout::from_size_align(32, 8).unwrap();
-        #[cfg(not(target_arch = "x86_64"))]
-        return Layout::from_size_align(32, 16).unwrap();
-    }
+    // // TODO: Fix integer layouts properly.
+    // if width == 248 || width == 252 || width == 256 {
+    //     #[cfg(target_arch = "x86_64")]
+    //     return Layout::from_size_align(32, 8).unwrap();
+    //     #[cfg(not(target_arch = "x86_64"))]
+    //     return Layout::from_size_align(32, 16).unwrap();
+    // }
+
+    // if width == 0 {
+    //     Layout::new::<()>()
+    // } else if width <= 8 {
+    //     Layout::new::<u8>()
+    // } else if width <= 16 {
+    //     Layout::new::<u16>()
+    // } else if width <= 32 {
+    //     Layout::new::<u32>()
+    // } else if width <= 64 {
+    //     Layout::new::<u64>()
+    // } else if width <= 128 {
+    //     Layout::new::<u128>()
+    // } else {
+    //     #[cfg(target_arch = "x86_64")]
+    //     let value = Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap();
+    //     #[cfg(not(target_arch = "x86_64"))]
+    //     let value = Layout::array::<u128>(next_multiple_of_u32(width, 128) as usize >> 7).unwrap();
+
+    //     value
+    // }
 
     if width == 0 {
-        Layout::new::<()>()
-    } else if width <= 8 {
-        Layout::new::<u8>()
-    } else if width <= 16 {
-        Layout::new::<u16>()
-    } else if width <= 32 {
-        Layout::new::<u32>()
-    } else if width <= 64 {
-        Layout::new::<u64>()
-    } else if width <= 128 {
-        Layout::new::<u128>()
-    } else {
-        #[cfg(target_arch = "x86_64")]
-        let value = Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap();
-        #[cfg(not(target_arch = "x86_64"))]
-        let value = Layout::array::<u128>(next_multiple_of_u32(width, 128) as usize >> 7).unwrap();
-
-        value
+        return Layout::new::<()>();
     }
+
+    let width = (width as usize).next_multiple_of(8).next_power_of_two();
+    Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
 }
 
 /// Compile a cairo program found at the given path to sierra.

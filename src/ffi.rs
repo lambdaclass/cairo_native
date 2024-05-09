@@ -63,7 +63,6 @@ pub fn get_mlir_layout(mlir_module: &Module, type_mlir: Type) -> Layout {
         let size = DataLayout_getTypeSize(module, r#type) as usize;
         let align = DataLayout_getTypePreferredAlignment(module, r#type) as usize;
 
-        eprintln!("Type {} has size {size} align {align}.", type_mlir);
         Layout::from_size_align(size, align).expect("a valid MLIR layout")
     }
 }

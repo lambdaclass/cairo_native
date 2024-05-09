@@ -35,10 +35,10 @@ extern "C" uint64_t DataLayout_getTypePreferredAlignment(MlirOperation module, M
         for (const mlir::Type &ty : concreteTypeInfo.getBody())
             typeAlign = std::max(typeAlign, (uint64_t) dataLayout.getTypePreferredAlignment(ty));
 
-        return typeAlign;
+        return std::min(typeAlign, (uint64_t) 16);
     }
     else
-        return dataLayout.getTypePreferredAlignment(typeInfo);
+        return std::min(dataLayout.getTypePreferredAlignment(typeInfo), (unsigned int) 16);
 }
 
 extern "C" uint64_t DataLayout_getTypeSize(MlirOperation module, MlirType type)
