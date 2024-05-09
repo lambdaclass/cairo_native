@@ -22,8 +22,8 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{
-        llvm::{self, r#type::opaque_pointer},
-        ods,
+        arith,
+        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
     },
     ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
@@ -82,35 +82,13 @@ pub fn build_into_box<'ctx, 'this>(
         .result(0)?
         .into();
 
-    match inner_type.variants() {
-        Some(variants)
-            if variants.len() > 1
-                && !variants
-                    .iter()
-                    .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
-        {
-            entry.append_operation(
-                ods::llvm::intr_memcpy(
-                    context,
-                    ptr,
-                    entry.argument(0)?.into(),
-                    value_len,
-                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                    location,
-                )
-                .into(),
-            );
-        }
-        _ => {
-            entry.store(
-                context,
-                location,
-                ptr,
-                entry.argument(0)?.into(),
-                Some(inner_layout.align()),
-            );
-        }
-    }
+        entry.store(
+            context,
+            location,
+            ptr,
+            entry.argument(0)?.into(),
+            Some(inner_layout.align()),
+        );
 
     entry.append_operation(helper.br(0, &[ptr], location));
     Ok(())
@@ -130,47 +108,14 @@ pub fn build_unbox<'ctx, 'this>(
     let inner_ty = inner_type.build(context, helper, registry, metadata, &info.ty)?;
     let inner_layout = inner_type.layout(registry)?;
 
-    let value = match inner_type.variants() {
-        Some(variants)
-            if variants.len() > 1
-                && !variants
-                    .iter()
-                    .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
-        {
-            let value_len =
-                helper
-                    .init_block()
-                    .const_int(context, location, inner_layout.size() as i64, 64)?;
-            let stack_ptr = helper.init_block().alloca(
-                context,
-                location,
-                inner_ty,
-                value_len,
-                Some(inner_layout.align()),
-            )?;
-
-            entry.append_operation(
-                ods::llvm::intr_memcpy(
-                    context,
-                    stack_ptr,
-                    entry.argument(0)?.into(),
-                    value_len,
-                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                    location,
-                )
-                .into(),
-            );
-
-            stack_ptr
-        }
-        _ => entry.load(
-            context,
-            location,
-            entry.argument(0)?.into(),
-            inner_ty,
-            Some(inner_layout.align()),
-        )?,
-    };
+    // Load the boxed value from memory.
+    let value = entry.load(
+        context,
+        location,
+        entry.argument(0)?.into(),
+        inner_ty,
+        Some(inner_layout.align()),
+    )?
 
     entry.append_operation(ReallocBindingsMeta::free(
         context,
