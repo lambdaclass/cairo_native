@@ -32,6 +32,11 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
+#[cfg(target_arch = "x86_64")]
+pub const MAX_PLATFORM_ALIGNMENT: usize = 8;
+#[cfg(target_arch = "aarch64")]
+pub const MAX_PLATFORM_ALIGNMENT: usize = 16;
+
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
 
@@ -63,7 +68,8 @@ pub fn get_mlir_layout(mlir_module: &Module, type_mlir: Type) -> Layout {
         let size = DataLayout_getTypeSize(module, r#type) as usize;
         let align = DataLayout_getTypePreferredAlignment(module, r#type) as usize;
 
-        Layout::from_size_align(size, align).expect("a valid MLIR layout")
+        Layout::from_size_align(size, align.min(MAX_PLATFORM_ALIGNMENT))
+            .expect("a valid MLIR layout")
     }
 }
 
