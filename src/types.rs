@@ -9,7 +9,7 @@ use crate::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
-    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -30,7 +30,7 @@ use melior::{
     Context,
 };
 use num_traits::Signed;
-use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
+use std::{error::Error, ops::Deref, sync::OnceLock};
 
 pub mod array;
 pub mod bitwise;
@@ -88,14 +88,6 @@ pub trait TypeBuilder {
     fn is_complex(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
     /// Return whether the Sierra type resolves to a zero-sized type.
     fn is_zst(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
-
-    /// Generate the layout of the MLIR type.
-    ///
-    /// Used in both the compiler and the interface when calling the compiled code.
-    fn layout(
-        &self,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ) -> Result<Layout, Self::Error>;
 
     /// Whether the layout should be allocated in memory (either the stack or the heap) when used as
     /// a function invocation argument or return value.
@@ -551,111 +543,6 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
         }
-    }
-
-    fn layout(
-        &self,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ) -> Result<Layout, Self::Error> {
-        Ok(match self {
-            CoreTypeConcrete::Array(_) => {
-                Layout::new::<*mut ()>()
-                    .extend(get_integer_layout(32))?
-                    .0
-                    .extend(get_integer_layout(32))?
-                    .0
-                    .extend(get_integer_layout(32))?
-                    .0
-            }
-            CoreTypeConcrete::Bitwise(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
-            CoreTypeConcrete::EcOp(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
-            CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
-            CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
-            CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(128),
-            CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Uint8(_) => get_integer_layout(8),
-            CoreTypeConcrete::Uint16(_) => get_integer_layout(16),
-            CoreTypeConcrete::Uint32(_) => get_integer_layout(32),
-            CoreTypeConcrete::Uint64(_) => get_integer_layout(64),
-            CoreTypeConcrete::Uint128(_) => get_integer_layout(128),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(),
-            CoreTypeConcrete::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
-            CoreTypeConcrete::Nullable(_) => Layout::new::<*mut ()>(),
-            CoreTypeConcrete::RangeCheck(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Uninitialized(info) => {
-                registry.get_type(&info.ty)?.layout(registry)?
-            }
-            CoreTypeConcrete::Enum(info) => {
-                let tag_layout =
-                    get_integer_layout(info.variants.len().next_power_of_two().trailing_zeros());
-
-                info.variants.iter().try_fold(tag_layout, |acc, id| {
-                    let layout = tag_layout
-                        .extend(registry.get_type(id)?.layout(registry)?)?
-                        .0;
-
-                    Result::<_, Self::Error>::Ok(Layout::from_size_align(
-                        acc.size().max(layout.size()),
-                        acc.align().max(layout.align()),
-                    )?)
-                })?
-            }
-            CoreTypeConcrete::Struct(info) => info
-                .members
-                .iter()
-                .try_fold(Option::<Layout>::None, |acc, id| {
-                    Result::<_, Self::Error>::Ok(Some(match acc {
-                        Some(layout) => layout.extend(registry.get_type(id)?.layout(registry)?)?.0,
-                        None => registry.get_type(id)?.layout(registry)?,
-                    }))
-                })?
-                .unwrap_or(Layout::from_size_align(0, 1)?),
-            CoreTypeConcrete::Felt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
-            CoreTypeConcrete::Felt252DictEntry(_) => {
-                get_integer_layout(252)
-                    .extend(Layout::new::<*mut std::ffi::c_void>())
-                    .unwrap()
-                    .0
-                    .extend(Layout::new::<*mut std::ffi::c_void>())
-                    .unwrap()
-                    .0
-            }
-            CoreTypeConcrete::SquashedFelt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
-            CoreTypeConcrete::Pedersen(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Poseidon(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(info) => match info {
-                StarkNetTypeConcrete::ClassHash(_) => get_integer_layout(252),
-                StarkNetTypeConcrete::ContractAddress(_) => get_integer_layout(252),
-                StarkNetTypeConcrete::StorageBaseAddress(_) => get_integer_layout(252),
-                StarkNetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
-                StarkNetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
-                StarkNetTypeConcrete::Secp256Point(_) => {
-                    get_integer_layout(256)
-                        .extend(get_integer_layout(256))
-                        .unwrap()
-                        .0
-                }
-            },
-            CoreTypeConcrete::SegmentArena(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
-            CoreTypeConcrete::Sint8(_) => get_integer_layout(8),
-            CoreTypeConcrete::Sint16(_) => get_integer_layout(16),
-            CoreTypeConcrete::Sint32(_) => get_integer_layout(32),
-            CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
-            CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
-            CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
-
-            CoreTypeConcrete::BoundedInt(info) => get_integer_layout(
-                (info.range.lower.bits().max(info.range.upper.bits()) + 1)
-                    .try_into()
-                    .expect("should always fit u32"),
-            ),
-            CoreTypeConcrete::Const(_) => todo!(),
-        }
-        .pad_to_align())
     }
 
     fn is_memory_allocated(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {

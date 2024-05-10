@@ -651,15 +651,36 @@ fn parse_result(
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::Array(_) => JitValue::from_jit(
+            context,
+            module,
+            metadata,
+            return_ptr.unwrap(),
+            type_id,
+            registry,
+        ),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
-            let value = JitValue::from_jit(ptr, &info.ty, registry);
+            let value = JitValue::from_jit(context, module, metadata, ptr, &info.ty, registry);
             libc::free(ptr.cast().as_ptr());
             value
         },
-        CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
-        CoreTypeConcrete::EcState(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(
+            context,
+            module,
+            metadata,
+            return_ptr.unwrap(),
+            type_id,
+            registry,
+        ),
+        CoreTypeConcrete::EcState(_) => JitValue::from_jit(
+            context,
+            module,
+            metadata,
+            return_ptr.unwrap(),
+            type_id,
+            registry,
+        ),
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
@@ -667,10 +688,19 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            Some(return_ptr) => {
+                JitValue::from_jit(context, module, metadata, return_ptr, type_id, registry)
+            }
             None => {
                 #[cfg(target_arch = "x86_64")]
-                let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+                let value = JitValue::from_jit(
+                    context,
+                    module,
+                    metadata,
+                    return_ptr.unwrap(),
+                    type_id,
+                    registry,
+                );
 
                 #[cfg(target_arch = "aarch64")]
                 let value =
@@ -743,7 +773,7 @@ fn parse_result(
                 JitValue::Null
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
-                let value = JitValue::from_jit(ptr, &info.ty, registry);
+                let value = JitValue::from_jit(context, module, metadata, ptr, &info.ty, registry);
                 libc::free(ptr.as_ptr().cast());
                 value
             }
@@ -802,7 +832,14 @@ fn parse_result(
             };
 
             let value = match ptr {
-                Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)),
+                Ok(ptr) => Box::new(JitValue::from_jit(
+                    context,
+                    module,
+                    metadata,
+                    ptr,
+                    &info.variants[tag],
+                    registry,
+                )),
                 Err(offset) => {
                     ret_registers.copy_within(offset.., 0);
                     Box::new(parse_result(
@@ -830,16 +867,29 @@ fn parse_result(
                     debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
                 }
             } else {
-                JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
+                JitValue::from_jit(
+                    context,
+                    module,
+                    metadata,
+                    return_ptr.unwrap(),
+                    type_id,
+                    registry,
+                )
             }
         }
         CoreTypeConcrete::Felt252Dict(_) => match return_ptr {
             Some(return_ptr) => JitValue::from_jit(
+                context,
+                module,
+                metadata,
                 unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
                 type_id,
                 registry,
             ),
             None => JitValue::from_jit(
+                context,
+                module,
+                metadata,
                 NonNull::new(ret_registers[0] as *mut ()).unwrap(),
                 type_id,
                 registry,
