@@ -486,32 +486,6 @@ pub fn build<'ctx>(
     })
 }
 
-/// Extract layout for the default enum representation, its discriminant and all its payloads.
-pub fn get_layout_for_variants(
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    variants: &[ConcreteTypeId],
-) -> Result<(Layout, Layout, Vec<Layout>)> {
-    let tag_bits = variants.len().next_power_of_two().trailing_zeros();
-    let tag_layout = get_integer_layout(tag_bits);
-
-    let mut layout = tag_layout;
-    let mut output = Vec::with_capacity(variants.len());
-    for variant in variants {
-        let concrete_payload_ty = registry.get_type(variant)?;
-        let payload_layout = concrete_payload_ty.layout(registry)?;
-
-        let full_layout = tag_layout.extend(payload_layout)?.0;
-        layout = Layout::from_size_align(
-            layout.size().max(full_layout.size()),
-            layout.align().max(full_layout.align()),
-        )?;
-
-        output.push(payload_layout);
-    }
-
-    Ok((layout, tag_layout, output))
-}
-
 /// Extract the type and layout for the default enum representation, its discriminant and all its
 /// payloads.
 // TODO: Change this function to accept a slice of slices (for variants). Not all uses have a slice

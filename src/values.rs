@@ -4,6 +4,7 @@
 
 use crate::{
     error::Error,
+    metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
     utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
 };
@@ -17,6 +18,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use educe::Educe;
+use melior::{ir::Module, Context};
 use num_bigint::{BigInt, Sign};
 use starknet_types_core::felt::Felt;
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
@@ -176,6 +178,9 @@ impl JitValue {
     /// Allocates the value in the given arena so it can be passed to the JIT engine.
     pub(crate) fn to_jit(
         &self,
+        context: &Context,
+        module: &Module,
+        metadata: &mut MetadataStorage,
         arena: &Bump,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
@@ -202,7 +207,8 @@ impl JitValue {
                         let len: u32 = data.len().try_into().unwrap();
 
                         for elem in data {
-                            let elem = elem.to_jit(arena, registry, &info.ty)?;
+                            let elem =
+                                elem.to_jit(context, module, metadata, arena, registry, &info.ty)?;
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::<u8>().as_ptr(),
@@ -272,7 +278,14 @@ impl JitValue {
                             };
                             layout = Some(new_layout);
 
-                            let member_ptr = member.to_jit(arena, registry, member_type_id)?;
+                            let member_ptr = member.to_jit(
+                                context,
+                                module,
+                                metadata,
+                                arena,
+                                registry,
+                                member_type_id,
+                            )?;
                             data.push((
                                 member_layout,
                                 offset,
@@ -322,11 +335,24 @@ impl JitValue {
                         assert!(*tag <= info.variants.len(), "Variant index out of range.");
 
                         let payload_type_id = &info.variants[*tag];
-                        let payload = value.to_jit(arena, registry, payload_type_id)?;
+                        let payload = value.to_jit(
+                            context,
+                            module,
+                            metadata,
+                            arena,
+                            registry,
+                            payload_type_id,
+                        )?;
 
-                        let (layout, tag_layout, variant_layouts) =
-                            crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
-                                .unwrap();
+                        let (layout, (_, tag_layout), variant_layouts) =
+                            crate::types::r#enum::get_type_for_variants(
+                                context,
+                                module,
+                                registry,
+                                metadata,
+                                &info.variants,
+                            )
+                            .unwrap();
                         let ptr = arena.alloc_layout(layout).cast::<()>();
 
                         match tag_layout.size() {
@@ -342,13 +368,13 @@ impl JitValue {
                             payload.cast::<u8>().as_ptr(),
                             NonNull::new(
                                 ((ptr.as_ptr() as usize)
-                                    + tag_layout.extend(variant_layouts[*tag]).unwrap().1)
+                                    + tag_layout.extend(variant_layouts[*tag].1).unwrap().1)
                                     as *mut u8,
                             )
                             .unwrap()
                             .cast()
                             .as_ptr(),
-                            variant_layouts[*tag].size(),
+                            variant_layouts[*tag].1.size(),
                         );
 
                         NonNull::new(arena.alloc(ptr.as_ptr()) as *mut _)
@@ -372,7 +398,8 @@ impl JitValue {
 
                         for (key, value) in map.iter() {
                             let key = key.to_bytes_le();
-                            let value = value.to_jit(arena, registry, &info.ty)?;
+                            let value = value
+                                .to_jit(context, module, metadata, arena, registry, &info.ty)?;
 
                             let value_malloc_ptr =
                                 NonNull::new(libc::malloc(elem_layout.size())).unwrap();

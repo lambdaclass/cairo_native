@@ -414,7 +414,14 @@ impl<'a> ArgumentMapper<'a> {
                     unsafe {
                         std::ptr::copy_nonoverlapping(
                             value
-                                .to_jit(self.arena, self.registry, &info.ty)
+                                .to_jit(
+                                    self.context,
+                                    self.module,
+                                    self.metadata,
+                                    self.arena,
+                                    self.registry,
+                                    &info.ty,
+                                )
                                 .unwrap()
                                 .cast()
                                 .as_ptr(),
@@ -443,9 +450,12 @@ impl<'a> ArgumentMapper<'a> {
             }
             (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
                 if type_info.is_memory_allocated(self.registry) {
-                    let (layout, tag_layout, variant_layouts) =
-                        crate::types::r#enum::get_layout_for_variants(
+                    let (layout, (_, tag_layout), variant_layouts) =
+                        crate::types::r#enum::get_type_for_variants(
+                            self.context,
+                            self.module,
                             self.registry,
+                            self.metadata,
                             &info.variants,
                         )
                         .unwrap();
@@ -462,15 +472,22 @@ impl<'a> ArgumentMapper<'a> {
                         }
                     }
 
-                    let offset = tag_layout.extend(variant_layouts[*tag]).unwrap().1;
+                    let offset = tag_layout.extend(variant_layouts[*tag].1).unwrap().1;
                     let payload_ptr = value
-                        .to_jit(self.arena, self.registry, &info.variants[*tag])
+                        .to_jit(
+                            self.context,
+                            self.module,
+                            self.metadata,
+                            self.arena,
+                            self.registry,
+                            &info.variants[*tag],
+                        )
                         .unwrap();
                     unsafe {
                         std::ptr::copy_nonoverlapping(
                             payload_ptr.cast::<u8>().as_ptr(),
                             ptr.cast::<u8>().as_ptr().add(offset),
-                            variant_layouts[*tag].size(),
+                            variant_layouts[*tag].1.size(),
                         );
                     }
 
@@ -513,7 +530,14 @@ impl<'a> ArgumentMapper<'a> {
 
                 self.invoke_data.push(
                     value
-                        .to_jit(self.arena, self.registry, type_id)
+                        .to_jit(
+                            self.context,
+                            self.module,
+                            self.metadata,
+                            self.arena,
+                            self.registry,
+                            type_id,
+                        )
                         .unwrap()
                         .as_ptr() as u64,
                 );
@@ -726,8 +750,15 @@ fn parse_result(
         },
         CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(info) => {
-            let (_, tag_layout, variant_layouts) =
-                crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
+            let (_, (_, tag_layout), variant_layouts) =
+                crate::types::r#enum::get_type_for_variants(
+                    context,
+                    module,
+                    registry,
+                    metadata,
+                    &info.variants,
+                )
+                .unwrap();
 
             let (tag, ptr) = if type_info.is_memory_allocated(registry) || return_ptr.is_some() {
                 let ptr = return_ptr.unwrap();
@@ -749,7 +780,7 @@ fn parse_result(
                         NonNull::new_unchecked(
                             ptr.cast::<u8>()
                                 .as_ptr()
-                                .add(tag_layout.extend(variant_layouts[tag]).unwrap().1),
+                                .add(tag_layout.extend(variant_layouts[tag].1).unwrap().1),
                         )
                         .cast()
                     }),
