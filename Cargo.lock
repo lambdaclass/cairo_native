@@ -902,7 +902,6 @@ dependencies = [
  "criterion",
  "educe",
  "id-arena",
- "indoc",
  "itertools 0.12.1",
  "k256",
  "keccak",

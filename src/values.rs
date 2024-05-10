@@ -759,7 +759,6 @@ mod test {
     use cairo_lang_sierra::program::Program;
     use cairo_lang_sierra::program::TypeDeclaration;
     use cairo_lang_sierra::ProgramParser;
-    use indoc::indoc;
 
     #[test]
     fn test_jit_value_conversion_felt() {
@@ -920,9 +919,7 @@ mod test {
 
     #[test]
     fn test_to_jit_uint8() {
-        let program = ProgramParser::new()
-            .parse(indoc! {"type u8 = u8;"})
-            .unwrap();
+        let program = ProgramParser::new().parse("type u8 = u8;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -940,9 +937,7 @@ mod test {
 
     #[test]
     fn test_to_jit_uint16() {
-        let program = ProgramParser::new()
-            .parse(indoc! {"type u16 = u16;"})
-            .unwrap();
+        let program = ProgramParser::new().parse("type u16 = u16;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -960,9 +955,7 @@ mod test {
 
     #[test]
     fn test_to_jit_uint32() {
-        let program = ProgramParser::new()
-            .parse(indoc! {"type u32 = u32;"})
-            .unwrap();
+        let program = ProgramParser::new().parse("type u32 = u32;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -980,9 +973,7 @@ mod test {
 
     #[test]
     fn test_to_jit_uint64() {
-        let program = ProgramParser::new()
-            .parse(indoc! {"type u64 = u64;"})
-            .unwrap();
+        let program = ProgramParser::new().parse("type u64 = u64;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -1000,9 +991,7 @@ mod test {
 
     #[test]
     fn test_to_jit_uint128() {
-        let program = ProgramParser::new()
-            .parse(indoc! {"type u128 = u128;"})
-            .unwrap();
+        let program = ProgramParser::new().parse("type u128 = u128;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -1020,9 +1009,7 @@ mod test {
 
     #[test]
     fn test_to_jit_sint8() {
-        let program = ProgramParser::new()
-            .parse(indoc! {"type i8 = i8;"})
-            .unwrap();
+        let program = ProgramParser::new().parse("type i8 = i8;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -1040,9 +1027,7 @@ mod test {
 
     #[test]
     fn test_to_jit_sint16() {
-        let program = ProgramParser::new()
-            .parse(indoc! {"type i16 = i16;"})
-            .unwrap();
+        let program = ProgramParser::new().parse("type i16 = i16;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -1060,9 +1045,7 @@ mod test {
 
     #[test]
     fn test_to_jit_sint32() {
-        let program = ProgramParser::new()
-            .parse(indoc! {"type i32 = i32;"})
-            .unwrap();
+        let program = ProgramParser::new().parse("type i32 = i32;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -1080,9 +1063,7 @@ mod test {
 
     #[test]
     fn test_to_jit_sint64() {
-        let program = ProgramParser::new()
-            .parse(indoc! {"type i64 = i64;"})
-            .unwrap();
+        let program = ProgramParser::new().parse("type i64 = i64;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -1100,9 +1081,7 @@ mod test {
 
     #[test]
     fn test_to_jit_sint128() {
-        let program = ProgramParser::new()
-            .parse(indoc! {"type i128 = i128;"})
-            .unwrap();
+        let program = ProgramParser::new().parse("type i128 = i128;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -1121,7 +1100,7 @@ mod test {
     #[test]
     fn test_to_jit_ec_point() {
         let program = ProgramParser::new()
-            .parse(indoc! {"type EcPoint = EcPoint;"})
+            .parse("type EcPoint = EcPoint;")
             .unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1141,7 +1120,7 @@ mod test {
     #[test]
     fn test_to_jit_ec_state() {
         let program = ProgramParser::new()
-            .parse(indoc! {"type EcState = EcState;"})
+            .parse("type EcState = EcState;")
             .unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();

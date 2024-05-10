@@ -94,7 +94,6 @@ proptest = "1.4"
 test-case = "3.3"
 walkdir = "2"
 serde_json = { version = "1.0" }
-indoc = "2.0.4"
 
 [build-dependencies]
 cc = "1.0.92"
