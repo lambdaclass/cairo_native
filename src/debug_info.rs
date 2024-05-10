@@ -160,12 +160,8 @@ fn extract_location_from_stable_loc<'c>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::context::NativeContext;
+    use crate::{context::NativeContext, utils::test::load_cairo};
     use cairo_lang_semantic::test_utils::setup_test_function;
-    use cairo_lang_sierra::program::{
-        ConcreteLibfuncLongId, ConcreteTypeLongId, FunctionSignature, GenFunction,
-        LibfuncDeclaration, StatementIdx, TypeDeclaration,
-    };
     use cairo_lang_sierra_generator::db::SierraGenGroup;
     use rstest::*;
 
@@ -188,36 +184,13 @@ mod test {
     #[fixture]
     fn program() -> Program {
         // Define a dummy program for testing
-        Program {
-            type_declarations: vec![TypeDeclaration {
-                id: "test_id_type_declarations".into(),
-                long_id: ConcreteTypeLongId {
-                    generic_id: "u128".into(),
-                    generic_args: vec![],
-                },
-                declared_type_info: None,
-            }],
-            libfunc_declarations: vec![LibfuncDeclaration {
-                id: "test_id_libfunc_declarations".into(),
-                long_id: ConcreteLibfuncLongId {
-                    generic_id: "u128_sqrt".into(),
-                    generic_args: vec![],
-                },
-            }],
-            statements: vec![],
-            funcs: vec![GenFunction {
-                id: FunctionId {
-                    id: 0,
-                    debug_name: Some("some_name".into()),
-                },
-                signature: FunctionSignature {
-                    ret_types: vec![],
-                    param_types: vec![],
-                },
-                params: vec![],
-                entry_point: StatementIdx(0),
-            }],
-        }
+        let (_, program) = load_cairo! {
+            fn run_test() -> u128 {
+                let a: u128 = 1;
+                u128_sqrt(a).into()
+            }
+        };
+        program
     }
 
     #[fixture]
@@ -228,25 +201,26 @@ mod test {
 
     macro_rules! assert_debug {
         ($debug: expr) => {
-            assert!($debug.type_declarations.len() == 1);
+            assert!($debug.type_declarations.len() >= 1);
             assert!($debug
                 .type_declarations
-                .contains_key(&ConcreteTypeId::from_string("test_id_type_declarations")));
+                .iter()
+                .any(|(k, _)| k.debug_name == Some("u128".into())));
 
-            assert!($debug.libfunc_declarations.len() == 1);
+            assert!($debug.libfunc_declarations.len() >= 1);
             assert!($debug
                 .libfunc_declarations
-                .contains_key(&ConcreteLibfuncId::from_string(
-                    "test_id_libfunc_declarations"
-                )));
+                .iter()
+                .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
 
             assert!($debug.statements.is_empty());
 
             assert!($debug.funcs.len() == 1);
-            assert!($debug.funcs.contains_key(&FunctionId {
-                id: 0,
-                debug_name: Some("some_name".into()),
-            }));
+            assert!($debug.funcs.iter().any(|(k, _)| k
+                .debug_name
+                .clone()
+                .unwrap()
+                .contains("run_test")));
         };
     }
 
