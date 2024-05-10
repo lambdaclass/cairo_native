@@ -55,7 +55,6 @@ fn test_inv_mod() {
     assert(math::inv_mod(nz(7), nz(1)) == Option::Some(0_usize), 'inv_mov(7, 1) != 0');
 }
 
-// TODO: Panicked with 0x36202f203220213d203320283729 ('6 / 2 != 3 (7)').
 #[test]
 fn test_u256_div_mod_n() {
     assert(math::u256_div_mod_n(6, 2, nz(7)) == Option::Some(3), '6 / 2 != 3 (7)');
