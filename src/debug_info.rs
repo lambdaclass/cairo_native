@@ -160,18 +160,17 @@ fn extract_location_from_stable_loc<'c>(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::context::NativeContext;
     use cairo_lang_semantic::test_utils::setup_test_function;
-    use cairo_lang_sierra::program::ConcreteLibfuncLongId;
-    use cairo_lang_sierra::program::ConcreteTypeLongId;
-    use cairo_lang_sierra::program::FunctionSignature;
-    use cairo_lang_sierra::program::GenFunction;
-    use cairo_lang_sierra::program::LibfuncDeclaration;
-    use cairo_lang_sierra::program::StatementIdx;
-    use cairo_lang_sierra::program::TypeDeclaration;
+    use cairo_lang_sierra::program::{
+        ConcreteLibfuncLongId, ConcreteTypeLongId, FunctionSignature, GenFunction,
+        LibfuncDeclaration, StatementIdx, TypeDeclaration,
+    };
     use cairo_lang_sierra_generator::db::SierraGenGroup;
+    use rstest::*;
 
-    #[test]
-    fn test_extract_debug_locations() {
+    #[fixture]
+    fn db() -> RootDatabase {
         // Build the root database with corelib detection
         let db = RootDatabase::builder().detect_corelib().build().unwrap();
 
@@ -183,8 +182,13 @@ mod test {
         );
         let _ = db.function_with_body_sierra(function_id);
 
+        db
+    }
+
+    #[fixture]
+    fn program() -> Program {
         // Define a dummy program for testing
-        let program = Program {
+        Program {
             type_declarations: vec![TypeDeclaration {
                 id: "test_id_type_declarations".into(),
                 long_id: ConcreteTypeLongId {
@@ -213,30 +217,54 @@ mod test {
                 params: vec![],
                 entry_point: StatementIdx(0),
             }],
-        };
+        }
+    }
 
+    #[fixture]
+    fn debug_info(db: RootDatabase, program: Program) -> DebugInfo {
         // Extract debug information from the program
-        let res = DebugInfo::extract(&db, &program).unwrap();
+        DebugInfo::extract(&db, &program).unwrap()
+    }
 
-        // Assertions to test the extracted debug information
-        assert!(res.type_declarations.len() == 1);
-        assert!(res
-            .type_declarations
-            .contains_key(&ConcreteTypeId::from_string("test_id_type_declarations")));
+    macro_rules! assert_debug {
+        ($debug: expr) => {
+            assert!($debug.type_declarations.len() == 1);
+            assert!($debug
+                .type_declarations
+                .contains_key(&ConcreteTypeId::from_string("test_id_type_declarations")));
 
-        assert!(res.libfunc_declarations.len() == 1);
-        assert!(res
-            .libfunc_declarations
-            .contains_key(&ConcreteLibfuncId::from_string(
-                "test_id_libfunc_declarations"
-            )));
+            assert!($debug.libfunc_declarations.len() == 1);
+            assert!($debug
+                .libfunc_declarations
+                .contains_key(&ConcreteLibfuncId::from_string(
+                    "test_id_libfunc_declarations"
+                )));
 
-        assert!(res.statements.is_empty());
+            assert!($debug.statements.is_empty());
 
-        assert!(res.funcs.len() == 1);
-        assert!(res.funcs.contains_key(&FunctionId {
-            id: 0,
-            debug_name: Some("some_name".into()),
-        }));
+            assert!($debug.funcs.len() == 1);
+            assert!($debug.funcs.contains_key(&FunctionId {
+                id: 0,
+                debug_name: Some("some_name".into()),
+            }));
+        };
+    }
+
+    #[rstest]
+    fn test_extract_debug_info(debug_info: DebugInfo) {
+        // Assert the debug information
+        assert_debug!(debug_info);
+    }
+
+    #[rstest]
+    fn test_extract_debug_locations(db: RootDatabase, debug_info: DebugInfo) {
+        // Get the native context
+        let native_context = NativeContext::new();
+
+        // Extract debug locations from the debug information
+        let debug_locations = DebugLocations::extract(native_context.context(), &db, &debug_info);
+
+        // Assert the debug locations
+        assert_debug!(debug_locations);
     }
 }
