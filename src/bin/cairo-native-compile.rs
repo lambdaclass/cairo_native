@@ -4,6 +4,7 @@ use cairo_native::{
     utils::cairo_to_sierra_with_debug_info,
 };
 use clap::{Parser, ValueEnum};
+
 use std::path::{Path, PathBuf};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
