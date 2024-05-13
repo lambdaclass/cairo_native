@@ -1,4 +1,3 @@
-// NOTE: needs compiler version 2.1.0-rc0 or higher to compile.
 #[starknet::interface]
 trait IKeccak<TContractState> {
     fn cairo_keccak_test(self: @TContractState) -> felt252;

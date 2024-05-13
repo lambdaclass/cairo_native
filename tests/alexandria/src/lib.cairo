@@ -46,7 +46,7 @@ mod alexandria {
         stack.push(2);
         stack.push(17);
         let top = stack.peek();
-        stack.pop().unwrap();
+        let _ = stack.pop();
         (top, stack.pop(), stack.pop(), stack.is_empty())
     }
 
@@ -63,7 +63,7 @@ mod alexandria {
     fn bit_array() -> Option<felt252> {
         let mut bit_array: BitArray = Default::default();
         bit_array.write_word_be(340282366920938463463374607431768211455, 128);
-        bit_array.pop_front().unwrap();
+        let _ = bit_array.pop_front();
         bit_array.append_bit(true);
         bit_array.append_bit(false);
         bit_array.append_bit(true);

@@ -59,6 +59,9 @@ pub enum Error {
 
     #[error("llvm error")]
     LLVMCompileError(String),
+
+    #[error("cairo const data mismatch")]
+    ConstDataMismatch,
 }
 
 pub fn make_unexpected_value_error(expected: String) -> Error {
