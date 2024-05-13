@@ -319,7 +319,7 @@ impl JitValue {
                 }
                 Self::Enum { tag, value, .. } => {
                     if let CoreTypeConcrete::Enum(info) = Self::resolve_type(ty, registry) {
-                        assert!(*tag <= info.variants.len(), "Variant index out of range.");
+                        assert!(*tag < info.variants.len(), "Variant index out of range.");
 
                         let payload_type_id = &info.variants[*tag];
                         let payload = value.to_jit(arena, registry, payload_type_id)?;
@@ -919,6 +919,49 @@ mod test {
     }
 
     #[test]
+    fn test_to_jit_felt252() {
+        let program = ProgramParser::new()
+            .parse("type felt252 = felt252;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Felt252(Felt::from(42))
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[u32; 8]>()
+                    .as_ptr()
+            },
+            [42, 0, 0, 0, 0, 0, 0, 0]
+        );
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Felt252(Felt::MAX)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[u32; 8]>()
+                    .as_ptr()
+            },
+            // 0x800000000000011000000000000000000000000000000000000000000000001 - 1
+            [0, 0, 0, 0, 0, 0, 17, 134217728]
+        );
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Felt252(Felt::MAX + Felt::ONE)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[u32; 8]>()
+                    .as_ptr()
+            },
+            [0, 0, 0, 0, 0, 0, 0, 0]
+        );
+    }
+
+    #[test]
     fn test_to_jit_uint8() {
         let program = ProgramParser::new().parse("type u8 = u8;").unwrap();
 
@@ -1146,5 +1189,153 @@ mod test {
                 [4444, 0, 0, 0, 0, 0, 0, 0]
             ]
         );
+    }
+
+    #[test]
+    fn test_to_jit_enum() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type u8 = u8;
+                type MyEnum = Enum<ut@MyEnum, u8, u8>;",
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Call to_jit to get the value of the enum
+        let result = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Uint8(10)),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+
+        // Assertion to verify that the value returned by to_jit is not NULL
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    #[should_panic(expected = "Variant index out of range.")]
+    fn test_to_jit_enum_variant_out_of_range() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type u8 = u8;
+            type MyEnum = Enum<ut@MyEnum, u8, u8>;",
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Call to_jit to get the value of the enum with tag value out of range
+        let _ = JitValue::Enum {
+            tag: 2,
+            value: Box::new(JitValue::Uint8(10)),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+    }
+
+    #[test]
+    #[should_panic(expected = "An enum without variants cannot be instantiated.")]
+    fn test_to_jit_enum_no_variant() {
+        let program = ProgramParser::new()
+            .parse(
+                "type u8 = u8;
+                type MyEnum = Enum<ut@MyEnum, u8, u8>;",
+            )
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        let _ = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Uint8(10)),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+    }
+
+    #[test]
+    fn test_to_jit_enum_type_error() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+                type MyEnum = Enum<ut@MyEnum, felt252, felt252>;",
+            )
+            .unwrap();
+
+        // Creating a registry for the program.
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Invoking to_jit method on a JitValue::Enum to convert it to a JIT representation.
+        // Generating an error by providing an enum value instead of the expected type.
+        let result = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Struct {
+                fields: vec![JitValue::from(2u32)],
+                debug_name: None,
+            }),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+        .unwrap_err(); // Unwrapping the error
+
+        // Matching the error result to verify the error type and message.
+        match result {
+            Error::UnexpectedValue(expected_msg) => {
+                // Asserting that the error message matches the expected message.
+                assert_eq!(
+                    expected_msg,
+                    format!(
+                        "expected value of type {:?} but got an enum value",
+                        program.type_declarations[0].id.debug_name
+                    )
+                );
+            }
+            _ => panic!("Unexpected error type: {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_to_jit_struct_type_error() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+                type MyEnum = Enum<ut@MyEnum, felt252, felt252>;",
+            )
+            .unwrap();
+
+        // Creating a registry for the program.
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Invoking to_jit method on a JitValue::Struct to convert it to a JIT representation.
+        // Generating an error by providing a struct value instead of the expected type.
+        let result = JitValue::Struct {
+            fields: vec![JitValue::from(2u32)],
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+        .unwrap_err(); // Unwrapping the error
+
+        // Matching the error result to verify the error type and message.
+        match result {
+            Error::UnexpectedValue(expected_msg) => {
+                // Asserting that the error message matches the expected message.
+                assert_eq!(
+                    expected_msg,
+                    format!(
+                        "expected value of type {:?} but got a struct",
+                        program.type_declarations[0].id.debug_name
+                    )
+                );
+            }
+            _ => panic!("Unexpected error type: {:?}", result),
+        }
     }
 }
