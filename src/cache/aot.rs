@@ -83,10 +83,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use starknet_types_core::felt::Felt;
-
     use super::*;
     use crate::{utils::test::load_cairo, values::JitValue};
+    use starknet_types_core::felt::Felt;
 
     #[test]
     fn test_aot_compile_and_insert() {

@@ -191,9 +191,7 @@ mod tests {
             #[starknet::contract]
             mod contract {
                 #[storage]
-                struct Storage {
-                    name: felt252,
-                }
+                struct Storage {}
 
                 #[abi(embed_v0)]
                 impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
@@ -214,6 +212,7 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
+        // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
         let result = executor
@@ -231,6 +230,7 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
+        // The second function in the program is `get_block_hash`.
         let entrypoint_function_id = &program.funcs.get(1).expect("should have a function").id;
 
         let mut syscall_handler = TestSyscallHandler;
@@ -265,6 +265,7 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
+        // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
             .last()
