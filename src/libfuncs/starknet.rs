@@ -22,7 +22,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm::{self, LoadStoreOptions},
+        llvm::{self, r#type::opaque_pointer, AllocaOptions, LoadStoreOptions},
     },
     ir::{
         attribute::{
@@ -4326,23 +4326,17 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     ));
 
     // Allocate `to_address` argument and write the value.
-    let to_address_arg_ptr_ty = llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0);
     let to_address_arg_ptr = helper
         .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into().unwrap(),
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[to_address_arg_ptr_ty])
-                .build()?,
-        )
+        .append_operation(llvm::alloca(
+            context,
+            k1,
+            opaque_pointer(context),
+            location,
+            AllocaOptions::new().elem_type(Some(TypeAttribute::new(
+                IntegerType::new(context, 252).into(),
+            ))),
+        ))
         .result(0)?
         .into();
     entry.append_operation(llvm::store(
@@ -4354,35 +4348,25 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     ));
 
     // Allocate `payload` argument and write the value.
-    let payload_arg_ptr_ty = llvm::r#type::pointer(
-        llvm::r#type::r#struct(
+    let payload_arg_ptr = helper
+        .init_block()
+        .append_operation(llvm::alloca(
             context,
-            &[llvm::r#type::r#struct(
+            k1,
+            opaque_pointer(context),
+            location,
+            AllocaOptions::new().elem_type(Some(TypeAttribute::new(llvm::r#type::r#struct(
                 context,
                 &[
-                    llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0),
+                    opaque_pointer(context),
+                    IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
                 ],
                 false,
-            )],
-            false,
-        ),
-        0,
-    );
-    let payload_arg_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 8).into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[payload_arg_ptr_ty])
-                .build()?,
-        )
+            )))),
+        ))
         .result(0)?
         .into();
     entry.append_operation(llvm::store(
@@ -4400,8 +4384,8 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
-            to_address_arg_ptr_ty,
-            payload_arg_ptr_ty,
+            opaque_pointer(context), // to_address
+            opaque_pointer(context), // payload
         ],
         false,
     );
