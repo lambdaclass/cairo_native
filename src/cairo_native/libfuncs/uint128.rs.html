@@ -2107,14 +2107,14 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>U128_FROM_FELT252,
             <span class="string">"run_test"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::ZERO.into()],
             <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">0u128</span>.into()),
         );
 
         run_program_assert_output(
             <span class="kw-2">&amp;</span>U128_FROM_FELT252,
             <span class="string">"run_test"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
+            <span class="kw-2">&amp;</span>[Felt::ONE.into()],
             <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">1u128</span>.into()),
         );
 
@@ -2261,8 +2261,8 @@
     </span><span class="kw">fn </span>u128_to_felt252() {
         <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U128_TO_FELT252;
 
-        run_program_assert_output(program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[<span class="number">0u128</span>.into()], Felt::from(<span class="number">0</span>).into());
-        run_program_assert_output(program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[<span class="number">1u128</span>.into()], Felt::from(<span class="number">1</span>).into());
+        run_program_assert_output(program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[<span class="number">0u128</span>.into()], Felt::ZERO.into());
+        run_program_assert_output(program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[<span class="number">1u128</span>.into()], Felt::ONE.into());
         run_program_assert_output(
             program,
             <span class="string">"run_test"</span>,

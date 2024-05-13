@@ -9431,7 +9431,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>class_hash_const() {
-        run_program_assert_output(<span class="kw-2">&amp;</span>CLASS_HASH_CONST, <span class="string">"run_program"</span>, <span class="kw-2">&amp;</span>[], Felt::from(<span class="number">0</span>).into())
+        run_program_assert_output(<span class="kw-2">&amp;</span>CLASS_HASH_CONST, <span class="string">"run_program"</span>, <span class="kw-2">&amp;</span>[], Felt::ZERO.into())
     }
 
     <span class="attr">#[test]
@@ -9440,14 +9440,14 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
-            Felt::from(<span class="number">0</span>).into(),
+            <span class="kw-2">&amp;</span>[Felt::ZERO.into()],
+            Felt::ZERO.into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
-            Felt::from(<span class="number">1</span>).into(),
+            <span class="kw-2">&amp;</span>[Felt::ONE.into()],
+            Felt::ONE.into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_BASE_ADDRESS_FROM_FELT252,
@@ -9465,7 +9465,7 @@
             )
             .unwrap()
             .into()],
-            Felt::from(<span class="number">0</span>).into(),
+            Felt::ZERO.into(),
         );
     }
 
@@ -9474,14 +9474,14 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
-            Felt::from(<span class="number">0</span>).into(),
+            <span class="kw-2">&amp;</span>[Felt::ZERO.into()],
+            Felt::ZERO.into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
-            Felt::from(<span class="number">1</span>).into(),
+            <span class="kw-2">&amp;</span>[Felt::ONE.into()],
+            Felt::ONE.into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE,
@@ -9502,14 +9502,14 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into(), <span class="number">0u8</span>.into()],
-            Felt::from(<span class="number">0</span>).into(),
+            <span class="kw-2">&amp;</span>[Felt::ZERO.into(), <span class="number">0u8</span>.into()],
+            Felt::ZERO.into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into(), <span class="number">0u8</span>.into()],
-            Felt::from(<span class="number">1</span>).into(),
+            <span class="kw-2">&amp;</span>[Felt::ONE.into(), <span class="number">0u8</span>.into()],
+            Felt::ONE.into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
@@ -9528,13 +9528,13 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into(), <span class="number">1u8</span>.into()],
-            Felt::from(<span class="number">1</span>).into(),
+            <span class="kw-2">&amp;</span>[Felt::ZERO.into(), <span class="number">1u8</span>.into()],
+            Felt::ONE.into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into(), <span class="number">1u8</span>.into()],
+            <span class="kw-2">&amp;</span>[Felt::ONE.into(), <span class="number">1u8</span>.into()],
             Felt::from(<span class="number">2</span>).into(),
         );
         run_program_assert_output(
@@ -9554,13 +9554,13 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into(), <span class="number">255u8</span>.into()],
+            <span class="kw-2">&amp;</span>[Felt::ZERO.into(), <span class="number">255u8</span>.into()],
             Felt::from(<span class="number">255</span>).into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into(), <span class="number">255u8</span>.into()],
+            <span class="kw-2">&amp;</span>[Felt::ONE.into(), <span class="number">255u8</span>.into()],
             Felt::from(<span class="number">256</span>).into(),
         );
 
@@ -9584,14 +9584,14 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TO_FELT252,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
-            Felt::from(<span class="number">0</span>).into(),
+            <span class="kw-2">&amp;</span>[Felt::ZERO.into()],
+            Felt::ZERO.into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TO_FELT252,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
-            Felt::from(<span class="number">1</span>).into(),
+            <span class="kw-2">&amp;</span>[Felt::ONE.into()],
+            Felt::ONE.into(),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TO_FELT252,
@@ -9612,14 +9612,14 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">0</span>).into()],
-            <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(<span class="number">0</span>).into()),
+            <span class="kw-2">&amp;</span>[Felt::ZERO.into()],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::ZERO.into()),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,
             <span class="string">"run_program"</span>,
-            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">1</span>).into()],
-            <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::from(<span class="number">1</span>).into()),
+            <span class="kw-2">&amp;</span>[Felt::ONE.into()],
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, Felt::ONE.into()),
         );
         run_program_assert_output(
             <span class="kw-2">&amp;</span>STORAGE_ADDRESS_TRY_FROM_FELT252,

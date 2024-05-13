@@ -2502,7 +2502,7 @@
         ) -&gt; SyscallResult&lt;(Felt, Vec&lt;Felt&gt;)&gt; {
             <span class="prelude-val">Ok</span>((
                 class_hash + contract_address_salt,
-                calldata.iter().map(|x| x + Felt::from(<span class="number">1</span>)).collect(),
+                calldata.iter().map(|x| x + Felt::ONE).collect(),
             ))
         }
 
