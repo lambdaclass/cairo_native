@@ -14,11 +14,12 @@ use cairo_lang_sierra::{
         consts::SignatureAndConstConcreteLibfunc,
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
-        starknet::StarkNetConcreteLibfunc,
+        starknet::{testing::TestingConcreteLibfunc, StarkNetConcreteLibfunc},
         ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
+use cairo_lang_utils::bigint::BigIntAsHex;
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
@@ -38,6 +39,7 @@ use num_bigint::{Sign, ToBigUint};
 use std::alloc::Layout;
 
 mod secp256;
+mod testing;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -137,7 +139,20 @@ pub fn build<'ctx, 'this>(
         StarkNetConcreteLibfunc::Secp256(selector) => self::secp256::build(
             context, registry, entry, location, helper, metadata, selector,
         ),
-        StarkNetConcreteLibfunc::Testing(_) => todo!("implement starknet testing libfunc"),
+        StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(libfunc)) => {
+            let selector_as_hex = BigIntAsHex {
+                value: libfunc.selector.clone(),
+            };
+            let selector = &selector_as_hex.value.to_bytes_be().1;
+            let selector = std::str::from_utf8(selector).map_err(|_| {
+                HintError::CustomHint(Box::from("failed to parse selector".to_string()))
+            })?;
+
+            dbg!(&selector);
+            self::testing::build(
+                context, registry, entry, location, helper, metadata, selector,
+            )
+        }
     }
 }
 
