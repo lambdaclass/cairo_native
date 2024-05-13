@@ -4822,22 +4822,6 @@
 <a href="#4821" id="4821">4821</a>
 <a href="#4822" id="4822">4822</a>
 <a href="#4823" id="4823">4823</a>
-<a href="#4824" id="4824">4824</a>
-<a href="#4825" id="4825">4825</a>
-<a href="#4826" id="4826">4826</a>
-<a href="#4827" id="4827">4827</a>
-<a href="#4828" id="4828">4828</a>
-<a href="#4829" id="4829">4829</a>
-<a href="#4830" id="4830">4830</a>
-<a href="#4831" id="4831">4831</a>
-<a href="#4832" id="4832">4832</a>
-<a href="#4833" id="4833">4833</a>
-<a href="#4834" id="4834">4834</a>
-<a href="#4835" id="4835">4835</a>
-<a href="#4836" id="4836">4836</a>
-<a href="#4837" id="4837">4837</a>
-<a href="#4838" id="4838">4838</a>
-<a href="#4839" id="4839">4839</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Starknet libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -4862,7 +4846,7 @@
 <span class="kw">use </span>melior::{
     dialect::{
         arith::{<span class="self">self</span>, CmpiPredicate},
-        llvm::{<span class="self">self</span>, LoadStoreOptions},
+        llvm::{<span class="self">self</span>, r#type::opaque_pointer, AllocaOptions, LoadStoreOptions},
     },
     ir::{
         attribute::{
@@ -9166,23 +9150,17 @@
     ));
 
     <span class="comment">// Allocate `to_address` argument and write the value.
-    </span><span class="kw">let </span>to_address_arg_ptr_ty = llvm::r#type::pointer(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>);
-    <span class="kw">let </span>to_address_arg_ptr = helper
+    </span><span class="kw">let </span>to_address_arg_ptr = helper
         .init_block()
-        .append_operation(
-            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
-                .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">"alignment"</span>),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, <span class="number">64</span>).into(),
-                        get_integer_layout(<span class="number">252</span>).align().try_into().unwrap(),
-                    )
-                    .into(),
-                )])
-                .add_operands(<span class="kw-2">&amp;</span>[k1])
-                .add_results(<span class="kw-2">&amp;</span>[to_address_arg_ptr_ty])
-                .build()<span class="question-mark">?</span>,
-        )
+        .append_operation(llvm::alloca(
+            context,
+            k1,
+            opaque_pointer(context),
+            location,
+            AllocaOptions::new().elem_type(<span class="prelude-val">Some</span>(TypeAttribute::new(
+                IntegerType::new(context, <span class="number">252</span>).into(),
+            ))),
+        ))
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
     entry.append_operation(llvm::store(
@@ -9194,35 +9172,25 @@
     ));
 
     <span class="comment">// Allocate `payload` argument and write the value.
-    </span><span class="kw">let </span>payload_arg_ptr_ty = llvm::r#type::pointer(
-        llvm::r#type::r#struct(
+    </span><span class="kw">let </span>payload_arg_ptr = helper
+        .init_block()
+        .append_operation(llvm::alloca(
             context,
-            <span class="kw-2">&amp;</span>[llvm::r#type::r#struct(
+            k1,
+            opaque_pointer(context),
+            location,
+            AllocaOptions::new().elem_type(<span class="prelude-val">Some</span>(TypeAttribute::new(llvm::r#type::r#struct(
                 context,
                 <span class="kw-2">&amp;</span>[
-                    llvm::r#type::pointer(IntegerType::new(context, <span class="number">252</span>).into(), <span class="number">0</span>),
+                    opaque_pointer(context),
+                    IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                     IntegerType::new(context, <span class="number">32</span>).into(),
                 ],
                 <span class="bool-val">false</span>,
-            )],
-            <span class="bool-val">false</span>,
-        ),
-        <span class="number">0</span>,
-    );
-    <span class="kw">let </span>payload_arg_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new(<span class="string">"llvm.alloca"</span>, location)
-                .add_attributes(<span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">"alignment"</span>),
-                    IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">8</span>).into(),
-                )])
-                .add_operands(<span class="kw-2">&amp;</span>[k1])
-                .add_results(<span class="kw-2">&amp;</span>[payload_arg_ptr_ty])
-                .build()<span class="question-mark">?</span>,
-        )
+            )))),
+        ))
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
     entry.append_operation(llvm::store(
@@ -9240,9 +9208,9 @@
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::opaque_pointer(context),
             llvm::r#type::pointer(IntegerType::new(context, <span class="number">128</span>).into(), <span class="number">0</span>),
-            to_address_arg_ptr_ty,
-            payload_arg_ptr_ty,
-        ],
+            opaque_pointer(context), <span class="comment">// to_address
+            </span>opaque_pointer(context), <span class="comment">// payload
+        </span>],
         <span class="bool-val">false</span>,
     );
     <span class="kw">let </span>fn_ptr = entry

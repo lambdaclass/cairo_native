@@ -294,6 +294,8 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::{bail, Context};
 <span class="kw">use </span>cairo_lang_compiler::{
     db::RootDatabase, diagnostics::DiagnosticsReporter, project::setup_project,
@@ -375,10 +377,12 @@
         <span class="macro">anyhow::bail!</span>(<span class="string">"failed to compile: {}"</span>, args.path.display());
     }
 
-    <span class="kw">let </span>(sierra_program, _statements_locations) = db
+    <span class="kw">let </span>sierra_program = db
         .get_sierra_program(main_crate_ids.clone())
         .to_option()
-        .with_context(|| <span class="string">"Compilation failed without any diagnostics."</span>)<span class="question-mark">?</span>;
+        .with_context(|| <span class="string">"Compilation failed without any diagnostics."</span>)<span class="question-mark">?
+        </span>.program
+        .clone();
     <span class="kw">let </span>replacer = DebugReplacer { db };
     <span class="kw">if </span>args.available_gas.is_none() &amp;&amp; sierra_program.requires_gas_counter() {
         <span class="macro">anyhow::bail!</span>(<span class="string">"Program requires gas counter, please provide `--available-gas` argument."</span>);

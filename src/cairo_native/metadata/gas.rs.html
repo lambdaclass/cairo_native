@@ -302,7 +302,7 @@
 
     <span class="kw">pub fn </span>get_gas_cost_for_statement(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: StatementIdx) -&gt; <span class="prelude-ty">Option</span>&lt;u128&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>cost = <span class="prelude-val">None</span>;
-        <span class="kw">for </span>cost_type <span class="kw">in </span>CostTokenType::iter() {
+        <span class="kw">for </span>cost_type <span class="kw">in </span>CostTokenType::iter_casm_tokens() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) =
                 <span class="self">self</span>.get_gas_cost_for_statement_and_cost_token_type(idx, <span class="kw-2">*</span>cost_type)
             {

@@ -750,6 +750,11 @@
 <a href="#749" id="749">749</a>
 <a href="#750" id="750">750</a>
 <a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -779,6 +784,7 @@
 <span class="kw">pub mod </span>branch_align;
 <span class="kw">pub mod </span>bytes31;
 <span class="kw">pub mod </span>cast;
+<span class="kw">pub mod </span>const_libfunc;
 <span class="kw">pub mod </span>debug;
 <span class="kw">pub mod </span>drop;
 <span class="kw">pub mod </span>dup;
@@ -871,7 +877,9 @@
             <span class="self">Self</span>::Cast(selector) =&gt; <span class="self">self</span>::cast::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::Const(selector) =&gt; <span class="self">self</span>::const_libfunc::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             <span class="self">Self</span>::Debug(selector) =&gt; <span class="self">self</span>::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -965,6 +973,8 @@
             <span class="self">Self</span>::UnwrapNonZero(info) =&gt; <span class="self">self</span>::unwrap_non_zero::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
+            <span class="self">Self</span>::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::CouponCall(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 

@@ -256,13 +256,13 @@
 
 <span class="kw">fn </span>locate_statement(variables: <span class="kw-2">&amp;</span>Arena&lt;Variable&gt;, statement: <span class="kw-2">&amp;</span>LoweringStatement) -&gt; LocationId {
     <span class="kw">match </span>statement {
-        LoweringStatement::Literal(x) =&gt; variables[x.output].location,
         LoweringStatement::Call(x) =&gt; x.location,
         LoweringStatement::StructConstruct(x) =&gt; variables[x.output].location,
         LoweringStatement::StructDestructure(x) =&gt; x.input.location,
         LoweringStatement::EnumConstruct(x) =&gt; variables[x.output].location,
-        LoweringStatement::Snapshot(x) =&gt; variables[x.output_snapshot].location,
+        LoweringStatement::Snapshot(x) =&gt; variables[x.snapshot()].location,
         LoweringStatement::Desnap(x) =&gt; variables[x.output].location,
+        LoweringStatement::Const(x) =&gt; variables[x.output].location,
     }
 }
 </code></pre></div></section></main></body></html>

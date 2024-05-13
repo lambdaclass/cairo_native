@@ -777,6 +777,30 @@
 <a href="#776" id="776">776</a>
 <a href="#777" id="777">777</a>
 <a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
 </pre></div><pre class="rust"><code><span class="kw">pub use </span><span class="self">self</span>::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 <span class="kw">use crate</span>::{
     error::Error,
@@ -1066,12 +1090,23 @@
     }
 
     <span class="comment">// Parse return values.
-    </span><span class="kw">let </span>return_value = parse_result(
-        function_signature.ret_types.last().unwrap(),
-        registry,
-        return_ptr,
-        ret_registers,
-    );
+    </span><span class="kw">let </span>return_value = function_signature
+        .ret_types
+        .last()
+        .map(|ret_type| {
+            parse_result(
+                ret_type,
+                registry,
+                return_ptr,
+                ret_registers,
+                <span class="comment">// TODO: Consider returning an Option&lt;JitValue&gt; as return_value instead
+                // As cairo functions can not have a return value
+            </span>)
+        })
+        .unwrap_or_else(|| JitValue::Struct {
+            fields: <span class="macro">vec!</span>[],
+            debug_name: <span class="prelude-val">None</span>,
+        });
 
     <span class="comment">// FIXME: Arena deallocation.
     </span>std::mem::forget(arena);
@@ -1552,7 +1587,20 @@
         CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Snapshot(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+        CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; JitValue::Struct {
+            fields: Vec::new(),
+            debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+        },
+        CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        <span class="kw">_ </span>=&gt; <span class="macro">todo!</span>(),
     }
 }
 </code></pre></div></section></main></body></html>

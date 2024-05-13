@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["build","build_construct","build_deconstruct"]};
+window.SIDEBAR_ITEMS = {"fn":["build","build_construct","build_deconstruct","build_struct_value"]};

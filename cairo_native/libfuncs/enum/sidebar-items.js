@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["build","build_init","build_match","build_snapshot_match"]};
+window.SIDEBAR_ITEMS = {"fn":["build","build_enum_value","build_from_bounded_int","build_init","build_match","build_snapshot_match"]};

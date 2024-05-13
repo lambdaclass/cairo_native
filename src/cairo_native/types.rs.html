@@ -1014,6 +1014,18 @@
 <a href="#1013" id="1013">1013</a>
 <a href="#1014" id="1014">1014</a>
 <a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -1418,6 +1430,7 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 
@@ -1502,6 +1515,7 @@
             CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>)) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 
@@ -1564,8 +1578,12 @@
                 .all(|id| registry.get_type(id).unwrap().is_zst(registry)),
 
             CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Const(info) =&gt; {
+                <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>info.inner_ty).unwrap();
+                type_info.is_zst(registry)
+            }
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 
@@ -1663,13 +1681,15 @@
             CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">64</span>),
             CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">128</span>),
             CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">248</span>),
-
             CoreTypeConcrete::BoundedInt(info) =&gt; get_integer_layout(
                 (info.range.lower.bits().max(info.range.upper.bits()) + <span class="number">1</span>)
                     .try_into()
                     .expect(<span class="string">"should always fit u32"</span>),
             ),
-            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Const(const_type) =&gt; {
+                registry.get_type(<span class="kw-2">&amp;</span>const_type.inner_ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?
+            </span>}
+            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
         .pad_to_align())
     }
@@ -1740,7 +1760,11 @@
             CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
 
             CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Const(info) =&gt; registry
+                .get_type(<span class="kw-2">&amp;</span>info.inner_ty)
+                .unwrap()
+                .is_memory_allocated(registry),
+            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 
