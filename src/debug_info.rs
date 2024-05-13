@@ -156,3 +156,87 @@ fn extract_location_from_stable_loc<'c>(
 
     Location::new(context, &path.to_string_lossy(), pos.line, pos.col)
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use cairo_lang_semantic::test_utils::setup_test_function;
+    use cairo_lang_sierra::program::ConcreteLibfuncLongId;
+    use cairo_lang_sierra::program::ConcreteTypeLongId;
+    use cairo_lang_sierra::program::FunctionSignature;
+    use cairo_lang_sierra::program::GenFunction;
+    use cairo_lang_sierra::program::LibfuncDeclaration;
+    use cairo_lang_sierra::program::StatementIdx;
+    use cairo_lang_sierra::program::TypeDeclaration;
+    use cairo_lang_sierra_generator::db::SierraGenGroup;
+
+    #[test]
+    fn test_extract_debug_locations() {
+        // Build the root database with corelib detection
+        let db = RootDatabase::builder().detect_corelib().build().unwrap();
+
+        // Setup a test function using the `setup_test_function` utility
+        let test_function = setup_test_function(&db, "fn foo(a: felt252) {}", "foo", "").unwrap();
+        let function_id = cairo_lang_lowering::ids::ConcreteFunctionWithBodyId::from_semantic(
+            &db,
+            test_function.concrete_function_id,
+        );
+        let _ = db.function_with_body_sierra(function_id);
+
+        // Define a dummy program for testing
+        let program = Program {
+            type_declarations: vec![TypeDeclaration {
+                id: "test_id_type_declarations".into(),
+                long_id: ConcreteTypeLongId {
+                    generic_id: "u128".into(),
+                    generic_args: vec![],
+                },
+                declared_type_info: None,
+            }],
+            libfunc_declarations: vec![LibfuncDeclaration {
+                id: "test_id_libfunc_declarations".into(),
+                long_id: ConcreteLibfuncLongId {
+                    generic_id: "u128_sqrt".into(),
+                    generic_args: vec![],
+                },
+            }],
+            statements: vec![],
+            funcs: vec![GenFunction {
+                id: FunctionId {
+                    id: 0,
+                    debug_name: Some("some_name".into()),
+                },
+                signature: FunctionSignature {
+                    ret_types: vec![],
+                    param_types: vec![],
+                },
+                params: vec![],
+                entry_point: StatementIdx(0),
+            }],
+        };
+
+        // Extract debug information from the program
+        let res = DebugInfo::extract(&db, &program).unwrap();
+
+        // Assertions to test the extracted debug information
+        assert!(res.type_declarations.len() == 1);
+        assert!(res
+            .type_declarations
+            .contains_key(&ConcreteTypeId::from_string("test_id_type_declarations")));
+
+        assert!(res.libfunc_declarations.len() == 1);
+        assert!(res
+            .libfunc_declarations
+            .contains_key(&ConcreteLibfuncId::from_string(
+                "test_id_libfunc_declarations"
+            )));
+
+        assert!(res.statements.is_empty());
+
+        assert!(res.funcs.len() == 1);
+        assert!(res.funcs.contains_key(&FunctionId {
+            id: 0,
+            debug_name: Some("some_name".into()),
+        }));
+    }
+}
