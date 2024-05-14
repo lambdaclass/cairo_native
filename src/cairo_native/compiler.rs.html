@@ -1143,7 +1143,7 @@
         metadata,
     )
     .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
-    <span class="kw">let </span><span class="kw-2">mut </span>ret_types = extract_types(
+    <span class="kw">let </span><span class="kw-2">mut </span>return_types = extract_types(
         context,
         module,
         <span class="kw-2">&amp;</span>function.signature.ret_types,
@@ -1170,9 +1170,9 @@
         }
     }
 
-    <span class="comment">// Extract memory-allocated return types from ret_types and insert them in arg_types as a
+    <span class="comment">// Extract memory-allocated return types from return_types and insert them in arg_types as a
     // pointer.
-    </span><span class="kw">let </span>return_types = function
+    </span><span class="kw">let </span>return_type_infos = function
         .signature
         .ret_types
         .iter()
@@ -1189,15 +1189,15 @@
     //   None        =&gt; Doesn't return anything.
     //   Some(false) =&gt; Has a complex return type.
     //   Some(true)  =&gt; Has a manual return type which is in `arg_types[0]`.
-    </span><span class="kw">let </span>has_return_ptr = <span class="kw">if </span>return_types.len() &gt; <span class="number">1 </span>{
+    </span><span class="kw">let </span>has_return_ptr = <span class="kw">if </span>return_type_infos.len() &gt; <span class="number">1 </span>{
         <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)
-    } <span class="kw">else if </span>return_types
+    } <span class="kw">else if </span>return_type_infos
         .first()
         .is_some_and(|(<span class="kw">_</span>, type_info)| type_info.is_memory_allocated(registry))
     {
-        <span class="macro">assert_eq!</span>(ret_types.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(return_types.len(), <span class="number">1</span>);
 
-        ret_types.remove(<span class="number">0</span>);
+        return_types.remove(<span class="number">0</span>);
         arg_types.insert(<span class="number">0</span>, llvm::r#type::opaque_pointer(context));
 
         <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)
@@ -1560,7 +1560,7 @@
 
                     <span class="comment">// Store the return value in the return pointer, if there's one.
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="bool-val">true</span>) = has_return_ptr {
-                        <span class="kw">let </span>(_ret_type_id, ret_type_info) = return_types[<span class="number">0</span>];
+                        <span class="kw">let </span>(_ret_type_id, ret_type_info) = return_type_infos[<span class="number">0</span>];
                         <span class="kw">let </span>ret_layout = ret_type_info.layout(registry)<span class="question-mark">?</span>;
 
                         <span class="kw">let </span>ptr = values.remove(<span class="number">0</span>);
@@ -1642,7 +1642,7 @@
     module.body().append_operation(func::func(
         context,
         StringAttribute::new(context, <span class="kw-2">&amp;</span>function_name),
-        TypeAttribute::new(FunctionType::new(context, <span class="kw-2">&amp;</span>arg_types, <span class="kw-2">&amp;</span>ret_types).into()),
+        TypeAttribute::new(FunctionType::new(context, <span class="kw-2">&amp;</span>arg_types, <span class="kw-2">&amp;</span>return_types).into()),
         region,
         <span class="kw-2">&amp;</span>[
             (
