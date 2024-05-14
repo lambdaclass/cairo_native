@@ -1165,7 +1165,7 @@ pub mod test {
         ) -> SyscallResult<(Felt, Vec<Felt>)> {
             Ok((
                 class_hash + contract_address_salt,
-                calldata.iter().map(|x| x + Felt::from(1)).collect(),
+                calldata.iter().map(|x| x + Felt::ONE).collect(),
             ))
         }
 
