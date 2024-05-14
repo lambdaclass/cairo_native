@@ -89,8 +89,9 @@ pub const fn casm_variant_to_sierra(idx: i64, num_variants: i64) -> i64 {
 
 pub fn get_run_result(r: &RunResultValue) -> Vec<String> {
     match r {
-        RunResultValue::Success(x) => x.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
-        RunResultValue::Panic(x) => x.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
+        RunResultValue::Success(x) | RunResultValue::Panic(x) => {
+            x.iter().map(ToString::to_string).collect()
+        }
     }
 }
 
@@ -128,7 +129,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
         program.clone(),
         Some(Default::default()),
         contracts_info,
-        false,
+        None,
     )
     .unwrap();
 
@@ -168,14 +169,13 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
         program.clone(),
         Some(Default::default()),
         contracts_info,
-        false,
+        None,
     )
     .unwrap();
 
     (module_name.to_string(), program, runner)
 }
 
-/// Runs the program using cairo-native JIT.
 pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
@@ -237,6 +237,22 @@ pub fn compare_inputless_program(program_path: &str) {
     let program = &program;
 
     let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_native = run_native_program(
+        program,
+        "main",
+        &[],
+        Some(DEFAULT_GAS as u128),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("main").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .expect("compare error with optlevel none");
+
     let result_native = run_native_program(
         program,
         "main",
@@ -487,6 +503,10 @@ pub fn compare_outputs(
                     Felt::from_bytes_le(&values[3].to_le_bytes()),
                 )
             }
+            CoreTypeConcrete::Bytes31(_) => todo!(),
+            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }

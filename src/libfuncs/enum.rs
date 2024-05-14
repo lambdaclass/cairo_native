@@ -12,21 +12,23 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        enm::{EnumConcreteLibfunc, EnumInitConcreteLibfunc},
+        enm::{EnumConcreteLibfunc, EnumFromBoundedIntConcreteLibfunc, EnumInitConcreteLibfunc},
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc,
     },
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::{
         arith, cf,
         llvm::{self, AllocaOptions, LoadStoreOptions},
+        ods,
     },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
-        Block, Location,
+        Block, Location, Value,
     },
     Context,
 };
@@ -52,7 +54,9 @@ pub fn build<'ctx, 'this>(
         EnumConcreteLibfunc::SnapshotMatch(info) => {
             build_snapshot_match(context, registry, entry, location, helper, metadata, info)
         }
-        EnumConcreteLibfunc::FromBoundedInt(_) => todo!(),
+        EnumConcreteLibfunc::FromBoundedInt(info) => {
+            build_from_bounded_int(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -66,8 +70,38 @@ pub fn build_init<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &EnumInitConcreteLibfunc,
 ) -> Result<()> {
-    let type_info = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    let payload_type_info = registry.get_type(&info.signature.param_signatures[0].ty)?;
+    let val = build_enum_value(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        entry.argument(0)?.into(),
+        &info.branch_signatures()[0].vars[0].ty,
+        &info.signature.param_signatures[0].ty,
+        info.index,
+    )?;
+    entry.append_operation(helper.br(0, &[val], location));
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn build_enum_value<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    payload_value: Value<'ctx, 'this>,
+    enum_type: &ConcreteTypeId,
+    variant_type: &ConcreteTypeId,
+    variant_index: usize,
+) -> Result<Value<'ctx, 'this>> {
+    let type_info = registry.get_type(enum_type)?;
+    let payload_type_info = registry.get_type(variant_type)?;
 
     let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
@@ -77,10 +111,8 @@ pub fn build_init<'ctx, 'this>(
         type_info.variants().unwrap(),
     )?;
 
-    match variant_tys.len() {
-        0 | 1 => {
-            entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
-        }
+    Ok(match variant_tys.len() {
+        0 | 1 => payload_value,
         _ => {
             let enum_ty = llvm::r#type::r#struct(
                 context,
@@ -89,7 +121,7 @@ pub fn build_init<'ctx, 'this>(
                     if payload_type_info.is_zst(registry) {
                         llvm::r#type::array(IntegerType::new(context, 8).into(), 0)
                     } else {
-                        variant_tys[info.index].0
+                        variant_tys[variant_index].0
                     },
                 ],
                 false,
@@ -98,7 +130,13 @@ pub fn build_init<'ctx, 'this>(
             let tag_val = entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(tag_ty, info.index as i64).into(),
+                    IntegerAttribute::new(
+                        tag_ty,
+                        variant_index
+                            .try_into()
+                            .expect("couldnt convert index to i64"),
+                    )
+                    .into(),
                     location,
                 ))
                 .result(0)?
@@ -126,7 +164,7 @@ pub fn build_init<'ctx, 'this>(
                         context,
                         val,
                         DenseI64ArrayAttribute::new(context, &[1]),
-                        entry.argument(0)?.into(),
+                        payload_value,
                         location,
                     ))
                     .result(0)?
@@ -155,13 +193,9 @@ pub fn build_init<'ctx, 'this>(
                                 IntegerType::new(context, 64).into(),
                                 layout.align() as i64,
                             )))
-                            .elem_type(Some(TypeAttribute::new(type_info.build(
-                                context,
-                                helper,
-                                registry,
-                                metadata,
-                                &info.branch_signatures()[0].vars[0].ty,
-                            )?))),
+                            .elem_type(Some(TypeAttribute::new(
+                                type_info.build(context, helper, registry, metadata, enum_type)?,
+                            ))),
                     ))
                     .result(0)?
                     .into();
@@ -181,20 +215,71 @@ pub fn build_init<'ctx, 'this>(
                     context,
                     location,
                     stack_ptr,
-                    type_info.build(
-                        context,
-                        helper,
-                        registry,
-                        metadata,
-                        &info.branch_signatures()[0].vars[0].ty,
-                    )?,
+                    type_info.build(context, helper, registry, metadata, enum_type)?,
                     Some(layout.align()),
                 )?;
             };
 
-            entry.append_operation(helper.br(0, &[val], location));
+            val
         }
-    }
+    })
+}
+
+/// Generate MLIR operations for the `enum_init` libfunc.
+pub fn build_from_bounded_int<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &EnumFromBoundedIntConcreteLibfunc,
+) -> Result<()> {
+    let inp_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+    let varaint_selector_type: IntegerType = inp_ty
+        .build(
+            context,
+            helper,
+            registry,
+            metadata,
+            &info.param_signatures()[0].ty,
+        )?
+        .try_into()?;
+    let enum_type = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
+    // we assume its never memory allocated since its always a enum with only a tag
+    assert!(!enum_type.is_memory_allocated(registry));
+
+    let enum_ty = enum_type.build(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
+
+    let tag_bits = info.n_variants.next_power_of_two().trailing_zeros();
+    let tag_type = IntegerType::new(context, tag_bits);
+
+    let mut tag_value: Value = entry.argument(0)?.into();
+
+    match tag_type.width().cmp(&varaint_selector_type.width()) {
+        std::cmp::Ordering::Less => {
+            tag_value = entry.append_op_result(
+                ods::llvm::trunc(context, tag_type.into(), tag_value, location).into(),
+            )?;
+        }
+        std::cmp::Ordering::Equal => {}
+        std::cmp::Ordering::Greater => {
+            tag_value = entry.append_op_result(
+                ods::llvm::zext(context, tag_type.into(), tag_value, location).into(),
+            )?;
+        }
+    };
+
+    let value = entry.append_op_result(llvm::undef(enum_ty, location))?;
+    let value = entry.insert_value(context, location, value, tag_value, 0)?;
+
+    entry.append_operation(helper.br(0, &[value], location));
 
     Ok(())
 }

@@ -12,10 +12,16 @@ jobs:
     name: clippy
     runs-on: ubuntu-latest
     env:
+<<<<<<< HEAD
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+=======
+      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
+      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
+      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+>>>>>>> origin/main
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.76
@@ -80,10 +86,16 @@ jobs:
   udeps:
     runs-on: ubuntu-latest
     env:
+<<<<<<< HEAD
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+=======
+      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
+      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
+      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+>>>>>>> origin/main
       RUSTUP_TOOLCHAIN: nightly-2024-02-01  # udeps needs nightly
     steps:
       - uses: actions/checkout@v4
@@ -109,10 +121,16 @@ jobs:
     name: test (linux, amd64)
     runs-on: ubuntu-latest
     env:
+<<<<<<< HEAD
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+=======
+      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
+      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
+      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+>>>>>>> origin/main
       RUST_LOG: debug
     steps:
       - uses: actions/checkout@v4
@@ -157,10 +175,9 @@ jobs:
         run: make test-cairo
   test_macos:
     name: Test (macOS, Apple silicon)
-    runs-on: [self-hosted, macOS]
+    runs-on: macos-14
     env:
       CARGO_TERM_COLOR: always
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       LIBRARY_PATH: /opt/homebrew/lib
       MLIR_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
       LLVM_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
@@ -169,13 +186,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.76
+        uses: dtolnay/rust-toolchain@1.76.0
         with:
           components: clippy
+      - uses: Homebrew/actions/setup-homebrew@master
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.5.4"
+          scarb-version: "2.6.3"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -232,7 +250,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.5.4"
+          scarb-version: "2.6.3"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.

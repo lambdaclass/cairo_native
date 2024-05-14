@@ -279,6 +279,37 @@ mod test {
     }
 
     #[test]
+    fn box_unbox_stack_allocated_enum_c2() {
+        let program = load_cairo! {
+            use core::box::BoxTrait;
+
+            enum MyEnum {
+                A: (),
+                B: (),
+            }
+
+            fn run_test() -> MyEnum {
+                let x = BoxTrait::new(MyEnum::B);
+                x.unbox()
+            }
+        };
+
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            JitValue::Enum {
+                tag: 1,
+                value: Box::new(JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None,
+                }),
+                debug_name: None,
+            },
+        );
+    }
+
+    #[test]
     fn box_unbox_stack_allocated_enum() {
         let program = load_cairo! {
             use core::box::BoxTrait;

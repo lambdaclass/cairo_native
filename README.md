@@ -543,7 +543,7 @@ fn main() {
         .execute_contract(
             fn_id,
             // The calldata
-            &[JitValue::Felt252(Felt::from(1))],
+            &[JitValue::Felt252(Felt::ONE)],
             u64::MAX.into(),
         )
         .expect("failed to execute the given contract");
@@ -601,7 +601,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
         Ok((
             class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + &Felt::from(1)).collect(),
+            calldata.iter().map(|x| x + &Felt::ONE).collect(),
         ))
     }
 
