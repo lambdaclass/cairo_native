@@ -649,6 +649,7 @@ dependencies = [
  "once_cell",
  "salsa",
  "smol_str",
+ "toml",
 ]
 
 [[package]]
@@ -873,9 +874,9 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-test-utils"
-version = "2.5.4"
+version = "2.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77ab221aa0119b6e613992127687a1352a896d30a2e55a9295c52eb9598bcc78"
+checksum = "aa2891a07af4e55a029be8ad2ec88558fe6e78d6afd67f8c1308e99676586d3a"
 dependencies = [
  "cairo-lang-utils",
  "colored",
