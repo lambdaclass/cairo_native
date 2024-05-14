@@ -76,3 +76,95 @@ impl Debug for NativeModule<'_> {
         f.write_str(&self.module.as_operation().to_string())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::context::NativeContext;
+    use cairo_lang_sierra::ProgramParser;
+    use melior::ir::Location;
+    use starknet_types_core::felt::Felt;
+
+    #[test]
+    fn test_insert_metadata() {
+        // Create a new context for MLIR operations
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+
+        // Create an unknown location in the context
+        let location = Location::unknown(context);
+        // Create a new MLIR module with the unknown location
+        let module = Module::new(location);
+
+        // Parse a simple program to create a Program instance
+        let program = ProgramParser::new()
+            .parse("type felt252 = felt252;")
+            .unwrap();
+
+        // Create a ProgramRegistry based on the parsed program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Create a new NativeModule instance with the module, registry, and MetadataStorage
+        let mut module = NativeModule::new(module, registry, MetadataStorage::new());
+
+        // Insert metadata of type u32 into the module
+        module.insert_metadata(42u32);
+        // Assert that the inserted metadata of type u32 is retrieved correctly
+        assert_eq!(module.get_metadata::<u32>(), Some(&42u32));
+
+        // Insert metadata of type Felt into the module
+        module.insert_metadata(Felt::from(43));
+        // Assert that the inserted metadata of type Felt is retrieved correctly
+        assert_eq!(module.get_metadata::<Felt>(), Some(&Felt::from(43)));
+
+        // Insert metadata of type u64 into the module
+        module.insert_metadata(44u64);
+        // Assert that the inserted metadata of type u64 is retrieved correctly
+        assert_eq!(module.metadata().get::<u64>(), Some(&44u64));
+    }
+
+    #[test]
+    fn test_remove_metadata() {
+        // Create a new context for MLIR operations
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+
+        // Create an unknown location in the context
+        let location = Location::unknown(context);
+        // Create a new MLIR module with the unknown location
+        let module = Module::new(location);
+
+        // Parse a simple program to create a Program instance
+        let program = ProgramParser::new()
+            .parse("type felt252 = felt252;")
+            .unwrap();
+
+        // Create a ProgramRegistry based on the parsed program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Create a new NativeModule instance with the module, registry, and MetadataStorage
+        let mut module = NativeModule::new(module, registry, MetadataStorage::new());
+
+        // Insert metadata of type u32 into the module
+        module.insert_metadata(42u32);
+        // Assert that the inserted metadata of type u32 is retrieved correctly
+        assert_eq!(module.get_metadata::<u32>(), Some(&42u32));
+
+        // Insert metadata of type Felt into the module
+        module.insert_metadata(Felt::from(43));
+        // Assert that the inserted metadata of type Felt is retrieved correctly
+        assert_eq!(module.get_metadata::<Felt>(), Some(&Felt::from(43)));
+
+        // Remove metadata of type u32 from the module
+        module.remove_metadata::<u32>();
+        // Assert that the metadata of type u32 is removed from the module
+        assert!(module.get_metadata::<u32>().is_none());
+        // Assert that the metadata of type Felt is still present in the module
+        assert_eq!(module.get_metadata::<Felt>(), Some(&Felt::from(43)));
+
+        // Insert metadata of type u32 into the module again
+        module.insert_metadata(44u32);
+        // Assert that the re-inserted metadata of type u32 is retrieved correctly
+        assert_eq!(module.get_metadata::<u32>(), Some(&44u32));
+    }
+}
