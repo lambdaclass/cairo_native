@@ -81,6 +81,34 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
     module::NativeModule, utils::SHARED_LIBRARY_EXT, OptLevel,
@@ -161,6 +189,34 @@
 {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         f.write_str(<span class="string">"AotProgramCache"</span>)
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use crate</span>::{utils::test::load_cairo, values::JitValue};
+    <span class="kw">use </span>starknet_types_core::felt::Felt;
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_aot_compile_and_insert() {
+        <span class="kw">let </span>native_context = NativeContext::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>cache = AotProgramCache::new(<span class="kw-2">&amp;</span>native_context);
+
+        <span class="kw">let </span>(<span class="kw">_</span>, program) = <span class="macro">load_cairo! </span>{
+            <span class="kw">fn </span>run_test() -&gt; felt252 {
+                <span class="number">42
+            </span>}
+        };
+
+        <span class="kw">let </span>function_id = <span class="kw-2">&amp;</span>program.funcs.first().expect(<span class="string">"should have a function"</span>).id;
+        <span class="kw">let </span>executor = cache.compile_and_insert((), <span class="kw-2">&amp;</span>program, OptLevel::default());
+        <span class="kw">let </span>res = executor
+            .invoke_dynamic(function_id, <span class="kw-2">&amp;</span>[], <span class="prelude-val">Some</span>(u128::MAX))
+            .expect(<span class="string">"should run"</span>);
+
+        <span class="comment">// After compiling and inserting the program, we should be able to run it.
+        </span><span class="macro">assert_eq!</span>(res.return_value, JitValue::Felt252(Felt::from(<span class="number">42</span>)));
     }
 }
 </code></pre></div></section></main></body></html>

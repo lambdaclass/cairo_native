@@ -1335,6 +1335,26 @@
 <a href="#1334" id="1334">1334</a>
 <a href="#1335" id="1335">1335</a>
 <a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -2001,6 +2021,7 @@
         program::Program,
         program::{FunctionSignature, GenFunction, StatementIdx},
     };
+    <span class="kw">use </span>cairo_lang_starknet::starknet_plugin_suite;
     <span class="kw">use </span>pretty_assertions_sorted::assert_eq;
     <span class="kw">use </span>starknet_types_core::felt::Felt;
     <span class="kw">use </span>std::{env::var, fmt::Formatter, fs, path::Path};
@@ -2010,7 +2031,13 @@
             <span class="macro-nonterminal">$crate::utils::test::load_cairo_str</span>(<span class="macro">stringify!</span>($(<span class="macro-nonterminal">$program</span>)+))
         };
     }
+    <span class="macro">macro_rules! </span>load_starknet {
+        ( $( <span class="macro-nonterminal">$program</span>:tt )+ ) =&gt; {
+            <span class="macro-nonterminal">$crate::utils::test::load_starknet_str</span>(<span class="macro">stringify!</span>($(<span class="macro-nonterminal">$program</span>)+))
+        };
+    }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>load_cairo;
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>load_starknet;
 
     <span class="comment">// Helper macros for faster testing.
     </span><span class="macro">macro_rules! </span>jit_struct {
@@ -2055,7 +2082,21 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>jit_panic;
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>jit_struct;
 
-    <span class="kw">pub fn </span>load_cairo_str(program_str: <span class="kw-2">&amp;</span>str) -&gt; (String, Program) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>load_cairo_str(program_str: <span class="kw-2">&amp;</span>str) -&gt; (String, Program) {
+        compile_program(program_str, RootDatabase::default())
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>load_starknet_str(program_str: <span class="kw-2">&amp;</span>str) -&gt; (String, Program) {
+        compile_program(
+            program_str,
+            RootDatabase::builder()
+                .with_plugin_suite(starknet_plugin_suite())
+                .build()
+                .unwrap(),
+        )
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compile_program(program_str: <span class="kw-2">&amp;</span>str, <span class="kw-2">mut </span>db: RootDatabase) -&gt; (String, Program) {
         <span class="kw">let </span><span class="kw-2">mut </span>program_file = tempfile::Builder::new()
             .prefix(<span class="string">"test_"</span>)
             .suffix(<span class="string">".cairo"</span>)
@@ -2063,7 +2104,6 @@
             .unwrap();
         fs::write(<span class="kw-2">&amp;mut </span>program_file, program_str).unwrap();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>db = RootDatabase::default();
         init_dev_corelib(
             <span class="kw-2">&amp;mut </span>db,
             Path::new(<span class="kw-2">&amp;</span>var(<span class="string">"CARGO_MANIFEST_DIR"</span>).unwrap()).join(<span class="string">"corelib/src"</span>),
@@ -2424,8 +2464,8 @@
         <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">"{:?}"</span>, debug_wrapper), <span class="string">"Name: William, Age: 28"</span>);
     }
 
-    <span class="attr">#[derive(Debug)]
-    </span><span class="kw">struct </span>TestSyscallHandler;
+    <span class="attr">#[derive(Debug, Clone)]
+    </span><span class="kw">pub struct </span>TestSyscallHandler;
 
     <span class="kw">impl </span>StarknetSyscallHandler <span class="kw">for </span>TestSyscallHandler {
         <span class="kw">fn </span>get_block_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _block_number: u64, _gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;Felt&gt; {
