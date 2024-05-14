@@ -258,7 +258,6 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
                     vec![(*tag == 1).into()]
                 } else {
                     let mut felts = vec![(*tag).into()];
-                    // felts.push((*tag).into());
                     felts.extend(jitvalue_to_felt(value));
                     felts
                 }
