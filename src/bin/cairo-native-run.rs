@@ -200,9 +200,11 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
             value,
             debug_name,
         } => {
-            let debug_name = debug_name.as_ref().expect("missing debug name");
-
-            if debug_name.starts_with("core::panics::PanicResult::") {
+            if debug_name
+                .as_ref()
+                .expect("missing debug name")
+                .starts_with("core::panics::PanicResult::")
+            {
                 is_success = *tag == 0;
 
                 if !is_success {
@@ -287,6 +289,7 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cairo_felt::Felt252;
     use cairo_lang_sierra::ProgramParser;
 
     #[test]
@@ -331,6 +334,128 @@ mod tests {
 
         // Assert that an error is returned when trying to find a function in an empty program
         assert!(find_function(&ProgramParser::new().parse("").unwrap(), "Func2").is_err());
+    }
+
+    #[test]
+    fn test_result_to_runresult_enum_nonpanic() {
+        // Tests the conversion of a non-panic enum result to a `RunResultValue::Success`.
+        assert_eq!(
+            result_to_runresult(&ExecutionResult {
+                remaining_gas: None,
+                return_value: JitValue::Enum {
+                    tag: 34,
+                    value: JitValue::Array(vec![
+                        JitValue::Felt252(42.into()),
+                        JitValue::Uint8(100),
+                        JitValue::Uint128(1000),
+                    ])
+                    .into(),
+                    debug_name: Some("debug_name".into()),
+                },
+                builtin_stats: Default::default(),
+            })
+            .unwrap(),
+            RunResultValue::Success(vec![
+                Felt252::from(34),
+                Felt252::from(42),
+                Felt252::from(100),
+                Felt252::from(1000)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_result_to_runresult_success() {
+        // Tests the conversion of a success enum result to a `RunResultValue::Success`.
+        assert_eq!(
+            result_to_runresult(&ExecutionResult {
+                remaining_gas: None,
+                return_value: JitValue::Enum {
+                    tag: 0,
+                    value: JitValue::Uint64(24).into(),
+                    debug_name: Some("core::panics::PanicResult::Test".into()),
+                },
+                builtin_stats: Default::default(),
+            })
+            .unwrap(),
+            RunResultValue::Success(vec![Felt252::from(24)])
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "unsuported return value in cairo-native")]
+    fn test_result_to_runresult_panic() {
+        // Tests the conversion with unsuported return value.
+        let _ = result_to_runresult(&ExecutionResult {
+            remaining_gas: None,
+            return_value: JitValue::Enum {
+                tag: 10,
+                value: JitValue::Uint64(24).into(),
+                debug_name: Some("core::panics::PanicResult::Test".into()),
+            },
+            builtin_stats: Default::default(),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "missing debug name")]
+    fn test_result_to_runresult_missing_debug_name() {
+        // Tests the conversion with no debug name.
+        let _ = result_to_runresult(&ExecutionResult {
+            remaining_gas: None,
+            return_value: JitValue::Enum {
+                tag: 10,
+                value: JitValue::Uint64(24).into(),
+                debug_name: None,
+            },
+            builtin_stats: Default::default(),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn test_result_to_runresult_return() {
+        // Tests the conversion of a panic enum result with non-zero tag to a `RunResultValue::Panic`.
+        assert_eq!(
+            result_to_runresult(&ExecutionResult {
+                remaining_gas: None,
+                return_value: JitValue::Enum {
+                    tag: 10,
+                    value: JitValue::Struct {
+                        fields: vec![
+                            JitValue::Felt252(42.into()),
+                            JitValue::Uint8(100),
+                            JitValue::Uint128(1000),
+                        ],
+                        debug_name: Some("debug_name".into()),
+                    }
+                    .into(),
+                    debug_name: Some("core::panics::PanicResult::Test".into()),
+                },
+                builtin_stats: Default::default(),
+            })
+            .unwrap(),
+            RunResultValue::Panic(vec![
+                Felt252::from(42),
+                Felt252::from(100),
+                Felt252::from(1000)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_result_to_runresult_non_enum() {
+        // Tests the conversion of a non-enum result to a `RunResultValue::Success`.
+        assert_eq!(
+            result_to_runresult(&ExecutionResult {
+                remaining_gas: None,
+                return_value: JitValue::Uint8(10),
+                builtin_stats: Default::default(),
+            })
+            .unwrap(),
+            RunResultValue::Success(vec![Felt252::from(10)])
+        );
     }
 
     #[test]
