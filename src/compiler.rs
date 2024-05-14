@@ -186,7 +186,7 @@ fn compile_func(
         }
     }
 
-    // Extract memory-allocated return types from ret_types and insert them in arg_types as a
+    // Extract memory-allocated return types from return_types and insert them in arg_types as a
     // pointer.
     let return_type_infos = function
         .signature
