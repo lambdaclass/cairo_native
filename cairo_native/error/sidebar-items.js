@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Error"],"fn":["make_missing_parameter","make_unexpected_value_error"],"type":["Result"]};
+window.SIDEBAR_ITEMS = {"enum":["Error"],"type":["Result"]};
