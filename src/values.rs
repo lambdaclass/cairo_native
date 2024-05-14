@@ -1245,7 +1245,7 @@ mod test {
         let program = ProgramParser::new()
             .parse(
                 "type u8 = u8;
-                type MyEnum = Enum<ut@MyEnum, u8, u8>;",
+                type MyEnum = Enum<ut@MyEnum, u8>;",
             )
             .unwrap();
 
