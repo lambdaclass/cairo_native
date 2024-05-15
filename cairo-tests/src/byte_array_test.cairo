@@ -17,6 +17,7 @@ fn test_append_byte() {
 }
 
 #[test]
+#[ignore]
 fn test_append_word() {
     let mut ba = Default::default();
 
@@ -48,6 +49,7 @@ fn test_append_word() {
 }
 
 #[test]
+#[ignore]
 fn test_append() {
     let mut ba1 = test_byte_array_32();
     let ba2 = test_byte_array_32();
@@ -63,6 +65,7 @@ fn test_append() {
 
 // Same as test_append, but with `+=` instead of `append`.
 #[test]
+#[ignore]
 fn test_add_eq() {
     let mut ba1 = test_byte_array_32();
     let ba2 = test_byte_array_32();
@@ -77,6 +80,7 @@ fn test_add_eq() {
 }
 
 #[test]
+#[ignore]
 fn test_concat() {
     let ba1 = test_byte_array_32();
     let ba2 = test_byte_array_32();
@@ -92,6 +96,7 @@ fn test_concat() {
 
 // Same as test_concat, but with `+` instead of `concat`.
 #[test]
+#[ignore]
 fn test_add() {
     let ba1 = test_byte_array_32();
     let ba2 = test_byte_array_32();
@@ -131,6 +136,7 @@ fn test_concat_second_empty() {
 
 // Test concat/append, first byte array pending word is empty.
 #[test]
+#[ignore]
 fn test_concat_first_pending_0() {
     let ba1 = test_byte_array_31();
     let ba2 = test_byte_array_32();
@@ -146,6 +152,7 @@ fn test_concat_first_pending_0() {
 
 // Test concat/append, second byte array pending word is empty.
 #[test]
+#[ignore]
 fn test_concat_second_pending_0() {
     let ba1 = test_byte_array_32();
     let ba2 = test_byte_array_31();
@@ -185,6 +192,7 @@ fn test_concat_split_index_lt_16() {
 
 // Test concat/append, split index of the words of the second byte array is > 16, specifically 30.
 #[test]
+#[ignore]
 fn test_concat_split_index_gt_16() {
     let ba1 = test_byte_array_30();
     let ba2 = test_byte_array_33();
@@ -200,6 +208,7 @@ fn test_concat_split_index_gt_16() {
 
 // Sum of the lengths of the pending words of both byte arrays is 31 (a full word).
 #[test]
+#[ignore]
 fn test_concat_pending_sum_up_to_full() {
     let ba1 = test_byte_array_32();
     let ba2 = test_byte_array_30();

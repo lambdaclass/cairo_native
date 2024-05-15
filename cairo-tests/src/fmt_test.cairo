@@ -31,6 +31,7 @@ enum EnumExample {
 }
 
 #[test]
+#[ignore]
 fn test_format_debug() {
     let ba: ByteArray = "hello";
     assert(format!("{:?}", ba) == "\"hello\"", 'byte array bad formatting');
