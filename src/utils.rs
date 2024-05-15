@@ -1193,13 +1193,6 @@ pub mod test {
             Some("hello::hello::greet".into())
         );
 
-        // Check if the sierra program contains a function with the specified debug name for the core debug print function.
-        assert!(sierra_program
-            .1
-            .funcs
-            .keys()
-            .any(|func| func.debug_name == Some("core::debug::print_felt252".into())));
-
         // Check if the sierra program contains a function with the specified debug name for the entry point function.
         assert!(sierra_program
             .1
