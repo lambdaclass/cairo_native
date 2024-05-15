@@ -943,14 +943,14 @@ mod test {
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
-            &[Felt::from(0).into()],
+            &[Felt::ZERO.into()],
             jit_enum!(0, 0u128.into()),
         );
 
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
-            &[Felt::from(1).into()],
+            &[Felt::ONE.into()],
             jit_enum!(0, 1u128.into()),
         );
 
@@ -1097,8 +1097,8 @@ mod test {
     fn u128_to_felt252() {
         let program = &U128_TO_FELT252;
 
-        run_program_assert_output(program, "run_test", &[0u128.into()], Felt::from(0).into());
-        run_program_assert_output(program, "run_test", &[1u128.into()], Felt::from(1).into());
+        run_program_assert_output(program, "run_test", &[0u128.into()], Felt::ZERO.into());
+        run_program_assert_output(program, "run_test", &[1u128.into()], Felt::ONE.into());
         run_program_assert_output(
             program,
             "run_test",
