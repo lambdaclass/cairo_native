@@ -15,7 +15,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        function_call::FunctionCallConcreteLibfunc,
+        function_call::SignatureAndFunctionConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -38,7 +38,7 @@ pub fn build<'ctx, 'this>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: &FunctionCallConcreteLibfunc,
+    info: &SignatureAndFunctionConcreteLibfunc,
 ) -> Result<()> {
     let mut tailrec_meta = metadata.remove::<TailRecursionMeta>();
 

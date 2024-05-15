@@ -54,7 +54,7 @@ fn emit_event() -> SyscallResult<()> {
 }
 
 fn send_message_to_l1() -> SyscallResult<()> {
-    send_message_to_l1_syscall(0, array![].span())
+    send_message_to_l1_syscall(3, array![2].span())
 }
 
 fn keccak() -> SyscallResult<u256> {

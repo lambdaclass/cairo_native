@@ -35,37 +35,38 @@ with-serde = ["dep:serde"]
 
 [dependencies]
 bumpalo = "3.14"
-cairo-lang-compiler = "2.5.4"
-cairo-lang-defs = "2.5.4"
-cairo-lang-diagnostics = "2.5.4"
-cairo-lang-filesystem = "2.5.4"
-cairo-lang-lowering = "2.5.4"
-cairo-lang-semantic = "2.5.4"
-cairo-lang-sierra = "2.5.4"
-cairo-lang-sierra-generator = "2.5.4"
+cairo-lang-compiler = "2.6.3"
+cairo-lang-defs = "2.6.3"
+cairo-lang-diagnostics = "2.6.3"
+cairo-lang-filesystem = "2.6.3"
+cairo-lang-lowering = "2.6.3"
+cairo-lang-semantic = "2.6.3"
+cairo-lang-sierra = "2.6.3"
+cairo-lang-sierra-generator = "2.6.3"
 educe = "0.5.11"
 id-arena = "2.2"
 itertools = "0.12"
 lazy_static = "1.4"
 libc = "0.2.153"
 llvm-sys = "170.0.0"
-melior = { version = "0.17.0", features = ["ods-dialects"] }
-mlir-sys = "0.2.1"
+melior = { version = "0.17.1", features = ["ods-dialects"] }
+mlir-sys = "=0.2.1" # 0.2.2 is llvm 18
 num-bigint = "0.4.4"
 num-traits = "0.2"
-starknet-types-core = { version = "0.1.0", default-features = false, features = [
+starknet-types-core = { version = "0.1.1", default-features = false, features = [
   "serde",
 ] }
 tempfile = "3.6"
-thiserror = "1.0.58"
+thiserror = "1.0.59"
 tracing = "0.1"
 
 
 # CLI dependencies
-cairo-lang-sierra-ap-change = "2.5.4"
-cairo-lang-sierra-gas = "2.5.4"
-cairo-lang-starknet = "2.5.4"
-cairo-lang-utils = "2.5.4"
+cairo-lang-sierra-ap-change = "2.6.3"
+cairo-lang-sierra-gas = "2.6.3"
+cairo-lang-starknet = "2.6.3"
+cairo-lang-utils = "2.6.3"
+cairo-lang-starknet-classes = "2.6.3"
 cairo-native-runtime = { version = "0.1.0", path = "runtime", optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
 libloading = "0.8.1"
@@ -74,8 +75,8 @@ tracing-subscriber = { version = "0.3", features = [
 ], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 anyhow = { version = "1.0", optional = true }
-cairo-lang-test-plugin = { version = "2.5.4", optional = true}
-cairo-lang-runner = { version = "2.5.4", optional = true}
+cairo-lang-test-plugin = { version = "2.6.3", optional = true}
+cairo-lang-runner = { version = "2.6.3", optional = true}
 colored = { version = "2.1.0", optional = true }
 # needed to interface with cairo-lang-*
 cairo-felt = { version = "0.9.1", optional = true }
@@ -86,17 +87,19 @@ sec1 = { version = "0.7.3", optional = true }
 
 [dev-dependencies]
 cairo-felt = "0.9.1"
-cairo-lang-runner = "2.5.4"
+cairo-lang-runner = "2.6.3"
 criterion = { version = "0.5.1", features = ["html_reports"] }
-lambdaworks-math = "0.6"
+lambdaworks-math = "0.7"
 pretty_assertions_sorted = "1.2.3"
 proptest = "1.4"
+rstest = "0.19.0"
 test-case = "3.3"
 walkdir = "2"
 serde_json = { version = "1.0" }
+cairo-lang-semantic = { version = "2.5.4", features = ["testing"] }
 
 [build-dependencies]
-cc = "1.0.92"
+cc = "1.0.95"
 
 [profile.optimized-dev]
 inherits = "dev"

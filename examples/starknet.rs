@@ -1,5 +1,5 @@
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_starknet::contract_class::compile_path;
+use cairo_lang_starknet::compile::compile_path;
 use cairo_native::{
     context::NativeContext,
     executor::JitNativeExecutor,
@@ -95,7 +95,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
         Ok((
             class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + Felt::from(1)).collect(),
+            calldata.iter().map(|x| x + Felt::ONE).collect(),
         ))
     }
 
@@ -309,7 +309,7 @@ fn main() {
     );
 
     let result = native_executor
-        .invoke_contract_dynamic(fn_id, &[Felt::from(1)], Some(u128::MAX), SyscallHandler)
+        .invoke_contract_dynamic(fn_id, &[Felt::ONE], Some(u128::MAX), SyscallHandler)
         .expect("failed to execute the given contract");
 
     println!();
