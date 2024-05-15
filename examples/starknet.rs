@@ -14,7 +14,7 @@ use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Debug)]
-struct SyscallHandler;
+struct SyscallHandler {}
 
 impl StarknetSyscallHandler for SyscallHandler {
     fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {

@@ -743,6 +743,20 @@ pub(crate) mod handler {
             gas: &mut u128,
             p: &Secp256r1Point,
         ),
+        // testing syscalls
+        pop_log: extern "C" fn(),
+        set_account_contract_address: extern "C" fn(contract_address: Felt),
+        set_block_number: extern "C" fn(block_number: u64),
+        set_block_timestamp: extern "C" fn(block_timestamp: u64),
+        set_caller_address: extern "C" fn(address: Felt),
+        set_chain_id: extern "C" fn(chain_id: Felt),
+        set_contract_address: extern "C" fn(address: Felt),
+        set_max_fee: extern "C" fn(max_fee: u128),
+        set_nonce: extern "C" fn(nonce: Felt),
+        set_sequencer_address: extern "C" fn(address: Felt),
+        set_signature: extern "C" fn(signature: &[Felt]),
+        set_transaction_hash: extern "C" fn(transaction_hash: Felt),
+        set_version: extern "C" fn(version: Felt),
     }
 
     impl<'a, T> StarknetSyscallHandlerCallbacks<'a, T>
@@ -807,6 +821,19 @@ pub(crate) mod handler {
                 secp256r1_mul: Self::wrap_secp256r1_mul,
                 secp256r1_get_point_from_x: Self::wrap_secp256r1_get_point_from_x,
                 secp256r1_get_xy: Self::wrap_secp256r1_get_xy,
+                pop_log: todo!(),
+                set_account_contract_address: todo!(),
+                set_block_number: todo!(),
+                set_block_timestamp: todo!(),
+                set_caller_address: todo!(),
+                set_chain_id: todo!(),
+                set_contract_address: todo!(),
+                set_max_fee: todo!(),
+                set_nonce: todo!(),
+                set_sequencer_address: todo!(),
+                set_signature: todo!(),
+                set_transaction_hash: todo!(),
+                set_version: todo!(),
             }
         }
 
@@ -866,6 +893,58 @@ pub(crate) mod handler {
                 },
                 Err(e) => Self::wrap_error(&e),
             };
+        }
+
+        extern "C" fn wrap_set_version() {
+            todo!()
+        }
+
+        extern "C" fn wrap_pop_log() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_account_contract_address() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_block_number() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_block_timestamp() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_caller_address() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_chain_id() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_contract_address() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_max_fee() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_nonce() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_sequencer_address() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_signature() {
+            todo!()
+        }
+
+        extern "C" fn wrap_set_transaction_hash() {
+            todo!()
         }
 
         extern "C" fn wrap_get_execution_info(
