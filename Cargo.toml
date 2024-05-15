@@ -96,6 +96,7 @@ test-case = "3.3"
 walkdir = "2"
 serde_json = { version = "1.0" }
 cairo-lang-semantic = { version = "2.5.4", features = ["testing"] }
+salsa = "0.16.1"
 
 [build-dependencies]
 cc = "1.0.95"
