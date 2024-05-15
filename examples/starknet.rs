@@ -13,8 +13,26 @@ use starknet_types_core::felt::Felt;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
+struct TestingState {
+    sequencer_address: Felt,
+    block_number: Felt,
+    block_timestamp: Felt,
+    caller_address: Felt,
+    contract_address: Felt,
+    version: Felt,
+    account_contract_address: Felt,
+    max_fee: Felt,
+    transaction_hash: Felt,
+    chain_id: Felt,
+    nonce: Felt,
+    signature: Vec<Felt>,
+    logs: Vec<(Vec<Felt>, Vec<Felt>)>,
+}
+
 #[derive(Debug)]
-struct SyscallHandler {}
+struct SyscallHandler {
+    testing_state: TestingState,
+}
 
 impl StarknetSyscallHandler for SyscallHandler {
     fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
