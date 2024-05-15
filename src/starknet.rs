@@ -744,19 +744,80 @@ pub(crate) mod handler {
             p: &Secp256r1Point,
         ),
         // testing syscalls
+        // TODO: Add proper types to pop_log
         pop_log: extern "C" fn(),
-        set_account_contract_address: extern "C" fn(contract_address: Felt),
-        set_block_number: extern "C" fn(block_number: u64),
-        set_block_timestamp: extern "C" fn(block_timestamp: u64),
-        set_caller_address: extern "C" fn(address: Felt),
-        set_chain_id: extern "C" fn(chain_id: Felt),
-        set_contract_address: extern "C" fn(address: Felt),
-        set_max_fee: extern "C" fn(max_fee: u128),
-        set_nonce: extern "C" fn(nonce: Felt),
-        set_sequencer_address: extern "C" fn(address: Felt),
-        set_signature: extern "C" fn(signature: &[Felt]),
-        set_transaction_hash: extern "C" fn(transaction_hash: Felt),
-        set_version: extern "C" fn(version: Felt),
+        set_account_contract_address: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            contract_address: Felt,
+        ),
+        set_block_number: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            block_number: u64,
+        ),
+        set_block_timestamp: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            block_timestamp: u64,
+        ),
+        set_caller_address: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            address: Felt,
+        ),
+        set_chain_id: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            chain_id: Felt,
+        ),
+        set_contract_address: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            address: Felt,
+        ),
+        set_max_fee: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            max_fee: u128,
+        ),
+        set_nonce: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            nonce: Felt,
+        ),
+        set_sequencer_address: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            address: Felt,
+        ),
+        set_signature: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            signature: &[Felt],
+        ),
+        set_transaction_hash: extern "C" fn(
+            result_ptr: SyscallResult<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            transaction_hash: Felt,
+        ),
+        set_version: extern "C" fn(
+            result_ptr: SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            version: Felt,
+        ),
     }
 
     impl<'a, T> StarknetSyscallHandlerCallbacks<'a, T>
@@ -895,7 +956,11 @@ pub(crate) mod handler {
             };
         }
 
-        extern "C" fn wrap_set_version() {
+        extern "C" fn wrap_set_version(
+            result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
+            ptr: &mut T,
+            gas: &mut u128,
+        ) {
             todo!()
         }
 
