@@ -92,6 +92,7 @@ criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.7"
 pretty_assertions_sorted = "1.2.3"
 proptest = "1.4"
+rstest = "0.19.0"
 test-case = "3.3"
 walkdir = "2"
 serde_json = { version = "1.0" }
