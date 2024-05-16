@@ -12,16 +12,9 @@ jobs:
     name: clippy
     runs-on: ubuntu-latest
     env:
-<<<<<<< HEAD
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-=======
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
->>>>>>> origin/main
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.76
@@ -86,16 +79,9 @@ jobs:
   udeps:
     runs-on: ubuntu-latest
     env:
-<<<<<<< HEAD
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-=======
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
->>>>>>> origin/main
       RUSTUP_TOOLCHAIN: nightly-2024-02-01  # udeps needs nightly
     steps:
       - uses: actions/checkout@v4
@@ -121,16 +107,9 @@ jobs:
     name: test (linux, amd64)
     runs-on: ubuntu-latest
     env:
-<<<<<<< HEAD
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-=======
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
->>>>>>> origin/main
       RUST_LOG: debug
     steps:
       - uses: actions/checkout@v4
