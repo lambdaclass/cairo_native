@@ -145,7 +145,4 @@ runtime-ci:
 	cargo b --profile ci --all-features -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .
 
 fuzz: check-llvm needs-cairo2 build-alexandria runtime-ci
-    $(shell \
-        for target in $$(cargo +nightly fuzz list); do \
-            cargo +nightly fuzz run $$target; \
-        done)
+	cargo +nightly fuzz run fuzz-sierra
