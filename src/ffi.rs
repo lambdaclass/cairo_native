@@ -1,3 +1,4 @@
+use crate::error::Error as CompileError;
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -29,8 +30,6 @@ use std::{
     sync::OnceLock,
 };
 use tempfile::NamedTempFile;
-
-use crate::error::Error as CompileError;
 
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
@@ -325,5 +324,45 @@ pub fn get_data_layout_rep() -> Result<String, CompileError> {
         let data_layout_str =
             CStr::from_ptr(llvm_sys::target::LLVMCopyStringRepOfTargetData(data_layout));
         Ok(data_layout_str.to_string_lossy().into_owned())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_opt_level_default() {
+        // Asserts that the default implementation of `OptLevel` returns `OptLevel::Default`.
+        assert_eq!(OptLevel::default(), OptLevel::Default);
+
+        // Asserts that converting from usize value 2 returns `OptLevel::Default`.
+        assert_eq!(OptLevel::from(2usize), OptLevel::Default);
+
+        // Asserts that converting from u8 value 2 returns `OptLevel::Default`.
+        assert_eq!(OptLevel::from(2u8), OptLevel::Default);
+    }
+
+    #[test]
+    fn test_opt_level_conversion() {
+        // Test conversion from usize to OptLevel
+        assert_eq!(OptLevel::from(0usize), OptLevel::None);
+        assert_eq!(OptLevel::from(1usize), OptLevel::Less);
+        assert_eq!(OptLevel::from(2usize), OptLevel::Default);
+        assert_eq!(OptLevel::from(3usize), OptLevel::Aggressive);
+        assert_eq!(OptLevel::from(30usize), OptLevel::Aggressive);
+
+        // Test conversion from OptLevel to usize
+        assert_eq!(usize::from(OptLevel::None), 0usize);
+        assert_eq!(usize::from(OptLevel::Less), 1usize);
+        assert_eq!(usize::from(OptLevel::Default), 2usize);
+        assert_eq!(usize::from(OptLevel::Aggressive), 3usize);
+
+        // Test conversion from u8 to OptLevel
+        assert_eq!(OptLevel::from(0u8), OptLevel::None);
+        assert_eq!(OptLevel::from(1u8), OptLevel::Less);
+        assert_eq!(OptLevel::from(2u8), OptLevel::Default);
+        assert_eq!(OptLevel::from(3u8), OptLevel::Aggressive);
+        assert_eq!(OptLevel::from(30u8), OptLevel::Aggressive);
     }
 }
