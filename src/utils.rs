@@ -82,7 +82,7 @@ pub fn get_integer_layout(width: u32) -> Layout {
         }
         #[cfg(target_arch = "x86_64")]
         {
-            Layout::new::<u128>().align_to(16)
+            Layout::new::<u128>().align_to(16).unwrap()
         }
     } else {
         let width = (width as usize).next_multiple_of(8).next_power_of_two();
