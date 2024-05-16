@@ -152,13 +152,13 @@ impl<T: Into<JitValue> + Clone> From<&[T]> for JitValue {
 
 impl<T: Into<JitValue>> From<Vec<T>> for JitValue {
     fn from(value: Vec<T>) -> Self {
-        Self::Array(value.into_iter().map(|x| x.into()).collect())
+        Self::Array(value.into_iter().map(Into::into).collect())
     }
 }
 
 impl<T: Into<JitValue>, const N: usize> From<[T; N]> for JitValue {
     fn from(value: [T; N]) -> Self {
-        Self::Array(value.into_iter().map(|x| x.into()).collect())
+        Self::Array(value.into_iter().map(Into::into).collect())
     }
 }
 
@@ -319,7 +319,7 @@ impl JitValue {
                 }
                 Self::Enum { tag, value, .. } => {
                     if let CoreTypeConcrete::Enum(info) = Self::resolve_type(ty, registry) {
-                        assert!(*tag <= info.variants.len(), "Variant index out of range.");
+                        assert!(*tag < info.variants.len(), "Variant index out of range.");
 
                         let payload_type_id = &info.variants[*tag];
                         let payload = value.to_jit(arena, registry, payload_type_id)?;
@@ -734,6 +734,7 @@ impl JitValue {
 
                 CoreTypeConcrete::Const(_) => todo!(),
                 CoreTypeConcrete::BoundedInt(_) => todo!(),
+                CoreTypeConcrete::Coupon(_) => todo!(),
             }
         }
     }
@@ -747,5 +748,594 @@ impl JitValue {
         };
 
         Self::Felt252(Felt::from(&value))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use bumpalo::Bump;
+    use cairo_lang_sierra::extensions::types::{InfoAndTypeConcreteType, TypeInfo};
+    use cairo_lang_sierra::program::ConcreteTypeLongId;
+    use cairo_lang_sierra::program::Program;
+    use cairo_lang_sierra::program::TypeDeclaration;
+    use cairo_lang_sierra::ProgramParser;
+
+    #[test]
+    fn test_jit_value_conversion_felt() {
+        let felt_value: Felt = 42.into();
+        let jit_value: JitValue = felt_value.into();
+        assert_eq!(jit_value, JitValue::Felt252(Felt::from(42)));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u8() {
+        let u8_value: u8 = 10;
+        let jit_value: JitValue = u8_value.into();
+        assert_eq!(jit_value, JitValue::Uint8(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u16() {
+        let u8_value: u16 = 10;
+        let jit_value: JitValue = u8_value.into();
+        assert_eq!(jit_value, JitValue::Uint16(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u32() {
+        let u32_value: u32 = 10;
+        let jit_value: JitValue = u32_value.into();
+        assert_eq!(jit_value, JitValue::Uint32(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u64() {
+        let u64_value: u64 = 10;
+        let jit_value: JitValue = u64_value.into();
+        assert_eq!(jit_value, JitValue::Uint64(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u128() {
+        let u128_value: u128 = 10;
+        let jit_value: JitValue = u128_value.into();
+        assert_eq!(jit_value, JitValue::Uint128(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i8() {
+        let i8_value: i8 = -10;
+        let jit_value: JitValue = i8_value.into();
+        assert_eq!(jit_value, JitValue::Sint8(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i16() {
+        let i16_value: i16 = -10;
+        let jit_value: JitValue = i16_value.into();
+        assert_eq!(jit_value, JitValue::Sint16(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i32() {
+        let i32_value: i32 = -10;
+        let jit_value: JitValue = i32_value.into();
+        assert_eq!(jit_value, JitValue::Sint32(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i64() {
+        let i64_value: i64 = -10;
+        let jit_value: JitValue = i64_value.into();
+        assert_eq!(jit_value, JitValue::Sint64(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i128() {
+        let i128_value: i128 = -10;
+        let jit_value: JitValue = i128_value.into();
+        assert_eq!(jit_value, JitValue::Sint128(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_array_from_slice() {
+        let array_slice: &[u8] = &[1, 2, 3];
+        let jit_value: JitValue = array_slice.into();
+        assert_eq!(
+            jit_value,
+            JitValue::Array(vec![
+                JitValue::Uint8(1),
+                JitValue::Uint8(2),
+                JitValue::Uint8(3)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_jit_value_conversion_array_from_vec() {
+        let array_vec: Vec<u8> = vec![1, 2, 3];
+        let jit_value: JitValue = array_vec.into();
+        assert_eq!(
+            jit_value,
+            JitValue::Array(vec![
+                JitValue::Uint8(1),
+                JitValue::Uint8(2),
+                JitValue::Uint8(3)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_jit_value_conversion_array_from_fixed_size_array() {
+        let array_fixed: [u8; 3] = [1, 2, 3];
+        let jit_value: JitValue = array_fixed.into();
+        assert_eq!(
+            jit_value,
+            JitValue::Array(vec![
+                JitValue::Uint8(1),
+                JitValue::Uint8(2),
+                JitValue::Uint8(3)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_resolve_type_snapshot() {
+        let ty = CoreTypeConcrete::Snapshot(InfoAndTypeConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+            ty: "test_id".into(),
+        });
+
+        let program = Program {
+            type_declarations: vec![TypeDeclaration {
+                id: "test_id".into(),
+                long_id: ConcreteTypeLongId {
+                    generic_id: "u128".into(),
+                    generic_args: vec![],
+                },
+                declared_type_info: None,
+            }],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![],
+        };
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            JitValue::resolve_type(&ty, &registry).integer_width(),
+            Some(128)
+        );
+    }
+
+    #[test]
+    fn test_to_jit_felt252() {
+        let program = ProgramParser::new()
+            .parse("type felt252 = felt252;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Felt252(Felt::from(42))
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[u32; 8]>()
+                    .as_ptr()
+            },
+            [42, 0, 0, 0, 0, 0, 0, 0]
+        );
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Felt252(Felt::MAX)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[u32; 8]>()
+                    .as_ptr()
+            },
+            // 0x800000000000011000000000000000000000000000000000000000000000001 - 1
+            [0, 0, 0, 0, 0, 0, 17, 134217728]
+        );
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Felt252(Felt::MAX + Felt::ONE)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[u32; 8]>()
+                    .as_ptr()
+            },
+            [0, 0, 0, 0, 0, 0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn test_to_jit_uint8() {
+        let program = ProgramParser::new().parse("type u8 = u8;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Uint8(9)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<u8>()
+                    .as_ptr()
+            },
+            9
+        );
+    }
+
+    #[test]
+    fn test_to_jit_uint16() {
+        let program = ProgramParser::new().parse("type u16 = u16;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Uint16(17)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<u16>()
+                    .as_ptr()
+            },
+            17
+        );
+    }
+
+    #[test]
+    fn test_to_jit_uint32() {
+        let program = ProgramParser::new().parse("type u32 = u32;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Uint32(33)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<u32>()
+                    .as_ptr()
+            },
+            33
+        );
+    }
+
+    #[test]
+    fn test_to_jit_uint64() {
+        let program = ProgramParser::new().parse("type u64 = u64;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Uint64(65)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<u64>()
+                    .as_ptr()
+            },
+            65
+        );
+    }
+
+    #[test]
+    fn test_to_jit_uint128() {
+        let program = ProgramParser::new().parse("type u128 = u128;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Uint128(129)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<u128>()
+                    .as_ptr()
+            },
+            129
+        );
+    }
+
+    #[test]
+    fn test_to_jit_sint8() {
+        let program = ProgramParser::new().parse("type i8 = i8;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Sint8(-9)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<i8>()
+                    .as_ptr()
+            },
+            -9
+        );
+    }
+
+    #[test]
+    fn test_to_jit_sint16() {
+        let program = ProgramParser::new().parse("type i16 = i16;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Sint16(-17)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<i16>()
+                    .as_ptr()
+            },
+            -17
+        );
+    }
+
+    #[test]
+    fn test_to_jit_sint32() {
+        let program = ProgramParser::new().parse("type i32 = i32;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Sint32(-33)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<i32>()
+                    .as_ptr()
+            },
+            -33
+        );
+    }
+
+    #[test]
+    fn test_to_jit_sint64() {
+        let program = ProgramParser::new().parse("type i64 = i64;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Sint64(-65)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<i64>()
+                    .as_ptr()
+            },
+            -65
+        );
+    }
+
+    #[test]
+    fn test_to_jit_sint128() {
+        let program = ProgramParser::new().parse("type i128 = i128;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Sint128(-129)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<i128>()
+                    .as_ptr()
+            },
+            -129
+        );
+    }
+
+    #[test]
+    fn test_to_jit_ec_point() {
+        let program = ProgramParser::new()
+            .parse("type EcPoint = EcPoint;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::EcPoint(Felt::from(1234), Felt::from(4321))
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[[u32; 8]; 2]>()
+                    .as_ptr()
+            },
+            [[1234, 0, 0, 0, 0, 0, 0, 0], [4321, 0, 0, 0, 0, 0, 0, 0]]
+        );
+    }
+
+    #[test]
+    fn test_to_jit_ec_state() {
+        let program = ProgramParser::new()
+            .parse("type EcState = EcState;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::EcState(
+                    Felt::from(1234),
+                    Felt::from(4321),
+                    Felt::from(3333),
+                    Felt::from(4444),
+                )
+                .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                .unwrap()
+                .cast::<[[u32; 8]; 4]>()
+                .as_ptr()
+            },
+            [
+                [1234, 0, 0, 0, 0, 0, 0, 0],
+                [4321, 0, 0, 0, 0, 0, 0, 0],
+                [3333, 0, 0, 0, 0, 0, 0, 0],
+                [4444, 0, 0, 0, 0, 0, 0, 0]
+            ]
+        );
+    }
+
+    #[test]
+    fn test_to_jit_enum() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type u8 = u8;
+                type MyEnum = Enum<ut@MyEnum, u8, u8>;",
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Call to_jit to get the value of the enum
+        let result = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Uint8(10)),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+
+        // Assertion to verify that the value returned by to_jit is not NULL
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    #[should_panic(expected = "Variant index out of range.")]
+    fn test_to_jit_enum_variant_out_of_range() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type u8 = u8;
+            type MyEnum = Enum<ut@MyEnum, u8, u8>;",
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Call to_jit to get the value of the enum with tag value out of range
+        let _ = JitValue::Enum {
+            tag: 2,
+            value: Box::new(JitValue::Uint8(10)),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+    }
+
+    #[test]
+    #[should_panic(expected = "An enum without variants cannot be instantiated.")]
+    fn test_to_jit_enum_no_variant() {
+        let program = ProgramParser::new()
+            .parse(
+                "type u8 = u8;
+                type MyEnum = Enum<ut@MyEnum, u8>;",
+            )
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        let _ = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Uint8(10)),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+    }
+
+    #[test]
+    fn test_to_jit_enum_type_error() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+                type MyEnum = Enum<ut@MyEnum, felt252, felt252>;",
+            )
+            .unwrap();
+
+        // Creating a registry for the program.
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Invoking to_jit method on a JitValue::Enum to convert it to a JIT representation.
+        // Generating an error by providing an enum value instead of the expected type.
+        let result = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Struct {
+                fields: vec![JitValue::from(2u32)],
+                debug_name: None,
+            }),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+        .unwrap_err(); // Unwrapping the error
+
+        // Matching the error result to verify the error type and message.
+        match result {
+            Error::UnexpectedValue(expected_msg) => {
+                // Asserting that the error message matches the expected message.
+                assert_eq!(
+                    expected_msg,
+                    format!(
+                        "expected value of type {:?} but got an enum value",
+                        program.type_declarations[0].id.debug_name
+                    )
+                );
+            }
+            _ => panic!("Unexpected error type: {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_to_jit_struct_type_error() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+                type MyEnum = Enum<ut@MyEnum, felt252, felt252>;",
+            )
+            .unwrap();
+
+        // Creating a registry for the program.
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Invoking to_jit method on a JitValue::Struct to convert it to a JIT representation.
+        // Generating an error by providing a struct value instead of the expected type.
+        let result = JitValue::Struct {
+            fields: vec![JitValue::from(2u32)],
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+        .unwrap_err(); // Unwrapping the error
+
+        // Matching the error result to verify the error type and message.
+        match result {
+            Error::UnexpectedValue(expected_msg) => {
+                // Asserting that the error message matches the expected message.
+                assert_eq!(
+                    expected_msg,
+                    format!(
+                        "expected value of type {:?} but got a struct",
+                        program.type_declarations[0].id.debug_name
+                    )
+                );
+            }
+            _ => panic!("Unexpected error type: {:?}", result),
+        }
     }
 }

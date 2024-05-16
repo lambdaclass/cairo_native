@@ -78,7 +78,12 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 128 {
         Layout::new::<u128>()
     } else {
-        Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap()
+        #[cfg(target_arch = "x86_64")]
+        let value = Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap();
+        #[cfg(not(target_arch = "x86_64"))]
+        let value = Layout::array::<u128>(next_multiple_of_u32(width, 128) as usize >> 7).unwrap();
+
+        value
     }
 }
 
@@ -224,17 +229,7 @@ pub fn create_engine(
     opt_level: OptLevel,
 ) -> ExecutionEngine {
     // Create the JIT engine.
-    let engine = ExecutionEngine::new(
-        module,
-        match opt_level {
-            OptLevel::None => 0,
-            OptLevel::Less => 1,
-            OptLevel::Default => 2,
-            OptLevel::Aggressive => 3,
-        },
-        &[],
-        false,
-    );
+    let engine = ExecutionEngine::new(module, opt_level.into(), &[], false);
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
@@ -343,6 +338,13 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
                     &[u8; 32],
                     NonNull<std::ffi::c_void>,
                 ) -> *mut std::ffi::c_void as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_gas_refund",
+            cairo_native_runtime::cairo_native__dict_gas_refund
+                as *const fn(*const std::ffi::c_void, NonNull<std::ffi::c_void>) -> u64
+                as *mut (),
         );
     }
 }
@@ -642,14 +644,9 @@ pub(crate) use codegen_ret_extr;
 #[cfg(test)]
 pub mod test {
     use crate::{
+        context::NativeContext,
         execution_result::ExecutionResult,
         executor::JitNativeExecutor,
-        metadata::{
-            gas::{GasMetadata, MetadataComputationConfig},
-            runtime_bindings::RuntimeBindingsMeta,
-            MetadataStorage,
-        },
-        module::NativeModule,
         starknet::{
             BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarknetSyscallHandler,
             SyscallResult, TxInfo, TxV2Info, U256,
@@ -663,18 +660,11 @@ pub mod test {
     };
     use cairo_lang_filesystem::db::init_dev_corelib;
     use cairo_lang_sierra::{
-        extensions::core::{CoreLibfunc, CoreType},
         ids::FunctionId,
         program::Program,
         program::{FunctionSignature, GenFunction, StatementIdx},
-        program_registry::ProgramRegistry,
     };
-    use melior::{
-        dialect::DialectRegistry,
-        ir::{Location, Module},
-        utility::{register_all_dialects, register_all_passes},
-        Context,
-    };
+    use cairo_lang_starknet::starknet_plugin_suite;
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
     use std::{env::var, fmt::Formatter, fs, path::Path};
@@ -684,7 +674,13 @@ pub mod test {
             $crate::utils::test::load_cairo_str(stringify!($($program)+))
         };
     }
+    macro_rules! load_starknet {
+        ( $( $program:tt )+ ) => {
+            $crate::utils::test::load_starknet_str(stringify!($($program)+))
+        };
+    }
     pub(crate) use load_cairo;
+    pub(crate) use load_starknet;
 
     // Helper macros for faster testing.
     macro_rules! jit_struct {
@@ -729,7 +725,21 @@ pub mod test {
     pub(crate) use jit_panic;
     pub(crate) use jit_struct;
 
-    pub fn load_cairo_str(program_str: &str) -> (String, Program) {
+    pub(crate) fn load_cairo_str(program_str: &str) -> (String, Program) {
+        compile_program(program_str, RootDatabase::default())
+    }
+
+    pub(crate) fn load_starknet_str(program_str: &str) -> (String, Program) {
+        compile_program(
+            program_str,
+            RootDatabase::builder()
+                .with_plugin_suite(starknet_plugin_suite())
+                .build()
+                .unwrap(),
+        )
+    }
+
+    pub(crate) fn compile_program(program_str: &str, mut db: RootDatabase) -> (String, Program) {
         let mut program_file = tempfile::Builder::new()
             .prefix("test_")
             .suffix(".cairo")
@@ -737,7 +747,6 @@ pub mod test {
             .unwrap();
         fs::write(&mut program_file, program_str).unwrap();
 
-        let mut db = RootDatabase::default();
         init_dev_corelib(
             &mut db,
             Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
@@ -767,9 +776,6 @@ pub mod test {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
 
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
-            .expect("Could not create the test program registry.");
-
         let entry_point_id = &program
             .funcs
             .iter()
@@ -777,49 +783,14 @@ pub mod test {
             .expect("Test program entry point not found.")
             .id;
 
-        let context = Context::new();
-        context.append_dialect_registry(&{
-            let registry = DialectRegistry::new();
-            register_all_dialects(&registry);
-            registry
-        });
-        context.load_all_available_dialects();
-        register_all_passes();
+        let context = NativeContext::new();
 
-        let mut module = Module::new(Location::unknown(&context));
-        let mut metadata = MetadataStorage::new();
-
-        // Make the runtime library and syscall handler available.
-        metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-        if program
-            .type_declarations
-            .iter()
-            .any(|decl| decl.long_id.generic_id.0 == "GasBuiltin")
-        {
-            let gas_metadata =
-                GasMetadata::new(program, Some(MetadataComputationConfig::default())).unwrap();
-            metadata.insert(gas_metadata);
-        } else {
-            let gas_metadata = GasMetadata::new(program, None).unwrap();
-            metadata.insert(gas_metadata);
-        }
-
-        crate::compile(&context, &module, program, &registry, &mut metadata, None)
+        let module = context
+            .compile(program, None)
             .expect("Could not compile test program to MLIR.");
 
-        assert!(
-            module.as_operation().verify(),
-            "Test program generated invalid MLIR:\n{}",
-            module.as_operation()
-        );
-
-        run_pass_manager(&context, &mut module)
-            .expect("Could not apply passes to the compiled test program.");
-
-        let native_module = NativeModule::new(module, registry, metadata);
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
-        let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
         executor
             .invoke_dynamic_with_syscall_handler(
                 entry_point_id,
@@ -886,7 +857,10 @@ pub mod test {
     /// Ensures that the host's `u512` is compatible with its compiled counterpart.
     #[test]
     fn test_alignment_compatibility_u512() {
+        #[cfg(target_arch = "x86_64")]
         assert_eq!(get_integer_layout(512).align(), 8);
+        #[cfg(not(target_arch = "x86_64"))]
+        assert_eq!(get_integer_layout(512).align(), 16);
     }
 
     /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
@@ -1133,8 +1107,8 @@ pub mod test {
         assert_eq!(format!("{:?}", debug_wrapper), "Name: William, Age: 28");
     }
 
-    #[derive(Debug)]
-    struct TestSyscallHandler;
+    #[derive(Debug, Clone)]
+    pub struct TestSyscallHandler;
 
     impl StarknetSyscallHandler for TestSyscallHandler {
         fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
@@ -1211,7 +1185,7 @@ pub mod test {
         ) -> SyscallResult<(Felt, Vec<Felt>)> {
             Ok((
                 class_hash + contract_address_salt,
-                calldata.iter().map(|x| x + Felt::from(1)).collect(),
+                calldata.iter().map(|x| x + Felt::ONE).collect(),
             ))
         }
 

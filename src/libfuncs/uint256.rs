@@ -845,8 +845,45 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         location,
     ));
 
+    let inv = result.result(3)?.into();
+
     let inv = entry
-        .append_operation(arith::remui(result.result(3)?.into(), rhs, location))
+        .append_operation(scf::r#if(
+            entry
+                .append_operation(arith::cmpi(context, CmpiPredicate::Slt, inv, k0, location))
+                .result(0)?
+                .into(),
+            &[i256_ty],
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                block.append_operation(scf::r#yield(
+                    &[entry
+                        .append_operation(arith::addi(inv, rhs, location))
+                        .result(0)?
+                        .into()],
+                    location,
+                ));
+
+                region
+            },
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                block.append_operation(scf::r#yield(
+                    &[entry
+                        .append_operation(arith::remui(inv, rhs, location))
+                        .result(0)?
+                        .into()],
+                    location,
+                ));
+
+                region
+            },
+            location,
+        ))
         .result(0)?
         .into();
 
@@ -1233,6 +1270,11 @@ mod test {
             (1, 0),
             (5, 0),
             jit_enum!(0, jit_struct!(1u128.into(), 0u128.into())),
+        );
+        run(
+            (2, 0),
+            (5, 0),
+            jit_enum!(0, jit_struct!(3u128.into(), 0u128.into())),
         );
     }
 }

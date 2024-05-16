@@ -17,7 +17,6 @@ use cairo_native::{
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
     values::JitValue,
-    OptLevel,
 };
 use clap::{Parser, ValueEnum};
 use itertools::Itertools;
@@ -80,10 +79,12 @@ fn main() -> anyhow::Result<()> {
         anyhow::bail!("failed to compile: {}", args.path.display());
     }
 
-    let (sierra_program, _statements_locations) = db
+    let sierra_program = db
         .get_sierra_program(main_crate_ids.clone())
         .to_option()
-        .with_context(|| "Compilation failed without any diagnostics.")?;
+        .with_context(|| "Compilation failed without any diagnostics.")?
+        .program
+        .clone();
     let replacer = DebugReplacer { db };
     if args.available_gas.is_none() && sierra_program.requires_gas_counter() {
         anyhow::bail!("Program requires gas counter, please provide `--available-gas` argument.");
@@ -111,16 +112,13 @@ fn main() -> anyhow::Result<()> {
         .compile(&sierra_program, Some(debug_locations))
         .unwrap();
 
-    let opt_level = match args.opt_level {
-        0 => OptLevel::None,
-        1 => OptLevel::Less,
-        2 => OptLevel::Default,
-        _ => OptLevel::Aggressive,
-    };
-
     let native_executor: NativeExecutor = match args.run_mode {
-        RunMode::Aot => AotNativeExecutor::from_native_module(native_module, opt_level).into(),
-        RunMode::Jit => JitNativeExecutor::from_native_module(native_module, opt_level).into(),
+        RunMode::Aot => {
+            AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+        }
+        RunMode::Jit => {
+            JitNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+        }
     };
 
     let gas_metadata =

@@ -130,9 +130,6 @@ fn invoke_dynamic(
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
-    let is_builtin = <CoreTypeConcrete as TypeBuilder>::is_builtin;
-    let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
-
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
 
@@ -199,7 +196,9 @@ fn invoke_dynamic(
                             &[syscall_handler as *mut _ as u64],
                         )
                     }
-                    None => panic!("Syscall handler is required"),
+                    None => {
+                        panic!("Syscall handler is required");
+                    }
                 }
             }
             type_info => invoke_data
@@ -265,8 +264,8 @@ fn invoke_dynamic(
                 },
                 None => {}
             },
-            _ if is_builtin(type_info) => {
-                if !is_zst(type_info, registry) {
+            _ if type_info.is_builtin() => {
+                if !type_info.is_zst(registry) {
                     let value = match &mut return_ptr {
                         Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
                         None => ret_registers[0],
@@ -288,12 +287,23 @@ fn invoke_dynamic(
     }
 
     // Parse return values.
-    let return_value = parse_result(
-        function_signature.ret_types.last().unwrap(),
-        registry,
-        return_ptr,
-        ret_registers,
-    );
+    let return_value = function_signature
+        .ret_types
+        .last()
+        .map(|ret_type| {
+            parse_result(
+                ret_type,
+                registry,
+                return_ptr,
+                ret_registers,
+                // TODO: Consider returning an Option<JitValue> as return_value instead
+                // As cairo functions can not have a return value
+            )
+        })
+        .unwrap_or_else(|| JitValue::Struct {
+            fields: vec![],
+            debug_name: None,
+        });
 
     // FIXME: Arena deallocation.
     std::mem::forget(arena);
@@ -774,6 +784,19 @@ fn parse_result(
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::Snapshot(_) => todo!(),
         CoreTypeConcrete::Bytes31(_) => todo!(),
-        _ => unreachable!(),
+        CoreTypeConcrete::Bitwise(_) => todo!(),
+        CoreTypeConcrete::Const(_) => todo!(),
+        CoreTypeConcrete::EcOp(_) => todo!(),
+        CoreTypeConcrete::GasBuiltin(_) => JitValue::Struct {
+            fields: Vec::new(),
+            debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+        },
+        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+        CoreTypeConcrete::RangeCheck(_) => todo!(),
+        CoreTypeConcrete::Pedersen(_) => todo!(),
+        CoreTypeConcrete::Poseidon(_) => todo!(),
+        CoreTypeConcrete::SegmentArena(_) => todo!(),
+        CoreTypeConcrete::BoundedInt(_) => todo!(),
+        _ => todo!(),
     }
 }

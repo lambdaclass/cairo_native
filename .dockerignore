@@ -1,0 +1,7 @@
+# Ignore compiled files
+target/
+
+# Ignore build files
+cairo2/
+corelib/
+cairo-*.tar

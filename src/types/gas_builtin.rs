@@ -1,6 +1,7 @@
 //! # Gas builtin type
 //!
 //! The gas builtin is just a number indicating how many
+//! gas units have been used.
 
 use super::WithSelf;
 use crate::{error::Result, metadata::MetadataStorage};

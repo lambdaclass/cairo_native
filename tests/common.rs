@@ -25,15 +25,9 @@ use cairo_native::{
     context::NativeContext,
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
-    metadata::{
-        gas::{GasMetadata, MetadataComputationConfig},
-        runtime_bindings::RuntimeBindingsMeta,
-        MetadataStorage,
-    },
-    module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     types::felt252::{HALF_PRIME, PRIME},
-    utils::{find_entry_point_by_idx, run_pass_manager},
+    utils::find_entry_point_by_idx,
     values::JitValue,
     OptLevel,
 };
@@ -42,12 +36,6 @@ use lambdaworks_math::{
         element::FieldElement, fields::montgomery_backed_prime_fields::MontgomeryBackendPrimeField,
     },
     unsigned_integer::element::UnsignedInteger,
-};
-use melior::{
-    dialect::DialectRegistry,
-    ir::{Location, Module},
-    utility::{register_all_dialects, register_all_passes},
-    Context,
 };
 use num_bigint::{BigInt, Sign};
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
@@ -101,8 +89,9 @@ pub const fn casm_variant_to_sierra(idx: i64, num_variants: i64) -> i64 {
 
 pub fn get_run_result(r: &RunResultValue) -> Vec<String> {
     match r {
-        RunResultValue::Success(x) => x.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
-        RunResultValue::Panic(x) => x.iter().map(|x| x.to_string()).collect::<Vec<_>>(),
+        RunResultValue::Success(x) | RunResultValue::Panic(x) => {
+            x.iter().map(ToString::to_string).collect()
+        }
     }
 }
 
@@ -140,7 +129,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
         program.clone(),
         Some(Default::default()),
         contracts_info,
-        false,
+        None,
     )
     .unwrap();
 
@@ -180,14 +169,13 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
         program.clone(),
         Some(Default::default()),
         contracts_info,
-        false,
+        None,
     )
     .unwrap();
 
     (module_name.to_string(), program, runner)
 }
 
-/// Runs the program using cairo-native JIT.
 pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
@@ -198,9 +186,6 @@ pub fn run_native_program(
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
     let program = &program.1;
 
-    let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
-        .expect("Could not create the test program registry.");
-
     let entry_point_id = &program
         .funcs
         .iter()
@@ -208,49 +193,20 @@ pub fn run_native_program(
         .expect("Test program entry point not found.")
         .id;
 
-    let context = Context::new();
-    context.append_dialect_registry(&{
-        let registry = DialectRegistry::new();
-        register_all_dialects(&registry);
-        registry
-    });
-    context.load_all_available_dialects();
-    register_all_passes();
+    let context = NativeContext::new();
 
-    let mut module = Module::new(Location::unknown(&context));
-    let mut metadata = MetadataStorage::new();
-
-    // Make the runtime library available.
-    metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-    let has_gas_builtin = program
-        .type_declarations
-        .iter()
-        .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin");
-
-    let gas_metadata = if has_gas_builtin {
-        GasMetadata::new(program, Some(MetadataComputationConfig::default())).unwrap()
-    } else {
-        GasMetadata::new(program, None).unwrap()
-    };
-
-    metadata.insert(gas_metadata);
-
-    cairo_native::compile(&context, &module, program, &registry, &mut metadata, None)
+    let module = context
+        .compile(program, None)
         .expect("Could not compile test program to MLIR.");
 
     assert!(
-        module.as_operation().verify(),
+        module.module().as_operation().verify(),
         "Test program generated invalid MLIR:\n{}",
-        module.as_operation()
+        module.module().as_operation()
     );
 
-    run_pass_manager(&context, &mut module)
-        .expect("Could not apply passes to the compiled test program.");
-
-    let native_module = NativeModule::new(module, registry, metadata);
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
-    let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
+    let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
     match syscall_handler {
         Some(syscall_handler) => executor
             .invoke_dynamic_with_syscall_handler(entry_point_id, args, gas, syscall_handler)
@@ -295,6 +251,22 @@ pub fn compare_inputless_program(program_path: &str) {
         &result_vm,
         &result_native,
     )
+    .expect("compare error with optlevel none");
+
+    let result_native = run_native_program(
+        program,
+        "main",
+        &[],
+        Some(DEFAULT_GAS as u128),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("main").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
     .expect("compare error");
 }
 
@@ -320,8 +292,6 @@ pub fn run_native_starknet_contract(
 
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares
 /// the results automatically, triggering a proptest assert if there is a mismatch.
-///
-/// If ignore_gas is false, it will check whether the resulting gas matches.
 ///
 /// Left of report of the assert is the cairo vm result, right side is cairo native
 #[track_caller]
@@ -533,6 +503,10 @@ pub fn compare_outputs(
                     Felt::from_bytes_le(&values[3].to_le_bytes()),
                 )
             }
+            CoreTypeConcrete::Bytes31(_) => todo!(),
+            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }
@@ -546,6 +520,14 @@ pub fn compare_outputs(
         .as_ref()
         .map(|x| x.starts_with("core::panics::PanicResult"))
         .unwrap_or(false);
+
+    assert_eq!(
+        vm_result
+            .gas_counter
+            .clone()
+            .unwrap_or_else(|| Felt252::from(0)),
+        Felt252::from(native_result.remaining_gas.unwrap_or(0)),
+    );
 
     let vm_result = match &vm_result.value {
         RunResultValue::Success(values) => {

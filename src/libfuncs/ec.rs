@@ -2,6 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{
         prime_modulo::PrimeModuloMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
@@ -21,16 +22,15 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm::{self, LoadStoreOptions},
+        llvm,
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Attribute, Block, Identifier, Location,
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        Identifier, Location,
     },
     Context,
 };
+use num_bigint::{BigInt, ToBigInt};
 use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -87,49 +87,29 @@ pub fn build_is_zero<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let x = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 252).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let y = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[1]),
-            IntegerType::new(context, 252).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let x = entry.extract_value(
+        context,
+        location,
+        entry.argument(0)?.into(),
+        IntegerType::new(context, 252).into(),
+        0,
+    )?;
+    let y = entry.extract_value(
+        context,
+        location,
+        entry.argument(0)?.into(),
+        IntegerType::new(context, 252).into(),
+        1,
+    )?;
 
-    let k0 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 252).into(), 0).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let k0 = entry.const_int(context, location, 0, 252)?;
 
-    let x_is_zero = entry
-        .append_operation(arith::cmpi(context, CmpiPredicate::Eq, x, k0, location))
-        .result(0)?
-        .into();
-    let y_is_zero = entry
-        .append_operation(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))
-        .result(0)?
-        .into();
+    let x_is_zero =
+        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, x, k0, location))?;
+    let y_is_zero =
+        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))?;
 
-    let point_is_zero = entry
-        .append_operation(arith::andi(x_is_zero, y_is_zero, location))
-        .result(0)?
-        .into();
+    let point_is_zero = entry.append_op_result(arith::andi(x_is_zero, y_is_zero, location))?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -151,77 +131,40 @@ pub fn build_neg<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let y = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[1]),
-            IntegerType::new(context, 252).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let y = entry.extract_value(
+        context,
+        location,
+        entry.argument(0)?.into(),
+        IntegerType::new(context, 252).into(),
+        1,
+    )?;
 
-    let k_prime = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(
-                context,
-                &format!(
-                    "{} : i252",
-                    match metadata.get::<PrimeModuloMeta<Felt>>() {
-                        Some(x) => x.prime(),
-                        None => {
-                            // Since the `EcPoint` type is external, there is no guarantee that
-                            // `PrimeModuloMeta<Felt252>` will be available.
-                            register_prime_modulo_meta(metadata).prime()
-                        }
-                    }
-                ),
-            )
-            .ok_or(Error::ParseAttributeError)?,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let prime = match metadata.get::<PrimeModuloMeta<Felt>>() {
+        Some(x) => x.prime(),
+        None => {
+            // Since the `EcPoint` type is external, there is no guarantee that
+            // `PrimeModuloMeta<Felt252>` will be available.
+            register_prime_modulo_meta(metadata).prime()
+        }
+    };
 
-    let k0 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 252).into(), 0).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let y_is_zero = entry
-        .append_operation(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))
-        .result(0)?
-        .into();
+    let k_prime = entry.const_int(context, location, prime.to_bigint().unwrap(), 252)?;
 
-    let y_neg = entry
-        .append_operation(arith::subi(k_prime, y, location))
-        .result(0)?
-        .into();
-    let y_neg = entry
-        .append_operation(
-            OperationBuilder::new("arith.select", location)
-                .add_operands(&[y_is_zero, k0, y_neg])
-                .add_results(&[IntegerType::new(context, 252).into()])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let k0 = entry.const_int(context, location, 0, 252)?;
 
-    let result = entry
-        .append_operation(llvm::insert_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[1]),
-            y_neg,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let y_is_zero =
+        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))?;
+
+    let y_neg = entry.append_op_result(arith::subi(k_prime, y, location))?;
+
+    let y_neg = entry.append_op_result(
+        OperationBuilder::new("arith.select", location)
+            .add_operands(&[y_is_zero, k0, y_neg])
+            .add_results(&[IntegerType::new(context, 252).into()])
+            .build()?,
+    )?;
+
+    let result = entry.insert_value(context, location, entry.argument(0)?.into(), y_neg, 1)?;
 
     entry.append_operation(helper.br(0, &[result], location));
     Ok(())
@@ -249,55 +192,27 @@ pub fn build_point_from_x<'ctx, 'this>(
         false,
     );
 
-    let k1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let point_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
 
-    let point = entry
-        .append_operation(llvm::undef(ec_point_ty, location))
-        .result(0)?
-        .into();
-    let point = entry
-        .append_operation(llvm::insert_value(
-            context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            entry.argument(1)?.into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
-        context,
-        point,
-        point_ptr,
-        location,
-        LoadStoreOptions::default(),
-    ));
+    let point_ptr = entry.append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
+            .build()?,
+    )?;
 
+    let point = entry.append_op_result(llvm::undef(ec_point_ty, location))?;
+    let point = entry.insert_value(context, location, point, entry.argument(1)?.into(), 0)?;
+
+    entry.store(context, location, point_ptr, point, None);
     let result = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
@@ -305,16 +220,7 @@ pub fn build_point_from_x<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let point = entry
-        .append_operation(llvm::load(
-            context,
-            point_ptr,
-            ec_point_ty,
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    let point = entry.load(context, location, point_ptr, ec_point_ty, None)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -355,80 +261,59 @@ pub fn build_state_add<'ctx, 'this>(
         false,
     );
 
-    let k1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let state_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    let point_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
 
-    entry.append_operation(llvm::store(
+    let state_ptr = entry.append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
+            .build()?,
+    )?;
+    let point_ptr = entry.append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
+            .build()?,
+    )?;
+
+    entry.store(
         context,
-        entry.argument(0)?.into(),
+        location,
         state_ptr,
-        location,
-        LoadStoreOptions::default(),
-    ));
-    entry.append_operation(llvm::store(
+        entry.argument(0)?.into(),
+        None,
+    );
+
+    entry.store(
         context,
-        entry.argument(1)?.into(),
-        point_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        point_ptr,
+        entry.argument(1)?.into(),
+        None,
+    );
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
         .libfunc_ec_state_add(context, helper, entry, state_ptr, point_ptr, location)?;
 
-    let state = entry
-        .append_operation(llvm::load(
-            context,
-            state_ptr,
-            ec_state_ty,
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    let state = entry.load(context, location, state_ptr, ec_state_ty, None)?;
 
     entry.append_operation(helper.br(0, &[state], location));
     Ok(())
@@ -455,88 +340,72 @@ pub fn build_state_add_mul<'ctx, 'this>(
     );
     let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
 
-    let k1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let state_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    let scalar_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(felt252_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    let point_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
 
-    entry.append_operation(llvm::store(
+    let state_ptr = entry.append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
+            .build()?,
+    )?;
+    let scalar_ptr = entry.append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(felt252_ty, 0)])
+            .build()?,
+    )?;
+    let point_ptr = entry.append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
+            .build()?,
+    )?;
+
+    entry.store(
         context,
-        entry.argument(1)?.into(),
+        location,
         state_ptr,
-        location,
-        LoadStoreOptions::default(),
-    ));
-    entry.append_operation(llvm::store(
+        entry.argument(1)?.into(),
+        None,
+    );
+    entry.store(
         context,
-        entry.argument(2)?.into(),
+        location,
         scalar_ptr,
-        location,
-        LoadStoreOptions::default(),
-    ));
-    entry.append_operation(llvm::store(
+        entry.argument(2)?.into(),
+        None,
+    );
+    entry.store(
         context,
-        entry.argument(3)?.into(),
-        point_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        point_ptr,
+        entry.argument(3)?.into(),
+        None,
+    );
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -545,16 +414,7 @@ pub fn build_state_add_mul<'ctx, 'this>(
             context, helper, entry, state_ptr, scalar_ptr, point_ptr, location,
         )?;
 
-    let state = entry
-        .append_operation(llvm::load(
-            context,
-            state_ptr,
-            ec_state_ty,
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    let state = entry.load(context, location, state_ptr, ec_state_ty, None)?;
 
     entry.append_operation(helper.br(0, &[ec_op, state], location));
     Ok(())
@@ -578,57 +438,44 @@ pub fn build_state_finalize<'ctx, 'this>(
     );
     let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
 
-    let k1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let point_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    let state_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
 
-    entry.append_operation(llvm::store(
+    let point_ptr = entry.append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
+            .build()?,
+    )?;
+    let state_ptr = entry.append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
+            .build()?,
+    )?;
+
+    entry.store(
         context,
-        entry.argument(0)?.into(),
-        state_ptr,
         location,
-        LoadStoreOptions::default(),
-    ));
+        state_ptr,
+        entry.argument(0)?.into(),
+        None,
+    );
 
     let is_zero = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -637,16 +484,7 @@ pub fn build_state_finalize<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let point = entry
-        .append_operation(llvm::load(
-            context,
-            point_ptr,
-            ec_point_ty,
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    let point = entry.load(context, location, point_ptr, ec_point_ty, None)?;
 
     entry.append_operation(helper.cond_br(context, is_zero, [0, 1], [&[point], &[]], location));
     Ok(())
@@ -678,63 +516,27 @@ pub fn build_state_init<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let x = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(context, "3151312365169595090315724863753927489909436624354740709748557281394568342450 : i252").ok_or(Error::ParseAttributeError)?,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let y = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(context, "2835232394579952276045648147338966184268723952674536708929458753792035266179 : i252").ok_or(Error::ParseAttributeError)?,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let value = BigInt::parse_bytes(
+        b"3151312365169595090315724863753927489909436624354740709748557281394568342450",
+        10,
+    )
+    .unwrap();
+    let x = entry.const_int(context, location, value, 252)?;
 
-    let point = entry
-        .append_operation(llvm::insert_value(
-            context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            x,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let point = entry
-        .append_operation(llvm::insert_value(
-            context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            y,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let point = entry
-        .append_operation(llvm::insert_value(
-            context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[2]),
-            x,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let point = entry
-        .append_operation(llvm::insert_value(
-            context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[3]),
-            y,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let value = BigInt::parse_bytes(
+        b"2835232394579952276045648147338966184268723952674536708929458753792035266179",
+        10,
+    )
+    .unwrap();
+    let y = entry.const_int(context, location, value, 252)?;
+
+    let point = entry.insert_value(context, location, point, x, 0)?;
+
+    let point = entry.insert_value(context, location, point, y, 1)?;
+
+    let point = entry.insert_value(context, location, point, x, 2)?;
+
+    let point = entry.insert_value(context, location, point, y, 3)?;
 
     entry.append_operation(helper.br(0, &[point], location));
     Ok(())
@@ -759,64 +561,28 @@ pub fn build_try_new<'ctx, 'this>(
         false,
     );
 
-    let k1 = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let point_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        get_integer_layout(252).align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[k1])
-                .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
 
-    let point = entry
-        .append_operation(llvm::undef(ec_point_ty, location))
-        .result(0)?
-        .into();
-    let point = entry
-        .append_operation(llvm::insert_value(
-            context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            entry.argument(0)?.into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let point = entry
-        .append_operation(llvm::insert_value(
-            context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            entry.argument(1)?.into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
-        context,
-        point,
-        point_ptr,
-        location,
-        LoadStoreOptions::default(),
-    ));
+    let point_ptr = entry.append_op_result(
+        OperationBuilder::new("llvm.alloca", location)
+            .add_attributes(&[(
+                Identifier::new(context, "alignment"),
+                IntegerAttribute::new(
+                    IntegerType::new(context, 64).into(),
+                    get_integer_layout(252).align().try_into()?,
+                )
+                .into(),
+            )])
+            .add_operands(&[k1])
+            .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
+            .build()?,
+    )?;
+
+    let point = entry.append_op_result(llvm::undef(ec_point_ty, location))?;
+    let point = entry.insert_value(context, location, point, entry.argument(0)?.into(), 0)?;
+    let point = entry.insert_value(context, location, point, entry.argument(1)?.into(), 1)?;
+
+    entry.store(context, location, point_ptr, point, None);
 
     let result = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -839,38 +605,33 @@ pub fn build_unwrap_point<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let x = entry
-        .append_operation(llvm::extract_value(
+    let x = entry.extract_value(
+        context,
+        location,
+        entry.argument(0)?.into(),
+        registry.build_type(
             context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[0]),
-            registry.build_type(
-                context,
-                helper,
-                registry,
-                metadata,
-                &info.branch_signatures()[0].vars[0].ty,
-            )?,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let y = entry
-        .append_operation(llvm::extract_value(
+            helper,
+            registry,
+            metadata,
+            &info.branch_signatures()[0].vars[0].ty,
+        )?,
+        0,
+    )?;
+
+    let y = entry.extract_value(
+        context,
+        location,
+        entry.argument(0)?.into(),
+        registry.build_type(
             context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[1]),
-            registry.build_type(
-                context,
-                helper,
-                registry,
-                metadata,
-                &info.branch_signatures()[0].vars[1].ty,
-            )?,
-            location,
-        ))
-        .result(0)?
-        .into();
+            helper,
+            registry,
+            metadata,
+            &info.branch_signatures()[0].vars[1].ty,
+        )?,
+        1,
+    )?;
 
     entry.append_operation(helper.br(0, &[x, y], location));
     Ok(())
@@ -899,34 +660,11 @@ pub fn build_zero<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let k0 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 252).into(), 0).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let point = entry
-        .append_operation(llvm::insert_value(
-            context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            k0,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let point = entry
-        .append_operation(llvm::insert_value(
-            context,
-            point,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            k0,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let k0 = entry.const_int(context, location, 0, 252)?;
+
+    let point = entry.insert_value(context, location, point, k0, 0)?;
+
+    let point = entry.insert_value(context, location, point, k0, 1)?;
 
     entry.append_operation(helper.br(0, &[point], location));
     Ok(())
@@ -1103,7 +841,7 @@ mod test {
                 Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
                 Felt::from_dec_str("2835232394579952276045648147338966184268723952674536708929458753792035266179").unwrap()
             ),
-            Felt::from(1).into(), // scalar
+            Felt::ONE.into(), // scalar
             JitValue::EcPoint(
                 Felt::from_dec_str("1234").unwrap(),
                 Felt::from_dec_str("1301976514684871091717790968549291947487646995000837413367950573852273027507").unwrap()
