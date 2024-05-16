@@ -340,11 +340,6 @@ impl<'a> ArgumentMapper<'a> {
         assert!(align.is_power_of_two());
         assert!(align <= 16);
 
-        // x86_64's max alignment is 8 bytes.
-        #[cfg(target_arch = "x86_64")]
-        assert!(align <= 8);
-
-        #[cfg(target_arch = "aarch64")]
         if align == 16 {
             // This works because on both aarch64 and x86_64 the stack is already aligned to
             // 16 bytes when the trampoline starts pushing values.
