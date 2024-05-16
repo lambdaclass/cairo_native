@@ -3,11 +3,11 @@
 use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
+    ffi::get_mlir_layout,
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
     metadata::{
         prime_modulo::PrimeModuloMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
@@ -78,8 +78,9 @@ pub fn build_const_as_box<'ctx, 'this>(
         context, registry, entry, location, helper, metadata, const_type,
     )?;
 
-    let const_ty = registry.get_type(&const_type.inner_ty)?;
-    let inner_layout = const_ty.layout(registry)?;
+    let const_ty =
+        registry.build_type(context, helper, registry, metadata, &const_type.inner_ty)?;
+    let inner_layout = get_mlir_layout(helper, const_ty);
 
     // Create box
     let value_len = entry

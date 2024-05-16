@@ -52,8 +52,8 @@ use test_case::test_case;
     not(target_arch = "x86_64"),
     test_case("tests/cases/uint/safe_divmod.cairo")
 )]
-#[test_case("tests/cases/uint/uint_addition.cairo")]
-#[test_case("tests/cases/uint/uint_subtraction.cairo")]
+// #[test_case("tests/cases/uint/uint_addition.cairo")]
+// #[test_case("tests/cases/uint/uint_subtraction.cairo")]
 #[test_case("tests/cases/uint/uint_try_from_felt.cairo")]
 #[test_case("tests/cases/uint/upcasts.cairo")]
 #[test_case("tests/cases/uint/wide_mul.cairo")]

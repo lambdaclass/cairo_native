@@ -1,5 +1,5 @@
 //! # JIT params and return values de/serialization
-
+//!
 //! A Rusty interface to provide parameters to JIT calls.
 
 use crate::{
@@ -846,6 +846,7 @@ impl JitValue {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::context::NativeContext;
     use bumpalo::Bump;
     use cairo_lang_sierra::extensions::types::{InfoAndTypeConcreteType, TypeInfo};
     use cairo_lang_sierra::program::ConcreteTypeLongId;
@@ -1018,10 +1019,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Felt252(Felt::from(42))
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<[u32; 8]>()
                     .as_ptr()
@@ -1032,7 +1044,14 @@ mod test {
         assert_eq!(
             unsafe {
                 *JitValue::Felt252(Felt::MAX)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<[u32; 8]>()
                     .as_ptr()
@@ -1044,7 +1063,14 @@ mod test {
         assert_eq!(
             unsafe {
                 *JitValue::Felt252(Felt::MAX + Felt::ONE)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<[u32; 8]>()
                     .as_ptr()
@@ -1059,10 +1085,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Uint8(9)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<u8>()
                     .as_ptr()
@@ -1077,10 +1114,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Uint16(17)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<u16>()
                     .as_ptr()
@@ -1095,10 +1143,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Uint32(33)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<u32>()
                     .as_ptr()
@@ -1113,10 +1172,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Uint64(65)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<u64>()
                     .as_ptr()
@@ -1131,10 +1201,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Uint128(129)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<u128>()
                     .as_ptr()
@@ -1149,10 +1230,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Sint8(-9)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<i8>()
                     .as_ptr()
@@ -1167,10 +1259,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Sint16(-17)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<i16>()
                     .as_ptr()
@@ -1185,10 +1288,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Sint32(-33)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<i32>()
                     .as_ptr()
@@ -1203,10 +1317,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Sint64(-65)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<i64>()
                     .as_ptr()
@@ -1221,10 +1346,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::Sint128(-129)
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<i128>()
                     .as_ptr()
@@ -1241,10 +1377,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::EcPoint(Felt::from(1234), Felt::from(4321))
-                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_jit(
+                        context.context(),
+                        &module,
+                        &mut metadata,
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                    )
                     .unwrap()
                     .cast::<[[u32; 8]; 2]>()
                     .as_ptr()
@@ -1261,6 +1408,10 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         assert_eq!(
             unsafe {
                 *JitValue::EcState(
@@ -1269,7 +1420,14 @@ mod test {
                     Felt::from(3333),
                     Felt::from(4444),
                 )
-                .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                .to_jit(
+                    context.context(),
+                    &module,
+                    &mut metadata,
+                    &Bump::new(),
+                    &registry,
+                    &program.type_declarations[0].id,
+                )
                 .unwrap()
                 .cast::<[[u32; 8]; 4]>()
                 .as_ptr()
@@ -1296,13 +1454,24 @@ mod test {
         // Create the registry for the program
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         // Call to_jit to get the value of the enum
         let result = JitValue::Enum {
             tag: 0,
             value: Box::new(JitValue::Uint8(10)),
             debug_name: None,
         }
-        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_jit(
+            context.context(),
+            &module,
+            &mut metadata,
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[1].id,
+        );
 
         // Assertion to verify that the value returned by to_jit is not NULL
         assert!(result.is_ok());
@@ -1322,13 +1491,24 @@ mod test {
         // Create the registry for the program
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         // Call to_jit to get the value of the enum with tag value out of range
         let _ = JitValue::Enum {
             tag: 2,
             value: Box::new(JitValue::Uint8(10)),
             debug_name: None,
         }
-        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_jit(
+            context.context(),
+            &module,
+            &mut metadata,
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[1].id,
+        );
     }
 
     #[test]
@@ -1343,12 +1523,23 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         let _ = JitValue::Enum {
             tag: 0,
             value: Box::new(JitValue::Uint8(10)),
             debug_name: None,
         }
-        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_jit(
+            context.context(),
+            &module,
+            &mut metadata,
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[1].id,
+        );
     }
 
     #[test]
@@ -1364,6 +1555,10 @@ mod test {
         // Creating a registry for the program.
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         // Invoking to_jit method on a JitValue::Enum to convert it to a JIT representation.
         // Generating an error by providing an enum value instead of the expected type.
         let result = JitValue::Enum {
@@ -1374,7 +1569,14 @@ mod test {
             }),
             debug_name: None,
         }
-        .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+        .to_jit(
+            context.context(),
+            &module,
+            &mut metadata,
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[0].id,
+        )
         .unwrap_err(); // Unwrapping the error
 
         // Matching the error result to verify the error type and message.
@@ -1406,13 +1608,24 @@ mod test {
         // Creating a registry for the program.
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        let context = NativeContext::new();
+        let module = context.new_module();
+        let mut metadata = MetadataStorage::new();
+
         // Invoking to_jit method on a JitValue::Struct to convert it to a JIT representation.
         // Generating an error by providing a struct value instead of the expected type.
         let result = JitValue::Struct {
             fields: vec![JitValue::from(2u32)],
             debug_name: None,
         }
-        .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+        .to_jit(
+            context.context(),
+            &module,
+            &mut metadata,
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[0].id,
+        )
         .unwrap_err(); // Unwrapping the error
 
         // Matching the error result to verify the error type and message.
