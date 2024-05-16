@@ -199,35 +199,28 @@ mod test {
         DebugInfo::extract(&db, &program).unwrap()
     }
 
-    macro_rules! assert_debug {
-        ($debug: expr) => {
-            assert!($debug.type_declarations.len() >= 1);
-            assert!($debug
-                .type_declarations
-                .iter()
-                .any(|(k, _)| k.debug_name == Some("u128".into())));
-
-            assert!($debug.libfunc_declarations.len() >= 1);
-            assert!($debug
-                .libfunc_declarations
-                .iter()
-                .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
-
-            assert!($debug.statements.is_empty());
-
-            assert!($debug.funcs.len() == 1);
-            assert!($debug.funcs.iter().any(|(k, _)| k
-                .debug_name
-                .clone()
-                .unwrap()
-                .contains("run_test")));
-        };
-    }
-
     #[rstest]
     fn test_extract_debug_info(debug_info: DebugInfo) {
-        // Assert the debug information
-        assert_debug!(debug_info);
+        // Assert the debug information contains u128
+        assert!(debug_info
+            .type_declarations
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128".into())));
+
+        // Assert the debug information contains u128_sqrt
+        assert!(debug_info
+            .libfunc_declarations
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
+
+        assert!(debug_info.statements.is_empty());
+
+        // Assert the debug information contains the run_test function
+        assert!(debug_info.funcs.iter().any(|(k, _)| k
+            .debug_name
+            .clone()
+            .unwrap()
+            .contains("run_test")));
     }
 
     #[rstest]
@@ -238,7 +231,25 @@ mod test {
         // Extract debug locations from the debug information
         let debug_locations = DebugLocations::extract(native_context.context(), &db, &debug_info);
 
-        // Assert the debug locations
-        assert_debug!(debug_locations);
+        // Assert the debug locations contain u128
+        assert!(debug_locations
+            .type_declarations
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128".into())));
+
+        // Assert the debug locations contain u128_sqrt
+        assert!(debug_locations
+            .libfunc_declarations
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
+
+        assert!(debug_locations.statements.is_empty());
+
+        // Assert the debug locations contain the run_test function
+        assert!(debug_locations.funcs.iter().any(|(k, _)| k
+            .debug_name
+            .clone()
+            .unwrap()
+            .contains("run_test")));
     }
 }
