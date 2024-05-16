@@ -85,12 +85,8 @@ pub fn get_integer_layout(width: u32) -> Layout {
             Layout::new::<u128>().align_to(16)
         }
     } else {
-        #[cfg(target_arch = "x86_64")]
-        let value = Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap();
-        #[cfg(not(target_arch = "x86_64"))]
-        let value = Layout::array::<u128>(next_multiple_of_u32(width, 128) as usize >> 7).unwrap();
-
-        value
+        let width = (width as usize).next_multiple_of(8).next_power_of_two();
+        Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
     }
 }
 
