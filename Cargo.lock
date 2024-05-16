@@ -2094,7 +2094,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "458fee521f12d0aa97a2e06eaf134398a5d2ae7b2074af77eb402b0d93138c47"
 dependencies = [
- "lambdaworks-math",
+ "lambdaworks-math 0.6.0",
  "serde",
  "sha2",
  "sha3",
@@ -2105,6 +2105,10 @@ name = "lambdaworks-math"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c74ce6f0d9cb672330b6ca59e85a6c3607a3329e0372ab0d3fe38c2d38e50f9"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "lambdaworks-math"
@@ -3402,7 +3406,6 @@ checksum = "b537ba94c95a6c320065653f2a784a395750650c86ef14779be91a233380e9b3"
 dependencies = [
  "arbitrary",
  "lambdaworks-crypto",
- "lambdaworks-math",
  "lambdaworks-math 0.6.0",
  "num-bigint",
  "num-integer",
