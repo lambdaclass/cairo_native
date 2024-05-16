@@ -129,8 +129,14 @@ use test_case::test_case;
 // #[test_case("tests/cases/cairo_vm/nullable_dict.cairo")]
 #[test_case("tests/cases/cairo_vm/ops.cairo")]
 #[test_case("tests/cases/cairo_vm/pedersen_example.cairo")]
-#[cfg_attr(not(target_arch = "aarch64"), test_case("tests/cases/cairo_vm/poseidon.cairo"))]
-#[cfg_attr(not(target_arch = "aarch64"), test_case("tests/cases/cairo_vm/poseidon_pedersen.cairo"))]
+#[cfg_attr(
+    not(target_arch = "aarch64"),
+    test_case("tests/cases/cairo_vm/poseidon.cairo")
+)]
+#[cfg_attr(
+    not(target_arch = "aarch64"),
+    test_case("tests/cases/cairo_vm/poseidon_pedersen.cairo")
+)]
 // #[test_case("tests/cases/cairo_vm/primitive_types2.cairo")]
 // #[test_case("tests/cases/cairo_vm/print.cairo")]
 #[test_case("tests/cases/cairo_vm/recursion.cairo")]
