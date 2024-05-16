@@ -160,18 +160,13 @@ fn extract_location_from_stable_loc<'c>(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{context::NativeContext, utils::test::load_cairo};
     use cairo_lang_semantic::test_utils::setup_test_function;
-    use cairo_lang_sierra::program::ConcreteLibfuncLongId;
-    use cairo_lang_sierra::program::ConcreteTypeLongId;
-    use cairo_lang_sierra::program::FunctionSignature;
-    use cairo_lang_sierra::program::GenFunction;
-    use cairo_lang_sierra::program::LibfuncDeclaration;
-    use cairo_lang_sierra::program::StatementIdx;
-    use cairo_lang_sierra::program::TypeDeclaration;
     use cairo_lang_sierra_generator::db::SierraGenGroup;
+    use rstest::*;
 
-    #[test]
-    fn test_extract_debug_locations() {
+    #[fixture]
+    fn db() -> RootDatabase {
         // Build the root database with corelib detection
         let db = RootDatabase::builder().detect_corelib().build().unwrap();
 
@@ -183,60 +178,78 @@ mod test {
         );
         let _ = db.function_with_body_sierra(function_id);
 
+        db
+    }
+
+    #[fixture]
+    fn program() -> Program {
         // Define a dummy program for testing
-        let program = Program {
-            type_declarations: vec![TypeDeclaration {
-                id: "test_id_type_declarations".into(),
-                long_id: ConcreteTypeLongId {
-                    generic_id: "u128".into(),
-                    generic_args: vec![],
-                },
-                declared_type_info: None,
-            }],
-            libfunc_declarations: vec![LibfuncDeclaration {
-                id: "test_id_libfunc_declarations".into(),
-                long_id: ConcreteLibfuncLongId {
-                    generic_id: "u128_sqrt".into(),
-                    generic_args: vec![],
-                },
-            }],
-            statements: vec![],
-            funcs: vec![GenFunction {
-                id: FunctionId {
-                    id: 0,
-                    debug_name: Some("some_name".into()),
-                },
-                signature: FunctionSignature {
-                    ret_types: vec![],
-                    param_types: vec![],
-                },
-                params: vec![],
-                entry_point: StatementIdx(0),
-            }],
+        let (_, program) = load_cairo! {
+            fn run_test() -> u128 {
+                let a: u128 = 1;
+                u128_sqrt(a).into()
+            }
         };
+        program
+    }
 
+    #[fixture]
+    fn debug_info(db: RootDatabase, program: Program) -> DebugInfo {
         // Extract debug information from the program
-        let res = DebugInfo::extract(&db, &program).unwrap();
+        DebugInfo::extract(&db, &program).unwrap()
+    }
 
-        // Assertions to test the extracted debug information
-        assert!(res.type_declarations.len() == 1);
-        assert!(res
+    #[rstest]
+    fn test_extract_debug_info(debug_info: DebugInfo) {
+        // Assert the debug information contains u128
+        assert!(debug_info
             .type_declarations
-            .contains_key(&ConcreteTypeId::from_string("test_id_type_declarations")));
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128".into())));
 
-        assert!(res.libfunc_declarations.len() == 1);
-        assert!(res
+        // Assert the debug information contains u128_sqrt
+        assert!(debug_info
             .libfunc_declarations
-            .contains_key(&ConcreteLibfuncId::from_string(
-                "test_id_libfunc_declarations"
-            )));
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
 
-        assert!(res.statements.is_empty());
+        assert!(debug_info.statements.is_empty());
 
-        assert!(res.funcs.len() == 1);
-        assert!(res.funcs.contains_key(&FunctionId {
-            id: 0,
-            debug_name: Some("some_name".into()),
-        }));
+        // Assert the debug information contains the run_test function
+        assert!(debug_info.funcs.iter().any(|(k, _)| k
+            .debug_name
+            .clone()
+            .unwrap()
+            .contains("run_test")));
+    }
+
+    #[rstest]
+    fn test_extract_debug_locations(db: RootDatabase, debug_info: DebugInfo) {
+        // Get the native context
+        let native_context = NativeContext::new();
+
+        // Extract debug locations from the debug information
+        let debug_locations = DebugLocations::extract(native_context.context(), &db, &debug_info);
+
+        // Assert the debug locations contain u128
+        assert!(debug_locations
+            .type_declarations
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128".into())));
+
+        // Assert the debug locations contain u128_sqrt
+        assert!(debug_locations
+            .libfunc_declarations
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
+
+        assert!(debug_locations.statements.is_empty());
+
+        // Assert the debug locations contain the run_test function
+        assert!(debug_locations.funcs.iter().any(|(k, _)| k
+            .debug_name
+            .clone()
+            .unwrap()
+            .contains("run_test")));
     }
 }
