@@ -1,7 +1,6 @@
 use core::byte_array::BYTE_ARRAY_MAGIC;
 use core::debug::{PrintTrait, print_byte_array_as_string};
 
-#[ignore]
 #[test]
 fn test_prints() {
     // Valid short string.
@@ -102,7 +101,6 @@ fn test_prints() {
     x.print();
 }
 
-#[ignore]
 #[test]
 fn test_print_macro() {
     // With a ByteArray.
@@ -116,7 +114,6 @@ fn test_print_macro() {
     print!("{}", 97_usize);
 }
 
-#[ignore]
 #[test]
 fn test_println_macro() {
     // With a ByteArray.
