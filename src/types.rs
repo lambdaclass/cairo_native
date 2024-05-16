@@ -929,6 +929,10 @@ impl TypeBuilder for CoreTypeConcrete {
     ) -> Result<(), Self::Error> {
         match self {
             CoreTypeConcrete::Array(_info) => {
+                if metadata.get::<ReallocBindingsMeta>().is_none() {
+                    metadata.insert(ReallocBindingsMeta::new(context, helper));
+                }
+
                 let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
 
                 let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
