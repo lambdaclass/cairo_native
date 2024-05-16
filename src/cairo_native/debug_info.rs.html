@@ -241,6 +241,19 @@
 <a href="#240" id="240">240</a>
 <a href="#241" id="241">241</a>
 <a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Extracts useful debugging information from cairo programs to make it available to the generated MLIR.
 
 </span><span class="kw">use </span><span class="self">self</span>::{
@@ -403,18 +416,13 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use crate</span>::{context::NativeContext, utils::test::load_cairo};
     <span class="kw">use </span>cairo_lang_semantic::test_utils::setup_test_function;
-    <span class="kw">use </span>cairo_lang_sierra::program::ConcreteLibfuncLongId;
-    <span class="kw">use </span>cairo_lang_sierra::program::ConcreteTypeLongId;
-    <span class="kw">use </span>cairo_lang_sierra::program::FunctionSignature;
-    <span class="kw">use </span>cairo_lang_sierra::program::GenFunction;
-    <span class="kw">use </span>cairo_lang_sierra::program::LibfuncDeclaration;
-    <span class="kw">use </span>cairo_lang_sierra::program::StatementIdx;
-    <span class="kw">use </span>cairo_lang_sierra::program::TypeDeclaration;
     <span class="kw">use </span>cairo_lang_sierra_generator::db::SierraGenGroup;
+    <span class="kw">use </span>rstest::<span class="kw-2">*</span>;
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_extract_debug_locations() {
+    <span class="attr">#[fixture]
+    </span><span class="kw">fn </span>db() -&gt; RootDatabase {
         <span class="comment">// Build the root database with corelib detection
         </span><span class="kw">let </span>db = RootDatabase::builder().detect_corelib().build().unwrap();
 
@@ -426,61 +434,79 @@
         );
         <span class="kw">let _ </span>= db.function_with_body_sierra(function_id);
 
+        db
+    }
+
+    <span class="attr">#[fixture]
+    </span><span class="kw">fn </span>program() -&gt; Program {
         <span class="comment">// Define a dummy program for testing
-        </span><span class="kw">let </span>program = Program {
-            type_declarations: <span class="macro">vec!</span>[TypeDeclaration {
-                id: <span class="string">"test_id_type_declarations"</span>.into(),
-                long_id: ConcreteTypeLongId {
-                    generic_id: <span class="string">"u128"</span>.into(),
-                    generic_args: <span class="macro">vec!</span>[],
-                },
-                declared_type_info: <span class="prelude-val">None</span>,
-            }],
-            libfunc_declarations: <span class="macro">vec!</span>[LibfuncDeclaration {
-                id: <span class="string">"test_id_libfunc_declarations"</span>.into(),
-                long_id: ConcreteLibfuncLongId {
-                    generic_id: <span class="string">"u128_sqrt"</span>.into(),
-                    generic_args: <span class="macro">vec!</span>[],
-                },
-            }],
-            statements: <span class="macro">vec!</span>[],
-            funcs: <span class="macro">vec!</span>[GenFunction {
-                id: FunctionId {
-                    id: <span class="number">0</span>,
-                    debug_name: <span class="prelude-val">Some</span>(<span class="string">"some_name"</span>.into()),
-                },
-                signature: FunctionSignature {
-                    ret_types: <span class="macro">vec!</span>[],
-                    param_types: <span class="macro">vec!</span>[],
-                },
-                params: <span class="macro">vec!</span>[],
-                entry_point: StatementIdx(<span class="number">0</span>),
-            }],
+        </span><span class="kw">let </span>(<span class="kw">_</span>, program) = <span class="macro">load_cairo! </span>{
+            <span class="kw">fn </span>run_test() -&gt; u128 {
+                <span class="kw">let </span>a: u128 = <span class="number">1</span>;
+                u128_sqrt(a).into()
+            }
         };
+        program
+    }
 
+    <span class="attr">#[fixture]
+    </span><span class="kw">fn </span>debug_info(db: RootDatabase, program: Program) -&gt; DebugInfo {
         <span class="comment">// Extract debug information from the program
-        </span><span class="kw">let </span>res = DebugInfo::extract(<span class="kw-2">&amp;</span>db, <span class="kw-2">&amp;</span>program).unwrap();
+        </span>DebugInfo::extract(<span class="kw-2">&amp;</span>db, <span class="kw-2">&amp;</span>program).unwrap()
+    }
 
-        <span class="comment">// Assertions to test the extracted debug information
-        </span><span class="macro">assert!</span>(res.type_declarations.len() == <span class="number">1</span>);
-        <span class="macro">assert!</span>(res
+    <span class="attr">#[rstest]
+    </span><span class="kw">fn </span>test_extract_debug_info(debug_info: DebugInfo) {
+        <span class="comment">// Assert the debug information contains u128
+        </span><span class="macro">assert!</span>(debug_info
             .type_declarations
-            .contains_key(<span class="kw-2">&amp;</span>ConcreteTypeId::from_string(<span class="string">"test_id_type_declarations"</span>)));
+            .iter()
+            .any(|(k, <span class="kw">_</span>)| k.debug_name == <span class="prelude-val">Some</span>(<span class="string">"u128"</span>.into())));
 
-        <span class="macro">assert!</span>(res.libfunc_declarations.len() == <span class="number">1</span>);
-        <span class="macro">assert!</span>(res
+        <span class="comment">// Assert the debug information contains u128_sqrt
+        </span><span class="macro">assert!</span>(debug_info
             .libfunc_declarations
-            .contains_key(<span class="kw-2">&amp;</span>ConcreteLibfuncId::from_string(
-                <span class="string">"test_id_libfunc_declarations"
-            </span>)));
+            .iter()
+            .any(|(k, <span class="kw">_</span>)| k.debug_name == <span class="prelude-val">Some</span>(<span class="string">"u128_sqrt"</span>.into())));
 
-        <span class="macro">assert!</span>(res.statements.is_empty());
+        <span class="macro">assert!</span>(debug_info.statements.is_empty());
 
-        <span class="macro">assert!</span>(res.funcs.len() == <span class="number">1</span>);
-        <span class="macro">assert!</span>(res.funcs.contains_key(<span class="kw-2">&amp;</span>FunctionId {
-            id: <span class="number">0</span>,
-            debug_name: <span class="prelude-val">Some</span>(<span class="string">"some_name"</span>.into()),
-        }));
+        <span class="comment">// Assert the debug information contains the run_test function
+        </span><span class="macro">assert!</span>(debug_info.funcs.iter().any(|(k, <span class="kw">_</span>)| k
+            .debug_name
+            .clone()
+            .unwrap()
+            .contains(<span class="string">"run_test"</span>)));
+    }
+
+    <span class="attr">#[rstest]
+    </span><span class="kw">fn </span>test_extract_debug_locations(db: RootDatabase, debug_info: DebugInfo) {
+        <span class="comment">// Get the native context
+        </span><span class="kw">let </span>native_context = NativeContext::new();
+
+        <span class="comment">// Extract debug locations from the debug information
+        </span><span class="kw">let </span>debug_locations = DebugLocations::extract(native_context.context(), <span class="kw-2">&amp;</span>db, <span class="kw-2">&amp;</span>debug_info);
+
+        <span class="comment">// Assert the debug locations contain u128
+        </span><span class="macro">assert!</span>(debug_locations
+            .type_declarations
+            .iter()
+            .any(|(k, <span class="kw">_</span>)| k.debug_name == <span class="prelude-val">Some</span>(<span class="string">"u128"</span>.into())));
+
+        <span class="comment">// Assert the debug locations contain u128_sqrt
+        </span><span class="macro">assert!</span>(debug_locations
+            .libfunc_declarations
+            .iter()
+            .any(|(k, <span class="kw">_</span>)| k.debug_name == <span class="prelude-val">Some</span>(<span class="string">"u128_sqrt"</span>.into())));
+
+        <span class="macro">assert!</span>(debug_locations.statements.is_empty());
+
+        <span class="comment">// Assert the debug locations contain the run_test function
+        </span><span class="macro">assert!</span>(debug_locations.funcs.iter().any(|(k, <span class="kw">_</span>)| k
+            .debug_name
+            .clone()
+            .unwrap()
+            .contains(<span class="string">"run_test"</span>)));
     }
 }
 </code></pre></div></section></main></body></html>
