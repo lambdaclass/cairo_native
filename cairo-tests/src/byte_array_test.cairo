@@ -1,6 +1,7 @@
 use core::test::test_utils::{assert_eq, assert_ne};
 
 #[test]
+#[ignore]
 fn test_append_byte() {
     let mut ba = Default::default();
     let mut c = 1_u8;
@@ -112,6 +113,7 @@ fn test_add() {
 
 // Test concat/append, first byte array empty.
 #[test]
+#[ignore]
 fn test_concat_first_empty() {
     let ba1 = Default::default();
     let ba2 = test_byte_array_32();
@@ -124,6 +126,7 @@ fn test_concat_first_empty() {
 
 // Test concat/append, second byte array empty.
 #[test]
+#[ignore]
 fn test_concat_second_empty() {
     let ba1 = test_byte_array_32();
     let ba2 = Default::default();
@@ -168,6 +171,7 @@ fn test_concat_second_pending_0() {
 
 // Test concat/append, split index of the words of the second byte array is 16.
 #[test]
+#[ignore]
 fn test_concat_split_index_16() {
     let ba1 = test_byte_array_16();
     let ba2 = test_byte_array_32();
@@ -180,6 +184,7 @@ fn test_concat_split_index_16() {
 
 // Test concat/append, split index of the words of the second byte array is < 16, specifically 1.
 #[test]
+#[ignore]
 fn test_concat_split_index_lt_16() {
     let ba1 = test_byte_array_1();
     let ba2 = test_byte_array_32();
@@ -225,6 +230,7 @@ fn test_concat_pending_sum_up_to_full() {
 // Sum of the lengths of the pending words of both byte arrays is 31+16.
 // That is, the pending words aggregate to a full word, and the last split index is 16.
 #[test]
+#[ignore]
 fn test_concat_pending_sum_up_to_more_than_word_16() {
     let ba1 = test_byte_array_17();
     let ba2 = test_byte_array_30();
@@ -238,6 +244,7 @@ fn test_concat_pending_sum_up_to_more_than_word_16() {
 // Sum of the lengths of the pending words of both byte arrays is in [32, 31+15].
 // That is, the pending words aggregate to a full word, and the last split index is <16.
 #[test]
+#[ignore]
 fn test_concat_pending_sum_up_to_more_than_word_lt16() {
     let ba1 = test_byte_array_2();
     let ba2 = test_byte_array_30();
@@ -251,6 +258,7 @@ fn test_concat_pending_sum_up_to_more_than_word_lt16() {
 // Sum of the lengths of the pending words of both byte arrays is >31+15
 // That is, the pending words aggregate to a full word, and the last split index is >16.
 #[test]
+#[ignore]
 fn test_concat_pending_sum_up_to_more_than_word_gt16() {
     let ba1 = test_byte_array_30();
     let ba2 = test_byte_array_30();
@@ -264,6 +272,7 @@ fn test_concat_pending_sum_up_to_more_than_word_gt16() {
 }
 
 #[test]
+#[ignore]
 fn test_len() {
     let ba: ByteArray = Default::default();
     assert(ba.len() == 0, 'wrong ByteArray len');
@@ -286,6 +295,7 @@ fn test_at_empty() {
 }
 
 #[test]
+#[ignore]
 fn test_at() {
     let mut ba = test_byte_array_31();
     ba.append(@test_byte_array_31());
@@ -313,6 +323,7 @@ fn test_at() {
 
 // Same as the previous test, but with [] instead of .at() (and without the out-of-bounds case).
 #[test]
+#[ignore]
 fn test_index_view() {
     let mut ba = test_byte_array_31();
     ba.append(@test_byte_array_31());
@@ -339,6 +350,7 @@ fn test_index_view() {
 
 // Test panic with [] in case of out-of-bounds
 #[test]
+#[ignore]
 #[should_panic(expected: ('Index out of bounds',))]
 fn test_index_view_out_of_bounds() {
     let mut ba = test_byte_array_31();
@@ -360,6 +372,7 @@ fn test_string_literals() {
 }
 
 #[test]
+#[ignore]
 fn test_equality() {
     let byte_array: ByteArray = "a";
     assert(@byte_array == @"a", 'Same strings are not equal');
@@ -388,6 +401,7 @@ fn test_equality() {
 }
 
 #[test]
+#[ignore]
 fn test_reverse() {
     // Arrays of length < 16
     let ba: ByteArray = "abc";

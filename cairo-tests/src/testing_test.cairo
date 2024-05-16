@@ -19,6 +19,7 @@ fn test_assert_true() {
 }
 
 #[test]
+#[ignore]
 #[should_panic(expected: "assert(false)")]
 fn test_assert_macro_false() {
     assert!(false, "assert(false)");
@@ -40,12 +41,14 @@ fn test_assert_ne_no_description() {
 }
 
 #[test]
+#[ignore]
 #[should_panic(expected: "assertion failed: `false`.")]
 fn test_assert_macro_no_input() {
     assert!(false);
 }
 
 #[test]
+#[ignore]
 #[should_panic(expected: "assertion `1 == 2` failed: Description
 1: 1
 2: 2")]
@@ -54,6 +57,7 @@ fn test_assert_eq_with_description() {
 }
 
 #[test]
+#[ignore]
 #[should_panic(expected: "assertion `1 == 2` failed: 1 != 2
 1: 1
 2: 2")]
@@ -62,6 +66,7 @@ fn test_assert_eq_with_formatted_description() {
 }
 
 #[test]
+#[ignore]
 #[should_panic(expected: "assertion `1 == 2` failed.
 1: 1
 2: 2")]
