@@ -226,8 +226,7 @@ pub fn filter_test_cases(
     let named_tests = compiled
         .named_tests
         .into_iter()
-        .filter(|(name, _)| name.contains(&filter))
-        .collect_vec();
+        .filter(|(name, _)| name.contains(&filter));
 
     let named_tests = if include_ignored {
         named_tests
@@ -247,7 +246,7 @@ pub fn filter_test_cases(
             .filter(|(_, test)| !test.ignored)
             .collect_vec()
     } else {
-        named_tests
+        named_tests.collect_vec()
     };
 
     let filtered_out = total_tests_count - named_tests.len();
