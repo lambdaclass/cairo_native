@@ -460,51 +460,51 @@ impl StarknetSyscallHandler for DummySyscallHandler {
     ) -> SyscallResult<(U256, U256)> {
         unimplemented!()
     }
-    
+
     fn set_account_contract_address(&mut self, _contract_address: Felt) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_block_number(&mut self, _block_number: u64) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_block_timestamp(&mut self, _block_timestamp: u64) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_caller_address(&mut self, _address: Felt) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_chain_id(&mut self, _chain_id: Felt) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_contract_address(&mut self, _address: Felt) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_max_fee(&mut self, _max_fee: u128) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_nonce(&mut self, _nonce: Felt) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_sequencer_address(&mut self, _address: Felt) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_signature(&mut self, _signature: &[Felt]) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_transaction_hash(&mut self, _transaction_hash: Felt) -> SyscallResult<()> {
         todo!()
     }
-    
+
     fn set_version(&mut self, version: Felt) -> SyscallResult<()> {
         todo!()
     }
@@ -981,13 +981,18 @@ pub(crate) mod handler {
             };
         }
 
+        // TODO(juanbono) Implement wrap_pop_log
+        extern "C" fn wrap_pop_log() {
+            todo!()
+        }
+
         extern "C" fn wrap_set_version(
-            result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
             version: Felt,
         ) {
-            let version = ptr.set_version(version);
+            let result = ptr.set_version(version);
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
@@ -999,13 +1004,22 @@ pub(crate) mod handler {
             };
         }
 
-        // TODO(juanbono) Implement wrap_pop_log
-        extern "C" fn wrap_pop_log() {
-            todo!()
-        }
-
-        extern "C" fn wrap_set_account_contract_address() {
-            todo!()
+        extern "C" fn wrap_set_account_contract_address(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            contract_address: Felt,
+        ) {
+            let result = ptr.set_account_contract_address(contract_address);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
         extern "C" fn wrap_set_block_number() {
