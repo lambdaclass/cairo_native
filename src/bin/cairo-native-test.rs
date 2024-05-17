@@ -226,17 +226,30 @@ pub fn filter_test_cases(
     let named_tests = compiled
         .named_tests
         .into_iter()
-        .map(|(func, mut test)| {
-            // Un-ignoring all the tests in `include-ignored` mode.
-            if include_ignored {
-                test.ignored = false;
-            }
-            (func, test)
-        })
         .filter(|(name, _)| name.contains(&filter))
-        // Filtering unignored tests in `ignored` mode
-        .filter(|(_, test)| !ignored || test.ignored)
         .collect_vec();
+
+    let named_tests = if include_ignored {
+        named_tests
+            .into_iter()
+            .map(|(name, mut test)| {
+                test.ignored = false;
+                (name, test)
+            })
+            .collect_vec()
+    } else if ignored {
+        named_tests
+            .into_iter()
+            .map(|(name, mut test)| {
+                test.ignored = !test.ignored;
+                (name, test)
+            })
+            .filter(|(_, test)| !test.ignored)
+            .collect_vec()
+    } else {
+        named_tests
+    };
+
     let filtered_out = total_tests_count - named_tests.len();
     let tests = TestCompilation {
         named_tests,
