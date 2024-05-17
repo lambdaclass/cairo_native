@@ -25,9 +25,7 @@ fuzz_target!(|data: (&[u8], Felt)| {
     //TODO: fuzz point
     let params = &[JitValue::Felt252()];
 
-    let result = native_executor
-        .execute_contract(fn_id, params)
-        .unwrap();
+    let result = native_executor.execute_contract(fn_id, params).unwrap();
 
     result
 });
