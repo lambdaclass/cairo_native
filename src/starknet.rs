@@ -1022,44 +1022,184 @@ pub(crate) mod handler {
             };
         }
 
-        extern "C" fn wrap_set_block_number() {
-            todo!()
+        extern "C" fn wrap_set_block_number(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            block_number: u64, // TODO(juanbono): check if needs to be u64 or Felt
+        ) {
+            let result = ptr.set_block_number(block_number);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
-        extern "C" fn wrap_set_block_timestamp() {
-            todo!()
+        extern "C" fn wrap_set_block_timestamp(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            block_timestamp: Felt,
+        ) {
+            let result = ptr.set_block_timestamp(block_timestamp);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
-        extern "C" fn wrap_set_caller_address() {
-            todo!()
+        extern "C" fn wrap_set_caller_address(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            caller_address: Felt,
+        ) {
+            let result = ptr.set_caller_address(caller_address);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
-        extern "C" fn wrap_set_chain_id() {
-            todo!()
+        extern "C" fn wrap_set_chain_id(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            chain_id: Felt,
+        ) {
+            let result = ptr.set_chain_id(chain_id);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
-        extern "C" fn wrap_set_contract_address() {
-            todo!()
+        extern "C" fn wrap_set_contract_address(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            contract_address: Felt,
+        ) {
+            let result = ptr.set_contract_address(contract_address);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
-        extern "C" fn wrap_set_max_fee() {
-            todo!()
+        extern "C" fn wrap_set_max_fee(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            max_fee: u128, // TODO(juanbono): check if needs to be u128 or Felt
+        ) {
+            let result = ptr.set_max_fee(max_fee);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
-        extern "C" fn wrap_set_nonce() {
-            todo!()
+        extern "C" fn wrap_set_nonce(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            nonce: Felt,
+        ) {
+            let result = ptr.set_nonce(nonce);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
-        extern "C" fn wrap_set_sequencer_address() {
-            todo!()
+        extern "C" fn wrap_set_sequencer_address(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            sequencer_address: Felt,
+        ) {
+            let result = ptr.set_sequencer_address(sequencer_address);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
-        extern "C" fn wrap_set_signature() {
-            todo!()
+        extern "C" fn wrap_set_signature(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            signature: &[Felt],
+        ) {
+            let result = ptr.set_signature(&signature);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
-        extern "C" fn wrap_set_transaction_hash() {
-            todo!()
+        extern "C" fn wrap_set_transaction_hash(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            gas: &mut u128,
+            transaction_hash: Felt,
+        ) {
+            let result = ptr.set_transaction_hash(transaction_hash);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
         extern "C" fn wrap_get_execution_info(
