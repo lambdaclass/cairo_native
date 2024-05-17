@@ -2,7 +2,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
+    block_ext::BlockExt,
+    error::Result, 
+    metadata::MetadataStorage, 
+    types::TypeBuilder, 
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -91,13 +95,13 @@ pub fn build_struct_value<'ctx, 'this>(
 
     let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
     for (i, field) in fields.iter().enumerate() {
-        acc = entry.append_operation(llvm::insert_value(
+        acc = entry.insert_value(
             context,
-            acc.result(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[i as _]),
-            *field,
             location,
-        ));
+            acc.result(0)?, 
+            *field, 
+            i,
+        )?;
     }
 
     Ok(acc.result(0)?.into())
@@ -120,16 +124,13 @@ pub fn build_deconstruct<'ctx, 'this>(
         let type_info = registry.get_type(&var_info.ty)?;
         let field_ty = type_info.build(context, helper, registry, metadata, &var_info.ty)?;
 
-        let value = entry
-            .append_operation(llvm::extract_value(
-                context,
-                container,
-                DenseI64ArrayAttribute::new(context, &[i.try_into()?]),
-                field_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let value = entry.extract_value(
+            context,
+            location,
+            container,
+            field_ty,
+            i,
+        )?;
 
         fields.push(value);
     }
