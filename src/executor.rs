@@ -1,3 +1,8 @@
+//! # Executors
+//!
+//! This module provides methods to execute the programs, either via JIT or compiled ahead
+//! of time. It also provides a cache to avoid recompiling previously compiled programs.
+
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::Error,
@@ -48,6 +53,7 @@ extern "C" {
     );
 }
 
+/// The cairo native executor, either AOT or JIT based.
 #[derive(Debug, Clone)]
 pub enum NativeExecutor<'m> {
     Aot(Rc<AotNativeExecutor>),
@@ -55,6 +61,7 @@ pub enum NativeExecutor<'m> {
 }
 
 impl<'a> NativeExecutor<'a> {
+    /// Invoke the given function by its function id, with the given arguments and gas.
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
@@ -67,6 +74,9 @@ impl<'a> NativeExecutor<'a> {
         }
     }
 
+    /// Invoke the given function by its function id, with the given arguments and gas.
+    /// This should be used for programs which require a syscall handler, whose
+    /// implementation should be passed on.
     pub fn invoke_dynamic_with_syscall_handler(
         &self,
         function_id: &FunctionId,
@@ -90,6 +100,9 @@ impl<'a> NativeExecutor<'a> {
         }
     }
 
+    /// Invoke the given function by its function id, with the given arguments and gas.
+    /// This should be used for starknet contracts which require a syscall handler, whose
+    /// implementation should be passed on.
     pub fn invoke_contract_dynamic(
         &self,
         function_id: &FunctionId,
@@ -120,6 +133,15 @@ impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
     }
 }
 
+/// Internal method.
+///
+/// Invokes the given function by constructing the function call depending on the arguments given.
+/// Usually calling a function requires knowing it's signature at compile time, but we need to be
+/// able to call any given function provided it's signatue (arguments and return type) at runtime,
+/// to do so we have a "trampoline" in the given platform assembly (x86_64, aarch64) which
+/// constructs the function call in place.
+///
+/// To pass the arguments, they are stored in a arena.
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
@@ -578,6 +600,7 @@ impl<'a> ArgumentMapper<'a> {
     }
 }
 
+/// Parses the result by reading from the return ptr the given type.
 fn parse_result(
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
