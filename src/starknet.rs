@@ -245,57 +245,34 @@ pub trait StarknetSyscallHandler {
     ) -> SyscallResult<(U256, U256)>;
 
     // Testing syscalls.
+    // TODO(juanbono): Add correct return type
     fn pop_log(&mut self) {
         unimplemented!()
     }
 
-    fn set_account_contract_address(&mut self, _contract_address: Felt) {
-        unimplemented!()
-    }
+    fn set_account_contract_address(&mut self, _contract_address: Felt) -> SyscallResult<()>;
 
-    fn set_block_number(&mut self, _block_number: u64) {
-        unimplemented!()
-    }
+    fn set_block_number(&mut self, _block_number: u64) -> SyscallResult<()>;
 
-    fn set_block_timestamp(&mut self, _block_timestamp: u64) {
-        unimplemented!()
-    }
+    fn set_block_timestamp(&mut self, _block_timestamp: u64) -> SyscallResult<()>;
 
-    fn set_caller_address(&mut self, _address: Felt) {
-        unimplemented!()
-    }
+    fn set_caller_address(&mut self, _address: Felt) -> SyscallResult<()>;
 
-    fn set_chain_id(&mut self, _chain_id: Felt) {
-        unimplemented!()
-    }
+    fn set_chain_id(&mut self, _chain_id: Felt) -> SyscallResult<()>;
 
-    fn set_contract_address(&mut self, _address: Felt) {
-        unimplemented!()
-    }
+    fn set_contract_address(&mut self, _address: Felt) -> SyscallResult<()>;
 
-    fn set_max_fee(&mut self, _max_fee: u128) {
-        unimplemented!()
-    }
+    fn set_max_fee(&mut self, _max_fee: u128) -> SyscallResult<()>;
 
-    fn set_nonce(&mut self, _nonce: Felt) {
-        unimplemented!()
-    }
+    fn set_nonce(&mut self, _nonce: Felt) -> SyscallResult<()>;
 
-    fn set_sequencer_address(&mut self, _address: Felt) {
-        unimplemented!()
-    }
+    fn set_sequencer_address(&mut self, _address: Felt) -> SyscallResult<()>;
 
-    fn set_signature(&mut self, _signature: &[Felt]) {
-        unimplemented!()
-    }
+    fn set_signature(&mut self, _signature: &[Felt]) -> SyscallResult<()>;
 
-    fn set_transaction_hash(&mut self, _transaction_hash: Felt) {
-        unimplemented!()
-    }
+    fn set_transaction_hash(&mut self, _transaction_hash: Felt) -> SyscallResult<()>;
 
-    fn set_version(&mut self, _version: Felt) {
-        unimplemented!()
-    }
+    fn set_version(&mut self, version: Felt) -> SyscallResult<()>;
 }
 
 pub struct DummySyscallHandler;
@@ -482,6 +459,54 @@ impl StarknetSyscallHandler for DummySyscallHandler {
         _remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)> {
         unimplemented!()
+    }
+    
+    fn set_account_contract_address(&mut self, _contract_address: Felt) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_block_number(&mut self, _block_number: u64) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_block_timestamp(&mut self, _block_timestamp: u64) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_caller_address(&mut self, _address: Felt) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_chain_id(&mut self, _chain_id: Felt) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_contract_address(&mut self, _address: Felt) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_max_fee(&mut self, _max_fee: u128) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_nonce(&mut self, _nonce: Felt) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_sequencer_address(&mut self, _address: Felt) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_signature(&mut self, _signature: &[Felt]) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_transaction_hash(&mut self, _transaction_hash: Felt) -> SyscallResult<()> {
+        todo!()
+    }
+    
+    fn set_version(&mut self, version: Felt) -> SyscallResult<()> {
+        todo!()
     }
 }
 
@@ -744,7 +769,7 @@ pub(crate) mod handler {
             p: &Secp256r1Point,
         ),
         // testing syscalls
-        // TODO: Add proper types to pop_log
+        // TODO(juanbono): Add proper types to pop_log
         pop_log: extern "C" fn(),
         set_account_contract_address: extern "C" fn(
             result_ptr: SyscallResultAbi<()>,
@@ -960,10 +985,21 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
             ptr: &mut T,
             gas: &mut u128,
+            version: Felt,
         ) {
-            todo!()
+            let version = ptr.set_version(version);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
+        // TODO(juanbono) Implement wrap_pop_log
         extern "C" fn wrap_pop_log() {
             todo!()
         }
