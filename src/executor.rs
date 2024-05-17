@@ -631,6 +631,20 @@ fn parse_result(
                 value
             }
         },
+        CoreTypeConcrete::Bytes31(_) => match return_ptr {
+            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            None => {
+                #[cfg(target_arch = "x86_64")]
+                let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+
+                #[cfg(target_arch = "aarch64")]
+                let value = JitValue::Bytes31(unsafe {
+                    *std::mem::transmute::<&[u64; 4], &[u8; 31]>(&ret_registers)
+                });
+
+                value
+            }
+        },
         CoreTypeConcrete::Uint8(_) => match return_ptr {
             Some(return_ptr) => JitValue::Uint8(unsafe { *return_ptr.cast().as_ref() }),
             None => JitValue::Uint8(ret_registers[0] as u8),
@@ -783,7 +797,6 @@ fn parse_result(
         CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::Snapshot(_) => todo!(),
-        CoreTypeConcrete::Bytes31(_) => todo!(),
         CoreTypeConcrete::Bitwise(_) => todo!(),
         CoreTypeConcrete::Const(_) => todo!(),
         CoreTypeConcrete::EcOp(_) => todo!(),

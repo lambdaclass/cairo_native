@@ -244,7 +244,7 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
     let mut felts = Vec::new();
     match value {
         JitValue::Felt252(felt) => vec![felt.to_bigint().into()],
-        JitValue::Bytes31(_) => todo!(),
+        JitValue::Bytes31(bytes) => vec![Felt::from_bytes_le_slice(bytes)],
         JitValue::Array(values) => {
             for value in values {
                 let felt = jitvalue_to_felt(value);
