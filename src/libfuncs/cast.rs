@@ -81,12 +81,15 @@ pub fn build_downcast<'ctx, 'this>(
         location,
     );
 
-    let is_signed = src_type.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
-    })? || dst_type.is_integer_signed().ok_or_else(|| {
+    let src_is_signed = src_type.is_integer_signed().ok_or_else(|| {
         Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
-    let is_felt = matches!(src_type, CoreTypeConcrete::Felt252(_));
+    let dst_is_signed = dst_type.is_integer_signed().ok_or_else(|| {
+        Error::SierraAssert("casts always happen between numerical types".to_string())
+    })?;
+
+    let is_signed = src_is_signed || dst_is_signed;
+    let src_is_felt = matches!(src_type, CoreTypeConcrete::Felt252(_));
 
     let src_value: melior::ir::Value = entry.argument(1)?.into();
 
@@ -98,7 +101,7 @@ pub fn build_downcast<'ctx, 'this>(
     } else {
         // make unsigned felt into signed felt
         // felt > half prime = negative
-        let src_value = if is_felt {
+        let src_value = if src_is_felt {
             let attr_halfprime_i252 = metadata
                 .get::<PrimeModuloMeta<Felt>>()
                 .ok_or(Error::MissingMetadata)?
