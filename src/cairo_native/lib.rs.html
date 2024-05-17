@@ -87,11 +87,39 @@
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Cairo Sierra to MLIR compiler and JIT engine
 //!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
 //! which can be [JIT-executed](https://en.wikipedia.org/wiki/Just-in-time_compilation) or further
-//! compiled (externally) into a binary
+//! compiled into a binary
 //! [ahead of time](https://en.wikipedia.org/wiki/Ahead-of-time_compilation).
 //!
 //! ## Usage
@@ -150,6 +178,34 @@
 //!   - `program: &amp;Program`: The Sierra input program.
 //!   - `registry: &amp;ProgramRegistry&lt;TType, TLibfunc&gt;`: The registry extracted from the program.
 //!   - `metadata: &amp;mut MetadataStorage`: Current compiler metadata.
+//!
+//! ## Project layout
+//!
+//! ```txt
+//!  src
+//!  ├─ context.rs - The MLIR context wrapper, provides the compile method.
+//!  ├─ utils.rs - Internal utilities.
+//!  ├─ metadata/ - Metadata injector to use within the compilation process
+//!  ├─ executor/ - Code related to the executor of programs.
+//!  ├─ module.rs - The MLIR module wrapper.
+//!  ├─ arch/ - Trampoline assembly for calling functions with dynamic signatures.
+//!  ├─ executor.rs - The executor code.
+//!  ├─ ffi.cpp - Missing FFI C wrappers
+//!  ├─ libfuncs - Cairo Sierra libfunc implementations
+//!  ├─ libfuncs.rs - Cairo Sierra libfunc glue code
+//!  ├─ starknet.rs - Starknet syscall handler glue code.
+//!  ├─ ffi.rs - Missing FFI C wrappers, rust side.
+//!  ├─ block_ext.rs - A melior (MLIR) block trait extension to write less code.
+//!  ├─ lib.rs - The main lib file.
+//!  ├─ execution_result.rs - Program result parsing.
+//!  ├─ values.rs - JIT serialization.
+//!  ├─ metadata.rs - Metadata injector to use within the compilation process.
+//!  ├─ compiler.rs - The glue code of the compiler, has the codegen for the function signatures
+//!  and calls the libfunc codegen implementations.
+//!  ├─ error.rs - Error handling
+//!  ├─ bin - Binary programs
+//!  ├─ types - Cairo to MLIR type information
+//! ```
 
 </span><span class="comment">// #![warn(missing_docs)]
 </span><span class="attr">#![allow(clippy::missing_safety_doc)]

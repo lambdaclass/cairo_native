@@ -367,7 +367,24 @@
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
 <a href="#368" id="368">368</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::Error <span class="kw">as </span>CompileError;
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! # FFI Wrappers
+//!
+//! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
+//! APIs that are missing from melior.
+
+</span><span class="kw">use </span><span class="kw">crate</span>::error::Error <span class="kw">as </span>CompileError;
 <span class="kw">use </span>llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -419,7 +436,8 @@
     <span class="kw">unsafe </span>{ Type::from_raw(ty_ptr) }
 }
 
-<span class="attr">#[derive(Debug, Clone)]
+<span class="doccomment">/// A error from the LLVM API.
+</span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>LLVMCompileError(String);
 
 <span class="kw">impl </span>Error <span class="kw">for </span>LLVMCompileError {}
@@ -431,7 +449,8 @@
     }
 }
 
-<span class="attr">#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+<span class="doccomment">/// Optimization levels.
+</span><span class="attr">#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 </span><span class="kw">pub enum </span>OptLevel {
     <span class="prelude-val">None</span>,
     Less,
@@ -473,7 +492,7 @@
     }
 }
 
-<span class="doccomment">/// Make sure to call
+<span class="doccomment">/// Converts a MLIR module to a compile object, that can be linked with a linker.
 </span><span class="kw">pub fn </span>module_to_object(
     module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'_</span>&gt;,
     opt_level: OptLevel,
@@ -567,7 +586,8 @@
     }
 }
 
-<span class="kw">pub fn </span>object_to_shared_lib(object: <span class="kw-2">&amp;</span>[u8], output_filename: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
+<span class="doccomment">/// Links the passed object into a shared library, stored on the given path.
+</span><span class="kw">pub fn </span>object_to_shared_lib(object: <span class="kw-2">&amp;</span>[u8], output_filename: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
     <span class="comment">// linker seems to need a file and doesn't accept stdin
     </span><span class="kw">let </span><span class="kw-2">mut </span>file = NamedTempFile::new()<span class="question-mark">?</span>;
     file.write_all(object)<span class="question-mark">?</span>;
@@ -645,7 +665,8 @@
     }
 }
 
-<span class="kw">pub fn </span>get_target_triple() -&gt; String {
+<span class="doccomment">/// Gets the target triple, which identifies the platform and ABI.
+</span><span class="kw">pub fn </span>get_target_triple() -&gt; String {
     <span class="kw">let </span>target_triple = <span class="kw">unsafe </span>{
         <span class="kw">let </span>value = LLVMGetDefaultTargetTriple();
         CStr::from_ptr(value).to_string_lossy().into_owned()
@@ -653,7 +674,10 @@
     target_triple
 }
 
-<span class="kw">pub fn </span>get_data_layout_rep() -&gt; <span class="prelude-ty">Result</span>&lt;String, CompileError&gt; {
+<span class="doccomment">/// Gets the data layout reprrsentation as a string, to be given to the MLIR module.
+/// LLVM uses this to know the proper alignments for the given sizes, etc.
+/// This function gets the data layout of the host target triple.
+</span><span class="kw">pub fn </span>get_data_layout_rep() -&gt; <span class="prelude-ty">Result</span>&lt;String, CompileError&gt; {
     <span class="kw">unsafe </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>null = null_mut();
         <span class="kw">let </span>error_buffer = <span class="macro">addr_of_mut!</span>(null);

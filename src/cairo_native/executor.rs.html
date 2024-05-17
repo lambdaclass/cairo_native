@@ -801,7 +801,35 @@
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
 <a href="#802" id="802">802</a>
-</pre></div><pre class="rust"><code><span class="kw">pub use </span><span class="self">self</span>::{aot::AotNativeExecutor, jit::JitNativeExecutor};
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
+//!
+//! This module provides methods to execute the programs, either via JIT or compiled ahead
+//! of time. It also provides a cache to avoid recompiling previously compiled programs.
+
+</span><span class="kw">pub use </span><span class="self">self</span>::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 <span class="kw">use crate</span>::{
     error::Error,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
@@ -851,14 +879,16 @@
     );
 }
 
-<span class="attr">#[derive(Debug, Clone)]
+<span class="doccomment">/// The cairo native executor, either AOT or JIT based.
+</span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub enum </span>NativeExecutor&lt;<span class="lifetime">'m</span>&gt; {
     Aot(Rc&lt;AotNativeExecutor&gt;),
     Jit(Rc&lt;JitNativeExecutor&lt;<span class="lifetime">'m</span>&gt;&gt;),
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; NativeExecutor&lt;<span class="lifetime">'a</span>&gt; {
-    <span class="kw">pub fn </span>invoke_dynamic(
+    <span class="doccomment">/// Invoke the given function by its function id, with the given arguments and gas.
+    </span><span class="kw">pub fn </span>invoke_dynamic(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[JitValue],
@@ -870,7 +900,10 @@
         }
     }
 
-    <span class="kw">pub fn </span>invoke_dynamic_with_syscall_handler(
+    <span class="doccomment">/// Invoke the given function by its function id, with the given arguments and gas.
+    /// This should be used for programs which require a syscall handler, whose
+    /// implementation should be passed on.
+    </span><span class="kw">pub fn </span>invoke_dynamic_with_syscall_handler(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[JitValue],
@@ -893,7 +926,10 @@
         }
     }
 
-    <span class="kw">pub fn </span>invoke_contract_dynamic(
+    <span class="doccomment">/// Invoke the given function by its function id, with the given arguments and gas.
+    /// This should be used for starknet contracts which require a syscall handler, whose
+    /// implementation should be passed on.
+    </span><span class="kw">pub fn </span>invoke_contract_dynamic(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[Felt],
@@ -923,7 +959,16 @@
     }
 }
 
-<span class="kw">fn </span>invoke_dynamic(
+<span class="doccomment">/// Internal method.
+///
+/// Invokes the given function by constructing the function call depending on the arguments given.
+/// Usually calling a function requires knowing it's signature at compile time, but we need to be
+/// able to call any given function provided it's signatue (arguments and return type) at runtime,
+/// to do so we have a "trampoline" in the given platform assembly (x86_64, aarch64) which
+/// constructs the function call in place.
+///
+/// To pass the arguments, they are stored in a arena.
+</span><span class="kw">fn </span>invoke_dynamic(
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     function_ptr: <span class="kw-2">*const </span>c_void,
     function_signature: <span class="kw-2">&amp;</span>FunctionSignature,
@@ -1381,7 +1426,8 @@
     }
 }
 
-<span class="kw">fn </span>parse_result(
+<span class="doccomment">/// Parses the result by reading from the return ptr the given type.
+</span><span class="kw">fn </span>parse_result(
     type_id: <span class="kw-2">&amp;</span>ConcreteTypeId,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     <span class="kw-2">mut </span>return_ptr: <span class="prelude-ty">Option</span>&lt;NonNull&lt;()&gt;&gt;,
