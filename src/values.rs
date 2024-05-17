@@ -497,8 +497,6 @@ impl JitValue {
         type_id: &ConcreteTypeId,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Self {
-        dbg!(ptr.as_ptr());
-        dbg!(type_id.debug_name.as_ref());
         let ty = registry.get_type(type_id).unwrap();
 
         unsafe {
@@ -568,8 +566,10 @@ impl JitValue {
                     )
                 }
                 CoreTypeConcrete::Felt252(_) => {
+                    dbg!(ptr);
                     let data = ptr.cast::<[u8; 32]>().as_ref();
-                    let data = Felt::from_bytes_le(data);
+                    dbg!(data);
+                    let data = Felt::from_bytes_le_slice(data);
                     Self::Felt252(data)
                 }
                 CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),
@@ -749,7 +749,7 @@ impl JitValue {
             _ => value.to_biguint().unwrap(),
         };
 
-        Self::Felt252(Felt::from(&value))
+        Self::Felt252(dbg!(Felt::from(&value)))
     }
 }
 

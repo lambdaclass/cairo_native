@@ -1099,8 +1099,9 @@ pub mod test {
     pub struct TestSyscallHandler;
 
     impl StarknetSyscallHandler for TestSyscallHandler {
-        fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
-            Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
+        fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
+            dbg!(block_number);
+            Ok(Felt::from(block_number))
         }
 
         fn get_execution_info(
