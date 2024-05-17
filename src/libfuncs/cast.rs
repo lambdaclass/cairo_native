@@ -282,8 +282,6 @@ pub fn build_upcast<'ctx, 'this>(
 
     let is_signed = src_ty.is_integer_signed().ok_or_else(|| {
         Error::SierraAssert("casts always happen between numerical types".to_string())
-    })? || dst_ty.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
 
     let is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
@@ -292,7 +290,7 @@ pub fn build_upcast<'ctx, 'this>(
 
     let result = if src_width == dst_width {
         block.argument(0)?.into()
-    } else if is_signed {
+    } else if is_signed || is_felt {
         if is_felt {
             let result = block.append_op_result(arith::extsi(
                 block.argument(0)?.into(),

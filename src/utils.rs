@@ -664,6 +664,7 @@ pub mod test {
         program::Program,
         program::{FunctionSignature, GenFunction, StatementIdx},
     };
+    use cairo_lang_starknet::starknet_plugin_suite;
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
     use std::{env::var, fmt::Formatter, fs, path::Path};
@@ -673,7 +674,13 @@ pub mod test {
             $crate::utils::test::load_cairo_str(stringify!($($program)+))
         };
     }
+    macro_rules! load_starknet {
+        ( $( $program:tt )+ ) => {
+            $crate::utils::test::load_starknet_str(stringify!($($program)+))
+        };
+    }
     pub(crate) use load_cairo;
+    pub(crate) use load_starknet;
 
     // Helper macros for faster testing.
     macro_rules! jit_struct {
@@ -718,7 +725,21 @@ pub mod test {
     pub(crate) use jit_panic;
     pub(crate) use jit_struct;
 
-    pub fn load_cairo_str(program_str: &str) -> (String, Program) {
+    pub(crate) fn load_cairo_str(program_str: &str) -> (String, Program) {
+        compile_program(program_str, RootDatabase::default())
+    }
+
+    pub(crate) fn load_starknet_str(program_str: &str) -> (String, Program) {
+        compile_program(
+            program_str,
+            RootDatabase::builder()
+                .with_plugin_suite(starknet_plugin_suite())
+                .build()
+                .unwrap(),
+        )
+    }
+
+    pub(crate) fn compile_program(program_str: &str, mut db: RootDatabase) -> (String, Program) {
         let mut program_file = tempfile::Builder::new()
             .prefix("test_")
             .suffix(".cairo")
@@ -726,7 +747,6 @@ pub mod test {
             .unwrap();
         fs::write(&mut program_file, program_str).unwrap();
 
-        let mut db = RootDatabase::default();
         init_dev_corelib(
             &mut db,
             Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
@@ -1087,8 +1107,8 @@ pub mod test {
         assert_eq!(format!("{:?}", debug_wrapper), "Name: William, Age: 28");
     }
 
-    #[derive(Debug)]
-    struct TestSyscallHandler;
+    #[derive(Debug, Clone)]
+    pub struct TestSyscallHandler;
 
     impl StarknetSyscallHandler for TestSyscallHandler {
         fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
