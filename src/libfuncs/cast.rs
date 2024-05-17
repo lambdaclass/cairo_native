@@ -95,7 +95,7 @@ pub fn build_downcast<'ctx, 'this>(
 
     let mut block = entry;
 
-    let (is_in_range, result) = if src_ty == dst_ty {
+    let (is_in_range, result) = if info.from_ty == info.to_ty {
         let k0 = block.const_int(context, location, 0, 1)?;
         (k0, src_value)
     } else {
@@ -187,7 +187,8 @@ pub fn build_downcast<'ctx, 'this>(
             info.to_range
                 .intersection(&info.from_range)
                 .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
-                .upper,
+                .upper
+                - 1,
             compare_ty,
         )?;
 
@@ -204,9 +205,9 @@ pub fn build_downcast<'ctx, 'this>(
         let is_in_range_upper = block.append_op_result(arith::cmpi(
             context,
             if is_signed {
-                CmpiPredicate::Slt
+                CmpiPredicate::Sle
             } else {
-                CmpiPredicate::Ult
+                CmpiPredicate::Ule
             },
             compare_value,
             max_value,
