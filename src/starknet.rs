@@ -1054,7 +1054,10 @@ pub(crate) mod handler {
                 let until_offset = calldata.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(calldata.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1137,7 +1140,10 @@ pub(crate) mod handler {
                 let until_offset = calldata.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(calldata.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1190,7 +1196,10 @@ pub(crate) mod handler {
                 let until_offset = calldata.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(calldata.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1287,7 +1296,10 @@ pub(crate) mod handler {
                 let until_offset = keys.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(keys.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(dbg!(keys.ptr).add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1304,7 +1316,10 @@ pub(crate) mod handler {
                 let until_offset = data.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(data.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(data.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1346,7 +1361,10 @@ pub(crate) mod handler {
                 let until_offset = payload.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(payload.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(payload.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1382,7 +1400,10 @@ pub(crate) mod handler {
                 let until_offset = input.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(input.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(input.ptr.add(since_offset), len),
+                }
             };
 
             let result = ptr.keccak(input, gas);
