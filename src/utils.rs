@@ -54,7 +54,7 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 
 /// Return the layout for an integer of arbitrary width.
 ///
-/// This assumes the platform's maximum (effective) alignment is 8 bytes, and that every integer
+/// This assumes the platform's maximum (effective) alignment is 16 bytes, and that every integer
 /// with a size in bytes of a power of two has the same alignment as its size.
 pub fn get_integer_layout(width: u32) -> Layout {
     if width == 0 {
@@ -836,15 +836,12 @@ pub mod test {
 
     /// Ensures that the host's `u128` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_u128() {
-        // FIXME: Uncomment once LLVM fixes its u128 alignment issues.
         assert_eq!(get_integer_layout(128).align(), 16);
     }
 
     /// Ensures that the host's `u256` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_u256() {
         assert_eq!(get_integer_layout(256).align(), 16);
     }
@@ -852,17 +849,13 @@ pub mod test {
     /// Ensures that the host's `u512` is compatible with its compiled counterpart.
     #[test]
     fn test_alignment_compatibility_u512() {
-        #[cfg(target_arch = "x86_64")]
-        assert_eq!(get_integer_layout(512).align(), 8);
-        #[cfg(not(target_arch = "x86_64"))]
         assert_eq!(get_integer_layout(512).align(), 16);
     }
 
     /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_felt() {
-        assert_eq!(get_integer_layout(252).align(), 8);
+        assert_eq!(get_integer_layout(252).align(), 16);
     }
 
     // ==============================

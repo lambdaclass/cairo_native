@@ -585,13 +585,17 @@ fn parse_result(
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
         let layout = type_info.layout(registry).unwrap();
+        dbg!(type_id.debug_name.as_ref());
+        dbg!(layout);
         let align_offset = return_ptr
             .cast::<u8>()
             .as_ptr()
             .align_offset(layout.align());
 
         *return_ptr = unsafe {
-            NonNull::new_unchecked(return_ptr.cast::<u8>().as_ptr().add(align_offset)).cast()
+            NonNull::new(return_ptr.cast::<u8>().as_ptr().add(align_offset))
+                .expect("nonnull is null")
+                .cast()
         };
     }
 
