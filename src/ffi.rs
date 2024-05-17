@@ -1,3 +1,8 @@
+//! # FFI Wrappers
+//!
+//! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
+//! APIs that are missing from melior.
+
 use crate::error::Error as CompileError;
 use llvm_sys::{
     core::{
@@ -50,6 +55,7 @@ pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c>
     unsafe { Type::from_raw(ty_ptr) }
 }
 
+/// A error from the LLVM API.
 #[derive(Debug, Clone)]
 pub struct LLVMCompileError(String);
 
@@ -62,6 +68,7 @@ impl Display for LLVMCompileError {
     }
 }
 
+/// Optimization levels.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OptLevel {
     None,
@@ -104,7 +111,7 @@ impl From<u8> for OptLevel {
     }
 }
 
-/// Make sure to call
+/// Converts a MLIR module to a compile object, that can be linked with a linker.
 pub fn module_to_object(
     module: &Module<'_>,
     opt_level: OptLevel,
@@ -198,6 +205,7 @@ pub fn module_to_object(
     }
 }
 
+/// Links the passed object into a shared library, stored on the given path.
 pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(), std::io::Error> {
     // linker seems to need a file and doesn't accept stdin
     let mut file = NamedTempFile::new()?;
@@ -276,6 +284,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
     }
 }
 
+/// Gets the target triple, which identifies the platform and ABI.
 pub fn get_target_triple() -> String {
     let target_triple = unsafe {
         let value = LLVMGetDefaultTargetTriple();
@@ -284,6 +293,9 @@ pub fn get_target_triple() -> String {
     target_triple
 }
 
+/// Gets the data layout reprrsentation as a string, to be given to the MLIR module.
+/// LLVM uses this to know the proper alignments for the given sizes, etc.
+/// This function gets the data layout of the host target triple.
 pub fn get_data_layout_rep() -> Result<String, CompileError> {
     unsafe {
         let mut null = null_mut();
