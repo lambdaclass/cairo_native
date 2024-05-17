@@ -229,6 +229,7 @@ pub fn filter_test_cases(
         .filter(|(name, _)| name.contains(&filter));
 
     let named_tests = if include_ignored {
+        // enable the ignored tests
         named_tests
             .into_iter()
             .map(|(name, mut test)| {
@@ -237,6 +238,7 @@ pub fn filter_test_cases(
             })
             .collect_vec()
     } else if ignored {
+        // filter not ignored tests and enable the remaining ones
         named_tests
             .into_iter()
             .map(|(name, mut test)| {
