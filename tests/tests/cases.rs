@@ -118,7 +118,7 @@ use test_case::test_case;
 #[test_case("tests/cases/cairo_vm/enum_match.cairo")]
 #[test_case("tests/cases/cairo_vm/factorial.cairo")]
 // #[test_case("tests/cases/cairo_vm/felt_dict.cairo")]
-// #[test_case("tests/cases/cairo_vm/felt_dict_squash.cairo")]
+#[test_case("tests/cases/cairo_vm/felt_dict_squash.cairo")]
 // #[test_case("tests/cases/cairo_vm/felt_span.cairo")]
 #[test_case("tests/cases/cairo_vm/fibonacci.cairo")]
 #[test_case("tests/cases/cairo_vm/hello.cairo")]
