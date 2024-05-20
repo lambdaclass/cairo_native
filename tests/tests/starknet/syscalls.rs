@@ -12,7 +12,26 @@ use lazy_static::lazy_static;
 use pretty_assertions_sorted::assert_eq_sorted;
 use starknet_types_core::felt::Felt;
 
-struct SyscallHandler;
+#[derive(Debug)]
+struct TestingState {
+    sequencer_address: Felt,
+    block_number: u64,
+    block_timestamp: u64,
+    caller_address: Felt,
+    contract_address: Felt,
+    version: Felt,
+    account_contract_address: Felt,
+    max_fee: Felt,
+    transaction_hash: Felt,
+    chain_id: Felt,
+    nonce: Felt,
+    signature: Vec<Felt>,
+    logs: Vec<(Vec<Felt>, Vec<Felt>)>,
+}
+
+struct SyscallHandler {
+    testing_state: TestingState,
+}
 
 impl StarknetSyscallHandler for SyscallHandler {
     fn get_block_hash(
@@ -349,6 +368,69 @@ impl StarknetSyscallHandler for SyscallHandler {
     ) -> SyscallResult<(U256, U256)> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
+    }
+
+    fn set_account_contract_address(&mut self, contract_address: Felt) -> SyscallResult<()> {
+        self.testing_state.account_contract_address = contract_address;
+        Ok(())
+    }
+
+    fn set_block_number(&mut self, block_number: u64) -> SyscallResult<()> {
+        // TODO(juanbono): check type
+        self.testing_state.block_number = block_number;
+        Ok(())
+    }
+
+    fn set_block_timestamp(&mut self, block_timestamp: u64) -> SyscallResult<()> {
+        // TODO(juanbono): check type
+        self.testing_state.block_timestamp = block_timestamp;
+        Ok(())
+    }
+
+    fn set_caller_address(&mut self, address: Felt) -> SyscallResult<()> {
+        self.testing_state.caller_address = address;
+        Ok(())
+    }
+
+    fn set_chain_id(&mut self, chain_id: Felt) -> SyscallResult<()> {
+        // TODO(juanbono): check type
+        self.testing_state.chain_id = chain_id;
+        Ok(())
+    }
+
+    fn set_contract_address(&mut self, address: Felt) -> SyscallResult<()> {
+        self.testing_state.contract_address = address;
+        Ok(())
+    }
+
+    fn set_max_fee(&mut self, max_fee: u128) -> SyscallResult<()> {
+        self.testing_state.max_fee = max_fee;
+        Ok(())
+    }
+
+    fn set_nonce(&mut self, nonce: Felt) -> SyscallResult<()> {
+        self.testing_state.nonce = nonce;
+        Ok(())
+    }
+
+    fn set_sequencer_address(&mut self, address: Felt) -> SyscallResult<()> {
+        self.testing_state.sequencer_address = address;
+        Ok(())
+    }
+
+    fn set_signature(&mut self, signature: &[Felt]) -> SyscallResult<()> {
+        self.testing_state.signature = signature;
+        Ok(())
+    }
+
+    fn set_transaction_hash(&mut self, transaction_hash: Felt) -> SyscallResult<()> {
+        self.testing_state.transaction_hash = transaction_hash;
+        Ok(())
+    }
+
+    fn set_version(&mut self, version: Felt) -> SyscallResult<()> {
+        self.testing_state.version = version;
+        Ok(())
     }
 }
 
