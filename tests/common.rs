@@ -313,7 +313,7 @@ pub fn compare_outputs(
             Some(&type_size) => type_size,
             None => {
                 let type_size = match registry.get_type(ty).unwrap() {
-                    CoreTypeConcrete::Array(_info) => 2,
+                    CoreTypeConcrete::Array(_) | CoreTypeConcrete::EcPoint(_) => 2,
                     CoreTypeConcrete::Felt252(_)
                     | CoreTypeConcrete::Uint128(_)
                     | CoreTypeConcrete::Uint64(_)
@@ -324,7 +324,8 @@ pub fn compare_outputs(
                     | CoreTypeConcrete::Sint64(_)
                     | CoreTypeConcrete::Sint32(_)
                     | CoreTypeConcrete::Sint16(_)
-                    | CoreTypeConcrete::Sint8(_) => 1,
+                    | CoreTypeConcrete::Sint8(_)
+                    | CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::Enum(info) => {
                         1 + info
                             .variants
@@ -338,9 +339,7 @@ pub fn compare_outputs(
                         .iter()
                         .map(|member_ty| map_vm_sizes(size_cache, registry, member_ty))
                         .sum(),
-                    CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::NonZero(info) => map_vm_sizes(size_cache, registry, &info.ty),
-                    CoreTypeConcrete::EcPoint(_) => 2,
                     CoreTypeConcrete::EcState(_) => 4,
                     x => todo!("vm size not yet implemented: {:?}", x.info()),
                 };
@@ -503,10 +502,6 @@ pub fn compare_outputs(
                     Felt::from_bytes_le(&values[3].to_le_bytes()),
                 )
             }
-            CoreTypeConcrete::Bytes31(_) => todo!(),
-            CoreTypeConcrete::Const(_) => todo!(),
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
-            CoreTypeConcrete::Coupon(_) => todo!(),
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }

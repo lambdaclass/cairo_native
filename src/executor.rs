@@ -631,8 +631,9 @@ fn parse_result(
             libc::free(ptr.cast().as_ptr());
             value
         },
-        CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
-        CoreTypeConcrete::EcState(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
+            JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
+        }
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
@@ -715,7 +716,6 @@ fn parse_result(
                 value
             }
         },
-        CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(info) => {
             let (_, tag_layout, variant_layouts) =
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
@@ -802,24 +802,10 @@ fn parse_result(
                 registry,
             ),
         },
-        CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-        CoreTypeConcrete::Span(_) => todo!(),
-        CoreTypeConcrete::Snapshot(_) => todo!(),
-        CoreTypeConcrete::Bytes31(_) => todo!(),
-        CoreTypeConcrete::Bitwise(_) => todo!(),
-        CoreTypeConcrete::Const(_) => todo!(),
-        CoreTypeConcrete::EcOp(_) => todo!(),
         CoreTypeConcrete::GasBuiltin(_) => JitValue::Struct {
             fields: Vec::new(),
             debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
         },
-        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-        CoreTypeConcrete::RangeCheck(_) => todo!(),
-        CoreTypeConcrete::Pedersen(_) => todo!(),
-        CoreTypeConcrete::Poseidon(_) => todo!(),
-        CoreTypeConcrete::SegmentArena(_) => todo!(),
-        CoreTypeConcrete::BoundedInt(_) => todo!(),
         _ => todo!(),
     }
 }
