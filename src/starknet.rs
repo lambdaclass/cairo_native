@@ -875,6 +875,7 @@ pub(crate) mod handler {
         pub const SECP256R1_GET_POINT_FROM_X: usize =
             field_offset!(Self, secp256r1_get_point_from_x) >> 3;
         pub const SECP256R1_GET_XY: usize = field_offset!(Self, secp256r1_get_xy) >> 3;
+        pub const SET_SEQUENCER_ADDRESS: usize = field_offset!(Self, set_sequencer_address) >> 3;
     }
 
     #[allow(unused_variables)]

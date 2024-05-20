@@ -140,17 +140,8 @@ pub fn build<'ctx, 'this>(
             context, registry, entry, location, helper, metadata, selector,
         ),
         StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(libfunc)) => {
-            let selector_as_hex = BigIntAsHex {
-                value: libfunc.selector.clone(),
-            };
-            let selector = &selector_as_hex.value.to_bytes_be().1;
-            let selector = std::str::from_utf8(selector).map_err(|_| {
-                HintError::CustomHint(Box::from("failed to parse selector".to_string()))
-            })?;
-
-            dbg!(&selector);
             self::testing::build(
-                context, registry, entry, location, helper, metadata, selector,
+                context, registry, entry, location, helper, metadata, libfunc,
             )
         }
     }
@@ -1027,6 +1018,7 @@ pub fn build_storage_read<'ctx, 'this>(
     Ok(())
 }
 
+// TODO(juanbono): all the testing syscalls can be in the same way
 pub fn build_storage_write<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
