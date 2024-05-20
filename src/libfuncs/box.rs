@@ -4,6 +4,7 @@
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
@@ -20,11 +21,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith,
-        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
-    },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    dialect::llvm::{self, r#type::opaque_pointer},
+    ir::{Block, Location},
     Context,
 };
 
@@ -68,18 +66,7 @@ pub fn build_into_box<'ctx, 'this>(
     let inner_type = registry.get_type(&info.ty)?;
     let inner_layout = inner_type.layout(registry)?;
 
-    let value_len = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                inner_layout.pad_to_align().size().try_into()?,
-            )
-            .into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let value_len = entry.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
 
     let ptr = entry
         .append_operation(llvm::nullptr(opaque_pointer(context), location))
@@ -92,16 +79,13 @@ pub fn build_into_box<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(llvm::store(
+    entry.store(
         context,
-        entry.argument(0)?.into(),
-        ptr,
         location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            inner_layout.align() as i64,
-        ))),
-    ));
+        ptr,
+        entry.argument(0)?.into(),
+        Some(inner_layout.align()),
+    );
 
     entry.append_operation(helper.br(0, &[ptr], location));
     Ok(())
@@ -122,19 +106,13 @@ pub fn build_unbox<'ctx, 'this>(
     let inner_layout = inner_type.layout(registry)?;
 
     // Load the boxed value from memory.
-    let value = entry
-        .append_operation(llvm::load(
-            context,
-            entry.argument(0)?.into(),
-            inner_ty,
-            location,
-            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                inner_layout.align() as i64,
-            ))),
-        ))
-        .result(0)?
-        .into();
+    let value = entry.load(
+        context,
+        location,
+        entry.argument(0)?.into(),
+        inner_ty,
+        Some(inner_layout.align()),
+    )?;
 
     entry.append_operation(ReallocBindingsMeta::free(
         context,
