@@ -181,26 +181,21 @@ pub fn build_downcast<'ctx, 'this>(
             (result, dst_ty)
         };
 
-        let max_value = block.const_int_from_type(
-            context,
-            location,
-            info.to_range
-                .intersection(&info.from_range)
-                .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
-                .upper
-                - 1,
-            compare_ty,
-        )?;
+        let int_max_value = info
+            .to_range
+            .intersection(&info.from_range)
+            .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
+            .upper
+            - 1;
 
-        let min_value = block.const_int_from_type(
-            context,
-            location,
-            info.to_range
-                .intersection(&info.from_range)
-                .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
-                .lower,
-            compare_ty,
-        )?;
+        let int_min_value = info
+            .to_range
+            .intersection(&info.from_range)
+            .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
+            .lower;
+
+        let max_value = block.const_int_from_type(context, location, int_max_value, compare_ty)?;
+        let min_value = block.const_int_from_type(context, location, int_min_value, compare_ty)?;
 
         let is_in_range_upper = block.append_op_result(arith::cmpi(
             context,
