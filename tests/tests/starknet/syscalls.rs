@@ -12,7 +12,7 @@ use lazy_static::lazy_static;
 use pretty_assertions_sorted::assert_eq_sorted;
 use starknet_types_core::felt::Felt;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct TestingState {
     sequencer_address: Felt,
     block_number: u64,
@@ -21,7 +21,7 @@ struct TestingState {
     contract_address: Felt,
     version: Felt,
     account_contract_address: Felt,
-    max_fee: Felt,
+    max_fee: u128,
     transaction_hash: Felt,
     chain_id: Felt,
     nonce: Felt,
@@ -31,6 +31,14 @@ struct TestingState {
 
 struct SyscallHandler {
     testing_state: TestingState,
+}
+
+impl SyscallHandler {
+    fn new() -> Self {
+        Self {
+            testing_state: TestingState::default(),
+        }
+    }
 }
 
 impl StarknetSyscallHandler for SyscallHandler {
@@ -414,12 +422,13 @@ impl StarknetSyscallHandler for SyscallHandler {
     }
 
     fn set_sequencer_address(&mut self, address: Felt) -> SyscallResult<()> {
+        dbg!("set_sequencer_address", &address);
         self.testing_state.sequencer_address = address;
         Ok(())
     }
 
     fn set_signature(&mut self, signature: &[Felt]) -> SyscallResult<()> {
-        self.testing_state.signature = signature;
+        self.testing_state.signature = signature.into();
         Ok(())
     }
 
@@ -446,7 +455,7 @@ fn get_block_hash() {
         "get_block_hash",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -472,7 +481,7 @@ fn get_execution_info() {
         "get_execution_info",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -547,7 +556,7 @@ fn get_execution_info_v2() {
         "get_execution_info_v2",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -639,7 +648,7 @@ fn deploy() {
         "deploy",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -671,7 +680,7 @@ fn replace_class() {
         "replace_class",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -694,7 +703,7 @@ fn library_call() {
         "library_call",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -730,7 +739,7 @@ fn call_contract() {
         "call_contract",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -766,7 +775,7 @@ fn storage_read() {
         "storage_read",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -794,7 +803,7 @@ fn storage_write() {
         "storage_write",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -820,7 +829,7 @@ fn emit_event() {
         "emit_event",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -843,7 +852,7 @@ fn send_message_to_l1() {
         "send_message_to_l1",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -866,7 +875,7 @@ fn keccak() {
         "keccak",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -878,6 +887,32 @@ fn keccak() {
                     JitValue::Uint128(330939983442938156232262046592599923289),
                     JitValue::Uint128(288102973244655531496349286021939642254),
                 ],
+                debug_name: None,
+            }),
+            debug_name: None,
+        },
+    );
+}
+
+#[test]
+fn set_sequencer_address() {
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "set_sequencer_address",
+        &[],
+        Some(u128::MAX),
+        Some(SyscallHandler::new()),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Struct {
+                fields: vec![JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None,
+                }],
                 debug_name: None,
             }),
             debug_name: None,

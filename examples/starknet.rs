@@ -13,15 +13,16 @@ use starknet_types_core::felt::Felt;
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
+#[derive(Debug, Default)]
 struct TestingState {
     sequencer_address: Felt,
-    block_number: Felt,
-    block_timestamp: Felt,
+    block_number: u64,
+    block_timestamp: u64,
     caller_address: Felt,
     contract_address: Felt,
     version: Felt,
     account_contract_address: Felt,
-    max_fee: Felt,
+    max_fee: u128,
     transaction_hash: Felt,
     chain_id: Felt,
     nonce: Felt,
@@ -29,9 +30,17 @@ struct TestingState {
     logs: Vec<(Vec<Felt>, Vec<Felt>)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct SyscallHandler {
     testing_state: TestingState,
+}
+
+impl SyscallHandler {
+    pub fn new() -> Self {
+        Self {
+            testing_state: TestingState::default(),
+        }
+    }
 }
 
 impl StarknetSyscallHandler for SyscallHandler {
@@ -383,7 +392,12 @@ fn main() {
     let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
     let result = native_executor
-        .invoke_contract_dynamic(fn_id, &[Felt::from(1)], Some(u128::MAX), SyscallHandler)
+        .invoke_contract_dynamic(
+            fn_id,
+            &[Felt::from(1)],
+            Some(u128::MAX),
+            SyscallHandler::new(),
+        )
         .expect("failed to execute the given contract");
 
     println!();

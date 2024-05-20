@@ -19,7 +19,6 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
-use cairo_lang_utils::bigint::BigIntAsHex;
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},

@@ -1045,7 +1045,7 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            block_timestamp: Felt,
+            block_timestamp: u64,
         ) {
             let result = ptr.set_block_timestamp(block_timestamp);
             *result_ptr = match result {
@@ -1153,9 +1153,12 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            sequencer_address: Felt,
+            sequencer_address: Felt252Abi,
         ) {
-            let result = ptr.set_sequencer_address(sequencer_address);
+            let address = sequencer_address.0;
+            let address = Felt::from_bytes_le(&address);
+            let result = ptr.set_sequencer_address(address);
+
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {

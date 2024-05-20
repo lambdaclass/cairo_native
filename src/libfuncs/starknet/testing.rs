@@ -197,7 +197,8 @@ pub fn build<'ctx, 'this>(
                     entry.argument(1)?.into(),
                     DenseI32ArrayAttribute::new(
                         context,
-                        &[StarknetSyscallHandlerCallbacks::<()>::SET_SEQUENCER_ADDRESS.try_into()?],
+                        &[StarknetSyscallHandlerCallbacks::<()>::SET_SEQUENCER_ADDRESS
+                            .try_into()?],
                     ),
                     llvm::r#type::opaque_pointer(context),
                     llvm::r#type::opaque_pointer(context),

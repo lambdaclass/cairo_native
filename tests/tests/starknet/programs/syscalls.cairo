@@ -4,6 +4,7 @@ use core::starknet::{
     get_execution_info_syscall, info::v2::ExecutionInfo as ExecutionInfoV2, keccak_syscall,
     library_call_syscall, replace_class_syscall, send_message_to_l1_syscall,
     storage_address_try_from_felt252, storage_read_syscall, storage_write_syscall, SyscallResult,
+    testing::cheatcode,
 };
 
 // extern fn get_execution_info_syscall() -> SyscallResult<
@@ -59,4 +60,10 @@ fn send_message_to_l1() -> SyscallResult<()> {
 
 fn keccak() -> SyscallResult<u256> {
     keccak_syscall(array![].span())
+}
+
+fn set_sequencer_address() {
+    let address = 123;
+    cheatcode::<'set_sequencer_address'>(array![address].span());
+    ()
 }
