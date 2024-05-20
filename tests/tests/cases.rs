@@ -111,7 +111,7 @@ use test_case::test_case;
 #[test_case("tests/cases/cairo_vm/array_integer_tuple.cairo")]
 #[test_case("tests/cases/cairo_vm/bitwise.cairo")]
 // #[test_case("tests/cases/cairo_vm/bytes31_ret.cairo")]
-// #[test_case("tests/cases/cairo_vm/dict_with_struct.cairo")]
+#[test_case("tests/cases/cairo_vm/dict_with_struct.cairo")]
 #[test_case("tests/cases/cairo_vm/dictionaries.cairo")]
 #[test_case("tests/cases/cairo_vm/ecdsa_recover.cairo")]
 #[test_case("tests/cases/cairo_vm/enum_flow.cairo")]
