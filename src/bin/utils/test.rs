@@ -65,7 +65,7 @@ pub fn find_testable_targets(package: &PackageMetadata) -> Vec<&TargetMetadata> 
 /// # Arguments
 /// * `compiled` - Compiled test cases with metadata.
 /// * `include_ignored` - Include ignored tests as well.
-/// * `ignored` - Run ignored tests only.l
+/// * `ignored` - Run ignored tests only.
 /// * `filter` - Include only tests containing the filter string.
 /// # Returns
 /// * (`TestCompilation`, `usize`) - The filtered test cases and the number of filtered out cases.
@@ -79,31 +79,17 @@ pub fn filter_test_cases(
     let named_tests = compiled
         .named_tests
         .into_iter()
-        .filter(|(name, _)| name.contains(&filter));
-
-    let named_tests = if include_ignored {
-        // enable the ignored tests
-        named_tests
-            .into_iter()
-            .map(|(name, mut test)| {
+        // Filtering unignored tests in `ignored` mode
+        .filter(|(_, test)| !ignored || test.ignored || include_ignored)
+        .map(|(func, mut test)| {
+            // Un-ignoring all the tests in `include-ignored` and `ignored` mode.
+            if include_ignored || ignored {
                 test.ignored = false;
-                (name, test)
-            })
-            .collect_vec()
-    } else if ignored {
-        // filter not ignored tests and enable the remaining ones
-        named_tests
-            .into_iter()
-            .map(|(name, mut test)| {
-                test.ignored = !test.ignored;
-                (name, test)
-            })
-            .filter(|(_, test)| !test.ignored)
-            .collect_vec()
-    } else {
-        named_tests.collect_vec()
-    };
-
+            }
+            (func, test)
+        })
+        .filter(|(name, _)| name.contains(&filter))
+        .collect_vec();
     let filtered_out = total_tests_count - named_tests.len();
     let tests = TestCompilation {
         named_tests,
@@ -870,6 +856,145 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_compilation() -> TestCompilation {
+        TestCompilation {
+            named_tests: vec![
+                (
+                    String::from("test1"),
+                    TestConfig {
+                        available_gas: None,
+                        expectation: TestExpectation::Success,
+                        ignored: false,
+                    },
+                ),
+                (
+                    String::from("test2"),
+                    TestConfig {
+                        available_gas: None,
+                        expectation: TestExpectation::Success,
+                        ignored: true,
+                    },
+                ),
+                (
+                    String::from("test3"),
+                    TestConfig {
+                        available_gas: None,
+                        expectation: TestExpectation::Success,
+                        ignored: false,
+                    },
+                ),
+            ],
+            sierra_program: Program {
+                type_declarations: vec![],
+                libfunc_declarations: vec![],
+                statements: vec![],
+                funcs: vec![],
+            },
+            statements_functions: Default::default(),
+            contracts_info: Default::default(),
+            function_set_costs: Default::default(),
+        }
+    }
+
+    fn assert_named_test(lhs: &(String, TestConfig), rhs: &(String, TestConfig)) -> bool {
+        lhs.0 == rhs.0
+            && lhs.1.available_gas == rhs.1.available_gas
+            && lhs.1.expectation == rhs.1.expectation
+            && lhs.1.ignored == rhs.1.ignored
+    }
+
+    #[test]
+    fn test_filter_test_cases() {
+        let compiled = test_compilation();
+
+        let (filtered, filtered_out) =
+            filter_test_cases(compiled.clone(), false, false, String::from("test"));
+
+        // Nothing should be filtered out.
+        assert_eq!(filtered_out, 0);
+        assert!(filtered
+            .named_tests
+            .iter()
+            .enumerate()
+            .all(|(i, x)| assert_named_test(x, &compiled.named_tests[i])));
+    }
+
+    #[test]
+    fn test_filter_test_cases_include_ignored() {
+        let compiled = test_compilation();
+
+        let (filtered, filtered_out) =
+            filter_test_cases(compiled.clone(), true, false, String::from("test"));
+
+        // All tests should be included, even the ignored ones.
+        let expected = compiled
+            .named_tests
+            .into_iter()
+            .map(|mut x| {
+                x.1.ignored = false;
+                x
+            })
+            .collect_vec();
+
+        assert_eq!(filtered_out, 0);
+        assert!(filtered
+            .named_tests
+            .iter()
+            .enumerate()
+            .all(|(i, x)| assert_named_test(x, &expected[i])));
+    }
+
+    #[test]
+    fn test_filter_test_cases_ignored() {
+        let compiled = test_compilation();
+
+        let (filtered, filtered_out) =
+            filter_test_cases(compiled.clone(), false, true, String::from("test"));
+
+        // Only the ignored tests should be included.
+        let expected = compiled
+            .named_tests
+            .into_iter()
+            .filter(|x| x.1.ignored)
+            .map(|mut x| {
+                x.1.ignored = false;
+                x
+            })
+            .collect_vec();
+
+        assert_eq!(filtered_out, 2);
+        assert!(filtered
+            .named_tests
+            .iter()
+            .enumerate()
+            .all(|(i, x)| assert_named_test(x, &expected[i])));
+    }
+
+    #[test]
+    fn test_filter_test_cases_include_ignored_and_ignored() {
+        let compiled = test_compilation();
+
+        let (filtered, filtered_out) =
+            filter_test_cases(compiled.clone(), true, true, String::from("test"));
+
+        // All tests should be included, even the ignored ones.
+        let expected = compiled
+            .named_tests
+            .into_iter()
+            .map(|mut x| {
+                x.1.ignored = false;
+                x
+            })
+            .collect_vec();
+
+        assert_eq!(filtered_out, 0);
+        assert!(filtered
+            .named_tests
+            .iter()
+            .enumerate()
+            .all(|(i, x)| assert_named_test(x, &expected[i])));
+    }
 
     #[test]
     fn test_secp256k1_get_xy() {
