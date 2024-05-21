@@ -1298,7 +1298,7 @@ pub(crate) mod handler {
                 let len = until_offset - since_offset;
                 match len {
                     0 => &[],
-                    _ => std::slice::from_raw_parts(dbg!(keys.ptr).add(since_offset), len),
+                    _ => std::slice::from_raw_parts(keys.ptr.add(since_offset), len),
                 }
             }
             .iter()

@@ -1194,7 +1194,6 @@ pub mod test {
 
     impl StarknetSyscallHandler for TestSyscallHandler {
         fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
-            dbg!(block_number);
             Ok(Felt::from(block_number))
         }
 

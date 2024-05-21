@@ -566,9 +566,7 @@ impl JitValue {
                     )
                 }
                 CoreTypeConcrete::Felt252(_) => {
-                    dbg!(ptr);
                     let data = ptr.cast::<[u8; 32]>().as_ref();
-                    dbg!(data);
                     let data = Felt::from_bytes_le_slice(data);
                     Self::Felt252(data)
                 }
@@ -749,7 +747,7 @@ impl JitValue {
             _ => value.to_biguint().unwrap(),
         };
 
-        Self::Felt252(dbg!(Felt::from(&value)))
+        Self::Felt252(Felt::from(&value))
     }
 }
 
