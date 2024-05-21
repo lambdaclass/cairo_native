@@ -292,7 +292,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         todo!()
     }
 
-    fn set_version(&mut self, version: Felt) -> SyscallResult<()> {
+    fn set_version(&mut self, _version: Felt) -> SyscallResult<()> {
         todo!()
     }
 }

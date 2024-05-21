@@ -262,7 +262,7 @@ pub trait StarknetSyscallHandler {
 
     fn set_contract_address(&mut self, _address: Felt) -> SyscallResult<()>;
 
-    fn set_max_fee(&mut self, _max_fee: u128) -> SyscallResult<()>;
+    fn set_max_fee(&mut self, _max_fee: u64) -> SyscallResult<()>;
 
     fn set_nonce(&mut self, _nonce: Felt) -> SyscallResult<()>;
 
@@ -485,7 +485,7 @@ impl StarknetSyscallHandler for DummySyscallHandler {
         todo!()
     }
 
-    fn set_max_fee(&mut self, _max_fee: u128) -> SyscallResult<()> {
+    fn set_max_fee(&mut self, _max_fee: u64) -> SyscallResult<()> {
         todo!()
     }
 
@@ -772,76 +772,77 @@ pub(crate) mod handler {
         // TODO(juanbono): Add proper types to pop_log
         pop_log: extern "C" fn(),
         set_account_contract_address: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            contract_address: Felt,
+            contract_address: &Felt252Abi,
         ),
         set_block_number: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
             block_number: u64,
         ),
         set_block_timestamp: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
             block_timestamp: u64,
         ),
         set_caller_address: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            address: Felt,
+            address: &Felt252Abi,
         ),
         set_chain_id: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            chain_id: Felt,
+            chain_id: &Felt252Abi,
         ),
         set_contract_address: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            address: Felt,
+            address: &Felt252Abi,
         ),
         set_max_fee: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            max_fee: u128,
+            // TODO(juanbono): check if this type is correct
+            max_fee: u64,
         ),
         set_nonce: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            nonce: Felt,
+            nonce: &Felt252Abi,
         ),
         set_sequencer_address: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            address: Felt,
+            address: &Felt252Abi,
         ),
         set_signature: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            signature: &[Felt],
+            signature: &ArrayAbi<Felt252Abi>,
         ),
         set_transaction_hash: extern "C" fn(
-            result_ptr: SyscallResult<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            transaction_hash: Felt,
+            transaction_hash: &Felt252Abi,
         ),
         set_version: extern "C" fn(
-            result_ptr: SyscallResultAbi<()>,
+            result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            version: Felt,
+            version: &Felt252Abi,
         ),
     }
 
@@ -908,19 +909,19 @@ pub(crate) mod handler {
                 secp256r1_mul: Self::wrap_secp256r1_mul,
                 secp256r1_get_point_from_x: Self::wrap_secp256r1_get_point_from_x,
                 secp256r1_get_xy: Self::wrap_secp256r1_get_xy,
-                pop_log: todo!(),
-                set_account_contract_address: todo!(),
-                set_block_number: todo!(),
-                set_block_timestamp: todo!(),
-                set_caller_address: todo!(),
-                set_chain_id: todo!(),
-                set_contract_address: todo!(),
-                set_max_fee: todo!(),
-                set_nonce: todo!(),
-                set_sequencer_address: todo!(),
-                set_signature: todo!(),
-                set_transaction_hash: todo!(),
-                set_version: todo!(),
+                pop_log: Self::wrap_pop_log,
+                set_account_contract_address: Self::wrap_set_account_contract_address,
+                set_block_number: Self::wrap_set_block_number,
+                set_block_timestamp: Self::wrap_set_block_timestamp,
+                set_caller_address: Self::wrap_set_caller_address,
+                set_chain_id: Self::wrap_set_chain_id,
+                set_contract_address: Self::wrap_set_contract_address,
+                set_max_fee: Self::wrap_set_max_fee,
+                set_nonce: Self::wrap_set_nonce,
+                set_sequencer_address: Self::wrap_set_sequencer_address,
+                set_signature: Self::wrap_set_signature,
+                set_transaction_hash: Self::wrap_set_transaction_hash,
+                set_version: Self::wrap_set_version,
             }
         }
 
@@ -982,6 +983,7 @@ pub(crate) mod handler {
             };
         }
 
+        #[allow(dead_code)]
         // TODO(juanbono) Implement wrap_pop_log
         extern "C" fn wrap_pop_log() {
             todo!()
@@ -991,8 +993,9 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            version: Felt,
+            version: &Felt252Abi,
         ) {
+            let version = Felt::from_bytes_le(&version.0);
             let result = ptr.set_version(version);
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1009,8 +1012,9 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            contract_address: Felt,
+            contract_address: &Felt252Abi,
         ) {
+            let contract_address = Felt::from_bytes_le(&contract_address.0);
             let result = ptr.set_account_contract_address(contract_address);
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1063,8 +1067,9 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            caller_address: Felt,
+            caller_address: &Felt252Abi,
         ) {
+            let caller_address = Felt::from_bytes_le(&caller_address.0);
             let result = ptr.set_caller_address(caller_address);
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1081,8 +1086,9 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            chain_id: Felt,
+            chain_id: &Felt252Abi,
         ) {
+            let chain_id = Felt::from_bytes_le(&chain_id.0);
             let result = ptr.set_chain_id(chain_id);
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1099,8 +1105,9 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            contract_address: Felt,
+            contract_address: &Felt252Abi,
         ) {
+            let contract_address = Felt::from_bytes_le(&contract_address.0);
             let result = ptr.set_contract_address(contract_address);
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1117,7 +1124,7 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            max_fee: u128, // TODO(juanbono): check if needs to be u128 or Felt
+            max_fee: u64, // TODO(juanbono): check if needs to be u128 or Felt
         ) {
             let result = ptr.set_max_fee(max_fee);
             *result_ptr = match result {
@@ -1135,8 +1142,9 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            nonce: Felt,
+            nonce: &Felt252Abi,
         ) {
+            let nonce = Felt::from_bytes_le(&nonce.0);
             let result = ptr.set_nonce(nonce);
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1153,10 +1161,9 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            sequencer_address: Felt252Abi,
+            sequencer_address: &Felt252Abi,
         ) {
-            let address = sequencer_address.0;
-            let address = Felt::from_bytes_le(&address);
+            let address = Felt::from_bytes_le(&sequencer_address.0);
             let result = ptr.set_sequencer_address(address);
 
             *result_ptr = match result {
@@ -1170,12 +1177,14 @@ pub(crate) mod handler {
             };
         }
 
+        #[allow(dead_code)]
         extern "C" fn wrap_set_signature(
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            signature: &[Felt],
+            signature: &ArrayAbi<Felt252Abi>,
         ) {
+            let signature: Vec<Felt> = todo!(); // TODO(juanbono): do the actual conversion
             let result = ptr.set_signature(&signature);
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1192,8 +1201,9 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
-            transaction_hash: Felt,
+            transaction_hash: &Felt252Abi,
         ) {
+            let transaction_hash = Felt::from_bytes_le(&transaction_hash.0);
             let result = ptr.set_transaction_hash(transaction_hash);
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
