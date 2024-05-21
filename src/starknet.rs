@@ -877,6 +877,19 @@ pub(crate) mod handler {
             field_offset!(Self, secp256r1_get_point_from_x) >> 3;
         pub const SECP256R1_GET_XY: usize = field_offset!(Self, secp256r1_get_xy) >> 3;
         pub const SET_SEQUENCER_ADDRESS: usize = field_offset!(Self, set_sequencer_address) >> 3;
+        // pub const SET_VERSION: usize = field_offset!(Self, set_version) >> 3;
+        // pub const SET_ACCOUNT_CONTRACT_ADDRESS: usize =
+        //     field_offset!(Self, set_account_contract_address) >> 3;
+        // pub const SET_BLOCK_NUMBER: usize = field_offset!(Self, set_block_number) >> 3;
+        // pub const SET_BLOCK_TIMESTAMP: usize = field_offset!(Self, set_block_timestamp) >> 3;
+        // pub const SET_CALLER_ADDRESS: usize = field_offset!(Self, set_caller_address) >> 3;
+        // pub const SET_CHAIN_ID: usize = field_offset!(Self, set_chain_id) >> 3;
+        // pub const SET_CONTRACT_ADDRESS: usize = field_offset!(Self, set_contract_address) >> 3;
+        // pub const SET_MAX_FEE: usize = field_offset!(Self, set_max_fee) >> 3;
+        // pub const SET_NONCE: usize = field_offset!(Self, set_nonce) >> 3;
+        // pub const SET_SIGNATURE: usize = field_offset!(Self, set_signature) >> 3;
+        // pub const SET_TRANSACTION_HASH: usize = field_offset!(Self, set_transaction_hash) >> 3;
+        // pub const POP_LOG: usize = field_offset!(Self, pop_log) >> 3;
     }
 
     #[allow(unused_variables)]
