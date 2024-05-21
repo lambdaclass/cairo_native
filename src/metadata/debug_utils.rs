@@ -888,7 +888,7 @@ mod test {
         let context = native_context.context();
 
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -898,7 +898,7 @@ mod test {
         let message = "random message!";
 
         // Call the debug_print function with the context, module, block, message, and location.
-        let res = debug_utils.debug_print(&context, &module, &block, message, location);
+        let res = debug_utils.debug_print(context, &module, &block, message, location);
 
         // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
@@ -921,7 +921,7 @@ mod test {
         let context = native_context.context();
 
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new block with no instructions.
         let block = Block::new(&[]);
 
@@ -946,7 +946,7 @@ mod test {
         let context = native_context.context();
 
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -964,7 +964,7 @@ mod test {
             .into();
 
         // Call the print_pointer function with the context, module, block, value, and location.
-        let res = debug_utils.print_pointer(&context, &module, &block, value, location);
+        let res = debug_utils.print_pointer(context, &module, &block, value, location);
 
         // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
@@ -986,7 +986,7 @@ mod test {
         let context = native_context.context();
 
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1004,7 +1004,7 @@ mod test {
             .into();
 
         // Call the print_i1 function with the context, module, block, value, and location.
-        let res = debug_utils.print_i1(&context, &module, &block, value, location);
+        let res = debug_utils.print_i1(context, &module, &block, value, location);
 
         // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
@@ -1028,7 +1028,7 @@ mod test {
         let context = native_context.context();
 
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1046,7 +1046,7 @@ mod test {
             .into();
 
         // Call the print_felt252 function with the context, module, block, value, and location.
-        let res = debug_utils.print_felt252(&context, &module, &block, value, location);
+        let res = debug_utils.print_felt252(context, &module, &block, value, location);
 
         // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
@@ -1070,7 +1070,7 @@ mod test {
         let context = native_context.context();
 
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1088,7 +1088,7 @@ mod test {
             .into();
 
         // Call the print_i8 function with the context, module, block, value, and location.
-        let res = debug_utils.print_i8(&context, &module, &block, value, location);
+        let res = debug_utils.print_i8(context, &module, &block, value, location);
 
         // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
@@ -1112,7 +1112,7 @@ mod test {
         let context = native_context.context();
 
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1130,7 +1130,7 @@ mod test {
             .into();
 
         // Call the print_i32 function with the context, module, block, value, and location.
-        let res = debug_utils.print_i32(&context, &module, &block, value, location);
+        let res = debug_utils.print_i32(context, &module, &block, value, location);
 
         // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
@@ -1154,7 +1154,7 @@ mod test {
         let context = native_context.context();
 
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1172,7 +1172,7 @@ mod test {
             .into();
 
         // Call the print_i64 function with the context, module, block, value, and location.
-        let res = debug_utils.print_i64(&context, &module, &block, value, location);
+        let res = debug_utils.print_i64(context, &module, &block, value, location);
 
         // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
@@ -1196,7 +1196,7 @@ mod test {
         let context = native_context.context();
 
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1214,7 +1214,7 @@ mod test {
             .into();
 
         // Call the print_i128 function with the context, module, block, value, and location.
-        let res = debug_utils.print_i128(&context, &module, &block, value, location);
+        let res = debug_utils.print_i128(context, &module, &block, value, location);
 
         // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
@@ -1238,7 +1238,7 @@ mod test {
         let context = native_context.context();
 
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1259,7 +1259,7 @@ mod test {
         let len = 100;
 
         // Call the dump_mem function with the context, module, block, pointer, length, and location.
-        let res = debug_utils.dump_mem(&context, &module, &block, ptr, len, location);
+        let res = debug_utils.dump_mem(context, &module, &block, ptr, len, location);
 
         // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
@@ -1282,14 +1282,14 @@ mod test {
         // Get the context from the native context.
         let context = native_context.context();
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
         let block = Block::new(&[]);
 
         // Call the breakpoint_marker function with the context, module, block, and location.
-        let _ = debug_utils.breakpoint_marker(&context, &module, &block, location);
+        let _ = debug_utils.breakpoint_marker(context, &module, &block, location);
 
         // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
@@ -1331,14 +1331,14 @@ mod test {
         // Get the context from the native context.
         let context = native_context.context();
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
         let block = Block::new(&[]);
 
         // Call the debug_print function with the context, module, block, and message.
-        let _ = debug_utils.debug_print(&context, &module, &block, "Test message", location);
+        let _ = debug_utils.debug_print(context, &module, &block, "Test message", location);
 
         // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
@@ -1376,7 +1376,7 @@ mod test {
         // Get the context from the native context.
         let context = native_context.context();
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1394,7 +1394,7 @@ mod test {
             .into();
 
         // Call the print_i1 function with the context, module, block, and value.
-        let _ = debug_utils.print_i1(&context, &module, &block, value, location);
+        let _ = debug_utils.print_i1(context, &module, &block, value, location);
 
         // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
@@ -1432,7 +1432,7 @@ mod test {
         // Get the context from the native context.
         let context = native_context.context();
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1450,7 +1450,7 @@ mod test {
             .into();
 
         // Call the print_i8 function with the context, module, block, and value.
-        let _ = debug_utils.print_i8(&context, &module, &block, value, location);
+        let _ = debug_utils.print_i8(context, &module, &block, value, location);
 
         // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
@@ -1488,7 +1488,7 @@ mod test {
         // Get the context from the native context.
         let context = native_context.context();
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1506,7 +1506,7 @@ mod test {
             .into();
 
         // Call the print_i32 function with the context, module, block, and value.
-        let _ = debug_utils.print_i32(&context, &module, &block, value, location);
+        let _ = debug_utils.print_i32(context, &module, &block, value, location);
 
         // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
@@ -1545,7 +1545,7 @@ mod test {
         // Get the context from the native context.
         let context = native_context.context();
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1563,7 +1563,7 @@ mod test {
             .into();
 
         // Call the print_i64 function with the context, module, block, and value.
-        let _ = debug_utils.print_i64(&context, &module, &block, value, location);
+        let _ = debug_utils.print_i64(context, &module, &block, value, location);
 
         // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
@@ -1602,7 +1602,7 @@ mod test {
         // Get the context from the native context.
         let context = native_context.context();
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1620,7 +1620,7 @@ mod test {
             .into();
 
         // Call the print_i128 function with the context, module, block, and value.
-        let _ = debug_utils.print_i128(&context, &module, &block, value, location);
+        let _ = debug_utils.print_i128(context, &module, &block, value, location);
 
         // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
@@ -1658,7 +1658,7 @@ mod test {
         // Get the context from the native context.
         let context = native_context.context();
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1676,7 +1676,7 @@ mod test {
             .into();
 
         // Call the print_pointer function with the context, module, block, and value.
-        let _ = debug_utils.print_pointer(&context, &module, &block, value, location);
+        let _ = debug_utils.print_pointer(context, &module, &block, value, location);
 
         // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
@@ -1714,7 +1714,7 @@ mod test {
         // Get the context from the native context.
         let context = native_context.context();
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1732,7 +1732,7 @@ mod test {
             .into();
 
         // Call the print_felt252 function with the context, module, block, and value.
-        let _ = debug_utils.print_felt252(&context, &module, &block, value, location);
+        let _ = debug_utils.print_felt252(context, &module, &block, value, location);
 
         // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
@@ -1770,7 +1770,7 @@ mod test {
         // Get the context from the native context.
         let context = native_context.context();
         // Create an unknown location within the context.
-        let location = Location::unknown(&context);
+        let location = Location::unknown(context);
         // Create a new module with the given location.
         let module = Module::new(location);
         // Create a new block with no instructions.
@@ -1788,7 +1788,7 @@ mod test {
             .into();
 
         // Call the dump_mem function with the context, module, block, pointer value, length, and location.
-        let _ = debug_utils.dump_mem(&context, &module, &block, ptr_value, 10, location);
+        let _ = debug_utils.dump_mem(context, &module, &block, ptr_value, 10, location);
 
         // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
