@@ -26,7 +26,8 @@ use melior::{
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
-use num_bigint::ToBigInt;
+use num_bigint::{BigInt, ToBigInt};
+use num_traits::Signed;
 use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -181,18 +182,33 @@ pub fn build_downcast<'ctx, 'this>(
             (result, dst_ty)
         };
 
-        let int_max_value = info
+        let mut int_max_value: BigInt = info
             .to_range
             .intersection(&info.from_range)
             .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
             .upper
             - 1;
 
-        let int_min_value = info
+        let mut int_min_value = info
             .to_range
             .intersection(&info.from_range)
             .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
             .lower;
+
+        if src_is_felt {
+            let prime = metadata
+                .get::<PrimeModuloMeta<Felt>>()
+                .ok_or(Error::MissingMetadata)?
+                .prime()
+                .to_bigint()
+                .expect("biguint should be casted to bigint");
+            if int_min_value.is_negative() {
+                int_min_value = int_min_value + prime.clone();
+            }
+            if int_max_value.is_negative() {
+                int_max_value = int_max_value + prime;
+            }
+        }
 
         let max_value = block.const_int_from_type(context, location, int_max_value, compare_ty)?;
         let min_value = block.const_int_from_type(context, location, int_min_value, compare_ty)?;
