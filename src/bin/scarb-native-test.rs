@@ -14,7 +14,7 @@ use utils::{RunArgs, RunMode};
 /// runs all functions marked with `#[test]`. Exits with 1 if the compilation
 /// or run fails, otherwise 0.
 #[derive(Parser, Clone, Debug)]
-#[command(author, version)]
+#[command(author, version, verbatim_doc_comment)]
 struct Args {
     #[command(flatten)]
     packages_filter: PackagesFilter,

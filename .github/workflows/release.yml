@@ -43,6 +43,7 @@ jobs:
         with:
           files: |
             target/release/cairo-native-test
+            target/release/scarb-native-test
             target/release/cairo-native-compile
             target/release/cairo-native-dump
             target/release/cairo-native-run

@@ -35,8 +35,6 @@ pub struct TestsSummary {
     pub failed_run_results: Vec<RunResultValue>,
 }
 
-// TODO impl display for TestsSummary
-
 /// The result of a ran test.
 struct TestResult {
     /// The status of the run.
