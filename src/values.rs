@@ -1338,4 +1338,310 @@ mod test {
             _ => panic!("Unexpected error type: {:?}", result),
         }
     }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_felt252_serialization_deserialization() {
+        // Create an example of JitValue::Felt252
+        let original_value = JitValue::Felt252(Felt::from(1234));
+
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+
+        // Deserialize from JSON
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        // Verify that the deserialized value is equal to the original
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_bytes31_serialization_deserialization() {
+        // Create an example of JitValue::Bytes31
+        let original_value = JitValue::Bytes31([1; 31]); // Example byte array
+
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+
+        // Deserialize from JSON
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        // Verify that the deserialized value is equal to the original
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_array_serialization_deserialization() {
+        // Create an example of JitValue::Array
+        let original_value = JitValue::Array(vec![JitValue::Uint8(1), JitValue::Uint8(2)]); // Example array
+
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+
+        // Deserialize from JSON
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        // Verify that the deserialized value is equal to the original
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_struct_serialization_deserialization() {
+        // Create an example of JitValue::Struct
+        let original_value = JitValue::Struct {
+            fields: vec![JitValue::Uint8(1), JitValue::Uint8(2)],
+            debug_name: Some("example_struct".to_string()),
+        };
+
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+
+        // Deserialize from JSON
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        // Verify that the deserialized value is equal to the original
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_enum_serialization_deserialization() {
+        // Create an example of JitValue::Enum
+        let original_value = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Uint8(42)),
+            debug_name: Some("example_enum".to_string()),
+        };
+
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+
+        // Deserialize from JSON
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        // Verify that the deserialized value is equal to the original
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_felt252_dict_serialization_deserialization() {
+        // Create an example of JitValue::Felt252Dict
+        let mut felt_map = HashMap::new();
+        felt_map.insert(Felt::from(123), JitValue::Uint8(1));
+        felt_map.insert(Felt::from(456), JitValue::Uint8(2));
+        let original_value = JitValue::Felt252Dict {
+            value: felt_map,
+            debug_name: Some("example_dict".to_string()),
+        };
+
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+
+        // Deserialize from JSON
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        // Verify that the deserialized value is equal to the original
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_uint8_serialization_deserialization() {
+        let original_value = JitValue::Uint8(42);
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_uint16_serialization_deserialization() {
+        let original_value = JitValue::Uint16(12345);
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_uint32_serialization_deserialization() {
+        let original_value = JitValue::Uint32(1234567890);
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_uint64_serialization_deserialization() {
+        let original_value = JitValue::Uint64(12345678901234567890);
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_uint128_serialization_deserialization() {
+        let original_value = JitValue::Uint128(123456789012345678901234567890);
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_sint8_serialization_deserialization() {
+        let original_value = JitValue::Sint8(-42);
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_sint16_serialization_deserialization() {
+        let original_value = JitValue::Sint16(-12345);
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_sint32_serialization_deserialization() {
+        let original_value = JitValue::Sint32(-1234567890);
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_sint64_serialization_deserialization() {
+        let original_value = JitValue::Sint64(-1234567890123456789);
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_sint128_serialization_deserialization() {
+        let original_value = JitValue::Sint128(-123456789012345678901234567890);
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_ecpoint_serialization_deserialization() {
+        let original_value = JitValue::EcPoint(Felt::from(42), Felt::from(84));
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_ecstate_serialization_deserialization() {
+        let original_value = JitValue::EcState(
+            Felt::from(42),
+            Felt::from(84),
+            Felt::from(126),
+            Felt::from(168),
+        );
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_secp256k1point_serialization_deserialization() {
+        let original_value = JitValue::Secp256K1Point {
+            x: (12345678901234567890, 9876543210987654321),
+            y: (9876543210987654321, 12345678901234567890),
+        };
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_secp256r1point_serialization_deserialization() {
+        let original_value = JitValue::Secp256R1Point {
+            x: (12345678901234567890, 9876543210987654321),
+            y: (9876543210987654321, 12345678901234567890),
+        };
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_null_serialization_deserialization() {
+        let original_value = JitValue::Null;
+
+        let serialized = serde_json::to_string(&original_value).expect("Failed to serialize");
+        let deserialized: JitValue =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        assert_eq!(original_value, deserialized);
+    }
 }
