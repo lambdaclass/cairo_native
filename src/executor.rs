@@ -762,17 +762,13 @@ fn parse_result(
             };
 
             let value = match ptr {
-                Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)),
+                Ok(ptr) => JitValue::from_jit(ptr, &info.variants[tag], registry),
                 Err(offset) => {
                     ret_registers.copy_within(offset.., 0);
-                    Box::new(parse_result(
-                        &info.variants[tag],
-                        registry,
-                        None,
-                        ret_registers,
-                    ))
+                    parse_result(&info.variants[tag], registry, None, ret_registers)
                 }
-            };
+            }
+            .into();
 
             JitValue::Enum {
                 tag,

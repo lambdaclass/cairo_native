@@ -300,14 +300,16 @@ fn secp256k1_new() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -332,14 +334,16 @@ fn secp256k1_new() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256K1Point {
+                value: JitValue::Secp256K1Point {
                     x: (0, 0),
                     y: (0, 0),
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -364,14 +368,16 @@ fn secp256k1_new() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256K1Point {
+                value: JitValue::Secp256K1Point {
                     x: (u128::MAX, u128::MAX),
                     y: (u128::MAX, u128::MAX),
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -460,10 +466,11 @@ fn secp256k1_add() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: JitValue::Secp256K1Point {
                 x: (0, 0),
                 y: (0, 0),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -488,10 +495,11 @@ fn secp256k1_add() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: JitValue::Secp256K1Point {
                 x: (u128::MAX, 0),
                 y: (0, u128::MAX),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -516,10 +524,11 @@ fn secp256k1_add() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: JitValue::Secp256K1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -641,10 +650,11 @@ fn secp256k1_mul() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: JitValue::Secp256K1Point {
                 x: (0, 0),
                 y: (0, 0),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -669,10 +679,11 @@ fn secp256k1_mul() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: JitValue::Secp256K1Point {
                 x: (u128::MAX, 0),
                 y: (0, u128::MAX),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -697,10 +708,11 @@ fn secp256k1_mul() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: JitValue::Secp256K1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -798,10 +810,11 @@ fn secp256k1_get_point_from_x() {
             },
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         ],
@@ -812,14 +825,16 @@ fn secp256k1_get_point_from_x() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None
         },
     );
@@ -834,10 +849,11 @@ fn secp256k1_get_point_from_x() {
             },
             JitValue::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         ],
@@ -848,14 +864,16 @@ fn secp256k1_get_point_from_x() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256K1Point {
+                value: JitValue::Secp256K1Point {
                     x: (0, 0),
                     y: (0, 0),
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -870,10 +888,11 @@ fn secp256k1_get_point_from_x() {
             },
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         ],
@@ -884,14 +903,16 @@ fn secp256k1_get_point_from_x() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256K1Point {
+                value: JitValue::Secp256K1Point {
                     x: (0, u128::MAX),
                     y: (u128::MAX, 0),
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -906,10 +927,11 @@ fn secp256k1_get_point_from_x() {
             },
             JitValue::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         ],
@@ -920,14 +942,16 @@ fn secp256k1_get_point_from_x() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256K1Point {
+                value: JitValue::Secp256K1Point {
                     x: (u128::MAX, 0),
                     y: (0, u128::MAX),
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1018,7 +1042,7 @@ fn secp256k1_get_xy() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
@@ -1030,7 +1054,8 @@ fn secp256k1_get_xy() {
                     },
                 ],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         }
     );
@@ -1049,7 +1074,7 @@ fn secp256k1_get_xy() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
@@ -1061,7 +1086,8 @@ fn secp256k1_get_xy() {
                     },
                 ],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         }
     );
@@ -1080,7 +1106,7 @@ fn secp256k1_get_xy() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
@@ -1092,7 +1118,8 @@ fn secp256k1_get_xy() {
                     },
                 ],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         }
     );
@@ -1111,7 +1138,7 @@ fn secp256k1_get_xy() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
@@ -1123,7 +1150,8 @@ fn secp256k1_get_xy() {
                     },
                 ],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         }
     );
@@ -1216,14 +1244,16 @@ fn secp256r1_new() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1248,14 +1278,16 @@ fn secp256r1_new() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256R1Point {
+                value: JitValue::Secp256R1Point {
                     x: (0, 0),
                     y: (0, 0),
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1280,14 +1312,16 @@ fn secp256r1_new() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256R1Point {
+                value: JitValue::Secp256R1Point {
                     x: (u128::MAX, u128::MAX),
                     y: (u128::MAX, u128::MAX),
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1376,10 +1410,11 @@ fn secp256r1_add() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: JitValue::Secp256R1Point {
                 x: (0, 0),
                 y: (0, 0),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1404,10 +1439,11 @@ fn secp256r1_add() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: JitValue::Secp256R1Point {
                 x: (u128::MAX, 0),
                 y: (0, u128::MAX),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1432,10 +1468,11 @@ fn secp256r1_add() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: JitValue::Secp256R1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1557,10 +1594,11 @@ fn secp256r1_mul() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: JitValue::Secp256R1Point {
                 x: (0, 0),
                 y: (0, 0),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1585,10 +1623,11 @@ fn secp256r1_mul() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: JitValue::Secp256R1Point {
                 x: (u128::MAX, 0),
                 y: (0, u128::MAX),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1613,10 +1652,11 @@ fn secp256r1_mul() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: JitValue::Secp256R1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1714,10 +1754,11 @@ fn secp256r1_get_point_from_x() {
             },
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         ],
@@ -1728,14 +1769,16 @@ fn secp256r1_get_point_from_x() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None
         },
     );
@@ -1750,10 +1793,11 @@ fn secp256r1_get_point_from_x() {
             },
             JitValue::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         ],
@@ -1764,14 +1808,16 @@ fn secp256r1_get_point_from_x() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256R1Point {
+                value: JitValue::Secp256R1Point {
                     x: (0, 0),
                     y: (0, 0),
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1786,10 +1832,11 @@ fn secp256r1_get_point_from_x() {
             },
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         ],
@@ -1800,14 +1847,16 @@ fn secp256r1_get_point_from_x() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256R1Point {
+                value: JitValue::Secp256R1Point {
                     x: (0, u128::MAX),
                     y: (u128::MAX, 0),
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1822,10 +1871,11 @@ fn secp256r1_get_point_from_x() {
             },
             JitValue::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         ],
@@ -1836,14 +1886,16 @@ fn secp256r1_get_point_from_x() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256R1Point {
+                value: JitValue::Secp256R1Point {
                     x: (u128::MAX, 0),
                     y: (0, u128::MAX),
-                }),
+                }
+                .into(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -1934,7 +1986,7 @@ fn secp256r1_get_xy() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
@@ -1946,7 +1998,8 @@ fn secp256r1_get_xy() {
                     },
                 ],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         }
     );
@@ -1965,7 +2018,7 @@ fn secp256r1_get_xy() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
@@ -1977,7 +2030,8 @@ fn secp256r1_get_xy() {
                     },
                 ],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         }
     );
@@ -1996,7 +2050,7 @@ fn secp256r1_get_xy() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
@@ -2008,7 +2062,8 @@ fn secp256r1_get_xy() {
                     },
                 ],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         }
     );
@@ -2027,7 +2082,7 @@ fn secp256r1_get_xy() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
@@ -2039,7 +2094,8 @@ fn secp256r1_get_xy() {
                     },
                 ],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         }
     );

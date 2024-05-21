@@ -386,7 +386,7 @@ impl JitValue {
                             value_map.insert(key, value_malloc_ptr);
                         }
 
-                        NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
+                        NonNull::new_unchecked(Box::into_raw(value_map.into())).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict",
@@ -636,7 +636,7 @@ impl JitValue {
 
                     JitValue::Enum {
                         tag: tag_value,
-                        value: Box::new(payload),
+                        value: payload.into(),
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
                 }
@@ -1207,7 +1207,7 @@ mod test {
         // Call to_jit to get the value of the enum
         let result = JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Uint8(10)),
+            value: JitValue::Uint8(10).into(),
             debug_name: None,
         }
         .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
@@ -1233,7 +1233,7 @@ mod test {
         // Call to_jit to get the value of the enum with tag value out of range
         let _ = JitValue::Enum {
             tag: 2,
-            value: Box::new(JitValue::Uint8(10)),
+            value: JitValue::Uint8(10).into(),
             debug_name: None,
         }
         .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
@@ -1253,7 +1253,7 @@ mod test {
 
         let _ = JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Uint8(10)),
+            value: JitValue::Uint8(10).into(),
             debug_name: None,
         }
         .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
@@ -1276,10 +1276,11 @@ mod test {
         // Generating an error by providing an enum value instead of the expected type.
         let result = JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![JitValue::from(2u32)],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         }
         .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)

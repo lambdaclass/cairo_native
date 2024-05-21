@@ -65,10 +65,11 @@ mod test {
                         Felt::ZERO,
                         JitValue::Enum {
                             tag: 0,
-                            value: Box::new(JitValue::Struct {
+                            value: JitValue::Struct {
                                 fields: Vec::new(),
                                 debug_name: None
-                            }),
+                            }
+                            .into(),
                             debug_name: None,
                         },
                     ),
@@ -76,10 +77,11 @@ mod test {
                         Felt::ONE,
                         JitValue::Enum {
                             tag: 1,
-                            value: Box::new(JitValue::Struct {
+                            value: JitValue::Struct {
                                 fields: Vec::new(),
                                 debug_name: None
-                            }),
+                            }
+                            .into(),
                             debug_name: None,
                         },
                     ),

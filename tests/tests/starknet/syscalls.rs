@@ -371,12 +371,13 @@ fn get_block_hash() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Felt252(
+            value: JitValue::Felt252(
                 Felt::from_dec_str(
                     "1158579293198495875788224011889333769139150068959598053296510642728083832673",
                 )
                 .unwrap()
-            )),
+            )
+            .into(),
             debug_name: None,
         },
     );
@@ -397,7 +398,7 @@ fn get_execution_info() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![
@@ -451,7 +452,7 @@ fn get_execution_info() {
                     .unwrap()),
                 ],
                 debug_name: None,
-            }),
+            }.into(),
             debug_name: None,
         },
     );
@@ -472,7 +473,7 @@ fn get_execution_info_v2() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![
@@ -544,7 +545,7 @@ fn get_execution_info_v2() {
                     .unwrap()),
                 ],
                 debug_name: None,
-            }),
+            }.into(),
             debug_name: None,
         },
     );
@@ -564,7 +565,7 @@ fn deploy() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Felt252(Felt::from_dec_str(
                         "1833707083418045616336697070784512826809940908236872124572250196391719980392",
@@ -576,7 +577,7 @@ fn deploy() {
                     },
                 ],
                 debug_name: None,
-            }),
+            }.into(),
             debug_name: None,
         },
     )
@@ -596,10 +597,11 @@ fn replace_class() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: Vec::new(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -619,7 +621,7 @@ fn library_call() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![JitValue::Array(vec![
                     JitValue::Felt252(Felt::from_dec_str(
                         "3358892263739032253767642605669710712087178958719188919195252597609334880396"
@@ -635,7 +637,7 @@ fn library_call() {
                     .unwrap()),
                 ])],
                 debug_name: None,
-            }),
+            }.into(),
             debug_name: None,
         },
     );
@@ -655,7 +657,7 @@ fn call_contract() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![JitValue::Array(vec![
                     JitValue::Felt252(Felt::from_dec_str(
                         "3358892263739032253767642605669710712087178958719188919195252597609334880396"
@@ -671,7 +673,7 @@ fn call_contract() {
                     .unwrap()),
                 ])],
                 debug_name: None,
-            }),
+            }.into(),
             debug_name: None,
         },
     );
@@ -691,7 +693,7 @@ fn storage_read() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Felt252(Felt::from_dec_str(
                         "1013181629378419652272218169322268188846114273878719855200100663863924329981",
@@ -699,7 +701,7 @@ fn storage_read() {
                     .unwrap()),
                 ],
                 debug_name: None,
-            }),
+            }.into(),
             debug_name: None,
         },
     );
@@ -719,13 +721,14 @@ fn storage_write() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![JitValue::Struct {
                     fields: Vec::new(),
                     debug_name: None,
                 }],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -745,10 +748,11 @@ fn emit_event() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: Vec::new(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -768,10 +772,11 @@ fn send_message_to_l1() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: Vec::new(),
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );
@@ -791,13 +796,14 @@ fn keccak() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Uint128(330939983442938156232262046592599923289),
                     JitValue::Uint128(288102973244655531496349286021939642254),
                 ],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     );

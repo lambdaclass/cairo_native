@@ -240,7 +240,7 @@ mod test {
             &[],
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Felt252(1234.into())),
+                value: JitValue::Felt252(1234.into()).into(),
                 debug_name: None,
             },
         );
@@ -268,10 +268,11 @@ mod test {
             &[],
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: Vec::new(),
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         );
@@ -299,10 +300,11 @@ mod test {
             &[],
             JitValue::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: Vec::new(),
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         );
@@ -330,7 +332,7 @@ mod test {
             &[],
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Felt252(1234.into())),
+                value: JitValue::Felt252(1234.into()).into(),
                 debug_name: None,
             },
         );

@@ -1664,10 +1664,11 @@ mod test {
             run_program(&program, "run_test", &[]).return_value,
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![JitValue::from(1u32)],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         );
@@ -1690,10 +1691,11 @@ mod test {
             run_program(&program, "run_test", &[]).return_value,
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![JitValue::from(1u32)],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         );
@@ -1717,10 +1719,11 @@ mod test {
             run_program(&program, "run_test", &[]).return_value,
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![JitValue::from(2u32)],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         );
@@ -1746,10 +1749,11 @@ mod test {
             run_program(&program, "run_test", &[]).return_value,
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![JitValue::from(1u32)],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             }
         );
@@ -1773,10 +1777,11 @@ mod test {
             run_program(&program, "run_test", &[]).return_value,
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![JitValue::from(2u32)],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         );
@@ -1795,10 +1800,11 @@ mod test {
             run_program(&program, "run_test", &[]).return_value,
             JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: JitValue::Struct {
                     fields: vec![JitValue::Array(vec![])],
                     debug_name: None,
-                }),
+                }
+                .into(),
                 debug_name: None,
             },
         );

@@ -435,13 +435,8 @@ pub fn compare_outputs(
 
                 JitValue::Enum {
                     tag,
-                    value: Box::new(map_vm_values(
-                        size_cache,
-                        registry,
-                        memory,
-                        data,
-                        &info.variants[tag],
-                    )),
+                    value: map_vm_values(size_cache, registry, memory, data, &info.variants[tag])
+                        .into(),
                     debug_name: ty.debug_name.as_deref().map(String::from),
                 }
             }
@@ -538,13 +533,14 @@ pub fn compare_outputs(
                 };
                 JitValue::Enum {
                     tag: 0,
-                    value: Box::new(map_vm_values(
+                    value: map_vm_values(
                         &mut size_cache,
                         &registry,
                         &vm_result.memory,
                         values,
                         inner_ty,
-                    )),
+                    )
+                    .into(),
                     debug_name: None,
                 }
             } else {
@@ -553,7 +549,7 @@ pub fn compare_outputs(
         }
         RunResultValue::Panic(values) => JitValue::Enum {
             tag: 1,
-            value: Box::new(JitValue::Struct {
+            value: JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
                         fields: Vec::new(),
@@ -568,7 +564,8 @@ pub fn compare_outputs(
                     ),
                 ],
                 debug_name: None,
-            }),
+            }
+            .into(),
             debug_name: None,
         },
     };

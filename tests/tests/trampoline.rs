@@ -370,10 +370,11 @@ fn invoke1_enum1_unit() {
 
     let x = JitValue::Enum {
         tag: 0,
-        value: Box::new(JitValue::Struct {
+        value: JitValue::Struct {
             fields: Vec::new(),
             debug_name: None,
-        }),
+        }
+        .into(),
         debug_name: Some("MyEnum".into()),
     };
     assert_eq!(
@@ -405,7 +406,7 @@ fn invoke1_enum1_u64() {
     let r = |x: u64| {
         let x = JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Uint64(x)),
+            value: JitValue::Uint64(x).into(),
             debug_name: Some("MyEnum".into()),
         };
         assert_eq!(
@@ -443,7 +444,7 @@ fn invoke1_enum1_felt252() {
     let r = |x: Felt| {
         let x = JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Felt252(x)),
+            value: JitValue::Felt252(x).into(),
             debug_name: Some("MyEnum".into()),
         };
         assert_eq!(
@@ -488,12 +489,12 @@ fn invoke1_enum2_u8_u16() {
         let x = match x {
             MyEnum::A(x) => JitValue::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Uint8(x)),
+                value: JitValue::Uint8(x).into(),
                 debug_name: Some("MyEnum".into()),
             },
             MyEnum::B(x) => JitValue::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Uint16(x)),
+                value: JitValue::Uint16(x).into(),
                 debug_name: Some("MyEnum".into()),
             },
         };
