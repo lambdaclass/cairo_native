@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 use starknet_crypto::FieldElement;
 use starknet_curve::AffinePoint;
 use starknet_types_core::felt::Felt;
-use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull};
+use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
 
 lazy_static! {
     pub static ref HALF_PRIME: FieldElement = FieldElement::from_dec_str(
@@ -17,10 +17,6 @@ lazy_static! {
     pub static ref DICT_GAS_REFUND_PER_ACCESS: u64 =
         (DICT_SQUASH_UNIQUE_KEY_COST.cost() - DICT_SQUASH_REPEATED_ACCESS_COST.cost()) as u64;
 }
-
-#[derive(Debug, Clone, Hash, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(C, align(16))]
-pub struct Felt252Abi(pub [u8; 32]);
 
 /// Based on `cairo-lang-runner`'s implementation.
 ///
@@ -33,14 +29,13 @@ pub struct Felt252Abi(pub [u8; 32]);
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
     target_fd: i32,
-    data: *const Felt252Abi,
+    data: *const [u8; 32],
     len: u32,
 ) -> i32 {
     let mut target = File::from_raw_fd(target_fd);
 
     for i in 0..len as usize {
-        let data = data.add(i);
-        let data = (*data).0;
+        let data = *data.add(i);
 
         let value = Felt::from_bytes_le(&data);
         if write!(target, "[DEBUG]\t{value:x}",).is_err() {
@@ -97,14 +92,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
-    dst: *mut Felt252Abi,
-    lhs: *const Felt252Abi,
-    rhs: *const Felt252Abi,
+    dst: *mut u8,
+    lhs: *const u8,
+    rhs: *const u8,
 ) {
     // Extract arrays from the pointers.
-    let dst = &mut (*dst).0;
-    let lhs = &(*lhs).0;
-    let rhs = &(*rhs).0;
+    let dst = slice::from_raw_parts_mut(dst, 32);
+    let lhs = slice::from_raw_parts(lhs, 32);
+    let rhs = slice::from_raw_parts(rhs, 32);
 
     // Convert to FieldElement.
     let lhs = FieldElement::from_byte_slice_be(lhs).unwrap();
@@ -129,14 +124,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
-    op0: *mut Felt252Abi,
-    op1: *mut Felt252Abi,
-    op2: *mut Felt252Abi,
+    op0: *mut u8,
+    op1: *mut u8,
+    op2: *mut u8,
 ) {
     // Extract arrays from the pointers.
-    let op0 = &mut (*op0).0;
-    let op1 = &mut (*op1).0;
-    let op2 = &mut (*op2).0;
+    let op0 = slice::from_raw_parts_mut(op0, 32);
+    let op1 = slice::from_raw_parts_mut(op1, 32);
+    let op2 = slice::from_raw_parts_mut(op2, 32);
 
     // Convert to FieldElement.
     let mut state = [
@@ -162,7 +157,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
-    Box::into_raw(Box::<(HashMap<Felt252Abi, NonNull<std::ffi::c_void>>, u64)>::default()) as _
+    Box::into_raw(Box::<(HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>::default()) as _
 }
 
 /// Frees the dictionary.
@@ -173,7 +168,7 @@ pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_free(
-    ptr: *mut (HashMap<Felt252Abi, NonNull<std::ffi::c_void>>, u64),
+    ptr: *mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
 ) {
     let mut map = Box::from_raw(ptr);
 
@@ -192,10 +187,10 @@ pub unsafe extern "C" fn cairo_native__dict_free(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_get(
-    ptr: *mut (HashMap<Felt252Abi, NonNull<std::ffi::c_void>>, u64),
-    key: &Felt252Abi,
+    ptr: *mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
+    key: &[u8; 32],
 ) -> *mut std::ffi::c_void {
-    let dict: &mut (HashMap<Felt252Abi, NonNull<std::ffi::c_void>>, u64) = &mut *ptr;
+    let dict: &mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64) = &mut *ptr;
     let map = &dict.0;
     dict.1 += 1;
 
@@ -214,8 +209,8 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_insert(
-    ptr: *mut (HashMap<Felt252Abi, NonNull<std::ffi::c_void>>, u64),
-    key: &Felt252Abi,
+    ptr: *mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
+    key: &[u8; 32],
     value: NonNull<std::ffi::c_void>,
 ) -> *mut std::ffi::c_void {
     let dict = &mut *ptr;
@@ -236,7 +231,7 @@ pub unsafe extern "C" fn cairo_native__dict_insert(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_gas_refund(
-    ptr: *const (HashMap<Felt252Abi, NonNull<std::ffi::c_void>>, u64),
+    ptr: *const (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
 ) -> u64 {
     let dict = &*ptr;
     (dict.1 - dict.0.len() as u64) * *DICT_GAS_REFUND_PER_ACCESS
@@ -254,12 +249,12 @@ pub unsafe extern "C" fn cairo_native__dict_gas_refund(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
-    mut point_ptr: NonNull<[Felt252Abi; 2]>,
+    mut point_ptr: NonNull<[[u8; 32]; 2]>,
 ) -> bool {
     let x = FieldElement::from_bytes_be(&{
         let mut data = point_ptr.as_ref()[0];
-        data.0.reverse();
-        data.0
+        data.reverse();
+        data
     })
     .unwrap();
 
@@ -269,10 +264,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
             if point.y >= *HALF_PRIME {
                 point.y = -point.y
             }
-            point_ptr.as_mut()[1]
-                .0
-                .copy_from_slice(&point.y.to_bytes_be());
-            point_ptr.as_mut()[1].0.reverse();
+            point_ptr.as_mut()[1].copy_from_slice(&point.y.to_bytes_be());
+            point_ptr.as_mut()[1].reverse();
 
             true
         }
@@ -292,18 +285,18 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
-    point_ptr: NonNull<[Felt252Abi; 2]>,
+    point_ptr: NonNull<[[u8; 32]; 2]>,
 ) -> bool {
     let x = FieldElement::from_bytes_be(&{
         let mut data = point_ptr.as_ref()[0];
-        data.0.reverse();
-        data.0
+        data.reverse();
+        data
     })
     .unwrap();
     let y = FieldElement::from_bytes_be(&{
         let mut data = point_ptr.as_ref()[1];
-        data.0.reverse();
-        data.0
+        data.reverse();
+        data
     })
     .unwrap();
 
@@ -322,20 +315,20 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
-    mut state_ptr: NonNull<[Felt252Abi; 4]>,
-    point_ptr: NonNull<[Felt252Abi; 2]>,
+    mut state_ptr: NonNull<[[u8; 32]; 4]>,
+    point_ptr: NonNull<[[u8; 32]; 2]>,
 ) {
     let mut state = AffinePoint {
         x: FieldElement::from_bytes_be(&{
             let mut data = state_ptr.as_ref()[0];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         y: FieldElement::from_bytes_be(&{
             let mut data = state_ptr.as_ref()[1];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         infinity: false,
@@ -343,14 +336,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
     let point = AffinePoint {
         x: FieldElement::from_bytes_be(&{
             let mut data = point_ptr.as_ref()[0];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         y: FieldElement::from_bytes_be(&{
             let mut data = point_ptr.as_ref()[1];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         infinity: false,
@@ -358,15 +351,11 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
 
     state += &point;
 
-    state_ptr.as_mut()[0]
-        .0
-        .copy_from_slice(&state.x.to_bytes_be());
-    state_ptr.as_mut()[1]
-        .0
-        .copy_from_slice(&state.y.to_bytes_be());
+    state_ptr.as_mut()[0].copy_from_slice(&state.x.to_bytes_be());
+    state_ptr.as_mut()[1].copy_from_slice(&state.y.to_bytes_be());
 
-    state_ptr.as_mut()[0].0.reverse();
-    state_ptr.as_mut()[1].0.reverse();
+    state_ptr.as_mut()[0].reverse();
+    state_ptr.as_mut()[1].reverse();
 }
 
 /// Compute `ec_state_add_mul(state, scalar, point)` and store the state back.
@@ -381,42 +370,42 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
-    mut state_ptr: NonNull<[Felt252Abi; 4]>,
-    scalar_ptr: NonNull<Felt252Abi>,
-    point_ptr: NonNull<[Felt252Abi; 2]>,
+    mut state_ptr: NonNull<[[u8; 32]; 4]>,
+    scalar_ptr: NonNull<[u8; 32]>,
+    point_ptr: NonNull<[[u8; 32]; 2]>,
 ) {
     let mut state = AffinePoint {
         x: FieldElement::from_bytes_be(&{
             let mut data = state_ptr.as_ref()[0];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         y: FieldElement::from_bytes_be(&{
             let mut data = state_ptr.as_ref()[1];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         infinity: false,
     };
     let scalar = FieldElement::from_bytes_be(&{
         let mut data = *scalar_ptr.as_ref();
-        data.0.reverse();
-        data.0
+        data.reverse();
+        data
     })
     .unwrap();
     let point = AffinePoint {
         x: FieldElement::from_bytes_be(&{
             let mut data = point_ptr.as_ref()[0];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         y: FieldElement::from_bytes_be(&{
             let mut data = point_ptr.as_ref()[1];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         infinity: false,
@@ -424,15 +413,11 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
 
     state += &(&point * &scalar.to_bits_le());
 
-    state_ptr.as_mut()[0]
-        .0
-        .copy_from_slice(&state.x.to_bytes_be());
-    state_ptr.as_mut()[1]
-        .0
-        .copy_from_slice(&state.y.to_bytes_be());
+    state_ptr.as_mut()[0].copy_from_slice(&state.x.to_bytes_be());
+    state_ptr.as_mut()[1].copy_from_slice(&state.y.to_bytes_be());
 
-    state_ptr.as_mut()[0].0.reverse();
-    state_ptr.as_mut()[1].0.reverse();
+    state_ptr.as_mut()[0].reverse();
+    state_ptr.as_mut()[1].reverse();
 }
 
 /// Compute `ec_state_try_finalize_nz(state)` and store the result.
@@ -447,20 +432,20 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
-    mut point_ptr: NonNull<[Felt252Abi; 2]>,
-    state_ptr: NonNull<[Felt252Abi; 4]>,
+    mut point_ptr: NonNull<[[u8; 32]; 2]>,
+    state_ptr: NonNull<[[u8; 32]; 4]>,
 ) -> bool {
     let state = AffinePoint {
         x: FieldElement::from_bytes_be(&{
             let mut data = state_ptr.as_ref()[0];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         y: FieldElement::from_bytes_be(&{
             let mut data = state_ptr.as_ref()[1];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         infinity: false,
@@ -468,14 +453,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
     let random = AffinePoint {
         x: FieldElement::from_bytes_be(&{
             let mut data = state_ptr.as_ref()[2];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         y: FieldElement::from_bytes_be(&{
             let mut data = state_ptr.as_ref()[3];
-            data.0.reverse();
-            data.0
+            data.reverse();
+            data
         })
         .unwrap(),
         infinity: false,
@@ -486,15 +471,11 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
     } else {
         let point = &state - &random;
 
-        point_ptr.as_mut()[0]
-            .0
-            .copy_from_slice(&point.x.to_bytes_be());
-        point_ptr.as_mut()[1]
-            .0
-            .copy_from_slice(&point.y.to_bytes_be());
+        point_ptr.as_mut()[0].copy_from_slice(&point.x.to_bytes_be());
+        point_ptr.as_mut()[1].copy_from_slice(&point.y.to_bytes_be());
 
-        point_ptr.as_mut()[0].0.reverse();
-        point_ptr.as_mut()[1].0.reverse();
+        point_ptr.as_mut()[0].reverse();
+        point_ptr.as_mut()[1].reverse();
 
         true
     }

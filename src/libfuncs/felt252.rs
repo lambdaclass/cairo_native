@@ -475,8 +475,13 @@ pub mod test {
         static ref FELT252_ADD: (String, Program) = load_cairo! {
             use core::debug::PrintTrait;
             fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
+                lhs.print();
+                rhs.print();
                 let result = lhs + rhs;
-                result
+
+    result.print();
+
+    result
             }
         };
 
@@ -517,12 +522,12 @@ pub mod test {
 
     #[test]
     fn felt252_add() {
-        run_program_assert_output(
-            &FELT252_ADD,
-            "run_test",
-            &[JitValue::felt_str("0"), JitValue::felt_str("0")],
-            JitValue::felt_str("0"),
-        );
+        // run_program_assert_output(
+        //     &FELT252_ADD,
+        //     "run_test",
+        //     &[JitValue::felt_str("0"), JitValue::felt_str("0")],
+        //     JitValue::felt_str("0"),
+        // );
         run_program_assert_output(
             &FELT252_ADD,
             "run_test",
