@@ -1480,6 +1480,20 @@
 <a href="#1479" id="1479">1479</a>
 <a href="#1480" id="1480">1480</a>
 <a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::{bail, Context};
 <span class="kw">use </span>cairo_felt::Felt252;
 <span class="kw">use </span>cairo_lang_compiler::{
@@ -1708,17 +1722,31 @@
     <span class="kw">let </span>named_tests = compiled
         .named_tests
         .into_iter()
-        .map(|(func, <span class="kw-2">mut </span>test)| {
-            <span class="comment">// Un-ignoring all the tests in `include-ignored` mode.
-            </span><span class="kw">if </span>include_ignored {
+        .filter(|(name, <span class="kw">_</span>)| name.contains(<span class="kw-2">&amp;</span>filter));
+
+    <span class="kw">let </span>named_tests = <span class="kw">if </span>include_ignored {
+        <span class="comment">// enable the ignored tests
+        </span>named_tests
+            .into_iter()
+            .map(|(name, <span class="kw-2">mut </span>test)| {
                 test.ignored = <span class="bool-val">false</span>;
-            }
-            (func, test)
-        })
-        .filter(|(name, <span class="kw">_</span>)| name.contains(<span class="kw-2">&amp;</span>filter))
-        <span class="comment">// Filtering unignored tests in `ignored` mode
-        </span>.filter(|(<span class="kw">_</span>, test)| !ignored || test.ignored)
-        .collect_vec();
+                (name, test)
+            })
+            .collect_vec()
+    } <span class="kw">else if </span>ignored {
+        <span class="comment">// filter not ignored tests and enable the remaining ones
+        </span>named_tests
+            .into_iter()
+            .map(|(name, <span class="kw-2">mut </span>test)| {
+                test.ignored = !test.ignored;
+                (name, test)
+            })
+            .filter(|(<span class="kw">_</span>, test)| !test.ignored)
+            .collect_vec()
+    } <span class="kw">else </span>{
+        named_tests.collect_vec()
+    };
+
     <span class="kw">let </span>filtered_out = total_tests_count - named_tests.len();
     <span class="kw">let </span>tests = TestCompilation {
         named_tests,
