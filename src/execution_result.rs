@@ -136,3 +136,167 @@ impl ContractExecutionResult {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[cfg(feature = "with-serde")]
+    use serde_json;
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_builtin_stats_serialization_deserialization() {
+        // Create an example of BuiltinStats
+        let original_stats = BuiltinStats {
+            bitwise: 10,
+            ec_op: 20,
+            range_check: 30,
+            pedersen: 40,
+            poseidon: 50,
+            segment_arena: 60,
+        };
+
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&original_stats).expect("Failed to serialize");
+
+        // Deserialize from JSON
+        let deserialized: BuiltinStats =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        // Verify that the deserialized result is equal to the original
+        assert_eq!(original_stats, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_execution_result_serialization_deserialization() {
+        // Create an example of ExecutionResult with various JitValue variants
+        let original_result = ExecutionResult {
+            remaining_gas: Some(1000),
+            return_value: JitValue::Struct {
+                fields: vec![
+                    JitValue::Felt252(Felt::from(1234)),
+                    JitValue::Uint64(42),
+                    JitValue::Array(vec![
+                        JitValue::Uint8(1),
+                        JitValue::Uint8(2),
+                        JitValue::Uint8(3),
+                    ]),
+                ],
+                debug_name: Some("example_struct".to_string()),
+            },
+            builtin_stats: BuiltinStats {
+                bitwise: 10,
+                ec_op: 20,
+                range_check: 30,
+                pedersen: 40,
+                poseidon: 50,
+                segment_arena: 60,
+            },
+        };
+
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&original_result).expect("Failed to serialize");
+
+        // Deserialize from JSON
+        let deserialized: ExecutionResult =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        // Verify that the deserialized result is equal to the original
+        assert_eq!(original_result, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "with-serde")]
+    fn test_contract_execution_result_serialization_deserialization() {
+        // Create an example of ContractExecutionResult
+        let original_result = ContractExecutionResult {
+            remaining_gas: 1000,
+            failure_flag: false,
+            return_values: vec![Felt::from(1234), Felt::from(5678)],
+            error_msg: Some("No error".to_string()),
+        };
+
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&original_result).expect("Failed to serialize");
+
+        // Deserialize from JSON
+        let deserialized: ContractExecutionResult =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
+
+        println!("deserialized: {:?}", deserialized);
+
+        // Verify that the deserialized result is equal to the original
+        assert_eq!(original_result, deserialized);
+    }
+
+    #[test]
+    fn test_contract_execution_result_default() {
+        // Create a default instance of ContractExecutionResult
+        let default_result = ContractExecutionResult::default();
+
+        // Verify that the default values are correct
+        assert_eq!(
+            default_result,
+            ContractExecutionResult {
+                remaining_gas: 0,
+                failure_flag: false,
+                return_values: Vec::new(),
+                error_msg: None,
+            }
+        );
+    }
+
+    #[test]
+    fn test_contract_execution_result_ordering() {
+        // Create instances of ContractExecutionResult for comparison
+        let result1 = ContractExecutionResult {
+            remaining_gas: 1000,
+            failure_flag: false,
+            return_values: vec![Felt::from(1234)],
+            error_msg: Some("No error".to_string()),
+        };
+
+        let result2 = ContractExecutionResult {
+            remaining_gas: 2000,
+            failure_flag: false,
+            return_values: vec![Felt::from(1234)],
+            error_msg: Some("No error".to_string()),
+        };
+
+        let result3 = ContractExecutionResult {
+            remaining_gas: 1000,
+            failure_flag: true,
+            return_values: vec![Felt::from(1234)],
+            error_msg: Some("Error".to_string()),
+        };
+
+        // Verify ordering
+        assert!(result1 < result2);
+        assert!(result2 > result1);
+        assert!(result1 < result3);
+        assert!(result3 > result1);
+        assert!(result1 == result1.clone());
+    }
+
+    #[test]
+    #[should_panic(expected = "wrong return value type expected a enum")]
+    fn test_from_execution_result_non_enum() {
+        // Create an ExecutionResult with a return_value that is not a JitValue::Enum
+        let execution_result = ExecutionResult {
+            remaining_gas: Some(1000),
+            return_value: JitValue::Felt252(Felt::from(1234)), // Not an Enum
+            builtin_stats: BuiltinStats {
+                bitwise: 10,
+                ec_op: 20,
+                range_check: 30,
+                pedersen: 40,
+                poseidon: 50,
+                segment_arena: 60,
+            },
+        };
+
+        // Attempt to convert it to a ContractExecutionResult, expecting a panic
+        ContractExecutionResult::from_execution_result(execution_result).unwrap();
+    }
+}
