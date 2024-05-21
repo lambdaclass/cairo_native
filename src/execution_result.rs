@@ -1,3 +1,7 @@
+/// # Execution Result
+///
+/// This module contains the structures used to interpret the program execution results, either
+/// normal programs or starknet contracts.
 use crate::{error::Error, values::JitValue};
 use starknet_types_core::felt::Felt;
 

@@ -61,7 +61,6 @@ use cairo_lang_sierra::{
     edit_state,
     extensions::{
         core::{CoreLibfunc, CoreType},
-        gas::CostTokenType,
         ConcreteLibfunc,
     },
     ids::{ConcreteTypeId, VarId},
@@ -160,7 +159,7 @@ fn compile_func(
         metadata,
     )
     .collect::<Result<Vec<_>, _>>()?;
-    let mut ret_types = extract_types(
+    let mut return_types = extract_types(
         context,
         module,
         &function.signature.ret_types,
@@ -187,9 +186,9 @@ fn compile_func(
         }
     }
 
-    // Extract memory-allocated return types from ret_types and insert them in arg_types as a
+    // Extract memory-allocated return types from return_types and insert them in arg_types as a
     // pointer.
-    let return_types = function
+    let return_type_infos = function
         .signature
         .ret_types
         .iter()
@@ -206,15 +205,15 @@ fn compile_func(
     //   None        => Doesn't return anything.
     //   Some(false) => Has a complex return type.
     //   Some(true)  => Has a manual return type which is in `arg_types[0]`.
-    let has_return_ptr = if return_types.len() > 1 {
+    let has_return_ptr = if return_type_infos.len() > 1 {
         Some(false)
-    } else if return_types
+    } else if return_type_infos
         .first()
         .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
     {
-        assert_eq!(ret_types.len(), 1);
+        assert_eq!(return_types.len(), 1);
 
-        ret_types.remove(0);
+        return_types.remove(0);
         arg_types.insert(0, llvm::r#type::opaque_pointer(context));
 
         Some(true)
@@ -288,8 +287,7 @@ fn compile_func(
         (initial_state, BTreeMap::<usize, usize>::new()),
         |statement_idx, (mut state, mut tailrec_state)| {
             if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
-                let gas_cost =
-                    gas_metadata.get_gas_cost_for_statement(statement_idx, CostTokenType::Const);
+                let gas_cost = gas_metadata.get_gas_cost_for_statement(statement_idx);
                 metadata.remove::<GasCost>();
                 metadata.insert(GasCost(gas_cost));
             }
@@ -578,7 +576,7 @@ fn compile_func(
 
                     // Store the return value in the return pointer, if there's one.
                     if let Some(true) = has_return_ptr {
-                        let (_ret_type_id, ret_type_info) = return_types[0];
+                        let (_ret_type_id, ret_type_info) = return_type_infos[0];
                         let ret_layout = ret_type_info.layout(registry)?;
 
                         let ptr = values.remove(0);
@@ -660,7 +658,7 @@ fn compile_func(
     module.body().append_operation(func::func(
         context,
         StringAttribute::new(context, &function_name),
-        TypeAttribute::new(FunctionType::new(context, &arg_types, &ret_types).into()),
+        TypeAttribute::new(FunctionType::new(context, &arg_types, &return_types).into()),
         region,
         &[
             (

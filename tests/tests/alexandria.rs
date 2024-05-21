@@ -16,7 +16,7 @@ fn compare_inputless_function(function_name: &str) {
         program.clone(),
         Some(Default::default()),
         Default::default(),
-        false,
+        None,
     )
     .unwrap();
 
@@ -55,7 +55,7 @@ fn compare_inputless_function(function_name: &str) {
 #[test_case("queue")]
 #[test_case("bit_array")]
 // alexandria_encoding
-#[test_case("base64_encode" => ignore["Gas mismatch"])]
+#[test_case("base64_encode")]
 #[test_case("reverse_bits")]
 #[test_case("reverse_bytes")]
 fn test_cases(function_name: &str) {

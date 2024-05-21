@@ -11,6 +11,7 @@ use cairo_lang_sierra::{
         structure::StructConcreteLibfunc,
         ConcreteLibfunc,
     },
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -33,10 +34,8 @@ pub fn build<'ctx, 'this>(
         StructConcreteLibfunc::Construct(info) => {
             build_construct(context, registry, entry, location, helper, metadata, info)
         }
-        StructConcreteLibfunc::Deconstruct(info) => {
-            build_deconstruct(context, registry, entry, location, helper, metadata, info)
-        }
-        StructConcreteLibfunc::SnapshotDeconstruct(info) => {
+        StructConcreteLibfunc::Deconstruct(info)
+        | StructConcreteLibfunc::SnapshotDeconstruct(info) => {
             build_deconstruct(context, registry, entry, location, helper, metadata, info)
         }
     }
@@ -52,27 +51,54 @@ pub fn build_construct<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let struct_ty = registry.build_type(
+    let mut fields = Vec::new();
+
+    for (i, _) in info.param_signatures().iter().enumerate() {
+        fields.push(entry.argument(i).unwrap().into());
+    }
+
+    let value = build_struct_value(
         context,
-        helper,
         registry,
+        entry,
+        location,
+        helper,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
+        &fields,
     )?;
 
+    entry.append_operation(helper.br(0, &[value], location));
+
+    Ok(())
+}
+
+/// Generate MLIR operations for the `struct_construct` libfunc.
+#[allow(clippy::too_many_arguments)]
+pub fn build_struct_value<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    struct_type: &ConcreteTypeId,
+    fields: &[Value<'ctx, 'this>],
+) -> Result<Value<'ctx, 'this>> {
+    let struct_ty = registry.build_type(context, helper, registry, metadata, struct_type)?;
+
     let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
-    for i in 0..info.param_signatures().len() {
+    for (i, field) in fields.iter().enumerate() {
         acc = entry.append_operation(llvm::insert_value(
             context,
             acc.result(0)?.into(),
             DenseI64ArrayAttribute::new(context, &[i as _]),
-            entry.argument(i)?.into(),
+            *field,
             location,
         ));
     }
 
-    entry.append_operation(helper.br(0, &[acc.result(0)?.into()], location));
-    Ok(())
+    Ok(acc.result(0)?.into())
 }
 
 /// Generate MLIR operations for the `struct_deconstruct` libfunc.
