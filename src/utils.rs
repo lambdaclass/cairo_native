@@ -695,7 +695,7 @@ pub mod test {
         ( $tag:expr, $value:expr ) => {
             crate::values::JitValue::Enum {
                 tag: $tag,
-                value: $value.into(),
+                value: Box::new($value),
                 debug_name: None,
             }
         };
