@@ -505,7 +505,7 @@ impl StarknetSyscallHandler for DummySyscallHandler {
         todo!()
     }
 
-    fn set_version(&mut self, version: Felt) -> SyscallResult<()> {
+    fn set_version(&mut self, _version: Felt) -> SyscallResult<()> {
         todo!()
     }
 }
@@ -1177,14 +1177,13 @@ pub(crate) mod handler {
             };
         }
 
-        #[allow(dead_code)]
         extern "C" fn wrap_set_signature(
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
             gas: &mut u128,
             signature: &ArrayAbi<Felt252Abi>,
         ) {
-            let signature: Vec<Felt> = todo!(); // TODO(juanbono): do the actual conversion
+            let signature: Vec<Felt> = vec![]; // TODO(juanbono): do the actual conversion
             let result = ptr.set_signature(&signature);
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {

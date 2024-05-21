@@ -1134,7 +1134,7 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         todo!()
     }
 
-    fn set_max_fee(&mut self, _max_fee: u128) -> SyscallResult<()> {
+    fn set_max_fee(&mut self, _max_fee: u64) -> SyscallResult<()> {
         todo!()
     }
 

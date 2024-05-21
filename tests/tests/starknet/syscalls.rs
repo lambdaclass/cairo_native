@@ -21,11 +21,12 @@ struct TestingState {
     contract_address: Felt,
     version: Felt,
     account_contract_address: Felt,
-    max_fee: u128,
+    max_fee: u64,
     transaction_hash: Felt,
     chain_id: Felt,
     nonce: Felt,
     signature: Vec<Felt>,
+    #[allow(dead_code)] // TODO(juanbono): use this field to implement pop_log
     logs: Vec<(Vec<Felt>, Vec<Felt>)>,
 }
 
@@ -411,7 +412,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         Ok(())
     }
 
-    fn set_max_fee(&mut self, max_fee: u128) -> SyscallResult<()> {
+    fn set_max_fee(&mut self, max_fee: u64) -> SyscallResult<()> {
         self.testing_state.max_fee = max_fee;
         Ok(())
     }
