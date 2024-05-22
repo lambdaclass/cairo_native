@@ -442,6 +442,13 @@ impl StarknetSyscallHandler for SyscallHandler {
         self.testing_state.version = version;
         Ok(())
     }
+    
+    fn cheatcode(
+        &mut self,
+        _input: &[Felt],
+    ) -> SyscallResult<()> {
+        todo!()
+    }
 }
 
 lazy_static! {

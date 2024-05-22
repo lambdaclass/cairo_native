@@ -8,24 +8,21 @@ use cairo_lang_sierra::{
 };
 use cairo_lang_utils::bigint::BigIntAsHex;
 use melior::{
-    dialect::{
-        arith,
-        llvm::{self, LoadStoreOptions},
-    },
+    dialect::llvm::{self, LoadStoreOptions},
     ir::{
         attribute::{
             DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute,
         },
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Value,
+        Block, Identifier, Location,
     },
     Context,
 };
 
 use crate::{
-    error::Result, libfuncs::LibfuncHelper, metadata::MetadataStorage,
-    starknet::handler::StarknetSyscallHandlerCallbacks, utils::get_integer_layout,
+    block_ext::BlockExt, error::Result, libfuncs::LibfuncHelper, metadata::MetadataStorage,
+    starknet::handler::StarknetSyscallHandlerCallbacks,
 };
 
 pub fn build<'ctx, 'this>(
@@ -37,24 +34,30 @@ pub fn build<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     selector: &CheatcodeConcreteLibfunc,
 ) -> Result<()> {
+    dbg!("executing build for cheatcode");
     let selector_as_hex = BigIntAsHex {
         value: selector.selector.clone(),
     };
     let selector_bytes = &selector_as_hex.value.to_bytes_be().1;
-    let selector_str = std::str::from_utf8(&selector_bytes).unwrap();
+    let selector_str = std::str::from_utf8(selector_bytes).unwrap();
 
+    dbg!(selector_str);
     // Extract self pointer.
-    let ptr: Value = entry
-        .append_operation(llvm::load(
-            context,
-            entry.argument(1)?.into(),
-            llvm::r#type::opaque_pointer(context),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    // let ptr = entry
+    //     .append_operation(llvm::load(
+    //         context,
+    //         entry.argument(0)?.into(),
+    //         llvm::r#type::opaque_pointer(context),
+    //         location,
+    //         LoadStoreOptions::default(),
+    //     ))
+    //     .result(0)?
+    //     .into();
 
+    // this may be not needed since the self pointer is not passed as arg.
+
+    dbg!("allocating space for return value");
+    // TODO(juanbono): Check this
     // allocate space for the return value.
     let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
         crate::types::r#enum::get_type_for_variants(
@@ -67,21 +70,22 @@ pub fn build<'ctx, 'this>(
                 //   - There is no `[0].vars[2]` (it returns `()`).
                 //   - We need a variant to make the length be 2.
                 //   - It requires a `ConcreteTypeId`, we can't pass an MLIR type.
-                selector.branch_signatures()[1].vars[2].ty.clone(),
-                selector.branch_signatures()[1].vars[2].ty.clone(),
+                selector.branch_signatures()[0].vars[0].ty.clone(),
+                selector.branch_signatures()[0].vars[0].ty.clone(),
             ],
         )?;
 
-    let constant_one = helper
-        .init_block()
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let u64_type = IntegerType::new(context, 64);
+    let u8_type = IntegerType::new(context, 8);
+    let u252_type = IntegerType::new(context, 252);
+    let u32_type = IntegerType::new(context, 32);
+    let const_1 = entry.const_int_from_type(context, location, 1, u64_type.into())?;
 
+    dbg!("creating result pointer");
+
+    // create the result pointer for the array of felts returned
+
+    // looks like this is wrong
     let result_ptr = helper
         .init_block()
         .append_operation(
@@ -111,94 +115,117 @@ pub fn build<'ctx, 'this>(
                         .into(),
                     ),
                 ])
-                .add_operands(&[constant_one])
+                .add_operands(&[const_1])
                 .add_results(&[llvm::r#type::opaque_pointer(context)])
                 .build()?,
         )
         .result(0)?
         .into();
 
-    // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper
-        .init_block()
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        result_layout.align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[constant_one])
-                .add_results(&[llvm::r#type::pointer(
-                    IntegerType::new(context, 128).into(),
-                    0,
-                )])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    entry.append_operation(llvm::store(
-        context,
-        entry.argument(0)?.into(),
-        gas_builtin_ptr,
-        location,
-        LoadStoreOptions::default(),
-    ));
+    // let result_ptr = helper
+    //     .init_block()
+    //     .append_operation(
+    //         OperationBuilder::new("llvm.alloca", location)
+    //             .add_attributes(&[
+    //                 (
+    //                     Identifier::new(context, "alignment"),
+    //                     IntegerAttribute::new(u64_type.into(), result_layout.align().try_into()?)
+    //                         .into(),
+    //                 ),
+    //                 (
+    //                     Identifier::new(context, "elem_type"),
+    //                     TypeAttribute::new(llvm::r#type::r#struct(
+    //                         context,
+    //                         &[
+    //                             result_tag_ty,
+    //                             llvm::r#type::array(
+    //                                 u8_type.into(),
+    //                                 (result_layout.size() - 1).try_into()?,
+    //                             ),
+    //                         ],
+    //                         false,
+    //                     ))
+    //                     .into(),
+    //                 ),
+    //             ])
+    //             .add_operands(&[const_1])
+    //             .add_results(&[llvm::r#type::opaque_pointer(context)])
+    //             .build()?,
+    //     )
+    //     .result(0)?
+    //     .into();
 
+    // dbg!("allocating space for gas builtin");
+    // Allocate space and write the current gas.
+
+    dbg!("matching selector");
     match selector_str {
         "set_sequencer_address" => {
-            // Allocate `address` argument and write the value.
-            let address_arg_ptr_ty =
-                llvm::r#type::pointer(IntegerType::new(context, 252).into(), 0);
-            let address_arg_ptr = helper
+            dbg!("generating code for set_sequencer_address");
+            // Allocate for the array argument and write the value.
+            let array_arg_ptr_ty = llvm::r#type::pointer(
+                llvm::r#type::r#struct(
+                    context,
+                    &[llvm::r#type::r#struct(
+                        context,
+                        &[
+                            llvm::r#type::pointer(u252_type.into(), 0),
+                            u32_type.into(),
+                            u32_type.into(),
+                            u32_type.into(),
+                        ],
+                        false,
+                    )],
+                    false,
+                ),
+                0,
+            );
+            dbg!("array_arg_ptr");
+            let array_arg_ptr = helper
                 .init_block()
                 .append_operation(
                     OperationBuilder::new("llvm.alloca", location)
                         .add_attributes(&[(
                             Identifier::new(context, "alignment"),
-                            IntegerAttribute::new(
-                                IntegerType::new(context, 64).into(),
-                                get_integer_layout(252).align().try_into().unwrap(),
-                            )
-                            .into(),
+                            IntegerAttribute::new(u64_type.into(), 8).into(),
                         )])
-                        .add_operands(&[constant_one])
-                        .add_results(&[address_arg_ptr_ty])
+                        .add_operands(&[const_1])
+                        .add_results(&[array_arg_ptr_ty])
                         .build()?,
                 )
                 .result(0)?
                 .into();
+            dbg!("storing array_arg_ptr");
             entry.append_operation(llvm::store(
                 context,
-                entry.argument(3)?.into(),
-                address_arg_ptr,
+                entry.argument(0)?.into(),
+                array_arg_ptr,
                 location,
                 LoadStoreOptions::default(),
             ));
 
+            dbg!("extracting function pointer");
             // Extract function pointer.
             let fn_ptr_ty = llvm::r#type::function(
                 llvm::r#type::void(context),
                 &[
-                    llvm::r#type::opaque_pointer(context),
-                    llvm::r#type::opaque_pointer(context),
-                    llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
-                    address_arg_ptr_ty,
+                    // TODO(juanbono): check if this args are needed
+                    llvm::r#type::opaque_pointer(context), // return_ptr
+                    llvm::r#type::opaque_pointer(context), // self
+                    // llvm::r#type::pointer(IntegerType::new(context, 128).into(), 0),
+                    array_arg_ptr_ty,
                 ],
                 false,
             );
 
+            dbg!("fn_ptr");
             let fn_ptr = entry
                 .append_operation(llvm::get_element_ptr(
                     context,
-                    entry.argument(1)?.into(),
+                    entry.argument(0)?.into(),
                     DenseI32ArrayAttribute::new(
                         context,
-                        &[StarknetSyscallHandlerCallbacks::<()>::SET_SEQUENCER_ADDRESS
-                            .try_into()?],
+                        &[StarknetSyscallHandlerCallbacks::<()>::CHEATCODE.try_into()?],
                     ),
                     llvm::r#type::opaque_pointer(context),
                     llvm::r#type::opaque_pointer(context),
@@ -217,18 +244,21 @@ pub fn build<'ctx, 'this>(
                 .result(0)?
                 .into();
 
+            dbg!("llvm.call execution");
             entry.append_operation(
                 OperationBuilder::new("llvm.call", location)
                     .add_operands(&[
                         fn_ptr,
                         result_ptr,
-                        ptr,
-                        gas_builtin_ptr,
-                        entry.argument(2)?.into(),
-                        address_arg_ptr,
+                        // ptr,
+                        // gas_builtin_ptr,
+                        // entry.argument(0)?.into(),
+                        array_arg_ptr,
                     ])
                     .build()?,
             );
+
+            dbg!("writing result");
 
             let result = entry
                 .append_operation(llvm::load(
@@ -239,7 +269,7 @@ pub fn build<'ctx, 'this>(
                         &[
                             result_tag_ty,
                             llvm::r#type::array(
-                                IntegerType::new(context, 8).into(),
+                                u8_type.into(),
                                 (result_layout.size() - 1).try_into()?,
                             ),
                         ],
@@ -250,6 +280,7 @@ pub fn build<'ctx, 'this>(
                 ))
                 .result(0)?
                 .into();
+            dbg!("extracting result_tag");
             let result_tag = entry
                 .append_operation(llvm::extract_value(
                     context,
@@ -261,6 +292,7 @@ pub fn build<'ctx, 'this>(
                 .result(0)?
                 .into();
 
+            dbg!("payload_ok");
             let payload_ok = {
                 let ptr = entry
                     .append_operation(
@@ -279,7 +311,7 @@ pub fn build<'ctx, 'this>(
                                 ),
                                 (
                                     Identifier::new(context, "elem_type"),
-                                    TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                                    TypeAttribute::new(u8_type.into()).into(),
                                 ),
                             ])
                             .add_operands(&[result_ptr])
@@ -299,6 +331,7 @@ pub fn build<'ctx, 'this>(
                     .result(0)?
                     .into()
             };
+            dbg!("payload_err");
             let payload_err = {
                 let ptr = entry
                     .append_operation(
@@ -317,7 +350,7 @@ pub fn build<'ctx, 'this>(
                                 ),
                                 (
                                     Identifier::new(context, "elem_type"),
-                                    TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                                    TypeAttribute::new(u8_type.into()).into(),
                                 ),
                             ])
                             .add_operands(&[result_ptr])
@@ -338,27 +371,32 @@ pub fn build<'ctx, 'this>(
                     .into()
             };
 
-            let remaining_gas = entry
-                .append_operation(llvm::load(
-                    context,
-                    gas_builtin_ptr,
-                    IntegerType::new(context, 128).into(),
-                    location,
-                    LoadStoreOptions::default(),
-                ))
-                .result(0)?
-                .into();
+            // let remaining_gas = entry
+            //     .append_operation(llvm::load(
+            //         context,
+            //         gas_builtin_ptr,
+            //         IntegerType::new(context, 128).into(),
+            //         location,
+            //         LoadStoreOptions::default(),
+            //     ))
+            //     .result(0)?
+            //     .into();
 
+            dbg!("cond_br");
             entry.append_operation(helper.cond_br(
                 context,
                 result_tag,
-                [1, 0],
+                [0, 0],
                 [
-                    &[remaining_gas, entry.argument(1)?.into(), payload_err],
-                    &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+                    // &[remaining_gas, entry.argument(1)?.into(), payload_err],
+                    // &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+                    &[entry.argument(0)?.into(), payload_err],
+                    &[entry.argument(0)?.into(), payload_ok],
                 ],
                 location,
             ));
+
+            dbg!("compiled sucessfully");
         }
         "set_block_number" => {
             // self.starknet_state.exec_info.block_info.block_number = as_single_input(inputs)?;

@@ -108,6 +108,11 @@ pub struct Secp256r1Point {
 }
 
 pub trait StarknetSyscallHandler {
+    fn cheatcode(
+        &mut self,
+        input: &[Felt],
+    ) -> SyscallResult<()>;
+
     fn get_block_hash(
         &mut self,
         block_number: u64,
@@ -508,6 +513,13 @@ impl StarknetSyscallHandler for DummySyscallHandler {
     fn set_version(&mut self, _version: Felt) -> SyscallResult<()> {
         todo!()
     }
+    
+    fn cheatcode(
+        &mut self,
+        _input: &[Felt],
+    ) -> SyscallResult<()> {
+        todo!()
+    }
 }
 
 // TODO: Move to the correct place or remove if unused.
@@ -769,6 +781,12 @@ pub(crate) mod handler {
             p: &Secp256r1Point,
         ),
         // testing syscalls
+        cheatcode: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            // gas: &mut u128,
+            input: &ArrayAbi<Felt252Abi>,
+        ),
         // TODO(juanbono): Add proper types to pop_log
         pop_log: extern "C" fn(),
         set_account_contract_address: extern "C" fn(
@@ -823,7 +841,7 @@ pub(crate) mod handler {
         set_sequencer_address: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
-            gas: &mut u128,
+            // gas: &mut u128,
             address: &Felt252Abi,
         ),
         set_signature: extern "C" fn(
@@ -877,6 +895,7 @@ pub(crate) mod handler {
             field_offset!(Self, secp256r1_get_point_from_x) >> 3;
         pub const SECP256R1_GET_XY: usize = field_offset!(Self, secp256r1_get_xy) >> 3;
         pub const SET_SEQUENCER_ADDRESS: usize = field_offset!(Self, set_sequencer_address) >> 3;
+        pub const CHEATCODE: usize = field_offset!(Self, cheatcode) >> 3;
         // pub const SET_VERSION: usize = field_offset!(Self, set_version) >> 3;
         // pub const SET_ACCOUNT_CONTRACT_ADDRESS: usize =
         //     field_offset!(Self, set_account_contract_address) >> 3;
@@ -922,6 +941,8 @@ pub(crate) mod handler {
                 secp256r1_mul: Self::wrap_secp256r1_mul,
                 secp256r1_get_point_from_x: Self::wrap_secp256r1_get_point_from_x,
                 secp256r1_get_xy: Self::wrap_secp256r1_get_xy,
+                cheatcode: Self::wrap_cheatcode,
+                //
                 pop_log: Self::wrap_pop_log,
                 set_account_contract_address: Self::wrap_set_account_contract_address,
                 set_block_number: Self::wrap_set_block_number,
@@ -1000,6 +1021,41 @@ pub(crate) mod handler {
         // TODO(juanbono) Implement wrap_pop_log
         extern "C" fn wrap_pop_log() {
             todo!()
+        }
+
+        extern "C" fn wrap_cheatcode(
+            result_ptr: &mut SyscallResultAbi<()>,
+            ptr: &mut T,
+            input: &ArrayAbi<Felt252Abi>,
+        ) {
+            let input: Vec<_> = unsafe {
+                let since_offset = input.since as usize;
+                let until_offset = input.until as usize;
+                debug_assert!(since_offset <= until_offset);
+                let len = until_offset - since_offset;
+                std::slice::from_raw_parts(input.ptr.add(since_offset), len)
+            }
+            .iter()
+            .map(|x| {
+                Felt::from_bytes_be(&{
+                    let mut data = x.0;
+                    data.reverse();
+                    data
+                })
+            })
+            .collect();
+
+            dbg!(input.clone());
+            let result = ptr.cheatcode(&input);
+            *result_ptr = match result {
+                Ok(_) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(()),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
         }
 
         extern "C" fn wrap_set_version(
@@ -1173,7 +1229,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_set_sequencer_address(
             result_ptr: &mut SyscallResultAbi<()>,
             ptr: &mut T,
-            gas: &mut u128,
+            // gas: &mut u128,
             sequencer_address: &Felt252Abi,
         ) {
             let address = Felt::from_bytes_le(&sequencer_address.0);

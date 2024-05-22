@@ -15,7 +15,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
         starknet::{testing::TestingConcreteLibfunc, StarkNetConcreteLibfunc},
-        ConcreteLibfunc,
+        ConcreteLibfunc
     },
     program_registry::ProgramRegistry,
 };
@@ -138,9 +138,14 @@ pub fn build<'ctx, 'this>(
         StarkNetConcreteLibfunc::Secp256(selector) => self::secp256::build(
             context, registry, entry, location, helper, metadata, selector,
         ),
-        StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(libfunc)) => {
+        StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
+            info.signature.param_signatures.iter().for_each(|x| {
+                dbg!(&x.ty);
+            });
+            // dbg!(info.branch_signatures());
+            dbg!(info.output_types());
             self::testing::build(
-                context, registry, entry, location, helper, metadata, libfunc,
+                context, registry, entry, location, helper, metadata, info,
             )
         }
     }

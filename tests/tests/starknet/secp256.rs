@@ -295,6 +295,13 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
     fn set_version(&mut self, _version: Felt) -> SyscallResult<()> {
         todo!()
     }
+    
+    fn cheatcode(
+        &mut self,
+        _input: &[Felt],
+    ) -> SyscallResult<()> {
+        todo!()
+    }
 }
 
 lazy_static! {

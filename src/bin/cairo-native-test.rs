@@ -1157,4 +1157,12 @@ impl StarknetSyscallHandler for TestSyscallHandler {
     fn set_version(&mut self, _version: Felt) -> SyscallResult<()> {
         todo!()
     }
+    
+    fn cheatcode(
+        &mut self,
+        input: &[Felt],
+    ) -> SyscallResult<()> {
+        dbg!(input);
+        todo!()
+    }
 }
