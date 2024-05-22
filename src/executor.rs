@@ -370,7 +370,7 @@ impl<'a> ArgumentMapper<'a> {
             // This works because on both aarch64 and x86_64 the stack is already aligned to
             // 16 bytes when the trampoline starts pushing values.
 
-            // Whenever a value spans across multiple registers, if it's in a position where it would be split between 
+            // Whenever a value spans across multiple registers, if it's in a position where it would be split between
             // registers and the stack it must be padded so that the entire value is stored within the stack.
             if self.invoke_data.len() >= NUM_REGISTER_ARGS {
                 if self.invoke_data.len() & 1 != 0 {
