@@ -122,7 +122,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
         Ok((
             class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + Felt::from(1)).collect(),
+            calldata.iter().map(|x| x + Felt::ONE).collect(),
         ))
     }
 
@@ -336,12 +336,7 @@ fn main() {
     let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
     let result = native_executor
-        .invoke_contract_dynamic(
-            fn_id,
-            &[Felt::from(1)],
-            Some(u128::MAX),
-            SyscallHandler::new(),
-        )
+        .invoke_contract_dynamic(fn_id, &[Felt::ONE], Some(u128::MAX), SyscallHandler::new())
         .expect("failed to execute the given contract");
 
     println!();

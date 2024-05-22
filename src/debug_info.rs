@@ -156,3 +156,100 @@ fn extract_location_from_stable_loc<'c>(
 
     Location::new(context, &path.to_string_lossy(), pos.line, pos.col)
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{context::NativeContext, utils::test::load_cairo};
+    use cairo_lang_semantic::test_utils::setup_test_function;
+    use cairo_lang_sierra_generator::db::SierraGenGroup;
+    use rstest::*;
+
+    #[fixture]
+    fn db() -> RootDatabase {
+        // Build the root database with corelib detection
+        let db = RootDatabase::builder().detect_corelib().build().unwrap();
+
+        // Setup a test function using the `setup_test_function` utility
+        let test_function = setup_test_function(&db, "fn foo(a: felt252) {}", "foo", "").unwrap();
+        let function_id = cairo_lang_lowering::ids::ConcreteFunctionWithBodyId::from_semantic(
+            &db,
+            test_function.concrete_function_id,
+        );
+        let _ = db.function_with_body_sierra(function_id);
+
+        db
+    }
+
+    #[fixture]
+    fn program() -> Program {
+        // Define a dummy program for testing
+        let (_, program) = load_cairo! {
+            fn run_test() -> u128 {
+                let a: u128 = 1;
+                u128_sqrt(a).into()
+            }
+        };
+        program
+    }
+
+    #[fixture]
+    fn debug_info(db: RootDatabase, program: Program) -> DebugInfo {
+        // Extract debug information from the program
+        DebugInfo::extract(&db, &program).unwrap()
+    }
+
+    #[rstest]
+    fn test_extract_debug_info(debug_info: DebugInfo) {
+        // Assert the debug information contains u128
+        assert!(debug_info
+            .type_declarations
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128".into())));
+
+        // Assert the debug information contains u128_sqrt
+        assert!(debug_info
+            .libfunc_declarations
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
+
+        assert!(debug_info.statements.is_empty());
+
+        // Assert the debug information contains the run_test function
+        assert!(debug_info.funcs.iter().any(|(k, _)| k
+            .debug_name
+            .clone()
+            .unwrap()
+            .contains("run_test")));
+    }
+
+    #[rstest]
+    fn test_extract_debug_locations(db: RootDatabase, debug_info: DebugInfo) {
+        // Get the native context
+        let native_context = NativeContext::new();
+
+        // Extract debug locations from the debug information
+        let debug_locations = DebugLocations::extract(native_context.context(), &db, &debug_info);
+
+        // Assert the debug locations contain u128
+        assert!(debug_locations
+            .type_declarations
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128".into())));
+
+        // Assert the debug locations contain u128_sqrt
+        assert!(debug_locations
+            .libfunc_declarations
+            .iter()
+            .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
+
+        assert!(debug_locations.statements.is_empty());
+
+        // Assert the debug locations contain the run_test function
+        assert!(debug_locations.funcs.iter().any(|(k, _)| k
+            .debug_name
+            .clone()
+            .unwrap()
+            .contains("run_test")));
+    }
+}
