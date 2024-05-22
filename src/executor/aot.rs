@@ -247,7 +247,7 @@ mod tests {
             tag: 0,
             value: JitValue::Struct {
                 fields: vec![JitValue::Felt252(
-                    syscall_handler.get_block_hash(0, &mut 0).unwrap(),
+                    syscall_handler.get_block_hash(1, &mut 0).unwrap(),
                 )],
                 debug_name: Some("Tuple<felt252>".into()),
             }

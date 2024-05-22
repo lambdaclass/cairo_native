@@ -3,6 +3,7 @@
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, ProgramRegistryExt},
@@ -22,10 +23,7 @@ use melior::{
         llvm::{self, LoadStoreOptions},
         ods,
     },
-    ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Identifier, Location,
-    },
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -79,66 +77,18 @@ pub fn build_hades_permutation<'ctx>(
 
     // We must extend to i256 because bswap must be an even number of bytes.
 
-    let const_1 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-
-    let op0_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        layout_i256.align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[const_1])
-                .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    let op1_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        layout_i256.align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[const_1])
-                .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
-    let op2_ptr = entry
-        .append_operation(
-            OperationBuilder::new("llvm.alloca", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "alignment"),
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        layout_i256.align().try_into()?,
-                    )
-                    .into(),
-                )])
-                .add_operands(&[const_1])
-                .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let op0_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
+    let op1_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
+    let op2_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
 
     let op0_i256 = entry
         .append_operation(ods::arith::extui(context, i256_ty, op0, location).into())

@@ -28,5 +28,5 @@ pub fn build<'ctx>(
     //let inner = registry.get_type(&info.ty)?;
     //let layout = inner.layout(registry)?;
 
-    Ok(llvm::r#type::opaque_pointer(context))
+    Ok(llvm::r#type::pointer(context, 0))
 }
