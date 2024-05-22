@@ -379,74 +379,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         unimplemented!()
     }
 
-    fn set_account_contract_address(&mut self, contract_address: Felt) -> SyscallResult<()> {
-        self.testing_state.account_contract_address = contract_address;
-        Ok(())
-    }
-
-    fn set_block_number(&mut self, block_number: u64) -> SyscallResult<()> {
-        // TODO(juanbono): check type
-        self.testing_state.block_number = block_number;
-        Ok(())
-    }
-
-    fn set_block_timestamp(&mut self, block_timestamp: u64) -> SyscallResult<()> {
-        // TODO(juanbono): check type
-        self.testing_state.block_timestamp = block_timestamp;
-        Ok(())
-    }
-
-    fn set_caller_address(&mut self, address: Felt) -> SyscallResult<()> {
-        self.testing_state.caller_address = address;
-        Ok(())
-    }
-
-    fn set_chain_id(&mut self, chain_id: Felt) -> SyscallResult<()> {
-        // TODO(juanbono): check type
-        self.testing_state.chain_id = chain_id;
-        Ok(())
-    }
-
-    fn set_contract_address(&mut self, address: Felt) -> SyscallResult<()> {
-        self.testing_state.contract_address = address;
-        Ok(())
-    }
-
-    fn set_max_fee(&mut self, max_fee: u64) -> SyscallResult<()> {
-        self.testing_state.max_fee = max_fee;
-        Ok(())
-    }
-
-    fn set_nonce(&mut self, nonce: Felt) -> SyscallResult<()> {
-        self.testing_state.nonce = nonce;
-        Ok(())
-    }
-
-    fn set_sequencer_address(&mut self, address: Felt) -> SyscallResult<()> {
-        dbg!("set_sequencer_address", &address);
-        self.testing_state.sequencer_address = address;
-        Ok(())
-    }
-
-    fn set_signature(&mut self, signature: &[Felt]) -> SyscallResult<()> {
-        self.testing_state.signature = signature.into();
-        Ok(())
-    }
-
-    fn set_transaction_hash(&mut self, transaction_hash: Felt) -> SyscallResult<()> {
-        self.testing_state.transaction_hash = transaction_hash;
-        Ok(())
-    }
-
-    fn set_version(&mut self, version: Felt) -> SyscallResult<()> {
-        self.testing_state.version = version;
-        Ok(())
-    }
-    
-    fn cheatcode(
-        &mut self,
-        _input: &[Felt],
-    ) -> SyscallResult<()> {
+    fn cheatcode(&mut self, _input: &[Felt]) -> SyscallResult<()> {
         todo!()
     }
 }

@@ -108,11 +108,6 @@ pub struct Secp256r1Point {
 }
 
 pub trait StarknetSyscallHandler {
-    fn cheatcode(
-        &mut self,
-        input: &[Felt],
-    ) -> SyscallResult<()>;
-
     fn get_block_hash(
         &mut self,
         block_number: u64,
@@ -250,34 +245,7 @@ pub trait StarknetSyscallHandler {
     ) -> SyscallResult<(U256, U256)>;
 
     // Testing syscalls.
-    // TODO(juanbono): Add correct return type
-    fn pop_log(&mut self) {
-        unimplemented!()
-    }
-
-    fn set_account_contract_address(&mut self, _contract_address: Felt) -> SyscallResult<()>;
-
-    fn set_block_number(&mut self, _block_number: u64) -> SyscallResult<()>;
-
-    fn set_block_timestamp(&mut self, _block_timestamp: u64) -> SyscallResult<()>;
-
-    fn set_caller_address(&mut self, _address: Felt) -> SyscallResult<()>;
-
-    fn set_chain_id(&mut self, _chain_id: Felt) -> SyscallResult<()>;
-
-    fn set_contract_address(&mut self, _address: Felt) -> SyscallResult<()>;
-
-    fn set_max_fee(&mut self, _max_fee: u64) -> SyscallResult<()>;
-
-    fn set_nonce(&mut self, _nonce: Felt) -> SyscallResult<()>;
-
-    fn set_sequencer_address(&mut self, _address: Felt) -> SyscallResult<()>;
-
-    fn set_signature(&mut self, _signature: &[Felt]) -> SyscallResult<()>;
-
-    fn set_transaction_hash(&mut self, _transaction_hash: Felt) -> SyscallResult<()>;
-
-    fn set_version(&mut self, version: Felt) -> SyscallResult<()>;
+    fn cheatcode(&mut self, _input: &[Felt]) -> SyscallResult<()>;
 }
 
 pub struct DummySyscallHandler;
@@ -466,58 +434,7 @@ impl StarknetSyscallHandler for DummySyscallHandler {
         unimplemented!()
     }
 
-    fn set_account_contract_address(&mut self, _contract_address: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_block_number(&mut self, _block_number: u64) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_block_timestamp(&mut self, _block_timestamp: u64) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_caller_address(&mut self, _address: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_chain_id(&mut self, _chain_id: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_contract_address(&mut self, _address: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_max_fee(&mut self, _max_fee: u64) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_nonce(&mut self, _nonce: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_sequencer_address(&mut self, _address: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_signature(&mut self, _signature: &[Felt]) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_transaction_hash(&mut self, _transaction_hash: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_version(&mut self, _version: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-    
-    fn cheatcode(
-        &mut self,
-        _input: &[Felt],
-    ) -> SyscallResult<()> {
+    fn cheatcode(&mut self, _input: &[Felt]) -> SyscallResult<()> {
         todo!()
     }
 }
@@ -787,81 +704,6 @@ pub(crate) mod handler {
             // gas: &mut u128,
             input: &ArrayAbi<Felt252Abi>,
         ),
-        // TODO(juanbono): Add proper types to pop_log
-        pop_log: extern "C" fn(),
-        set_account_contract_address: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            contract_address: &Felt252Abi,
-        ),
-        set_block_number: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            block_number: u64,
-        ),
-        set_block_timestamp: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            block_timestamp: u64,
-        ),
-        set_caller_address: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            address: &Felt252Abi,
-        ),
-        set_chain_id: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            chain_id: &Felt252Abi,
-        ),
-        set_contract_address: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            address: &Felt252Abi,
-        ),
-        set_max_fee: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            // TODO(juanbono): check if this type is correct
-            max_fee: u64,
-        ),
-        set_nonce: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            nonce: &Felt252Abi,
-        ),
-        set_sequencer_address: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            // gas: &mut u128,
-            address: &Felt252Abi,
-        ),
-        set_signature: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            signature: &ArrayAbi<Felt252Abi>,
-        ),
-        set_transaction_hash: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            transaction_hash: &Felt252Abi,
-        ),
-        set_version: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            version: &Felt252Abi,
-        ),
     }
 
     impl<'a, T> StarknetSyscallHandlerCallbacks<'a, T>
@@ -894,21 +736,7 @@ pub(crate) mod handler {
         pub const SECP256R1_GET_POINT_FROM_X: usize =
             field_offset!(Self, secp256r1_get_point_from_x) >> 3;
         pub const SECP256R1_GET_XY: usize = field_offset!(Self, secp256r1_get_xy) >> 3;
-        pub const SET_SEQUENCER_ADDRESS: usize = field_offset!(Self, set_sequencer_address) >> 3;
         pub const CHEATCODE: usize = field_offset!(Self, cheatcode) >> 3;
-        // pub const SET_VERSION: usize = field_offset!(Self, set_version) >> 3;
-        // pub const SET_ACCOUNT_CONTRACT_ADDRESS: usize =
-        //     field_offset!(Self, set_account_contract_address) >> 3;
-        // pub const SET_BLOCK_NUMBER: usize = field_offset!(Self, set_block_number) >> 3;
-        // pub const SET_BLOCK_TIMESTAMP: usize = field_offset!(Self, set_block_timestamp) >> 3;
-        // pub const SET_CALLER_ADDRESS: usize = field_offset!(Self, set_caller_address) >> 3;
-        // pub const SET_CHAIN_ID: usize = field_offset!(Self, set_chain_id) >> 3;
-        // pub const SET_CONTRACT_ADDRESS: usize = field_offset!(Self, set_contract_address) >> 3;
-        // pub const SET_MAX_FEE: usize = field_offset!(Self, set_max_fee) >> 3;
-        // pub const SET_NONCE: usize = field_offset!(Self, set_nonce) >> 3;
-        // pub const SET_SIGNATURE: usize = field_offset!(Self, set_signature) >> 3;
-        // pub const SET_TRANSACTION_HASH: usize = field_offset!(Self, set_transaction_hash) >> 3;
-        // pub const POP_LOG: usize = field_offset!(Self, pop_log) >> 3;
     }
 
     #[allow(unused_variables)]
@@ -942,20 +770,6 @@ pub(crate) mod handler {
                 secp256r1_get_point_from_x: Self::wrap_secp256r1_get_point_from_x,
                 secp256r1_get_xy: Self::wrap_secp256r1_get_xy,
                 cheatcode: Self::wrap_cheatcode,
-                //
-                pop_log: Self::wrap_pop_log,
-                set_account_contract_address: Self::wrap_set_account_contract_address,
-                set_block_number: Self::wrap_set_block_number,
-                set_block_timestamp: Self::wrap_set_block_timestamp,
-                set_caller_address: Self::wrap_set_caller_address,
-                set_chain_id: Self::wrap_set_chain_id,
-                set_contract_address: Self::wrap_set_contract_address,
-                set_max_fee: Self::wrap_set_max_fee,
-                set_nonce: Self::wrap_set_nonce,
-                set_sequencer_address: Self::wrap_set_sequencer_address,
-                set_signature: Self::wrap_set_signature,
-                set_transaction_hash: Self::wrap_set_transaction_hash,
-                set_version: Self::wrap_set_version,
             }
         }
 
@@ -1017,12 +831,6 @@ pub(crate) mod handler {
             };
         }
 
-        #[allow(dead_code)]
-        // TODO(juanbono) Implement wrap_pop_log
-        extern "C" fn wrap_pop_log() {
-            todo!()
-        }
-
         extern "C" fn wrap_cheatcode(
             result_ptr: &mut ArrayAbi<Felt252Abi>,
             ptr: &mut T,
@@ -1060,232 +868,6 @@ pub(crate) mod handler {
                     until: 0,
                     capacity: 0,
                 },
-            };
-        }
-
-        extern "C" fn wrap_set_version(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            version: &Felt252Abi,
-        ) {
-            let version = Felt::from_bytes_le(&version.0);
-            let result = ptr.set_version(version);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_account_contract_address(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            contract_address: &Felt252Abi,
-        ) {
-            let contract_address = Felt::from_bytes_le(&contract_address.0);
-            let result = ptr.set_account_contract_address(contract_address);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_block_number(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            block_number: u64, // TODO(juanbono): check if needs to be u64 or Felt
-        ) {
-            let result = ptr.set_block_number(block_number);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_block_timestamp(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            block_timestamp: u64,
-        ) {
-            let result = ptr.set_block_timestamp(block_timestamp);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_caller_address(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            caller_address: &Felt252Abi,
-        ) {
-            let caller_address = Felt::from_bytes_le(&caller_address.0);
-            let result = ptr.set_caller_address(caller_address);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_chain_id(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            chain_id: &Felt252Abi,
-        ) {
-            let chain_id = Felt::from_bytes_le(&chain_id.0);
-            let result = ptr.set_chain_id(chain_id);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_contract_address(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            contract_address: &Felt252Abi,
-        ) {
-            let contract_address = Felt::from_bytes_le(&contract_address.0);
-            let result = ptr.set_contract_address(contract_address);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_max_fee(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            max_fee: u64, // TODO(juanbono): check if needs to be u128 or Felt
-        ) {
-            let result = ptr.set_max_fee(max_fee);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_nonce(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            nonce: &Felt252Abi,
-        ) {
-            let nonce = Felt::from_bytes_le(&nonce.0);
-            let result = ptr.set_nonce(nonce);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_sequencer_address(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            // gas: &mut u128,
-            sequencer_address: &Felt252Abi,
-        ) {
-            let address = Felt::from_bytes_le(&sequencer_address.0);
-            let result = ptr.set_sequencer_address(address);
-
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_signature(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            signature: &ArrayAbi<Felt252Abi>,
-        ) {
-            let signature: Vec<Felt> = vec![]; // TODO(juanbono): do the actual conversion
-            let result = ptr.set_signature(&signature);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
-            };
-        }
-
-        extern "C" fn wrap_set_transaction_hash(
-            result_ptr: &mut SyscallResultAbi<()>,
-            ptr: &mut T,
-            gas: &mut u128,
-            transaction_hash: &Felt252Abi,
-        ) {
-            let transaction_hash = Felt::from_bytes_le(&transaction_hash.0);
-            let result = ptr.set_transaction_hash(transaction_hash);
-            *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
-                },
-                Err(e) => Self::wrap_error(&e),
             };
         }
 
