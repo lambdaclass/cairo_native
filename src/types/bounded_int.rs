@@ -7,11 +7,12 @@ use cairo_lang_sierra::{
     extensions::{
         bounded_int::BoundedIntConcreteType,
         core::{CoreLibfunc, CoreType},
+        types::InfoOnlyConcreteType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{r#type::IntegerType, Module, Type},
+    ir::{Module, Type},
     Context,
 };
 
@@ -22,16 +23,19 @@ use super::WithSelf;
 /// Check out [the module](self) for more info.
 pub fn build<'ctx>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _metadata: &mut MetadataStorage,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
     info: WithSelf<BoundedIntConcreteType>,
 ) -> Result<Type<'ctx>> {
     // todo: possible optimization, we may be able to use less bits depending on the possible values within the range.
-    let bits = info.range.lower.bits().max(info.range.upper.bits()) + 1; // sign bit
-    Ok(IntegerType::new(
-        context,
-        bits.try_into().expect("bits should always fit a u32"),
-    )
-    .into())
+
+    let info = WithSelf {
+        self_ty: info.self_ty,
+        inner: &InfoOnlyConcreteType {
+            info: info.info.clone(),
+        },
+    };
+
+    super::felt252::build(context, module, registry, metadata, info)
 }

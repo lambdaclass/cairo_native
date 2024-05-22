@@ -754,9 +754,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Sint64(_) => Some(64),
             Self::Sint128(_) => Some(128),
 
-            CoreTypeConcrete::BoundedInt(info) => {
-                Some((info.range.lower.bits().max(info.range.upper.bits()) + 1) as usize)
-            }
+            CoreTypeConcrete::BoundedInt(_) => Some(252),
             CoreTypeConcrete::Bytes31(_) => Some(248),
             CoreTypeConcrete::Const(_) => todo!(),
 
