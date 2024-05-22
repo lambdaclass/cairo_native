@@ -54,17 +54,9 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 
 /// Return the layout for an integer of arbitrary width.
 ///
-/// This assumes the platform's maximum (effective) alignment is 8 bytes, and that every integer
+/// This assumes the platform's maximum (effective) alignment is 16 bytes, and that every integer
 /// with a size in bytes of a power of two has the same alignment as its size.
 pub fn get_integer_layout(width: u32) -> Layout {
-    // TODO: Fix integer layouts properly.
-    if width == 248 || width == 252 || width == 256 {
-        #[cfg(target_arch = "x86_64")]
-        return Layout::from_size_align(32, 8).unwrap();
-        #[cfg(not(target_arch = "x86_64"))]
-        return Layout::from_size_align(32, 16).unwrap();
-    }
-
     if width == 0 {
         Layout::new::<()>()
     } else if width <= 8 {
@@ -76,14 +68,17 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 64 {
         Layout::new::<u64>()
     } else if width <= 128 {
-        Layout::new::<u128>()
-    } else {
-        #[cfg(target_arch = "x86_64")]
-        let value = Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap();
         #[cfg(not(target_arch = "x86_64"))]
-        let value = Layout::array::<u128>(next_multiple_of_u32(width, 128) as usize >> 7).unwrap();
-
-        value
+        {
+            Layout::new::<u128>()
+        }
+        #[cfg(target_arch = "x86_64")]
+        {
+            Layout::new::<u128>().align_to(16).unwrap()
+        }
+    } else {
+        let width = (width as usize).next_multiple_of(8).next_power_of_two();
+        Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
     }
 }
 
@@ -841,15 +836,12 @@ pub mod test {
 
     /// Ensures that the host's `u128` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_u128() {
-        // FIXME: Uncomment once LLVM fixes its u128 alignment issues.
         assert_eq!(get_integer_layout(128).align(), 16);
     }
 
     /// Ensures that the host's `u256` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_u256() {
         assert_eq!(get_integer_layout(256).align(), 16);
     }
@@ -857,17 +849,13 @@ pub mod test {
     /// Ensures that the host's `u512` is compatible with its compiled counterpart.
     #[test]
     fn test_alignment_compatibility_u512() {
-        #[cfg(target_arch = "x86_64")]
-        assert_eq!(get_integer_layout(512).align(), 8);
-        #[cfg(not(target_arch = "x86_64"))]
         assert_eq!(get_integer_layout(512).align(), 16);
     }
 
     /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_felt() {
-        assert_eq!(get_integer_layout(252).align(), 8);
+        assert_eq!(get_integer_layout(252).align(), 16);
     }
 
     // ==============================
@@ -1205,8 +1193,8 @@ pub mod test {
     pub struct TestSyscallHandler;
 
     impl StarknetSyscallHandler for TestSyscallHandler {
-        fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
-            Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
+        fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
+            Ok(Felt::from(block_number))
         }
 
         fn get_execution_info(

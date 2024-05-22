@@ -23,10 +23,7 @@ use melior::{
         llvm::{self, LoadStoreOptions},
         ods,
     },
-    ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Identifier, Location,
-    },
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -71,8 +68,6 @@ pub fn build_pedersen<'ctx>(
         &info.param_signatures()[1].ty,
     )?;
 
-    let i64_ty = IntegerType::new(context, 64).into();
-
     let i256_ty = IntegerType::new(context, 256).into();
     let layout_i256 = get_integer_layout(256);
 
@@ -81,52 +76,18 @@ pub fn build_pedersen<'ctx>(
 
     // We must extend to i256 because bswap must be an even number of bytes.
 
-    let const_1 = entry.const_int_from_type(context, location, 1, i64_ty)?;
-
-    let lhs_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    layout_i256.align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build()?,
-    )?;
-
-    let rhs_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    layout_i256.align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build()?,
-    )?;
-
-    let dst_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    layout_i256.align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build()?,
-    )?;
+    let lhs_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
+    let rhs_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
+    let dst_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
 
     let lhs_i256 = entry.append_op_result(arith::extui(lhs, i256_ty, location))?;
     let rhs_i256 = entry.append_op_result(arith::extui(rhs, i256_ty, location))?;

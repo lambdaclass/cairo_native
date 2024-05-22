@@ -24,10 +24,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm,
     },
-    ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Identifier, Location,
-    },
+    ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location},
     Context,
 };
 use num_bigint::{BigInt, ToBigInt};
@@ -192,21 +189,11 @@ pub fn build_point_from_x<'ctx, 'this>(
         false,
     );
 
-    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
-
-    let point_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    get_integer_layout(252).align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[k1])
-            .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-            .build()?,
+    let point_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        ec_point_ty,
+        Some(get_integer_layout(252).align()),
     )?;
 
     let point = entry.append_op_result(llvm::undef(ec_point_ty, location))?;
@@ -252,44 +239,18 @@ pub fn build_state_add<'ctx, 'this>(
         ],
         false,
     );
-    let ec_point_ty = llvm::r#type::r#struct(
+
+    let state_ptr = helper.init_block().alloca1(
         context,
-        &[
-            IntegerType::new(context, 252).into(),
-            IntegerType::new(context, 252).into(),
-        ],
-        false,
-    );
-
-    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
-
-    let state_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    get_integer_layout(252).align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[k1])
-            .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-            .build()?,
+        location,
+        ec_state_ty,
+        Some(get_integer_layout(252).align()),
     )?;
-    let point_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    get_integer_layout(252).align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[k1])
-            .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-            .build()?,
+    let point_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        ec_state_ty,
+        Some(get_integer_layout(252).align()),
     )?;
 
     entry.store(
@@ -340,49 +301,23 @@ pub fn build_state_add_mul<'ctx, 'this>(
     );
     let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
 
-    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
-
-    let state_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    get_integer_layout(252).align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[k1])
-            .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-            .build()?,
+    let state_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        ec_state_ty,
+        Some(get_integer_layout(252).align()),
     )?;
-    let scalar_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    get_integer_layout(252).align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[k1])
-            .add_results(&[llvm::r#type::pointer(felt252_ty, 0)])
-            .build()?,
+    let scalar_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        felt252_ty,
+        Some(get_integer_layout(252).align()),
     )?;
-    let point_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    get_integer_layout(252).align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[k1])
-            .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-            .build()?,
+    let point_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        ec_point_ty,
+        Some(get_integer_layout(252).align()),
     )?;
 
     entry.store(
@@ -438,35 +373,17 @@ pub fn build_state_finalize<'ctx, 'this>(
     );
     let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
 
-    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
-
-    let point_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    get_integer_layout(252).align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[k1])
-            .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-            .build()?,
+    let point_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        ec_point_ty,
+        Some(get_integer_layout(252).align()),
     )?;
-    let state_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    get_integer_layout(252).align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[k1])
-            .add_results(&[llvm::r#type::pointer(ec_state_ty, 0)])
-            .build()?,
+    let state_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        ec_state_ty,
+        Some(get_integer_layout(252).align()),
     )?;
 
     entry.store(
@@ -561,21 +478,11 @@ pub fn build_try_new<'ctx, 'this>(
         false,
     );
 
-    let k1 = helper.init_block().const_int(context, location, 1, 64)?;
-
-    let point_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    get_integer_layout(252).align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[k1])
-            .add_results(&[llvm::r#type::pointer(ec_point_ty, 0)])
-            .build()?,
+    let point_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        ec_point_ty,
+        Some(get_integer_layout(252).align()),
     )?;
 
     let point = entry.append_op_result(llvm::undef(ec_point_ty, location))?;
