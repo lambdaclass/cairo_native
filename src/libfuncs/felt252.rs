@@ -522,12 +522,12 @@ pub mod test {
 
     #[test]
     fn felt252_add() {
-        // run_program_assert_output(
-        //     &FELT252_ADD,
-        //     "run_test",
-        //     &[JitValue::felt_str("0"), JitValue::felt_str("0")],
-        //     JitValue::felt_str("0"),
-        // );
+        run_program_assert_output(
+            &FELT252_ADD,
+            "run_test",
+            &[JitValue::felt_str("0"), JitValue::felt_str("0")],
+            JitValue::felt_str("0"),
+        );
         run_program_assert_output(
             &FELT252_ADD,
             "run_test",
