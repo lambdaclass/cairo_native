@@ -109,11 +109,10 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
         .into()
     } else {
         let source = std::fs::read_to_string(program).unwrap();
-        Arc::new(
-            cairo_lang_sierra::ProgramParser::new()
-                .parse(&source)
-                .unwrap(),
-        )
+        cairo_lang_sierra::ProgramParser::new()
+            .parse(&source)
+            .unwrap()
+            .into()
     }
 }
 
@@ -667,6 +666,7 @@ pub mod test {
     use cairo_lang_starknet::starknet_plugin_suite;
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
+    use std::io::Write;
     use std::{env::var, fmt::Formatter, fs, path::Path};
 
     macro_rules! load_cairo {
@@ -1105,6 +1105,100 @@ pub mod test {
         let closure = |f: &mut fmt::Formatter| write!(f, "Name: William, Age: {}", 28);
         let debug_wrapper = debug_with(closure);
         assert_eq!(format!("{:?}", debug_wrapper), "Name: William, Age: 28");
+    }
+
+    #[test]
+    fn test_generate_function_name_debug_name() {
+        let function_id = FunctionId {
+            id: 123,
+            debug_name: Some("function_name".into()),
+        };
+
+        assert_eq!(generate_function_name(&function_id), "function_name(f123)");
+    }
+
+    #[test]
+    fn test_generate_function_name_without_debug_name() {
+        let function_id = FunctionId {
+            id: 123,
+            debug_name: None,
+        };
+
+        assert_eq!(generate_function_name(&function_id), "f123");
+    }
+
+    #[test]
+    fn test_cairo_to_sierra_path() {
+        // Define the path to the cairo program.
+        let program_path = Path::new("programs/examples/hello.cairo");
+        // Compile the cairo program to sierra.
+        let sierra_program = cairo_to_sierra(program_path);
+
+        // Define the entry point function for comparison.
+        let entry_point = "hello::hello::greet";
+        // Find the function ID of the entry point function in the sierra program.
+        let entry_point_id = find_function_id(&sierra_program, entry_point);
+
+        // Assert that the debug name of the entry point function matches the expected value.
+        assert_eq!(
+            entry_point_id.debug_name,
+            Some("hello::hello::greet".into())
+        );
+    }
+
+    #[test]
+    fn test_cairo_to_sierra_source() {
+        // Define the content of the cairo program as a string.
+        let content = "type u8 = u8;";
+
+        // Create a named temporary file and write the content to it.
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(content.as_bytes()).unwrap();
+        // Get the path of the temporary file.
+        let file_path = file.path().to_path_buf();
+
+        // Compile the cairo program to sierra using the path of the temporary file.
+        let sierra_program = cairo_to_sierra(&file_path);
+
+        // Assert that the sierra program has no library function declarations, statements, or functions.
+        assert!(sierra_program.libfunc_declarations.is_empty());
+        assert!(sierra_program.statements.is_empty());
+        assert!(sierra_program.funcs.is_empty());
+
+        // Assert that the debug name of the first type declaration matches the expected value.
+        assert_eq!(sierra_program.type_declarations.len(), 1);
+        assert_eq!(
+            sierra_program.type_declarations[0].id.debug_name,
+            Some("u8".into())
+        );
+    }
+
+    #[test]
+    fn test_cairo_to_sierra_with_debug_info() {
+        // Define the path to the cairo program.
+        let program_path = Path::new("programs/examples/hello.cairo");
+        // Create a new context.
+        let context = Context::new();
+        // Compile the cairo program to sierra, including debug information.
+        let sierra_program = cairo_to_sierra_with_debug_info(&context, program_path).unwrap();
+
+        // Define the name of the entry point function for comparison.
+        let entry_point = "hello::hello::greet";
+        // Find the function ID of the entry point function in the sierra program.
+        let entry_point_id = find_function_id(&sierra_program.0, entry_point);
+
+        // Assert that the debug name of the entry point function matches the expected value.
+        assert_eq!(
+            entry_point_id.debug_name,
+            Some("hello::hello::greet".into())
+        );
+
+        // Check if the sierra program contains a function with the specified debug name for the entry point function.
+        assert!(sierra_program
+            .1
+            .funcs
+            .keys()
+            .any(|func| func.debug_name == Some("hello::hello::greet".into())));
     }
 
     #[derive(Debug, Clone)]
