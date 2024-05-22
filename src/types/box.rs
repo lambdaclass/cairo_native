@@ -32,7 +32,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{
-        llvm::{self, r#type::opaque_pointer},
+        llvm::{self, r#type::pointer},
         ods,
     },
     ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Type, Value},
@@ -60,7 +60,7 @@ pub fn build<'ctx>(
             },
         );
 
-    Ok(opaque_pointer(context))
+    Ok(llvm::r#type::pointer(context, 0))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -88,7 +88,7 @@ fn snapshot_take<'ctx, 'this>(
     let value_len = entry.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
 
     let ptr = entry
-        .append_operation(llvm::nullptr(opaque_pointer(context), location))
+        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
         .result(0)?
         .into();
     let dst_ptr = entry

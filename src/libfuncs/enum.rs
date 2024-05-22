@@ -186,7 +186,7 @@ pub fn build_enum_value<'ctx, 'this>(
                     .append_operation(llvm::alloca(
                         context,
                         k1,
-                        llvm::r#type::opaque_pointer(context),
+                        llvm::r#type::pointer(context, 0),
                         location,
                         AllocaOptions::new()
                             .align(Some(IntegerAttribute::new(

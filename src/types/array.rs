@@ -37,7 +37,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith, cf,
-        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        llvm::{self, r#type::pointer, LoadStoreOptions},
         ods,
     },
     ir::{
@@ -69,7 +69,7 @@ pub fn build<'ctx>(
             },
         );
 
-    let ptr_ty = llvm::r#type::opaque_pointer(context);
+    let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();
 
     Ok(llvm::r#type::r#struct(
@@ -107,7 +107,7 @@ fn snapshot_take<'ctx, 'this>(
             context,
             src_value,
             DenseI64ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
+            llvm::r#type::pointer(context, 0),
             location,
         ))
         .result(0)?
@@ -173,15 +173,13 @@ fn snapshot_take<'ctx, 'this>(
         .into();
 
     let null_ptr = entry
-        .append_operation(llvm::nullptr(
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
+        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
         .result(0)?
         .into();
 
     let block_realloc = helper.append_block(Block::new(&[]));
-    let block_finish = helper.append_block(Block::new(&[(opaque_pointer(context), location)]));
+    let block_finish =
+        helper.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
     entry.append_operation(cf::cond_br(
         context,
@@ -246,7 +244,7 @@ fn snapshot_take<'ctx, 'this>(
                 src_ptr,
                 &[src_ptr_offset],
                 IntegerType::new(context, 8).into(),
-                llvm::r#type::opaque_pointer(context),
+                llvm::r#type::pointer(context, 0),
                 location,
             ))
             .result(0)?

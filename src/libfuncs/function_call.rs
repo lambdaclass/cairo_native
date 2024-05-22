@@ -236,7 +236,7 @@ pub fn build<'ctx, 'this>(
                                 val,
                                 DenseI32ArrayAttribute::new(context, &[offset as i32]),
                                 IntegerType::new(context, 8).into(),
-                                llvm::r#type::opaque_pointer(context),
+                                llvm::r#type::pointer(context, 0),
                                 location,
                             ))
                             .result(0)?

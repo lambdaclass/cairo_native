@@ -37,9 +37,6 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
-#[cfg(target_arch = "x86_64")]
-pub const MAX_PLATFORM_ALIGNMENT: usize = 8;
-#[cfg(target_arch = "aarch64")]
 pub const MAX_PLATFORM_ALIGNMENT: usize = 16;
 
 extern "C" {

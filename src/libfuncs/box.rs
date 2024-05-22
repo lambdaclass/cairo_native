@@ -23,7 +23,8 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith,
-        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        llvm::{self, r#type::pointer, LoadStoreOptions},
+        ods,
     },
     ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
@@ -83,7 +84,7 @@ pub fn build_into_box<'ctx, 'this>(
         .into();
 
     let ptr = entry
-        .append_operation(llvm::nullptr(opaque_pointer(context), location))
+        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
         .result(0)?
         .into();
     let ptr = entry

@@ -30,10 +30,10 @@ impl ReallocBindingsMeta {
                 FunctionType::new(
                     context,
                     &[
-                        llvm::r#type::opaque_pointer(context),
+                        llvm::r#type::pointer(context, 0),
                         IntegerType::new(context, 64).into(),
                     ],
-                    &[llvm::r#type::opaque_pointer(context)],
+                    &[llvm::r#type::pointer(context, 0)],
                 )
                 .into(),
             ),
@@ -48,7 +48,7 @@ impl ReallocBindingsMeta {
             context,
             StringAttribute::new(context, "free"),
             TypeAttribute::new(
-                FunctionType::new(context, &[llvm::r#type::opaque_pointer(context)], &[]).into(),
+                FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
             ),
             Region::new(),
             &[(
@@ -74,7 +74,7 @@ impl ReallocBindingsMeta {
             context,
             FlatSymbolRefAttribute::new(context, "realloc"),
             &[ptr, len],
-            &[llvm::r#type::opaque_pointer(context)],
+            &[llvm::r#type::pointer(context, 0)],
             location,
         )
     }

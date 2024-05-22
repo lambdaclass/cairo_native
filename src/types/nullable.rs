@@ -25,7 +25,8 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm, ods, scf,
+        llvm::{self, r#type::pointer},
+        ods, scf,
     },
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
@@ -56,7 +57,7 @@ pub fn build<'ctx>(
         );
 
     // nullable is represented as a pointer, like a box, used to check if its null (when it can be null).
-    Ok(llvm::r#type::opaque_pointer(context))
+    Ok(llvm::r#type::pointer(context, 0))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -88,10 +89,7 @@ fn snapshot_take<'ctx, 'this>(
         .result(0)?
         .into();
     let null_ptr = entry
-        .append_operation(llvm::nullptr(
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
+        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
         .result(0)?
         .into();
 
@@ -119,7 +117,7 @@ fn snapshot_take<'ctx, 'this>(
     let value = entry
         .append_operation(scf::r#if(
             is_null,
-            &[llvm::r#type::opaque_pointer(context)],
+            &[llvm::r#type::pointer(context, 0)],
             {
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));

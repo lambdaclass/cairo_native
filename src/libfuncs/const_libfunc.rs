@@ -24,7 +24,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith,
-        llvm::{self, r#type::opaque_pointer, LoadStoreOptions},
+        llvm::{self, r#type::pointer, LoadStoreOptions},
     },
     ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value},
     Context,
@@ -97,7 +97,7 @@ pub fn build_const_as_box<'ctx, 'this>(
         .into();
 
     let ptr = entry
-        .append_operation(llvm::nullptr(opaque_pointer(context), location))
+        .append_operation(llvm::zero(pointer(context, 0), location))
         .result(0)?
         .into();
     let ptr = entry
