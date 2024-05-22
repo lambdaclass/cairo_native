@@ -19,7 +19,6 @@ use test_case::test_case;
 #[test_case("tests/cases/panic_array.cairo")]
 #[test_case("tests/cases/generic_fn_loop.cairo")]
 // enums
-// TODO: compare error: Fail(Reason("assertion failed: `(left == right)` \n  left: `0`,\n right: `10` at tests/common.rs:453"))
 #[test_case("tests/cases/enums/enum_init_c_style.cairo")]
 #[test_case("tests/cases/enums/enum_init_empty.cairo")]
 #[test_case("tests/cases/enums/enum_init_multiple.cairo")]
