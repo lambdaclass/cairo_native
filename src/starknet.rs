@@ -782,7 +782,7 @@ pub(crate) mod handler {
         ),
         // testing syscalls
         cheatcode: extern "C" fn(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut ArrayAbi<Felt252Abi>,
             ptr: &mut T,
             // gas: &mut u128,
             input: &ArrayAbi<Felt252Abi>,
@@ -1024,7 +1024,7 @@ pub(crate) mod handler {
         }
 
         extern "C" fn wrap_cheatcode(
-            result_ptr: &mut SyscallResultAbi<()>,
+            result_ptr: &mut ArrayAbi<Felt252Abi>,
             ptr: &mut T,
             input: &ArrayAbi<Felt252Abi>,
         ) {
@@ -1048,13 +1048,18 @@ pub(crate) mod handler {
             dbg!(input.clone());
             let result = ptr.cheatcode(&input);
             *result_ptr = match result {
-                Ok(_) => SyscallResultAbi {
-                    ok: ManuallyDrop::new(SyscallResultAbiOk {
-                        tag: 0u8,
-                        payload: ManuallyDrop::new(()),
-                    }),
+                Ok(_) => ArrayAbi {
+                    ptr: null_mut(),
+                    since: 0,
+                    until: 0,
+                    capacity: 0,
                 },
-                Err(e) => Self::wrap_error(&e),
+                Err(e) => ArrayAbi {
+                    ptr: null_mut(),
+                    since: 0,
+                    until: 0,
+                    capacity: 0,
+                },
             };
         }
 
