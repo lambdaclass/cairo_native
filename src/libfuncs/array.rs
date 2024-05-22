@@ -24,7 +24,7 @@ use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
         cf,
-        llvm::{self, r#type::opaque_pointer},
+        llvm::{self, r#type::pointer},
         ods,
     },
     ir::{
@@ -98,10 +98,7 @@ pub fn build_new<'ctx, 'this>(
     )?;
 
     let ptr = entry
-        .append_operation(llvm::nullptr(
-            crate::ffi::get_struct_field_type_at(&array_ty, 0),
-            location,
-        ))
+        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
         .result(0)?
         .into();
     let k0 = entry
@@ -282,7 +279,7 @@ pub fn build_append<'ctx, 'this>(
                 dst_ptr,
                 &[start_offset],
                 IntegerType::new(context, 8).into(),
-                llvm::r#type::opaque_pointer(context),
+                llvm::r#type::pointer(context, 0),
                 location,
             ))
             .result(0)?
@@ -419,7 +416,7 @@ pub fn build_append<'ctx, 'this>(
                 ptr,
                 &[offset],
                 IntegerType::new(context, 8).into(),
-                llvm::r#type::opaque_pointer(context),
+                llvm::r#type::pointer(context, 0),
                 location,
             ))
             .result(0)?
@@ -587,7 +584,7 @@ pub fn build_get<'ctx, 'this>(
                 ptr,
                 &[elem_offset],
                 IntegerType::new(context, 8).into(),
-                llvm::r#type::opaque_pointer(context),
+                llvm::r#type::pointer(context, 0),
                 location,
             ))
             .result(0)?
@@ -596,10 +593,7 @@ pub fn build_get<'ctx, 'this>(
         let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
 
         let target_ptr = valid_block
-            .append_operation(llvm::nullptr(
-                llvm::r#type::opaque_pointer(context),
-                location,
-            ))
+            .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
             .result(0)?
             .into();
         let target_ptr = valid_block
@@ -704,17 +698,14 @@ pub fn build_pop_front<'ctx, 'this>(
                 ptr,
                 &[elem_offset],
                 IntegerType::new(context, 8).into(),
-                llvm::r#type::opaque_pointer(context),
+                llvm::r#type::pointer(context, 0),
                 location,
             ))
             .result(0)?
             .into();
 
         let target_ptr = valid_block
-            .append_operation(llvm::nullptr(
-                llvm::r#type::opaque_pointer(context),
-                location,
-            ))
+            .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
             .result(0)?
             .into();
         let target_ptr = valid_block
@@ -857,17 +848,14 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
                 ptr,
                 &[elem_offset],
                 IntegerType::new(context, 8).into(),
-                llvm::r#type::opaque_pointer(context),
+                llvm::r#type::pointer(context, 0),
                 location,
             ))
             .result(0)?
             .into();
 
         let target_ptr = valid_block
-            .append_operation(llvm::nullptr(
-                llvm::r#type::opaque_pointer(context),
-                location,
-            ))
+            .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
             .result(0)?
             .into();
         let target_ptr = valid_block
@@ -997,10 +985,9 @@ pub fn build_slice<'ctx, 'this>(
             .into();
         let dst_size = slice_block.append_op_result(arith::muli(dst_size, elem_size, location))?;
 
-        let dst_ptr = slice_block.append_op_result(llvm::nullptr(
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))?;
+        let dst_ptr = slice_block.append_op_result(
+            ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+        )?;
         let dst_ptr = slice_block.append_op_result(ReallocBindingsMeta::realloc(
             context, dst_ptr, dst_size, location,
         ))?;
@@ -1020,7 +1007,7 @@ pub fn build_slice<'ctx, 'this>(
             context,
             location,
             entry.argument(1)?.into(),
-            opaque_pointer(context),
+            pointer(context, 0),
             0,
         )?;
         let src_ptr = slice_block.append_op_result(llvm::get_element_ptr_dynamic(
@@ -1028,7 +1015,7 @@ pub fn build_slice<'ctx, 'this>(
             src_ptr,
             &[src_offset],
             IntegerType::new(context, 8).into(),
-            llvm::r#type::opaque_pointer(context),
+            llvm::r#type::pointer(context, 0),
             location,
         ))?;
 
@@ -1108,10 +1095,8 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let array_container =
         entry.insert_value(context, location, array_container, array_len_value, 3)?;
 
-    let opaque_ptr_ty = opaque_pointer(context);
-
     let ptr = entry
-        .append_operation(llvm::nullptr(opaque_ptr_ty, location))
+        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
         .result(0)?
         .into();
 
@@ -1141,7 +1126,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
                 ptr,
                 DenseI32ArrayAttribute::new(context, &[i as i32]),
                 field_ty,
-                opaque_pointer(context),
+                pointer(context, 0),
                 location,
             ))
             .result(0)?

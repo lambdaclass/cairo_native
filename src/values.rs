@@ -521,26 +521,26 @@ impl JitValue {
                         .cast::<u32>()
                         .as_ref();
 
-                    let init_data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
-                    let data_ptr = NonNull::new_unchecked(
-                        init_data_ptr
-                            .as_ptr()
-                            .byte_add(elem_stride * offset_value as usize),
-                    );
+                    // this pointer can be null if the array has a size of 0.
+                    let init_data_ptr = *ptr.cast::<*mut ()>().as_ref();
+                    let data_ptr = init_data_ptr.byte_add(elem_stride * offset_value as usize);
 
                     assert!(length_value >= offset_value);
                     let num_elems = (length_value - offset_value) as usize;
                     let mut array_value = Vec::with_capacity(num_elems);
+
                     for i in 0..num_elems {
-                        let cur_elem_ptr = NonNull::new(
-                            ((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut (),
-                        )
-                        .unwrap();
+                        // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
+                        let cur_elem_ptr =
+                            NonNull::new(((data_ptr as usize) + elem_stride * i) as *mut ())
+                                .unwrap();
 
                         array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
                     }
 
-                    libc::free(init_data_ptr.as_ptr().cast());
+                    if !init_data_ptr.is_null() {
+                        libc::free(init_data_ptr.cast());
+                    }
 
                     Self::Array(array_value)
                 }
@@ -567,7 +567,7 @@ impl JitValue {
                 }
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_ref();
-                    let data = Felt::from_bytes_le(data);
+                    let data = Felt::from_bytes_le_slice(data);
                     Self::Felt252(data)
                 }
                 CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),
