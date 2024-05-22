@@ -15,7 +15,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
         starknet::{testing::TestingConcreteLibfunc, StarkNetConcreteLibfunc},
-        ConcreteLibfunc
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -144,9 +144,7 @@ pub fn build<'ctx, 'this>(
             });
             // dbg!(info.branch_signatures());
             dbg!(info.output_types());
-            self::testing::build(
-                context, registry, entry, location, helper, metadata, info,
-            )
+            self::testing::build(context, registry, entry, location, helper, metadata, info)
         }
     }
 }

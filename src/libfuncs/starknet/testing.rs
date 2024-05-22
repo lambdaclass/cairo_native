@@ -42,6 +42,9 @@ pub fn build<'ctx, 'this>(
     let selector_str = std::str::from_utf8(selector_bytes).unwrap();
 
     dbg!(selector_str);
+
+    // TODO(juanbono): save the selector and the span to memory (check keccak syscall)
+
     // Extract self pointer.
     // let ptr = entry
     //     .append_operation(llvm::load(
@@ -74,6 +77,11 @@ pub fn build<'ctx, 'this>(
                 selector.branch_signatures()[0].vars[0].ty.clone(),
             ],
         )?;
+
+    dbg!(result_layout);
+    dbg!(result_tag_ty);
+    dbg!(result_tag_layout);
+    dbg!(&variant_tys);
 
     let u64_type = IntegerType::new(context, 64);
     let u8_type = IntegerType::new(context, 8);
@@ -122,40 +130,6 @@ pub fn build<'ctx, 'this>(
         .result(0)?
         .into();
 
-    // let result_ptr = helper
-    //     .init_block()
-    //     .append_operation(
-    //         OperationBuilder::new("llvm.alloca", location)
-    //             .add_attributes(&[
-    //                 (
-    //                     Identifier::new(context, "alignment"),
-    //                     IntegerAttribute::new(u64_type.into(), result_layout.align().try_into()?)
-    //                         .into(),
-    //                 ),
-    //                 (
-    //                     Identifier::new(context, "elem_type"),
-    //                     TypeAttribute::new(llvm::r#type::r#struct(
-    //                         context,
-    //                         &[
-    //                             result_tag_ty,
-    //                             llvm::r#type::array(
-    //                                 u8_type.into(),
-    //                                 (result_layout.size() - 1).try_into()?,
-    //                             ),
-    //                         ],
-    //                         false,
-    //                     ))
-    //                     .into(),
-    //                 ),
-    //             ])
-    //             .add_operands(&[const_1])
-    //             .add_results(&[llvm::r#type::opaque_pointer(context)])
-    //             .build()?,
-    //     )
-    //     .result(0)?
-    //     .into();
-
-    // dbg!("allocating space for gas builtin");
     // Allocate space and write the current gas.
 
     dbg!("matching selector");
@@ -180,6 +154,7 @@ pub fn build<'ctx, 'this>(
                 ),
                 0,
             );
+            eprintln!("######## {array_arg_ptr_ty}");
             dbg!("array_arg_ptr");
             let array_arg_ptr = helper
                 .init_block()
@@ -227,8 +202,8 @@ pub fn build<'ctx, 'this>(
                         context,
                         &[StarknetSyscallHandlerCallbacks::<()>::CHEATCODE.try_into()?],
                     ),
-                    llvm::r#type::opaque_pointer(context),
-                    llvm::r#type::opaque_pointer(context),
+                    llvm::r#type::opaque_pointer(context), // type elem 
+                    llvm::r#type::opaque_pointer(context), // type result
                     location,
                 ))
                 .result(0)?
@@ -383,6 +358,7 @@ pub fn build<'ctx, 'this>(
             //     .into();
 
             dbg!("cond_br");
+            // TODO(juanbono) replace with helper.br
             entry.append_operation(helper.cond_br(
                 context,
                 result_tag,

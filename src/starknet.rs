@@ -701,7 +701,7 @@ pub(crate) mod handler {
         cheatcode: extern "C" fn(
             result_ptr: &mut ArrayAbi<Felt252Abi>,
             ptr: &mut T,
-            // gas: &mut u128,
+            selector: &Felt252Abi,
             input: &ArrayAbi<Felt252Abi>,
         ),
     }
@@ -834,6 +834,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_cheatcode(
             result_ptr: &mut ArrayAbi<Felt252Abi>,
             ptr: &mut T,
+            selector: &Felt252Abi,
             input: &ArrayAbi<Felt252Abi>,
         ) {
             let input: Vec<_> = unsafe {
