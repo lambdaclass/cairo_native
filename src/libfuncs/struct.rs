@@ -34,10 +34,8 @@ pub fn build<'ctx, 'this>(
         StructConcreteLibfunc::Construct(info) => {
             build_construct(context, registry, entry, location, helper, metadata, info)
         }
-        StructConcreteLibfunc::Deconstruct(info) => {
-            build_deconstruct(context, registry, entry, location, helper, metadata, info)
-        }
-        StructConcreteLibfunc::SnapshotDeconstruct(info) => {
+        StructConcreteLibfunc::Deconstruct(info)
+        | StructConcreteLibfunc::SnapshotDeconstruct(info) => {
             build_deconstruct(context, registry, entry, location, helper, metadata, info)
         }
     }

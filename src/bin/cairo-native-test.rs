@@ -226,17 +226,31 @@ pub fn filter_test_cases(
     let named_tests = compiled
         .named_tests
         .into_iter()
-        .map(|(func, mut test)| {
-            // Un-ignoring all the tests in `include-ignored` mode.
-            if include_ignored {
+        .filter(|(name, _)| name.contains(&filter));
+
+    let named_tests = if include_ignored {
+        // enable the ignored tests
+        named_tests
+            .into_iter()
+            .map(|(name, mut test)| {
                 test.ignored = false;
-            }
-            (func, test)
-        })
-        .filter(|(name, _)| name.contains(&filter))
-        // Filtering unignored tests in `ignored` mode
-        .filter(|(_, test)| !ignored || test.ignored)
-        .collect_vec();
+                (name, test)
+            })
+            .collect_vec()
+    } else if ignored {
+        // filter not ignored tests and enable the remaining ones
+        named_tests
+            .into_iter()
+            .map(|(name, mut test)| {
+                test.ignored = !test.ignored;
+                (name, test)
+            })
+            .filter(|(_, test)| !test.ignored)
+            .collect_vec()
+    } else {
+        named_tests.collect_vec()
+    };
+
     let filtered_out = total_tests_count - named_tests.len();
     let tests = TestCompilation {
         named_tests,
@@ -528,21 +542,21 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         &mut self,
         _block_number: u64,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<Felt> {
+    ) -> SyscallResult<Felt> {
         unimplemented!()
     }
 
     fn get_execution_info(
         &mut self,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<cairo_native::starknet::ExecutionInfo> {
+    ) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
         unimplemented!()
     }
 
     fn get_execution_info_v2(
         &mut self,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<cairo_native::starknet::ExecutionInfoV2> {
+    ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV2> {
         unimplemented!()
     }
 
@@ -553,15 +567,11 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         _calldata: &[Felt],
         _deploy_from_zero: bool,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<(Felt, Vec<Felt>)> {
+    ) -> SyscallResult<(Felt, Vec<Felt>)> {
         unimplemented!()
     }
 
-    fn replace_class(
-        &mut self,
-        _class_hash: Felt,
-        _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<()> {
+    fn replace_class(&mut self, _class_hash: Felt, _remaining_gas: &mut u128) -> SyscallResult<()> {
         unimplemented!()
     }
 
@@ -571,7 +581,7 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         _function_selector: Felt,
         _calldata: &[Felt],
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<Vec<Felt>> {
+    ) -> SyscallResult<Vec<Felt>> {
         unimplemented!()
     }
 
@@ -581,7 +591,7 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         _entry_point_selector: Felt,
         _calldata: &[Felt],
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<Vec<Felt>> {
+    ) -> SyscallResult<Vec<Felt>> {
         unimplemented!()
     }
 
@@ -590,7 +600,7 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         _address_domain: u32,
         _address: Felt,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<Felt> {
+    ) -> SyscallResult<Felt> {
         unimplemented!()
     }
 
@@ -600,7 +610,7 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         _address: Felt,
         _value: Felt,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<()> {
+    ) -> SyscallResult<()> {
         unimplemented!()
     }
 
@@ -609,7 +619,7 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         _keys: &[Felt],
         _data: &[Felt],
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<()> {
+    ) -> SyscallResult<()> {
         unimplemented!()
     }
 
@@ -618,15 +628,11 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         _to_address: Felt,
         _payload: &[Felt],
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<()> {
+    ) -> SyscallResult<()> {
         unimplemented!()
     }
 
-    fn keccak(
-        &mut self,
-        input: &[u64],
-        gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<cairo_native::starknet::U256> {
+    fn keccak(&mut self, input: &[u64], gas: &mut u128) -> SyscallResult<U256> {
         let length = input.len();
 
         if length % 17 != 0 {
@@ -663,10 +669,10 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 
     fn secp256k1_new(
         &mut self,
-        x: cairo_native::starknet::U256,
-        y: cairo_native::starknet::U256,
+        x: U256,
+        y: U256,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+    ) -> SyscallResult<Option<Secp256k1Point>> {
         // The following unwraps should be unreachable because the iterator we provide has the
         // expected number of bytes.
         let point = k256::ProjectivePoint::from_encoded_point(
@@ -692,10 +698,10 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 
     fn secp256k1_add(
         &mut self,
-        p0: cairo_native::starknet::Secp256k1Point,
-        p1: cairo_native::starknet::Secp256k1Point,
+        p0: Secp256k1Point,
+        p1: Secp256k1Point,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<cairo_native::starknet::Secp256k1Point> {
+    ) -> SyscallResult<Secp256k1Point> {
         // The inner unwraps should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwraps depend on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
@@ -770,10 +776,10 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 
     fn secp256k1_mul(
         &mut self,
-        p: cairo_native::starknet::Secp256k1Point,
-        m: cairo_native::starknet::U256,
+        p: Secp256k1Point,
+        m: U256,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<cairo_native::starknet::Secp256k1Point> {
+    ) -> SyscallResult<Secp256k1Point> {
         // The inner unwrap should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwrap depends on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
@@ -834,10 +840,10 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 
     fn secp256k1_get_point_from_x(
         &mut self,
-        x: cairo_native::starknet::U256,
+        x: U256,
         y_parity: bool,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<Option<cairo_native::starknet::Secp256k1Point>> {
+    ) -> SyscallResult<Option<Secp256k1Point>> {
         // The inner unwrap should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwrap depends on the encoding format, which should be valid
         // since it's hardcoded..
@@ -885,21 +891,18 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 
     fn secp256k1_get_xy(
         &mut self,
-        p: cairo_native::starknet::Secp256k1Point,
+        p: Secp256k1Point,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<(
-        cairo_native::starknet::U256,
-        cairo_native::starknet::U256,
-    )> {
+    ) -> SyscallResult<(U256, U256)> {
         Ok((p.x, p.y))
     }
 
     fn secp256r1_new(
         &mut self,
-        x: cairo_native::starknet::U256,
-        y: cairo_native::starknet::U256,
+        x: U256,
+        y: U256,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<Option<cairo_native::starknet::Secp256r1Point>> {
+    ) -> SyscallResult<Option<Secp256r1Point>> {
         // The following unwraps should be unreachable because the iterator we provide has the
         // expected number of bytes.
         let point = p256::ProjectivePoint::from_encoded_point(
@@ -925,10 +928,10 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 
     fn secp256r1_add(
         &mut self,
-        p0: cairo_native::starknet::Secp256r1Point,
-        p1: cairo_native::starknet::Secp256r1Point,
+        p0: Secp256r1Point,
+        p1: Secp256r1Point,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<cairo_native::starknet::Secp256r1Point> {
+    ) -> SyscallResult<Secp256r1Point> {
         // The inner unwraps should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwraps depend on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
@@ -1003,10 +1006,10 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 
     fn secp256r1_mul(
         &mut self,
-        p: cairo_native::starknet::Secp256r1Point,
-        m: cairo_native::starknet::U256,
+        p: Secp256r1Point,
+        m: U256,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<cairo_native::starknet::Secp256r1Point> {
+    ) -> SyscallResult<Secp256r1Point> {
         // The inner unwrap should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwrap depends on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
@@ -1067,10 +1070,10 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 
     fn secp256r1_get_point_from_x(
         &mut self,
-        x: cairo_native::starknet::U256,
+        x: U256,
         y_parity: bool,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<Option<cairo_native::starknet::Secp256r1Point>> {
+    ) -> SyscallResult<Option<Secp256r1Point>> {
         let point = p256::ProjectivePoint::from_encoded_point(
             &p256::EncodedPoint::from_bytes(
                 p256::CompressedPoint::from_exact_iter(
@@ -1107,12 +1110,392 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 
     fn secp256r1_get_xy(
         &mut self,
-        p: cairo_native::starknet::Secp256r1Point,
+        p: Secp256r1Point,
         _remaining_gas: &mut u128,
-    ) -> cairo_native::starknet::SyscallResult<(
-        cairo_native::starknet::U256,
-        cairo_native::starknet::U256,
-    )> {
+    ) -> SyscallResult<(U256, U256)> {
         Ok((p.x, p.y))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_secp256k1_get_xy() {
+        let p = Secp256k1Point {
+            x: U256 {
+                hi: 331229800296699308591929724809569456681,
+                lo: 240848751772479376198639683648735950585,
+            },
+            y: U256 {
+                hi: 75181762170223969696219813306313470806,
+                lo: 134255467439736302886468555755295925874,
+            },
+        };
+
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        assert_eq!(
+            test_syscall_handler.secp256k1_get_xy(p, &mut 10).unwrap(),
+            (
+                U256 {
+                    hi: 331229800296699308591929724809569456681,
+                    lo: 240848751772479376198639683648735950585,
+                },
+                U256 {
+                    hi: 75181762170223969696219813306313470806,
+                    lo: 134255467439736302886468555755295925874,
+                }
+            )
+        )
+    }
+
+    #[test]
+    fn test_secp256k1_secp256k1_new() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        let x = U256 {
+            hi: 97179038819393695679,
+            lo: 330631467365974629050427735731901850225,
+        };
+        let y = U256 {
+            hi: 26163136114030451075775058782541084873,
+            lo: 68974579539311638391577168388077592842,
+        };
+
+        assert_eq!(
+            test_syscall_handler.secp256k1_new(x, y, &mut 10).unwrap(),
+            Some(Secp256k1Point { x, y })
+        );
+    }
+
+    #[test]
+    fn test_secp256k1_secp256k1_new_none() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        let x = U256 {
+            hi: 97179038819393695679,
+            lo: 330631467365974629050427735731901850225,
+        };
+        let y = U256 { hi: 0, lo: 0 };
+
+        assert!(test_syscall_handler
+            .secp256k1_new(x, y, &mut 10)
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn test_secp256k1_ssecp256k1_add() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        let p1 = Secp256k1Point {
+            x: U256 {
+                hi: 161825202758953104525843685720298294023,
+                lo: 3468390537006497937951914270391801752,
+            },
+            y: U256 {
+                hi: 96009999919712310848645357523629574312,
+                lo: 336417762351022071123394393598455764152,
+            },
+        };
+
+        let p2 = p1;
+
+        // 2 * P1
+        let p3 = test_syscall_handler.secp256k1_add(p1, p2, &mut 10).unwrap();
+
+        let p1_double = Secp256k1Point {
+            x: U256 {
+                hi: 263210499965038831386353541518668627160,
+                lo: 122909745026270932982812610085084241637,
+            },
+            y: U256 {
+                hi: 35730324229579385338853513728577301230,
+                lo: 329597642124196932058042157271922763050,
+            },
+        };
+        assert_eq!(p3, p1_double);
+        assert_eq!(
+            test_syscall_handler
+                .secp256k1_mul(p1, U256 { hi: 0, lo: 2 }, &mut 10)
+                .unwrap(),
+            p1_double
+        );
+
+        // 3 * P1
+        let three_p1 = Secp256k1Point {
+            x: U256 {
+                hi: 331229800296699308591929724809569456681,
+                lo: 240848751772479376198639683648735950585,
+            },
+            y: U256 {
+                hi: 75181762170223969696219813306313470806,
+                lo: 134255467439736302886468555755295925874,
+            },
+        };
+        assert_eq!(
+            test_syscall_handler.secp256k1_add(p1, p3, &mut 10).unwrap(),
+            three_p1
+        );
+        assert_eq!(
+            test_syscall_handler
+                .secp256k1_mul(p1, U256 { hi: 0, lo: 3 }, &mut 10)
+                .unwrap(),
+            three_p1
+        );
+    }
+
+    #[test]
+    fn test_secp256k1_get_point_from_x_false_yparity() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        assert_eq!(
+            test_syscall_handler
+                .secp256k1_get_point_from_x(
+                    U256 {
+                        hi: 97179038819393695679,
+                        lo: 330631467365974629050427735731901850225,
+                    },
+                    false,
+                    &mut 10
+                )
+                .unwrap()
+                .unwrap(),
+            Secp256k1Point {
+                x: U256 {
+                    hi: 97179038819393695679,
+                    lo: 330631467365974629050427735731901850225,
+                },
+                y: U256 {
+                    hi: 26163136114030451075775058782541084873,
+                    lo: 68974579539311638391577168388077592842
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn test_secp256k1_get_point_from_x_true_yparity() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        assert_eq!(
+            test_syscall_handler
+                .secp256k1_get_point_from_x(
+                    U256 {
+                        hi: 97179038819393695679,
+                        lo: 330631467365974629050427735731901850225,
+                    },
+                    true,
+                    &mut 10
+                )
+                .unwrap()
+                .unwrap(),
+            Secp256k1Point {
+                x: U256 {
+                    hi: 97179038819393695679,
+                    lo: 330631467365974629050427735731901850225,
+                },
+                y: U256 {
+                    hi: 314119230806908012387599548649227126582,
+                    lo: 271307787381626825071797439039395650341
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn test_secp256k1_get_point_from_x_none() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        assert!(test_syscall_handler
+            .secp256k1_get_point_from_x(U256 { hi: 0, lo: 0 }, true, &mut 10)
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn test_secp256r1_new() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        let x = U256 {
+            hi: 97179038819393695679,
+            lo: 330631467365974629050427735731901850225,
+        };
+        let y = U256 {
+            hi: 118910939004298029402109603132816090461,
+            lo: 111045440647474106186537215379882575585,
+        };
+
+        assert_eq!(
+            test_syscall_handler
+                .secp256r1_new(x, y, &mut 10)
+                .unwrap()
+                .unwrap(),
+            Secp256r1Point { x, y }
+        );
+    }
+
+    #[test]
+    fn test_secp256r1_new_none() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        let x = U256 { hi: 0, lo: 0 };
+        let y = U256 { hi: 0, lo: 0 };
+
+        assert!(test_syscall_handler
+            .secp256r1_new(x, y, &mut 10)
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn test_secp256r1_add() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        let p1 = Secp256r1Point {
+            x: U256 {
+                hi: 97179038819393695679,
+                lo: 330631467365974629050427735731901850225,
+            },
+            y: U256 {
+                hi: 118910939004298029402109603132816090461,
+                lo: 111045440647474106186537215379882575585,
+            },
+        };
+
+        let p2 = p1;
+
+        // 2 * P1
+        let p3 = test_syscall_handler.secp256r1_add(p1, p2, &mut 10).unwrap();
+
+        let p1_double = Secp256r1Point {
+            x: U256 {
+                hi: 280079427190737520201067412903899817878,
+                lo: 309339945874468445579793098896656960879,
+            },
+            y: U256 {
+                hi: 84249534056490759701994051847937833933,
+                lo: 231570843221643745062297421862629788481,
+            },
+        };
+        assert_eq!(p3, p1_double);
+        assert_eq!(
+            test_syscall_handler
+                .secp256r1_mul(p1, U256 { hi: 0, lo: 2 }, &mut 10)
+                .unwrap(),
+            p1_double
+        );
+
+        // 3 * P1
+        let three_p1 = Secp256r1Point {
+            x: U256 {
+                hi: 23850518908906170876551962912581992002,
+                lo: 195259625777021303662291420857740525307,
+            },
+            y: U256 {
+                hi: 178681203065513270100417145499857169664,
+                lo: 282344931843342117515389970197013120959,
+            },
+        };
+        assert_eq!(
+            test_syscall_handler.secp256r1_add(p1, p3, &mut 10).unwrap(),
+            three_p1
+        );
+        assert_eq!(
+            test_syscall_handler
+                .secp256r1_mul(p1, U256 { hi: 0, lo: 3 }, &mut 10)
+                .unwrap(),
+            three_p1
+        );
+    }
+
+    #[test]
+    fn test_secp256r1_get_point_from_x_true_yparity() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        let x = U256 {
+            hi: 97179038819393695679,
+            lo: 330631467365974629050427735731901850225,
+        };
+
+        let y = U256 {
+            hi: 118910939004298029402109603132816090461,
+            lo: 111045440647474106186537215379882575585,
+        };
+
+        assert_eq!(
+            test_syscall_handler
+                .secp256r1_get_point_from_x(x, true, &mut 10)
+                .unwrap()
+                .unwrap(),
+            Secp256r1Point { x, y }
+        );
+    }
+
+    #[test]
+    fn test_secp256r1_get_point_from_x_false_yparity() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        let x = U256 {
+            hi: 97179038819393695679,
+            lo: 330631467365974629050427735731901850225,
+        };
+
+        let y = U256 {
+            hi: 221371427837412271565447410779117722274,
+            lo: 229236926352692519791101729645429586206,
+        };
+
+        assert_eq!(
+            test_syscall_handler
+                .secp256r1_get_point_from_x(x, false, &mut 10)
+                .unwrap()
+                .unwrap(),
+            Secp256r1Point { x, y }
+        );
+    }
+
+    #[test]
+    fn test_secp256r1_get_point_from_x_none() {
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        let x = U256 { hi: 0, lo: 10 };
+
+        assert!(test_syscall_handler
+            .secp256r1_get_point_from_x(x, true, &mut 10)
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn test_secp256r1_get_xy() {
+        let p = Secp256r1Point {
+            x: U256 {
+                hi: 97179038819393695679,
+                lo: 330631467365974629050427735731901850225,
+            },
+            y: U256 {
+                hi: 221371427837412271565447410779117722274,
+                lo: 229236926352692519791101729645429586206,
+            },
+        };
+
+        let mut test_syscall_handler = TestSyscallHandler {};
+
+        assert_eq!(
+            test_syscall_handler.secp256r1_get_xy(p, &mut 10).unwrap(),
+            (
+                U256 {
+                    hi: 97179038819393695679,
+                    lo: 330631467365974629050427735731901850225,
+                },
+                U256 {
+                    hi: 221371427837412271565447410779117722274,
+                    lo: 229236926352692519791101729645429586206,
+                }
+            )
+        )
     }
 }

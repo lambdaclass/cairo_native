@@ -206,9 +206,11 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
             value,
             debug_name,
         } => {
-            let debug_name = debug_name.as_ref().expect("missing debug name");
-
-            if debug_name.starts_with("core::panics::PanicResult::") {
+            if debug_name
+                .as_ref()
+                .expect("missing debug name")
+                .starts_with("core::panics::PanicResult::")
+            {
                 is_success = *tag == 0;
 
                 if !is_success {
@@ -247,23 +249,10 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
 }
 
 fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
-    let mut felts = Vec::new();
     match value {
         JitValue::Felt252(felt) => vec![felt.to_bigint().into()],
-        JitValue::Bytes31(_) => todo!(),
-        JitValue::Array(values) => {
-            for value in values {
-                let felt = jitvalue_to_felt(value);
-                felts.extend(felt);
-            }
-            felts
-        }
-        JitValue::Struct { fields, .. } => {
-            for field in fields {
-                let felt = jitvalue_to_felt(field);
-                felts.extend(felt);
-            }
-            felts
+        JitValue::Array(fields) | JitValue::Struct { fields, .. } => {
+            fields.iter().flat_map(jitvalue_to_felt).collect()
         }
         JitValue::Enum {
             value,
@@ -274,16 +263,14 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
                 if debug_name == "core::bool" {
                     vec![(*tag == 1).into()]
                 } else {
-                    felts.push((*tag).into());
-                    let felt = jitvalue_to_felt(value);
-                    felts.extend(felt);
+                    let mut felts = vec![(*tag).into()];
+                    felts.extend(jitvalue_to_felt(value));
                     felts
                 }
             } else {
                 todo!()
             }
         }
-        JitValue::Felt252Dict { .. } => todo!(),
         JitValue::Uint8(x) => vec![(*x).into()],
         JitValue::Uint16(x) => vec![(*x).into()],
         JitValue::Uint32(x) => vec![(*x).into()],
@@ -294,10 +281,347 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
         JitValue::Sint32(x) => vec![(*x).into()],
         JitValue::Sint64(x) => vec![(*x).into()],
         JitValue::Sint128(x) => vec![(*x).into()],
-        JitValue::EcPoint(_, _) => todo!(),
-        JitValue::EcState(_, _, _, _) => todo!(),
-        JitValue::Secp256K1Point { .. } => todo!(),
-        JitValue::Secp256R1Point { .. } => todo!(),
         JitValue::Null => vec![0.into()],
+        JitValue::Bytes31(_)
+        | JitValue::EcPoint(_, _)
+        | JitValue::EcState(_, _, _, _)
+        | JitValue::Secp256K1Point { .. }
+        | JitValue::Secp256R1Point { .. }
+        | JitValue::Felt252Dict { .. } => todo!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cairo_felt::Felt252;
+    use cairo_lang_sierra::ProgramParser;
+
+    #[test]
+    fn test_check_compiler_path() {
+        // Define file, folder, and invalid paths for testing
+        let file_path = Path::new("src/bin/cairo-native-run.rs");
+        let folder_path = Path::new("src/bin");
+        let invalid_path = Path::new("src/non-existing-file.rs");
+
+        // Test when single_file is true and the path is a file
+        assert!(check_compiler_path(true, file_path).is_ok());
+
+        // Test when single_file is false and the path is a file
+        assert!(check_compiler_path(false, file_path).is_err());
+
+        // Test when single_file is true and the path is a folder
+        assert!(check_compiler_path(true, folder_path).is_err());
+
+        // Test when single_file is false and the path is a folder
+        assert!(check_compiler_path(false, folder_path).is_ok());
+
+        // Test when single_file is true and the path does not exist
+        assert!(check_compiler_path(true, invalid_path).is_err());
+
+        // Test when single_file is false and the path does not exist
+        assert!(check_compiler_path(false, invalid_path).is_err());
+    }
+
+    #[test]
+    fn test_find_function() {
+        // Parse a simple program containing a function named "Func2"
+        let program = ProgramParser::new().parse("Func2@6() -> ();").unwrap();
+
+        // Assert that the function "Func2" is found and returned correctly
+        assert_eq!(
+            find_function(&program, "Func2").unwrap(),
+            program.funcs.first().unwrap()
+        );
+
+        // Assert that an error is returned when trying to find a non-existing function "Func3"
+        assert!(find_function(&program, "Func3").is_err());
+
+        // Assert that an error is returned when trying to find a function in an empty program
+        assert!(find_function(&ProgramParser::new().parse("").unwrap(), "Func2").is_err());
+    }
+
+    #[test]
+    fn test_result_to_runresult_enum_nonpanic() {
+        // Tests the conversion of a non-panic enum result to a `RunResultValue::Success`.
+        assert_eq!(
+            result_to_runresult(&ExecutionResult {
+                remaining_gas: None,
+                return_value: JitValue::Enum {
+                    tag: 34,
+                    value: JitValue::Array(vec![
+                        JitValue::Felt252(42.into()),
+                        JitValue::Uint8(100),
+                        JitValue::Uint128(1000),
+                    ])
+                    .into(),
+                    debug_name: Some("debug_name".into()),
+                },
+                builtin_stats: Default::default(),
+            })
+            .unwrap(),
+            RunResultValue::Success(vec![
+                Felt252::from(34),
+                Felt252::from(42),
+                Felt252::from(100),
+                Felt252::from(1000)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_result_to_runresult_success() {
+        // Tests the conversion of a success enum result to a `RunResultValue::Success`.
+        assert_eq!(
+            result_to_runresult(&ExecutionResult {
+                remaining_gas: None,
+                return_value: JitValue::Enum {
+                    tag: 0,
+                    value: JitValue::Uint64(24).into(),
+                    debug_name: Some("core::panics::PanicResult::Test".into()),
+                },
+                builtin_stats: Default::default(),
+            })
+            .unwrap(),
+            RunResultValue::Success(vec![Felt252::from(24)])
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "unsuported return value in cairo-native")]
+    fn test_result_to_runresult_panic() {
+        // Tests the conversion with unsuported return value.
+        let _ = result_to_runresult(&ExecutionResult {
+            remaining_gas: None,
+            return_value: JitValue::Enum {
+                tag: 10,
+                value: JitValue::Uint64(24).into(),
+                debug_name: Some("core::panics::PanicResult::Test".into()),
+            },
+            builtin_stats: Default::default(),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "missing debug name")]
+    fn test_result_to_runresult_missing_debug_name() {
+        // Tests the conversion with no debug name.
+        let _ = result_to_runresult(&ExecutionResult {
+            remaining_gas: None,
+            return_value: JitValue::Enum {
+                tag: 10,
+                value: JitValue::Uint64(24).into(),
+                debug_name: None,
+            },
+            builtin_stats: Default::default(),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn test_result_to_runresult_return() {
+        // Tests the conversion of a panic enum result with non-zero tag to a `RunResultValue::Panic`.
+        assert_eq!(
+            result_to_runresult(&ExecutionResult {
+                remaining_gas: None,
+                return_value: JitValue::Enum {
+                    tag: 10,
+                    value: JitValue::Struct {
+                        fields: vec![
+                            JitValue::Felt252(42.into()),
+                            JitValue::Uint8(100),
+                            JitValue::Uint128(1000),
+                        ],
+                        debug_name: Some("debug_name".into()),
+                    }
+                    .into(),
+                    debug_name: Some("core::panics::PanicResult::Test".into()),
+                },
+                builtin_stats: Default::default(),
+            })
+            .unwrap(),
+            RunResultValue::Panic(vec![
+                Felt252::from(42),
+                Felt252::from(100),
+                Felt252::from(1000)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_result_to_runresult_non_enum() {
+        // Tests the conversion of a non-enum result to a `RunResultValue::Success`.
+        assert_eq!(
+            result_to_runresult(&ExecutionResult {
+                remaining_gas: None,
+                return_value: JitValue::Uint8(10),
+                builtin_stats: Default::default(),
+            })
+            .unwrap(),
+            RunResultValue::Success(vec![Felt252::from(10)])
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_felt252() {
+        let felt_value: Felt = 42.into();
+
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Felt252(felt_value)),
+            vec![felt_value]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_array() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Array(vec![
+                JitValue::Felt252(42.into()),
+                JitValue::Uint8(100),
+                JitValue::Uint128(1000),
+            ])),
+            vec![Felt::from(42), Felt::from(100), Felt::from(1000)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_struct() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Struct {
+                fields: vec![
+                    JitValue::Felt252(42.into()),
+                    JitValue::Uint8(100),
+                    JitValue::Uint128(1000)
+                ],
+                debug_name: Some("debug_name".into())
+            }),
+            vec![Felt::from(42), Felt::from(100), Felt::from(1000)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_enum() {
+        // With debug name
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Enum {
+                tag: 34,
+                value: JitValue::Array(vec![
+                    JitValue::Felt252(42.into()),
+                    JitValue::Uint8(100),
+                    JitValue::Uint128(1000),
+                ])
+                .into(),
+                debug_name: Some("debug_name".into())
+            }),
+            vec![
+                Felt::from(34),
+                Felt::from(42),
+                Felt::from(100),
+                Felt::from(1000)
+            ]
+        );
+
+        // With core::bool debug name and tag 1
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Enum {
+                tag: 1,
+                value: JitValue::Uint128(1000).into(),
+                debug_name: Some("core::bool".into())
+            }),
+            vec![Felt::ONE]
+        );
+
+        // With core::bool debug name and tag not 1
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Enum {
+                tag: 10,
+                value: JitValue::Uint128(1000).into(),
+                debug_name: Some("core::bool".into())
+            }),
+            vec![Felt::ZERO]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_u8() {
+        assert_eq!(jitvalue_to_felt(&JitValue::Uint8(10)), vec![Felt::from(10)]);
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_u16() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Uint16(100)),
+            vec![Felt::from(100)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_u32() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Uint32(1000)),
+            vec![Felt::from(1000)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_u64() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Uint64(10000)),
+            vec![Felt::from(10000)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_u128() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Uint128(100000)),
+            vec![Felt::from(100000)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_sint8() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Sint8(-10)),
+            vec![Felt::from(-10)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_sint16() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Sint16(-100)),
+            vec![Felt::from(-100)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_sint32() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Sint32(-1000)),
+            vec![Felt::from(-1000)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_sint64() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Sint64(-10000)),
+            vec![Felt::from(-10000)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_sint128() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Sint128(-100000)),
+            vec![Felt::from(-100000)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_null() {
+        assert_eq!(jitvalue_to_felt(&JitValue::Null), vec![Felt::ZERO]);
     }
 }

@@ -75,8 +75,8 @@ tracing-subscriber = { version = "0.3", features = [
 ], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 anyhow = { version = "1.0", optional = true }
-cairo-lang-test-plugin = { version = "2.6.3", optional = true}
-cairo-lang-runner = { version = "2.6.3", optional = true}
+cairo-lang-test-plugin = { version = "2.6.3", optional = true }
+cairo-lang-runner = { version = "2.6.3", optional = true }
 colored = { version = "2.1.0", optional = true }
 # needed to interface with cairo-lang-*
 cairo-felt = { version = "0.9.1", optional = true }
@@ -88,6 +88,7 @@ sec1 = { version = "0.7.3", optional = true }
 [dev-dependencies]
 cairo-felt = "0.9.1"
 cairo-lang-runner = "2.6.3"
+cairo-lang-semantic = { version = "2.6.3", features = ["testing"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.7"
 pretty_assertions_sorted = "1.2.3"
@@ -96,7 +97,6 @@ rstest = "0.19.0"
 test-case = "3.3"
 walkdir = "2"
 serde_json = { version = "1.0" }
-cairo-lang-semantic = { version = "2.5.4", features = ["testing"] }
 
 [build-dependencies]
 cc = "1.0.95"

@@ -1,3 +1,8 @@
+//! # FFI Wrappers
+//!
+//! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
+//! APIs that are missing from melior.
+
 use crate::error::Error as CompileError;
 use llvm_sys::{
     core::{
@@ -73,6 +78,7 @@ pub fn get_mlir_layout(mlir_module: &Module, type_mlir: Type) -> Layout {
     }
 }
 
+/// A error from the LLVM API.
 #[derive(Debug, Clone)]
 pub struct LLVMCompileError(String);
 
@@ -85,6 +91,7 @@ impl Display for LLVMCompileError {
     }
 }
 
+/// Optimization levels.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OptLevel {
     None,
@@ -127,7 +134,7 @@ impl From<u8> for OptLevel {
     }
 }
 
-/// Make sure to call
+/// Converts a MLIR module to a compile object, that can be linked with a linker.
 pub fn module_to_object(
     module: &Module<'_>,
     opt_level: OptLevel,
@@ -221,6 +228,7 @@ pub fn module_to_object(
     }
 }
 
+/// Links the passed object into a shared library, stored on the given path.
 pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(), std::io::Error> {
     // linker seems to need a file and doesn't accept stdin
     let mut file = NamedTempFile::new()?;
@@ -299,6 +307,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
     }
 }
 
+/// Gets the target triple, which identifies the platform and ABI.
 pub fn get_target_triple() -> String {
     let target_triple = unsafe {
         let value = LLVMGetDefaultTargetTriple();
@@ -307,6 +316,9 @@ pub fn get_target_triple() -> String {
     target_triple
 }
 
+/// Gets the data layout reprrsentation as a string, to be given to the MLIR module.
+/// LLVM uses this to know the proper alignments for the given sizes, etc.
+/// This function gets the data layout of the host target triple.
 pub fn get_data_layout_rep() -> Result<String, CompileError> {
     unsafe {
         let mut null = null_mut();
@@ -347,5 +359,45 @@ pub fn get_data_layout_rep() -> Result<String, CompileError> {
         let data_layout_str =
             CStr::from_ptr(llvm_sys::target::LLVMCopyStringRepOfTargetData(data_layout));
         Ok(data_layout_str.to_string_lossy().into_owned())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_opt_level_default() {
+        // Asserts that the default implementation of `OptLevel` returns `OptLevel::Default`.
+        assert_eq!(OptLevel::default(), OptLevel::Default);
+
+        // Asserts that converting from usize value 2 returns `OptLevel::Default`.
+        assert_eq!(OptLevel::from(2usize), OptLevel::Default);
+
+        // Asserts that converting from u8 value 2 returns `OptLevel::Default`.
+        assert_eq!(OptLevel::from(2u8), OptLevel::Default);
+    }
+
+    #[test]
+    fn test_opt_level_conversion() {
+        // Test conversion from usize to OptLevel
+        assert_eq!(OptLevel::from(0usize), OptLevel::None);
+        assert_eq!(OptLevel::from(1usize), OptLevel::Less);
+        assert_eq!(OptLevel::from(2usize), OptLevel::Default);
+        assert_eq!(OptLevel::from(3usize), OptLevel::Aggressive);
+        assert_eq!(OptLevel::from(30usize), OptLevel::Aggressive);
+
+        // Test conversion from OptLevel to usize
+        assert_eq!(usize::from(OptLevel::None), 0usize);
+        assert_eq!(usize::from(OptLevel::Less), 1usize);
+        assert_eq!(usize::from(OptLevel::Default), 2usize);
+        assert_eq!(usize::from(OptLevel::Aggressive), 3usize);
+
+        // Test conversion from u8 to OptLevel
+        assert_eq!(OptLevel::from(0u8), OptLevel::None);
+        assert_eq!(OptLevel::from(1u8), OptLevel::Less);
+        assert_eq!(OptLevel::from(2u8), OptLevel::Default);
+        assert_eq!(OptLevel::from(3u8), OptLevel::Aggressive);
+        assert_eq!(OptLevel::from(30u8), OptLevel::Aggressive);
     }
 }
