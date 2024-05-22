@@ -357,19 +357,26 @@ impl<'a> ArgumentMapper<'a> {
         &self.invoke_data
     }
 
-    #[cfg_attr(target_arch = "x86_64", allow(unused_mut))]
     pub fn push_aligned(&mut self, align: usize, mut values: &[u64]) {
         assert!(align.is_power_of_two());
         assert!(align <= 16);
 
+        #[cfg(target_arch = "x86_64")]
+        const NUM_REGISTER_ARGS: usize = 6;
+        #[cfg(not(target_arch = "x86_64"))]
+        const NUM_REGISTER_ARGS: usize = 8;
+
         if align == 16 {
             // This works because on both aarch64 and x86_64 the stack is already aligned to
             // 16 bytes when the trampoline starts pushing values.
-            if self.invoke_data.len() >= 8 {
+
+            // Whenever a value spans across multiple registers, if it's in a position where it would be split between 
+            // registers and the stack it must be padded so that the entire value is stored within the stack.
+            if self.invoke_data.len() >= NUM_REGISTER_ARGS {
                 if self.invoke_data.len() & 1 != 0 {
                     self.invoke_data.push(0);
                 }
-            } else if self.invoke_data.len() + 1 >= 8 {
+            } else if self.invoke_data.len() + 1 >= NUM_REGISTER_ARGS {
                 self.invoke_data.push(0);
             } else {
                 let new_len = self.invoke_data.len() + values.len();
@@ -380,8 +387,8 @@ impl<'a> ArgumentMapper<'a> {
                     } else {
                         (values, [].as_slice())
                     };
-                    self.invoke_data.push(0);
                     self.invoke_data.extend(chunk);
+                    self.invoke_data.push(0);
                 }
             }
         }
