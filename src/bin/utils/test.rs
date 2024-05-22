@@ -22,6 +22,7 @@ use itertools::Itertools;
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::elliptic_curve::{generic_array::GenericArray, sec1::FromEncodedPoint};
 use num_traits::ToPrimitive;
+#[cfg(feature = "scarb")]
 use scarb_metadata::{PackageMetadata, TargetMetadata};
 use sec1::point::Coordinates;
 use starknet_types_core::felt::Felt;
@@ -50,6 +51,7 @@ enum TestStatus {
 }
 
 /// Find all testable targets in the Scarb package.
+#[cfg(feature = "scarb")]
 pub fn find_testable_targets(package: &PackageMetadata) -> Vec<&TargetMetadata> {
     package
         .targets

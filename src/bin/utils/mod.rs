@@ -62,28 +62,39 @@ pub fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResult
     let mut felts: Vec<Felt> = Vec::new();
 
     match &result.return_value {
-        JitValue::Enum { tag, value, .. } => {
-            is_success = *tag == 0;
+        outer_value @ JitValue::Enum {
+            tag,
+            value,
+            debug_name,
+        } => {
+            if debug_name
+                .as_ref()
+                .expect("missing debug name")
+                .starts_with("core::panics::PanicResult::")
+            {
+                is_success = *tag == 0;
 
-            if !is_success {
-                match &**value {
-                    JitValue::Struct { fields, .. } => {
-                        for field in fields {
-                            let felt = jitvalue_to_felt(field);
-                            felts.extend(felt);
+                if !is_success {
+                    match &**value {
+                        JitValue::Struct { fields, .. } => {
+                            for field in fields {
+                                let felt = jitvalue_to_felt(field);
+                                felts.extend(felt);
+                            }
                         }
+                        _ => bail!("unsuported return value in cairo-native"),
                     }
-                    _ => bail!(
-                        "unsuported return value in cairo-native (inside enum): {:#?}",
-                        value
-                    ),
+                } else {
+                    felts.extend(jitvalue_to_felt(value));
                 }
+            } else {
+                is_success = true;
+                felts.extend(jitvalue_to_felt(outer_value));
             }
         }
-        value => {
+        x => {
             is_success = true;
-            let felt = jitvalue_to_felt(value);
-            felts.extend(felt);
+            felts.extend(jitvalue_to_felt(x));
         }
     }
 
@@ -103,22 +114,26 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
     let mut felts = Vec::new();
     match value {
         JitValue::Felt252(felt) => vec![felt.to_bigint().into()],
-        JitValue::Bytes31(_) => todo!(),
-        JitValue::Array(values) => {
-            for value in values {
-                let felt = jitvalue_to_felt(value);
-                felts.extend(felt);
-            }
-            felts
+        JitValue::Array(fields) | JitValue::Struct { fields, .. } => {
+            fields.iter().flat_map(jitvalue_to_felt).collect()
         }
-        JitValue::Struct { fields, .. } => {
-            for field in fields {
-                let felt = jitvalue_to_felt(field);
-                felts.extend(felt);
+        JitValue::Enum {
+            value,
+            tag,
+            debug_name,
+        } => {
+            if let Some(debug_name) = debug_name {
+                if debug_name == "core::bool" {
+                    vec![(*tag == 1).into()]
+                } else {
+                    let mut felts = vec![(*tag).into()];
+                    felts.extend(jitvalue_to_felt(value));
+                    felts
+                }
+            } else {
+                todo!()
             }
-            felts
         }
-        JitValue::Enum { .. } => todo!(),
         JitValue::Felt252Dict { value, .. } => {
             for (key, value) in value {
                 felts.push(*key);
@@ -138,10 +153,11 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
         JitValue::Sint32(x) => vec![(*x).into()],
         JitValue::Sint64(x) => vec![(*x).into()],
         JitValue::Sint128(x) => vec![(*x).into()],
-        JitValue::EcPoint(_, _) => todo!(),
-        JitValue::EcState(_, _, _, _) => todo!(),
-        JitValue::Secp256K1Point { .. } => todo!(),
-        JitValue::Secp256R1Point { .. } => todo!(),
+        JitValue::Bytes31(_)
+        | JitValue::EcPoint(_, _)
+        | JitValue::EcState(_, _, _, _)
+        | JitValue::Secp256K1Point { .. }
+        | JitValue::Secp256R1Point { .. } => todo!(),
         JitValue::Null => vec![0.into()],
     }
 }
