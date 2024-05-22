@@ -458,7 +458,6 @@ fn get_execution_info() {
 }
 
 #[test]
-#[ignore = "failing"]
 fn get_execution_info_v2() {
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
