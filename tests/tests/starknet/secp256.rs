@@ -1171,7 +1171,6 @@ fn secp256k1_get_xy() {
 }
 
 #[test]
-#[ignore = "todo: fails on llvm 18"]
 fn secp256r1_new() {
     let mut syscall_handler = SyscallHandler {
         secp256r1_new: (

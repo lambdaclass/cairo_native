@@ -1782,7 +1782,7 @@ pub fn build_r1_new<'ctx, 'this>(
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
-        x_arg_ptr,
+        y_arg_ptr,
         location,
         LoadStoreOptions::default(),
     ));
