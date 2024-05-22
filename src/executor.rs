@@ -643,7 +643,7 @@ fn parse_result(
             Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
             None => {
                 #[cfg(target_arch = "x86_64")]
-                let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+                unreachable!();
 
                 #[cfg(target_arch = "aarch64")]
                 let value =
@@ -658,7 +658,7 @@ fn parse_result(
             Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
             None => {
                 #[cfg(target_arch = "x86_64")]
-                let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+                unreachable!();
 
                 #[cfg(target_arch = "aarch64")]
                 let value = JitValue::Bytes31(unsafe {
