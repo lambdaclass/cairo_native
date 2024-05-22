@@ -1,5 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/libfuncs/felt252.rs`."><title>felt252.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/libfuncs/felt252.rs`."><title>felt252.rs - source</title><script> if (window.location.protocol !== "file:") document.write(`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2">`)</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0 (9b00956e5 2024-04-29)" data-channel="1.78.0" data-search-js="search-42d8da7a6b9792c2.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-12cf3b4f4f9dc36d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../cairo_native/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -777,27 +778,6 @@
 <a href="#776" id="776">776</a>
 <a href="#777" id="777">777</a>
 <a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
-<a href="#780" id="780">780</a>
-<a href="#781" id="781">781</a>
-<a href="#782" id="782">782</a>
-<a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -938,7 +918,7 @@
                 .ok_or(Error::MissingMetadata)<span class="question-mark">?</span>;
 
             <span class="comment">// TODO: Ensure that the constant is on the correct side of the operation.
-            </span><span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
+            </span><span class="macro">mlir_asm!</span> { context, entry, location =&gt;
                 ; rhs = <span class="string">"arith.constant"</span>() { <span class="string">"value" </span>= attr_c } : () -&gt; felt252_ty
             }
 
@@ -948,7 +928,7 @@
 
     <span class="kw">let </span>result = <span class="kw">match </span>op {
         Felt252BinaryOperator::Add =&gt; {
-            <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
+            <span class="macro">mlir_asm!</span> { context, entry, location =&gt;
                 ; lhs = <span class="string">"arith.extui"</span>(lhs) : (felt252_ty) -&gt; i256
                 ; rhs = <span class="string">"arith.extui"</span>(rhs) : (felt252_ty) -&gt; i256
                 ; result = <span class="string">"arith.addi"</span>(lhs, rhs) : (i256, i256) -&gt; i256
@@ -964,7 +944,7 @@
             result
         }
         Felt252BinaryOperator::Sub =&gt; {
-            <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
+            <span class="macro">mlir_asm!</span> { context, entry, location =&gt;
                 ; lhs = <span class="string">"arith.extui"</span>(lhs) : (felt252_ty) -&gt; i256
                 ; rhs = <span class="string">"arith.extui"</span>(rhs) : (felt252_ty) -&gt; i256
                 ; result = <span class="string">"arith.subi"</span>(lhs, rhs) : (i256, i256) -&gt; i256
@@ -980,7 +960,7 @@
             result
         }
         Felt252BinaryOperator::Mul =&gt; {
-            <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
+            <span class="macro">mlir_asm!</span> { context, entry, location =&gt;
                 ; lhs = <span class="string">"arith.extui"</span>(lhs) : (felt252_ty) -&gt; i512
                 ; rhs = <span class="string">"arith.extui"</span>(rhs) : (felt252_ty) -&gt; i512
                 ; result = <span class="string">"arith.muli"</span>(lhs, rhs) : (i512, i512) -&gt; i512
@@ -1170,7 +1150,7 @@
                 .result(<span class="number">0</span>)<span class="question-mark">?
                 </span>.into();
             <span class="comment">// Apply modulo and convert result to felt252
-            </span><span class="macro">mlir_asm! </span>{ context, inverse_result_block, location =&gt;
+            </span><span class="macro">mlir_asm!</span> { context, inverse_result_block, location =&gt;
                 ; result_mod = <span class="string">"arith.remui"</span>(result, prime) : (i512, i512) -&gt; i512
                 ; is_out_of_range = <span class="string">"arith.cmpi"</span>(result, prime) { <span class="string">"predicate" </span>= attr_cmp_uge } : (i512, i512) -&gt; bool_ty
 
@@ -1221,7 +1201,7 @@
     <span class="kw">let </span>attr_c = Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : {felt252_ty}"</span>))
         .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>;
 
-    <span class="macro">mlir_asm! </span>{ context, entry, location =&gt;
+    <span class="macro">mlir_asm!</span> { context, entry, location =&gt;
         ; k0 = <span class="string">"arith.constant"</span>() { <span class="string">"value" </span>= attr_c } : () -&gt; felt252_ty
     }
 
@@ -1271,20 +1251,27 @@
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
 
-    <span class="macro">lazy_static! </span>{
-        <span class="kw">static </span><span class="kw-2">ref </span>FELT252_ADD: (String, Program) = <span class="macro">load_cairo! </span>{
+    <span class="macro">lazy_static!</span> {
+        <span class="kw">static </span><span class="kw-2">ref </span>FELT252_ADD: (String, Program) = <span class="macro">load_cairo!</span> {
+            <span class="kw">use </span>core::debug::PrintTrait;
             <span class="kw">fn </span>run_test(lhs: felt252, rhs: felt252) -&gt; felt252 {
-                lhs + rhs
+                lhs.print();
+                rhs.print();
+                <span class="kw">let </span>result = lhs + rhs;
+
+    result.print();
+
+    result
             }
         };
 
-        <span class="kw">static </span><span class="kw-2">ref </span>FELT252_SUB: (String, Program) = <span class="macro">load_cairo! </span>{
+        <span class="kw">static </span><span class="kw-2">ref </span>FELT252_SUB: (String, Program) = <span class="macro">load_cairo!</span> {
             <span class="kw">fn </span>run_test(lhs: felt252, rhs: felt252) -&gt; felt252 {
                 lhs - rhs
             }
         };
 
-        <span class="kw">static </span><span class="kw-2">ref </span>FELT252_MUL: (String, Program) = <span class="macro">load_cairo! </span>{
+        <span class="kw">static </span><span class="kw-2">ref </span>FELT252_MUL: (String, Program) = <span class="macro">load_cairo!</span> {
             <span class="kw">fn </span>run_test(lhs: felt252, rhs: felt252) -&gt; felt252 {
                 lhs * rhs
             }
@@ -1297,13 +1284,13 @@
         // TODO: Add test program for `felt252_mul_const`.
         // TODO: Add test program for `felt252_div_const`.
 
-        </span><span class="kw">static </span><span class="kw-2">ref </span>FELT252_CONST: (String, Program) = <span class="macro">load_cairo! </span>{
+        </span><span class="kw">static </span><span class="kw-2">ref </span>FELT252_CONST: (String, Program) = <span class="macro">load_cairo!</span> {
             <span class="kw">fn </span>run_test() -&gt; (felt252, felt252, felt252, felt252) {
                 (<span class="number">0</span>, <span class="number">1</span>, -<span class="number">2</span>, -<span class="number">1</span>)
             }
         };
 
-        <span class="kw">static </span><span class="kw-2">ref </span>FELT252_IS_ZERO: (String, Program) = <span class="macro">load_cairo! </span>{
+        <span class="kw">static </span><span class="kw-2">ref </span>FELT252_IS_ZERO: (String, Program) = <span class="macro">load_cairo!</span> {
             <span class="kw">fn </span>run_test(x: felt252) -&gt; felt252 {
                 <span class="kw">match </span>x {
                     <span class="number">0 </span>=&gt; <span class="number">1</span>,
@@ -1311,28 +1298,6 @@
                 }
             }
         };
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>felt252_add_new() {
-        run_program_assert_output(
-            <span class="kw-2">&amp;</span>FELT252_ADD,
-            <span class="string">"run_test"</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"0"</span>)],
-            JitValue::felt_str(<span class="string">"0"</span>),
-        );
-        run_program_assert_output(
-            <span class="kw-2">&amp;</span>FELT252_ADD,
-            <span class="string">"run_test"</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"1"</span>)],
-            JitValue::felt_str(<span class="string">"1"</span>),
-        );
-        run_program_assert_output(
-            <span class="kw-2">&amp;</span>FELT252_ADD,
-            <span class="string">"run_test"</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"0"</span>)],
-            JitValue::felt_str(<span class="string">"0"</span>),
-        );
     }
 
     <span class="attr">#[test]
@@ -1346,14 +1311,8 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>FELT252_ADD,
             <span class="string">"run_test"</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"1"</span>)],
-            JitValue::felt_str(<span class="string">"1"</span>),
-        );
-        run_program_assert_output(
-            <span class="kw-2">&amp;</span>FELT252_ADD,
-            <span class="string">"run_test"</span>,
-            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"0"</span>), JitValue::felt_str(<span class="string">"0"</span>)],
-            JitValue::felt_str(<span class="string">"0"</span>),
+            <span class="kw-2">&amp;</span>[JitValue::felt_str(<span class="string">"1"</span>), JitValue::felt_str(<span class="string">"2"</span>)],
+            JitValue::felt_str(<span class="string">"3"</span>),
         );
 
         <span class="kw">fn </span>r(lhs: JitValue, rhs: JitValue) -&gt; JitValue {

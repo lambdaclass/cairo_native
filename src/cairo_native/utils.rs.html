@@ -1,5 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/utils.rs`."><title>utils.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/utils.rs`."><title>utils.rs - source</title><script> if (window.location.protocol !== "file:") document.write(`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2">`)</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0 (9b00956e5 2024-04-29)" data-channel="1.78.0" data-search-js="search-42d8da7a6b9792c2.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-12cf3b4f4f9dc36d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../cairo_native/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1437,18 +1438,6 @@
 <a href="#1436" id="1436">1436</a>
 <a href="#1437" id="1437">1437</a>
 <a href="#1438" id="1438">1438</a>
-<a href="#1439" id="1439">1439</a>
-<a href="#1440" id="1440">1440</a>
-<a href="#1441" id="1441">1441</a>
-<a href="#1442" id="1442">1442</a>
-<a href="#1443" id="1443">1443</a>
-<a href="#1444" id="1444">1444</a>
-<a href="#1445" id="1445">1445</a>
-<a href="#1446" id="1446">1446</a>
-<a href="#1447" id="1447">1447</a>
-<a href="#1448" id="1448">1448</a>
-<a href="#1449" id="1449">1449</a>
-<a href="#1450" id="1450">1450</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1505,17 +1494,9 @@
 
 <span class="doccomment">/// Return the layout for an integer of arbitrary width.
 ///
-/// This assumes the platform's maximum (effective) alignment is 8 bytes, and that every integer
+/// This assumes the platform's maximum (effective) alignment is 16 bytes, and that every integer
 /// with a size in bytes of a power of two has the same alignment as its size.
 </span><span class="kw">pub fn </span>get_integer_layout(width: u32) -&gt; Layout {
-    <span class="comment">// TODO: Fix integer layouts properly.
-    </span><span class="kw">if </span>width == <span class="number">248 </span>|| width == <span class="number">252 </span>|| width == <span class="number">256 </span>{
-        <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
-        </span><span class="kw">return </span>Layout::from_size_align(<span class="number">32</span>, <span class="number">8</span>).unwrap();
-        <span class="attr">#[cfg(not(target_arch = <span class="string">"x86_64"</span>))]
-        </span><span class="kw">return </span>Layout::from_size_align(<span class="number">32</span>, <span class="number">16</span>).unwrap();
-    }
-
     <span class="kw">if </span>width == <span class="number">0 </span>{
         Layout::new::&lt;()&gt;()
     } <span class="kw">else if </span>width &lt;= <span class="number">8 </span>{
@@ -1527,14 +1508,17 @@
     } <span class="kw">else if </span>width &lt;= <span class="number">64 </span>{
         Layout::new::&lt;u64&gt;()
     } <span class="kw">else if </span>width &lt;= <span class="number">128 </span>{
-        Layout::new::&lt;u128&gt;()
-    } <span class="kw">else </span>{
-        <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
-        </span><span class="kw">let </span>value = Layout::array::&lt;u64&gt;(next_multiple_of_u32(width, <span class="number">64</span>) <span class="kw">as </span>usize &gt;&gt; <span class="number">6</span>).unwrap();
         <span class="attr">#[cfg(not(target_arch = <span class="string">"x86_64"</span>))]
-        </span><span class="kw">let </span>value = Layout::array::&lt;u128&gt;(next_multiple_of_u32(width, <span class="number">128</span>) <span class="kw">as </span>usize &gt;&gt; <span class="number">7</span>).unwrap();
-
-        value
+        </span>{
+            Layout::new::&lt;u128&gt;()
+        }
+        <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
+        </span>{
+            Layout::new::&lt;u128&gt;().align_to(<span class="number">16</span>).unwrap()
+        }
+    } <span class="kw">else </span>{
+        <span class="kw">let </span>width = (width <span class="kw">as </span>usize).next_multiple_of(<span class="number">8</span>).next_power_of_two();
+        Layout::from_size_align(width &gt;&gt; <span class="number">3</span>, (width &gt;&gt; <span class="number">3</span>).min(<span class="number">16</span>)).unwrap()
     }
 }
 
@@ -1981,7 +1965,7 @@
 ///     attributes...) are all Rust expressions that evaluate to their respective type.
 ///
 /// Check out the [felt252 libfunc implementations](crate::libfuncs::felt252) for an example on their usage.
-</span><span class="macro">macro_rules! </span>mlir_asm {
+</span><span class="macro">macro_rules!</span> mlir_asm {
     (
         <span class="macro-nonterminal">$context</span>:expr, <span class="macro-nonterminal">$block</span>:expr, <span class="macro-nonterminal">$location</span>:expr =&gt;
             $( ; $( $( <span class="macro-nonterminal">$ret</span>:ident ),+ = )<span class="question-mark">? </span><span class="macro-nonterminal">$op</span>:literal
@@ -2024,7 +2008,7 @@
 }
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>mlir_asm;
 
-<span class="macro">macro_rules! </span>codegen_attributes {
+<span class="macro">macro_rules!</span> codegen_attributes {
     <span class="comment">// Macro entry points.
     </span>( <span class="macro-nonterminal">$context</span>:ident, <span class="macro-nonterminal">$builder</span>:ident =&gt; <span class="macro-nonterminal">$name</span>:literal = <span class="macro-nonterminal">$value</span>:expr ) =&gt; {
         <span class="macro-nonterminal">$builder</span>.add_attributes(<span class="kw-2">&amp;</span>[
@@ -2046,7 +2030,7 @@
 }
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>codegen_attributes;
 
-<span class="macro">macro_rules! </span>codegen_signature {
+<span class="macro">macro_rules!</span> codegen_signature {
     ( PARAMS ) =&gt; {
         <span class="comment">// TODO: Check operand types.
     </span>};
@@ -2061,7 +2045,7 @@
 }
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>codegen_signature;
 
-<span class="macro">macro_rules! </span>codegen_ret_decl {
+<span class="macro">macro_rules!</span> codegen_ret_decl {
     <span class="comment">// Macro entry points.
     </span>( <span class="macro-nonterminal">$ret</span>:ident ) =&gt; { <span class="macro-nonterminal">$ret </span>};
     ( $( <span class="macro-nonterminal">$ret</span>:ident ),+ ) =&gt; {
@@ -2070,7 +2054,7 @@
 }
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>codegen_ret_decl;
 
-<span class="macro">macro_rules! </span>codegen_ret_extr {
+<span class="macro">macro_rules!</span> codegen_ret_extr {
     <span class="comment">// Macro entry points.
     </span>( <span class="macro-nonterminal">$op</span>:ident =&gt; <span class="macro-nonterminal">$ret</span>:ident ) =&gt; {{
         melior::ir::Value::from(<span class="macro-nonterminal">$op</span>.result(<span class="number">0</span>)<span class="question-mark">?</span>)
@@ -2120,12 +2104,12 @@
     <span class="kw">use </span>std::io::Write;
     <span class="kw">use </span>std::{env::var, fmt::Formatter, fs, path::Path};
 
-    <span class="macro">macro_rules! </span>load_cairo {
+    <span class="macro">macro_rules!</span> load_cairo {
         ( $( <span class="macro-nonterminal">$program</span>:tt )+ ) =&gt; {
             <span class="macro-nonterminal">$crate::utils::test::load_cairo_str</span>(<span class="macro">stringify!</span>($(<span class="macro-nonterminal">$program</span>)+))
         };
     }
-    <span class="macro">macro_rules! </span>load_starknet {
+    <span class="macro">macro_rules!</span> load_starknet {
         ( $( <span class="macro-nonterminal">$program</span>:tt )+ ) =&gt; {
             <span class="macro-nonterminal">$crate::utils::test::load_starknet_str</span>(<span class="macro">stringify!</span>($(<span class="macro-nonterminal">$program</span>)+))
         };
@@ -2134,7 +2118,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>load_starknet;
 
     <span class="comment">// Helper macros for faster testing.
-    </span><span class="macro">macro_rules! </span>jit_struct {
+    </span><span class="macro">macro_rules!</span> jit_struct {
         ( $(<span class="macro-nonterminal">$x</span>:expr),* $(,)<span class="question-mark">? </span>) =&gt; {
             <span class="kw">crate</span>::values::JitValue::Struct {
                 fields: <span class="macro">vec!</span>[$(<span class="macro-nonterminal">$x</span>), <span class="kw-2">*</span>],
@@ -2142,7 +2126,7 @@
             </span>}
         };
     }
-    <span class="macro">macro_rules! </span>jit_enum {
+    <span class="macro">macro_rules!</span> jit_enum {
         ( <span class="macro-nonterminal">$tag</span>:expr, <span class="macro-nonterminal">$value</span>:expr ) =&gt; {
             <span class="kw">crate</span>::values::JitValue::Enum {
                 tag: <span class="macro-nonterminal">$tag</span>,
@@ -2151,7 +2135,7 @@
             }
         };
     }
-    <span class="macro">macro_rules! </span>jit_dict {
+    <span class="macro">macro_rules!</span> jit_dict {
         ( $(<span class="macro-nonterminal">$key</span>:expr $(=&gt;)+ <span class="macro-nonterminal">$value</span>:expr),* $(,)<span class="question-mark">? </span>) =&gt; {
             <span class="kw">crate</span>::values::JitValue::Felt252Dict {
                 value: {
@@ -2163,7 +2147,7 @@
             }
         };
     }
-    <span class="macro">macro_rules! </span>jit_panic {
+    <span class="macro">macro_rules!</span> jit_panic {
         ( $(<span class="macro-nonterminal">$value</span>:expr)<span class="question-mark">? </span>) =&gt; {
             <span class="macro">crate::utils::test::jit_enum!</span>(<span class="number">1</span>, <span class="macro">crate::utils::test::jit_struct!</span>(
                 <span class="macro">crate::utils::test::jit_struct!</span>(),
@@ -2292,15 +2276,12 @@
 
     <span class="doccomment">/// Ensures that the host's `u128` is compatible with its compiled counterpart.
     </span><span class="attr">#[test]
-    #[ignore]
     </span><span class="kw">fn </span>test_alignment_compatibility_u128() {
-        <span class="comment">// FIXME: Uncomment once LLVM fixes its u128 alignment issues.
-        </span><span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">128</span>).align(), <span class="number">16</span>);
+        <span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">128</span>).align(), <span class="number">16</span>);
     }
 
     <span class="doccomment">/// Ensures that the host's `u256` is compatible with its compiled counterpart.
     </span><span class="attr">#[test]
-    #[ignore]
     </span><span class="kw">fn </span>test_alignment_compatibility_u256() {
         <span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">256</span>).align(), <span class="number">16</span>);
     }
@@ -2308,17 +2289,13 @@
     <span class="doccomment">/// Ensures that the host's `u512` is compatible with its compiled counterpart.
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_alignment_compatibility_u512() {
-        <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
-        </span><span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">512</span>).align(), <span class="number">8</span>);
-        <span class="attr">#[cfg(not(target_arch = <span class="string">"x86_64"</span>))]
-        </span><span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">512</span>).align(), <span class="number">16</span>);
+        <span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">512</span>).align(), <span class="number">16</span>);
     }
 
     <span class="doccomment">/// Ensures that the host's `Felt` is compatible with its compiled counterpart.
     </span><span class="attr">#[test]
-    #[ignore]
     </span><span class="kw">fn </span>test_alignment_compatibility_felt() {
-        <span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">252</span>).align(), <span class="number">8</span>);
+        <span class="macro">assert_eq!</span>(get_integer_layout(<span class="number">252</span>).align(), <span class="number">16</span>);
     }
 
     <span class="comment">// ==============================
@@ -2656,8 +2633,8 @@
     </span><span class="kw">pub struct </span>TestSyscallHandler;
 
     <span class="kw">impl </span>StarknetSyscallHandler <span class="kw">for </span>TestSyscallHandler {
-        <span class="kw">fn </span>get_block_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _block_number: u64, _gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;Felt&gt; {
-            <span class="prelude-val">Ok</span>(Felt::from_bytes_be_slice(<span class="string">b"get_block_hash ok"</span>))
+        <span class="kw">fn </span>get_block_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_number: u64, _gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;Felt&gt; {
+            <span class="prelude-val">Ok</span>(Felt::from(block_number))
         }
 
         <span class="kw">fn </span>get_execution_info(
