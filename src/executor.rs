@@ -807,7 +807,18 @@ fn parse_result(
             ),
         },
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+        CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
+            Some(return_ptr) => JitValue::from_jit(
+                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
+                type_id,
+                registry,
+            ),
+            None => JitValue::from_jit(
+                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
+                type_id,
+                registry,
+            ),
+        },
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::Snapshot(_) => todo!(),
         CoreTypeConcrete::Bytes31(_) => todo!(),
