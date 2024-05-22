@@ -342,6 +342,9 @@ pub fn compare_outputs(
                     CoreTypeConcrete::NonZero(info) => map_vm_sizes(size_cache, registry, &info.ty),
                     CoreTypeConcrete::EcPoint(_) => 2,
                     CoreTypeConcrete::EcState(_) => 4,
+                    CoreTypeConcrete::Snapshot(info) => {
+                        map_vm_sizes(size_cache, registry, &info.ty)
+                    }
                     x => todo!("vm size not yet implemented: {:?}", x.info()),
                 };
                 size_cache.insert(ty.clone(), type_size);
@@ -459,6 +462,30 @@ pub fn compare_outputs(
                     .collect(),
                 debug_name: ty.debug_name.as_deref().map(String::from),
             },
+            CoreTypeConcrete::SquashedFelt252Dict(info) => JitValue::Felt252Dict {
+                value: (values[0].to_usize().unwrap()..values[1].to_usize().unwrap())
+                    .step_by(3)
+                    .map(|index| {
+                        (
+                            Felt::from_bytes_le(&memory[index].clone().unwrap().to_le_bytes()),
+                            match &info.info.long_id.generic_args[0] {
+                                cairo_lang_sierra::program::GenericArg::Type(ty) => map_vm_values(
+                                    size_cache,
+                                    registry,
+                                    memory,
+                                    &[memory[index + 2].clone().unwrap()],
+                                    ty,
+                                ),
+                                _ => unimplemented!("unsupported dict value type"),
+                            },
+                        )
+                    })
+                    .collect(),
+                debug_name: ty.debug_name.as_deref().map(String::from),
+            },
+            CoreTypeConcrete::Snapshot(info) => {
+                map_vm_values(size_cache, registry, memory, values, &info.ty)
+            }
             CoreTypeConcrete::Nullable(info) => {
                 assert_eq!(values.len(), 1);
 
