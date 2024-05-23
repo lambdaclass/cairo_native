@@ -1632,8 +1632,6 @@
 <a href="#1630" id="1630">1630</a>
 <a href="#1631" id="1631">1631</a>
 <a href="#1632" id="1632">1632</a>
-<a href="#1633" id="1633">1633</a>
-<a href="#1634" id="1634">1634</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -1651,15 +1649,13 @@
 
 <span class="doccomment">/// Binary representation of a `Felt` (in MLIR).
 </span><span class="attr">#[derive(Debug, Clone)]
-#[cfg_attr(target_arch = <span class="string">"x86_64"</span>, repr(C, align(<span class="number">16</span>)))]
-#[cfg_attr(not(target_arch = <span class="string">"x86_64"</span>), repr(C, align(<span class="number">16</span>)))]
+#[repr(C, align(<span class="number">16</span>))]
 </span><span class="kw">pub struct </span>Felt252Abi(<span class="kw">pub </span>[u8; <span class="number">32</span>]);
 <span class="doccomment">/// Binary representation of a `u256` (in MLIR).
 </span><span class="comment">// TODO: This shouldn't need to be public.
 </span><span class="attr">#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(target_arch = <span class="string">"x86_64"</span>, repr(C, align(<span class="number">16</span>)))]
-#[cfg_attr(not(target_arch = <span class="string">"x86_64"</span>), repr(C, align(<span class="number">16</span>)))]
+#[repr(C, align(<span class="number">16</span>))]
 </span><span class="kw">pub struct </span>U256 {
     <span class="kw">pub </span>hi: u128,
     <span class="kw">pub </span>lo: u128,

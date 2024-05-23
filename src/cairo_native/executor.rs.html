@@ -1205,7 +1205,7 @@
 
         <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
         </span><span class="kw">const </span>NUM_REGISTER_ARGS: usize = <span class="number">6</span>;
-        <span class="attr">#[cfg(not(target_arch = <span class="string">"x86_64"</span>))]
+        <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
         </span><span class="kw">const </span>NUM_REGISTER_ARGS: usize = <span class="number">8</span>;
 
         <span class="kw">if </span>align == <span class="number">16 </span>{
@@ -1222,7 +1222,7 @@
                 <span class="self">self</span>.invoke_data.push(<span class="number">0</span>);
             } <span class="kw">else </span>{
                 <span class="kw">let </span>new_len = <span class="self">self</span>.invoke_data.len() + values.len();
-                <span class="kw">if </span>new_len &gt;= <span class="number">8 </span>&amp;&amp; new_len % <span class="number">2 </span>!= <span class="number">0 </span>{
+                <span class="kw">if </span>new_len &gt;= NUM_REGISTER_ARGS &amp;&amp; new_len % <span class="number">2 </span>!= <span class="number">0 </span>{
                     <span class="kw">let </span>chunk;
                     (chunk, values) = <span class="kw">if </span>values.len() &gt;= <span class="number">4 </span>{
                         values.split_at(<span class="number">4</span>)
