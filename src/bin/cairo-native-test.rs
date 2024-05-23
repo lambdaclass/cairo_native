@@ -341,7 +341,8 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
 fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
     let mut felts = Vec::new();
     match value {
-        JitValue::Felt252(felt) => vec![felt.to_bigint().into()],
+        JitValue::Felt252(felt) => vec![*felt],
+        JitValue::BoundedInt { value, .. } => vec![*value],
         JitValue::Bytes31(_) => todo!(),
         JitValue::Array(values) => {
             for value in values {
