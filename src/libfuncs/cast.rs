@@ -93,6 +93,10 @@ pub fn build_downcast<'ctx, 'this>(
         location,
     );
 
+    let src_is_felt = matches!(src_type, CoreTypeConcrete::Felt252(_));
+
+    let src_value: melior::ir::Value = entry.argument(1)?.into();
+
     let mut block = entry;
 
     let (is_in_range, result) = if info.from_ty == info.to_ty {
