@@ -567,7 +567,7 @@ impl JitValue {
                 }
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_ref();
-                    let data = Felt::from_bytes_le(data);
+                    let data = Felt::from_bytes_le_slice(data);
                     Self::Felt252(data)
                 }
                 CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),

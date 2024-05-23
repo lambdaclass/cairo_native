@@ -87,7 +87,7 @@ use crate::{block_ext::BlockExt, error::Result};
 use melior::{
     dialect::{
         arith, func,
-        llvm::{self, r#type::opaque_pointer},
+        llvm::{self, r#type::pointer},
         ods,
     },
     ir::{
@@ -175,10 +175,7 @@ impl DebugUtils {
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
-                        &[
-                            opaque_pointer(context),
-                            IntegerType::new(context, 64).into(),
-                        ],
+                        &[pointer(context, 0), IntegerType::new(context, 64).into()],
                         &[],
                     )
                     .into(),
@@ -197,26 +194,7 @@ impl DebugUtils {
             message.len().try_into().unwrap(),
         );
 
-        let k1 = block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-
-        let ptr = block
-            .append_operation(
-                {
-                    let mut op = ods::llvm::alloca(context, opaque_pointer(context), k1, location);
-                    op.set_elem_type(TypeAttribute::new(ty));
-                    op
-                }
-                .into(),
-            )
-            .result(0)?
-            .into();
+        let ptr = block.alloca1(context, location, ty, None)?;
 
         let msg = block
             .append_operation(
@@ -285,10 +263,7 @@ impl DebugUtils {
             module.body().append_operation(func::func(
                 context,
                 StringAttribute::new(context, "__debug__print_pointer"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[llvm::r#type::opaque_pointer(context)], &[])
-                        .into(),
-                ),
+                TypeAttribute::new(FunctionType::new(context, &[pointer(context, 0)], &[]).into()),
                 Region::new(),
                 &[(
                     Identifier::new(context, "sym_visibility"),
@@ -655,7 +630,7 @@ impl DebugUtils {
                     FunctionType::new(
                         context,
                         &[
-                            llvm::r#type::opaque_pointer(context),
+                            llvm::r#type::pointer(context, 0),
                             IntegerType::new(context, 64).into(),
                         ],
                         &[],

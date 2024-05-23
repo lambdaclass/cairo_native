@@ -48,9 +48,9 @@ id-arena = "2.2"
 itertools = "0.12"
 lazy_static = "1.4"
 libc = "0.2.153"
-llvm-sys = "170.0.0"
-melior = { version = "0.17.1", features = ["ods-dialects"] }
-mlir-sys = "=0.2.1" # 0.2.2 is llvm 18
+llvm-sys = "180.0.0"
+melior = { version = "0.18.1", features = ["ods-dialects"] }
+mlir-sys = "0.2.2"
 num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "0.1.1", default-features = false, features = [
@@ -69,7 +69,7 @@ cairo-lang-utils = "2.6.3"
 cairo-lang-starknet-classes = "2.6.3"
 cairo-native-runtime = { version = "0.1.0", path = "runtime", optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
-libloading = "0.8.1"
+libloading = "0.8.3"
 tracing-subscriber = { version = "0.3", features = [
   "env-filter",
 ], optional = true }
@@ -99,7 +99,7 @@ walkdir = "2"
 serde_json = { version = "1.0" }
 
 [build-dependencies]
-cc = "1.0.95"
+cc = "1.0.96"
 
 [profile.optimized-dev]
 inherits = "dev"
