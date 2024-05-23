@@ -675,6 +675,10 @@
 <a href="#673" id="673">673</a>
 <a href="#674" id="674">674</a>
 <a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 
 </span><span class="kw">use </span>std::ops::Shr;
@@ -758,24 +762,27 @@
         location,
     );
 
-    <span class="kw">let </span>is_signed = src_type.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
-    })<span class="question-mark">? </span>|| dst_type.is_integer_signed().ok_or_else(|| {
+    <span class="kw">let </span>src_is_signed = src_type.is_integer_signed().ok_or_else(|| {
         Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
     })<span class="question-mark">?</span>;
-    <span class="kw">let </span>is_felt = <span class="macro">matches!</span>(src_type, CoreTypeConcrete::Felt252(<span class="kw">_</span>));
+    <span class="kw">let </span>dst_is_signed = dst_type.is_integer_signed().ok_or_else(|| {
+        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
+    })<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>is_signed = src_is_signed || dst_is_signed;
+    <span class="kw">let </span>src_is_felt = <span class="macro">matches!</span>(src_type, CoreTypeConcrete::Felt252(<span class="kw">_</span>));
 
     <span class="kw">let </span>src_value: melior::ir::Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span><span class="kw-2">mut </span>block = entry;
 
-    <span class="kw">let </span>(is_in_range, result) = <span class="kw">if </span>src_ty == dst_ty {
+    <span class="kw">let </span>(is_in_range, result) = <span class="kw">if </span>info.from_ty == info.to_ty {
         <span class="kw">let </span>k0 = block.const_int(context, location, <span class="number">0</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
         (k0, src_value)
     } <span class="kw">else </span>{
         <span class="comment">// make unsigned felt into signed felt
         // felt &gt; half prime = negative
-        </span><span class="kw">let </span>src_value = <span class="kw">if </span>is_felt {
+        </span><span class="kw">let </span>src_value = <span class="kw">if </span>src_is_felt {
             <span class="kw">let </span>attr_halfprime_i252 = metadata
                 .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
                 .ok_or(Error::MissingMetadata)<span class="question-mark">?
@@ -861,7 +868,8 @@
             info.to_range
                 .intersection(<span class="kw-2">&amp;</span>info.from_range)
                 .ok_or_else(|| Error::SierraAssert(<span class="string">"range should always interesct"</span>.to_string()))<span class="question-mark">?
-                </span>.upper,
+                </span>.upper
+                - <span class="number">1</span>,
             compare_ty,
         )<span class="question-mark">?</span>;
 
@@ -878,9 +886,9 @@
         <span class="kw">let </span>is_in_range_upper = block.append_op_result(arith::cmpi(
             context,
             <span class="kw">if </span>is_signed {
-                CmpiPredicate::Slt
+                CmpiPredicate::Sle
             } <span class="kw">else </span>{
-                CmpiPredicate::Ult
+                CmpiPredicate::Ule
             },
             compare_value,
             max_value,
