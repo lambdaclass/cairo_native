@@ -936,11 +936,17 @@ fn parse_result(
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
         CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
             Some(return_ptr) => JitValue::from_jit(
+                context,
+                module,
+                metadata,
                 unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
                 type_id,
                 registry,
             ),
             None => JitValue::from_jit(
+                context,
+                module,
+                metadata,
                 NonNull::new(ret_registers[0] as *mut ()).unwrap(),
                 type_id,
                 registry,
