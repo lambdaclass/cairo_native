@@ -144,7 +144,7 @@ pub fn build_system<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(llvm::r#type::opaque_pointer(context))
+    Ok(llvm::r#type::pointer(context, 0))
 }
 
 pub fn build_secp256_point<'ctx>(

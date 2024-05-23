@@ -5,16 +5,16 @@
 #
 
 UNAME := $(shell uname)
-CAIRO_2_VERSION=2.5.4
+CAIRO_2_VERSION=2.6.3
 
 check-llvm:
-ifndef MLIR_SYS_170_PREFIX
-	$(error Could not find a suitable LLVM 17 toolchain (mlir), please set MLIR_SYS_170_PREFIX env pointing to the LLVM 17 dir)
+ifndef MLIR_SYS_180_PREFIX
+	$(error Could not find a suitable LLVM 18 toolchain (mlir), please set MLIR_SYS_180_PREFIX env pointing to the LLVM 18 dir)
 endif
-ifndef TABLEGEN_170_PREFIX
-	$(error Could not find a suitable LLVM 17 toolchain (tablegen), please set TABLEGEN_170_PREFIX env pointing to the LLVM 17 dir)
+ifndef TABLEGEN_180_PREFIX
+	$(error Could not find a suitable LLVM 18 toolchain (tablegen), please set TABLEGEN_180_PREFIX env pointing to the LLVM 18 dir)
 endif
-	@echo "LLVM is correctly set at $(MLIR_SYS_170_PREFIX)."
+	@echo "LLVM is correctly set at $(MLIR_SYS_180_PREFIX)."
 
 needs-cairo2:
 ifeq ($(wildcard ./cairo2/.),)
@@ -100,7 +100,7 @@ endif
 	-ln -s cairo2/corelib corelib
 
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
-	-brew install llvm@17 --quiet
+	-brew install llvm@18 --quiet
 	@echo "You can execute the env-macos.sh script to setup the needed env variables."
 
 cairo-repo-2-dir = cairo2
@@ -127,7 +127,7 @@ cairo-%-macos.tar:
 cairo-%.tar:
 	curl -L -o "$@" "https://github.com/starkware-libs/cairo/releases/download/v$*/release-x86_64-unknown-linux-musl.tar.gz"
 
-SCARB_VERSION = 2.5.4
+SCARB_VERSION = 2.6.3
 
 install-scarb:
 	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh -s -- --no-modify-path --version $(SCARB_VERSION)

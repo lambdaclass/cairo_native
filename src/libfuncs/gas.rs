@@ -2,7 +2,8 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result},
+    block_ext::BlockExt,
+    error::Result,
     metadata::{gas::GasCost, MetadataStorage},
     utils::ProgramRegistryExt,
 };
@@ -20,7 +21,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm, ods,
     },
-    ir::{r#type::IntegerType, Attribute, Block, Location},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -86,33 +87,20 @@ pub fn build_withdraw_gas<'ctx, 'this>(
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);
 
     let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
-    let gas_cost_val = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type))
-                .ok_or(Error::ParseAttributeError)?,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let gas_cost_val =
+        entry.const_int_from_type(context, location, cost.unwrap_or(0), u128_type)?;
 
-    let is_enough = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Uge,
-            current_gas,
-            gas_cost_val,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let is_enough = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Uge,
+        current_gas,
+        gas_cost_val,
+        location,
+    ))?;
 
-    let resulting_gas = entry
-        .append_operation(
-            ods::llvm::intr_usub_sat(context, current_gas, gas_cost_val, location).into(),
-        )
-        .result(0)?
-        .into();
+    let resulting_gas = entry.append_op_result(
+        ods::llvm::intr_usub_sat(context, current_gas, gas_cost_val, location).into(),
+    )?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -142,33 +130,20 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);
 
     let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
-    let gas_cost_val = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(context, &format!("{} : {}", cost.unwrap_or(0), u128_type))
-                .ok_or(Error::ParseAttributeError)?,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let gas_cost_val =
+        entry.const_int_from_type(context, location, cost.unwrap_or(0), u128_type)?;
 
-    let is_enough = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Uge,
-            current_gas,
-            gas_cost_val,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let is_enough = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Uge,
+        current_gas,
+        gas_cost_val,
+        location,
+    ))?;
 
-    let resulting_gas = entry
-        .append_operation(
-            ods::llvm::intr_usub_sat(context, current_gas, gas_cost_val, location).into(),
-        )
-        .result(0)?
-        .into();
+    let resulting_gas = entry.append_op_result(
+        ods::llvm::intr_usub_sat(context, current_gas, gas_cost_val, location).into(),
+    )?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -200,9 +175,9 @@ pub fn build_get_builtin_costs<'ctx, 'this>(
     )?;
 
     // TODO: Implement libfunc.
-    let op0 = entry.append_operation(llvm::undef(builtin_costs_ty, location));
+    let op0 = entry.append_op_result(llvm::undef(builtin_costs_ty, location))?;
 
-    entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
+    entry.append_operation(helper.br(0, &[op0], location));
 
     Ok(())
 }
@@ -241,7 +216,7 @@ mod test {
         let result = run_program(&program, "run_test", &[]);
         assert_eq!(
             result.remaining_gas,
-            Some(340282366920938463463374607431768198715),
+            Some(340282366920938463463374607431768204835),
         );
     }
 }

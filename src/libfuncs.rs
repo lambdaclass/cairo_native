@@ -27,6 +27,7 @@ pub mod r#box;
 pub mod branch_align;
 pub mod bytes31;
 pub mod cast;
+pub mod const_libfunc;
 pub mod debug;
 pub mod drop;
 pub mod dup;
@@ -119,7 +120,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Cast(selector) => self::cast::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Const(_) => todo!(),
+            Self::Const(selector) => self::const_libfunc::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Debug(selector) => self::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -213,6 +216,8 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
+            Self::Coupon(_) => todo!(),
+            Self::CouponCall(_) => todo!(),
         }
     }
 
@@ -412,7 +417,7 @@ where
                         BranchArg::External(x) => x,
                         BranchArg::Returned(i) => default.1[i],
                     })
-                    .collect::<Vec<_>>();
+                    .collect();
 
                 (*successor, Cow::Owned(destination_operands))
             }
@@ -439,7 +444,7 @@ where
                             BranchArg::External(x) => x,
                             BranchArg::Returned(i) => default.1[i],
                         })
-                        .collect::<Vec<_>>();
+                        .collect();
 
                     (*successor, Cow::Owned(destination_operands))
                 }
@@ -506,4 +511,246 @@ pub fn increment_builtin_counter<'ctx: 'a, 'a>(
         .append_operation(arith::addi(value, k1, location))
         .result(0)?
         .into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::context::NativeContext;
+    use melior::ir::Type;
+
+    #[test]
+    fn switch_branch_arg_external_test() {
+        // Create a new context for MLIR operations
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+
+        // Create an unknown location in the context
+        let location = Location::unknown(context);
+        // Create a new MLIR module with the unknown location
+        let module = Module::new(location);
+
+        // Create a new MLIR block and obtain its reference
+        let region = Region::new();
+        let last_block = region.append_block(Block::new(&[]));
+
+        // Initialize the LibfuncHelper struct with various parameters
+        let mut lib_func_helper = LibfuncHelper {
+            module: &module,
+            init_block: &last_block,
+            region: &region,
+            blocks_arena: &Bump::new(),
+            last_block: Cell::new(&last_block),
+            branches: Vec::new(),
+            results: Vec::new(),
+        };
+
+        // Create an integer type with 32 bits
+        let i32_type: Type = IntegerType::new(context, 32).into();
+        // Create a default block with the integer type and the unknown location
+        let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
+
+        // Create a new MLIR block
+        let block = lib_func_helper.append_block(Block::new(&[]));
+
+        // Append a constant arithmetic operation to the block and obtain its result operand
+        let operand = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(i32_type, 1).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        // Loop to add branches and results to the LibfuncHelper struct
+        for _ in 0..20 {
+            // Push a default block and external operand to the branches vector
+            lib_func_helper
+                .branches
+                .push((default_block, vec![BranchArg::External(operand)]));
+
+            // Push a new vector of result cells to the results vector
+            lib_func_helper.results.push([Cell::new(None)].into());
+        }
+
+        // Call the `switch` method of the LibfuncHelper struct and obtain the result
+        let cf_switch = block.append_operation(
+            lib_func_helper
+                .switch(
+                    context,
+                    operand,
+                    (BranchTarget::Return(10), &[]),
+                    &[
+                        (0, BranchTarget::Return(10), &[]),
+                        (1, BranchTarget::Return(10), &[]),
+                    ],
+                    location,
+                )
+                .unwrap(),
+        );
+
+        // Assert that the switch operation is valid
+        assert!(cf_switch.verify());
+    }
+
+    #[test]
+    fn switch_branch_arg_returned_test() {
+        // Create a new context for MLIR operations
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+
+        // Create an unknown location in the context
+        let location = Location::unknown(context);
+        // Create a new MLIR module with the unknown location
+        let module = Module::new(location);
+
+        // Create a new MLIR block and obtain its reference
+        let region = Region::new();
+        let last_block = region.append_block(Block::new(&[]));
+
+        // Initialize the LibfuncHelper struct with various parameters
+        let mut lib_func_helper = LibfuncHelper {
+            module: &module,
+            init_block: &last_block,
+            region: &region,
+            blocks_arena: &Bump::new(),
+            last_block: Cell::new(&last_block),
+            branches: Vec::new(),
+            results: Vec::new(),
+        };
+
+        // Create an integer type with 32 bits
+        let i32_type: Type = IntegerType::new(context, 32).into();
+        // Create a default block with the integer type and the unknown location
+        let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
+
+        // Create a new MLIR block
+        let block = lib_func_helper.append_block(Block::new(&[]));
+
+        // Append a constant arithmetic operation to the block and obtain its result operand
+        let operand = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(i32_type, 1).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        // Loop to add branches and results to the LibfuncHelper struct
+        for _ in 0..20 {
+            // Push a default block and a returned operand index to the branches vector
+            lib_func_helper
+                .branches
+                .push((default_block, vec![BranchArg::Returned(3)]));
+
+            // Push a new vector of result cells to the results vector
+            lib_func_helper.results.push([Cell::new(None)].into());
+        }
+
+        // Call the `switch` method of the LibfuncHelper struct and obtain the result
+        let cf_switch = block.append_operation(
+            lib_func_helper
+                .switch(
+                    context,
+                    operand,
+                    (
+                        BranchTarget::Return(10),
+                        &[operand, operand, operand, operand],
+                    ),
+                    &[
+                        (0, BranchTarget::Return(10), &[]),
+                        (1, BranchTarget::Return(10), &[]),
+                    ],
+                    location,
+                )
+                .unwrap(),
+        );
+
+        // Assert that the switch operation is valid
+        assert!(cf_switch.verify());
+
+        // Assert that the result in the LibfuncHelper at index 10 contains the expected operand
+        assert_eq!(lib_func_helper.results[10][0], Cell::new(Some(operand)));
+
+        // Assert that the length of the results vector at index 10 is 1
+        assert_eq!(lib_func_helper.results[10].len(), 1);
+    }
+
+    #[test]
+    fn switch_branch_target_jump_test() {
+        // Create a new context for MLIR operations
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+
+        // Create an unknown location in the context
+        let location = Location::unknown(context);
+        // Create a new MLIR module with the unknown location
+        let module = Module::new(location);
+
+        // Create a new MLIR block and obtain its reference
+        let region = Region::new();
+        let last_block = region.append_block(Block::new(&[]));
+
+        // Initialize the LibfuncHelper struct with various parameters
+        let mut lib_func_helper = LibfuncHelper {
+            module: &module,
+            init_block: &last_block,
+            region: &region,
+            blocks_arena: &Bump::new(),
+            last_block: Cell::new(&last_block),
+            branches: Vec::new(),
+            results: Vec::new(),
+        };
+
+        // Create an integer type with 32 bits
+        let i32_type: Type = IntegerType::new(context, 32).into();
+        // Create a default block with the integer type and the unknown location
+        let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
+
+        // Create a new MLIR block
+        let block = lib_func_helper.append_block(Block::new(&[]));
+
+        // Append a constant arithmetic operation to the block and obtain its result operand
+        let operand = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(i32_type, 1).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        // Loop to add branches and results to the LibfuncHelper struct
+        for _ in 0..20 {
+            // Push a default block and an empty vector of operands to the branches vector
+            lib_func_helper.branches.push((default_block, Vec::new()));
+
+            // Push a new vector of result cells to the results vector
+            lib_func_helper.results.push([Cell::new(None)].into());
+        }
+
+        // Call the `switch` method of the LibfuncHelper struct and obtain the result
+        let cf_switch = block.append_operation(
+            lib_func_helper
+                .switch(
+                    context,
+                    operand,
+                    (BranchTarget::Jump(default_block), &[operand]),
+                    &[
+                        (0, BranchTarget::Jump(default_block), &[operand]),
+                        (1, BranchTarget::Jump(default_block), &[operand]),
+                    ],
+                    location,
+                )
+                .unwrap(),
+        );
+
+        // Assert that the switch operation is valid
+        assert!(cf_switch.verify());
+    }
 }

@@ -233,10 +233,16 @@ impl StarknetSyscallHandler for SyscallHandler {
 
     fn send_message_to_l1(
         &mut self,
-        _to_address: Felt,
-        _payload: &[Felt],
+        to_address: Felt,
+        payload: &[Felt],
         _remaining_gas: &mut u128,
     ) -> SyscallResult<()> {
+        assert_eq!(
+            to_address,
+            3.into(),
+            "send_message_to_l1 to_address mismatch"
+        );
+        assert_eq!(payload, &[2.into()], "send_message_to_l1 payload mismatch");
         Ok(())
     }
 
@@ -377,7 +383,6 @@ fn get_block_hash() {
 }
 
 #[test]
-#[ignore = "Cairo program doesn't compile"]
 fn get_execution_info() {
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
@@ -395,8 +400,8 @@ fn get_execution_info() {
                 fields: vec![
                     JitValue::Struct {
                         fields: vec![
-                            JitValue::Uint128(10057862467973663535),
-                            JitValue::Uint128(13878668747512495966),
+                            JitValue::Uint64(10057862467973663535),
+                            JitValue::Uint64(13878668747512495966),
                             JitValue::Felt252(Felt::from_dec_str(
                                 "1126241460712630201003776917997524449163698107789103849210792326381258973685",
                             )
@@ -415,7 +420,12 @@ fn get_execution_info() {
                             )
                             .unwrap()),
                             JitValue::Uint128(67871905340377755668863509019681938001),
-                            JitValue::Array(Vec::new()),
+                            JitValue::Struct {
+                                fields: vec![
+                                    JitValue::Array(Vec::new()),
+                                ],
+                                debug_name: None
+                            },
                             JitValue::Felt252(Felt::from_dec_str(
                                 "2073267424102447009330753642820908998776456851902897601865334818765025369132",
                             )
@@ -452,7 +462,6 @@ fn get_execution_info() {
 }
 
 #[test]
-#[ignore = "failing"]
 fn get_execution_info_v2() {
     let result = run_native_program(
         &SYSCALLS_PROGRAM,

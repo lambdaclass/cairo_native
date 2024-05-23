@@ -51,7 +51,7 @@ fn find_statement_locations(
         map_sierra_to_pre_sierra_statements(function.entry_point, statements, &function_impl.body);
 
     // Remove Sierra-specific invocations (they have no location since they are compiler-generated).
-    let sierra_to_pre_sierra_mappings: HashMap<_, _> = sierra_to_pre_sierra_mappings
+    let sierra_to_pre_sierra_mappings = sierra_to_pre_sierra_mappings
         .into_iter()
         .filter(|(_, statement)| {
             if let GenStatement::Invocation(invocation) = statement {
@@ -122,12 +122,12 @@ fn remap_sierra_statements_to_locations(
 
 fn locate_statement(variables: &Arena<Variable>, statement: &LoweringStatement) -> LocationId {
     match statement {
-        LoweringStatement::Literal(x) => variables[x.output].location,
         LoweringStatement::Call(x) => x.location,
         LoweringStatement::StructConstruct(x) => variables[x.output].location,
         LoweringStatement::StructDestructure(x) => x.input.location,
         LoweringStatement::EnumConstruct(x) => variables[x.output].location,
-        LoweringStatement::Snapshot(x) => variables[x.output_snapshot].location,
+        LoweringStatement::Snapshot(x) => variables[x.snapshot()].location,
         LoweringStatement::Desnap(x) => variables[x.output].location,
+        LoweringStatement::Const(x) => variables[x.output].location,
     }
 }

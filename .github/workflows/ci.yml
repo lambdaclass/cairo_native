@@ -12,10 +12,9 @@ jobs:
     name: clippy
     runs-on: ubuntu-latest
     env:
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.76
@@ -25,11 +24,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: Clippy
         run: make check
 
@@ -42,15 +41,47 @@ jobs:
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
+      - name: Find Comment
+        continue-on-error: true
+        if: success() || failure()
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: thiscommentistofindthisformatcomment
+      - name: Create or update comment
+        continue-on-error: true
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ❌ Code is not formatted! Please run `cargo format` and push the changes.
+
+            <!-- thiscommentistofindthisformatcomment -->
+          edit-mode: replace
+      - name: Create or update comment
+        continue-on-error: true
+        if: ${{ success() && steps.fc.outputs.comment-id != null }}
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✅ Code is now correctly formatted.
+
+            <!-- thiscommentistofindthisformatcomment -->
+          edit-mode: replace
 
   # Check for unnecessary dependencies.
   udeps:
     runs-on: ubuntu-latest
     env:
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUSTUP_TOOLCHAIN: nightly-2024-02-01  # udeps needs nightly
     steps:
       - uses: actions/checkout@v4
@@ -62,11 +93,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: "Download and run cargo-udeps"
         run: |
           wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.45/cargo-udeps-v0.1.45-x86_64-unknown-linux-gnu.tar.gz | tar -xz
@@ -76,10 +107,9 @@ jobs:
     name: test (linux, amd64)
     runs-on: ubuntu-latest
     env:
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUST_LOG: debug
     steps:
       - uses: actions/checkout@v4
@@ -109,11 +139,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -124,24 +154,25 @@ jobs:
         run: make test-cairo
   test_macos:
     name: Test (macOS, Apple silicon)
-    runs-on: [self-hosted, macOS]
+    runs-on: macos-14
     env:
       CARGO_TERM_COLOR: always
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
-      LLVM_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
-      TABLEGEN_170_PREFIX: /opt/homebrew/opt/llvm@17
+      LIBRARY_PATH: /opt/homebrew/lib
+      MLIR_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
+      LLVM_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
+      TABLEGEN_180_PREFIX: /opt/homebrew/opt/llvm@18
       RUST_LOG: debug
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.76
+        uses: dtolnay/rust-toolchain@1.76.0
         with:
           components: clippy
+      - uses: Homebrew/actions/setup-homebrew@master
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.5.4"
+          scarb-version: "2.6.3"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -156,9 +187,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUST_LOG: debug
     steps:
       - uses: actions/checkout@v4
@@ -188,17 +219,17 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.5.4"
+          scarb-version: "2.6.3"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.

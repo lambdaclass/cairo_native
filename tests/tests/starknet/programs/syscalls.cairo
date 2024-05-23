@@ -1,27 +1,22 @@
 use core::starknet::{
     call_contract_syscall, class_hash_const, contract_address_const, ContractAddress,
     deploy_syscall, emit_event_syscall, ExecutionInfo, get_block_hash_syscall,
-    get_execution_info_syscall, info::v2::ExecutionInfo as ExecutionInfoV2, keccak_syscall,
+    keccak_syscall,
     library_call_syscall, replace_class_syscall, send_message_to_l1_syscall,
     storage_address_try_from_felt252, storage_read_syscall, storage_write_syscall, SyscallResult,
 };
-
-// extern fn get_execution_info_syscall() -> SyscallResult<
-//     Box<ExecutionInfo>
-// > implicits(GasBuiltin, System) nopanic;
-extern fn get_execution_info_v2_syscall() -> SyscallResult<
-    Box<ExecutionInfoV2>
-> implicits(GasBuiltin, System) nopanic;
+use core::starknet::syscalls::get_execution_info_syscall;
+use core::starknet::syscalls::get_execution_info_v2_syscall;
 
 fn get_block_hash() -> SyscallResult<felt252> {
     get_block_hash_syscall(0)
 }
 
-// fn get_execution_info() -> SyscallResult<Box<ExecutionInfo>> {
-//     get_execution_info_syscall()
-// }
+fn get_execution_info() -> SyscallResult<Box<core::starknet::info::ExecutionInfo>> {
+     get_execution_info_syscall()
+}
 
-fn get_execution_info_v2() -> SyscallResult<Box<ExecutionInfoV2>> {
+fn get_execution_info_v2() -> SyscallResult<Box<core::starknet::info::v2::ExecutionInfo>> {
     get_execution_info_v2_syscall()
 }
 
@@ -54,7 +49,7 @@ fn emit_event() -> SyscallResult<()> {
 }
 
 fn send_message_to_l1() -> SyscallResult<()> {
-    send_message_to_l1_syscall(0, array![].span())
+    send_message_to_l1_syscall(3, array![2].span())
 }
 
 fn keccak() -> SyscallResult<u256> {

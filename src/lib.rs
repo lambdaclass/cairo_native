@@ -2,7 +2,7 @@
 //!
 //! This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
 //! which can be [JIT-executed](https://en.wikipedia.org/wiki/Just-in-time_compilation) or further
-//! compiled (externally) into a binary
+//! compiled into a binary
 //! [ahead of time](https://en.wikipedia.org/wiki/Ahead-of-time_compilation).
 //!
 //! ## Usage
@@ -61,6 +61,34 @@
 //!   - `program: &Program`: The Sierra input program.
 //!   - `registry: &ProgramRegistry<TType, TLibfunc>`: The registry extracted from the program.
 //!   - `metadata: &mut MetadataStorage`: Current compiler metadata.
+//!
+//! ## Project layout
+//!
+//! ```txt
+//!  src
+//!  ├─ context.rs - The MLIR context wrapper, provides the compile method.
+//!  ├─ utils.rs - Internal utilities.
+//!  ├─ metadata/ - Metadata injector to use within the compilation process
+//!  ├─ executor/ - Code related to the executor of programs.
+//!  ├─ module.rs - The MLIR module wrapper.
+//!  ├─ arch/ - Trampoline assembly for calling functions with dynamic signatures.
+//!  ├─ executor.rs - The executor code.
+//!  ├─ ffi.cpp - Missing FFI C wrappers
+//!  ├─ libfuncs - Cairo Sierra libfunc implementations
+//!  ├─ libfuncs.rs - Cairo Sierra libfunc glue code
+//!  ├─ starknet.rs - Starknet syscall handler glue code.
+//!  ├─ ffi.rs - Missing FFI C wrappers, rust side.
+//!  ├─ block_ext.rs - A melior (MLIR) block trait extension to write less code.
+//!  ├─ lib.rs - The main lib file.
+//!  ├─ execution_result.rs - Program result parsing.
+//!  ├─ values.rs - JIT serialization.
+//!  ├─ metadata.rs - Metadata injector to use within the compilation process.
+//!  ├─ compiler.rs - The glue code of the compiler, has the codegen for the function signatures
+//!  and calls the libfunc codegen implementations.
+//!  ├─ error.rs - Error handling
+//!  ├─ bin - Binary programs
+//!  ├─ types - Cairo to MLIR type information
+//! ```
 
 // #![warn(missing_docs)]
 #![allow(clippy::missing_safety_doc)]
@@ -70,6 +98,7 @@ pub use self::{
     ffi::{module_to_object, object_to_shared_lib, LLVMCompileError, OptLevel},
 };
 
+pub(crate) mod block_ext;
 pub mod cache;
 mod compiler;
 pub mod context;

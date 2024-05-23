@@ -1,3 +1,8 @@
+//! # Executors
+//!
+//! This module provides methods to execute the programs, either via JIT or compiled ahead
+//! of time. It also provides a cache to avoid recompiling previously compiled programs.
+
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::Error,
@@ -48,6 +53,7 @@ extern "C" {
     );
 }
 
+/// The cairo native executor, either AOT or JIT based.
 #[derive(Debug, Clone)]
 pub enum NativeExecutor<'m> {
     Aot(Rc<AotNativeExecutor>),
@@ -55,6 +61,7 @@ pub enum NativeExecutor<'m> {
 }
 
 impl<'a> NativeExecutor<'a> {
+    /// Invoke the given function by its function id, with the given arguments and gas.
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
@@ -67,6 +74,9 @@ impl<'a> NativeExecutor<'a> {
         }
     }
 
+    /// Invoke the given function by its function id, with the given arguments and gas.
+    /// This should be used for programs which require a syscall handler, whose
+    /// implementation should be passed on.
     pub fn invoke_dynamic_with_syscall_handler(
         &self,
         function_id: &FunctionId,
@@ -90,6 +100,9 @@ impl<'a> NativeExecutor<'a> {
         }
     }
 
+    /// Invoke the given function by its function id, with the given arguments and gas.
+    /// This should be used for starknet contracts which require a syscall handler, whose
+    /// implementation should be passed on.
     pub fn invoke_contract_dynamic(
         &self,
         function_id: &FunctionId,
@@ -120,6 +133,15 @@ impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
     }
 }
 
+/// Internal method.
+///
+/// Invokes the given function by constructing the function call depending on the arguments given.
+/// Usually calling a function requires knowing it's signature at compile time, but we need to be
+/// able to call any given function provided it's signatue (arguments and return type) at runtime,
+/// to do so we have a "trampoline" in the given platform assembly (x86_64, aarch64) which
+/// constructs the function call in place.
+///
+/// To pass the arguments, they are stored in a arena.
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
@@ -129,9 +151,6 @@ fn invoke_dynamic(
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
-
-    let is_builtin = <CoreTypeConcrete as TypeBuilder>::is_builtin;
-    let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
 
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
@@ -148,11 +167,7 @@ fn invoke_dynamic(
         .iter()
         .filter(|id| {
             let info = registry.get_type(id).unwrap();
-
-            let is_builtin = <CoreTypeConcrete as TypeBuilder>::is_builtin;
-            let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
-
-            !(is_builtin(info) && is_zst(info, registry))
+            !(info.is_builtin() && info.is_zst(registry))
         })
         .peekable();
 
@@ -185,12 +200,10 @@ fn invoke_dynamic(
     let mut iter = args.iter();
     for type_id in function_signature.param_types.iter().filter(|id| {
         let info = registry.get_type(id).unwrap();
-        !<CoreTypeConcrete as TypeBuilder>::is_zst(info, registry)
+        !info.is_zst(registry)
     }) {
-        let type_info = registry.get_type(type_id).unwrap();
-
         // Process gas requirements and syscall handler.
-        match type_info {
+        match registry.get_type(type_id).unwrap() {
             CoreTypeConcrete::GasBuiltin(_) => invoke_data.push_aligned(
                 get_integer_layout(128).align(),
                 &[gas as u64, (gas >> 64) as u64],
@@ -205,14 +218,21 @@ fn invoke_dynamic(
                             &[syscall_handler as *mut _ as u64],
                         )
                     }
-                    None => panic!("Syscall handler is required"),
+                    None => {
+                        panic!("Syscall handler is required");
+                    }
                 }
             }
-            _ if is_builtin(type_info) => invoke_data
-                .push(type_id, type_info, &JitValue::Uint64(0))
-                .unwrap(),
-            _ => invoke_data
-                .push(type_id, type_info, iter.next().unwrap())
+            type_info => invoke_data
+                .push(
+                    type_id,
+                    type_info,
+                    if type_info.is_builtin() {
+                        &JitValue::Uint64(0)
+                    } else {
+                        iter.next().unwrap()
+                    },
+                )
                 .unwrap(),
         }
     }
@@ -266,8 +286,8 @@ fn invoke_dynamic(
                 },
                 None => {}
             },
-            _ if is_builtin(type_info) => {
-                if !is_zst(type_info, registry) {
+            _ if type_info.is_builtin() => {
+                if !type_info.is_zst(registry) {
                     let value = match &mut return_ptr {
                         Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
                         None => ret_registers[0],
@@ -289,12 +309,23 @@ fn invoke_dynamic(
     }
 
     // Parse return values.
-    let return_value = parse_result(
-        function_signature.ret_types.last().unwrap(),
-        registry,
-        return_ptr,
-        ret_registers,
-    );
+    let return_value = function_signature
+        .ret_types
+        .last()
+        .map(|ret_type| {
+            parse_result(
+                ret_type,
+                registry,
+                return_ptr,
+                ret_registers,
+                // TODO: Consider returning an Option<JitValue> as return_value instead
+                // As cairo functions can not have a return value
+            )
+        })
+        .unwrap_or_else(|| JitValue::Struct {
+            fields: vec![],
+            debug_name: None,
+        });
 
     // FIXME: Arena deallocation.
     std::mem::forget(arena);
@@ -326,24 +357,26 @@ impl<'a> ArgumentMapper<'a> {
         &self.invoke_data
     }
 
-    #[cfg_attr(target_arch = "x86_64", allow(unused_mut))]
     pub fn push_aligned(&mut self, align: usize, mut values: &[u64]) {
         assert!(align.is_power_of_two());
         assert!(align <= 16);
 
-        // x86_64's max alignment is 8 bytes.
         #[cfg(target_arch = "x86_64")]
-        assert!(align <= 8);
+        const NUM_REGISTER_ARGS: usize = 6;
+        #[cfg(not(target_arch = "x86_64"))]
+        const NUM_REGISTER_ARGS: usize = 8;
 
-        #[cfg(target_arch = "aarch64")]
         if align == 16 {
             // This works because on both aarch64 and x86_64 the stack is already aligned to
             // 16 bytes when the trampoline starts pushing values.
-            if self.invoke_data.len() >= 8 {
+
+            // Whenever a value spans across multiple registers, if it's in a position where it would be split between
+            // registers and the stack it must be padded so that the entire value is stored within the stack.
+            if self.invoke_data.len() >= NUM_REGISTER_ARGS {
                 if self.invoke_data.len() & 1 != 0 {
                     self.invoke_data.push(0);
                 }
-            } else if self.invoke_data.len() + 1 >= 8 {
+            } else if self.invoke_data.len() + 1 >= NUM_REGISTER_ARGS {
                 self.invoke_data.push(0);
             } else {
                 let new_len = self.invoke_data.len() + values.len();
@@ -403,14 +436,16 @@ impl<'a> ArgumentMapper<'a> {
                 );
             }
             (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {
-                self.push_aligned(get_integer_layout(252).align(), &a.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &b.to_le_digits());
+                let align = get_integer_layout(252).align();
+                self.push_aligned(align, &a.to_le_digits());
+                self.push_aligned(align, &b.to_le_digits());
             }
             (CoreTypeConcrete::EcState(_), JitValue::EcState(a, b, c, d)) => {
-                self.push_aligned(get_integer_layout(252).align(), &a.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &b.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &c.to_le_digits());
-                self.push_aligned(get_integer_layout(252).align(), &d.to_le_digits());
+                let align = get_integer_layout(252).align();
+                self.push_aligned(align, &a.to_le_digits());
+                self.push_aligned(align, &b.to_le_digits());
+                self.push_aligned(align, &c.to_le_digits());
+                self.push_aligned(align, &d.to_le_digits());
             }
             (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
                 if type_info.is_memory_allocated(self.registry) {
@@ -567,6 +602,7 @@ impl<'a> ArgumentMapper<'a> {
     }
 }
 
+/// Parses the result by reading from the return ptr the given type.
 fn parse_result(
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -585,7 +621,9 @@ fn parse_result(
             .align_offset(layout.align());
 
         *return_ptr = unsafe {
-            NonNull::new_unchecked(return_ptr.cast::<u8>().as_ptr().add(align_offset)).cast()
+            NonNull::new(return_ptr.cast::<u8>().as_ptr().add(align_offset))
+                .expect("nonnull is null")
+                .cast()
         };
     }
 
@@ -769,10 +807,34 @@ fn parse_result(
             ),
         },
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+        CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
+            Some(return_ptr) => JitValue::from_jit(
+                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
+                type_id,
+                registry,
+            ),
+            None => JitValue::from_jit(
+                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
+                type_id,
+                registry,
+            ),
+        },
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::Snapshot(_) => todo!(),
         CoreTypeConcrete::Bytes31(_) => todo!(),
-        _ => unreachable!(),
+        CoreTypeConcrete::Bitwise(_) => todo!(),
+        CoreTypeConcrete::Const(_) => todo!(),
+        CoreTypeConcrete::EcOp(_) => todo!(),
+        CoreTypeConcrete::GasBuiltin(_) => JitValue::Struct {
+            fields: Vec::new(),
+            debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+        },
+        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+        CoreTypeConcrete::RangeCheck(_) => todo!(),
+        CoreTypeConcrete::Pedersen(_) => todo!(),
+        CoreTypeConcrete::Poseidon(_) => todo!(),
+        CoreTypeConcrete::SegmentArena(_) => todo!(),
+        CoreTypeConcrete::BoundedInt(_) => todo!(),
+        _ => todo!(),
     }
 }

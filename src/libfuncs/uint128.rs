@@ -2,9 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result},
-    metadata::MetadataStorage,
-    utils::{mlir_asm, ProgramRegistryExt},
+    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,7 +25,7 @@ use melior::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Location, Region, Value, ValueLike,
+        Block, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -118,7 +116,7 @@ pub fn build_const<'ctx, 'this>(
 ) -> Result<()> {
     let value = info.c;
 
-    let u128_ty = registry.build_type(
+    let value_ty = registry.build_type(
         context,
         helper,
         registry,
@@ -126,14 +124,10 @@ pub fn build_const<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let attr_c = Attribute::parse(context, &format!("{value} : {u128_ty}"))
-        .ok_or(Error::ParseAttributeError)?;
+    let value = entry.const_int_from_type(context, location, value, value_ty)?;
 
-    mlir_asm! { context, entry, location =>
-        ; k0 = "arith.constant"() { "value" = attr_c } : () -> u128_ty
-    }
+    entry.append_operation(helper.br(0, &[value], location));
 
-    entry.append_operation(helper.br(0, &[k0], location));
     Ok(())
 }
 
@@ -949,14 +943,14 @@ mod test {
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
-            &[Felt::from(0).into()],
+            &[Felt::ZERO.into()],
             jit_enum!(0, 0u128.into()),
         );
 
         run_program_assert_output(
             &U128_FROM_FELT252,
             "run_test",
-            &[Felt::from(1).into()],
+            &[Felt::ONE.into()],
             jit_enum!(0, 1u128.into()),
         );
 
@@ -1103,8 +1097,8 @@ mod test {
     fn u128_to_felt252() {
         let program = &U128_TO_FELT252;
 
-        run_program_assert_output(program, "run_test", &[0u128.into()], Felt::from(0).into());
-        run_program_assert_output(program, "run_test", &[1u128.into()], Felt::from(1).into());
+        run_program_assert_output(program, "run_test", &[0u128.into()], Felt::ZERO.into());
+        run_program_assert_output(program, "run_test", &[1u128.into()], Felt::ONE.into());
         run_program_assert_output(
             program,
             "run_test",

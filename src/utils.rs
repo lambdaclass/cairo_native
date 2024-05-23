@@ -54,17 +54,9 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 
 /// Return the layout for an integer of arbitrary width.
 ///
-/// This assumes the platform's maximum (effective) alignment is 8 bytes, and that every integer
+/// This assumes the platform's maximum (effective) alignment is 16 bytes, and that every integer
 /// with a size in bytes of a power of two has the same alignment as its size.
 pub fn get_integer_layout(width: u32) -> Layout {
-    // TODO: Fix integer layouts properly.
-    if width == 248 || width == 252 || width == 256 {
-        #[cfg(target_arch = "x86_64")]
-        return Layout::from_size_align(32, 8).unwrap();
-        #[cfg(not(target_arch = "x86_64"))]
-        return Layout::from_size_align(32, 16).unwrap();
-    }
-
     if width == 0 {
         Layout::new::<()>()
     } else if width <= 8 {
@@ -76,9 +68,17 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 64 {
         Layout::new::<u64>()
     } else if width <= 128 {
-        Layout::new::<u128>()
+        #[cfg(not(target_arch = "x86_64"))]
+        {
+            Layout::new::<u128>()
+        }
+        #[cfg(target_arch = "x86_64")]
+        {
+            Layout::new::<u128>().align_to(16).unwrap()
+        }
     } else {
-        Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap()
+        let width = (width as usize).next_multiple_of(8).next_power_of_two();
+        Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
     }
 }
 
@@ -104,11 +104,10 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
         .into()
     } else {
         let source = std::fs::read_to_string(program).unwrap();
-        Arc::new(
-            cairo_lang_sierra::ProgramParser::new()
-                .parse(&source)
-                .unwrap(),
-        )
+        cairo_lang_sierra::ProgramParser::new()
+            .parse(&source)
+            .unwrap()
+            .into()
     }
 }
 
@@ -224,17 +223,7 @@ pub fn create_engine(
     opt_level: OptLevel,
 ) -> ExecutionEngine {
     // Create the JIT engine.
-    let engine = ExecutionEngine::new(
-        module,
-        match opt_level {
-            OptLevel::None => 0,
-            OptLevel::Less => 1,
-            OptLevel::Default => 2,
-            OptLevel::Aggressive => 3,
-        },
-        &[],
-        false,
-    );
+    let engine = ExecutionEngine::new(module, opt_level.into(), &[], false);
 
     #[cfg(feature = "with-runtime")]
     register_runtime_symbols(&engine);
@@ -343,6 +332,13 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
                     &[u8; 32],
                     NonNull<std::ffi::c_void>,
                 ) -> *mut std::ffi::c_void as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_gas_refund",
+            cairo_native_runtime::cairo_native__dict_gas_refund
+                as *const fn(*const std::ffi::c_void, NonNull<std::ffi::c_void>) -> u64
+                as *mut (),
         );
     }
 }
@@ -642,14 +638,9 @@ pub(crate) use codegen_ret_extr;
 #[cfg(test)]
 pub mod test {
     use crate::{
+        context::NativeContext,
         execution_result::ExecutionResult,
         executor::JitNativeExecutor,
-        metadata::{
-            gas::{GasMetadata, MetadataComputationConfig},
-            runtime_bindings::RuntimeBindingsMeta,
-            MetadataStorage,
-        },
-        module::NativeModule,
         starknet::{
             BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarknetSyscallHandler,
             SyscallResult, TxInfo, TxV2Info, U256,
@@ -663,20 +654,14 @@ pub mod test {
     };
     use cairo_lang_filesystem::db::init_dev_corelib;
     use cairo_lang_sierra::{
-        extensions::core::{CoreLibfunc, CoreType},
         ids::FunctionId,
         program::Program,
         program::{FunctionSignature, GenFunction, StatementIdx},
-        program_registry::ProgramRegistry,
     };
-    use melior::{
-        dialect::DialectRegistry,
-        ir::{Location, Module},
-        utility::{register_all_dialects, register_all_passes},
-        Context,
-    };
+    use cairo_lang_starknet::starknet_plugin_suite;
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
+    use std::io::Write;
     use std::{env::var, fmt::Formatter, fs, path::Path};
 
     macro_rules! load_cairo {
@@ -684,7 +669,13 @@ pub mod test {
             $crate::utils::test::load_cairo_str(stringify!($($program)+))
         };
     }
+    macro_rules! load_starknet {
+        ( $( $program:tt )+ ) => {
+            $crate::utils::test::load_starknet_str(stringify!($($program)+))
+        };
+    }
     pub(crate) use load_cairo;
+    pub(crate) use load_starknet;
 
     // Helper macros for faster testing.
     macro_rules! jit_struct {
@@ -729,7 +720,21 @@ pub mod test {
     pub(crate) use jit_panic;
     pub(crate) use jit_struct;
 
-    pub fn load_cairo_str(program_str: &str) -> (String, Program) {
+    pub(crate) fn load_cairo_str(program_str: &str) -> (String, Program) {
+        compile_program(program_str, RootDatabase::default())
+    }
+
+    pub(crate) fn load_starknet_str(program_str: &str) -> (String, Program) {
+        compile_program(
+            program_str,
+            RootDatabase::builder()
+                .with_plugin_suite(starknet_plugin_suite())
+                .build()
+                .unwrap(),
+        )
+    }
+
+    pub(crate) fn compile_program(program_str: &str, mut db: RootDatabase) -> (String, Program) {
         let mut program_file = tempfile::Builder::new()
             .prefix("test_")
             .suffix(".cairo")
@@ -737,7 +742,6 @@ pub mod test {
             .unwrap();
         fs::write(&mut program_file, program_str).unwrap();
 
-        let mut db = RootDatabase::default();
         init_dev_corelib(
             &mut db,
             Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
@@ -767,9 +771,6 @@ pub mod test {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
 
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)
-            .expect("Could not create the test program registry.");
-
         let entry_point_id = &program
             .funcs
             .iter()
@@ -777,49 +778,14 @@ pub mod test {
             .expect("Test program entry point not found.")
             .id;
 
-        let context = Context::new();
-        context.append_dialect_registry(&{
-            let registry = DialectRegistry::new();
-            register_all_dialects(&registry);
-            registry
-        });
-        context.load_all_available_dialects();
-        register_all_passes();
+        let context = NativeContext::new();
 
-        let mut module = Module::new(Location::unknown(&context));
-        let mut metadata = MetadataStorage::new();
-
-        // Make the runtime library and syscall handler available.
-        metadata.insert(RuntimeBindingsMeta::default()).unwrap();
-
-        if program
-            .type_declarations
-            .iter()
-            .any(|decl| decl.long_id.generic_id.0 == "GasBuiltin")
-        {
-            let gas_metadata =
-                GasMetadata::new(program, Some(MetadataComputationConfig::default())).unwrap();
-            metadata.insert(gas_metadata);
-        } else {
-            let gas_metadata = GasMetadata::new(program, None).unwrap();
-            metadata.insert(gas_metadata);
-        }
-
-        crate::compile(&context, &module, program, &registry, &mut metadata, None)
+        let module = context
+            .compile(program, None)
             .expect("Could not compile test program to MLIR.");
 
-        assert!(
-            module.as_operation().verify(),
-            "Test program generated invalid MLIR:\n{}",
-            module.as_operation()
-        );
-
-        run_pass_manager(&context, &mut module)
-            .expect("Could not apply passes to the compiled test program.");
-
-        let native_module = NativeModule::new(module, registry, metadata);
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
-        let executor = JitNativeExecutor::from_native_module(native_module, OptLevel::None);
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
         executor
             .invoke_dynamic_with_syscall_handler(
                 entry_point_id,
@@ -870,15 +836,12 @@ pub mod test {
 
     /// Ensures that the host's `u128` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_u128() {
-        // FIXME: Uncomment once LLVM fixes its u128 alignment issues.
         assert_eq!(get_integer_layout(128).align(), 16);
     }
 
     /// Ensures that the host's `u256` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_u256() {
         assert_eq!(get_integer_layout(256).align(), 16);
     }
@@ -886,14 +849,13 @@ pub mod test {
     /// Ensures that the host's `u512` is compatible with its compiled counterpart.
     #[test]
     fn test_alignment_compatibility_u512() {
-        assert_eq!(get_integer_layout(512).align(), 8);
+        assert_eq!(get_integer_layout(512).align(), 16);
     }
 
     /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_felt() {
-        assert_eq!(get_integer_layout(252).align(), 8);
+        assert_eq!(get_integer_layout(252).align(), 16);
     }
 
     // ==============================
@@ -1133,12 +1095,106 @@ pub mod test {
         assert_eq!(format!("{:?}", debug_wrapper), "Name: William, Age: 28");
     }
 
-    #[derive(Debug)]
-    struct TestSyscallHandler;
+    #[test]
+    fn test_generate_function_name_debug_name() {
+        let function_id = FunctionId {
+            id: 123,
+            debug_name: Some("function_name".into()),
+        };
+
+        assert_eq!(generate_function_name(&function_id), "function_name(f123)");
+    }
+
+    #[test]
+    fn test_generate_function_name_without_debug_name() {
+        let function_id = FunctionId {
+            id: 123,
+            debug_name: None,
+        };
+
+        assert_eq!(generate_function_name(&function_id), "f123");
+    }
+
+    #[test]
+    fn test_cairo_to_sierra_path() {
+        // Define the path to the cairo program.
+        let program_path = Path::new("programs/examples/hello.cairo");
+        // Compile the cairo program to sierra.
+        let sierra_program = cairo_to_sierra(program_path);
+
+        // Define the entry point function for comparison.
+        let entry_point = "hello::hello::greet";
+        // Find the function ID of the entry point function in the sierra program.
+        let entry_point_id = find_function_id(&sierra_program, entry_point);
+
+        // Assert that the debug name of the entry point function matches the expected value.
+        assert_eq!(
+            entry_point_id.debug_name,
+            Some("hello::hello::greet".into())
+        );
+    }
+
+    #[test]
+    fn test_cairo_to_sierra_source() {
+        // Define the content of the cairo program as a string.
+        let content = "type u8 = u8;";
+
+        // Create a named temporary file and write the content to it.
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(content.as_bytes()).unwrap();
+        // Get the path of the temporary file.
+        let file_path = file.path().to_path_buf();
+
+        // Compile the cairo program to sierra using the path of the temporary file.
+        let sierra_program = cairo_to_sierra(&file_path);
+
+        // Assert that the sierra program has no library function declarations, statements, or functions.
+        assert!(sierra_program.libfunc_declarations.is_empty());
+        assert!(sierra_program.statements.is_empty());
+        assert!(sierra_program.funcs.is_empty());
+
+        // Assert that the debug name of the first type declaration matches the expected value.
+        assert_eq!(sierra_program.type_declarations.len(), 1);
+        assert_eq!(
+            sierra_program.type_declarations[0].id.debug_name,
+            Some("u8".into())
+        );
+    }
+
+    #[test]
+    fn test_cairo_to_sierra_with_debug_info() {
+        // Define the path to the cairo program.
+        let program_path = Path::new("programs/examples/hello.cairo");
+        // Create a new context.
+        let context = Context::new();
+        // Compile the cairo program to sierra, including debug information.
+        let sierra_program = cairo_to_sierra_with_debug_info(&context, program_path).unwrap();
+
+        // Define the name of the entry point function for comparison.
+        let entry_point = "hello::hello::greet";
+        // Find the function ID of the entry point function in the sierra program.
+        let entry_point_id = find_function_id(&sierra_program.0, entry_point);
+
+        // Assert that the debug name of the entry point function matches the expected value.
+        assert_eq!(
+            entry_point_id.debug_name,
+            Some("hello::hello::greet".into())
+        );
+
+        // Check if the sierra program contains a function with the specified debug name for the entry point function.
+        assert!(sierra_program
+            .1
+            .funcs
+            .keys()
+            .any(|func| func.debug_name == Some("hello::hello::greet".into())));
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct TestSyscallHandler;
 
     impl StarknetSyscallHandler for TestSyscallHandler {
-        fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
-            Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
+        fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
+            Ok(Felt::from(block_number))
         }
 
         fn get_execution_info(
@@ -1211,7 +1267,7 @@ pub mod test {
         ) -> SyscallResult<(Felt, Vec<Felt>)> {
             Ok((
                 class_hash + contract_address_salt,
-                calldata.iter().map(|x| x + Felt::from(1)).collect(),
+                calldata.iter().map(|x| x + Felt::ONE).collect(),
             ))
         }
 

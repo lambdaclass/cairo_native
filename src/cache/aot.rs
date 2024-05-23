@@ -80,3 +80,31 @@ where
         f.write_str("AotProgramCache")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{utils::test::load_cairo, values::JitValue};
+    use starknet_types_core::felt::Felt;
+
+    #[test]
+    fn test_aot_compile_and_insert() {
+        let native_context = NativeContext::new();
+        let mut cache = AotProgramCache::new(&native_context);
+
+        let (_, program) = load_cairo! {
+            fn run_test() -> felt252 {
+                42
+            }
+        };
+
+        let function_id = &program.funcs.first().expect("should have a function").id;
+        let executor = cache.compile_and_insert((), &program, OptLevel::default());
+        let res = executor
+            .invoke_dynamic(function_id, &[], Some(u128::MAX))
+            .expect("should run");
+
+        // After compiling and inserting the program, we should be able to run it.
+        assert_eq!(res.return_value, JitValue::Felt252(Felt::from(42)));
+    }
+}
