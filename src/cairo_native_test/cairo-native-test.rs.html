@@ -1490,11 +1490,6 @@
 <a href="#1488" id="1488">1488</a>
 <a href="#1489" id="1489">1489</a>
 <a href="#1490" id="1490">1490</a>
-<a href="#1491" id="1491">1491</a>
-<a href="#1492" id="1492">1492</a>
-<a href="#1493" id="1493">1493</a>
-<a href="#1494" id="1494">1494</a>
-<a href="#1495" id="1495">1495</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::{bail, Context};
 <span class="kw">use </span>cairo_felt::Felt252;
 <span class="kw">use </span>cairo_lang_compiler::{
@@ -1533,7 +1528,6 @@
 <span class="kw">use </span>std::{
     iter::once,
     path::{Path, PathBuf},
-    sync::Mutex,
     vec::IntoIter,
 };
 <span class="kw">use </span>tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -1925,12 +1919,12 @@
     .unwrap();
 
     <span class="macro">println!</span>(<span class="string">"running {} tests"</span>, named_tests.len());
-    <span class="kw">let </span>wrapped_summary = Mutex::new(<span class="prelude-val">Ok</span>(TestsSummary {
+    <span class="kw">let </span><span class="kw-2">mut </span>wrapped_summary = <span class="prelude-val">Ok</span>(TestsSummary {
         passed: <span class="macro">vec!</span>[],
         failed: <span class="macro">vec!</span>[],
         ignored: <span class="macro">vec!</span>[],
         failed_run_results: <span class="macro">vec!</span>[],
-    }));
+    });
     named_tests
         .into_iter()
         .map(
@@ -1990,14 +1984,10 @@
             },
         )
         .for_each(|r| {
-            <span class="kw">let </span><span class="kw-2">mut </span>wrapped_summary = wrapped_summary.lock().unwrap();
-            <span class="kw">if </span>wrapped_summary.is_err() {
-                <span class="kw">return</span>;
-            }
             <span class="kw">let </span>(name, status) = <span class="kw">match </span>r {
                 <span class="prelude-val">Ok</span>((name, status)) =&gt; (name, status),
                 <span class="prelude-val">Err</span>(err) =&gt; {
-                    <span class="kw-2">*</span>wrapped_summary = <span class="prelude-val">Err</span>(err);
+                    wrapped_summary = <span class="prelude-val">Err</span>(err);
                     <span class="kw">return</span>;
                 }
             };
@@ -2023,7 +2013,7 @@
             }
             res_type.push(name);
         });
-    wrapped_summary.into_inner().unwrap()
+    wrapped_summary
 }
 
 <span class="kw">pub struct </span>TestSyscallHandler;
