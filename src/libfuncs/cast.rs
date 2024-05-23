@@ -87,7 +87,6 @@ pub fn build_downcast<'ctx, 'this>(
         CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::BoundedInt(_)
     );
 
-    let src_value: melior::ir::Value = entry.argument(1)?.into();
     let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
     let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
 
@@ -96,8 +95,6 @@ pub fn build_downcast<'ctx, 'this>(
         &format!("downcast<{:?}, {:?}>", src_ty, dst_ty),
         location,
     );
-
-    let src_is_felt = matches!(src_type, CoreTypeConcrete::Felt252(_));
 
     let src_value: melior::ir::Value = entry.argument(1)?.into();
 
