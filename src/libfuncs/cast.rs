@@ -71,6 +71,16 @@ pub fn build_downcast<'ctx, 'this>(
     let dst_width = dst_type.integer_width().ok_or_else(|| {
         Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
+
+    let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
+    let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
+
+    let location = Location::name(
+        context,
+        &format!("downcast<{:?}, {:?}>", src_ty, dst_ty),
+        location,
+    );
+
     let src_is_signed = src_type.is_integer_signed().ok_or_else(|| {
         Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
@@ -86,16 +96,6 @@ pub fn build_downcast<'ctx, 'this>(
         dst_type,
         CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::BoundedInt(_)
     );
-
-    let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
-    let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
-
-    let location = Location::name(
-        context,
-        &format!("downcast<{:?}, {:?}>", src_ty, dst_ty),
-        location,
-    );
-
     let src_value: melior::ir::Value = entry.argument(1)?.into();
 
     let mut block = entry;
