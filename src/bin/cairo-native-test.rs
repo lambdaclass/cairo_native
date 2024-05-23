@@ -668,11 +668,11 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let point = k256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    x.hi.to_be_bytes().into_iter().chain(x.lo.to_be_bytes()),
+                    x.lo.to_be_bytes().into_iter().chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    y.hi.to_be_bytes().into_iter().chain(y.lo.to_be_bytes()),
+                    y.lo.to_be_bytes().into_iter().chain(y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -698,17 +698,17 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p0 = k256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p0.x.hi
+                    p0.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.x.lo.to_be_bytes()),
+                        .chain(p0.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p0.y.hi
+                    p0.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.y.lo.to_be_bytes()),
+                        .chain(p0.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -718,17 +718,17 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p1 = k256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p1.x.hi
+                    p1.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.x.lo.to_be_bytes()),
+                        .chain(p1.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p1.y.hi
+                    p1.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.y.lo.to_be_bytes()),
+                        .chain(p1.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -754,12 +754,12 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let y: [u8; 32] = y.as_slice().try_into().unwrap();
         Ok(Secp256k1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[16..32].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
         })
     }
@@ -776,11 +776,11 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p = k256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p.x.hi.to_be_bytes().into_iter().chain(p.x.lo.to_be_bytes()),
+                    p.x.lo.to_be_bytes().into_iter().chain(p.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p.y.hi.to_be_bytes().into_iter().chain(p.y.lo.to_be_bytes()),
+                    p.y.lo.to_be_bytes().into_iter().chain(p.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -789,8 +789,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         .unwrap();
         let m: k256::Scalar = k256::elliptic_curve::ScalarPrimitive::from_slice(&{
             let mut buf = [0u8; 32];
-            buf[0..16].copy_from_slice(&m.hi.to_be_bytes());
-            buf[16..32].copy_from_slice(&m.lo.to_be_bytes());
+            buf[0..16].copy_from_slice(&m.lo.to_be_bytes());
+            buf[16..32].copy_from_slice(&m.hi.to_be_bytes());
             buf
         })
         .map_err(|_| {
@@ -818,12 +818,12 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let y: [u8; 32] = y.as_slice().try_into().unwrap();
         Ok(Secp256k1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[16..32].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
         })
     }
@@ -841,8 +841,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
             &k256::EncodedPoint::from_bytes(
                 k256::CompressedPoint::from_exact_iter(
                     once(0x02 | y_parity as u8)
-                        .chain(x.hi.to_be_bytes())
-                        .chain(x.lo.to_be_bytes()),
+                        .chain(x.lo.to_be_bytes())
+                        .chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
             )
@@ -870,8 +870,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
             Ok(Some(Secp256k1Point {
                 x,
                 y: U256 {
-                    hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                    lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                    lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                    hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
                 },
             }))
         } else {
@@ -898,11 +898,11 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let point = p256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    x.hi.to_be_bytes().into_iter().chain(x.lo.to_be_bytes()),
+                    x.lo.to_be_bytes().into_iter().chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    y.hi.to_be_bytes().into_iter().chain(y.lo.to_be_bytes()),
+                    y.lo.to_be_bytes().into_iter().chain(y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -928,17 +928,17 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p0 = p256::ProjectivePoint::from_encoded_point(
             &p256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p0.x.hi
+                    p0.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.x.lo.to_be_bytes()),
+                        .chain(p0.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p0.y.hi
+                    p0.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.y.lo.to_be_bytes()),
+                        .chain(p0.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -948,17 +948,17 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p1 = p256::ProjectivePoint::from_encoded_point(
             &p256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p1.x.hi
+                    p1.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.x.lo.to_be_bytes()),
+                        .chain(p1.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p1.y.hi
+                    p1.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.y.lo.to_be_bytes()),
+                        .chain(p1.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -984,12 +984,12 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let y: [u8; 32] = y.as_slice().try_into().unwrap();
         Ok(Secp256r1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[16..32].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
         })
     }
@@ -1006,11 +1006,11 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p = p256::ProjectivePoint::from_encoded_point(
             &p256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p.x.hi.to_be_bytes().into_iter().chain(p.x.lo.to_be_bytes()),
+                    p.x.lo.to_be_bytes().into_iter().chain(p.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p.y.hi.to_be_bytes().into_iter().chain(p.y.lo.to_be_bytes()),
+                    p.y.lo.to_be_bytes().into_iter().chain(p.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -1019,8 +1019,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         .unwrap();
         let m: p256::Scalar = p256::elliptic_curve::ScalarPrimitive::from_slice(&{
             let mut buf = [0u8; 32];
-            buf[0..16].copy_from_slice(&m.hi.to_be_bytes());
-            buf[16..32].copy_from_slice(&m.lo.to_be_bytes());
+            buf[0..16].copy_from_slice(&m.lo.to_be_bytes());
+            buf[16..32].copy_from_slice(&m.hi.to_be_bytes());
             buf
         })
         .map_err(|_| {
@@ -1031,7 +1031,6 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         .into();
 
         let p = p * m;
-
         let p = p.to_encoded_point(false);
         let (x, y) = match p.coordinates() {
             Coordinates::Uncompressed { x, y } => (x, y),
@@ -1048,12 +1047,12 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let y: [u8; 32] = y.as_slice().try_into().unwrap();
         Ok(Secp256r1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[16..32].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
         })
     }
@@ -1068,8 +1067,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
             &p256::EncodedPoint::from_bytes(
                 p256::CompressedPoint::from_exact_iter(
                     once(0x02 | y_parity as u8)
-                        .chain(x.hi.to_be_bytes())
-                        .chain(x.lo.to_be_bytes()),
+                        .chain(x.lo.to_be_bytes())
+                        .chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
             )
@@ -1089,8 +1088,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
             Ok(Some(Secp256r1Point {
                 x,
                 y: U256 {
-                    hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                    lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                    lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                    hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
                 },
             }))
         } else {
