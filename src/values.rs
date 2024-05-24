@@ -1441,13 +1441,13 @@ mod range_serde {
                         "upper" => {
                             upper = Some(value);
                         }
-                        _ => todo!(),
+                        _ => return Err(de::Error::unknown_field(field, &["lower", "upper"])),
                     }
                 }
 
                 Ok(Range {
-                    lower: lower.unwrap(),
-                    upper: upper.unwrap(),
+                    lower: lower.ok_or_else(|| de::Error::missing_field("lower"))?,
+                    upper: upper.ok_or_else(|| de::Error::missing_field("upper"))?,
                 })
             }
         }
