@@ -129,7 +129,7 @@ use test_case::test_case;
 #[test_case("tests/cases/cairo_vm/pedersen_example.cairo")]
 #[test_case("tests/cases/cairo_vm/poseidon.cairo")]
 #[test_case("tests/cases/cairo_vm/poseidon_pedersen.cairo")]
-// #[test_case("tests/cases/cairo_vm/primitive_types2.cairo")]
+#[test_case("tests/cases/cairo_vm/primitive_types2.cairo")]
 // #[test_case("tests/cases/cairo_vm/print.cairo")]
 #[test_case("tests/cases/cairo_vm/recursion.cairo")]
 #[test_case("tests/cases/cairo_vm/sample.cairo")]

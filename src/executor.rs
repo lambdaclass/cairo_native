@@ -854,7 +854,7 @@ fn parse_result(
             debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
         }),
         CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-        CoreTypeConcrete::RangeCheck(_) => todo!(),
+        CoreTypeConcrete::RangeCheck(_) => JitValue::Null,
         CoreTypeConcrete::Pedersen(_) => todo!(),
         CoreTypeConcrete::Poseidon(_) => todo!(),
         CoreTypeConcrete::SegmentArena(_) => todo!(),
