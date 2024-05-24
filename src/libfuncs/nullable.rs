@@ -3,7 +3,7 @@
 //! Like a Box but it can be null.
 
 use super::LibfuncHelper;
-use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -12,15 +12,11 @@ use cairo_lang_sierra::{
             SignatureOnlyConcreteLibfunc,
         },
         nullable::NullableConcreteLibfunc,
-        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        cf,
-        llvm::{self, r#type::opaque_pointer},
-    },
+    dialect::{cf, llvm::r#type::pointer, ods},
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
         Identifier, Location,
@@ -65,7 +61,8 @@ fn build_null<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let op = entry.append_operation(llvm::nullptr(opaque_pointer(context), location));
+    let op =
+        entry.append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into());
 
     entry.append_operation(helper.br(0, &[op.result(0)?.into()], location));
 
@@ -92,24 +89,17 @@ fn build_nullable_from_box<'ctx, 'this>(
 #[allow(clippy::too_many_arguments)]
 fn build_match_nullable<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureAndTypeConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let param_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[0].ty,
-    )?;
-
     let arg = entry.argument(0)?.into();
 
-    let op = entry.append_operation(llvm::nullptr(param_ty, location));
+    let op =
+        entry.append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into());
     let nullptr = op.result(0)?.into();
 
     let op = entry.append_operation(

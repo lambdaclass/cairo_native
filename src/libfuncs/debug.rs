@@ -71,7 +71,7 @@ pub fn build_print<'ctx>(
             context,
             entry.argument(0)?.into(),
             DenseI64ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
+            llvm::r#type::pointer(context, 0),
             location,
         ))
         .result(0)?
@@ -122,7 +122,7 @@ pub fn build_print<'ctx>(
                 values_ptr,
                 &[values_start],
                 IntegerType::new(context, 252).into(),
-                llvm::r#type::opaque_pointer(context),
+                llvm::r#type::pointer(context, 0),
                 location,
             ))
             .result(0)?
