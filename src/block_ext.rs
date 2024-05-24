@@ -1,7 +1,7 @@
 //! Trait that extends the melior Block type to aid in codegen and consistency.
 
 use melior::{
-    dialect::{llvm::r#type::opaque_pointer, ods},
+    dialect::{llvm::r#type::pointer, ods},
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
@@ -11,7 +11,7 @@ use melior::{
 };
 use num_bigint::BigInt;
 
-use crate::error::Error;
+use crate::{error::Error, utils::get_integer_layout};
 
 pub trait BlockExt<'ctx> {
     /// Appends the operation and returns the first result.
@@ -97,6 +97,14 @@ pub trait BlockExt<'ctx> {
         location: Location<'ctx>,
         elem_type: Type<'ctx>,
         align: Option<usize>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    /// Allocates one integer of the given bit width.
+    fn alloca_int(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        bits: u32,
     ) -> Result<Value<'ctx, '_>, Error>;
 
     /// Stores a value at the given addr.
@@ -307,7 +315,13 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         num_elems: Value<'ctx, '_>,
         align: Option<usize>,
     ) -> Result<Value<'ctx, '_>, Error> {
-        let mut op = ods::llvm::alloca(context, opaque_pointer(context), num_elems, location);
+        let mut op = ods::llvm::alloca(
+            context,
+            pointer(context, 0),
+            num_elems,
+            TypeAttribute::new(elem_type),
+            location,
+        );
 
         op.set_elem_type(TypeAttribute::new(elem_type));
 
@@ -330,5 +344,21 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
     ) -> Result<Value<'ctx, '_>, Error> {
         let num_elems = self.const_int(context, location, 1, 64)?;
         self.alloca(context, location, elem_type, num_elems, align)
+    }
+
+    fn alloca_int(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        bits: u32,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        let num_elems = self.const_int(context, location, 1, 64)?;
+        self.alloca(
+            context,
+            location,
+            IntegerType::new(context, bits).into(),
+            num_elems,
+            Some(get_integer_layout(bits).align()),
+        )
     }
 }

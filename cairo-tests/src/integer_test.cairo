@@ -1088,9 +1088,7 @@ fn validate_cast_bounds_overlapping<
     validate_max_strictly_contained::<A, B>(err);
 }
 
-// TODO: fails
 #[test]
-#[ignore]
 fn proper_cast() {
     validate_cast_bounds_contained_same_min::<u8, u16>('u8 u16 casts');
     validate_cast_bounds_contained_same_min::<u8, u32>('u8 u32 casts');

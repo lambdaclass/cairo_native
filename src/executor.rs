@@ -1,3 +1,8 @@
+//! # Executors
+//!
+//! This module provides methods to execute the programs, either via JIT or compiled ahead
+//! of time. It also provides a cache to avoid recompiling previously compiled programs.
+
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::Error,
@@ -48,6 +53,7 @@ extern "C" {
     );
 }
 
+/// The cairo native executor, either AOT or JIT based.
 #[derive(Debug, Clone)]
 pub enum NativeExecutor<'m> {
     Aot(Rc<AotNativeExecutor>),
@@ -55,6 +61,7 @@ pub enum NativeExecutor<'m> {
 }
 
 impl<'a> NativeExecutor<'a> {
+    /// Invoke the given function by its function id, with the given arguments and gas.
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
@@ -67,6 +74,9 @@ impl<'a> NativeExecutor<'a> {
         }
     }
 
+    /// Invoke the given function by its function id, with the given arguments and gas.
+    /// This should be used for programs which require a syscall handler, whose
+    /// implementation should be passed on.
     pub fn invoke_dynamic_with_syscall_handler(
         &self,
         function_id: &FunctionId,
@@ -90,6 +100,9 @@ impl<'a> NativeExecutor<'a> {
         }
     }
 
+    /// Invoke the given function by its function id, with the given arguments and gas.
+    /// This should be used for starknet contracts which require a syscall handler, whose
+    /// implementation should be passed on.
     pub fn invoke_contract_dynamic(
         &self,
         function_id: &FunctionId,
@@ -120,6 +133,15 @@ impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
     }
 }
 
+/// Internal method.
+///
+/// Invokes the given function by constructing the function call depending on the arguments given.
+/// Usually calling a function requires knowing it's signature at compile time, but we need to be
+/// able to call any given function provided it's signatue (arguments and return type) at runtime,
+/// to do so we have a "trampoline" in the given platform assembly (x86_64, aarch64) which
+/// constructs the function call in place.
+///
+/// To pass the arguments, they are stored in a arena.
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
@@ -335,28 +357,30 @@ impl<'a> ArgumentMapper<'a> {
         &self.invoke_data
     }
 
-    #[cfg_attr(target_arch = "x86_64", allow(unused_mut))]
     pub fn push_aligned(&mut self, align: usize, mut values: &[u64]) {
         assert!(align.is_power_of_two());
         assert!(align <= 16);
 
-        // x86_64's max alignment is 8 bytes.
         #[cfg(target_arch = "x86_64")]
-        assert!(align <= 8);
-
+        const NUM_REGISTER_ARGS: usize = 6;
         #[cfg(target_arch = "aarch64")]
+        const NUM_REGISTER_ARGS: usize = 8;
+
         if align == 16 {
             // This works because on both aarch64 and x86_64 the stack is already aligned to
             // 16 bytes when the trampoline starts pushing values.
-            if self.invoke_data.len() >= 8 {
+
+            // Whenever a value spans across multiple registers, if it's in a position where it would be split between
+            // registers and the stack it must be padded so that the entire value is stored within the stack.
+            if self.invoke_data.len() >= NUM_REGISTER_ARGS {
                 if self.invoke_data.len() & 1 != 0 {
                     self.invoke_data.push(0);
                 }
-            } else if self.invoke_data.len() + 1 >= 8 {
+            } else if self.invoke_data.len() + 1 >= NUM_REGISTER_ARGS {
                 self.invoke_data.push(0);
             } else {
                 let new_len = self.invoke_data.len() + values.len();
-                if new_len >= 8 && new_len % 2 != 0 {
+                if new_len >= NUM_REGISTER_ARGS && new_len % 2 != 0 {
                     let chunk;
                     (chunk, values) = if values.len() >= 4 {
                         values.split_at(4)
@@ -578,6 +602,7 @@ impl<'a> ArgumentMapper<'a> {
     }
 }
 
+/// Parses the result by reading from the return ptr the given type.
 fn parse_result(
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -596,7 +621,9 @@ fn parse_result(
             .align_offset(layout.align());
 
         *return_ptr = unsafe {
-            NonNull::new_unchecked(return_ptr.cast::<u8>().as_ptr().add(align_offset)).cast()
+            NonNull::new(return_ptr.cast::<u8>().as_ptr().add(align_offset))
+                .expect("nonnull is null")
+                .cast()
         };
     }
 
@@ -780,7 +807,18 @@ fn parse_result(
             ),
         },
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+        CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
+            Some(return_ptr) => JitValue::from_jit(
+                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
+                type_id,
+                registry,
+            ),
+            None => JitValue::from_jit(
+                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
+                type_id,
+                registry,
+            ),
+        },
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::Snapshot(_) => todo!(),
         CoreTypeConcrete::Bytes31(_) => todo!(),

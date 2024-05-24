@@ -362,7 +362,6 @@ proptest! {
 }
 
 #[test]
-#[ignore = "currently failing with `vm size not yet implemented`"]
 fn self_referencing_struct() {
     let result_vm = run_vm_program(
         &SELF_REFERENCING,
