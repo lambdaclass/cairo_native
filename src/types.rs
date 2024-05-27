@@ -21,7 +21,11 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
+    dialect::{
+        arith,
+        llvm::{self, r#type::pointer},
+        ods,
+    },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
@@ -864,10 +868,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 .result(0)?
                 .into(),
             Self::Nullable(_) => entry
-                .append_operation(llvm::nullptr(
-                    llvm::r#type::opaque_pointer(context),
-                    location,
-                ))
+                .append_operation(
+                    ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+                )
                 .result(0)?
                 .into(),
             Self::Uint8(_) => entry
@@ -926,6 +929,10 @@ impl TypeBuilder for CoreTypeConcrete {
     ) -> Result<(), Self::Error> {
         match self {
             CoreTypeConcrete::Array(_info) => {
+                if metadata.get::<ReallocBindingsMeta>().is_none() {
+                    metadata.insert(ReallocBindingsMeta::new(context, helper));
+                }
+
                 let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
 
                 let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);

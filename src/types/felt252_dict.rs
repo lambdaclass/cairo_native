@@ -31,7 +31,7 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(llvm::r#type::opaque_pointer(context))
+    Ok(llvm::r#type::pointer(context, 0))
 }
 
 #[cfg(test)]
