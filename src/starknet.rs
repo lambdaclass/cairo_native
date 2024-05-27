@@ -245,7 +245,7 @@ pub trait StarknetSyscallHandler {
     ) -> SyscallResult<(U256, U256)>;
 
     // Testing syscalls.
-    fn cheatcode(&mut self, _input: &[Felt]) -> SyscallResult<()>;
+    fn cheatcode(&mut self, input: &[Felt]) -> SyscallResult<()>;
 }
 
 pub struct DummySyscallHandler;
