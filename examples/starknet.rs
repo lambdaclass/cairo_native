@@ -14,6 +14,7 @@ use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Debug, Default)]
+#[allow(dead_code)] // todo!(julian) implement testing syscall
 struct TestingState {
     sequencer_address: Felt,
     block_number: u64,
@@ -32,6 +33,7 @@ struct TestingState {
 
 #[derive(Debug, Default)]
 struct SyscallHandler {
+    #[allow(dead_code)] // todo!(julian) implement testing syscall
     testing_state: TestingState,
 }
 

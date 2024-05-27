@@ -13,6 +13,7 @@ use pretty_assertions_sorted::assert_eq_sorted;
 use starknet_types_core::felt::Felt;
 
 #[derive(Debug, Default)]
+#[allow(dead_code)] // TODO(julian): implement testing syscall
 struct TestingState {
     sequencer_address: Felt,
     block_number: u64,
@@ -26,11 +27,11 @@ struct TestingState {
     chain_id: Felt,
     nonce: Felt,
     signature: Vec<Felt>,
-    #[allow(dead_code)] // TODO(juanbono): use this field to implement pop_log
     logs: Vec<(Vec<Felt>, Vec<Felt>)>,
 }
 
 struct SyscallHandler {
+    #[allow(dead_code)] // TODO(julian): implement testing syscall
     testing_state: TestingState,
 }
 
