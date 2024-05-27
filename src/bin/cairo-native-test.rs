@@ -1110,8 +1110,7 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         Ok((p.x, p.y))
     }
 
-    fn cheatcode(&mut self, input: &[Felt]) -> SyscallResult<()> {
-        dbg!(input);
+    fn cheatcode(&mut self, _input: &[Felt]) -> SyscallResult<()> {
         todo!()
     }
 }
