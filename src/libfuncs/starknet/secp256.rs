@@ -1210,7 +1210,6 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
         .result(0)?
         .into();
 
-    // Load the two variants of the result returned by the syscall handler.
     let payload_ok = {
         let ptr = entry
             .append_operation(
@@ -1856,7 +1855,6 @@ pub fn build_r1_new<'ctx, 'this>(
         .result(0)?
         .into();
 
-    // Load the two variants of the result returned by the syscall handler.
     let payload_ok = {
         let ptr = entry
             .append_operation(

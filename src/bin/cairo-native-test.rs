@@ -408,12 +408,18 @@ fn run_tests(
         .unwrap();
 
     let native_executor: NativeExecutor = match args.run_mode {
-        RunMode::Aot => {
-            AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
-        }
-        RunMode::Jit => {
-            JitNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
-        }
+        RunMode::Aot => AotNativeExecutor::from_native_module(
+            native_context.context(),
+            native_module,
+            args.opt_level.into(),
+        )
+        .into(),
+        RunMode::Jit => JitNativeExecutor::from_native_module(
+            native_context.context(),
+            native_module,
+            args.opt_level.into(),
+        )
+        .into(),
     };
 
     let gas_metadata = GasMetadata::new(

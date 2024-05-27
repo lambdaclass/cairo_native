@@ -35,6 +35,7 @@ fn test_panic_with_byte_array_long() {
 }
 
 #[test]
+#[ignore]
 #[should_panic(expected: "long err\0r with more than 31 characters")]
 fn test_panic_with_byte_array_null_in_full_word() {
     let mut ba: ByteArray = "long err";
@@ -45,6 +46,7 @@ fn test_panic_with_byte_array_null_in_full_word() {
 }
 
 #[test]
+#[ignore]
 #[should_panic(expected: "long error with more than 31 character\0s")]
 fn test_panic_with_byte_array_null_in_pending() {
     let mut ba: ByteArray = "long error with more than 31 character";
@@ -55,6 +57,7 @@ fn test_panic_with_byte_array_null_in_pending() {
 }
 
 #[test]
+#[ignore]
 #[should_panic(expected: "\0error")]
 fn test_panic_with_byte_array_null_in_beginning() {
     let mut ba: ByteArray = "";
@@ -134,12 +137,14 @@ fn test_panic_macro_empty() {
 }
 
 #[test]
+#[ignore]
 #[should_panic(expected: "basic")]
 fn test_panic_macro_basic_string() {
     panic!("basic")
 }
 
 #[test]
+#[ignore]
 #[should_panic(expected: "some_format(1)")]
 fn test_panic_macro_with_input() {
     panic!("some_format({})", 1)

@@ -404,6 +404,7 @@
 use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
+    ffi::get_mlir_layout,
     metadata::MetadataStorage,
     utils::{get_integer_layout, ProgramRegistryExt},
 };
@@ -440,7 +441,12 @@ pub fn build<'ctx>(
     let tag_layout = get_integer_layout(tag_bits);
     let layout = info.variants.iter().fold(tag_layout, |acc, id| {
         let layout = tag_layout
-            .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
+            .extend(get_mlir_layout(
+                module,
+                registry
+                    .build_type(context, module, registry, metadata, id)
+                    .unwrap(),
+            ))
             .unwrap()
             .0;
 
@@ -480,32 +486,6 @@ pub fn build<'ctx>(
     })
 }
 
-/// Extract layout for the default enum representation, its discriminant and all its payloads.
-pub fn get_layout_for_variants(
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    variants: &[ConcreteTypeId],
-) -> Result<(Layout, Layout, Vec<Layout>)> {
-    let tag_bits = variants.len().next_power_of_two().trailing_zeros();
-    let tag_layout = get_integer_layout(tag_bits);
-
-    let mut layout = tag_layout;
-    let mut output = Vec::with_capacity(variants.len());
-    for variant in variants {
-        let concrete_payload_ty = registry.get_type(variant)?;
-        let payload_layout = concrete_payload_ty.layout(registry)?;
-
-        let full_layout = tag_layout.extend(payload_layout)?.0;
-        layout = Layout::from_size_align(
-            layout.size().max(full_layout.size()),
-            layout.align().max(full_layout.align()),
-        )?;
-
-        output.push(payload_layout);
-    }
-
-    Ok((layout, tag_layout, output))
-}
-
 /// Extract the type and layout for the default enum representation, its discriminant and all its
 /// payloads.
 // TODO: Change this function to accept a slice of slices (for variants). Not all uses have a slice
@@ -541,15 +521,15 @@ pub fn get_type_for_variants<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{metadata::MetadataStorage, types::TypeBuilder, utils::test::load_cairo};
+    use crate::{
+        context::NativeContext, metadata::MetadataStorage, types::TypeBuilder,
+        utils::test::load_cairo,
+    };
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,
     };
-    use melior::{
-        ir::{r#type::IntegerType, Location, Module},
-        Context,
-    };
+    use melior::ir::r#type::IntegerType;
 
     #[test]
     fn enum_type_single_variant_no_i0() {
@@ -563,19 +543,19 @@ mod test {
             }
         };
 
-        let context = Context::new();
+        let context = NativeContext::new();
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        let module = Module::new(Location::unknown(&context));
+        let module = context.new_module();
         let mut metadata = MetadataStorage::new();
 
-        let i0_ty = IntegerType::new(&context, 0).into();
+        let i0_ty = IntegerType::new(context.context(), 0).into();
         program
             .type_declarations
             .iter()
             .map(|ty| (&ty.id, registry.get_type(&ty.id).unwrap()))
             .map(|(id, ty)| {
-                ty.build(&context, &module, &registry, &mut metadata, id)
+                ty.build(context.context(), &module, &registry, &mut metadata, id)
                     .unwrap()
             })
             .any(|width| width == i0_ty);

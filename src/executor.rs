@@ -7,9 +7,11 @@ pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::Error,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
+    ffi::get_mlir_layout,
+    metadata::MetadataStorage,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
     values::JitValue,
 };
 use bumpalo::Bump;
@@ -23,6 +25,7 @@ use cairo_lang_sierra::{
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
 use libc::c_void;
+use melior::{ir::Module, Context};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -56,7 +59,7 @@ extern "C" {
 /// The cairo native executor, either AOT or JIT based.
 #[derive(Debug, Clone)]
 pub enum NativeExecutor<'m> {
-    Aot(Rc<AotNativeExecutor>),
+    Aot(Rc<AotNativeExecutor<'m>>),
     Jit(Rc<JitNativeExecutor<'m>>),
 }
 
@@ -121,8 +124,8 @@ impl<'a> NativeExecutor<'a> {
     }
 }
 
-impl<'m> From<AotNativeExecutor> for NativeExecutor<'m> {
-    fn from(value: AotNativeExecutor) -> Self {
+impl<'m> From<AotNativeExecutor<'m>> for NativeExecutor<'m> {
+    fn from(value: AotNativeExecutor<'m>) -> Self {
         Self::Aot(Rc::new(value))
     }
 }
@@ -142,8 +145,12 @@ impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
 /// constructs the function call in place.
 ///
 /// To pass the arguments, they are stored in a arena.
+#[allow(clippy::too_many_arguments)]
 fn invoke_dynamic(
+    context: &Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    module: &Module,
+    metadata: &mut MetadataStorage,
     function_ptr: *const c_void,
     function_signature: &FunctionSignature,
     args: &[JitValue],
@@ -153,7 +160,14 @@ fn invoke_dynamic(
     tracing::info!("Invoking function with signature: {function_signature:?}.");
 
     let arena = Bump::new();
-    let mut invoke_data = ArgumentMapper::new(&arena, registry);
+    let mut invoke_data = ArgumentMapper {
+        arena: &arena,
+        context,
+        module,
+        registry,
+        metadata,
+        invoke_data: Vec::new(),
+    };
 
     // Generate return pointer (if necessary).
     //
@@ -180,7 +194,12 @@ fn invoke_dynamic(
         let layout = ret_types_iter.fold(Layout::new::<()>(), |layout, id| {
             let type_info = registry.get_type(id).unwrap();
             layout
-                .extend(type_info.layout(registry).unwrap())
+                .extend(get_mlir_layout(
+                    module,
+                    type_info
+                        .build(context, module, registry, invoke_data.metadata, id)
+                        .unwrap(),
+                ))
                 .unwrap()
                 .0
         });
@@ -314,8 +333,11 @@ fn invoke_dynamic(
         .last()
         .map(|ret_type| {
             parse_result(
+                context,
                 ret_type,
                 registry,
+                module,
+                metadata,
                 return_ptr,
                 ret_registers,
                 // TODO: Consider returning an Option<JitValue> as return_value instead
@@ -337,22 +359,18 @@ fn invoke_dynamic(
     }
 }
 
-pub struct ArgumentMapper<'a> {
-    arena: &'a Bump,
-    registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
+struct ArgumentMapper<'a> {
+    pub arena: &'a Bump,
 
-    invoke_data: Vec<u64>,
+    pub context: &'a Context,
+    pub module: &'a Module<'a>,
+    pub registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
+    pub metadata: &'a mut MetadataStorage,
+
+    pub invoke_data: Vec<u64>,
 }
 
 impl<'a> ArgumentMapper<'a> {
-    pub fn new(arena: &'a Bump, registry: &'a ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
-        Self {
-            arena,
-            registry,
-            invoke_data: Vec::new(),
-        }
-    }
-
     pub fn invoke_data(&self) -> &[u64] {
         &self.invoke_data
     }
@@ -406,8 +424,19 @@ impl<'a> ArgumentMapper<'a> {
             (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
                 // TODO: Assert that `info.ty` matches all the values' types.
 
-                let type_info = self.registry.get_type(&info.ty)?;
-                let type_layout = type_info.layout(self.registry).unwrap().pad_to_align();
+                let type_layout = get_mlir_layout(
+                    self.module,
+                    self.registry
+                        .build_type(
+                            self.context,
+                            self.module,
+                            self.registry,
+                            self.metadata,
+                            &info.ty,
+                        )
+                        .unwrap(),
+                )
+                .pad_to_align();
 
                 // This needs to be a heap-allocated pointer because it's the actual array data.
                 let ptr = if values.is_empty() {
@@ -420,7 +449,14 @@ impl<'a> ArgumentMapper<'a> {
                     unsafe {
                         std::ptr::copy_nonoverlapping(
                             value
-                                .to_jit(self.arena, self.registry, &info.ty)
+                                .to_jit(
+                                    self.context,
+                                    self.module,
+                                    self.metadata,
+                                    self.arena,
+                                    self.registry,
+                                    &info.ty,
+                                )
                                 .unwrap()
                                 .cast()
                                 .as_ptr(),
@@ -449,9 +485,12 @@ impl<'a> ArgumentMapper<'a> {
             }
             (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
                 if type_info.is_memory_allocated(self.registry) {
-                    let (layout, tag_layout, variant_layouts) =
-                        crate::types::r#enum::get_layout_for_variants(
+                    let (layout, (_, tag_layout), variant_layouts) =
+                        crate::types::r#enum::get_type_for_variants(
+                            self.context,
+                            self.module,
                             self.registry,
+                            self.metadata,
                             &info.variants,
                         )
                         .unwrap();
@@ -468,15 +507,22 @@ impl<'a> ArgumentMapper<'a> {
                         }
                     }
 
-                    let offset = tag_layout.extend(variant_layouts[*tag]).unwrap().1;
+                    let offset = tag_layout.extend(variant_layouts[*tag].1).unwrap().1;
                     let payload_ptr = value
-                        .to_jit(self.arena, self.registry, &info.variants[*tag])
+                        .to_jit(
+                            self.context,
+                            self.module,
+                            self.metadata,
+                            self.arena,
+                            self.registry,
+                            &info.variants[*tag],
+                        )
                         .unwrap();
                     unsafe {
                         std::ptr::copy_nonoverlapping(
                             payload_ptr.cast::<u8>().as_ptr(),
                             ptr.cast::<u8>().as_ptr().add(offset),
-                            variant_layouts[*tag].size(),
+                            variant_layouts[*tag].1.size(),
                         );
                     }
 
@@ -519,7 +565,14 @@ impl<'a> ArgumentMapper<'a> {
 
                 self.invoke_data.push(
                     value
-                        .to_jit(self.arena, self.registry, type_id)
+                        .to_jit(
+                            self.context,
+                            self.module,
+                            self.metadata,
+                            self.arena,
+                            self.registry,
+                            type_id,
+                        )
                         .unwrap()
                         .as_ptr() as u64,
                 );
@@ -604,8 +657,11 @@ impl<'a> ArgumentMapper<'a> {
 
 /// Parses the result by reading from the return ptr the given type.
 fn parse_result(
+    context: &Context,
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    module: &Module,
+    metadata: &mut MetadataStorage,
     mut return_ptr: Option<NonNull<()>>,
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
@@ -614,7 +670,12 @@ fn parse_result(
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
-        let layout = type_info.layout(registry).unwrap();
+        let layout = get_mlir_layout(
+            module,
+            type_info
+                .build(context, module, registry, metadata, type_id)
+                .unwrap(),
+        );
         let align_offset = return_ptr
             .cast::<u8>()
             .as_ptr()
@@ -628,15 +689,36 @@ fn parse_result(
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::Array(_) => JitValue::from_jit(
+            context,
+            module,
+            metadata,
+            return_ptr.unwrap(),
+            type_id,
+            registry,
+        ),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
-            let value = JitValue::from_jit(ptr, &info.ty, registry);
+            let value = JitValue::from_jit(context, module, metadata, ptr, &info.ty, registry);
             libc::free(ptr.cast().as_ptr());
             value
         },
-        CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
-        CoreTypeConcrete::EcState(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(
+            context,
+            module,
+            metadata,
+            return_ptr.unwrap(),
+            type_id,
+            registry,
+        ),
+        CoreTypeConcrete::EcState(_) => JitValue::from_jit(
+            context,
+            module,
+            metadata,
+            return_ptr.unwrap(),
+            type_id,
+            registry,
+        ),
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
@@ -644,10 +726,19 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            Some(return_ptr) => {
+                JitValue::from_jit(context, module, metadata, return_ptr, type_id, registry)
+            }
             None => {
                 #[cfg(target_arch = "x86_64")]
-                let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+                let value = JitValue::from_jit(
+                    context,
+                    module,
+                    metadata,
+                    return_ptr.unwrap(),
+                    type_id,
+                    registry,
+                );
 
                 #[cfg(target_arch = "aarch64")]
                 let value =
@@ -703,9 +794,15 @@ fn parse_result(
                 JitValue::Sint128(((ret_registers[1] as i128) << 64) | ret_registers[0] as i128)
             }
         },
-        CoreTypeConcrete::NonZero(info) => {
-            parse_result(&info.ty, registry, return_ptr, ret_registers)
-        }
+        CoreTypeConcrete::NonZero(info) => parse_result(
+            context,
+            &info.ty,
+            registry,
+            module,
+            metadata,
+            return_ptr,
+            ret_registers,
+        ),
         CoreTypeConcrete::Nullable(info) => unsafe {
             let ptr = return_ptr.map_or(ret_registers[0] as *mut (), |x| {
                 *x.cast::<*mut ()>().as_ref()
@@ -714,15 +811,22 @@ fn parse_result(
                 JitValue::Null
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
-                let value = JitValue::from_jit(ptr, &info.ty, registry);
+                let value = JitValue::from_jit(context, module, metadata, ptr, &info.ty, registry);
                 libc::free(ptr.as_ptr().cast());
                 value
             }
         },
         CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(info) => {
-            let (_, tag_layout, variant_layouts) =
-                crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
+            let (_, (_, tag_layout), variant_layouts) =
+                crate::types::r#enum::get_type_for_variants(
+                    context,
+                    module,
+                    registry,
+                    metadata,
+                    &info.variants,
+                )
+                .unwrap();
 
             let (tag, ptr) = if type_info.is_memory_allocated(registry) || return_ptr.is_some() {
                 let ptr = return_ptr.unwrap();
@@ -744,7 +848,7 @@ fn parse_result(
                         NonNull::new_unchecked(
                             ptr.cast::<u8>()
                                 .as_ptr()
-                                .add(tag_layout.extend(variant_layouts[tag]).unwrap().1),
+                                .add(tag_layout.extend(variant_layouts[tag].1).unwrap().1),
                         )
                         .cast()
                     }),
@@ -766,12 +870,22 @@ fn parse_result(
             };
 
             let value = match ptr {
-                Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)),
+                Ok(ptr) => Box::new(JitValue::from_jit(
+                    context,
+                    module,
+                    metadata,
+                    ptr,
+                    &info.variants[tag],
+                    registry,
+                )),
                 Err(offset) => {
                     ret_registers.copy_within(offset.., 0);
                     Box::new(parse_result(
+                        context,
                         &info.variants[tag],
                         registry,
+                        module,
+                        metadata,
                         None,
                         ret_registers,
                     ))
@@ -791,16 +905,29 @@ fn parse_result(
                     debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
                 }
             } else {
-                JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
+                JitValue::from_jit(
+                    context,
+                    module,
+                    metadata,
+                    return_ptr.unwrap(),
+                    type_id,
+                    registry,
+                )
             }
         }
         CoreTypeConcrete::Felt252Dict(_) => match return_ptr {
             Some(return_ptr) => JitValue::from_jit(
+                context,
+                module,
+                metadata,
                 unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
                 type_id,
                 registry,
             ),
             None => JitValue::from_jit(
+                context,
+                module,
+                metadata,
                 NonNull::new(ret_registers[0] as *mut ()).unwrap(),
                 type_id,
                 registry,
@@ -809,11 +936,17 @@ fn parse_result(
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
         CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
             Some(return_ptr) => JitValue::from_jit(
+                context,
+                module,
+                metadata,
                 unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
                 type_id,
                 registry,
             ),
             None => JitValue::from_jit(
+                context,
+                module,
+                metadata,
                 NonNull::new(ret_registers[0] as *mut ()).unwrap(),
                 type_id,
                 registry,

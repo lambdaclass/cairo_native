@@ -7,6 +7,7 @@ use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
     error::Result,
+    ffi::get_mlir_layout,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
     utils::ProgramRegistryExt,
@@ -190,8 +191,10 @@ pub fn build_append<'ctx, 'this>(
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
-    let elem_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_ty.layout(registry)?;
+    let elem_layout = get_mlir_layout(
+        helper,
+        registry.build_type(context, helper, registry, metadata, &info.ty)?,
+    );
     let elem_stride = elem_layout.pad_to_align().size();
 
     let k1 = entry.const_int(context, location, 1, 32)?;
@@ -506,8 +509,10 @@ pub fn build_get<'ctx, 'this>(
         &info.param_signatures()[1].ty,
     )?;
 
-    let elem_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_ty.layout(registry)?;
+    let elem_layout = get_mlir_layout(
+        helper,
+        registry.build_type(context, helper, registry, metadata, &info.ty)?,
+    );
     let elem_stride = elem_layout.pad_to_align().size();
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
@@ -642,8 +647,8 @@ pub fn build_pop_front<'ctx, 'this>(
         &info.param_signatures()[0].ty,
     )?;
 
-    let elem_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_ty.layout(registry)?;
+    let elem_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let elem_layout = get_mlir_layout(helper, elem_ty);
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
@@ -787,8 +792,8 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
         &info.param_signatures()[0].ty,
     )?;
 
-    let elem_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_ty.layout(registry)?;
+    let elem_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let elem_layout = get_mlir_layout(helper, elem_ty);
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
@@ -910,8 +915,8 @@ pub fn build_slice<'ctx, 'this>(
 
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
-    let elem_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_ty.layout(registry)?;
+    let elem_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let elem_layout = get_mlir_layout(helper, elem_ty);
 
     let slice_since = entry.argument(2)?.into();
     let slice_length = entry.argument(3)?.into();
@@ -1055,7 +1060,6 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     }
 
     let struct_type_info = registry.get_type(&info.ty)?;
-
     let struct_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
 
     let container: Value = {
@@ -1065,7 +1069,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
             location,
             entry.argument(0)?.into(),
             struct_ty,
-            Some(struct_type_info.layout(registry)?.align()),
+            Some(get_mlir_layout(helper, struct_ty).align()),
         )?
     };
 

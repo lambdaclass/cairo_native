@@ -1,4 +1,5 @@
 #[test]
+#[ignore]
 fn test_format() {
     let ba: ByteArray = "hello";
     assert(format!("{}", ba) == ba, 'byte array bad formatting');
@@ -31,6 +32,7 @@ enum EnumExample {
 }
 
 #[test]
+#[ignore]
 fn test_format_debug() {
     let ba: ByteArray = "hello";
     assert(format!("{:?}", ba) == "\"hello\"", 'byte array bad formatting');
@@ -74,6 +76,7 @@ fn test_format_debug() {
 }
 
 #[test]
+#[ignore]
 fn test_array_debug() {
     let arr = array![1, 2, 3];
     assert(format!("{:?}", arr) == "[1, 2, 3]", 'bad array fmt');

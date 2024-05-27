@@ -47,6 +47,7 @@
 use crate::{
     debug_info::DebugLocations,
     error::Error,
+    ffi::get_mlir_layout,
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
@@ -576,8 +577,13 @@ fn compile_func(
 
                     // Store the return value in the return pointer, if there's one.
                     if let Some(true) = has_return_ptr {
-                        let (_ret_type_id, ret_type_info) = return_type_infos[0];
-                        let ret_layout = ret_type_info.layout(registry)?;
+                        let (ret_type_id, ret_type_info) = return_type_infos[0];
+                        let ret_layout = get_mlir_layout(
+                            module,
+                            ret_type_info
+                                .build(context, module, registry, metadata, ret_type_id)
+                                .unwrap(),
+                        );
 
                         let ptr = values.remove(0);
                         block.append_operation(llvm::store(
@@ -627,15 +633,16 @@ fn compile_func(
                 .argument((has_return_ptr == Some(true)) as usize + i)?
                 .into();
             if type_info.is_memory_allocated(registry) {
+                let r#type = type_info.build(context, module, registry, metadata, type_id)?;
                 value = pre_entry_block
                     .append_operation(llvm::load(
                         context,
                         value,
-                        type_info.build(context, module, registry, metadata, type_id)?,
+                        r#type,
                         Location::unknown(context),
                         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
                             IntegerType::new(context, 64).into(),
-                            type_info.layout(registry)?.align() as i64,
+                            get_mlir_layout(module, r#type).align() as i64,
                         ))),
                     ))
                     .result(0)?

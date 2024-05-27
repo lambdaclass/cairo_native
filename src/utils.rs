@@ -2,6 +2,7 @@
 
 use crate::{
     debug_info::{DebugInfo, DebugLocations},
+    ffi::{get_mlir_layout, MAX_PLATFORM_ALIGNMENT},
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
     OptLevel,
@@ -59,26 +60,9 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 pub fn get_integer_layout(width: u32) -> Layout {
     if width == 0 {
         Layout::new::<()>()
-    } else if width <= 8 {
-        Layout::new::<u8>()
-    } else if width <= 16 {
-        Layout::new::<u16>()
-    } else if width <= 32 {
-        Layout::new::<u32>()
-    } else if width <= 64 {
-        Layout::new::<u64>()
-    } else if width <= 128 {
-        #[cfg(not(target_arch = "x86_64"))]
-        {
-            Layout::new::<u128>()
-        }
-        #[cfg(target_arch = "x86_64")]
-        {
-            Layout::new::<u128>().align_to(16).unwrap()
-        }
     } else {
         let width = (width as usize).next_multiple_of(8).next_power_of_two();
-        Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
+        Layout::from_size_align(width >> 3, (width >> 3).min(MAX_PLATFORM_ALIGNMENT)).unwrap()
     }
 }
 
@@ -503,12 +487,8 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
     ) -> Result<(Type<'ctx>, Layout), super::error::Error> {
-        let concrete_type = registry.get_type(id)?;
-
-        Ok((
-            concrete_type.build(context, module, registry, metadata, id)?,
-            concrete_type.layout(registry)?,
-        ))
+        let concrete_type = registry.build_type(context, module, registry, metadata, id)?;
+        Ok((concrete_type, get_mlir_layout(module, concrete_type)))
     }
 }
 
@@ -785,7 +765,8 @@ pub mod test {
             .expect("Could not compile test program to MLIR.");
 
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
+        let executor =
+            JitNativeExecutor::from_native_module(context.context(), module, OptLevel::None);
         executor
             .invoke_dynamic_with_syscall_handler(
                 entry_point_id,

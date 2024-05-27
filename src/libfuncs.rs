@@ -528,7 +528,7 @@ mod tests {
         // Create an unknown location in the context
         let location = Location::unknown(context);
         // Create a new MLIR module with the unknown location
-        let module = Module::new(location);
+        let module = native_context.new_module();
 
         // Create a new MLIR block and obtain its reference
         let region = Region::new();
@@ -604,7 +604,7 @@ mod tests {
         // Create an unknown location in the context
         let location = Location::unknown(context);
         // Create a new MLIR module with the unknown location
-        let module = Module::new(location);
+        let module = native_context.new_module();
 
         // Create a new MLIR block and obtain its reference
         let region = Region::new();
@@ -689,7 +689,7 @@ mod tests {
         // Create an unknown location in the context
         let location = Location::unknown(context);
         // Create a new MLIR module with the unknown location
-        let module = Module::new(location);
+        let module = native_context.new_module();
 
         // Create a new MLIR block and obtain its reference
         let region = Region::new();

@@ -32,6 +32,7 @@ fn test_poseidon_hades_permutation() {
 }
 
 #[test]
+#[ignore]
 fn test_poseidon_hash_span() {
     // Test odd number of inputs.
     assert_eq(

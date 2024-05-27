@@ -40,7 +40,11 @@
 //! let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 //!
 //! // Instantiate the executor.
-//! let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+//! let native_executor = JitNativeExecutor::from_native_module(
+//!     native_context.context(),
+//!     native_program,
+//!     Default::default()
+//! );
 //!
 //! // Execute the program.
 //! let result = native_executor

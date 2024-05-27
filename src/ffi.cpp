@@ -1,12 +1,17 @@
-#include <llvm-c/Support.h>
+#include <algorithm>
+#include <cstdint>
+#include <memory>
+
+#include <llvm-c/Types.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <mlir-c/IR.h>
 #include <mlir/CAPI/IR.h>
-#include <mlir/CAPI/Support.h>
-#include <mlir/CAPI/Wrap.h>
 #include <mlir/Dialect/LLVMIR/LLVMTypes.h>
+#include <mlir/Interfaces/DataLayoutInterfaces.h>
+#include <mlir/IR/Operation.h>
 #include <mlir/IR/Types.h>
-#include <mlir/Target/LLVMIR/ModuleTranslation.h>
+#include <mlir/Target/LLVMIR/Export.h>
 
 
 extern "C" const void *LLVMStructType_getFieldTypeAt(const void *ty_ptr, unsigned index)
@@ -16,16 +21,41 @@ extern "C" const void *LLVMStructType_getFieldTypeAt(const void *ty_ptr, unsigne
     return type.getBody()[index].getAsOpaquePointer();
 }
 
-extern "C" LLVMModuleRef mlirTranslateModuleToLLVMIR(MlirOperation module,
-                                          LLVMContextRef context) {
-  mlir::Operation *moduleOp = unwrap(module);
+extern "C" uint64_t DataLayout_getTypePreferredAlignment(MlirOperation module, MlirType type)
+{
+    mlir::Operation *moduleOp = unwrap(module);
+    mlir::Type typeInfo = unwrap(type);
 
-  llvm::LLVMContext *ctx = llvm::unwrap(context);
+    mlir::DataLayout dataLayout(moduleOp->getParentOfType<mlir::DataLayoutOpInterface>());
+    if (typeInfo.isa<mlir::LLVM::LLVMStructType>())
+    {
+        mlir::LLVM::LLVMStructType concreteTypeInfo = typeInfo.cast<mlir::LLVM::LLVMStructType>();
 
-  std::unique_ptr<llvm::Module> llvmModule = mlir::translateModuleToLLVMIR(
-      moduleOp, *ctx);
+        uint64_t typeAlign = 1;
+        for (const mlir::Type &ty : concreteTypeInfo.getBody())
+            typeAlign = std::max(typeAlign, (uint64_t) DataLayout_getTypePreferredAlignment(module, wrap(ty)));
 
-  LLVMModuleRef moduleRef = llvm::wrap(llvmModule.release());
+        return typeAlign;
+    }
+    else
+        return dataLayout.getTypePreferredAlignment(typeInfo);
+}
 
-  return moduleRef;
+extern "C" uint64_t DataLayout_getTypeSize(MlirOperation module, MlirType type)
+{
+    mlir::Operation *moduleOp = unwrap(module);
+    mlir::Type typeInfo = unwrap(type);
+
+    mlir::DataLayout dataLayout(moduleOp->getParentOfType<mlir::DataLayoutOpInterface>());
+    return dataLayout.getTypeSize(typeInfo);
+}
+
+
+extern "C" LLVMModuleRef mlirTranslateModuleToLLVMIR(MlirOperation module, LLVMContextRef context)
+{
+    llvm::LLVMContext *ctx = llvm::unwrap(context);
+    mlir::Operation *moduleOp = unwrap(module);
+
+    std::unique_ptr<llvm::Module> llvmModule = mlir::translateModuleToLLVMIR(moduleOp, *ctx);
+    return llvm::wrap(llvmModule.release());
 }

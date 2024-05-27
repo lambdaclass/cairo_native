@@ -22,8 +22,9 @@ use llvm_sys::{
     },
 };
 use melior::ir::{Module, Type, TypeLike};
-use mlir_sys::MlirOperation;
+use mlir_sys::{MlirModule, MlirOperation, MlirType};
 use std::{
+    alloc::Layout,
     borrow::Cow,
     error::Error,
     ffi::{c_void, CStr},
@@ -36,11 +37,17 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
+pub const MAX_PLATFORM_ALIGNMENT: usize = 16;
+
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
 
-    /// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
-    /// This translates operations from any dilalect that has a registered implementation of LLVMTranslationDialectInterface.
+    fn DataLayout_getTypePreferredAlignment(module: MlirModule, r#type: MlirType) -> u64;
+    fn DataLayout_getTypeSize(module: MlirModule, r#type: MlirType) -> u64;
+
+    /// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module
+    /// living in the given context. This translates operations from any dilalect that has a
+    /// registered implementation of `LLVMTranslationDialectInterface`.
     fn mlirTranslateModuleToLLVMIR(
         module_operation_ptr: MlirOperation,
         llvm_context: LLVMContextRef,
@@ -53,6 +60,19 @@ pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c>
 
     ty_ptr.ptr = unsafe { LLVMStructType_getFieldTypeAt(ty_ptr.ptr, index as u32) };
     unsafe { Type::from_raw(ty_ptr) }
+}
+
+pub fn get_mlir_layout(mlir_module: &Module, type_mlir: Type) -> Layout {
+    let module = mlir_module.to_raw();
+    let r#type = type_mlir.to_raw();
+
+    unsafe {
+        let size = DataLayout_getTypeSize(module, r#type) as usize;
+        let align = DataLayout_getTypePreferredAlignment(module, r#type) as usize;
+
+        Layout::from_size_align(size, align.min(MAX_PLATFORM_ALIGNMENT))
+            .expect("a valid MLIR layout")
+    }
 }
 
 /// A error from the LLVM API.
