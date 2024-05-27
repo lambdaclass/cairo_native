@@ -55,13 +55,13 @@ check: check-llvm
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo test --profile ci --all-features
 
-test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
+test-cairo: check-llvm needs-cairo2 build-alexandria deps-kakarot runtime-ci
 	cargo r --profile ci --bin cairo-native-test -- cairo-tests/
 
 proptest: check-llvm needs-cairo2 runtime-ci
 	cargo test --profile ci --all-features proptest
 
-test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
+test-ci: check-llvm needs-cairo2 build-alexandria deps-kakarot runtime-ci
 	cargo test --profile ci --all-features
 
 proptest-ci: check-llvm needs-cairo2 runtime-ci
@@ -102,6 +102,15 @@ endif
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
 	-brew install llvm@18 --quiet
 	@echo "You can execute the env-macos.sh script to setup the needed env variables."
+
+KAKAROT_VERSION=v0.1.8
+kakarot-dir = tests/tests/starknet/contracts/kakarot
+deps-kakarot:
+	rm -fr $(kakarot-dir) \
+	&& mkdir -p $(kakarot-dir) \
+	&& curl -L -o $(kakarot-dir)/artifacts.zip "https://github.com/kkrt-labs/kakarot-ssj/releases/download/$(KAKAROT_VERSION)/dev-artifacts.zip" \
+	&& unzip $(kakarot-dir)/artifacts.zip -d $(kakarot-dir) \
+	&& rm $(kakarot-dir)/artifacts.zip
 
 cairo-repo-2-dir = cairo2
 cairo-repo-2-dir-macos = cairo2-macos
