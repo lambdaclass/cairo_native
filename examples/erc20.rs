@@ -266,51 +266,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         unimplemented!()
     }
 
-    fn set_account_contract_address(&mut self, _contract_address: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_block_number(&mut self, _block_number: u64) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_block_timestamp(&mut self, _block_timestamp: u64) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_caller_address(&mut self, _address: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_chain_id(&mut self, _chain_id: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_contract_address(&mut self, _address: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_max_fee(&mut self, _max_fee: u128) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_nonce(&mut self, _nonce: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_sequencer_address(&mut self, _address: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_signature(&mut self, _signature: &[Felt]) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_transaction_hash(&mut self, _transaction_hash: Felt) -> SyscallResult<()> {
-        todo!()
-    }
-
-    fn set_version(&mut self, version: Felt) -> SyscallResult<()> {
+    fn cheatcode(&mut self, _input: &[Felt]) -> SyscallResult<()> {
         todo!()
     }
 }
