@@ -140,11 +140,6 @@ pub fn build<'ctx, 'this>(
             context, registry, entry, location, helper, metadata, selector,
         ),
         StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
-            info.signature.param_signatures.iter().for_each(|x| {
-                dbg!(&x.ty);
-            });
-            // dbg!(info.branch_signatures());
-            dbg!(info.output_types());
             self::testing::build(context, registry, entry, location, helper, metadata, info)
         }
     }
