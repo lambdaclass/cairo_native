@@ -658,7 +658,7 @@ fn parse_result(
                 // Since x86_64's return values hold at most two different 64bit registers,
                 // everything bigger than u128 will be returned by memory, therefore making
                 // this branch is unreachable on that architecture.
-                Err(Error::ParseAttributeError);
+                return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
                 Ok(JitValue::Felt252(
@@ -675,7 +675,7 @@ fn parse_result(
                 // Since x86_64's return values hold at most two different 64bit registers,
                 // everything bigger than u128 will be returned by memory, therefore making
                 // this branch is unreachable on that architecture.
-                Err(Error::ParseAttributeError);
+                return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
                 Ok(JitValue::Bytes31(unsafe {
