@@ -381,7 +381,7 @@ impl<'a> ArgumentMapper<'a> {
 
         #[cfg(target_arch = "x86_64")]
         const NUM_REGISTER_ARGS: usize = 6;
-        #[cfg(not(target_arch = "x86_64"))]
+        #[cfg(target_arch = "aarch64")]
         const NUM_REGISTER_ARGS: usize = 8;
 
         if align == 16 {
@@ -398,7 +398,7 @@ impl<'a> ArgumentMapper<'a> {
                 self.invoke_data.push(0);
             } else {
                 let new_len = self.invoke_data.len() + values.len();
-                if new_len >= 8 && new_len % 2 != 0 {
+                if new_len >= NUM_REGISTER_ARGS && new_len % 2 != 0 {
                     let chunk;
                     (chunk, values) = if values.len() >= 4 {
                         values.split_at(4)

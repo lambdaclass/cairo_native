@@ -22,10 +22,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        cf,
-        llvm::{self},
-    },
+    dialect::{cf, llvm},
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
         Identifier, Location, Value, ValueLike,

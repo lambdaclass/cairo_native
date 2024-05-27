@@ -71,6 +71,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `call_contract_syscall` (StarkNet)
 1. `class_hash_to_felt252` (StarkNet)
 1. `class_hash_try_from_felt252` (StarkNet)
+1. `const_as_box`
 1. `contract_address_const` (StarkNet)
 1. `contract_address_to_felt252` (StarkNet)
 1. `contract_address_try_from_felt252` (StarkNet)
@@ -134,6 +135,16 @@ This is a list of the current progress implementing each **libfunc**.
 1. `rename`
 1. `replace_class_syscall` (StarkNet)
 1. `revoke_ap_tracking`
+1. `secp256k1_add_syscall` (StarkNet)
+1. `secp256k1_get_point_from_x_syscall` (StarkNet)
+1. `secp256k1_get_xy_syscall` (StarkNet)
+1. `secp256k1_mul_syscall` (StarkNet)
+1. `secp256k1_new_syscall` (StarkNet)
+1. `secp256r1_add_syscall` (StarkNet)
+1. `secp256r1_get_point_from_x_syscall` (StarkNet)
+1. `secp256r1_get_xy_syscall` (StarkNet)
+1. `secp256r1_mul_syscall` (StarkNet)
+1. `secp256r1_new_syscall` (StarkNet)
 1. `send_message_to_l1_syscall` (StarkNet)
 1. `snapshot_take` (1)
 1. `span_from_tuple`
@@ -214,18 +225,7 @@ This is a list of the current progress implementing each **libfunc**.
 
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
-
-1. `const_as_box`
-1. `secp256k1_add_syscall` (StarkNet)
-1. `secp256k1_get_point_from_x_syscall` (StarkNet)
-1. `secp256k1_get_xy_syscall` (StarkNet)
-1. `secp256k1_mul_syscall` (StarkNet)
-1. `secp256k1_new_syscall` (StarkNet)
-1. `secp256r1_add_syscall` (StarkNet)
-1. `secp256r1_get_point_from_x_syscall` (StarkNet)
-1. `secp256r1_get_xy_syscall` (StarkNet)
-1. `secp256r1_mul_syscall` (StarkNet)
-1. `secp256r1_new_syscall` (StarkNet)
+1. coupon
 </details>
 
 <details>
@@ -262,7 +262,7 @@ Footnotes on the libfuncs list:
 
 - Linux or macOS (aarch64 included) only for now
 - LLVM 18 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/), on macOS you can use brew
-- Rust 1.76.0
+- Rust 1.78.0 or later, since we make use of the u128 [abi change](https://blog.rust-lang.org/2024/03/30/i128-layout-update.html).
 - Git
 
 ### Setup
