@@ -541,6 +541,13 @@ pub fn compare_outputs(
     }
 
     let mut size_cache = HashMap::new();
+    let ty = function.signature.ret_types.last();
+    let returns_panic = ty.map_or(false, |ty| {
+        ty.debug_name
+            .as_ref()
+            .map(|x| x.starts_with("core::panics::PanicResult"))
+            .unwrap_or(false)
+    });
     assert_eq!(
         vm_result
             .gas_counter
@@ -550,16 +557,9 @@ pub fn compare_outputs(
     );
 
     let vm_result = match &vm_result.value {
-        RunResultValue::Success(values) if !values.is_empty() => {
-            let ty = function.signature.ret_types.last().unwrap();
-            let returns_panic = ty
-                .debug_name
-                .as_ref()
-                .map(|x| x.starts_with("core::panics::PanicResult"))
-                .unwrap_or(false);
-
+        RunResultValue::Success(values) if !values.is_empty() | returns_panic => {
             if returns_panic {
-                let inner_ty = match registry.get_type(ty)? {
+                let inner_ty = match registry.get_type(ty.unwrap())? {
                     CoreTypeConcrete::Enum(info) => &info.variants[0],
                     _ => unreachable!(),
                 };
@@ -575,10 +575,16 @@ pub fn compare_outputs(
                     debug_name: None,
                 }
             } else {
-                map_vm_values(&mut size_cache, &registry, &vm_result.memory, values, ty)
+                map_vm_values(
+                    &mut size_cache,
+                    &registry,
+                    &vm_result.memory,
+                    values,
+                    ty.unwrap(),
+                )
             }
         }
-        RunResultValue::Panic(values) if !values.is_empty() => JitValue::Enum {
+        RunResultValue::Panic(values) => JitValue::Enum {
             tag: 1,
             value: Box::new(JitValue::Struct {
                 fields: vec![
