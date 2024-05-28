@@ -29,6 +29,3 @@ cairo-*.tar
 *.a
 *.mlir
 /*.info
-
-# Kakarot contracts
-tests/tests/starknet/contracts/kakarot/*
