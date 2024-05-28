@@ -30,6 +30,7 @@ enum RuntimeBinding {
     DictGasRefund,
     DictInsert,
     DictFree,
+    VtableCheatcode,
 }
 
 /// Runtime library bindings metadata.
@@ -647,6 +648,43 @@ impl RuntimeBindingsMeta {
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_gas_refund"),
             &[dict_ptr],
             &[IntegerType::new(context, 64).into()],
+            location,
+        )))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn vtable_callback<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        result_ptr: Value<'c, 'a>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::VtableCheatcode) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__vtable_cheatcode"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__vtable_cheatcode"),
+            &[result_ptr],
+            &[],
             location,
         )))
     }

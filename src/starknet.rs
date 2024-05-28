@@ -1,5 +1,7 @@
 //! Starknet related code for `cairo_native`
 
+use std::{mem::ManuallyDrop, ptr::null_mut};
+
 use starknet_types_core::felt::Felt;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
@@ -1635,4 +1637,28 @@ pub(crate) mod handler {
             };
         }
     }
+}
+
+thread_local!(pub static SYSCALL_HANDLER_VTABLE: std::cell::Cell<*mut ()>  = std::cell::Cell::new(null_mut()));
+
+#[allow(non_snake_case)]
+pub extern "C" fn cairo_native__vtable_cheatcode(
+    result_ptr: &mut ArrayAbi<Felt252Abi>,
+    //     _selector: &Felt252Abi,
+    //     _input: &ArrayAbi<Felt252Abi>,
+) {
+    let mut seven = Felt252Abi([0_u8; 32]);
+    seven.0[31] = 7;
+
+    let mut vec = ManuallyDrop::new(vec![seven]);
+
+    *result_ptr = ArrayAbi {
+        ptr: vec.as_mut_ptr(),
+        since: 0,
+        until: 1,
+        capacity: 1,
+    };
+
+    let ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
+    dbg!(ptr);
 }
