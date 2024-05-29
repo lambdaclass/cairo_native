@@ -154,3 +154,118 @@ impl<'m> JitNativeExecutor<'m> {
             .signature
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{context::NativeContext, utils::test::TestSyscallHandler};
+    use cairo_lang_sierra::ids::FunctionId;
+    use cairo_lang_starknet_classes::contract_class::ContractClass;
+
+    #[test]
+    fn test_invoke_contract_dynamic() {
+        // Initialize a vector to hold call data for contract invocation.
+        let mut call_data = Vec::new();
+
+        // Define an array of hex values representing contract call data.
+        let values = [
+            "0x1",
+            "0x1",
+            "0x7099f594eb65e00576e1b940a8a735f80bf7604ac401c48627045c4cc286f0",
+            "0x26",
+            "0x2",
+            "0xe4",
+            "0x84",
+            "0x4b",
+            "0x4b",
+            "0x52",
+            "0x54",
+            "0x80",
+            "0x80",
+            "0x80",
+            "0x83",
+            "0xf",
+            "0x42",
+            "0x40",
+            "0x94",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x0",
+            "0x12",
+            "0x34",
+            "0x80",
+            "0x80",
+            "0xc0",
+        ];
+
+        // Push each hex value as Felt type into the call_data vector.
+        for value in &values {
+            call_data.push(Felt::from_hex(value).unwrap());
+        }
+
+        // Define the initial gas for the contract execution.
+        let initial_gas: u128 = 340282366920938463463374607431768211455;
+
+        // Define the function ID for the contract function to invoke.
+        let function_id = FunctionId {
+            id: 4,
+            debug_name: Some(
+                "contracts::account_contract::AccountContract::__wrapper__Account____validate__"
+                    .into(),
+            ),
+        };
+
+        // Read the Sierra contract class data from file into a string.
+        let sierra_contract_class_data = std::fs::read_to_string(std::path::Path::new(
+            "programs/sierra/contracts_AccountContract.sierra",
+        ))
+        .unwrap();
+
+        // Deserialize the Sierra contract class data into a ContractClass instance.
+        let sierra_contract_class: ContractClass =
+            serde_json::from_str(&sierra_contract_class_data).unwrap();
+
+        // Extract the Sierra program from the ContractClass instance.
+        let program = sierra_contract_class.extract_sierra_program().unwrap();
+
+        // Initialize a Cairo Native MLIR context for compiling Sierra programs.
+        let native_context = NativeContext::new();
+
+        // Compile the Sierra program into a MLIR module using the Native MLIR context.
+        let native_program = native_context.compile(&program, None).unwrap();
+
+        // Create a JIT native executor from the compiled MLIR module.
+        let native_executor =
+            JitNativeExecutor::from_native_module(native_program, Default::default());
+
+        // Invoke the contract function dynamically with provided parameters.
+        let result = native_executor
+            .invoke_contract_dynamic(
+                &function_id,
+                &call_data,
+                Some(initial_gas),
+                TestSyscallHandler,
+            )
+            .unwrap();
+
+        // Print the result of the contract invocation.
+        println!("result {:?}", result);
+    }
+}

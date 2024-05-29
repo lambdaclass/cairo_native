@@ -16,7 +16,6 @@ target/
 # End of https://www.toptal.com/developers/gitignore/api/rust
 
 .clangd
-*.sierra
 corelib
 
 .env
@@ -29,3 +28,7 @@ cairo-*.tar
 *.a
 *.mlir
 /*.info
+
+# Ignore all .sierra files except those in the 'program/sierra' directory
+**/*.sierra
+!program/sierra/*.sierra
