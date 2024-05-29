@@ -1340,7 +1340,6 @@
 <a href="#1338" id="1338">1338</a>
 <a href="#1339" id="1339">1339</a>
 <a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -2070,8 +2069,7 @@
                 CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">"implement span from_jit"</span>),
                 CoreTypeConcrete::Snapshot(info) =&gt; <span class="self">Self</span>::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry),
                 CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; {
-                    <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="kw-2">*</span>ptr.cast::&lt;[u8; <span class="number">31</span>]&gt;().as_ref();
-                    data.reverse();
+                    <span class="kw">let </span>data = <span class="kw-2">*</span>ptr.cast::&lt;[u8; <span class="number">31</span>]&gt;().as_ref();
                     <span class="self">Self</span>::Bytes31(data)
                 }
 

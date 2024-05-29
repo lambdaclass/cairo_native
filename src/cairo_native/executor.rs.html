@@ -840,6 +840,20 @@
 <a href="#838" id="838">838</a>
 <a href="#839" id="839">839</a>
 <a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -1489,15 +1503,30 @@
             <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::from_jit(return_ptr, type_id, registry),
             <span class="prelude-val">None </span>=&gt; {
                 <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
-                </span><span class="kw">let </span>value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+                </span><span class="comment">// Since x86_64's return values hold at most two different 64bit registers,
+                // everything bigger than u128 will be returned by memory, therefore making
+                // this branch is unreachable on that architecture.
+                </span><span class="macro">unreachable!</span>();
 
                 <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
-                </span><span class="kw">let </span>value =
-                    JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(<span class="kw">unsafe </span>{
-                        std::mem::transmute::&lt;<span class="kw-2">&amp;</span>[u64; <span class="number">4</span>], <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>]&gt;(<span class="kw-2">&amp;</span>ret_registers)
-                    }));
+                </span>JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(<span class="kw">unsafe </span>{
+                    std::mem::transmute::&lt;<span class="kw-2">&amp;</span>[u64; <span class="number">4</span>], <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>]&gt;(<span class="kw-2">&amp;</span>ret_registers)
+                }))
+            }
+        },
+        CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::from_jit(return_ptr, type_id, registry),
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
+                </span><span class="comment">// Since x86_64's return values hold at most two different 64bit registers,
+                // everything bigger than u128 will be returned by memory, therefore making
+                // this branch is unreachable on that architecture.
+                </span><span class="macro">unreachable!</span>();
 
-                value
+                <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
+                </span>JitValue::Bytes31(<span class="kw">unsafe </span>{
+                    <span class="kw-2">*</span>std::mem::transmute::&lt;<span class="kw-2">&amp;</span>[u64; <span class="number">4</span>], <span class="kw-2">&amp;</span>[u8; <span class="number">31</span>]&gt;(<span class="kw-2">&amp;</span>ret_registers)
+                })
             }
         },
         CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
@@ -1663,7 +1692,6 @@
         },
         CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Snapshot(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),

@@ -868,6 +868,7 @@
 <span class="kw">fn </span>jitvalue_to_felt(value: <span class="kw-2">&amp;</span>JitValue) -&gt; Vec&lt;Felt&gt; {
     <span class="kw">match </span>value {
         JitValue::Felt252(felt) =&gt; <span class="macro">vec!</span>[felt.to_bigint().into()],
+        JitValue::Bytes31(bytes) =&gt; <span class="macro">vec!</span>[Felt::from_bytes_le_slice(bytes)],
         JitValue::Array(fields) | JitValue::Struct { fields, .. } =&gt; {
             fields.iter().flat_map(jitvalue_to_felt).collect()
         }
@@ -899,8 +900,7 @@
         JitValue::Sint64(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
         JitValue::Sint128(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
         JitValue::Null =&gt; <span class="macro">vec!</span>[<span class="number">0</span>.into()],
-        JitValue::Bytes31(<span class="kw">_</span>)
-        | JitValue::EcPoint(<span class="kw">_</span>, <span class="kw">_</span>)
+        JitValue::EcPoint(<span class="kw">_</span>, <span class="kw">_</span>)
         | JitValue::EcState(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
         | JitValue::Secp256K1Point { .. }
         | JitValue::Secp256R1Point { .. }

@@ -1496,6 +1496,7 @@
             CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 
             CoreTypeConcrete::Felt252(<span class="kw">_</span>)
+            | CoreTypeConcrete::Bytes31(<span class="kw">_</span>)
             | CoreTypeConcrete::StarkNet(
                 StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>)
                 | StarkNetTypeConcrete::ContractAddress(<span class="kw">_</span>)
@@ -1523,7 +1524,6 @@
             CoreTypeConcrete::Struct(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 
             CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>)) =&gt; <span class="macro">todo!</span>(),
