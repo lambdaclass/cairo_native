@@ -33,7 +33,7 @@ pub fn build<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &CheatcodeConcreteLibfunc,
 ) -> Result<()> {
-    // calculate the result layout and type
+    // Calculate the result layout and type
     let (result_type, result_layout) = registry.build_type_with_layout(
         context,
         helper,
@@ -42,7 +42,7 @@ pub fn build<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    // allocate the result pointer
+    // Allocate the result pointer with calculated layout and type
     let result_ptr = helper
         .init_block()
         .append_operation(alloca(
@@ -60,7 +60,7 @@ pub fn build<'ctx, 'this>(
         .result(0)?
         .into();
 
-    // allocate and store selector
+    // Allocate and store selector. The type contains 256 bits as its interpreted as a [u8;32] from the runtime
     let selector = helper
         .init_block()
         .const_int(context, location, info.selector.clone(), 256)?;
@@ -74,29 +74,27 @@ pub fn build<'ctx, 'this>(
         .init_block()
         .store(context, location, selector_ptr, selector, None);
 
-    // allocate and store arguments
-    let args_ptr = helper.init_block().alloca1(
+    // Allocate and store arguments. The cairo type is a Span<Felt252>, which contains an Array<Felt252>
+    let span_felt252_type = llvm::r#type::r#struct(
         context,
-        location,
-        llvm::r#type::r#struct(
+        &[llvm::r#type::r#struct(
             context,
-            &[llvm::r#type::r#struct(
-                context,
-                &[
-                    llvm::r#type::pointer(context, 0),
-                    IntegerType::new(context, 32).into(),
-                    IntegerType::new(context, 32).into(),
-                    IntegerType::new(context, 32).into(),
-                ],
-                false,
-            )],
+            &[
+                llvm::r#type::pointer(context, 0),
+                IntegerType::new(context, 32).into(),
+                IntegerType::new(context, 32).into(),
+                IntegerType::new(context, 32).into(),
+            ],
             false,
-        ),
-        None,
-    )?;
+        )],
+        false,
+    );
+    let args_ptr = helper
+        .init_block()
+        .alloca1(context, location, span_felt252_type, None)?;
     entry.store(context, location, args_ptr, entry.argument(0)?.into(), None);
 
-    // call runtime vtable
+    // Call runtime vtable
     metadata
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.")
@@ -110,7 +108,7 @@ pub fn build<'ctx, 'this>(
             args_ptr,
         )?;
 
-    // load result from result ptr
+    // Load result from result ptr
     let result = entry.append_op_result(llvm::load(
         context,
         result_ptr,
