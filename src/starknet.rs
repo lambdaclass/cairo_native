@@ -1640,18 +1640,5 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
     selector: &Felt252Abi,
     input: &ArrayAbi<Felt252Abi>,
 ) {
-    *result_ptr = ArrayAbi {
-        ptr: ManuallyDrop::new(vec![Felt252Abi([0_u8; 32])]).as_mut_ptr(),
-        since: 0,
-        until: 1,
-        capacity: 1,
-    };
-
-    let selector = std::str::from_utf8(&selector.0).ok();
-    dbg!(selector);
-
-    dbg!(input);
-
     let ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
-    dbg!(ptr);
 }
