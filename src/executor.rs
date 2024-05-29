@@ -7,7 +7,9 @@ pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::Error,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
-    starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
+    starknet::{
+        handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler, SYSCALL_HANDLER_VTABLE,
+    },
     types::TypeBuilder,
     utils::get_integer_layout,
     values::JitValue,
@@ -151,7 +153,6 @@ fn invoke_dynamic(
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> ExecutionResult {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
-
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
 
@@ -213,6 +214,10 @@ fn invoke_dynamic(
                     Some(syscall_handler) => {
                         let syscall_handler =
                             arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
+
+                        let syscall_handler_ptr = std::ptr::addr_of!(*syscall_handler) as *mut ();
+                        SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
+
                         invoke_data.push_aligned(
                             get_integer_layout(64).align(),
                             &[syscall_handler as *mut _ as u64],
