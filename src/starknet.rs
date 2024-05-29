@@ -2,6 +2,7 @@
 
 use std::{mem::ManuallyDrop, ptr::null_mut};
 
+use num_bigint::BigInt;
 use starknet_types_core::felt::Felt;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
@@ -1647,7 +1648,9 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
         capacity: 1,
     };
 
+    let selector = std::str::from_utf8(&selector.0).ok();
     dbg!(selector);
+
     dbg!(input);
 
     let ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
