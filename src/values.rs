@@ -204,14 +204,22 @@ impl JitValue {
                 } => {
                     let value = value.to_bigint();
 
-                    assert!(lower < upper, "invalid range");
+                    if lower < upper {
+                        return Err(Error::Error("BoundedInt range is invalid".to_string()));
+                    }
+
                     let prime = &PRIME.to_bigint().unwrap();
                     let lower = lower.rem_euclid(prime);
                     let upper = upper.rem_euclid(prime);
+
                     if lower <= upper {
-                        assert!(lower <= value && value < upper);
-                    } else {
-                        assert!(upper > value && value >= lower);
+                        if !(lower <= value && value < upper) {
+                            return Err(Error::Error(
+                                "BoundedInt value is out of range".to_string(),
+                            ));
+                        }
+                    } else if !(upper > value && value >= lower) {
+                        return Err(Error::Error("BoundedInt value is out of range".to_string()));
                     }
 
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
