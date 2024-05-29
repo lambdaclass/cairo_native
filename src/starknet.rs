@@ -2,7 +2,6 @@
 
 use std::{mem::ManuallyDrop, ptr::null_mut};
 
-use num_bigint::BigInt;
 use starknet_types_core::felt::Felt;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
