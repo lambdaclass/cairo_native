@@ -295,7 +295,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         unimplemented!()
     }
 
-    fn cheatcode(&mut self, _input: &[Felt]) -> SyscallResult<()> {
+    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
         unimplemented!()
     }
 }

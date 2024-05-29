@@ -247,7 +247,7 @@ pub trait StarknetSyscallHandler {
     ) -> SyscallResult<(U256, U256)>;
 
     // Testing syscalls.
-    fn cheatcode(&mut self, input: &[Felt]) -> SyscallResult<()>;
+    fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt>;
 }
 
 pub struct DummySyscallHandler;
@@ -436,7 +436,7 @@ impl StarknetSyscallHandler for DummySyscallHandler {
         unimplemented!()
     }
 
-    fn cheatcode(&mut self, _input: &[Felt]) -> SyscallResult<()> {
+    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
         todo!()
     }
 }
@@ -448,7 +448,7 @@ pub(crate) mod handler {
         alloc::Layout,
         fmt::Debug,
         mem::{size_of, ManuallyDrop, MaybeUninit},
-        ptr::{null_mut, NonNull},
+        ptr::{self, null_mut, NonNull},
     };
 
     macro_rules! field_offset {
@@ -856,24 +856,17 @@ pub(crate) mod handler {
             })
             .collect();
 
-            dbg!(input.clone());
-            let result = ptr.cheatcode(&input);
-            *result_ptr = match result {
-                Ok(_) => ArrayAbi {
-                    ptr: null_mut(),
-                    since: 0,
-                    until: 0,
-                    capacity: 0,
-                },
-                Err(e) => ArrayAbi {
-                    ptr: null_mut(),
-                    since: 0,
-                    until: 0,
-                    capacity: 0,
-                },
+            let selector = Felt::from_bytes_le(&selector.0);
+
+            ptr.cheatcode(selector, &input);
+
+            *result_ptr = ArrayAbi {
+                ptr: ptr::null_mut(),
+                since: 0,
+                until: 0,
+                capacity: 0,
             };
         }
-
         extern "C" fn wrap_get_execution_info(
             result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
             ptr: &mut T,
@@ -1644,20 +1637,18 @@ thread_local!(pub static SYSCALL_HANDLER_VTABLE: std::cell::Cell<*mut ()>  = std
 #[allow(non_snake_case)]
 pub extern "C" fn cairo_native__vtable_cheatcode(
     result_ptr: &mut ArrayAbi<Felt252Abi>,
-    //     _selector: &Felt252Abi,
-    //     _input: &ArrayAbi<Felt252Abi>,
+    selector: &Felt252Abi,
+    input: &ArrayAbi<Felt252Abi>,
 ) {
-    let mut seven = Felt252Abi([0_u8; 32]);
-    seven.0[31] = 7;
-
-    let mut vec = ManuallyDrop::new(vec![seven]);
-
     *result_ptr = ArrayAbi {
-        ptr: vec.as_mut_ptr(),
+        ptr: ManuallyDrop::new(vec![Felt252Abi([0_u8; 32])]).as_mut_ptr(),
         since: 0,
         until: 1,
         capacity: 1,
     };
+
+    dbg!(selector);
+    dbg!(input);
 
     let ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
     dbg!(ptr);
