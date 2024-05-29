@@ -42,8 +42,6 @@ pub fn build<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    dbg!(result_type);
-
     // allocate the result pointer
     let result_ptr = helper
         .init_block()
@@ -62,10 +60,50 @@ pub fn build<'ctx, 'this>(
         .result(0)?
         .into();
 
+    let selector = helper
+        .init_block()
+        .const_int(context, location, info.selector.clone(), 256)?;
+    let selector_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, llvm::r#type::pointer(context, 0), None)?;
+    helper
+        .init_block()
+        .store(context, location, selector_ptr, selector, None);
+
+    let args_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        llvm::r#type::r#struct(
+            context,
+            &[llvm::r#type::r#struct(
+                context,
+                &[
+                    llvm::r#type::pointer(context, 0), // ptr to felt
+                    IntegerType::new(context, 32).into(),
+                    IntegerType::new(context, 32).into(),
+                    IntegerType::new(context, 32).into(),
+                ],
+                false,
+            )],
+            false,
+        ),
+        None,
+    )?;
+    entry.store(context, location, args_ptr, entry.argument(0)?.into(), None);
+
     metadata
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.")
-        .vtable_callback(context, helper, entry, location, result_ptr)?;
+        .vtable_callback(
+            context,
+            helper,
+            entry,
+            location,
+            result_ptr,
+            selector_ptr,
+            args_ptr,
+        )?;
 
     let result = entry.append_op_result(llvm::load(
         context,
@@ -78,134 +116,4 @@ pub fn build<'ctx, 'this>(
     entry.append_operation(helper.br(0, &[result], location));
 
     Ok(())
-
-    // dbg!(result_ptr);
-
-    // dbg!(&info.selector);
-
-    // let selector_bytes = info.selector.to_bytes_be().1;
-    // let selector = std::str::from_utf8(&selector_bytes).unwrap();
-
-    // dbg!(selector);
-
-    // let args_ptr = helper.init_block().alloca1(
-    //     context,
-    //     location,
-    //     llvm::r#type::r#struct(
-    //         context,
-    //         &[llvm::r#type::r#struct(
-    //             context,
-    //             &[
-    //                 llvm::r#type::pointer(context, 0),
-    //                 IntegerType::new(context, 32).into(),
-    //                 IntegerType::new(context, 32).into(),
-    //                 IntegerType::new(context, 32).into(),
-    //             ],
-    //             false,
-    //         )],
-    //         false,
-    //     ),
-    //     Some(8),
-    // )?;
-    // entry.store(context, location, args_ptr, entry.argument(0)?.into(), None);
-
-    // dbg!(args_ptr);
-
-    // let ptr = entry
-    //     .append_operation(llvm::load(
-    //         context,
-    //         entry.argument(1)?.into(),
-    //         llvm::r#type::pointer(context, 0),
-    //         location,
-    //         LoadStoreOptions::default(),
-    //     ))
-    //     .result(0)?
-    //     .into();
-
-    // let fn_ptr_addr = entry
-    //     .append_operation(llvm::get_element_ptr(
-    //         context,
-    //         entry.argument(1)?.into(),
-    //         DenseI32ArrayAttribute::new(
-    //             context,
-    //             &[StarknetSyscallHandlerCallbacks::<()>::CHEATCODE.try_into()?],
-    //         ),
-    //         llvm::r#type::pointer(context, 0),
-    //         llvm::r#type::pointer(context, 0),
-    //         location,
-    //     ))
-    //     .result(0)?
-    //     .into();
-    // let fn_ptr = entry
-    //     .append_operation(llvm::load(
-    //         context,
-    //         fn_ptr_addr,
-    //         llvm::r#type::pointer(context, 0),
-    //         location,
-    //         LoadStoreOptions::default(),
-    //     ))
-    //     .result(0)?
-    //     .into();
-
-    // dbg!(fn_ptr);
-
-    // entry.append_operation(
-    //     OperationBuilder::new("llvm.call", location)
-    //         .add_operands(&[
-    //             fn_ptr, result_ptr, ptr, // gas_builtin_ptr,
-    //             args_ptr,
-    //         ])
-    //         .build()?,
-    // );
-
-    // dbg!(result);
-
-    // let result_tag = entry
-    //     .append_operation(llvm::extract_value(
-    //         context,
-    //         result,
-    //         DenseI64ArrayAttribute::new(context, &[0]),
-    //         IntegerType::new(context, 1).into(),
-    //         location,
-    //     ))
-    //     .result(0)?
-    //     .into();
-
-    // dbg!(result_tag);
-
-    // let payload_err = {
-    //     let ptr = entry
-    //         .append_operation(
-    //             OperationBuilder::new("llvm.getelementptr", location)
-    //                 .add_attributes(&[
-    //                     (
-    //                         Identifier::new(context, "rawConstantIndices"),
-    //                         DenseI32ArrayAttribute::new(
-    //                             context,
-    //                             &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
-    //                         )
-    //                         .into(),
-    //                     ),
-    //                     (
-    //                         Identifier::new(context, "elem_type"),
-    //                         TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
-    //                     ),
-    //                 ])
-    //                 .add_operands(&[result_ptr])
-    //                 .add_results(&[llvm::r#type::pointer(context, 0)])
-    //                 .build()?,
-    //         )
-    //         .result(0)?
-    //         .into();
-    //     entry
-    //         .append_operation(llvm::load(
-    //             context,
-    //             ptr,
-    //             variant_tys[1].0,
-    //             location,
-    //             LoadStoreOptions::default(),
-    //         ))
-    //         .result(0)?
-    //         .into()
-    // };
 }

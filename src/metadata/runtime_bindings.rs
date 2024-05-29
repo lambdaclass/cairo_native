@@ -660,6 +660,8 @@ impl RuntimeBindingsMeta {
         block: &'a Block<'c>,
         location: Location<'c>,
         result_ptr: Value<'c, 'a>,
+        selector_ptr: Value<'c, 'a>,
+        args: Value<'c, 'a>,
     ) -> Result<OperationRef<'c, 'a>>
     where
         'c: 'a,
@@ -669,7 +671,16 @@ impl RuntimeBindingsMeta {
                 context,
                 StringAttribute::new(context, "cairo_native__vtable_cheatcode"),
                 TypeAttribute::new(
-                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                        ],
+                        &[],
+                    )
+                    .into(),
                 ),
                 Region::new(),
                 &[(
@@ -683,7 +694,7 @@ impl RuntimeBindingsMeta {
         Ok(block.append_operation(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__vtable_cheatcode"),
-            &[result_ptr],
+            &[result_ptr, selector_ptr, args],
             &[],
             location,
         )))
