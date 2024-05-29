@@ -647,15 +647,30 @@ fn parse_result(
             Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
             None => {
                 #[cfg(target_arch = "x86_64")]
-                let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+                // Since x86_64's return values hold at most two different 64bit registers,
+                // everything bigger than u128 will be returned by memory, therefore making
+                // this branch is unreachable on that architecture.
+                unreachable!();
 
                 #[cfg(target_arch = "aarch64")]
-                let value =
-                    JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(unsafe {
-                        std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-                    }));
+                JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(unsafe {
+                    std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
+                }))
+            }
+        },
+        CoreTypeConcrete::Bytes31(_) => match return_ptr {
+            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            None => {
+                #[cfg(target_arch = "x86_64")]
+                // Since x86_64's return values hold at most two different 64bit registers,
+                // everything bigger than u128 will be returned by memory, therefore making
+                // this branch is unreachable on that architecture.
+                unreachable!();
 
-                value
+                #[cfg(target_arch = "aarch64")]
+                JitValue::Bytes31(unsafe {
+                    *std::mem::transmute::<&[u64; 4], &[u8; 31]>(&ret_registers)
+                })
             }
         },
         CoreTypeConcrete::Uint8(_) => match return_ptr {
@@ -821,7 +836,6 @@ fn parse_result(
         },
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::Snapshot(_) => todo!(),
-        CoreTypeConcrete::Bytes31(_) => todo!(),
         CoreTypeConcrete::Bitwise(_) => todo!(),
         CoreTypeConcrete::Const(_) => todo!(),
         CoreTypeConcrete::EcOp(_) => todo!(),

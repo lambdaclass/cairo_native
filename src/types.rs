@@ -460,6 +460,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Felt252DictEntry(_) => true,
 
             CoreTypeConcrete::Felt252(_)
+            | CoreTypeConcrete::Bytes31(_)
             | CoreTypeConcrete::StarkNet(
                 StarkNetTypeConcrete::ClassHash(_)
                 | StarkNetTypeConcrete::ContractAddress(_)
@@ -487,7 +488,6 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Struct(_) => true,
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
-            CoreTypeConcrete::Bytes31(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),

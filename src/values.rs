@@ -756,8 +756,7 @@ impl JitValue {
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::Bytes31(_) => {
-                    let mut data = *ptr.cast::<[u8; 31]>().as_ref();
-                    data.reverse();
+                    let data = *ptr.cast::<[u8; 31]>().as_ref();
                     Self::Bytes31(data)
                 }
 
