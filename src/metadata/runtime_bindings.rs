@@ -653,7 +653,7 @@ impl RuntimeBindingsMeta {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn vtable_callback<'c, 'a>(
+    pub fn vtable_cheatcode<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,

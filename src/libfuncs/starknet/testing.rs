@@ -60,6 +60,7 @@ pub fn build<'ctx, 'this>(
         .result(0)?
         .into();
 
+    // allocate and store selector
     let selector = helper
         .init_block()
         .const_int(context, location, info.selector.clone(), 256)?;
@@ -71,6 +72,7 @@ pub fn build<'ctx, 'this>(
         .init_block()
         .store(context, location, selector_ptr, selector, None);
 
+    // allocate and store arguments
     let args_ptr = helper.init_block().alloca1(
         context,
         location,
@@ -79,7 +81,7 @@ pub fn build<'ctx, 'this>(
             &[llvm::r#type::r#struct(
                 context,
                 &[
-                    llvm::r#type::pointer(context, 0), // ptr to felt
+                    llvm::r#type::pointer(context, 0),
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
                     IntegerType::new(context, 32).into(),
@@ -92,10 +94,11 @@ pub fn build<'ctx, 'this>(
     )?;
     entry.store(context, location, args_ptr, entry.argument(0)?.into(), None);
 
+    // call runtime vtable
     metadata
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.")
-        .vtable_callback(
+        .vtable_cheatcode(
             context,
             helper,
             entry,
@@ -105,6 +108,7 @@ pub fn build<'ctx, 'this>(
             args_ptr,
         )?;
 
+    // load result from result ptr
     let result = entry.append_op_result(llvm::load(
         context,
         result_ptr,
