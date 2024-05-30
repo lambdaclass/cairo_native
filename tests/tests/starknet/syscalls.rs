@@ -381,7 +381,7 @@ impl StarknetSyscallHandler for SyscallHandler {
     }
 
     fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
-        todo!()
+        vec![]
     }
 }
 

@@ -1,8 +1,10 @@
 //! Starknet related code for `cairo_native`
 
-use std::{mem::ManuallyDrop, ptr::null_mut};
+use std::ptr::null_mut;
 
 use starknet_types_core::felt::Felt;
+
+use self::handler::StarknetSyscallHandlerCallbacks;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
 
@@ -448,7 +450,7 @@ pub(crate) mod handler {
         alloc::Layout,
         fmt::Debug,
         mem::{size_of, ManuallyDrop, MaybeUninit},
-        ptr::{self, null_mut, NonNull},
+        ptr::{null_mut, NonNull},
     };
 
     macro_rules! field_offset {
@@ -545,7 +547,7 @@ pub(crate) mod handler {
     #[repr(C)]
     #[derive(Debug)]
     pub struct StarknetSyscallHandlerCallbacks<'a, T> {
-        self_ptr: &'a mut T,
+        pub self_ptr: &'a mut T,
 
         get_block_hash: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
@@ -700,7 +702,7 @@ pub(crate) mod handler {
             p: &Secp256r1Point,
         ),
         // testing syscalls
-        cheatcode: extern "C" fn(
+        pub cheatcode: extern "C" fn(
             result_ptr: &mut ArrayAbi<Felt252Abi>,
             ptr: &mut T,
             selector: &Felt252Abi,
@@ -738,7 +740,7 @@ pub(crate) mod handler {
         pub const SECP256R1_GET_POINT_FROM_X: usize =
             field_offset!(Self, secp256r1_get_point_from_x) >> 3;
         pub const SECP256R1_GET_XY: usize = field_offset!(Self, secp256r1_get_xy) >> 3;
-        pub const CHEATCODE: usize = field_offset!(Self, cheatcode) >> 3;
+        // pub const CHEATCODE: usize = field_offset!(Self, cheatcode) >> 3;
     }
 
     #[allow(unused_variables)]
@@ -847,25 +849,17 @@ pub(crate) mod handler {
                 std::slice::from_raw_parts(input.ptr.add(since_offset), len)
             }
             .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
+            .map(|x| Felt::from_bytes_le(&x.0))
             .collect();
-
             let selector = Felt::from_bytes_le(&selector.0);
 
-            ptr.cheatcode(selector, &input);
+            let result = ptr
+                .cheatcode(selector, &input)
+                .into_iter()
+                .map(|x| Felt252Abi(x.to_bytes_le()))
+                .collect::<Vec<_>>();
 
-            *result_ptr = ArrayAbi {
-                ptr: ptr::null_mut(),
-                since: 0,
-                until: 0,
-                capacity: 0,
-            };
+            *result_ptr = unsafe { Self::alloc_mlir_array(&result) };
         }
         extern "C" fn wrap_get_execution_info(
             result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
@@ -1640,5 +1634,10 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
     selector: &Felt252Abi,
     input: &ArrayAbi<Felt252Abi>,
 ) {
-    let ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
+    let callbacks_ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get())
+        as *mut StarknetSyscallHandlerCallbacks<DummySyscallHandler>;
+    let callbacks = unsafe { Box::from_raw(callbacks_ptr) };
+
+    let handler = callbacks.self_ptr;
+    (callbacks.cheatcode)(result_ptr, handler, selector, input);
 }
