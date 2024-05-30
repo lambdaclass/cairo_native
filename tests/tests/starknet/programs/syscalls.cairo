@@ -58,8 +58,6 @@ fn keccak() -> SyscallResult<u256> {
 }
 
 fn set_sequencer_address() -> Span<felt252> {
-    get_execution_info_syscall().unwrap();
-
     let address = 123;
     return cheatcode::<'set_sequencer_address'>(array![address].span());
 }

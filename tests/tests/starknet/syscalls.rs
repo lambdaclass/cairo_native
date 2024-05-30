@@ -851,16 +851,9 @@ fn set_sequencer_address() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
-            tag: 0,
-            value: Box::new(JitValue::Struct {
-                fields: vec![JitValue::Struct {
-                    fields: Vec::new(),
-                    debug_name: None,
-                }],
-                debug_name: None,
-            }),
-            debug_name: None,
-        },
+        JitValue::Struct {
+            fields: vec![JitValue::Array(vec![])],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
     );
 }
