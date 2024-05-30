@@ -538,7 +538,10 @@ pub fn compare_outputs(
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Coupon(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => JitValue::Null,
+            CoreTypeConcrete::RangeCheck(_) => JitValue::Struct {
+                fields: vec![],
+                debug_name: None,
+            },
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }
