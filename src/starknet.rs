@@ -1636,6 +1636,16 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
 ) {
     let callbacks_ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get())
         as *mut StarknetSyscallHandlerCallbacks<DummySyscallHandler>;
+    if callbacks_ptr.is_null() {
+        *result_ptr = ArrayAbi {
+            ptr: null_mut(),
+            since: 0,
+            until: 0,
+            capacity: 0,
+        };
+        return;
+    }
+
     let callbacks = unsafe { Box::from_raw(callbacks_ptr) };
 
     let handler = callbacks.self_ptr;
