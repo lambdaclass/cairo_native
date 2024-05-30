@@ -26,6 +26,7 @@ fn main() {
 
     // let Finish this line like the example! What's your favorite short string?
     // Try a letter, try a number, try a special character, try a short string!
+    let mut your_character = '';
     if is_alphabetic(
         ref your_character
     ) {
