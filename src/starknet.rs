@@ -1,6 +1,6 @@
 //! Starknet related code for `cairo_native`
 
-use std::ptr::null_mut;
+use std::{ptr::null_mut, sync::Arc};
 
 use starknet_types_core::felt::Felt;
 
@@ -1634,9 +1634,9 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
     selector: &Felt252Abi,
     input: &ArrayAbi<Felt252Abi>,
 ) {
-    let callbacks_ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get())
-        as *mut StarknetSyscallHandlerCallbacks<DummySyscallHandler>;
-    if callbacks_ptr.is_null() {
+    let ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
+    dbg!(ptr);
+    if ptr.is_null() {
         *result_ptr = ArrayAbi {
             ptr: null_mut(),
             since: 0,
@@ -1646,8 +1646,10 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
         return;
     }
 
-    let callbacks = unsafe { Box::from_raw(callbacks_ptr) };
+    let callbacks_ptr = ptr as *mut StarknetSyscallHandlerCallbacks<DummySyscallHandler>;
+    let callbacks = unsafe { callbacks_ptr.as_mut().expect("should not be null") };
+    let handler_ptr = unsafe { *(ptr as *mut *mut DummySyscallHandler) };
+    let handler = unsafe { handler_ptr.as_mut().expect("should not be null") };
 
-    let handler = callbacks.self_ptr;
     (callbacks.cheatcode)(result_ptr, handler, selector, input);
 }
