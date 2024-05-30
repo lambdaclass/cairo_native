@@ -621,6 +621,7 @@
 <a href="#619" id="619">619</a>
 <a href="#620" id="620">620</a>
 <a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::{bail, Context};
 <span class="kw">use </span>cairo_lang_compiler::{
     db::RootDatabase, diagnostics::DiagnosticsReporter, project::setup_project,
@@ -867,7 +868,8 @@
 
 <span class="kw">fn </span>jitvalue_to_felt(value: <span class="kw-2">&amp;</span>JitValue) -&gt; Vec&lt;Felt&gt; {
     <span class="kw">match </span>value {
-        JitValue::Felt252(felt) =&gt; <span class="macro">vec!</span>[felt.to_bigint().into()],
+        JitValue::Felt252(felt) =&gt; <span class="macro">vec!</span>[<span class="kw-2">*</span>felt],
+        JitValue::BoundedInt { value, .. } =&gt; <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
         JitValue::Bytes31(bytes) =&gt; <span class="macro">vec!</span>[Felt::from_bytes_le_slice(bytes)],
         JitValue::Array(fields) | JitValue::Struct { fields, .. } =&gt; {
             fields.iter().flat_map(jitvalue_to_felt).collect()
