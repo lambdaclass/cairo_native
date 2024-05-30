@@ -530,7 +530,11 @@ pub fn compare_outputs(
                     Felt::from_bytes_le(&values[3].to_le_bytes()),
                 )
             }
-            CoreTypeConcrete::Bytes31(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => {
+                let mut bytes = values[0].to_le_bytes().to_vec();
+                bytes.pop();
+                JitValue::Bytes31(bytes.try_into().unwrap())
+            }
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Coupon(_) => todo!(),
