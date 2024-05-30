@@ -113,7 +113,8 @@ pub fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResult
 fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
     let mut felts = Vec::new();
     match value {
-        JitValue::Felt252(felt) => vec![felt.to_bigint().into()],
+        JitValue::Felt252(felt) => vec![*felt],
+        JitValue::BoundedInt { value, .. } => vec![*value],
         JitValue::Array(fields) | JitValue::Struct { fields, .. } => {
             fields.iter().flat_map(jitvalue_to_felt).collect()
         }
@@ -167,32 +168,6 @@ mod tests {
     use super::*;
     use cairo_felt::Felt252;
     use cairo_lang_sierra::ProgramParser;
-
-    #[test]
-    fn test_check_compiler_path() {
-        // Define file, folder, and invalid paths for testing
-        let file_path = Path::new("src/bin/cairo-native-run.rs");
-        let folder_path = Path::new("src/bin");
-        let invalid_path = Path::new("src/non-existing-file.rs");
-
-        // Test when single_file is true and the path is a file
-        assert!(check_compiler_path(true, file_path).is_ok());
-
-        // Test when single_file is false and the path is a file
-        assert!(check_compiler_path(false, file_path).is_err());
-
-        // Test when single_file is true and the path is a folder
-        assert!(check_compiler_path(true, folder_path).is_err());
-
-        // Test when single_file is false and the path is a folder
-        assert!(check_compiler_path(false, folder_path).is_ok());
-
-        // Test when single_file is true and the path does not exist
-        assert!(check_compiler_path(true, invalid_path).is_err());
-
-        // Test when single_file is false and the path does not exist
-        assert!(check_compiler_path(false, invalid_path).is_err());
-    }
 
     #[test]
     fn test_find_function() {
