@@ -244,7 +244,8 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
 
 fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
     match value {
-        JitValue::Felt252(felt) => vec![felt.to_bigint().into()],
+        JitValue::Felt252(felt) => vec![*felt],
+        JitValue::BoundedInt { value, .. } => vec![*value],
         JitValue::Bytes31(bytes) => vec![Felt::from_bytes_le_slice(bytes)],
         JitValue::Array(fields) | JitValue::Struct { fields, .. } => {
             fields.iter().flat_map(jitvalue_to_felt).collect()
