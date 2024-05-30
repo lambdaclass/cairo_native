@@ -75,14 +75,14 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
-        Ok(super::invoke_dynamic(
+        super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
-        ))
+        )
     }
 
     /// Execute a program with the given params.
@@ -100,14 +100,14 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
-        Ok(super::invoke_dynamic(
+        super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
             available_gas,
             Some(syscall_handler),
-        ))
+        )
     }
 
     pub fn invoke_contract_dynamic(
@@ -135,7 +135,7 @@ impl<'m> JitNativeExecutor<'m> {
             }],
             available_gas,
             Some(syscall_handler),
-        ))
+        )?)
     }
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {

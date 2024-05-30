@@ -1915,9 +1915,7 @@ mod special_casts {
             -0x800000000000011000000000000000000000000000000000000000000000000
         >;
 
-    // TODO: fails
     #[test]
-    #[ignore]
     fn test_bounded_int_casts() {
         let minus_1 = downcast::<felt252, BoundedInt<-1, -1>>(-1).unwrap();
         assert!(downcast::<OneMinusPToZero, u8>(upcast(minus_1)).is_none());
