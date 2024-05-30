@@ -122,7 +122,7 @@ use test_case::test_case;
 #[test_case("tests/cases/cairo_vm/fibonacci.cairo")]
 #[test_case("tests/cases/cairo_vm/hello.cairo")]
 #[test_case("tests/cases/cairo_vm/my_rectangle.cairo")]
-// #[test_case("tests/cases/cairo_vm/null_ret.cairo")]
+#[test_case("tests/cases/cairo_vm/null_ret.cairo")]
 // #[test_case("tests/cases/cairo_vm/nullable_box_vec.cairo")]
 // #[test_case("tests/cases/cairo_vm/nullable_dict.cairo")]
 #[test_case("tests/cases/cairo_vm/ops.cairo")]

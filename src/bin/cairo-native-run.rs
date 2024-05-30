@@ -281,8 +281,18 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
         JitValue::EcPoint(_, _)
         | JitValue::EcState(_, _, _, _)
         | JitValue::Secp256K1Point { .. }
-        | JitValue::Secp256R1Point { .. }
-        | JitValue::Felt252Dict { .. } => todo!(),
+        | JitValue::Secp256R1Point { .. } => todo!(),
+        JitValue::Felt252Dict {
+            value,
+            debug_name: _,
+        } => {
+            let mut res = Vec::new();
+            for (key, val) in value {
+                res.push(*key);
+                res.extend(jitvalue_to_felt(val))
+            }
+            res
+        }
     }
 }
 
