@@ -1648,8 +1648,9 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
 
     let callbacks_ptr = ptr as *mut StarknetSyscallHandlerCallbacks<DummySyscallHandler>;
     let callbacks = unsafe { callbacks_ptr.as_mut().expect("should not be null") };
-    let handler_ptr = unsafe { *(ptr as *mut *mut DummySyscallHandler) };
-    let handler = unsafe { handler_ptr.as_mut().expect("should not be null") };
+
+    let handler_ptr_ptr = ptr as *mut *mut DummySyscallHandler;
+    let handler = unsafe { (*handler_ptr_ptr).as_mut().expect("should not be null") };
 
     (callbacks.cheatcode)(result_ptr, handler, selector, input);
 }
