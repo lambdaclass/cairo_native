@@ -71,19 +71,7 @@ pub fn build_downcast<'ctx, 'this>(
     let dst_width = dst_type.integer_width().ok_or_else(|| {
         Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
-    let src_is_signed = src_type.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
-    })?;
-    let src_is_felt = matches!(
-        src_type,
-        CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::BoundedInt(_)
-    );
-    let dst_is_felt = matches!(
-        dst_type,
-        CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::BoundedInt(_)
-    );
 
-    let src_value: melior::ir::Value = entry.argument(1)?.into();
     let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
     let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
 
@@ -92,6 +80,23 @@ pub fn build_downcast<'ctx, 'this>(
         &format!("downcast<{:?}, {:?}>", src_ty, dst_ty),
         location,
     );
+
+    let src_is_signed = src_type.is_integer_signed().ok_or_else(|| {
+        Error::SierraAssert("casts always happen between numerical types".to_string())
+    })?;
+    let dst_is_signed = dst_type.is_integer_signed().ok_or_else(|| {
+        Error::SierraAssert("casts always happen between numerical types".to_string())
+    })?;
+    let any_is_signed = src_is_signed | dst_is_signed;
+    let src_is_felt = matches!(
+        src_type,
+        CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::BoundedInt(_)
+    );
+    let dst_is_felt = matches!(
+        dst_type,
+        CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::BoundedInt(_)
+    );
+    let src_value: melior::ir::Value = entry.argument(1)?.into();
 
     let mut block = entry;
 
@@ -213,7 +218,7 @@ pub fn build_downcast<'ctx, 'this>(
 
         let is_in_range_upper = block.append_op_result(arith::cmpi(
             context,
-            if src_is_signed {
+            if any_is_signed {
                 CmpiPredicate::Sle
             } else {
                 CmpiPredicate::Ule
@@ -225,7 +230,7 @@ pub fn build_downcast<'ctx, 'this>(
 
         let is_in_range_lower = block.append_op_result(arith::cmpi(
             context,
-            if src_is_signed {
+            if any_is_signed {
                 CmpiPredicate::Sge
             } else {
                 CmpiPredicate::Uge
@@ -516,6 +521,7 @@ mod test {
                 ),
                 jit_struct!(
                     JitValue::Bytes31([
+                        u8::MAX,
                         0,
                         0,
                         0,
@@ -546,98 +552,74 @@ mod test {
                         0,
                         0,
                         0,
-                        u8::MAX
                     ]),
                     JitValue::Bytes31([
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
                         u8::MAX,
-                        u8::MAX
+                        u8::MAX,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
                     ]),
                     JitValue::Bytes31([
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
-                        u8::MAX
+                        u8::MAX,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
                     ]),
                     JitValue::Bytes31([
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
@@ -645,24 +627,32 @@ mod test {
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
-                        u8::MAX
+                        u8::MAX,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
                     ]),
                     JitValue::Bytes31([
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
@@ -678,7 +668,22 @@ mod test {
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
-                        u8::MAX
+                        u8::MAX,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
                     ]),
                     JitValue::Bytes31([u8::MAX; 31]),
                 ),

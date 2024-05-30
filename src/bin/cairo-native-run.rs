@@ -246,6 +246,7 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
     match value {
         JitValue::Felt252(felt) => vec![*felt],
         JitValue::BoundedInt { value, .. } => vec![*value],
+        JitValue::Bytes31(bytes) => vec![Felt::from_bytes_le_slice(bytes)],
         JitValue::Array(fields) | JitValue::Struct { fields, .. } => {
             fields.iter().flat_map(jitvalue_to_felt).collect()
         }
@@ -277,8 +278,7 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
         JitValue::Sint64(x) => vec![(*x).into()],
         JitValue::Sint128(x) => vec![(*x).into()],
         JitValue::Null => vec![0.into()],
-        JitValue::Bytes31(_)
-        | JitValue::EcPoint(_, _)
+        JitValue::EcPoint(_, _)
         | JitValue::EcState(_, _, _, _)
         | JitValue::Secp256K1Point { .. }
         | JitValue::Secp256R1Point { .. }

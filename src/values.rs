@@ -204,14 +204,22 @@ impl JitValue {
                 } => {
                     let value = value.to_bigint();
 
-                    assert!(lower < upper, "invalid range");
+                    if lower < upper {
+                        return Err(Error::Error("BoundedInt range is invalid".to_string()));
+                    }
+
                     let prime = &PRIME.to_bigint().unwrap();
                     let lower = lower.rem_euclid(prime);
                     let upper = upper.rem_euclid(prime);
+
                     if lower <= upper {
-                        assert!(lower <= value && value < upper);
-                    } else {
-                        assert!(upper > value && value >= lower);
+                        if !(lower <= value && value < upper) {
+                            return Err(Error::Error(
+                                "BoundedInt value is out of range".to_string(),
+                            ));
+                        }
+                    } else if !(upper > value && value >= lower) {
+                        return Err(Error::Error("BoundedInt value is out of range".to_string()));
                     }
 
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
@@ -756,8 +764,7 @@ impl JitValue {
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::Bytes31(_) => {
-                    let mut data = *ptr.cast::<[u8; 31]>().as_ref();
-                    data.reverse();
+                    let data = *ptr.cast::<[u8; 31]>().as_ref();
                     Self::Bytes31(data)
                 }
 
@@ -1441,13 +1448,13 @@ mod range_serde {
                         "upper" => {
                             upper = Some(value);
                         }
-                        _ => todo!(),
+                        _ => return Err(de::Error::unknown_field(field, &["lower", "upper"])),
                     }
                 }
 
                 Ok(Range {
-                    lower: lower.unwrap(),
-                    upper: upper.unwrap(),
+                    lower: lower.ok_or_else(|| de::Error::missing_field("lower"))?,
+                    upper: upper.ok_or_else(|| de::Error::missing_field("upper"))?,
                 })
             }
         }
