@@ -1626,7 +1626,7 @@ pub(crate) mod handler {
     }
 }
 
-thread_local!(pub static SYSCALL_HANDLER_VTABLE: std::cell::Cell<*mut ()>  = std::cell::Cell::new(null_mut()));
+thread_local!(pub static SYSCALL_HANDLER_VTABLE: std::cell::Cell<*mut ()>  = const { std::cell::Cell::new(null_mut()) });
 
 #[allow(non_snake_case)]
 pub extern "C" fn cairo_native__vtable_cheatcode(

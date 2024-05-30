@@ -197,13 +197,13 @@ fn invoke_dynamic(
         None
     };
 
-    let mut syscall_handler = syscall_handler.as_mut().and_then(|syscall_handler| {
+    let mut syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
         let syscall_handler = arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
 
         let syscall_handler_ptr = std::ptr::addr_of!(*syscall_handler) as *mut ();
         SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
 
-        Some(syscall_handler)
+        syscall_handler
     });
 
     // Generate argument list.
