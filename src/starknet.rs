@@ -1,6 +1,6 @@
 //! Starknet related code for `cairo_native`
 
-use std::{ptr::null_mut, sync::Arc};
+use std::ptr::null_mut;
 
 use starknet_types_core::felt::Felt;
 
