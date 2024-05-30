@@ -1635,7 +1635,6 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
     input: &ArrayAbi<Felt252Abi>,
 ) {
     let ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
-    dbg!(ptr);
     if ptr.is_null() {
         *result_ptr = ArrayAbi {
             ptr: null_mut(),
