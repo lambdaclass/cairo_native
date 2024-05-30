@@ -380,8 +380,19 @@ impl StarknetSyscallHandler for SyscallHandler {
         unimplemented!()
     }
 
-    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
-        vec![]
+    fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt> {
+        let selector_bytes = selector.to_bytes_be();
+        let Ok(selector) = std::str::from_utf8(&selector_bytes) else {
+            return vec![];
+        };
+
+        match selector {
+            "set_sequencer_address" => {
+                self.testing_state.sequencer_address = input[0];
+                vec![]
+            }
+            _ => vec![],
+        }
     }
 }
 
