@@ -61,10 +61,9 @@ pub fn build<'ctx, 'this>(
         .into();
 
     // allocate and store selector
-    let selector =
-        dbg!(helper
-            .init_block()
-            .const_int(context, location, info.selector.clone(), 256)?);
+    let selector = helper
+        .init_block()
+        .const_int(context, location, info.selector.clone(), 256)?;
     let selector_ptr = helper.init_block().alloca1(
         context,
         location,
