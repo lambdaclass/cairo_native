@@ -854,6 +854,16 @@
 <a href="#852" id="852">852</a>
 <a href="#853" id="853">853</a>
 <a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -1005,7 +1015,7 @@
     args: <span class="kw-2">&amp;</span>[JitValue],
     gas: u128,
     <span class="kw-2">mut </span>syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw">impl </span>StarknetSyscallHandler&gt;,
-) -&gt; ExecutionResult {
+) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, Error&gt; {
     <span class="macro">tracing::info!</span>(<span class="string">"Invoking function with signature: {function_signature:?}."</span>);
 
     <span class="kw">let </span>arena = Bump::new();
@@ -1178,19 +1188,21 @@
                 // As cairo functions can not have a return value
             </span>)
         })
-        .unwrap_or_else(|| JitValue::Struct {
-            fields: <span class="macro">vec!</span>[],
-            debug_name: <span class="prelude-val">None</span>,
-        });
+        .unwrap_or_else(|| {
+            <span class="prelude-val">Ok</span>(JitValue::Struct {
+                fields: <span class="macro">vec!</span>[],
+                debug_name: <span class="prelude-val">None</span>,
+            })
+        })<span class="question-mark">?</span>;
 
     <span class="comment">// FIXME: Arena deallocation.
     </span>std::mem::forget(arena);
 
-    ExecutionResult {
+    <span class="prelude-val">Ok</span>(ExecutionResult {
         remaining_gas,
         return_value,
         builtin_stats,
-    }
+    })
 }
 
 <span class="kw">pub struct </span>ArgumentMapper&lt;<span class="lifetime">'a</span>&gt; {
@@ -1465,7 +1477,7 @@
     <span class="kw-2">mut </span>return_ptr: <span class="prelude-ty">Option</span>&lt;NonNull&lt;()&gt;&gt;,
     <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">2</span>],
     <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">4</span>],
-) -&gt; JitValue {
+) -&gt; <span class="prelude-ty">Result</span>&lt;JitValue, Error&gt; {
     <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
 
     <span class="comment">// Align the pointer to the actual return value.
@@ -1484,15 +1496,21 @@
     }
 
     <span class="kw">match </span>type_info {
-        CoreTypeConcrete::Array(<span class="kw">_</span>) =&gt; JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::Array(<span class="kw">_</span>) =&gt; {
+            <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+        }
         CoreTypeConcrete::Box(info) =&gt; <span class="kw">unsafe </span>{
             <span class="kw">let </span>ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[<span class="number">0</span>] <span class="kw">as </span><span class="kw-2">*mut </span>()));
             <span class="kw">let </span>value = JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry);
             libc::free(ptr.cast().as_ptr());
-            value
+            <span class="prelude-val">Ok</span>(value)
         },
-        CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
-        CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; {
+            <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+        }
+        CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; {
+            <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+        }
         CoreTypeConcrete::Felt252(<span class="kw">_</span>)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>)
@@ -1500,79 +1518,81 @@
             | StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>)
             | StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>),
         ) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::from_jit(return_ptr, type_id, registry),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr, type_id, registry)),
             <span class="prelude-val">None </span>=&gt; {
                 <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
                 </span><span class="comment">// Since x86_64's return values hold at most two different 64bit registers,
                 // everything bigger than u128 will be returned by memory, therefore making
                 // this branch is unreachable on that architecture.
-                </span><span class="macro">unreachable!</span>();
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::ParseAttributeError);
 
                 <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
-                </span>JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(<span class="kw">unsafe </span>{
-                    std::mem::transmute::&lt;<span class="kw-2">&amp;</span>[u64; <span class="number">4</span>], <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>]&gt;(<span class="kw-2">&amp;</span>ret_registers)
-                }))
+                </span><span class="prelude-val">Ok</span>(JitValue::Felt252(
+                    starknet_types_core::felt::Felt::from_bytes_le(<span class="kw">unsafe </span>{
+                        std::mem::transmute::&lt;<span class="kw-2">&amp;</span>[u64; <span class="number">4</span>], <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>]&gt;(<span class="kw-2">&amp;</span>ret_registers)
+                    }),
+                ))
             }
         },
         CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::from_jit(return_ptr, type_id, registry),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr, type_id, registry)),
             <span class="prelude-val">None </span>=&gt; {
                 <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
                 </span><span class="comment">// Since x86_64's return values hold at most two different 64bit registers,
                 // everything bigger than u128 will be returned by memory, therefore making
                 // this branch is unreachable on that architecture.
-                </span><span class="macro">unreachable!</span>();
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::ParseAttributeError);
 
                 <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
-                </span>JitValue::Bytes31(<span class="kw">unsafe </span>{
+                </span><span class="prelude-val">Ok</span>(JitValue::Bytes31(<span class="kw">unsafe </span>{
                     <span class="kw-2">*</span>std::mem::transmute::&lt;<span class="kw-2">&amp;</span>[u64; <span class="number">4</span>], <span class="kw-2">&amp;</span>[u8; <span class="number">31</span>]&gt;(<span class="kw-2">&amp;</span>ret_registers)
-                })
+                }))
             }
         },
         CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::Uint8(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() }),
-            <span class="prelude-val">None </span>=&gt; JitValue::Uint8(ret_registers[<span class="number">0</span>] <span class="kw">as </span>u8),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::Uint8(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() })),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::Uint8(ret_registers[<span class="number">0</span>] <span class="kw">as </span>u8)),
         },
         CoreTypeConcrete::Uint16(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::Uint16(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() }),
-            <span class="prelude-val">None </span>=&gt; JitValue::Uint16(ret_registers[<span class="number">0</span>] <span class="kw">as </span>u16),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::Uint16(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() })),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::Uint16(ret_registers[<span class="number">0</span>] <span class="kw">as </span>u16)),
         },
         CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::Uint32(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() }),
-            <span class="prelude-val">None </span>=&gt; JitValue::Uint32(ret_registers[<span class="number">0</span>] <span class="kw">as </span>u32),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::Uint32(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() })),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::Uint32(ret_registers[<span class="number">0</span>] <span class="kw">as </span>u32)),
         },
         CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::Uint64(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() }),
-            <span class="prelude-val">None </span>=&gt; JitValue::Uint64(ret_registers[<span class="number">0</span>]),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::Uint64(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() })),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::Uint64(ret_registers[<span class="number">0</span>])),
         },
         CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::Uint128(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() }),
-            <span class="prelude-val">None </span>=&gt; {
-                JitValue::Uint128(((ret_registers[<span class="number">1</span>] <span class="kw">as </span>u128) &lt;&lt; <span class="number">64</span>) | ret_registers[<span class="number">0</span>] <span class="kw">as </span>u128)
-            }
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::Uint128(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() })),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::Uint128(
+                ((ret_registers[<span class="number">1</span>] <span class="kw">as </span>u128) &lt;&lt; <span class="number">64</span>) | ret_registers[<span class="number">0</span>] <span class="kw">as </span>u128,
+            )),
         },
         CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::Sint8(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() }),
-            <span class="prelude-val">None </span>=&gt; JitValue::Sint8(ret_registers[<span class="number">0</span>] <span class="kw">as </span>i8),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::Sint8(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() })),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::Sint8(ret_registers[<span class="number">0</span>] <span class="kw">as </span>i8)),
         },
         CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::Sint16(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() }),
-            <span class="prelude-val">None </span>=&gt; JitValue::Sint16(ret_registers[<span class="number">0</span>] <span class="kw">as </span>i16),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::Sint16(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() })),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::Sint16(ret_registers[<span class="number">0</span>] <span class="kw">as </span>i16)),
         },
         CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::Sint32(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() }),
-            <span class="prelude-val">None </span>=&gt; JitValue::Sint32(ret_registers[<span class="number">0</span>] <span class="kw">as </span>i32),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::Sint32(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() })),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::Sint32(ret_registers[<span class="number">0</span>] <span class="kw">as </span>i32)),
         },
         CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::Uint64(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() }),
-            <span class="prelude-val">None </span>=&gt; JitValue::Sint64(ret_registers[<span class="number">0</span>] <span class="kw">as </span>i64),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::Uint64(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() })),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::Sint64(ret_registers[<span class="number">0</span>] <span class="kw">as </span>i64)),
         },
         CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::Uint128(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() }),
-            <span class="prelude-val">None </span>=&gt; {
-                JitValue::Sint128(((ret_registers[<span class="number">1</span>] <span class="kw">as </span>i128) &lt;&lt; <span class="number">64</span>) | ret_registers[<span class="number">0</span>] <span class="kw">as </span>i128)
-            }
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::Uint128(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast().as_ref() })),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::Sint128(
+                ((ret_registers[<span class="number">1</span>] <span class="kw">as </span>i128) &lt;&lt; <span class="number">64</span>) | ret_registers[<span class="number">0</span>] <span class="kw">as </span>i128,
+            )),
         },
         CoreTypeConcrete::NonZero(info) =&gt; {
             parse_result(<span class="kw-2">&amp;</span>info.ty, registry, return_ptr, ret_registers)
@@ -1582,12 +1602,12 @@
                 <span class="kw-2">*</span>x.cast::&lt;<span class="kw-2">*mut </span>()&gt;().as_ref()
             });
             <span class="kw">if </span>ptr.is_null() {
-                JitValue::Null
+                <span class="prelude-val">Ok</span>(JitValue::Null)
             } <span class="kw">else </span>{
                 <span class="kw">let </span>ptr = NonNull::new_unchecked(ptr);
                 <span class="kw">let </span>value = JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry);
                 libc::free(ptr.as_ptr().cast());
-                value
+                <span class="prelude-val">Ok</span>(value)
             }
         },
         CoreTypeConcrete::Uninitialized(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
@@ -1605,7 +1625,7 @@
                         <span class="number">2 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u16&gt;().as_ref() <span class="kw">as </span>usize,
                         <span class="number">4 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u32&gt;().as_ref() <span class="kw">as </span>usize,
                         <span class="number">8 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u64&gt;().as_ref() <span class="kw">as </span>usize,
-                        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                        <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ParseAttributeError),
                     }
                 };
 
@@ -1629,7 +1649,7 @@
                             <span class="number">2 </span>=&gt; ret_registers[<span class="number">0</span>] <span class="kw">as </span>u16 <span class="kw">as </span>usize,
                             <span class="number">4 </span>=&gt; ret_registers[<span class="number">0</span>] <span class="kw">as </span>u32 <span class="kw">as </span>usize,
                             <span class="number">8 </span>=&gt; ret_registers[<span class="number">0</span>] <span class="kw">as </span>usize,
-                            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ParseAttributeError),
                         },
                         <span class="prelude-val">Err</span>(<span class="number">1</span>),
                     ),
@@ -1645,60 +1665,60 @@
                         registry,
                         <span class="prelude-val">None</span>,
                         ret_registers,
-                    ))
+                    )<span class="question-mark">?</span>)
                 }
             };
 
-            JitValue::Enum {
+            <span class="prelude-val">Ok</span>(JitValue::Enum {
                 tag,
                 value,
                 debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
-            }
+            })
         }
         CoreTypeConcrete::Struct(info) =&gt; {
             <span class="kw">if </span>info.members.is_empty() {
-                JitValue::Struct {
+                <span class="prelude-val">Ok</span>(JitValue::Struct {
                     fields: Vec::new(),
                     debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
-                }
+                })
             } <span class="kw">else </span>{
-                JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
+                <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
             }
         }
         CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::from_jit(
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(
                 <span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ref() },
                 type_id,
                 registry,
-            ),
-            <span class="prelude-val">None </span>=&gt; JitValue::from_jit(
+            )),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(
                 NonNull::new(ret_registers[<span class="number">0</span>] <span class="kw">as </span><span class="kw-2">*mut </span>()).unwrap(),
                 type_id,
                 registry,
-            ),
+            )),
         },
         CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; JitValue::from_jit(
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(
                 <span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ref() },
                 type_id,
                 registry,
-            ),
-            <span class="prelude-val">None </span>=&gt; JitValue::from_jit(
+            )),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(
                 NonNull::new(ret_registers[<span class="number">0</span>] <span class="kw">as </span><span class="kw-2">*mut </span>()).unwrap(),
                 type_id,
                 registry,
-            ),
+            )),
         },
         CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Snapshot(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; JitValue::Struct {
+        CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(JitValue::Struct {
             fields: Vec::new(),
             debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
-        },
+        }),
         CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),

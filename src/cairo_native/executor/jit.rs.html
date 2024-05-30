@@ -233,14 +233,14 @@
             .get_initial_available_gas(function_id, gas)
             .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::Error::InsufficientGasError)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="kw">super</span>::invoke_dynamic(
+        <span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
             <span class="self">self</span>.extract_signature(function_id),
             args,
             available_gas,
             <span class="prelude-ty">Option</span>::&lt;DummySyscallHandler&gt;::None,
-        ))
+        )
     }
 
     <span class="doccomment">/// Execute a program with the given params.
@@ -258,14 +258,14 @@
             .get_initial_available_gas(function_id, gas)
             .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::Error::InsufficientGasError)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="kw">super</span>::invoke_dynamic(
+        <span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
             <span class="self">self</span>.extract_signature(function_id),
             args,
             available_gas,
             <span class="prelude-val">Some</span>(syscall_handler),
-        ))
+        )
     }
 
     <span class="kw">pub fn </span>invoke_contract_dynamic(
@@ -293,7 +293,7 @@
             }],
             available_gas,
             <span class="prelude-val">Some</span>(syscall_handler),
-        ))
+        )<span class="question-mark">?</span>)
     }
 
     <span class="kw">pub fn </span>find_function_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">*mut </span>c_void {
