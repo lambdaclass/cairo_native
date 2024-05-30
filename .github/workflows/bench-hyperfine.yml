@@ -6,6 +6,11 @@ on:
   merge_group:
     types: [checks_requested]
 
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
 
