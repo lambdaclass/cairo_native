@@ -197,6 +197,15 @@ fn invoke_dynamic(
         None
     };
 
+    let mut syscall_handler = syscall_handler.as_mut().and_then(|syscall_handler| {
+        let syscall_handler = arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
+
+        let syscall_handler_ptr = std::ptr::addr_of!(*syscall_handler) as *mut ();
+        SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
+
+        Some(syscall_handler)
+    });
+
     // Generate argument list.
     let mut iter = args.iter();
     for type_id in function_signature.param_types.iter().filter(|id| {
@@ -211,18 +220,10 @@ fn invoke_dynamic(
             ),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 match syscall_handler.as_mut() {
-                    Some(syscall_handler) => {
-                        let syscall_handler =
-                            arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
-
-                        let syscall_handler_ptr = std::ptr::addr_of!(*syscall_handler) as *mut ();
-                        SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
-
-                        invoke_data.push_aligned(
-                            get_integer_layout(64).align(),
-                            &[syscall_handler as *mut _ as u64],
-                        )
-                    }
+                    Some(syscall_handler) => invoke_data.push_aligned(
+                        get_integer_layout(64).align(),
+                        &[syscall_handler as *mut _ as u64],
+                    ),
                     None => {
                         panic!("Syscall handler is required");
                     }
