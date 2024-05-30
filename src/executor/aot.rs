@@ -75,14 +75,14 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
-        Ok(super::invoke_dynamic(
+        super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
-        ))
+        )
     }
 
     pub fn invoke_dynamic_with_syscall_handler(
@@ -97,14 +97,14 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
-        Ok(super::invoke_dynamic(
+        super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
             available_gas,
             Some(syscall_handler),
-        ))
+        )
     }
 
     pub fn invoke_contract_dynamic(
@@ -132,7 +132,7 @@ impl AotNativeExecutor {
             }],
             available_gas,
             Some(syscall_handler),
-        ))
+        )?)
     }
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
@@ -151,5 +151,136 @@ impl AotNativeExecutor {
 
     fn extract_signature(&self, function_id: &FunctionId) -> &FunctionSignature {
         &self.registry.get_function(function_id).unwrap().signature
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        context::NativeContext,
+        utils::test::{load_cairo, load_starknet, TestSyscallHandler},
+    };
+    use cairo_lang_sierra::program::Program;
+    use rstest::*;
+
+    #[fixture]
+    fn program() -> Program {
+        let (_, program) = load_cairo! {
+            use core::starknet::{SyscallResultTrait, get_block_hash_syscall};
+
+            fn run_test() -> felt252 {
+                42
+            }
+
+            fn get_block_hash() -> felt252 {
+                get_block_hash_syscall(1).unwrap_syscall()
+            }
+        };
+        program
+    }
+
+    #[fixture]
+    fn starknet_program() -> Program {
+        let (_, program) = load_starknet! {
+            #[starknet::interface]
+            trait ISimpleStorage<TContractState> {
+                fn get(self: @TContractState) -> u128;
+            }
+
+            #[starknet::contract]
+            mod contract {
+                #[storage]
+                struct Storage {}
+
+                #[abi(embed_v0)]
+                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
+                    fn get(self: @ContractState) -> u128 {
+                        42
+                    }
+                }
+            }
+        };
+        program
+    }
+
+    #[rstest]
+    fn test_invoke_dynamic(program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&program, None)
+            .expect("failed to compile context");
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+
+        // The first function in the program is `run_test`.
+        let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
+
+        let result = executor
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .unwrap();
+
+        assert_eq!(result.return_value, JitValue::Felt252(Felt::from(42)));
+    }
+
+    #[rstest]
+    fn test_invoke_dynamic_with_syscall_handler(program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&program, None)
+            .expect("failed to compile context");
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+
+        // The second function in the program is `get_block_hash`.
+        let entrypoint_function_id = &program.funcs.get(1).expect("should have a function").id;
+
+        let mut syscall_handler = TestSyscallHandler;
+        let result = executor
+            .invoke_dynamic_with_syscall_handler(
+                entrypoint_function_id,
+                &[],
+                Some(u128::MAX),
+                syscall_handler.clone(),
+            )
+            .unwrap();
+
+        let expected_value = JitValue::Enum {
+            tag: 0,
+            value: JitValue::Struct {
+                fields: vec![JitValue::Felt252(
+                    syscall_handler.get_block_hash(1, &mut 0).unwrap(),
+                )],
+                debug_name: Some("Tuple<felt252>".into()),
+            }
+            .into(),
+            debug_name: Some("core::panics::PanicResult::<(core::felt252,)>".into()),
+        };
+        assert_eq!(result.return_value, expected_value);
+    }
+
+    #[rstest]
+    fn test_invoke_contract_dynamic(starknet_program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&starknet_program, None)
+            .expect("failed to compile context");
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+
+        // The last function in the program is the `get` wrapper function.
+        let entrypoint_function_id = &starknet_program
+            .funcs
+            .last()
+            .expect("should have a function")
+            .id;
+
+        let result = executor
+            .invoke_contract_dynamic(
+                entrypoint_function_id,
+                &[],
+                Some(u128::MAX),
+                TestSyscallHandler,
+            )
+            .unwrap();
+
+        assert_eq!(result.return_values, vec![Felt::from(42)]);
     }
 }

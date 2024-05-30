@@ -4,6 +4,7 @@ use std::ops::Shr;
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::TypeBuilder,
@@ -22,9 +23,11 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
+use num_bigint::{BigInt, ToBigInt};
+use num_traits::Euclid;
 use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -62,7 +65,6 @@ pub fn build_downcast<'ctx, 'this>(
 
     let src_type = registry.get_type(&info.from_ty)?;
     let dst_type = registry.get_type(&info.to_ty)?;
-
     let src_width = src_type.integer_width().ok_or_else(|| {
         Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
@@ -79,61 +81,50 @@ pub fn build_downcast<'ctx, 'this>(
         location,
     );
 
-    let is_signed = src_type.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
-    })? || dst_type.is_integer_signed().ok_or_else(|| {
+    let src_is_signed = src_type.is_integer_signed().ok_or_else(|| {
         Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
-    let is_felt = matches!(src_type, CoreTypeConcrete::Felt252(_));
-
+    let dst_is_signed = dst_type.is_integer_signed().ok_or_else(|| {
+        Error::SierraAssert("casts always happen between numerical types".to_string())
+    })?;
+    let any_is_signed = src_is_signed | dst_is_signed;
+    let src_is_felt = matches!(
+        src_type,
+        CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::BoundedInt(_)
+    );
+    let dst_is_felt = matches!(
+        dst_type,
+        CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::BoundedInt(_)
+    );
     let src_value: melior::ir::Value = entry.argument(1)?.into();
 
     let mut block = entry;
 
-    let (is_in_range, result) = if src_ty == dst_ty {
-        let k0 = block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-
+    let (is_in_range, result) = if info.from_ty == info.to_ty {
+        // can't cast to the same type
+        let k0 = block.const_int(context, location, 0, 1)?;
         (k0, src_value)
     } else {
         // make unsigned felt into signed felt
         // felt > half prime = negative
-        let src_value = if is_felt {
-            let attr_halfprime_i252 = Attribute::parse(
+        let felt_to_int = src_is_felt && !dst_is_felt;
+        let src_value = if felt_to_int {
+            let attr_halfprime_i252 = metadata
+                .get::<PrimeModuloMeta<Felt>>()
+                .ok_or(Error::MissingMetadata)?
+                .prime()
+                .shr(1);
+
+            let half_prime =
+                block.const_int_from_type(context, location, attr_halfprime_i252, src_ty)?;
+
+            let is_felt_neg = block.append_op_result(arith::cmpi(
                 context,
-                &format!(
-                    "{} : {}",
-                    metadata
-                        .get::<PrimeModuloMeta<Felt>>()
-                        .ok_or(Error::MissingMetadata)?
-                        .prime()
-                        .shr(1),
-                    src_ty
-                ),
-            )
-            .ok_or(Error::ParseAttributeError)?;
-            let half_prime: melior::ir::Value = block
-                .append_operation(arith::constant(context, attr_halfprime_i252, location))
-                .result(0)?
-                .into();
-
-            let is_felt_neg = block
-                .append_operation(arith::cmpi(
-                    context,
-                    CmpiPredicate::Ugt,
-                    src_value,
-                    half_prime,
-                    location,
-                ))
-                .result(0)?
-                .into();
-
+                CmpiPredicate::Ugt,
+                src_value,
+                half_prime,
+                location,
+            ))?;
             let is_neg_block = helper.append_block(Block::new(&[]));
             let is_not_neg_block = helper.append_block(Block::new(&[]));
             let final_block = helper.append_block(Block::new(&[(src_ty, location)]));
@@ -149,45 +140,27 @@ pub fn build_downcast<'ctx, 'this>(
             ));
 
             {
-                let prime = is_neg_block
-                    .append_operation(arith::constant(
-                        context,
-                        Attribute::parse(
-                            context,
-                            &format!(
-                                "{} : {}",
-                                metadata
-                                    .get::<PrimeModuloMeta<Felt>>()
-                                    .ok_or(Error::MissingMetadata)?
-                                    .prime(),
-                                src_ty
-                            ),
-                        )
-                        .ok_or(Error::ParseAttributeError)?,
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
+                let value = metadata
+                    .get::<PrimeModuloMeta<Felt>>()
+                    .ok_or(Error::MissingMetadata)?
+                    .prime();
+                let prime = is_neg_block.const_int_from_type(
+                    context,
+                    location,
+                    value.to_bigint().unwrap(),
+                    src_ty,
+                )?;
 
-                let mut src_value_is_neg: melior::ir::Value = is_neg_block
-                    .append_operation(arith::subi(prime, src_value, location))
-                    .result(0)?
-                    .into();
+                let mut src_value_is_neg =
+                    is_neg_block.append_op_result(arith::subi(prime, src_value, location))?;
 
-                let kneg1 = is_neg_block
-                    .append_operation(arith::constant(
-                        context,
-                        Attribute::parse(context, &format!("-1 : {}", src_ty))
-                            .ok_or(Error::ParseAttributeError)?,
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
+                let kneg1 = is_neg_block.const_int_from_type(context, location, -1, src_ty)?;
 
-                src_value_is_neg = is_neg_block
-                    .append_operation(arith::muli(src_value_is_neg, kneg1, location))
-                    .result(0)?
-                    .into();
+                src_value_is_neg = is_neg_block.append_op_result(arith::muli(
+                    src_value_is_neg,
+                    kneg1,
+                    location,
+                ))?;
 
                 is_neg_block.append_operation(cf::br(final_block, &[src_value_is_neg], location));
             }
@@ -202,20 +175,11 @@ pub fn build_downcast<'ctx, 'this>(
         };
 
         let result = if src_width > dst_width {
-            block
-                .append_operation(arith::trunci(src_value, dst_ty, location))
-                .result(0)?
-                .into()
-        } else if is_signed {
-            block
-                .append_operation(arith::extsi(src_value, dst_ty, location))
-                .result(0)?
-                .into()
+            block.append_op_result(arith::trunci(src_value, dst_ty, location))?
+        } else if src_is_signed {
+            block.append_op_result(arith::extsi(src_value, dst_ty, location))?
         } else {
-            block
-                .append_operation(arith::extui(src_value, dst_ty, location))
-                .result(0)?
-                .into()
+            block.append_op_result(arith::extui(src_value, dst_ty, location))?
         };
 
         let (compare_value, compare_ty) = if src_width > dst_width {
@@ -224,88 +188,60 @@ pub fn build_downcast<'ctx, 'this>(
             (result, dst_ty)
         };
 
-        let max_value = block
-            .append_operation(arith::constant(
-                context,
-                Attribute::parse(
-                    context,
-                    &format!(
-                        "{}: {}",
-                        info.to_range
-                            .intersection(&info.from_range)
-                            .ok_or_else(|| Error::SierraAssert(
-                                "range should always interesct".to_string()
-                            ))?
-                            .upper,
-                        compare_ty
-                    ),
-                )
-                .ok_or_else(|| {
-                    Error::Error("downcast: failed to make max value attribute".to_string())
-                })?,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let mut int_max_value: BigInt = info
+            .to_range
+            .intersection(&info.from_range)
+            .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
+            .upper
+            - 1;
 
-        let min_value = block
-            .append_operation(arith::constant(
-                context,
-                Attribute::parse(
-                    context,
-                    &format!(
-                        "{}: {}",
-                        info.to_range
-                            .intersection(&info.from_range)
-                            .ok_or_else(|| Error::SierraAssert(
-                                "range should always interesct".to_string()
-                            ))?
-                            .lower,
-                        compare_ty
-                    ),
-                )
-                .ok_or_else(|| {
-                    Error::Error("downcast: failed to make min value attribute".to_string())
-                })?,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let mut int_min_value = info
+            .to_range
+            .intersection(&info.from_range)
+            .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
+            .lower;
 
-        let is_in_range_upper = block
-            .append_operation(arith::cmpi(
-                context,
-                if is_signed {
-                    CmpiPredicate::Slt
-                } else {
-                    CmpiPredicate::Ult
-                },
-                compare_value,
-                max_value,
-                location,
-            ))
-            .result(0)?
-            .into();
+        if dst_is_felt {
+            let prime = &metadata
+                .get::<PrimeModuloMeta<Felt>>()
+                .ok_or(Error::MissingMetadata)?
+                .prime()
+                .to_bigint()
+                .expect("biguint should be casted to bigint");
 
-        let is_in_range_lower = block
-            .append_operation(arith::cmpi(
-                context,
-                if is_signed {
-                    CmpiPredicate::Sge
-                } else {
-                    CmpiPredicate::Uge
-                },
-                compare_value,
-                min_value,
-                location,
-            ))
-            .result(0)?
-            .into();
+            int_min_value = int_min_value.rem_euclid(prime);
+            int_max_value = int_max_value.rem_euclid(prime);
+        }
 
-        let is_in_range = block
-            .append_operation(arith::andi(is_in_range_upper, is_in_range_lower, location))
-            .result(0)?
-            .into();
+        let max_value = block.const_int_from_type(context, location, int_max_value, compare_ty)?;
+        let min_value = block.const_int_from_type(context, location, int_min_value, compare_ty)?;
+
+        let is_in_range_upper = block.append_op_result(arith::cmpi(
+            context,
+            if any_is_signed {
+                CmpiPredicate::Sle
+            } else {
+                CmpiPredicate::Ule
+            },
+            compare_value,
+            max_value,
+            location,
+        ))?;
+
+        let is_in_range_lower = block.append_op_result(arith::cmpi(
+            context,
+            if any_is_signed {
+                CmpiPredicate::Sge
+            } else {
+                CmpiPredicate::Uge
+            },
+            compare_value,
+            min_value,
+            location,
+        ))?;
+
+        let is_in_range =
+            block.append_op_result(arith::andi(is_in_range_upper, is_in_range_lower, location))?;
 
         (is_in_range, result)
     };
@@ -364,8 +300,6 @@ pub fn build_upcast<'ctx, 'this>(
 
     let is_signed = src_ty.is_integer_signed().ok_or_else(|| {
         Error::SierraAssert("casts always happen between numerical types".to_string())
-    })? || dst_ty.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
     })?;
 
     let is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
@@ -374,37 +308,23 @@ pub fn build_upcast<'ctx, 'this>(
 
     let result = if src_width == dst_width {
         block.argument(0)?.into()
-    } else if is_signed {
+    } else if is_signed || is_felt {
         if is_felt {
-            let result = block
-                .append_operation(arith::extsi(
-                    block.argument(0)?.into(),
-                    IntegerType::new(context, dst_width.try_into()?).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
+            let result = block.append_op_result(arith::extsi(
+                block.argument(0)?.into(),
+                IntegerType::new(context, dst_width.try_into()?).into(),
+                location,
+            ))?;
 
-            let kzero = block
-                .append_operation(arith::constant(
-                    context,
-                    Attribute::parse(context, &format!("0 : {}", dst_type))
-                        .ok_or(Error::ParseAttributeError)?,
-                    location,
-                ))
-                .result(0)?
-                .into();
+            let kzero = block.const_int_from_type(context, location, 0, dst_type)?;
 
-            let is_neg = block
-                .append_operation(arith::cmpi(
-                    context,
-                    CmpiPredicate::Slt,
-                    result,
-                    kzero,
-                    location,
-                ))
-                .result(0)?
-                .into();
+            let is_neg = block.append_op_result(arith::cmpi(
+                context,
+                CmpiPredicate::Slt,
+                result,
+                kzero,
+                location,
+            ))?;
 
             let is_neg_block = helper.append_block(Block::new(&[]));
             let is_not_neg_block = helper.append_block(Block::new(&[]));
@@ -421,49 +341,32 @@ pub fn build_upcast<'ctx, 'this>(
             ));
 
             {
-                let result = is_not_neg_block
-                    .append_operation(arith::extui(
-                        entry.argument(0)?.into(),
-                        IntegerType::new(context, dst_width.try_into()?).into(),
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
+                let result = is_not_neg_block.append_op_result(arith::extui(
+                    entry.argument(0)?.into(),
+                    IntegerType::new(context, dst_width.try_into()?).into(),
+                    location,
+                ))?;
+
                 is_not_neg_block.append_operation(cf::br(final_block, &[result], location));
             }
 
             {
-                let mut result = is_neg_block
-                    .append_operation(arith::extsi(
-                        entry.argument(0)?.into(),
-                        IntegerType::new(context, dst_width.try_into()?).into(),
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
-                let prime = is_neg_block
-                    .append_operation(arith::constant(
-                        context,
-                        Attribute::parse(
-                            context,
-                            &format!(
-                                "{} : {}",
-                                metadata
-                                    .get::<PrimeModuloMeta<Felt>>()
-                                    .ok_or(Error::MissingMetadata)?
-                                    .prime(),
-                                dst_type
-                            ),
-                        )
-                        .ok_or(Error::ParseAttributeError)?,
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
-                result = is_neg_block
-                    .append_operation(arith::addi(result, prime, location))
-                    .result(0)?
-                    .into();
+                let mut result = is_neg_block.append_op_result(arith::extsi(
+                    entry.argument(0)?.into(),
+                    IntegerType::new(context, dst_width.try_into()?).into(),
+                    location,
+                ))?;
+
+                let value = metadata
+                    .get::<PrimeModuloMeta<Felt>>()
+                    .ok_or(Error::MissingMetadata)?
+                    .prime()
+                    .to_bigint()
+                    .unwrap();
+
+                let prime = is_neg_block.const_int_from_type(context, location, value, dst_type)?;
+
+                result = is_neg_block.append_op_result(arith::addi(result, prime, location))?;
                 is_neg_block.append_operation(cf::br(final_block, &[result], location));
             }
 
@@ -471,24 +374,18 @@ pub fn build_upcast<'ctx, 'this>(
             final_block.append_operation(helper.br(0, &[result], location));
             return Ok(());
         } else {
-            block
-                .append_operation(arith::extsi(
-                    entry.argument(0)?.into(),
-                    IntegerType::new(context, dst_width.try_into()?).into(),
-                    location,
-                ))
-                .result(0)?
-                .into()
-        }
-    } else {
-        block
-            .append_operation(arith::extui(
-                block.argument(0)?.into(),
+            block.append_op_result(arith::extsi(
+                entry.argument(0)?.into(),
                 IntegerType::new(context, dst_width.try_into()?).into(),
                 location,
-            ))
-            .result(0)?
-            .into()
+            ))?
+        }
+    } else {
+        block.append_op_result(arith::extui(
+            block.argument(0)?.into(),
+            IntegerType::new(context, dst_width.try_into()?).into(),
+            location,
+        ))?
     };
 
     block.append_operation(helper.br(0, &[result], location));
@@ -624,6 +521,7 @@ mod test {
                 ),
                 jit_struct!(
                     JitValue::Bytes31([
+                        u8::MAX,
                         0,
                         0,
                         0,
@@ -654,98 +552,74 @@ mod test {
                         0,
                         0,
                         0,
-                        u8::MAX
                     ]),
                     JitValue::Bytes31([
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
                         u8::MAX,
-                        u8::MAX
+                        u8::MAX,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
                     ]),
                     JitValue::Bytes31([
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
-                        u8::MAX
+                        u8::MAX,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
                     ]),
                     JitValue::Bytes31([
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
@@ -753,24 +627,32 @@ mod test {
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
-                        u8::MAX
+                        u8::MAX,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
                     ]),
                     JitValue::Bytes31([
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
@@ -786,7 +668,22 @@ mod test {
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
-                        u8::MAX
+                        u8::MAX,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
                     ]),
                     JitValue::Bytes31([u8::MAX; 31]),
                 ),

@@ -100,7 +100,19 @@ impl GasMetadata {
         )
     }
 
-    pub fn get_gas_cost_for_statement(
+    pub fn get_gas_cost_for_statement(&self, idx: StatementIdx) -> Option<u128> {
+        let mut cost = None;
+        for cost_type in CostTokenType::iter_casm_tokens() {
+            if let Some(amount) =
+                self.get_gas_cost_for_statement_and_cost_token_type(idx, *cost_type)
+            {
+                *cost.get_or_insert(0) += amount * token_gas_cost(*cost_type) as u128;
+            }
+        }
+        cost
+    }
+
+    pub fn get_gas_cost_for_statement_and_cost_token_type(
         &self,
         idx: StatementIdx,
         cost_type: CostTokenType,

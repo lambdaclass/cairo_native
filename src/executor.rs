@@ -1,3 +1,8 @@
+//! # Executors
+//!
+//! This module provides methods to execute the programs, either via JIT or compiled ahead
+//! of time. It also provides a cache to avoid recompiling previously compiled programs.
+
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::Error,
@@ -48,6 +53,7 @@ extern "C" {
     );
 }
 
+/// The cairo native executor, either AOT or JIT based.
 #[derive(Debug, Clone)]
 pub enum NativeExecutor<'m> {
     Aot(Rc<AotNativeExecutor>),
@@ -55,6 +61,7 @@ pub enum NativeExecutor<'m> {
 }
 
 impl<'a> NativeExecutor<'a> {
+    /// Invoke the given function by its function id, with the given arguments and gas.
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
@@ -67,6 +74,9 @@ impl<'a> NativeExecutor<'a> {
         }
     }
 
+    /// Invoke the given function by its function id, with the given arguments and gas.
+    /// This should be used for programs which require a syscall handler, whose
+    /// implementation should be passed on.
     pub fn invoke_dynamic_with_syscall_handler(
         &self,
         function_id: &FunctionId,
@@ -90,6 +100,9 @@ impl<'a> NativeExecutor<'a> {
         }
     }
 
+    /// Invoke the given function by its function id, with the given arguments and gas.
+    /// This should be used for starknet contracts which require a syscall handler, whose
+    /// implementation should be passed on.
     pub fn invoke_contract_dynamic(
         &self,
         function_id: &FunctionId,
@@ -120,6 +133,15 @@ impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
     }
 }
 
+/// Internal method.
+///
+/// Invokes the given function by constructing the function call depending on the arguments given.
+/// Usually calling a function requires knowing it's signature at compile time, but we need to be
+/// able to call any given function provided it's signatue (arguments and return type) at runtime,
+/// to do so we have a "trampoline" in the given platform assembly (x86_64, aarch64) which
+/// constructs the function call in place.
+///
+/// To pass the arguments, they are stored in a arena.
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
@@ -127,11 +149,8 @@ fn invoke_dynamic(
     args: &[JitValue],
     gas: u128,
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
-) -> ExecutionResult {
+) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
-
-    let is_builtin = <CoreTypeConcrete as TypeBuilder>::is_builtin;
-    let is_zst = <CoreTypeConcrete as TypeBuilder>::is_zst;
 
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
@@ -199,7 +218,9 @@ fn invoke_dynamic(
                             &[syscall_handler as *mut _ as u64],
                         )
                     }
-                    None => panic!("Syscall handler is required"),
+                    None => {
+                        panic!("Syscall handler is required");
+                    }
                 }
             }
             type_info => invoke_data
@@ -265,8 +286,8 @@ fn invoke_dynamic(
                 },
                 None => {}
             },
-            _ if is_builtin(type_info) => {
-                if !is_zst(type_info, registry) {
+            _ if type_info.is_builtin() => {
+                if !type_info.is_zst(registry) {
                     let value = match &mut return_ptr {
                         Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
                         None => ret_registers[0],
@@ -288,21 +309,34 @@ fn invoke_dynamic(
     }
 
     // Parse return values.
-    let return_value = parse_result(
-        function_signature.ret_types.last().unwrap(),
-        registry,
-        return_ptr,
-        ret_registers,
-    );
+    let return_value = function_signature
+        .ret_types
+        .last()
+        .map(|ret_type| {
+            parse_result(
+                ret_type,
+                registry,
+                return_ptr,
+                ret_registers,
+                // TODO: Consider returning an Option<JitValue> as return_value instead
+                // As cairo functions can not have a return value
+            )
+        })
+        .unwrap_or_else(|| {
+            Ok(JitValue::Struct {
+                fields: vec![],
+                debug_name: None,
+            })
+        })?;
 
     // FIXME: Arena deallocation.
     std::mem::forget(arena);
 
-    ExecutionResult {
+    Ok(ExecutionResult {
         remaining_gas,
         return_value,
         builtin_stats,
-    }
+    })
 }
 
 pub struct ArgumentMapper<'a> {
@@ -325,28 +359,30 @@ impl<'a> ArgumentMapper<'a> {
         &self.invoke_data
     }
 
-    #[cfg_attr(target_arch = "x86_64", allow(unused_mut))]
     pub fn push_aligned(&mut self, align: usize, mut values: &[u64]) {
         assert!(align.is_power_of_two());
         assert!(align <= 16);
 
-        // x86_64's max alignment is 8 bytes.
         #[cfg(target_arch = "x86_64")]
-        assert!(align <= 8);
-
+        const NUM_REGISTER_ARGS: usize = 6;
         #[cfg(target_arch = "aarch64")]
+        const NUM_REGISTER_ARGS: usize = 8;
+
         if align == 16 {
             // This works because on both aarch64 and x86_64 the stack is already aligned to
             // 16 bytes when the trampoline starts pushing values.
-            if self.invoke_data.len() >= 8 {
+
+            // Whenever a value spans across multiple registers, if it's in a position where it would be split between
+            // registers and the stack it must be padded so that the entire value is stored within the stack.
+            if self.invoke_data.len() >= NUM_REGISTER_ARGS {
                 if self.invoke_data.len() & 1 != 0 {
                     self.invoke_data.push(0);
                 }
-            } else if self.invoke_data.len() + 1 >= 8 {
+            } else if self.invoke_data.len() + 1 >= NUM_REGISTER_ARGS {
                 self.invoke_data.push(0);
             } else {
                 let new_len = self.invoke_data.len() + values.len();
-                if new_len >= 8 && new_len % 2 != 0 {
+                if new_len >= NUM_REGISTER_ARGS && new_len % 2 != 0 {
                     let chunk;
                     (chunk, values) = if values.len() >= 4 {
                         values.split_at(4)
@@ -568,13 +604,14 @@ impl<'a> ArgumentMapper<'a> {
     }
 }
 
+/// Parses the result by reading from the return ptr the given type.
 fn parse_result(
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     mut return_ptr: Option<NonNull<()>>,
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
-) -> JitValue {
+) -> Result<JitValue, Error> {
     let type_info = registry.get_type(type_id).unwrap();
 
     // Align the pointer to the actual return value.
@@ -586,20 +623,28 @@ fn parse_result(
             .align_offset(layout.align());
 
         *return_ptr = unsafe {
-            NonNull::new_unchecked(return_ptr.cast::<u8>().as_ptr().add(align_offset)).cast()
+            NonNull::new(return_ptr.cast::<u8>().as_ptr().add(align_offset))
+                .expect("nonnull is null")
+                .cast()
         };
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::Array(_) => {
+            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+        }
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
             let value = JitValue::from_jit(ptr, &info.ty, registry);
             libc::free(ptr.cast().as_ptr());
-            value
+            Ok(value)
         },
-        CoreTypeConcrete::EcPoint(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
-        CoreTypeConcrete::EcState(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::EcPoint(_) => {
+            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+        }
+        CoreTypeConcrete::EcState(_) => {
+            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+        }
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
@@ -607,64 +652,81 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)),
             None => {
                 #[cfg(target_arch = "x86_64")]
-                let value = JitValue::from_jit(return_ptr.unwrap(), type_id, registry);
+                // Since x86_64's return values hold at most two different 64bit registers,
+                // everything bigger than u128 will be returned by memory, therefore making
+                // this branch is unreachable on that architecture.
+                return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
-                let value =
-                    JitValue::Felt252(starknet_types_core::felt::Felt::from_bytes_le(unsafe {
+                Ok(JitValue::Felt252(
+                    starknet_types_core::felt::Felt::from_bytes_le(unsafe {
                         std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-                    }));
+                    }),
+                ))
+            }
+        },
+        CoreTypeConcrete::Bytes31(_) => match return_ptr {
+            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)),
+            None => {
+                #[cfg(target_arch = "x86_64")]
+                // Since x86_64's return values hold at most two different 64bit registers,
+                // everything bigger than u128 will be returned by memory, therefore making
+                // this branch is unreachable on that architecture.
+                return Err(Error::ParseAttributeError);
 
-                value
+                #[cfg(target_arch = "aarch64")]
+                Ok(JitValue::Bytes31(unsafe {
+                    *std::mem::transmute::<&[u64; 4], &[u8; 31]>(&ret_registers)
+                }))
             }
         },
         CoreTypeConcrete::Uint8(_) => match return_ptr {
-            Some(return_ptr) => JitValue::Uint8(unsafe { *return_ptr.cast().as_ref() }),
-            None => JitValue::Uint8(ret_registers[0] as u8),
+            Some(return_ptr) => Ok(JitValue::Uint8(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(JitValue::Uint8(ret_registers[0] as u8)),
         },
         CoreTypeConcrete::Uint16(_) => match return_ptr {
-            Some(return_ptr) => JitValue::Uint16(unsafe { *return_ptr.cast().as_ref() }),
-            None => JitValue::Uint16(ret_registers[0] as u16),
+            Some(return_ptr) => Ok(JitValue::Uint16(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(JitValue::Uint16(ret_registers[0] as u16)),
         },
         CoreTypeConcrete::Uint32(_) => match return_ptr {
-            Some(return_ptr) => JitValue::Uint32(unsafe { *return_ptr.cast().as_ref() }),
-            None => JitValue::Uint32(ret_registers[0] as u32),
+            Some(return_ptr) => Ok(JitValue::Uint32(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(JitValue::Uint32(ret_registers[0] as u32)),
         },
         CoreTypeConcrete::Uint64(_) => match return_ptr {
-            Some(return_ptr) => JitValue::Uint64(unsafe { *return_ptr.cast().as_ref() }),
-            None => JitValue::Uint64(ret_registers[0]),
+            Some(return_ptr) => Ok(JitValue::Uint64(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(JitValue::Uint64(ret_registers[0])),
         },
         CoreTypeConcrete::Uint128(_) => match return_ptr {
-            Some(return_ptr) => JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() }),
-            None => {
-                JitValue::Uint128(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
-            }
+            Some(return_ptr) => Ok(JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(JitValue::Uint128(
+                ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128,
+            )),
         },
         CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
         CoreTypeConcrete::Sint8(_) => match return_ptr {
-            Some(return_ptr) => JitValue::Sint8(unsafe { *return_ptr.cast().as_ref() }),
-            None => JitValue::Sint8(ret_registers[0] as i8),
+            Some(return_ptr) => Ok(JitValue::Sint8(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(JitValue::Sint8(ret_registers[0] as i8)),
         },
         CoreTypeConcrete::Sint16(_) => match return_ptr {
-            Some(return_ptr) => JitValue::Sint16(unsafe { *return_ptr.cast().as_ref() }),
-            None => JitValue::Sint16(ret_registers[0] as i16),
+            Some(return_ptr) => Ok(JitValue::Sint16(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(JitValue::Sint16(ret_registers[0] as i16)),
         },
         CoreTypeConcrete::Sint32(_) => match return_ptr {
-            Some(return_ptr) => JitValue::Sint32(unsafe { *return_ptr.cast().as_ref() }),
-            None => JitValue::Sint32(ret_registers[0] as i32),
+            Some(return_ptr) => Ok(JitValue::Sint32(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(JitValue::Sint32(ret_registers[0] as i32)),
         },
         CoreTypeConcrete::Sint64(_) => match return_ptr {
-            Some(return_ptr) => JitValue::Uint64(unsafe { *return_ptr.cast().as_ref() }),
-            None => JitValue::Sint64(ret_registers[0] as i64),
+            Some(return_ptr) => Ok(JitValue::Uint64(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(JitValue::Sint64(ret_registers[0] as i64)),
         },
         CoreTypeConcrete::Sint128(_) => match return_ptr {
-            Some(return_ptr) => JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() }),
-            None => {
-                JitValue::Sint128(((ret_registers[1] as i128) << 64) | ret_registers[0] as i128)
-            }
+            Some(return_ptr) => Ok(JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(JitValue::Sint128(
+                ((ret_registers[1] as i128) << 64) | ret_registers[0] as i128,
+            )),
         },
         CoreTypeConcrete::NonZero(info) => {
             parse_result(&info.ty, registry, return_ptr, ret_registers)
@@ -674,12 +736,12 @@ fn parse_result(
                 *x.cast::<*mut ()>().as_ref()
             });
             if ptr.is_null() {
-                JitValue::Null
+                Ok(JitValue::Null)
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
                 let value = JitValue::from_jit(ptr, &info.ty, registry);
                 libc::free(ptr.as_ptr().cast());
-                value
+                Ok(value)
             }
         },
         CoreTypeConcrete::Uninitialized(_) => todo!(),
@@ -697,7 +759,7 @@ fn parse_result(
                         2 => *ptr.cast::<u16>().as_ref() as usize,
                         4 => *ptr.cast::<u32>().as_ref() as usize,
                         8 => *ptr.cast::<u64>().as_ref() as usize,
-                        _ => unreachable!(),
+                        _ => return Err(Error::ParseAttributeError),
                     }
                 };
 
@@ -721,7 +783,7 @@ fn parse_result(
                             2 => ret_registers[0] as u16 as usize,
                             4 => ret_registers[0] as u32 as usize,
                             8 => ret_registers[0] as usize,
-                            _ => unreachable!(),
+                            _ => return Err(Error::ParseAttributeError),
                         },
                         Err(1),
                     ),
@@ -737,43 +799,66 @@ fn parse_result(
                         registry,
                         None,
                         ret_registers,
-                    ))
+                    )?)
                 }
             };
 
-            JitValue::Enum {
+            Ok(JitValue::Enum {
                 tag,
                 value,
                 debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
-            }
+            })
         }
         CoreTypeConcrete::Struct(info) => {
             if info.members.is_empty() {
-                JitValue::Struct {
+                Ok(JitValue::Struct {
                     fields: Vec::new(),
                     debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
-                }
+                })
             } else {
-                JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
+                Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
             }
         }
         CoreTypeConcrete::Felt252Dict(_) => match return_ptr {
-            Some(return_ptr) => JitValue::from_jit(
+            Some(return_ptr) => Ok(JitValue::from_jit(
                 unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
                 type_id,
                 registry,
-            ),
-            None => JitValue::from_jit(
+            )),
+            None => Ok(JitValue::from_jit(
                 NonNull::new(ret_registers[0] as *mut ()).unwrap(),
                 type_id,
                 registry,
-            ),
+            )),
         },
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+        CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
+            Some(return_ptr) => Ok(JitValue::from_jit(
+                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
+                type_id,
+                registry,
+            )),
+            None => Ok(JitValue::from_jit(
+                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
+                type_id,
+                registry,
+            )),
+        },
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::Snapshot(_) => todo!(),
-        CoreTypeConcrete::Bytes31(_) => todo!(),
-        _ => unreachable!(),
+        CoreTypeConcrete::Bitwise(_) => todo!(),
+        CoreTypeConcrete::Const(_) => todo!(),
+        CoreTypeConcrete::EcOp(_) => todo!(),
+        CoreTypeConcrete::GasBuiltin(_) => Ok(JitValue::Struct {
+            fields: Vec::new(),
+            debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+        }),
+        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+        CoreTypeConcrete::RangeCheck(_) => todo!(),
+        CoreTypeConcrete::Pedersen(_) => todo!(),
+        CoreTypeConcrete::Poseidon(_) => todo!(),
+        CoreTypeConcrete::SegmentArena(_) => todo!(),
+        CoreTypeConcrete::BoundedInt(_) => todo!(),
+        _ => todo!(),
     }
 }

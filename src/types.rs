@@ -21,7 +21,11 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
+    dialect::{
+        arith,
+        llvm::{self, r#type::pointer},
+        ods,
+    },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
@@ -402,6 +406,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 
@@ -455,6 +460,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Felt252DictEntry(_) => true,
 
             CoreTypeConcrete::Felt252(_)
+            | CoreTypeConcrete::Bytes31(_)
             | CoreTypeConcrete::StarkNet(
                 StarkNetTypeConcrete::ClassHash(_)
                 | StarkNetTypeConcrete::ContractAddress(_)
@@ -482,10 +488,10 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Struct(_) => true,
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
-            CoreTypeConcrete::Bytes31(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 
@@ -548,8 +554,12 @@ impl TypeBuilder for CoreTypeConcrete {
                 .all(|id| registry.get_type(id).unwrap().is_zst(registry)),
 
             CoreTypeConcrete::BoundedInt(_) => false,
-            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Const(info) => {
+                let type_info = registry.get_type(&info.inner_ty).unwrap();
+                type_info.is_zst(registry)
+            }
             CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 
@@ -647,13 +657,15 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
-
             CoreTypeConcrete::BoundedInt(info) => get_integer_layout(
                 (info.range.lower.bits().max(info.range.upper.bits()) + 1)
                     .try_into()
                     .expect("should always fit u32"),
             ),
-            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Const(const_type) => {
+                registry.get_type(&const_type.inner_ty)?.layout(registry)?
+            }
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
         .pad_to_align())
     }
@@ -724,7 +736,11 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Bytes31(_) => false,
 
             CoreTypeConcrete::BoundedInt(_) => false,
-            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Const(info) => registry
+                .get_type(&info.inner_ty)
+                .unwrap()
+                .is_memory_allocated(registry),
+            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 
@@ -742,9 +758,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Sint64(_) => Some(64),
             Self::Sint128(_) => Some(128),
 
-            CoreTypeConcrete::BoundedInt(info) => {
-                Some((info.range.lower.bits().max(info.range.upper.bits()) + 1) as usize)
-            }
+            CoreTypeConcrete::BoundedInt(_) => Some(252),
             CoreTypeConcrete::Bytes31(_) => Some(248),
             CoreTypeConcrete::Const(_) => todo!(),
 
@@ -852,10 +866,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 .result(0)?
                 .into(),
             Self::Nullable(_) => entry
-                .append_operation(llvm::nullptr(
-                    llvm::r#type::opaque_pointer(context),
-                    location,
-                ))
+                .append_operation(
+                    ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+                )
                 .result(0)?
                 .into(),
             Self::Uint8(_) => entry
@@ -914,6 +927,10 @@ impl TypeBuilder for CoreTypeConcrete {
     ) -> Result<(), Self::Error> {
         match self {
             CoreTypeConcrete::Array(_info) => {
+                if metadata.get::<ReallocBindingsMeta>().is_none() {
+                    metadata.insert(ReallocBindingsMeta::new(context, helper));
+                }
+
                 let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
 
                 let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);

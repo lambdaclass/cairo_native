@@ -4,6 +4,7 @@
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
@@ -11,21 +12,23 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        enm::{EnumConcreteLibfunc, EnumInitConcreteLibfunc},
+        enm::{EnumConcreteLibfunc, EnumFromBoundedIntConcreteLibfunc, EnumInitConcreteLibfunc},
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc,
     },
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::{
         arith, cf,
         llvm::{self, AllocaOptions, LoadStoreOptions},
+        ods,
     },
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
-        Block, Location, Value, ValueLike,
+        Block, Location, Value,
     },
     Context,
 };
@@ -51,7 +54,9 @@ pub fn build<'ctx, 'this>(
         EnumConcreteLibfunc::SnapshotMatch(info) => {
             build_snapshot_match(context, registry, entry, location, helper, metadata, info)
         }
-        EnumConcreteLibfunc::FromBoundedInt(_) => todo!(),
+        EnumConcreteLibfunc::FromBoundedInt(info) => {
+            build_from_bounded_int(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -65,8 +70,38 @@ pub fn build_init<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &EnumInitConcreteLibfunc,
 ) -> Result<()> {
-    let type_info = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    let payload_type_info = registry.get_type(&info.signature.param_signatures[0].ty)?;
+    let val = build_enum_value(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        entry.argument(0)?.into(),
+        &info.branch_signatures()[0].vars[0].ty,
+        &info.signature.param_signatures[0].ty,
+        info.index,
+    )?;
+    entry.append_operation(helper.br(0, &[val], location));
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn build_enum_value<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    payload_value: Value<'ctx, 'this>,
+    enum_type: &ConcreteTypeId,
+    variant_type: &ConcreteTypeId,
+    variant_index: usize,
+) -> Result<Value<'ctx, 'this>> {
+    let type_info = registry.get_type(enum_type)?;
+    let payload_type_info = registry.get_type(variant_type)?;
 
     let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
@@ -76,10 +111,8 @@ pub fn build_init<'ctx, 'this>(
         type_info.variants().unwrap(),
     )?;
 
-    match variant_tys.len() {
-        0 | 1 => {
-            entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
-        }
+    Ok(match variant_tys.len() {
+        0 | 1 => payload_value,
         _ => {
             let enum_ty = llvm::r#type::r#struct(
                 context,
@@ -88,7 +121,7 @@ pub fn build_init<'ctx, 'this>(
                     if payload_type_info.is_zst(registry) {
                         llvm::r#type::array(IntegerType::new(context, 8).into(), 0)
                     } else {
-                        variant_tys[info.index].0
+                        variant_tys[variant_index].0
                     },
                 ],
                 false,
@@ -97,29 +130,17 @@ pub fn build_init<'ctx, 'this>(
             let tag_val = entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(tag_ty, info.index as i64).into(),
+                    IntegerAttribute::new(
+                        tag_ty,
+                        variant_index
+                            .try_into()
+                            .expect("couldnt convert index to i64"),
+                    )
+                    .into(),
                     location,
                 ))
                 .result(0)?
                 .into();
-
-            let payload_val = if payload_type_info.is_memory_allocated(registry) {
-                entry
-                    .append_operation(llvm::load(
-                        context,
-                        entry.argument(0)?.into(),
-                        variant_tys[info.index].0,
-                        location,
-                        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            variant_tys[info.index].1.align() as i64,
-                        ))),
-                    ))
-                    .result(0)?
-                    .into()
-            } else {
-                entry.argument(0)?.into()
-            };
 
             let val = entry
                 .append_operation(llvm::undef(enum_ty, location))
@@ -135,7 +156,7 @@ pub fn build_init<'ctx, 'this>(
                 ))
                 .result(0)?
                 .into();
-            let val = if payload_type_info.is_zst(registry) {
+            let mut val = if payload_type_info.is_zst(registry) {
                 val
             } else {
                 entry
@@ -143,7 +164,7 @@ pub fn build_init<'ctx, 'this>(
                         context,
                         val,
                         DenseI64ArrayAttribute::new(context, &[1]),
-                        payload_val,
+                        payload_value,
                         location,
                     ))
                     .result(0)?
@@ -165,24 +186,21 @@ pub fn build_init<'ctx, 'this>(
                     .append_operation(llvm::alloca(
                         context,
                         k1,
-                        llvm::r#type::opaque_pointer(context),
+                        llvm::r#type::pointer(context, 0),
                         location,
                         AllocaOptions::new()
                             .align(Some(IntegerAttribute::new(
                                 IntegerType::new(context, 64).into(),
                                 layout.align() as i64,
                             )))
-                            .elem_type(Some(TypeAttribute::new(type_info.build(
-                                context,
-                                helper,
-                                registry,
-                                metadata,
-                                &info.branch_signatures()[0].vars[0].ty,
-                            )?))),
+                            .elem_type(Some(TypeAttribute::new(
+                                type_info.build(context, helper, registry, metadata, enum_type)?,
+                            ))),
                     ))
                     .result(0)?
                     .into();
 
+                // Convert the enum from the concrete variant to the internal representation.
                 entry.append_operation(llvm::store(
                     context,
                     val,
@@ -193,13 +211,75 @@ pub fn build_init<'ctx, 'this>(
                         layout.align() as i64,
                     ))),
                 ));
+                val = entry.load(
+                    context,
+                    location,
+                    stack_ptr,
+                    type_info.build(context, helper, registry, metadata, enum_type)?,
+                    Some(layout.align()),
+                )?;
+            };
 
-                entry.append_operation(helper.br(0, &[stack_ptr], location));
-            } else {
-                entry.append_operation(helper.br(0, &[val], location));
-            }
+            val
         }
-    }
+    })
+}
+
+/// Generate MLIR operations for the `enum_init` libfunc.
+pub fn build_from_bounded_int<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &EnumFromBoundedIntConcreteLibfunc,
+) -> Result<()> {
+    let inp_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+    let varaint_selector_type: IntegerType = inp_ty
+        .build(
+            context,
+            helper,
+            registry,
+            metadata,
+            &info.param_signatures()[0].ty,
+        )?
+        .try_into()?;
+    let enum_type = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
+    // we assume its never memory allocated since its always a enum with only a tag
+    assert!(!enum_type.is_memory_allocated(registry));
+
+    let enum_ty = enum_type.build(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
+
+    let tag_bits = info.n_variants.next_power_of_two().trailing_zeros();
+    let tag_type = IntegerType::new(context, tag_bits);
+
+    let mut tag_value: Value = entry.argument(0)?.into();
+
+    match tag_type.width().cmp(&varaint_selector_type.width()) {
+        std::cmp::Ordering::Less => {
+            tag_value = entry.append_op_result(
+                ods::llvm::trunc(context, tag_type.into(), tag_value, location).into(),
+            )?;
+        }
+        std::cmp::Ordering::Equal => {}
+        std::cmp::Ordering::Greater => {
+            tag_value = entry.append_op_result(
+                ods::llvm::zext(context, tag_type.into(), tag_value, location).into(),
+            )?;
+        }
+    };
+
+    let value = entry.append_op_result(llvm::undef(enum_ty, location))?;
+    let value = entry.insert_value(context, location, value, tag_value, 0)?;
+
+    entry.append_operation(helper.br(0, &[value], location));
 
     Ok(())
 }
@@ -219,7 +299,6 @@ pub fn build_match<'ctx, 'this>(
     let variant_ids = type_info.variants().unwrap();
     match variant_ids.len() {
         0 | 1 => {
-            dbg!(info.branch_signatures().len());
             entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
         }
         _ => {
@@ -231,22 +310,32 @@ pub fn build_match<'ctx, 'this>(
                 variant_ids,
             )?;
 
-            let tag_val = if type_info.is_memory_allocated(registry) {
-                entry
-                    .append_operation(llvm::load(
+            let (stack_ptr, tag_val) = if type_info.is_memory_allocated(registry) {
+                let stack_ptr = helper.init_block().alloca1(
+                    context,
+                    location,
+                    type_info.build(
                         context,
-                        entry.argument(0)?.into(),
-                        tag_ty,
-                        location,
-                        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            layout.align() as i64,
-                        ))),
-                    ))
-                    .result(0)?
-                    .into()
+                        helper,
+                        registry,
+                        metadata,
+                        &info.param_signatures()[0].ty,
+                    )?,
+                    Some(layout.align()),
+                )?;
+                entry.store(
+                    context,
+                    location,
+                    stack_ptr,
+                    entry.argument(0)?.into(),
+                    Some(layout.align()),
+                );
+                let tag_val =
+                    entry.load(context, location, stack_ptr, tag_ty, Some(layout.align()))?;
+
+                (Some(stack_ptr), tag_val)
             } else {
-                entry
+                let tag_val = entry
                     .append_operation(llvm::extract_value(
                         context,
                         entry.argument(0)?.into(),
@@ -255,7 +344,9 @@ pub fn build_match<'ctx, 'this>(
                         location,
                     ))
                     .result(0)?
-                    .into()
+                    .into();
+
+                (None, tag_val)
             };
 
             let default_block = helper.append_block(Block::new(&[]));
@@ -303,93 +394,36 @@ pub fn build_match<'ctx, 'this>(
             }
 
             // Enum variants.
-            for (i, (block, (payload_ty, payload_layout))) in
+            for (i, (block, (payload_ty, _))) in
                 variant_blocks.into_iter().zip(variant_tys).enumerate()
             {
                 let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
 
-                let payload_val = if type_info.is_memory_allocated(registry) {
-                    let val = block
-                        .append_operation(llvm::load(
+                let payload_val = match stack_ptr {
+                    Some(stack_ptr) => {
+                        let val = block.load(
                             context,
-                            entry.argument(0)?.into(),
+                            location,
+                            stack_ptr,
                             enum_ty,
-                            location,
-                            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                                IntegerType::new(context, 64).into(),
-                                layout.align() as i64,
-                            ))),
-                        ))
-                        .result(0)?
-                        .into();
-
-                    block
-                        .append_operation(llvm::extract_value(
-                            context,
-                            val,
-                            DenseI64ArrayAttribute::new(context, &[1]),
-                            payload_ty,
-                            location,
-                        ))
-                        .result(0)?
-                        .into()
-                } else {
-                    // If the enum is not memory-allocated it means that:
-                    //   - Either it's a C-style enum and all payloads have the same type.
-                    //   - Or the enum only has a single non-memory-allocated variant.
-                    if variant_ids.len() == 1 {
-                        entry.argument(0)?.into()
-                    } else {
-                        assert!(registry.get_type(&variant_ids[i])?.is_zst(registry));
-                        block
-                            .append_operation(llvm::undef(payload_ty, location))
-                            .result(0)?
-                            .into()
+                            Some(layout.align()),
+                        )?;
+                        block.extract_value(context, location, val, payload_ty, 1)?
                     }
-                };
-
-                let payload_type_info = registry.get_type(&variant_ids[i])?;
-                let payload_val = if payload_type_info.is_memory_allocated(registry) {
-                    let k1 = helper
-                        .init_block()
-                        .append_operation(arith::constant(
-                            context,
-                            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-                            location,
-                        ))
-                        .result(0)?
-                        .into();
-                    let stack_ptr = helper
-                        .init_block()
-                        .append_operation(llvm::alloca(
-                            context,
-                            k1,
-                            llvm::r#type::opaque_pointer(context),
-                            location,
-                            AllocaOptions::new()
-                                .align(Some(IntegerAttribute::new(
-                                    IntegerType::new(context, 64).into(),
-                                    payload_layout.align() as i64,
-                                )))
-                                .elem_type(Some(TypeAttribute::new(payload_ty))),
-                        ))
-                        .result(0)?
-                        .into();
-
-                    block.append_operation(llvm::store(
-                        context,
-                        payload_val,
-                        stack_ptr,
-                        location,
-                        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            payload_layout.align() as i64,
-                        ))),
-                    ));
-
-                    stack_ptr
-                } else {
-                    payload_val
+                    None => {
+                        // If the enum is not memory-allocated it means that:
+                        //   - Either it's a C-style enum and all payloads have the same type.
+                        //   - Or the enum only has a single non-memory-allocated variant.
+                        if variant_ids.len() == 1 {
+                            entry.argument(0)?.into()
+                        } else {
+                            assert!(registry.get_type(&variant_ids[i])?.is_zst(registry));
+                            block
+                                .append_operation(llvm::undef(payload_ty, location))
+                                .result(0)?
+                                .into()
+                        }
+                    }
                 };
 
                 block.append_operation(helper.br(i, &[payload_val], location));
@@ -413,130 +447,144 @@ pub fn build_snapshot_match<'ctx, 'this>(
     let type_info = registry.get_type(&info.param_signatures()[0].ty)?;
 
     // This libfunc's implementation is identical to `enum_match` aside from fetching the snapshotted enum's variants from the metadata:
-    let variants_ids = metadata
+    let variant_ids = metadata
         .get::<EnumSnapshotVariantsMeta>()
         .ok_or(Error::MissingMetadata)?
         .get_variants(&info.param_signatures()[0].ty)
         .expect("enum should always have variants")
         .clone();
-    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
-        context,
-        helper,
-        registry,
-        metadata,
-        &variants_ids,
-    )?;
-
-    let tag_val = if type_info.is_memory_allocated(registry) {
-        entry
-            .append_operation(llvm::load(
+    match variant_ids.len() {
+        0 | 1 => {
+            entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
+        }
+        _ => {
+            let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
                 context,
-                entry.argument(0)?.into(),
-                tag_ty,
-                location,
-                LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    layout.align() as i64,
-                ))),
-            ))
-            .result(0)?
-            .into()
-    } else {
-        entry
-            .append_operation(llvm::extract_value(
-                context,
-                entry.argument(0)?.into(),
-                DenseI64ArrayAttribute::new(context, &[0]),
-                tag_ty,
-                location,
-            ))
-            .result(0)?
-            .into()
-    };
+                helper,
+                registry,
+                metadata,
+                &variant_ids,
+            )?;
 
-    let default_block = helper.append_block(Block::new(&[]));
-    let variant_blocks = variant_tys
-        .iter()
-        .map(|_| helper.append_block(Block::new(&[])))
-        .collect::<Vec<_>>();
-
-    let case_values = (0..variant_tys.len())
-        .map(i64::try_from)
-        .collect::<std::result::Result<Vec<_>, TryFromIntError>>()?;
-
-    entry.append_operation(cf::switch(
-        context,
-        &case_values,
-        tag_val,
-        tag_ty,
-        (default_block, &[]),
-        &variant_blocks
-            .iter()
-            .copied()
-            .map(|block| (block, [].as_slice()))
-            .collect::<Vec<_>>(),
-        location,
-    )?);
-
-    // Default block.
-    {
-        let val = default_block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-
-        default_block.append_operation(cf::assert(context, val, "Invalid enum tag.", location));
-        default_block.append_operation(llvm::unreachable(location));
-    }
-
-    // Enum variants.
-    for (i, (block, (payload_ty, _))) in variant_blocks.into_iter().zip(variant_tys).enumerate() {
-        let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
-
-        let val = if type_info.is_memory_allocated(registry) {
-            block
-                .append_operation(llvm::load(
+            let (stack_ptr, tag_val) = if type_info.is_memory_allocated(registry) {
+                let stack_ptr = helper.init_block().alloca1(
                     context,
-                    entry.argument(0)?.into(),
-                    enum_ty,
                     location,
-                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        layout.align() as i64,
-                    ))),
-                ))
-                .result(0)?
-                .into()
-        } else {
-            let val: Value = entry.argument(0)?.into();
+                    type_info.build(
+                        context,
+                        helper,
+                        registry,
+                        metadata,
+                        &info.param_signatures()[0].ty,
+                    )?,
+                    Some(layout.align()),
+                )?;
+                entry.store(
+                    context,
+                    location,
+                    stack_ptr,
+                    entry.argument(0)?.into(),
+                    Some(layout.align()),
+                );
+                let tag_val =
+                    entry.load(context, location, stack_ptr, tag_ty, Some(layout.align()))?;
 
-            // If the enum is not memory-allocated it means that:
-            //   - Either it's a C-style enum and all payloads have the same type.
-            //   - Or the enum only has a single variant, making the following check succeed.
-            assert_eq!(
-                crate::ffi::get_struct_field_type_at(&val.r#type(), 1),
-                payload_ty,
-            );
+                (Some(stack_ptr), tag_val)
+            } else {
+                let tag_val = entry
+                    .append_operation(llvm::extract_value(
+                        context,
+                        entry.argument(0)?.into(),
+                        DenseI64ArrayAttribute::new(context, &[0]),
+                        tag_ty,
+                        location,
+                    ))
+                    .result(0)?
+                    .into();
 
-            val
-        };
+                (None, tag_val)
+            };
 
-        let payload_val = block
-            .append_operation(llvm::extract_value(
+            let default_block = helper.append_block(Block::new(&[]));
+            let variant_blocks = variant_tys
+                .iter()
+                .map(|_| helper.append_block(Block::new(&[])))
+                .collect::<Vec<_>>();
+
+            let case_values = (0..variant_tys.len())
+                .map(i64::try_from)
+                .collect::<std::result::Result<Vec<_>, TryFromIntError>>()?;
+
+            entry.append_operation(cf::switch(
                 context,
-                val,
-                DenseI64ArrayAttribute::new(context, &[1]),
-                payload_ty,
+                &case_values,
+                tag_val,
+                tag_ty,
+                (default_block, &[]),
+                &variant_blocks
+                    .iter()
+                    .copied()
+                    .map(|block| (block, [].as_slice()))
+                    .collect::<Vec<_>>(),
                 location,
-            ))
-            .result(0)?
-            .into();
+            )?);
 
-        block.append_operation(helper.br(i, &[payload_val], location));
+            // Default block.
+            {
+                let val = default_block
+                    .append_operation(arith::constant(
+                        context,
+                        IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
+                        location,
+                    ))
+                    .result(0)?
+                    .into();
+
+                default_block.append_operation(cf::assert(
+                    context,
+                    val,
+                    "Invalid enum tag.",
+                    location,
+                ));
+                default_block.append_operation(llvm::unreachable(location));
+            }
+
+            // Enum variants.
+            for (i, (block, (payload_ty, _))) in
+                variant_blocks.into_iter().zip(variant_tys).enumerate()
+            {
+                let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
+
+                let payload_val = match stack_ptr {
+                    Some(stack_ptr) => {
+                        let val = block.load(
+                            context,
+                            location,
+                            stack_ptr,
+                            enum_ty,
+                            Some(layout.align()),
+                        )?;
+                        block.extract_value(context, location, val, payload_ty, 1)?
+                    }
+                    None => {
+                        // If the enum is not memory-allocated it means that:
+                        //   - Either it's a C-style enum and all payloads have the same type.
+                        //   - Or the enum only has a single non-memory-allocated variant.
+                        if variant_ids.len() == 1 {
+                            entry.argument(0)?.into()
+                        } else {
+                            assert!(registry.get_type(&variant_ids[i])?.is_zst(registry));
+                            block
+                                .append_operation(llvm::undef(payload_ty, location))
+                                .result(0)?
+                                .into()
+                        }
+                    }
+                };
+
+                block.append_operation(helper.br(i, &[payload_val], location));
+            }
+        }
     }
 
     Ok(())

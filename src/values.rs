@@ -12,12 +12,14 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        utils::Range,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use educe::Educe;
-use num_bigint::{BigInt, Sign};
+use num_bigint::{BigInt, Sign, ToBigInt};
+use num_traits::Euclid;
 use starknet_types_core::felt::Felt;
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
@@ -71,6 +73,11 @@ pub enum JitValue {
     Secp256R1Point {
         x: (u128, u128),
         y: (u128, u128),
+    },
+    BoundedInt {
+        value: Felt,
+        #[cfg_attr(feature = "with-serde", serde(with = "range_serde"))]
+        range: Range,
     },
     /// Used as return value for Nullables that are null.
     Null,
@@ -152,13 +159,13 @@ impl<T: Into<JitValue> + Clone> From<&[T]> for JitValue {
 
 impl<T: Into<JitValue>> From<Vec<T>> for JitValue {
     fn from(value: Vec<T>) -> Self {
-        Self::Array(value.into_iter().map(|x| x.into()).collect())
+        Self::Array(value.into_iter().map(Into::into).collect())
     }
 }
 
 impl<T: Into<JitValue>, const N: usize> From<[T; N]> for JitValue {
     fn from(value: [T; N]) -> Self {
-        Self::Array(value.into_iter().map(|x| x.into()).collect())
+        Self::Array(value.into_iter().map(Into::into).collect())
     }
 }
 
@@ -191,6 +198,36 @@ impl JitValue {
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
+                Self::BoundedInt {
+                    value,
+                    range: Range { lower, upper },
+                } => {
+                    let value = value.to_bigint();
+
+                    if lower < upper {
+                        return Err(Error::Error("BoundedInt range is invalid".to_string()));
+                    }
+
+                    let prime = &PRIME.to_bigint().unwrap();
+                    let lower = lower.rem_euclid(prime);
+                    let upper = upper.rem_euclid(prime);
+
+                    if lower <= upper {
+                        if !(lower <= value && value < upper) {
+                            return Err(Error::Error(
+                                "BoundedInt value is out of range".to_string(),
+                            ));
+                        }
+                    } else if !(upper > value && value >= lower) {
+                        return Err(Error::Error("BoundedInt value is out of range".to_string()));
+                    }
+
+                    let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
+                    let data = felt252_bigint(value);
+                    ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
+                    ptr
+                }
+
                 Self::Bytes31(_) => todo!(),
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
@@ -319,7 +356,7 @@ impl JitValue {
                 }
                 Self::Enum { tag, value, .. } => {
                     if let CoreTypeConcrete::Enum(info) = Self::resolve_type(ty, registry) {
-                        assert!(*tag <= info.variants.len(), "Variant index out of range.");
+                        assert!(*tag < info.variants.len(), "Variant index out of range.");
 
                         let payload_type_id = &info.variants[*tag];
                         let payload = value.to_jit(arena, registry, payload_type_id)?;
@@ -521,26 +558,26 @@ impl JitValue {
                         .cast::<u32>()
                         .as_ref();
 
-                    let init_data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
-                    let data_ptr = NonNull::new_unchecked(
-                        init_data_ptr
-                            .as_ptr()
-                            .byte_add(elem_stride * offset_value as usize),
-                    );
+                    // this pointer can be null if the array has a size of 0.
+                    let init_data_ptr = *ptr.cast::<*mut ()>().as_ref();
+                    let data_ptr = init_data_ptr.byte_add(elem_stride * offset_value as usize);
 
                     assert!(length_value >= offset_value);
                     let num_elems = (length_value - offset_value) as usize;
                     let mut array_value = Vec::with_capacity(num_elems);
+
                     for i in 0..num_elems {
-                        let cur_elem_ptr = NonNull::new(
-                            ((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut (),
-                        )
-                        .unwrap();
+                        // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
+                        let cur_elem_ptr =
+                            NonNull::new(((data_ptr as usize) + elem_stride * i) as *mut ())
+                                .unwrap();
 
                         array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
                     }
 
-                    libc::free(init_data_ptr.as_ptr().cast());
+                    if !init_data_ptr.is_null() {
+                        libc::free(init_data_ptr.cast());
+                    }
 
                     Self::Array(array_value)
                 }
@@ -567,7 +604,7 @@ impl JitValue {
                 }
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_ref();
-                    let data = Felt::from_bytes_le(data);
+                    let data = Felt::from_bytes_le_slice(data);
                     Self::Felt252(data)
                 }
                 CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),
@@ -727,13 +764,20 @@ impl JitValue {
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::Bytes31(_) => {
-                    let mut data = *ptr.cast::<[u8; 31]>().as_ref();
-                    data.reverse();
+                    let data = *ptr.cast::<[u8; 31]>().as_ref();
                     Self::Bytes31(data)
                 }
 
                 CoreTypeConcrete::Const(_) => todo!(),
-                CoreTypeConcrete::BoundedInt(_) => todo!(),
+                CoreTypeConcrete::BoundedInt(info) => {
+                    let data = ptr.cast::<[u8; 32]>().as_ref();
+                    let data = Felt::from_bytes_le(data);
+                    Self::BoundedInt {
+                        value: data,
+                        range: info.range.clone(),
+                    }
+                }
+                CoreTypeConcrete::Coupon(_) => todo!(),
             }
         }
     }
@@ -747,5 +791,674 @@ impl JitValue {
         };
 
         Self::Felt252(Felt::from(&value))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use bumpalo::Bump;
+    use cairo_lang_sierra::extensions::types::{InfoAndTypeConcreteType, TypeInfo};
+    use cairo_lang_sierra::program::ConcreteTypeLongId;
+    use cairo_lang_sierra::program::Program;
+    use cairo_lang_sierra::program::TypeDeclaration;
+    use cairo_lang_sierra::ProgramParser;
+
+    #[test]
+    fn test_jit_value_conversion_felt() {
+        let felt_value: Felt = 42.into();
+        let jit_value: JitValue = felt_value.into();
+        assert_eq!(jit_value, JitValue::Felt252(Felt::from(42)));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u8() {
+        let u8_value: u8 = 10;
+        let jit_value: JitValue = u8_value.into();
+        assert_eq!(jit_value, JitValue::Uint8(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u16() {
+        let u8_value: u16 = 10;
+        let jit_value: JitValue = u8_value.into();
+        assert_eq!(jit_value, JitValue::Uint16(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u32() {
+        let u32_value: u32 = 10;
+        let jit_value: JitValue = u32_value.into();
+        assert_eq!(jit_value, JitValue::Uint32(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u64() {
+        let u64_value: u64 = 10;
+        let jit_value: JitValue = u64_value.into();
+        assert_eq!(jit_value, JitValue::Uint64(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_u128() {
+        let u128_value: u128 = 10;
+        let jit_value: JitValue = u128_value.into();
+        assert_eq!(jit_value, JitValue::Uint128(10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i8() {
+        let i8_value: i8 = -10;
+        let jit_value: JitValue = i8_value.into();
+        assert_eq!(jit_value, JitValue::Sint8(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i16() {
+        let i16_value: i16 = -10;
+        let jit_value: JitValue = i16_value.into();
+        assert_eq!(jit_value, JitValue::Sint16(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i32() {
+        let i32_value: i32 = -10;
+        let jit_value: JitValue = i32_value.into();
+        assert_eq!(jit_value, JitValue::Sint32(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i64() {
+        let i64_value: i64 = -10;
+        let jit_value: JitValue = i64_value.into();
+        assert_eq!(jit_value, JitValue::Sint64(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_i128() {
+        let i128_value: i128 = -10;
+        let jit_value: JitValue = i128_value.into();
+        assert_eq!(jit_value, JitValue::Sint128(-10));
+    }
+
+    #[test]
+    fn test_jit_value_conversion_array_from_slice() {
+        let array_slice: &[u8] = &[1, 2, 3];
+        let jit_value: JitValue = array_slice.into();
+        assert_eq!(
+            jit_value,
+            JitValue::Array(vec![
+                JitValue::Uint8(1),
+                JitValue::Uint8(2),
+                JitValue::Uint8(3)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_jit_value_conversion_array_from_vec() {
+        let array_vec: Vec<u8> = vec![1, 2, 3];
+        let jit_value: JitValue = array_vec.into();
+        assert_eq!(
+            jit_value,
+            JitValue::Array(vec![
+                JitValue::Uint8(1),
+                JitValue::Uint8(2),
+                JitValue::Uint8(3)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_jit_value_conversion_array_from_fixed_size_array() {
+        let array_fixed: [u8; 3] = [1, 2, 3];
+        let jit_value: JitValue = array_fixed.into();
+        assert_eq!(
+            jit_value,
+            JitValue::Array(vec![
+                JitValue::Uint8(1),
+                JitValue::Uint8(2),
+                JitValue::Uint8(3)
+            ])
+        );
+    }
+
+    #[test]
+    fn test_resolve_type_snapshot() {
+        let ty = CoreTypeConcrete::Snapshot(InfoAndTypeConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+            ty: "test_id".into(),
+        });
+
+        let program = Program {
+            type_declarations: vec![TypeDeclaration {
+                id: "test_id".into(),
+                long_id: ConcreteTypeLongId {
+                    generic_id: "u128".into(),
+                    generic_args: vec![],
+                },
+                declared_type_info: None,
+            }],
+            libfunc_declarations: vec![],
+            statements: vec![],
+            funcs: vec![],
+        };
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            JitValue::resolve_type(&ty, &registry).integer_width(),
+            Some(128)
+        );
+    }
+
+    #[test]
+    fn test_to_jit_felt252() {
+        let program = ProgramParser::new()
+            .parse("type felt252 = felt252;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Felt252(Felt::from(42))
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[u32; 8]>()
+                    .as_ptr()
+            },
+            [42, 0, 0, 0, 0, 0, 0, 0]
+        );
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Felt252(Felt::MAX)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[u32; 8]>()
+                    .as_ptr()
+            },
+            // 0x800000000000011000000000000000000000000000000000000000000000001 - 1
+            [0, 0, 0, 0, 0, 0, 17, 134217728]
+        );
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Felt252(Felt::MAX + Felt::ONE)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[u32; 8]>()
+                    .as_ptr()
+            },
+            [0, 0, 0, 0, 0, 0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn test_to_jit_uint8() {
+        let program = ProgramParser::new().parse("type u8 = u8;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Uint8(9)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<u8>()
+                    .as_ptr()
+            },
+            9
+        );
+    }
+
+    #[test]
+    fn test_to_jit_uint16() {
+        let program = ProgramParser::new().parse("type u16 = u16;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Uint16(17)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<u16>()
+                    .as_ptr()
+            },
+            17
+        );
+    }
+
+    #[test]
+    fn test_to_jit_uint32() {
+        let program = ProgramParser::new().parse("type u32 = u32;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Uint32(33)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<u32>()
+                    .as_ptr()
+            },
+            33
+        );
+    }
+
+    #[test]
+    fn test_to_jit_uint64() {
+        let program = ProgramParser::new().parse("type u64 = u64;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Uint64(65)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<u64>()
+                    .as_ptr()
+            },
+            65
+        );
+    }
+
+    #[test]
+    fn test_to_jit_uint128() {
+        let program = ProgramParser::new().parse("type u128 = u128;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Uint128(129)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<u128>()
+                    .as_ptr()
+            },
+            129
+        );
+    }
+
+    #[test]
+    fn test_to_jit_sint8() {
+        let program = ProgramParser::new().parse("type i8 = i8;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Sint8(-9)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<i8>()
+                    .as_ptr()
+            },
+            -9
+        );
+    }
+
+    #[test]
+    fn test_to_jit_sint16() {
+        let program = ProgramParser::new().parse("type i16 = i16;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Sint16(-17)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<i16>()
+                    .as_ptr()
+            },
+            -17
+        );
+    }
+
+    #[test]
+    fn test_to_jit_sint32() {
+        let program = ProgramParser::new().parse("type i32 = i32;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Sint32(-33)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<i32>()
+                    .as_ptr()
+            },
+            -33
+        );
+    }
+
+    #[test]
+    fn test_to_jit_sint64() {
+        let program = ProgramParser::new().parse("type i64 = i64;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Sint64(-65)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<i64>()
+                    .as_ptr()
+            },
+            -65
+        );
+    }
+
+    #[test]
+    fn test_to_jit_sint128() {
+        let program = ProgramParser::new().parse("type i128 = i128;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::Sint128(-129)
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<i128>()
+                    .as_ptr()
+            },
+            -129
+        );
+    }
+
+    #[test]
+    fn test_to_jit_ec_point() {
+        let program = ProgramParser::new()
+            .parse("type EcPoint = EcPoint;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::EcPoint(Felt::from(1234), Felt::from(4321))
+                    .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[[u32; 8]; 2]>()
+                    .as_ptr()
+            },
+            [[1234, 0, 0, 0, 0, 0, 0, 0], [4321, 0, 0, 0, 0, 0, 0, 0]]
+        );
+    }
+
+    #[test]
+    fn test_to_jit_ec_state() {
+        let program = ProgramParser::new()
+            .parse("type EcState = EcState;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *JitValue::EcState(
+                    Felt::from(1234),
+                    Felt::from(4321),
+                    Felt::from(3333),
+                    Felt::from(4444),
+                )
+                .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+                .unwrap()
+                .cast::<[[u32; 8]; 4]>()
+                .as_ptr()
+            },
+            [
+                [1234, 0, 0, 0, 0, 0, 0, 0],
+                [4321, 0, 0, 0, 0, 0, 0, 0],
+                [3333, 0, 0, 0, 0, 0, 0, 0],
+                [4444, 0, 0, 0, 0, 0, 0, 0]
+            ]
+        );
+    }
+
+    #[test]
+    fn test_to_jit_enum() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type u8 = u8;
+                type MyEnum = Enum<ut@MyEnum, u8, u8>;",
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Call to_jit to get the value of the enum
+        let result = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Uint8(10)),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+
+        // Assertion to verify that the value returned by to_jit is not NULL
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    #[should_panic(expected = "Variant index out of range.")]
+    fn test_to_jit_enum_variant_out_of_range() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type u8 = u8;
+            type MyEnum = Enum<ut@MyEnum, u8, u8>;",
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Call to_jit to get the value of the enum with tag value out of range
+        let _ = JitValue::Enum {
+            tag: 2,
+            value: Box::new(JitValue::Uint8(10)),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+    }
+
+    #[test]
+    #[should_panic(expected = "An enum without variants cannot be instantiated.")]
+    fn test_to_jit_enum_no_variant() {
+        let program = ProgramParser::new()
+            .parse(
+                "type u8 = u8;
+                type MyEnum = Enum<ut@MyEnum, u8>;",
+            )
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        let _ = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Uint8(10)),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+    }
+
+    #[test]
+    fn test_to_jit_enum_type_error() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+                type MyEnum = Enum<ut@MyEnum, felt252, felt252>;",
+            )
+            .unwrap();
+
+        // Creating a registry for the program.
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Invoking to_jit method on a JitValue::Enum to convert it to a JIT representation.
+        // Generating an error by providing an enum value instead of the expected type.
+        let result = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Struct {
+                fields: vec![JitValue::from(2u32)],
+                debug_name: None,
+            }),
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+        .unwrap_err(); // Unwrapping the error
+
+        // Matching the error result to verify the error type and message.
+        match result {
+            Error::UnexpectedValue(expected_msg) => {
+                // Asserting that the error message matches the expected message.
+                assert_eq!(
+                    expected_msg,
+                    format!(
+                        "expected value of type {:?} but got an enum value",
+                        program.type_declarations[0].id.debug_name
+                    )
+                );
+            }
+            _ => panic!("Unexpected error type: {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_to_jit_struct_type_error() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+                type MyEnum = Enum<ut@MyEnum, felt252, felt252>;",
+            )
+            .unwrap();
+
+        // Creating a registry for the program.
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Invoking to_jit method on a JitValue::Struct to convert it to a JIT representation.
+        // Generating an error by providing a struct value instead of the expected type.
+        let result = JitValue::Struct {
+            fields: vec![JitValue::from(2u32)],
+            debug_name: None,
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[0].id)
+        .unwrap_err(); // Unwrapping the error
+
+        // Matching the error result to verify the error type and message.
+        match result {
+            Error::UnexpectedValue(expected_msg) => {
+                // Asserting that the error message matches the expected message.
+                assert_eq!(
+                    expected_msg,
+                    format!(
+                        "expected value of type {:?} but got a struct",
+                        program.type_declarations[0].id.debug_name
+                    )
+                );
+            }
+            _ => panic!("Unexpected error type: {:?}", result),
+        }
+    }
+}
+
+#[cfg(feature = "with-serde")]
+mod range_serde {
+    use std::fmt;
+
+    use cairo_lang_sierra::extensions::utils::Range;
+    use serde::{
+        de::{self, Visitor},
+        ser::SerializeStruct,
+        Deserializer, Serializer,
+    };
+
+    pub fn serialize<S>(range: &Range, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = ser.serialize_struct("Range", 2)?;
+
+        state.serialize_field("lower", &range.lower)?;
+        state.serialize_field("upper", &range.upper)?;
+
+        state.end()
+    }
+
+    pub fn deserialize<'de, D>(de: D) -> Result<Range, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct RangeVisitor;
+
+        impl<'de> Visitor<'de> for RangeVisitor {
+            type Value = Range;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("an integer between -2^31 and 2^31")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let lower = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let upper = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+
+                Ok(Range { lower, upper })
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::MapAccess<'de>,
+            {
+                let mut lower = None;
+                let mut upper = None;
+
+                while let Some((field, value)) = map.next_entry()? {
+                    match field {
+                        "lower" => {
+                            lower = Some(value);
+                        }
+                        "upper" => {
+                            upper = Some(value);
+                        }
+                        _ => return Err(de::Error::unknown_field(field, &["lower", "upper"])),
+                    }
+                }
+
+                Ok(Range {
+                    lower: lower.ok_or_else(|| de::Error::missing_field("lower"))?,
+                    upper: upper.ok_or_else(|| de::Error::missing_field("upper"))?,
+                })
+            }
+        }
+
+        de.deserialize_struct("Range", &["lower", "upper"], RangeVisitor)
     }
 }

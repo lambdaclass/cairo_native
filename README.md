@@ -71,6 +71,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `call_contract_syscall` (StarkNet)
 1. `class_hash_to_felt252` (StarkNet)
 1. `class_hash_try_from_felt252` (StarkNet)
+1. `const_as_box`
 1. `contract_address_const` (StarkNet)
 1. `contract_address_to_felt252` (StarkNet)
 1. `contract_address_try_from_felt252` (StarkNet)
@@ -134,6 +135,16 @@ This is a list of the current progress implementing each **libfunc**.
 1. `rename`
 1. `replace_class_syscall` (StarkNet)
 1. `revoke_ap_tracking`
+1. `secp256k1_add_syscall` (StarkNet)
+1. `secp256k1_get_point_from_x_syscall` (StarkNet)
+1. `secp256k1_get_xy_syscall` (StarkNet)
+1. `secp256k1_mul_syscall` (StarkNet)
+1. `secp256k1_new_syscall` (StarkNet)
+1. `secp256r1_add_syscall` (StarkNet)
+1. `secp256r1_get_point_from_x_syscall` (StarkNet)
+1. `secp256r1_get_xy_syscall` (StarkNet)
+1. `secp256r1_mul_syscall` (StarkNet)
+1. `secp256r1_new_syscall` (StarkNet)
 1. `send_message_to_l1_syscall` (StarkNet)
 1. `snapshot_take` (1)
 1. `span_from_tuple`
@@ -214,18 +225,7 @@ This is a list of the current progress implementing each **libfunc**.
 
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
-
-1. `const_as_box`
-1. `secp256k1_add_syscall` (StarkNet)
-1. `secp256k1_get_point_from_x_syscall` (StarkNet)
-1. `secp256k1_get_xy_syscall` (StarkNet)
-1. `secp256k1_mul_syscall` (StarkNet)
-1. `secp256k1_new_syscall` (StarkNet)
-1. `secp256r1_add_syscall` (StarkNet)
-1. `secp256r1_get_point_from_x_syscall` (StarkNet)
-1. `secp256r1_get_xy_syscall` (StarkNet)
-1. `secp256r1_mul_syscall` (StarkNet)
-1. `secp256r1_new_syscall` (StarkNet)
+1. coupon
 </details>
 
 <details>
@@ -261,8 +261,8 @@ Footnotes on the libfuncs list:
 ### Dependencies
 
 - Linux or macOS (aarch64 included) only for now
-- LLVM 17 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/), on macOS you can use brew
-- Nightly Rust
+- LLVM 18 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/), on macOS you can use brew
+- Rust 1.78.0 or later, since we make use of the u128 [abi change](https://blog.rust-lang.org/2024/03/30/i128-layout-update.html).
 - Git
 
 ### Setup
@@ -277,13 +277,13 @@ make deps
 
 #### Linux
 
-Since Linux distributions change widely, you need to install LLVM 17 via your package manager, compile it or check if the current release has a Linux binary.
+Since Linux distributions change widely, you need to install LLVM 18 via your package manager, compile it or check if the current release has a Linux binary.
 
 If you are on Debian/Ubuntu, check out the repository https://apt.llvm.org/
 Then you can install with:
 
 ```bash
-sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
+sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
 ```
 
 If you decide to build from source, here are some indications:
@@ -292,23 +292,23 @@ If you decide to build from source, here are some indications:
 
 ```bash
 # Go to https://github.com/llvm/llvm-project/releases
-# Download the latest LLVM 17 release:
-# The blob to download is called llvm-project-17.x.x.src.tar.xz
+# Download the latest LLVM 18 release:
+# The blob to download is called llvm-project-18.x.x.src.tar.xz
 
 # For example
-wget https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.3/llvm-project-17.0.3.src.tar.xz
-tar xf llvm-project-17.0.3.src.tar.xz
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.4/llvm-project-18.1.4.src.tar.xz
+tar xf llvm-project-18.1.4.src.tar.xz
 
-cd llvm-project-17.0.3.src.tar
+cd llvm-project-18.1.4.src.tar
 mkdir build
 cd build
 
-# The following cmake command configures the build to be installed to /opt/llvm-17
+# The following cmake command configures the build to be installed to /opt/llvm-18
 cmake -G Ninja ../llvm \
    -DLLVM_ENABLE_PROJECTS="mlir;clang;clang-tools-extra;lld;polly" \
    -DLLVM_BUILD_EXAMPLES=OFF \
    -DLLVM_TARGETS_TO_BUILD="Native" \
-   -DCMAKE_INSTALL_PREFIX=/opt/llvm-17 \
+   -DCMAKE_INSTALL_PREFIX=/opt/llvm-18 \
    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
    -DLLVM_PARALLEL_LINK_JOBS=4 \
    -DLLVM_ENABLE_BINDINGS=OFF \
@@ -320,13 +320,13 @@ ninja install
 
 </details>
 
-Setup a environment variable called `MLIR_SYS_170_PREFIX`, `LLVM_SYS_170_PREFIX` and `TABLEGEN_170_PREFIX` pointing to the llvm directory:
+Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_180_PREFIX` and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
 
 ```bash
-# For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-17
-export MLIR_SYS_170_PREFIX=/usr/lib/llvm-17
-export LLVM_SYS_170_PREFIX=/usr/lib/llvm-17
-export TABLEGEN_170_PREFIX=/usr/lib/llvm-17
+# For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-18
+export MLIR_SYS_180_PREFIX=/usr/lib/llvm-18
+export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
+export TABLEGEN_180_PREFIX=/usr/lib/llvm-18
 ```
 
 Run the deps target to install the other dependencies such as the cairo compiler (for tests, benchmarks).
@@ -337,7 +337,7 @@ make deps
 
 #### MacOS
 
-The makefile `deps` target (which you should have ran before) installs LLVM 17 with brew for you, afterwards you need to execute the `env-macos.sh` script to setup the
+The makefile `deps` target (which you should have ran before) installs LLVM 18 with brew for you, afterwards you need to execute the `env-macos.sh` script to setup the
 needed environment variables.
 
 ```bash
@@ -348,7 +348,7 @@ source env-macos.sh
 
 Running `make` by itself will list available targets.
 
-- Install the necessary dependencies (on Linux, you need to get LLVM 17 manually):
+- Install the necessary dependencies (on Linux, you need to get LLVM 18 manually):
 
 ```bash
 make deps
@@ -543,7 +543,7 @@ fn main() {
         .execute_contract(
             fn_id,
             // The calldata
-            &[JitValue::Felt252(Felt::from(1))],
+            &[JitValue::Felt252(Felt::ONE)],
             u64::MAX.into(),
         )
         .expect("failed to execute the given contract");
@@ -601,7 +601,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
         Ok((
             class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + &Felt::from(1)).collect(),
+            calldata.iter().map(|x| x + &Felt::ONE).collect(),
         ))
     }
 
@@ -711,9 +711,9 @@ For more examples, check out the `examples/` directory.
 You need to setup some environment variables:
 
 ```bash
-$MLIR_SYS_170_PREFIX=/path/to/llvm17  # Required for non-standard LLVM install locations.
-$LLVM_SYS_170_PREFIX=/path/to/llvm17  # Required for non-standard LLVM install locations.
-$TABLEGEN_170_PREFIX=/path/to/llvm17  # Required for non-standard LLVM install locations.
+$MLIR_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$LLVM_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$TABLEGEN_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 ```
 
 ```bash
@@ -733,7 +733,7 @@ If you want the benchmarks to run using a specific build, or the `cairo-run` com
 sierra2mlir program.sierra -o program.mlir
 
 # translate all dialects to the llvm dialect
-"$MLIR_SYS_170_PREFIX/bin/mlir-opt" \
+"$MLIR_SYS_180_PREFIX/bin/mlir-opt" \
         --canonicalize \
         --convert-scf-to-cf \
         --canonicalize \
@@ -747,13 +747,13 @@ sierra2mlir program.sierra -o program.mlir
         -o "program-llvm.mlir"
 
 # translate mlir to llvm-ir
-"$MLIR_SYS_170_PREFIX"/bin/mlir-translate --mlir-to-llvmir program-llvm.mlir -o program.ll
+"$MLIR_SYS_180_PREFIX"/bin/mlir-translate --mlir-to-llvmir program-llvm.mlir -o program.ll
 
 # compile natively
-"$MLIR_SYS_170_PREFIX"/bin/clang program.ll -Wno-override-module \
-    -L "$MLIR_SYS_170_PREFIX"/lib -L"./target/release/" \
+"$MLIR_SYS_180_PREFIX"/bin/clang program.ll -Wno-override-module \
+    -L "$MLIR_SYS_180_PREFIX"/lib -L"./target/release/" \
     -lsierra2mlir_utils -lmlir_c_runner_utils \
-    -Wl,-rpath "$MLIR_SYS_170_PREFIX"/lib \
+    -Wl,-rpath "$MLIR_SYS_180_PREFIX"/lib \
     -Wl,-rpath ./target/release/ \
     -o program
 

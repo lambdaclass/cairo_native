@@ -2,8 +2,9 @@
 //!
 //! A key value storage for values whose type implement Copy. The key is always a felt.
 //!
-//! This type is represented as a pointer to a heap allocated Rust hashmap, interacted through the runtime functions to
-//! insert and get elements.
+//! This type is represented as a pointer to a tuple of a heap allocated Rust hashmap along with a u64
+//! used to count accesses to the dictionary. The type is interacted through the runtime functions to
+//! insert, get elements and increment the access counter.
 
 use super::WithSelf;
 use crate::{error::Result, metadata::MetadataStorage};
@@ -30,7 +31,7 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(llvm::r#type::opaque_pointer(context))
+    Ok(llvm::r#type::pointer(context, 0))
 }
 
 #[cfg(test)]
@@ -39,6 +40,7 @@ mod test {
         utils::test::{load_cairo, run_program},
         values::JitValue,
     };
+    use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
     use std::collections::HashMap;
 
@@ -138,7 +140,7 @@ mod test {
         };
 
         let result = run_program(&program, "run_program", &[]);
-        assert_eq!(
+        pretty_assertions_sorted::assert_eq_sorted!(
             result.return_value,
             JitValue::Felt252Dict {
                 value: HashMap::from([

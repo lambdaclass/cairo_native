@@ -9,11 +9,12 @@ license = "Apache-2.0"
 crate-type = ["rlib", "cdylib", "staticlib"]
 
 [dependencies]
-starknet-types-core = { version = "0.1.0", default-features = false, features = [
+starknet-types-core = { version = "0.1.1", default-features = false, features = [
   "serde",
 ] }
-cairo-lang-runner = "2.5.4"
+cairo-lang-runner = "2.6.3"
+cairo-lang-sierra-gas = "2.6.3"
 libc = "0.2"
-starknet-crypto = "0.6"
-starknet-curve = "0.4"
+starknet-crypto = "0.6.2"
+starknet-curve = "0.4.2"
 lazy_static = "1.4"
