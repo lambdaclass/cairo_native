@@ -345,6 +345,10 @@ pub fn compare_outputs(
                     CoreTypeConcrete::Snapshot(info) => {
                         map_vm_sizes(size_cache, registry, &info.ty)
                     }
+                    CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
+                        2
+                    }
+                    CoreTypeConcrete::Box(_) => 1,
                     x => todo!("vm size not yet implemented: {:?}", x.info()),
                 };
                 size_cache.insert(ty.clone(), type_size);
@@ -538,6 +542,21 @@ pub fn compare_outputs(
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Box(info) => {
+                let ty_size = map_vm_sizes(size_cache, registry, &info.ty);
+                let ptr = values[0].to_usize().unwrap();
+                map_vm_values(
+                    size_cache,
+                    registry,
+                    memory,
+                    &memory[ptr..ptr + ty_size]
+                        .iter()
+                        .cloned()
+                        .collect::<Option<Vec<_>>>()
+                        .unwrap(),
+                    &info.ty,
+                )
+            }
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }
