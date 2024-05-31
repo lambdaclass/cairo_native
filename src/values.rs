@@ -690,13 +690,12 @@ impl JitValue {
                             None => (member_layout, 0),
                         };
                         layout = Some(new_layout);
-                        let mut ptr =
-                            NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap();
-                        if member.is_complex(registry) {
-                            // Dereference pointer
-                            ptr = *ptr.cast::<NonNull<()>>().as_ref();
-                        }
-                        members.push(Self::from_jit(ptr, member_ty, registry));
+
+                        members.push(Self::from_jit(
+                            NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap(),
+                            member_ty,
+                            registry,
+                        ));
                     }
 
                     JitValue::Struct {
@@ -706,6 +705,8 @@ impl JitValue {
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
+                    // Dereference ptr
+                    let ptr = *ptr.cast::<NonNull<()>>().as_ref();
                     let map = Box::from_raw(
                         ptr.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>()
                             .as_ptr(),
