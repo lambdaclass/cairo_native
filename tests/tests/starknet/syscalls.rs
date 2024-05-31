@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::common::{load_cairo_path, run_native_program};
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
@@ -32,13 +34,19 @@ struct TestingState {
 
 struct SyscallHandler {
     #[allow(dead_code)] // TODO(julian): implement testing syscall
-    testing_state: TestingState,
+    testing_state: Arc<Mutex<TestingState>>,
 }
 
 impl SyscallHandler {
     fn new() -> Self {
         Self {
-            testing_state: TestingState::default(),
+            testing_state: Arc::new(Mutex::new(TestingState::default())),
+        }
+    }
+
+    fn with(state: Arc<Mutex<TestingState>>) -> Self {
+        Self {
+            testing_state: state,
         }
     }
 }
@@ -382,13 +390,15 @@ impl StarknetSyscallHandler for SyscallHandler {
 
     fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt> {
         let selector_bytes = selector.to_bytes_be();
-        let Ok(selector) = std::str::from_utf8(&selector_bytes) else {
-            return vec![];
+
+        let selector = match std::str::from_utf8(&selector_bytes) {
+            Ok(selector) => selector.trim_start_matches('\0'),
+            Err(_) => return Vec::new(),
         };
 
-        match selector {
+        match &selector[..] {
             "set_sequencer_address" => {
-                self.testing_state.sequencer_address = input[0];
+                self.testing_state.lock().unwrap().sequencer_address = input[0];
                 vec![]
             }
             _ => vec![],
@@ -852,12 +862,16 @@ fn keccak() {
 
 #[test]
 fn set_sequencer_address() {
+    let address = Felt::THREE;
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
         "set_sequencer_address",
-        &[],
+        &[JitValue::Felt252(address)],
         Some(u128::MAX),
-        Some(SyscallHandler::new()),
+        Some(SyscallHandler::with(state.clone())),
     );
 
     assert_eq_sorted!(
@@ -867,4 +881,7 @@ fn set_sequencer_address() {
             debug_name: Some("core::array::Span::<core::felt252>".to_string())
         }
     );
+
+    let actual_address = state.lock().unwrap().sequencer_address;
+    assert_eq!(address, actual_address);
 }
