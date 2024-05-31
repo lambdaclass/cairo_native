@@ -34,6 +34,7 @@ struct TestingState {
 
 struct SyscallHandler {
     #[allow(dead_code)] // TODO(julian): implement testing syscall
+    /// Arc<Mutex> Is needed to test that the valures are set correct after the execution
     testing_state: Arc<Mutex<TestingState>>,
 }
 
