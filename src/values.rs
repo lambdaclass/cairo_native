@@ -706,7 +706,7 @@ impl JitValue {
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
                     // Dereference ptr
-                    let ptr =  *ptr.cast::<NonNull<()>>().as_ref();
+                    let ptr = *ptr.cast::<NonNull<()>>().as_ref();
                     let map = Box::from_raw(
                         ptr.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>()
                             .as_ptr(),

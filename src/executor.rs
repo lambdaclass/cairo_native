@@ -833,11 +833,7 @@ fn parse_result(
         },
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
         CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(
-                return_ptr,
-                type_id,
-                registry,
-            )),
+            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)),
             None => Ok(JitValue::from_jit(
                 NonNull::new(ret_registers[0] as *mut ()).unwrap(),
                 type_id,
