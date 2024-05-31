@@ -894,7 +894,6 @@ pub fn build_storage_read<'ctx, 'this>(
     Ok(())
 }
 
-// TODO(juanbono): all the testing syscalls can be in the same way
 pub fn build_storage_write<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
