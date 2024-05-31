@@ -834,7 +834,7 @@ fn parse_result(
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
         CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
             Some(return_ptr) => Ok(JitValue::from_jit(
-                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
+                return_ptr,
                 type_id,
                 registry,
             )),
