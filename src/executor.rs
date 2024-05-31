@@ -219,15 +219,14 @@ fn invoke_dynamic(
                 &[gas as u64, (gas >> 64) as u64],
             ),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
-                match syscall_handler.as_mut() {
-                    Some(syscall_handler) => invoke_data.push_aligned(
-                        get_integer_layout(64).align(),
-                        &[syscall_handler as *mut _ as u64],
-                    ),
-                    None => {
-                        panic!("Syscall handler is required");
-                    }
-                }
+                let syscall_handler = syscall_handler
+                    .as_mut()
+                    .expect("syscall handler is required");
+
+                invoke_data.push_aligned(
+                    get_integer_layout(64).align(),
+                    &[*syscall_handler as *mut _ as u64],
+                );
             }
             type_info => invoke_data
                 .push(
