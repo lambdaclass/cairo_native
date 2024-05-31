@@ -673,4 +673,17 @@ mod tests {
             vec![Felt::ONE, Felt::TWO,]
         );
     }
+
+    #[test]
+    fn test_jitvalue_to_felt_ec_state() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::EcState(
+                Felt::ONE,
+                Felt::TWO,
+                Felt::THREE,
+                Felt::from(4)
+            )),
+            vec![Felt::ONE, Felt::TWO, Felt::THREE, Felt::from(4)]
+        );
+    }
 }
