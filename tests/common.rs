@@ -26,7 +26,10 @@ use cairo_native::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
-    types::felt252::{HALF_PRIME, PRIME},
+    types::{
+        felt252::{HALF_PRIME, PRIME},
+        TypeBuilder,
+    },
     utils::find_entry_point_by_idx,
     values::JitValue,
     OptLevel,
@@ -535,13 +538,17 @@ pub fn compare_outputs(
                 bytes.pop();
                 JitValue::Bytes31(bytes.try_into().unwrap())
             }
-            CoreTypeConcrete::Const(_) => todo!(),
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Coupon(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => JitValue::Struct {
-                fields: vec![],
-                debug_name: None,
-            },
+            CoreTypeConcrete::Bitwise(_) => unreachable!(),
+            CoreTypeConcrete::Const(_) => unreachable!(),
+            CoreTypeConcrete::EcOp(_) => unreachable!(),
+            CoreTypeConcrete::GasBuiltin(_) => unreachable!(),
+            CoreTypeConcrete::BuiltinCosts(_) => unreachable!(),
+            CoreTypeConcrete::RangeCheck(_) => unreachable!(),
+            CoreTypeConcrete::Pedersen(_) => unreachable!(),
+            CoreTypeConcrete::Poseidon(_) => unreachable!(),
+            CoreTypeConcrete::SegmentArena(_) => unreachable!(),
+            CoreTypeConcrete::BoundedInt(_) => unreachable!(),
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }
@@ -550,6 +557,7 @@ pub fn compare_outputs(
 
     let mut size_cache = HashMap::new();
     let ty = function.signature.ret_types.last();
+    let is_builtin = ty.map_or(false, |ty| registry.get_type(ty).unwrap().is_builtin());
     let returns_panic = ty.map_or(false, |ty| {
         ty.debug_name
             .as_ref()
@@ -582,7 +590,7 @@ pub fn compare_outputs(
                     )),
                     debug_name: None,
                 }
-            } else {
+            } else if !is_builtin {
                 map_vm_values(
                     &mut size_cache,
                     &registry,
@@ -590,6 +598,11 @@ pub fn compare_outputs(
                     values,
                     ty.unwrap(),
                 )
+            } else {
+                JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None,
+                }
             }
         }
         RunResultValue::Panic(values) => JitValue::Enum {
@@ -612,7 +625,6 @@ pub fn compare_outputs(
             }),
             debug_name: None,
         },
-        // Empty return value
         _ => JitValue::Struct {
             fields: vec![],
             debug_name: None,
