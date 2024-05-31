@@ -544,6 +544,10 @@ pub(crate) mod handler {
         nonce: Felt252Abi,
     }
 
+    /// A C ABI Wrapper around the StarknetSyscallHandler
+    ///
+    /// It contains pointers to functions which can be called through MLIR based on the field offset
+    /// The functions convert C ABI structures to the Rust equivalent and calls the wrapped implementation.
     #[repr(C)]
     #[derive(Debug)]
     pub struct StarknetSyscallHandlerCallbacks<'a, T> {
@@ -740,7 +744,6 @@ pub(crate) mod handler {
         pub const SECP256R1_GET_POINT_FROM_X: usize =
             field_offset!(Self, secp256r1_get_point_from_x) >> 3;
         pub const SECP256R1_GET_XY: usize = field_offset!(Self, secp256r1_get_xy) >> 3;
-        // pub const CHEATCODE: usize = field_offset!(Self, cheatcode) >> 3;
     }
 
     #[allow(unused_variables)]
@@ -861,6 +864,7 @@ pub(crate) mod handler {
 
             *result_ptr = unsafe { Self::alloc_mlir_array(&result) };
         }
+
         extern "C" fn wrap_get_execution_info(
             result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
             ptr: &mut T,
@@ -1629,6 +1633,10 @@ pub(crate) mod handler {
 thread_local!(pub static SYSCALL_HANDLER_VTABLE: std::cell::Cell<*mut ()>  = const { std::cell::Cell::new(null_mut()) });
 
 #[allow(non_snake_case)]
+/// Runtime function that calls the `cheatcode` syscall
+///
+/// The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
+/// so a pointer to `StarknetSyscallHandlerCallbacks` is stored as a `thread::LocalKey` and accesed in runtime by this function.
 pub extern "C" fn cairo_native__vtable_cheatcode(
     result_ptr: &mut ArrayAbi<Felt252Abi>,
     selector: &Felt252Abi,
@@ -1648,6 +1656,8 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
     let callbacks_ptr = ptr as *mut StarknetSyscallHandlerCallbacks<DummySyscallHandler>;
     let callbacks = unsafe { callbacks_ptr.as_mut().expect("should not be null") };
 
+    // The `StarknetSyscallHandler` is stored as a reference in the first field of `StarknetSyscalLHandlerCallbacks`,
+    // so we can interpret `ptr` as a double pointer to the handler.
     let handler_ptr_ptr = ptr as *mut *mut DummySyscallHandler;
     let handler = unsafe { (*handler_ptr_ptr).as_mut().expect("should not be null") };
 

@@ -197,6 +197,9 @@ fn invoke_dynamic(
         None
     };
 
+    // The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
+    // so we must always allocate it in case it needs it, regardless of whether it's passed
+    // as an argument to the entry point or not.
     let mut syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
         let syscall_handler = arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
 

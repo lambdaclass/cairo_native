@@ -652,6 +652,11 @@ impl RuntimeBindingsMeta {
         )))
     }
 
+    /// Register if necessary, then invoke the `vtable_cheatcode()` runtime function.
+    ///
+    /// Calls the cheatcode syscall with the given arguments.
+    ///
+    /// The result is stored in `result_ptr`.
     #[allow(clippy::too_many_arguments)]
     pub fn vtable_cheatcode<'c, 'a>(
         &mut self,

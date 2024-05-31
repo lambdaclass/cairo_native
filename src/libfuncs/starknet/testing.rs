@@ -33,7 +33,7 @@ pub fn build<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &CheatcodeConcreteLibfunc,
 ) -> Result<()> {
-    // Calculate the result layout and type
+    // Calculate the result layout and type, based on the branch signature
     let (result_type, result_layout) = registry.build_type_with_layout(
         context,
         helper,
@@ -74,7 +74,8 @@ pub fn build<'ctx, 'this>(
         .init_block()
         .store(context, location, selector_ptr, selector, None);
 
-    // Allocate and store arguments. The cairo type is a Span<Felt252>, which contains an Array<Felt252>
+    // Allocate and store arguments. The cairo type is a Span<Felt252> (the outer struct),
+    // which contains an Array<Felt252> (the inner struct)
     let span_felt252_type = llvm::r#type::r#struct(
         context,
         &[llvm::r#type::r#struct(
@@ -94,7 +95,7 @@ pub fn build<'ctx, 'this>(
         .alloca1(context, location, span_felt252_type, None)?;
     entry.store(context, location, args_ptr, entry.argument(0)?.into(), None);
 
-    // Call runtime vtable
+    // Call runtime cheatcode syscall wrapper
     metadata
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.")
@@ -108,7 +109,7 @@ pub fn build<'ctx, 'this>(
             args_ptr,
         )?;
 
-    // Load result from result ptr
+    // Load result from result ptr and branch
     let result = entry.append_op_result(llvm::load(
         context,
         result_ptr,
@@ -116,7 +117,6 @@ pub fn build<'ctx, 'this>(
         location,
         LoadStoreOptions::new(),
     ))?;
-
     entry.append_operation(helper.br(0, &[result], location));
 
     Ok(())
