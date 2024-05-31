@@ -686,4 +686,15 @@ mod tests {
             vec![Felt::ONE, Felt::TWO, Felt::THREE, Felt::from(4)]
         );
     }
+
+    #[test]
+    fn test_jitvalue_to_felt_secp256_k1_point() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Secp256K1Point {
+                x: (1, 2),
+                y: (3, 4)
+            }),
+            vec![Felt::ONE, Felt::TWO, Felt::THREE, Felt::from(4)]
+        );
+    }
 }
