@@ -450,14 +450,14 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Sint32(_)
             | CoreTypeConcrete::Sint64(_)
             | CoreTypeConcrete::Sint128(_)
-            | CoreTypeConcrete::Nullable(_)
-            | CoreTypeConcrete::Felt252Dict(_)
-            | CoreTypeConcrete::SquashedFelt252Dict(_) => false,
+            | CoreTypeConcrete::Nullable(_) => false,
 
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::EcPoint(_) => true,
             CoreTypeConcrete::EcState(_) => true,
-            CoreTypeConcrete::Felt252DictEntry(_) => true,
+            CoreTypeConcrete::Felt252DictEntry(_)
+            | CoreTypeConcrete::Felt252Dict(_)
+            | CoreTypeConcrete::SquashedFelt252Dict(_) => true,
 
             CoreTypeConcrete::Felt252(_)
             | CoreTypeConcrete::Bytes31(_)
