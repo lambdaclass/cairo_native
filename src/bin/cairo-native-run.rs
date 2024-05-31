@@ -278,11 +278,29 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
         JitValue::Sint64(x) => vec![(*x).into()],
         JitValue::Sint128(x) => vec![(*x).into()],
         JitValue::Null => vec![0.into()],
-        JitValue::EcPoint(_, _)
-        | JitValue::EcState(_, _, _, _)
-        | JitValue::Secp256K1Point { .. }
-        | JitValue::Secp256R1Point { .. }
-        | JitValue::Felt252Dict { .. } => todo!(),
+        JitValue::Felt252Dict {
+            value,
+            debug_name: _,
+        } => {
+            let mut result = Vec::new();
+            for (k, v) in value.iter() {
+                result.push(*k);
+                result.append(&mut jitvalue_to_felt(v))
+            }
+            result
+        }
+        JitValue::EcPoint(x, y) => {
+            vec![*x, *y]
+        }
+        JitValue::EcState(a, b, c, d) => {
+            vec![*a, *b, *c, *d]
+        }
+        JitValue::Secp256K1Point { x, y } => {
+            vec![x.0.into(), x.1.into(), y.0.into(), y.1.into()]
+        }
+        JitValue::Secp256R1Point { x, y } => {
+            vec![x.0.into(), x.1.into(), y.0.into(), y.1.into()]
+        }
     }
 }
 
