@@ -665,4 +665,12 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn test_jitvalue_to_felt_ec_point() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::EcPoint(Felt::ONE, Felt::TWO,)),
+            vec![Felt::ONE, Felt::TWO,]
+        );
+    }
 }
