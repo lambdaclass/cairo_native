@@ -306,6 +306,8 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
     use cairo_felt::Felt252;
     use cairo_lang_sierra::ProgramParser;
@@ -636,5 +638,31 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_null() {
         assert_eq!(jitvalue_to_felt(&JitValue::Null), vec![Felt::ZERO]);
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_felt252_dict() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Felt252Dict {
+                value: HashMap::from([
+                    (Felt::ONE, JitValue::Felt252(Felt::from(101))),
+                    (
+                        Felt::TWO,
+                        JitValue::Array(Vec::from([
+                            JitValue::Felt252(Felt::from(201)),
+                            JitValue::Felt252(Felt::from(202))
+                        ]))
+                    ),
+                ]),
+                debug_name: None
+            }),
+            vec![
+                Felt::from(1),
+                Felt::from(101),
+                Felt::from(2),
+                Felt::from(201),
+                Felt::from(202),
+            ]
+        );
     }
 }
