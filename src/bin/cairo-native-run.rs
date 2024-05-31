@@ -640,32 +640,41 @@ mod tests {
         assert_eq!(jitvalue_to_felt(&JitValue::Null), vec![Felt::ZERO]);
     }
 
-    #[test]
-    fn test_jitvalue_to_felt_felt252_dict() {
-        assert_eq!(
-            jitvalue_to_felt(&JitValue::Felt252Dict {
-                value: HashMap::from([
-                    (Felt::ONE, JitValue::Felt252(Felt::from(101))),
-                    (
-                        Felt::TWO,
-                        JitValue::Array(Vec::from([
-                            JitValue::Felt252(Felt::from(201)),
-                            JitValue::Felt252(Felt::from(202))
-                        ]))
-                    ),
-                ]),
-                debug_name: None
-            }),
-            vec![
-                Felt::from(1),
-                Felt::from(101),
-                Felt::from(2),
-                Felt::from(201),
-                Felt::from(202),
-            ]
-        );
+    /// Check if subsequence is present in sequence
+    fn is_subsequence<T: PartialEq>(subsequence: &[T], mut sequence: &[T]) -> bool {
+        for search in subsequence {
+            if let Some(index) = sequence.iter().position(|element| search == element) {
+                sequence = &sequence[index + 1..];
+            } else {
+                return false;
+            }
+        }
+        true
     }
 
+    #[test]
+    fn test_jitvalue_to_felt_felt252_dict() {
+        let result = jitvalue_to_felt(&JitValue::Felt252Dict {
+            value: HashMap::from([
+                (Felt::ONE, JitValue::Felt252(Felt::from(101))),
+                (
+                    Felt::TWO,
+                    JitValue::Array(Vec::from([
+                        JitValue::Felt252(Felt::from(201)),
+                        JitValue::Felt252(Felt::from(202)),
+                    ])),
+                ),
+            ]),
+            debug_name: None,
+        });
+
+        let first_dict_entry = vec![Felt::from(1), Felt::from(101)];
+        let second_dict_entry = vec![Felt::from(2), Felt::from(201), Felt::from(202)];
+
+        // Check that the two Key, value pairs are in the result
+        assert!(is_subsequence(&first_dict_entry, &result));
+        assert!(is_subsequence(&second_dict_entry, &result));
+    }
     #[test]
     fn test_jitvalue_to_felt_ec_point() {
         assert_eq!(
