@@ -189,10 +189,12 @@ pub fn build<'ctx, 'this>(
             arguments.insert(0, stack_ptr);
 
             Some(true)
-        } else {
+        } else if return_types.first().is_some() {
             let (type_id, type_info) = return_types[0];
             result_types.push(type_info.build(context, helper, registry, metadata, type_id)?);
 
+            None
+        } else {
             None
         };
 
