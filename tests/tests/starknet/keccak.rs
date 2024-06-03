@@ -262,10 +262,6 @@ impl StarknetSyscallHandler for SyscallHandler {
     ) -> SyscallResult<(U256, U256)> {
         unimplemented!()
     }
-
-    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
-        todo!()
-    }
 }
 
 lazy_static! {

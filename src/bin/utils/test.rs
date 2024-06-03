@@ -850,10 +850,6 @@ impl StarknetSyscallHandler for TestSyscallHandler {
     ) -> SyscallResult<(U256, U256)> {
         Ok((p.x, p.y))
     }
-
-    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
-        todo!()
-    }
 }
 
 #[cfg(test)]

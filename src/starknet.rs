@@ -246,8 +246,9 @@ pub trait StarknetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)>;
 
-    // Testing syscalls.
-    fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt>;
+    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
+        unimplemented!();
+    }
 }
 
 pub struct DummySyscallHandler;
@@ -434,10 +435,6 @@ impl StarknetSyscallHandler for DummySyscallHandler {
         _remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)> {
         unimplemented!()
-    }
-
-    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
-        todo!()
     }
 }
 
