@@ -704,9 +704,9 @@ For more examples, check out the `examples/` directory.
 ### Requirements
 
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo >=1.0](https://github.com/starkware-libs/cairo)
+- [cairo 2.6.3](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
-- LLVM 16 with MLIR
+- LLVM 18 with MLIR
 
 You need to setup some environment variables:
 
@@ -826,6 +826,14 @@ Options:
   -h, --help                   Print help
   -V, --version                Print version
 ```
+
+# scarb-native-dump cli tool
+
+This tool mimics the `scarb build` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
+You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+
+This tool should be run at the directory where a `Scarb.toml` file is and it will behave like `scarb build`, leaving the MLIR files under
+the `target/` folder besides the generated JSON sierra files.
 
 ## Debugging Tips
 
