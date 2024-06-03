@@ -18,6 +18,8 @@ use lazy_static::lazy_static;
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use starknet_types_core::felt::Felt;
 
+type Log = (Vec<Felt>, Vec<Felt>);
+
 #[derive(Debug, Default)]
 struct TestingState {
     sequencer_address: Felt,
@@ -32,7 +34,7 @@ struct TestingState {
     block_number: u64,
     block_timestamp: u64,
     signature: Vec<Felt>,
-    logs: HashMap<Felt, VecDeque<(Vec<Felt>, Vec<Felt>)>>,
+    logs: HashMap<Felt, VecDeque<Log>>,
 }
 
 struct SyscallHandler {
@@ -399,7 +401,7 @@ impl StarknetSyscallHandler for SyscallHandler {
             Err(_) => return Vec::new(),
         };
 
-        match &selector[..] {
+        match selector {
             "set_sequencer_address" => {
                 self.testing_state.lock().unwrap().sequencer_address = input[0];
                 vec![]
@@ -985,7 +987,7 @@ fn set_signature() {
     let signature_jit = signature
         .clone()
         .into_iter()
-        .map(|felt| JitValue::Felt252(felt))
+        .map(JitValue::Felt252)
         .collect_vec();
 
     let state = Arc::new(Mutex::new(TestingState::default()));
@@ -1021,7 +1023,7 @@ fn pop_log() {
         .lock()
         .unwrap()
         .logs
-        .insert(log_index.clone(), VecDeque::from(vec![log.clone()]));
+        .insert(log_index, VecDeque::from(vec![log.clone()]));
 
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
@@ -1039,7 +1041,7 @@ fn pop_log() {
 
     let serialized_log_jit = serialized_log
         .into_iter()
-        .map(|felt| JitValue::Felt252(felt))
+        .map(JitValue::Felt252)
         .collect_vec();
 
     assert_eq_sorted!(

@@ -16,6 +16,8 @@ use std::{
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
+type Log = (Vec<Felt>, Vec<Felt>);
+
 #[derive(Debug, Default)]
 struct TestingState {
     sequencer_address: Felt,
@@ -30,7 +32,7 @@ struct TestingState {
     block_number: u64,
     block_timestamp: u64,
     signature: Vec<Felt>,
-    logs: HashMap<Felt, VecDeque<(Vec<Felt>, Vec<Felt>)>>,
+    logs: HashMap<Felt, VecDeque<Log>>,
 }
 
 #[derive(Debug, Default)]
@@ -304,7 +306,7 @@ impl StarknetSyscallHandler for SyscallHandler {
             Err(_) => return Vec::new(),
         };
 
-        match &selector[..] {
+        match selector {
             "set_sequencer_address" => {
                 self.testing_state.sequencer_address = input[0];
                 vec![]
