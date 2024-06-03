@@ -10,30 +10,31 @@ use cairo_native::{
     utils::find_entry_point_by_idx,
 };
 use starknet_types_core::felt::Felt;
-use std::path::Path;
+use std::{
+    collections::{HashMap, VecDeque},
+    path::Path,
+};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Debug, Default)]
-#[allow(dead_code)] // todo!(julian) implement testing syscall
 struct TestingState {
     sequencer_address: Felt,
-    block_number: u64,
-    block_timestamp: u64,
     caller_address: Felt,
     contract_address: Felt,
-    version: Felt,
     account_contract_address: Felt,
-    max_fee: u128,
     transaction_hash: Felt,
-    chain_id: Felt,
     nonce: Felt,
+    chain_id: Felt,
+    version: Felt,
+    max_fee: u64,
+    block_number: u64,
+    block_timestamp: u64,
     signature: Vec<Felt>,
-    logs: Vec<(Vec<Felt>, Vec<Felt>)>,
+    logs: HashMap<Felt, VecDeque<(Vec<Felt>, Vec<Felt>)>>,
 }
 
 #[derive(Debug, Default)]
 struct SyscallHandler {
-    #[allow(dead_code)] // todo!(julian) implement testing syscall
     testing_state: TestingState,
 }
 
@@ -295,8 +296,82 @@ impl StarknetSyscallHandler for SyscallHandler {
         unimplemented!()
     }
 
-    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
-        unimplemented!()
+    fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt> {
+        let selector_bytes = selector.to_bytes_be();
+
+        let selector = match std::str::from_utf8(&selector_bytes) {
+            Ok(selector) => selector.trim_start_matches('\0'),
+            Err(_) => return Vec::new(),
+        };
+
+        match &selector[..] {
+            "set_sequencer_address" => {
+                self.testing_state.sequencer_address = input[0];
+                vec![]
+            }
+            "set_caller_address" => {
+                self.testing_state.caller_address = input[0];
+                vec![]
+            }
+            "set_contract_address" => {
+                self.testing_state.contract_address = input[0];
+                vec![]
+            }
+            "set_account_contract_address" => {
+                self.testing_state.account_contract_address = input[0];
+                vec![]
+            }
+            "set_transaction_hash" => {
+                self.testing_state.transaction_hash = input[0];
+                vec![]
+            }
+            "set_nonce" => {
+                self.testing_state.nonce = input[0];
+                vec![]
+            }
+            "set_version" => {
+                self.testing_state.version = input[0];
+                vec![]
+            }
+            "set_chain_id" => {
+                self.testing_state.chain_id = input[0];
+                vec![]
+            }
+            "set_max_fee" => {
+                let max_fee = input[0].to_biguint().try_into().unwrap();
+                self.testing_state.max_fee = max_fee;
+                vec![]
+            }
+            "set_block_number" => {
+                let block_number = input[0].to_biguint().try_into().unwrap();
+                self.testing_state.block_number = block_number;
+                vec![]
+            }
+            "set_block_timestamp" => {
+                let block_timestamp = input[0].to_biguint().try_into().unwrap();
+                self.testing_state.block_timestamp = block_timestamp;
+                vec![]
+            }
+            "set_signature" => {
+                self.testing_state.signature = input.to_vec();
+                vec![]
+            }
+            "pop_log" => self
+                .testing_state
+                .logs
+                .get_mut(&input[0])
+                .and_then(|logs| logs.pop_front())
+                .map(|mut log| {
+                    let mut serialized_log = Vec::new();
+                    serialized_log.push(log.0.len().into());
+                    serialized_log.append(&mut log.0);
+                    serialized_log.push(log.1.len().into());
+                    serialized_log.append(&mut log.1);
+                    serialized_log
+                })
+                .unwrap_or_default(),
+            _ => vec![],
+        }
     }
 }
 
