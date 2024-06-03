@@ -29,6 +29,9 @@ To read more in-depth documentation, visit [this page](https://lambdaclass.notio
 - [Benchmarking](#benchmarking)
 - [API usage example](#api--usage-example)
 - [From MLIR to native binary](#from-mlir-to-native-binary)
+- [Cairo Test CLI Tool](#cairo-native-test-cli-tool)
+- [Scarb Test CLI Tool](#scarb-native-test-cli-tool)
+- [Scarb Dump CLI Tool](#scarb-native-dump-cli-tool)
 
 ## ⚠️ Disclaimer
 
