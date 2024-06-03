@@ -17,6 +17,13 @@ use std::{
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 type Log = (Vec<Felt>, Vec<Felt>);
+type L2ToL1Message = (Felt, Vec<Felt>);
+
+#[derive(Debug, Default)]
+struct ContractLogs {
+    events: VecDeque<Log>,
+    l2_to_l1_messages: VecDeque<L2ToL1Message>,
+}
 
 #[derive(Debug, Default)]
 struct TestingState {
@@ -32,7 +39,7 @@ struct TestingState {
     block_number: u64,
     block_timestamp: u64,
     signature: Vec<Felt>,
-    logs: HashMap<Felt, VecDeque<Log>>,
+    logs: HashMap<Felt, ContractLogs>,
 }
 
 #[derive(Debug, Default)]
@@ -362,11 +369,24 @@ impl StarknetSyscallHandler for SyscallHandler {
                 .testing_state
                 .logs
                 .get_mut(&input[0])
-                .and_then(|logs| logs.pop_front())
+                .and_then(|logs| logs.events.pop_front())
                 .map(|mut log| {
                     let mut serialized_log = Vec::new();
                     serialized_log.push(log.0.len().into());
                     serialized_log.append(&mut log.0);
+                    serialized_log.push(log.1.len().into());
+                    serialized_log.append(&mut log.1);
+                    serialized_log
+                })
+                .unwrap_or_default(),
+            "pop_l2_to_l1_message" => self
+                .testing_state
+                .logs
+                .get_mut(&input[0])
+                .and_then(|logs| logs.l2_to_l1_messages.pop_front())
+                .map(|mut log| {
+                    let mut serialized_log = Vec::new();
+                    serialized_log.push(log.0);
                     serialized_log.push(log.1.len().into());
                     serialized_log.append(&mut log.1);
                     serialized_log

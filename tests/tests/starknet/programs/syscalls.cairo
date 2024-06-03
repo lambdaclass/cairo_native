@@ -108,3 +108,7 @@ fn set_version(version: felt252) -> Span<felt252> {
 fn pop_log(log: felt252) -> Span<felt252> {
     return cheatcode::<'pop_log'>(array![log].span());
 }
+
+fn pop_l2_to_l1_message(message: felt252) -> Span<felt252> {
+    return cheatcode::<'pop_l2_to_l1_message'>(array![message].span());
+}

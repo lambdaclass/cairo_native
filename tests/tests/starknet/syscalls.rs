@@ -19,6 +19,13 @@ use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use starknet_types_core::felt::Felt;
 
 type Log = (Vec<Felt>, Vec<Felt>);
+type L2ToL1Message = (Felt, Vec<Felt>);
+
+#[derive(Debug, Default)]
+struct ContractLogs {
+    events: VecDeque<Log>,
+    l2_to_l1_messages: VecDeque<L2ToL1Message>,
+}
 
 #[derive(Debug, Default)]
 struct TestingState {
@@ -34,7 +41,7 @@ struct TestingState {
     block_number: u64,
     block_timestamp: u64,
     signature: Vec<Felt>,
-    logs: HashMap<Felt, VecDeque<Log>>,
+    logs: HashMap<Felt, ContractLogs>,
 }
 
 struct SyscallHandler {
@@ -459,11 +466,26 @@ impl StarknetSyscallHandler for SyscallHandler {
                 .unwrap()
                 .logs
                 .get_mut(&input[0])
-                .and_then(|logs| logs.pop_front())
+                .and_then(|logs| logs.events.pop_front())
                 .map(|mut log| {
                     let mut serialized_log = Vec::new();
                     serialized_log.push(log.0.len().into());
                     serialized_log.append(&mut log.0);
+                    serialized_log.push(log.1.len().into());
+                    serialized_log.append(&mut log.1);
+                    serialized_log
+                })
+                .unwrap_or_default(),
+            "pop_l2_to_l1_message" => self
+                .testing_state
+                .lock()
+                .unwrap()
+                .logs
+                .get_mut(&input[0])
+                .and_then(|logs| logs.l2_to_l1_messages.pop_front())
+                .map(|mut log| {
+                    let mut serialized_log = Vec::new();
+                    serialized_log.push(log.0);
                     serialized_log.push(log.1.len().into());
                     serialized_log.append(&mut log.1);
                     serialized_log
@@ -1019,11 +1041,12 @@ fn pop_log() {
 
     let state = Arc::new(Mutex::new(TestingState::default()));
 
-    state
-        .lock()
-        .unwrap()
-        .logs
-        .insert(log_index, VecDeque::from(vec![log.clone()]));
+    let logs = ContractLogs {
+        l2_to_l1_messages: VecDeque::new(),
+        events: VecDeque::from(vec![log.clone()]),
+    };
+
+    state.lock().unwrap().logs.insert(log_index, logs);
 
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
@@ -1058,6 +1081,7 @@ fn pop_log() {
         .logs
         .get(&log_index)
         .unwrap()
+        .events
         .is_empty());
 }
 
@@ -1082,4 +1106,54 @@ fn pop_log_empty() {
             debug_name: Some("core::array::Span::<core::felt252>".to_string())
         }
     );
+}
+
+#[test]
+fn pop_l2_to_l1_message() {
+    let log_index = Felt::ONE;
+    let mut message = (Felt::ONE, vec![Felt::TWO, Felt::THREE]);
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    let logs = ContractLogs {
+        l2_to_l1_messages: VecDeque::from(vec![message.clone()]),
+        events: VecDeque::new(),
+    };
+
+    state.lock().unwrap().logs.insert(log_index, logs);
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "pop_l2_to_l1_message",
+        &[JitValue::Felt252(log_index)],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    let mut serialized_message = Vec::new();
+    serialized_message.push(message.0);
+    serialized_message.push(message.1.len().into());
+    serialized_message.append(&mut message.1);
+
+    let serialized_message_jit = serialized_message
+        .into_iter()
+        .map(JitValue::Felt252)
+        .collect_vec();
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(serialized_message_jit)],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
+
+    assert!(state
+        .lock()
+        .unwrap()
+        .logs
+        .get(&log_index)
+        .unwrap()
+        .events
+        .is_empty());
 }
