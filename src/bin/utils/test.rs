@@ -414,11 +414,11 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let point = k256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    x.hi.to_be_bytes().into_iter().chain(x.lo.to_be_bytes()),
+                    x.lo.to_be_bytes().into_iter().chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    y.hi.to_be_bytes().into_iter().chain(y.lo.to_be_bytes()),
+                    y.lo.to_be_bytes().into_iter().chain(y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -444,17 +444,17 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p0 = k256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p0.x.hi
+                    p0.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.x.lo.to_be_bytes()),
+                        .chain(p0.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p0.y.hi
+                    p0.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.y.lo.to_be_bytes()),
+                        .chain(p0.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -464,17 +464,17 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p1 = k256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p1.x.hi
+                    p1.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.x.lo.to_be_bytes()),
+                        .chain(p1.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p1.y.hi
+                    p1.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.y.lo.to_be_bytes()),
+                        .chain(p1.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -500,12 +500,12 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let y: [u8; 32] = y.as_slice().try_into().unwrap();
         Ok(Secp256k1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[16..32].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
         })
     }
@@ -522,11 +522,11 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p = k256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p.x.hi.to_be_bytes().into_iter().chain(p.x.lo.to_be_bytes()),
+                    p.x.lo.to_be_bytes().into_iter().chain(p.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p.y.hi.to_be_bytes().into_iter().chain(p.y.lo.to_be_bytes()),
+                    p.y.lo.to_be_bytes().into_iter().chain(p.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -535,8 +535,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         .unwrap();
         let m: k256::Scalar = k256::elliptic_curve::ScalarPrimitive::from_slice(&{
             let mut buf = [0u8; 32];
-            buf[0..16].copy_from_slice(&m.hi.to_be_bytes());
-            buf[16..32].copy_from_slice(&m.lo.to_be_bytes());
+            buf[0..16].copy_from_slice(&m.lo.to_be_bytes());
+            buf[16..32].copy_from_slice(&m.hi.to_be_bytes());
             buf
         })
         .map_err(|_| {
@@ -564,12 +564,12 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let y: [u8; 32] = y.as_slice().try_into().unwrap();
         Ok(Secp256k1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[16..32].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
         })
     }
@@ -587,8 +587,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
             &k256::EncodedPoint::from_bytes(
                 k256::CompressedPoint::from_exact_iter(
                     once(0x02 | y_parity as u8)
-                        .chain(x.hi.to_be_bytes())
-                        .chain(x.lo.to_be_bytes()),
+                        .chain(x.lo.to_be_bytes())
+                        .chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
             )
@@ -616,8 +616,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
             Ok(Some(Secp256k1Point {
                 x,
                 y: U256 {
-                    hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                    lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                    lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                    hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
                 },
             }))
         } else {
@@ -644,11 +644,11 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let point = p256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    x.hi.to_be_bytes().into_iter().chain(x.lo.to_be_bytes()),
+                    x.lo.to_be_bytes().into_iter().chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    y.hi.to_be_bytes().into_iter().chain(y.lo.to_be_bytes()),
+                    y.lo.to_be_bytes().into_iter().chain(y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -674,17 +674,17 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p0 = p256::ProjectivePoint::from_encoded_point(
             &p256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p0.x.hi
+                    p0.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.x.lo.to_be_bytes()),
+                        .chain(p0.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p0.y.hi
+                    p0.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.y.lo.to_be_bytes()),
+                        .chain(p0.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -694,17 +694,17 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p1 = p256::ProjectivePoint::from_encoded_point(
             &p256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p1.x.hi
+                    p1.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.x.lo.to_be_bytes()),
+                        .chain(p1.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p1.y.hi
+                    p1.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.y.lo.to_be_bytes()),
+                        .chain(p1.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -730,12 +730,12 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let y: [u8; 32] = y.as_slice().try_into().unwrap();
         Ok(Secp256r1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[16..32].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
         })
     }
@@ -752,11 +752,11 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let p = p256::ProjectivePoint::from_encoded_point(
             &p256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p.x.hi.to_be_bytes().into_iter().chain(p.x.lo.to_be_bytes()),
+                    p.x.lo.to_be_bytes().into_iter().chain(p.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p.y.hi.to_be_bytes().into_iter().chain(p.y.lo.to_be_bytes()),
+                    p.y.lo.to_be_bytes().into_iter().chain(p.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -765,8 +765,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         .unwrap();
         let m: p256::Scalar = p256::elliptic_curve::ScalarPrimitive::from_slice(&{
             let mut buf = [0u8; 32];
-            buf[0..16].copy_from_slice(&m.hi.to_be_bytes());
-            buf[16..32].copy_from_slice(&m.lo.to_be_bytes());
+            buf[0..16].copy_from_slice(&m.lo.to_be_bytes());
+            buf[16..32].copy_from_slice(&m.hi.to_be_bytes());
             buf
         })
         .map_err(|_| {
@@ -777,7 +777,6 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         .into();
 
         let p = p * m;
-
         let p = p.to_encoded_point(false);
         let (x, y) = match p.coordinates() {
             Coordinates::Uncompressed { x, y } => (x, y),
@@ -794,12 +793,12 @@ impl StarknetSyscallHandler for TestSyscallHandler {
         let y: [u8; 32] = y.as_slice().try_into().unwrap();
         Ok(Secp256r1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[16..32].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
         })
     }
@@ -814,8 +813,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
             &p256::EncodedPoint::from_bytes(
                 p256::CompressedPoint::from_exact_iter(
                     once(0x02 | y_parity as u8)
-                        .chain(x.hi.to_be_bytes())
-                        .chain(x.lo.to_be_bytes()),
+                        .chain(x.lo.to_be_bytes())
+                        .chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
             )
@@ -835,8 +834,8 @@ impl StarknetSyscallHandler for TestSyscallHandler {
             Ok(Some(Secp256r1Point {
                 x,
                 y: U256 {
-                    hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                    lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
+                    lo: u128::from_be_bytes(y[0..16].try_into().unwrap()),
+                    hi: u128::from_be_bytes(y[16..32].try_into().unwrap()),
                 },
             }))
         } else {
@@ -856,145 +855,6 @@ impl StarknetSyscallHandler for TestSyscallHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn test_compilation() -> TestCompilation {
-        TestCompilation {
-            named_tests: vec![
-                (
-                    String::from("test1"),
-                    TestConfig {
-                        available_gas: None,
-                        expectation: TestExpectation::Success,
-                        ignored: false,
-                    },
-                ),
-                (
-                    String::from("test2"),
-                    TestConfig {
-                        available_gas: None,
-                        expectation: TestExpectation::Success,
-                        ignored: true,
-                    },
-                ),
-                (
-                    String::from("test3"),
-                    TestConfig {
-                        available_gas: None,
-                        expectation: TestExpectation::Success,
-                        ignored: false,
-                    },
-                ),
-            ],
-            sierra_program: Program {
-                type_declarations: vec![],
-                libfunc_declarations: vec![],
-                statements: vec![],
-                funcs: vec![],
-            },
-            statements_functions: Default::default(),
-            contracts_info: Default::default(),
-            function_set_costs: Default::default(),
-        }
-    }
-
-    fn assert_named_test(lhs: &(String, TestConfig), rhs: &(String, TestConfig)) -> bool {
-        lhs.0 == rhs.0
-            && lhs.1.available_gas == rhs.1.available_gas
-            && lhs.1.expectation == rhs.1.expectation
-            && lhs.1.ignored == rhs.1.ignored
-    }
-
-    #[test]
-    fn test_filter_test_cases() {
-        let compiled = test_compilation();
-
-        let (filtered, filtered_out) =
-            filter_test_cases(compiled.clone(), false, false, String::from("test"));
-
-        // Nothing should be filtered out.
-        assert_eq!(filtered_out, 0);
-        assert!(filtered
-            .named_tests
-            .iter()
-            .enumerate()
-            .all(|(i, x)| assert_named_test(x, &compiled.named_tests[i])));
-    }
-
-    #[test]
-    fn test_filter_test_cases_include_ignored() {
-        let compiled = test_compilation();
-
-        let (filtered, filtered_out) =
-            filter_test_cases(compiled.clone(), true, false, String::from("test"));
-
-        // All tests should be included, even the ignored ones.
-        let expected = compiled
-            .named_tests
-            .into_iter()
-            .map(|mut x| {
-                x.1.ignored = false;
-                x
-            })
-            .collect_vec();
-
-        assert_eq!(filtered_out, 0);
-        assert!(filtered
-            .named_tests
-            .iter()
-            .enumerate()
-            .all(|(i, x)| assert_named_test(x, &expected[i])));
-    }
-
-    #[test]
-    fn test_filter_test_cases_ignored() {
-        let compiled = test_compilation();
-
-        let (filtered, filtered_out) =
-            filter_test_cases(compiled.clone(), false, true, String::from("test"));
-
-        // Only the ignored tests should be included.
-        let expected = compiled
-            .named_tests
-            .into_iter()
-            .filter(|x| x.1.ignored)
-            .map(|mut x| {
-                x.1.ignored = false;
-                x
-            })
-            .collect_vec();
-
-        assert_eq!(filtered_out, 2);
-        assert!(filtered
-            .named_tests
-            .iter()
-            .enumerate()
-            .all(|(i, x)| assert_named_test(x, &expected[i])));
-    }
-
-    #[test]
-    fn test_filter_test_cases_include_ignored_and_ignored() {
-        let compiled = test_compilation();
-
-        let (filtered, filtered_out) =
-            filter_test_cases(compiled.clone(), true, true, String::from("test"));
-
-        // All tests should be included, even the ignored ones.
-        let expected = compiled
-            .named_tests
-            .into_iter()
-            .map(|mut x| {
-                x.1.ignored = false;
-                x
-            })
-            .collect_vec();
-
-        assert_eq!(filtered_out, 0);
-        assert!(filtered
-            .named_tests
-            .iter()
-            .enumerate()
-            .all(|(i, x)| assert_named_test(x, &expected[i])));
-    }
 
     #[test]
     fn test_secp256k1_get_xy() {
@@ -1031,12 +891,12 @@ mod tests {
         let mut test_syscall_handler = TestSyscallHandler {};
 
         let x = U256 {
-            hi: 97179038819393695679,
-            lo: 330631467365974629050427735731901850225,
+            hi: 330631467365974629050427735731901850225,
+            lo: 97179038819393695679,
         };
         let y = U256 {
-            hi: 26163136114030451075775058782541084873,
-            lo: 68974579539311638391577168388077592842,
+            hi: 68974579539311638391577168388077592842,
+            lo: 26163136114030451075775058782541084873,
         };
 
         assert_eq!(
@@ -1050,8 +910,8 @@ mod tests {
         let mut test_syscall_handler = TestSyscallHandler {};
 
         let x = U256 {
-            hi: 97179038819393695679,
-            lo: 330631467365974629050427735731901850225,
+            hi: 330631467365974629050427735731901850225,
+            lo: 97179038819393695679,
         };
         let y = U256 { hi: 0, lo: 0 };
 
@@ -1067,12 +927,12 @@ mod tests {
 
         let p1 = Secp256k1Point {
             x: U256 {
-                hi: 161825202758953104525843685720298294023,
-                lo: 3468390537006497937951914270391801752,
+                hi: 3468390537006497937951914270391801752,
+                lo: 161825202758953104525843685720298294023,
             },
             y: U256 {
-                hi: 96009999919712310848645357523629574312,
-                lo: 336417762351022071123394393598455764152,
+                hi: 336417762351022071123394393598455764152,
+                lo: 96009999919712310848645357523629574312,
             },
         };
 
@@ -1083,18 +943,18 @@ mod tests {
 
         let p1_double = Secp256k1Point {
             x: U256 {
-                hi: 263210499965038831386353541518668627160,
-                lo: 122909745026270932982812610085084241637,
+                hi: 122909745026270932982812610085084241637,
+                lo: 263210499965038831386353541518668627160,
             },
             y: U256 {
-                hi: 35730324229579385338853513728577301230,
-                lo: 329597642124196932058042157271922763050,
+                hi: 329597642124196932058042157271922763050,
+                lo: 35730324229579385338853513728577301230,
             },
         };
         assert_eq!(p3, p1_double);
         assert_eq!(
             test_syscall_handler
-                .secp256k1_mul(p1, U256 { hi: 0, lo: 2 }, &mut 10)
+                .secp256k1_mul(p1, U256 { hi: 2, lo: 0 }, &mut 10)
                 .unwrap(),
             p1_double
         );
@@ -1102,12 +962,12 @@ mod tests {
         // 3 * P1
         let three_p1 = Secp256k1Point {
             x: U256 {
-                hi: 331229800296699308591929724809569456681,
-                lo: 240848751772479376198639683648735950585,
+                hi: 240848751772479376198639683648735950585,
+                lo: 331229800296699308591929724809569456681,
             },
             y: U256 {
-                hi: 75181762170223969696219813306313470806,
-                lo: 134255467439736302886468555755295925874,
+                hi: 134255467439736302886468555755295925874,
+                lo: 75181762170223969696219813306313470806,
             },
         };
         assert_eq!(
@@ -1116,7 +976,7 @@ mod tests {
         );
         assert_eq!(
             test_syscall_handler
-                .secp256k1_mul(p1, U256 { hi: 0, lo: 3 }, &mut 10)
+                .secp256k1_mul(p1, U256 { hi: 3, lo: 0 }, &mut 10)
                 .unwrap(),
             three_p1
         );
@@ -1130,8 +990,8 @@ mod tests {
             test_syscall_handler
                 .secp256k1_get_point_from_x(
                     U256 {
-                        hi: 97179038819393695679,
-                        lo: 330631467365974629050427735731901850225,
+                        hi: 330631467365974629050427735731901850225,
+                        lo: 97179038819393695679,
                     },
                     false,
                     &mut 10
@@ -1140,12 +1000,12 @@ mod tests {
                 .unwrap(),
             Secp256k1Point {
                 x: U256 {
-                    hi: 97179038819393695679,
-                    lo: 330631467365974629050427735731901850225,
+                    hi: 330631467365974629050427735731901850225,
+                    lo: 97179038819393695679,
                 },
                 y: U256 {
-                    hi: 26163136114030451075775058782541084873,
-                    lo: 68974579539311638391577168388077592842
+                    hi: 68974579539311638391577168388077592842,
+                    lo: 26163136114030451075775058782541084873,
                 },
             }
         );
@@ -1159,8 +1019,8 @@ mod tests {
             test_syscall_handler
                 .secp256k1_get_point_from_x(
                     U256 {
-                        hi: 97179038819393695679,
-                        lo: 330631467365974629050427735731901850225,
+                        hi: 330631467365974629050427735731901850225,
+                        lo: 97179038819393695679,
                     },
                     true,
                     &mut 10
@@ -1169,12 +1029,12 @@ mod tests {
                 .unwrap(),
             Secp256k1Point {
                 x: U256 {
-                    hi: 97179038819393695679,
-                    lo: 330631467365974629050427735731901850225,
+                    hi: 330631467365974629050427735731901850225,
+                    lo: 97179038819393695679,
                 },
                 y: U256 {
-                    hi: 314119230806908012387599548649227126582,
-                    lo: 271307787381626825071797439039395650341
+                    hi: 271307787381626825071797439039395650341,
+                    lo: 314119230806908012387599548649227126582,
                 },
             }
         );
@@ -1195,12 +1055,12 @@ mod tests {
         let mut test_syscall_handler = TestSyscallHandler {};
 
         let x = U256 {
-            hi: 97179038819393695679,
-            lo: 330631467365974629050427735731901850225,
+            hi: 330631467365974629050427735731901850225,
+            lo: 97179038819393695679,
         };
         let y = U256 {
-            hi: 118910939004298029402109603132816090461,
-            lo: 111045440647474106186537215379882575585,
+            hi: 111045440647474106186537215379882575585,
+            lo: 118910939004298029402109603132816090461,
         };
 
         assert_eq!(
@@ -1231,12 +1091,12 @@ mod tests {
 
         let p1 = Secp256r1Point {
             x: U256 {
-                hi: 97179038819393695679,
-                lo: 330631467365974629050427735731901850225,
+                hi: 330631467365974629050427735731901850225,
+                lo: 97179038819393695679,
             },
             y: U256 {
-                hi: 118910939004298029402109603132816090461,
-                lo: 111045440647474106186537215379882575585,
+                hi: 111045440647474106186537215379882575585,
+                lo: 118910939004298029402109603132816090461,
             },
         };
 
@@ -1247,18 +1107,18 @@ mod tests {
 
         let p1_double = Secp256r1Point {
             x: U256 {
-                hi: 280079427190737520201067412903899817878,
-                lo: 309339945874468445579793098896656960879,
+                hi: 309339945874468445579793098896656960879,
+                lo: 280079427190737520201067412903899817878,
             },
             y: U256 {
-                hi: 84249534056490759701994051847937833933,
-                lo: 231570843221643745062297421862629788481,
+                hi: 231570843221643745062297421862629788481,
+                lo: 84249534056490759701994051847937833933,
             },
         };
         assert_eq!(p3, p1_double);
         assert_eq!(
             test_syscall_handler
-                .secp256r1_mul(p1, U256 { hi: 0, lo: 2 }, &mut 10)
+                .secp256r1_mul(p1, U256 { hi: 2, lo: 0 }, &mut 10)
                 .unwrap(),
             p1_double
         );
@@ -1266,12 +1126,12 @@ mod tests {
         // 3 * P1
         let three_p1 = Secp256r1Point {
             x: U256 {
-                hi: 23850518908906170876551962912581992002,
-                lo: 195259625777021303662291420857740525307,
+                hi: 195259625777021303662291420857740525307,
+                lo: 23850518908906170876551962912581992002,
             },
             y: U256 {
-                hi: 178681203065513270100417145499857169664,
-                lo: 282344931843342117515389970197013120959,
+                hi: 282344931843342117515389970197013120959,
+                lo: 178681203065513270100417145499857169664,
             },
         };
         assert_eq!(
@@ -1280,7 +1140,7 @@ mod tests {
         );
         assert_eq!(
             test_syscall_handler
-                .secp256r1_mul(p1, U256 { hi: 0, lo: 3 }, &mut 10)
+                .secp256r1_mul(p1, U256 { hi: 3, lo: 0 }, &mut 10)
                 .unwrap(),
             three_p1
         );
@@ -1291,13 +1151,13 @@ mod tests {
         let mut test_syscall_handler = TestSyscallHandler {};
 
         let x = U256 {
-            hi: 97179038819393695679,
-            lo: 330631467365974629050427735731901850225,
+            hi: 330631467365974629050427735731901850225,
+            lo: 97179038819393695679,
         };
 
         let y = U256 {
-            hi: 118910939004298029402109603132816090461,
-            lo: 111045440647474106186537215379882575585,
+            hi: 111045440647474106186537215379882575585,
+            lo: 118910939004298029402109603132816090461,
         };
 
         assert_eq!(
@@ -1314,13 +1174,13 @@ mod tests {
         let mut test_syscall_handler = TestSyscallHandler {};
 
         let x = U256 {
-            hi: 97179038819393695679,
-            lo: 330631467365974629050427735731901850225,
+            hi: 330631467365974629050427735731901850225,
+            lo: 97179038819393695679,
         };
 
         let y = U256 {
-            hi: 221371427837412271565447410779117722274,
-            lo: 229236926352692519791101729645429586206,
+            hi: 229236926352692519791101729645429586206,
+            lo: 221371427837412271565447410779117722274,
         };
 
         assert_eq!(
