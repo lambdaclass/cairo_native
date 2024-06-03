@@ -21,10 +21,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        cf,
-        llvm::{self, r#type::opaque_pointer},
-    },
+    dialect::{cf, llvm},
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
         Identifier, Location, Value, ValueLike,
@@ -113,7 +110,7 @@ pub fn build_get<'ctx, 'this>(
     let result_ptr: Value = op.result(0)?.into();
 
     let null_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.mlir.null", location)
+        OperationBuilder::new("llvm.mlir.zero", location)
             .add_results(&[result_ptr.r#type()])
             .build()?,
     )?;
@@ -133,7 +130,7 @@ pub fn build_get<'ctx, 'this>(
     let block_is_null = helper.append_block(Block::new(&[]));
     let block_is_found = helper.append_block(Block::new(&[]));
     let block_final = helper.append_block(Block::new(&[
-        (opaque_pointer(context), location),
+        (llvm::r#type::pointer(context, 0), location),
         (value_ty, location),
     ]));
 
@@ -224,11 +221,21 @@ pub fn build_finalize<'ctx, 'this>(
 
     let key_value = entry.extract_value(context, location, entry_value, key_ty, 0)?;
 
-    let value_ptr =
-        entry.extract_value(context, location, entry_value, opaque_pointer(context), 1)?;
+    let value_ptr = entry.extract_value(
+        context,
+        location,
+        entry_value,
+        llvm::r#type::pointer(context, 0),
+        1,
+    )?;
 
-    let dict_ptr =
-        entry.extract_value(context, location, entry_value, opaque_pointer(context), 2)?;
+    let dict_ptr = entry.extract_value(
+        context,
+        location,
+        entry_value,
+        llvm::r#type::pointer(context, 0),
+        2,
+    )?;
 
     entry.store(
         context,

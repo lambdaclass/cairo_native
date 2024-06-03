@@ -36,7 +36,6 @@ use starknet_types_core::felt::Felt;
 use std::{
     iter::once,
     path::{Path, PathBuf},
-    sync::Mutex,
     vec::IntoIter,
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -342,7 +341,8 @@ fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResultValu
 fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
     let mut felts = Vec::new();
     match value {
-        JitValue::Felt252(felt) => vec![felt.to_bigint().into()],
+        JitValue::Felt252(felt) => vec![*felt],
+        JitValue::BoundedInt { value, .. } => vec![*value],
         JitValue::Bytes31(_) => todo!(),
         JitValue::Array(values) => {
             for value in values {
@@ -428,12 +428,12 @@ fn run_tests(
     .unwrap();
 
     println!("running {} tests", named_tests.len());
-    let wrapped_summary = Mutex::new(Ok(TestsSummary {
+    let mut wrapped_summary = Ok(TestsSummary {
         passed: vec![],
         failed: vec![],
         ignored: vec![],
         failed_run_results: vec![],
-    }));
+    });
     named_tests
         .into_iter()
         .map(
@@ -493,14 +493,10 @@ fn run_tests(
             },
         )
         .for_each(|r| {
-            let mut wrapped_summary = wrapped_summary.lock().unwrap();
-            if wrapped_summary.is_err() {
-                return;
-            }
             let (name, status) = match r {
                 Ok((name, status)) => (name, status),
                 Err(err) => {
-                    *wrapped_summary = Err(err);
+                    wrapped_summary = Err(err);
                     return;
                 }
             };
@@ -526,7 +522,7 @@ fn run_tests(
             }
             res_type.push(name);
         });
-    wrapped_summary.into_inner().unwrap()
+    wrapped_summary
 }
 
 pub struct TestSyscallHandler;

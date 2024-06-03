@@ -1088,9 +1088,7 @@ fn validate_cast_bounds_overlapping<
     validate_max_strictly_contained::<A, B>(err);
 }
 
-// TODO: fails
 #[test]
-#[ignore]
 fn proper_cast() {
     validate_cast_bounds_contained_same_min::<u8, u16>('u8 u16 casts');
     validate_cast_bounds_contained_same_min::<u8, u32>('u8 u32 casts');
@@ -1917,9 +1915,7 @@ mod special_casts {
             -0x800000000000011000000000000000000000000000000000000000000000000
         >;
 
-    // TODO: fails
     #[test]
-    #[ignore]
     fn test_bounded_int_casts() {
         let minus_1 = downcast::<felt252, BoundedInt<-1, -1>>(-1).unwrap();
         assert!(downcast::<OneMinusPToZero, u8>(upcast(minus_1)).is_none());

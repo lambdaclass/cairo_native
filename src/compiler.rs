@@ -182,7 +182,7 @@ fn compile_func(
             }))
     {
         if type_info.is_memory_allocated(registry) {
-            *ty = llvm::r#type::opaque_pointer(context);
+            *ty = llvm::r#type::pointer(context, 0);
         }
     }
 
@@ -214,7 +214,7 @@ fn compile_func(
         assert_eq!(return_types.len(), 1);
 
         return_types.remove(0);
-        arg_types.insert(0, llvm::r#type::opaque_pointer(context));
+        arg_types.insert(0, llvm::r#type::pointer(context, 0));
 
         Some(true)
     } else {

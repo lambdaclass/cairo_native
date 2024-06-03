@@ -189,10 +189,12 @@ pub fn build<'ctx, 'this>(
             arguments.insert(0, stack_ptr);
 
             Some(true)
-        } else {
+        } else if return_types.first().is_some() {
             let (type_id, type_info) = return_types[0];
             result_types.push(type_info.build(context, helper, registry, metadata, type_id)?);
 
+            None
+        } else {
             None
         };
 
@@ -228,7 +230,7 @@ pub fn build<'ctx, 'this>(
                                 val,
                                 DenseI32ArrayAttribute::new(context, &[offset as i32]),
                                 IntegerType::new(context, 8).into(),
-                                llvm::r#type::opaque_pointer(context),
+                                llvm::r#type::pointer(context, 0),
                                 location,
                             ))
                             .result(0)?
