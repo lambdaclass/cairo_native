@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{Arc, Mutex},
+};
 
 use crate::common::{load_cairo_path, run_native_program};
 use cairo_lang_runner::SierraCasmRunner;
@@ -10,30 +13,29 @@ use cairo_native::{
     },
     values::JitValue,
 };
+use itertools::Itertools;
 use lazy_static::lazy_static;
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use starknet_types_core::felt::Felt;
 
 #[derive(Debug, Default)]
-#[allow(dead_code)] // TODO(julian): implement testing syscall
 struct TestingState {
     sequencer_address: Felt,
-    block_number: u64,
-    block_timestamp: u64,
     caller_address: Felt,
     contract_address: Felt,
-    version: Felt,
     account_contract_address: Felt,
-    max_fee: u64,
     transaction_hash: Felt,
-    chain_id: Felt,
     nonce: Felt,
+    chain_id: Felt,
+    version: Felt,
+    max_fee: u64,
+    block_number: u64,
+    block_timestamp: u64,
     signature: Vec<Felt>,
-    logs: Vec<(Vec<Felt>, Vec<Felt>)>,
+    logs: HashMap<Felt, VecDeque<(Vec<Felt>, Vec<Felt>)>>,
 }
 
 struct SyscallHandler {
-    #[allow(dead_code)] // TODO(julian): implement testing syscall
     /// Arc<Mutex> Is needed to test that the valures are set correct after the execution
     testing_state: Arc<Mutex<TestingState>>,
 }
@@ -402,6 +404,69 @@ impl StarknetSyscallHandler for SyscallHandler {
                 self.testing_state.lock().unwrap().sequencer_address = input[0];
                 vec![]
             }
+            "set_caller_address" => {
+                self.testing_state.lock().unwrap().caller_address = input[0];
+                vec![]
+            }
+            "set_contract_address" => {
+                self.testing_state.lock().unwrap().contract_address = input[0];
+                vec![]
+            }
+            "set_account_contract_address" => {
+                self.testing_state.lock().unwrap().account_contract_address = input[0];
+                vec![]
+            }
+            "set_transaction_hash" => {
+                self.testing_state.lock().unwrap().transaction_hash = input[0];
+                vec![]
+            }
+            "set_nonce" => {
+                self.testing_state.lock().unwrap().nonce = input[0];
+                vec![]
+            }
+            "set_version" => {
+                self.testing_state.lock().unwrap().version = input[0];
+                vec![]
+            }
+            "set_chain_id" => {
+                self.testing_state.lock().unwrap().chain_id = input[0];
+                vec![]
+            }
+            "set_max_fee" => {
+                let max_fee = input[0].to_biguint().try_into().unwrap();
+                self.testing_state.lock().unwrap().max_fee = max_fee;
+                vec![]
+            }
+            "set_block_number" => {
+                let block_number = input[0].to_biguint().try_into().unwrap();
+                self.testing_state.lock().unwrap().block_number = block_number;
+                vec![]
+            }
+            "set_block_timestamp" => {
+                let block_timestamp = input[0].to_biguint().try_into().unwrap();
+                self.testing_state.lock().unwrap().block_timestamp = block_timestamp;
+                vec![]
+            }
+            "set_signature" => {
+                self.testing_state.lock().unwrap().signature = input.to_vec();
+                vec![]
+            }
+            "pop_log" => self
+                .testing_state
+                .lock()
+                .unwrap()
+                .logs
+                .get_mut(&input[0])
+                .and_then(|logs| logs.pop_front())
+                .map(|mut log| {
+                    let mut serialized_log = Vec::new();
+                    serialized_log.push(log.0.len().into());
+                    serialized_log.append(&mut log.0);
+                    serialized_log.push(log.1.len().into());
+                    serialized_log.append(&mut log.1);
+                    serialized_log
+                })
+                .unwrap_or_default(),
             _ => vec![],
         }
     }
@@ -885,4 +950,134 @@ fn set_sequencer_address() {
 
     let actual_address = state.lock().unwrap().sequencer_address;
     assert_eq!(address, actual_address);
+}
+
+#[test]
+fn set_max_fee() {
+    let max_fee = 3;
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "set_max_fee",
+        &[JitValue::Felt252(Felt::from(max_fee))],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(vec![])],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
+
+    let actual_max_fee = state.lock().unwrap().max_fee;
+    assert_eq!(max_fee, actual_max_fee);
+}
+
+#[test]
+fn set_signature() {
+    let signature = vec![Felt::ONE, Felt::TWO, Felt::THREE];
+
+    let signature_jit = signature
+        .clone()
+        .into_iter()
+        .map(|felt| JitValue::Felt252(felt))
+        .collect_vec();
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "set_signature",
+        &[JitValue::Array(signature_jit)],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(vec![])],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
+
+    let actual_signature = state.lock().unwrap().signature.clone();
+    assert_eq_sorted!(signature, actual_signature);
+}
+
+#[test]
+fn pop_log() {
+    let log_index = Felt::ONE;
+    let mut log = (vec![Felt::ONE, Felt::TWO], vec![Felt::THREE]);
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    state
+        .lock()
+        .unwrap()
+        .logs
+        .insert(log_index.clone(), VecDeque::from(vec![log.clone()]));
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "pop_log",
+        &[JitValue::Felt252(log_index)],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    let mut serialized_log = Vec::new();
+    serialized_log.push(log.0.len().into());
+    serialized_log.append(&mut log.0);
+    serialized_log.push(log.1.len().into());
+    serialized_log.append(&mut log.1);
+
+    let serialized_log_jit = serialized_log
+        .into_iter()
+        .map(|felt| JitValue::Felt252(felt))
+        .collect_vec();
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(serialized_log_jit)],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
+
+    assert!(state
+        .lock()
+        .unwrap()
+        .logs
+        .get(&log_index)
+        .unwrap()
+        .is_empty());
+}
+
+#[test]
+fn pop_log_empty() {
+    let log_index = Felt::ONE;
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "pop_log",
+        &[JitValue::Felt252(log_index)],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(Vec::new())],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
 }
