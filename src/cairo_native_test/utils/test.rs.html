@@ -1375,7 +1375,6 @@
 <a href="#1373" id="1373">1373</a>
 <a href="#1374" id="1374">1374</a>
 <a href="#1375" id="1375">1375</a>
-<a href="#1376" id="1376">1376</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMode};
 <span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_runner::RunResultValue;
@@ -1792,11 +1791,11 @@
         </span><span class="kw">let </span>point = k256::ProjectivePoint::from_encoded_point(
             <span class="kw-2">&amp;</span>k256::EncodedPoint::from_affine_coordinates(
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    x.hi.to_be_bytes().into_iter().chain(x.lo.to_be_bytes()),
+                    x.lo.to_be_bytes().into_iter().chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    y.hi.to_be_bytes().into_iter().chain(y.lo.to_be_bytes()),
+                    y.lo.to_be_bytes().into_iter().chain(y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="bool-val">false</span>,
@@ -1822,17 +1821,17 @@
         </span><span class="kw">let </span>p0 = k256::ProjectivePoint::from_encoded_point(
             <span class="kw-2">&amp;</span>k256::EncodedPoint::from_affine_coordinates(
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p0.x.hi
+                    p0.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.x.lo.to_be_bytes()),
+                        .chain(p0.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p0.y.hi
+                    p0.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.y.lo.to_be_bytes()),
+                        .chain(p0.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="bool-val">false</span>,
@@ -1842,17 +1841,17 @@
         <span class="kw">let </span>p1 = k256::ProjectivePoint::from_encoded_point(
             <span class="kw-2">&amp;</span>k256::EncodedPoint::from_affine_coordinates(
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p1.x.hi
+                    p1.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.x.lo.to_be_bytes()),
+                        .chain(p1.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p1.y.hi
+                    p1.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.y.lo.to_be_bytes()),
+                        .chain(p1.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="bool-val">false</span>,
@@ -1878,12 +1877,12 @@
         <span class="kw">let </span>y: [u8; <span class="number">32</span>] = y.as_slice().try_into().unwrap();
         <span class="prelude-val">Ok</span>(Secp256k1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
             },
         })
     }
@@ -1900,11 +1899,11 @@
         </span><span class="kw">let </span>p = k256::ProjectivePoint::from_encoded_point(
             <span class="kw-2">&amp;</span>k256::EncodedPoint::from_affine_coordinates(
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p.x.hi.to_be_bytes().into_iter().chain(p.x.lo.to_be_bytes()),
+                    p.x.lo.to_be_bytes().into_iter().chain(p.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p.y.hi.to_be_bytes().into_iter().chain(p.y.lo.to_be_bytes()),
+                    p.y.lo.to_be_bytes().into_iter().chain(p.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="bool-val">false</span>,
@@ -1913,8 +1912,8 @@
         .unwrap();
         <span class="kw">let </span>m: k256::Scalar = k256::elliptic_curve::ScalarPrimitive::from_slice(<span class="kw-2">&amp;</span>{
             <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; <span class="number">32</span>];
-            buf[<span class="number">0</span>..<span class="number">16</span>].copy_from_slice(<span class="kw-2">&amp;</span>m.hi.to_be_bytes());
-            buf[<span class="number">16</span>..<span class="number">32</span>].copy_from_slice(<span class="kw-2">&amp;</span>m.lo.to_be_bytes());
+            buf[<span class="number">0</span>..<span class="number">16</span>].copy_from_slice(<span class="kw-2">&amp;</span>m.lo.to_be_bytes());
+            buf[<span class="number">16</span>..<span class="number">32</span>].copy_from_slice(<span class="kw-2">&amp;</span>m.hi.to_be_bytes());
             buf
         })
         .map_err(|<span class="kw">_</span>| {
@@ -1942,12 +1941,12 @@
         <span class="kw">let </span>y: [u8; <span class="number">32</span>] = y.as_slice().try_into().unwrap();
         <span class="prelude-val">Ok</span>(Secp256k1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
             },
         })
     }
@@ -1965,8 +1964,8 @@
             <span class="kw-2">&amp;</span>k256::EncodedPoint::from_bytes(
                 k256::CompressedPoint::from_exact_iter(
                     once(<span class="number">0x02 </span>| y_parity <span class="kw">as </span>u8)
-                        .chain(x.hi.to_be_bytes())
-                        .chain(x.lo.to_be_bytes()),
+                        .chain(x.lo.to_be_bytes())
+                        .chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
             )
@@ -1994,8 +1993,8 @@
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(Secp256k1Point {
                 x,
                 y: U256 {
-                    hi: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
-                    lo: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
+                    lo: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
+                    hi: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
                 },
             }))
         } <span class="kw">else </span>{
@@ -2022,11 +2021,11 @@
         </span><span class="kw">let </span>point = p256::ProjectivePoint::from_encoded_point(
             <span class="kw-2">&amp;</span>k256::EncodedPoint::from_affine_coordinates(
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    x.hi.to_be_bytes().into_iter().chain(x.lo.to_be_bytes()),
+                    x.lo.to_be_bytes().into_iter().chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    y.hi.to_be_bytes().into_iter().chain(y.lo.to_be_bytes()),
+                    y.lo.to_be_bytes().into_iter().chain(y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="bool-val">false</span>,
@@ -2052,17 +2051,17 @@
         </span><span class="kw">let </span>p0 = p256::ProjectivePoint::from_encoded_point(
             <span class="kw-2">&amp;</span>p256::EncodedPoint::from_affine_coordinates(
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p0.x.hi
+                    p0.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.x.lo.to_be_bytes()),
+                        .chain(p0.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p0.y.hi
+                    p0.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p0.y.lo.to_be_bytes()),
+                        .chain(p0.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="bool-val">false</span>,
@@ -2072,17 +2071,17 @@
         <span class="kw">let </span>p1 = p256::ProjectivePoint::from_encoded_point(
             <span class="kw-2">&amp;</span>p256::EncodedPoint::from_affine_coordinates(
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p1.x.hi
+                    p1.x.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.x.lo.to_be_bytes()),
+                        .chain(p1.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p1.y.hi
+                    p1.y.lo
                         .to_be_bytes()
                         .into_iter()
-                        .chain(p1.y.lo.to_be_bytes()),
+                        .chain(p1.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="bool-val">false</span>,
@@ -2108,12 +2107,12 @@
         <span class="kw">let </span>y: [u8; <span class="number">32</span>] = y.as_slice().try_into().unwrap();
         <span class="prelude-val">Ok</span>(Secp256r1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
             },
         })
     }
@@ -2130,11 +2129,11 @@
         </span><span class="kw">let </span>p = p256::ProjectivePoint::from_encoded_point(
             <span class="kw-2">&amp;</span>p256::EncodedPoint::from_affine_coordinates(
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p.x.hi.to_be_bytes().into_iter().chain(p.x.lo.to_be_bytes()),
+                    p.x.lo.to_be_bytes().into_iter().chain(p.x.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="kw-2">&amp;</span>GenericArray::from_exact_iter(
-                    p.y.hi.to_be_bytes().into_iter().chain(p.y.lo.to_be_bytes()),
+                    p.y.lo.to_be_bytes().into_iter().chain(p.y.hi.to_be_bytes()),
                 )
                 .unwrap(),
                 <span class="bool-val">false</span>,
@@ -2143,8 +2142,8 @@
         .unwrap();
         <span class="kw">let </span>m: p256::Scalar = p256::elliptic_curve::ScalarPrimitive::from_slice(<span class="kw-2">&amp;</span>{
             <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0u8</span>; <span class="number">32</span>];
-            buf[<span class="number">0</span>..<span class="number">16</span>].copy_from_slice(<span class="kw-2">&amp;</span>m.hi.to_be_bytes());
-            buf[<span class="number">16</span>..<span class="number">32</span>].copy_from_slice(<span class="kw-2">&amp;</span>m.lo.to_be_bytes());
+            buf[<span class="number">0</span>..<span class="number">16</span>].copy_from_slice(<span class="kw-2">&amp;</span>m.lo.to_be_bytes());
+            buf[<span class="number">16</span>..<span class="number">32</span>].copy_from_slice(<span class="kw-2">&amp;</span>m.hi.to_be_bytes());
             buf
         })
         .map_err(|<span class="kw">_</span>| {
@@ -2155,7 +2154,6 @@
         </span>.into();
 
         <span class="kw">let </span>p = p * m;
-
         <span class="kw">let </span>p = p.to_encoded_point(<span class="bool-val">false</span>);
         <span class="kw">let </span>(x, y) = <span class="kw">match </span>p.coordinates() {
             Coordinates::Uncompressed { x, y } =&gt; (x, y),
@@ -2172,12 +2170,12 @@
         <span class="kw">let </span>y: [u8; <span class="number">32</span>] = y.as_slice().try_into().unwrap();
         <span class="prelude-val">Ok</span>(Secp256r1Point {
             x: U256 {
-                hi: u128::from_be_bytes(x[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
+                lo: u128::from_be_bytes(x[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
+                hi: u128::from_be_bytes(x[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
             },
             y: U256 {
-                hi: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
+                lo: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
+                hi: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
             },
         })
     }
@@ -2192,8 +2190,8 @@
             <span class="kw-2">&amp;</span>p256::EncodedPoint::from_bytes(
                 p256::CompressedPoint::from_exact_iter(
                     once(<span class="number">0x02 </span>| y_parity <span class="kw">as </span>u8)
-                        .chain(x.hi.to_be_bytes())
-                        .chain(x.lo.to_be_bytes()),
+                        .chain(x.lo.to_be_bytes())
+                        .chain(x.hi.to_be_bytes()),
                 )
                 .unwrap(),
             )
@@ -2213,8 +2211,8 @@
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(Secp256r1Point {
                 x,
                 y: U256 {
-                    hi: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
-                    lo: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
+                    lo: u128::from_be_bytes(y[<span class="number">0</span>..<span class="number">16</span>].try_into().unwrap()),
+                    hi: u128::from_be_bytes(y[<span class="number">16</span>..<span class="number">32</span>].try_into().unwrap()),
                 },
             }))
         } <span class="kw">else </span>{
@@ -2409,12 +2407,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>test_syscall_handler = TestSyscallHandler {};
 
         <span class="kw">let </span>x = U256 {
-            hi: <span class="number">97179038819393695679</span>,
-            lo: <span class="number">330631467365974629050427735731901850225</span>,
+            hi: <span class="number">330631467365974629050427735731901850225</span>,
+            lo: <span class="number">97179038819393695679</span>,
         };
         <span class="kw">let </span>y = U256 {
-            hi: <span class="number">26163136114030451075775058782541084873</span>,
-            lo: <span class="number">68974579539311638391577168388077592842</span>,
+            hi: <span class="number">68974579539311638391577168388077592842</span>,
+            lo: <span class="number">26163136114030451075775058782541084873</span>,
         };
 
         <span class="macro">assert_eq!</span>(
@@ -2428,8 +2426,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>test_syscall_handler = TestSyscallHandler {};
 
         <span class="kw">let </span>x = U256 {
-            hi: <span class="number">97179038819393695679</span>,
-            lo: <span class="number">330631467365974629050427735731901850225</span>,
+            hi: <span class="number">330631467365974629050427735731901850225</span>,
+            lo: <span class="number">97179038819393695679</span>,
         };
         <span class="kw">let </span>y = U256 { hi: <span class="number">0</span>, lo: <span class="number">0 </span>};
 
@@ -2445,12 +2443,12 @@
 
         <span class="kw">let </span>p1 = Secp256k1Point {
             x: U256 {
-                hi: <span class="number">161825202758953104525843685720298294023</span>,
-                lo: <span class="number">3468390537006497937951914270391801752</span>,
+                hi: <span class="number">3468390537006497937951914270391801752</span>,
+                lo: <span class="number">161825202758953104525843685720298294023</span>,
             },
             y: U256 {
-                hi: <span class="number">96009999919712310848645357523629574312</span>,
-                lo: <span class="number">336417762351022071123394393598455764152</span>,
+                hi: <span class="number">336417762351022071123394393598455764152</span>,
+                lo: <span class="number">96009999919712310848645357523629574312</span>,
             },
         };
 
@@ -2461,18 +2459,18 @@
 
         <span class="kw">let </span>p1_double = Secp256k1Point {
             x: U256 {
-                hi: <span class="number">263210499965038831386353541518668627160</span>,
-                lo: <span class="number">122909745026270932982812610085084241637</span>,
+                hi: <span class="number">122909745026270932982812610085084241637</span>,
+                lo: <span class="number">263210499965038831386353541518668627160</span>,
             },
             y: U256 {
-                hi: <span class="number">35730324229579385338853513728577301230</span>,
-                lo: <span class="number">329597642124196932058042157271922763050</span>,
+                hi: <span class="number">329597642124196932058042157271922763050</span>,
+                lo: <span class="number">35730324229579385338853513728577301230</span>,
             },
         };
         <span class="macro">assert_eq!</span>(p3, p1_double);
         <span class="macro">assert_eq!</span>(
             test_syscall_handler
-                .secp256k1_mul(p1, U256 { hi: <span class="number">0</span>, lo: <span class="number">2 </span>}, <span class="kw-2">&amp;mut </span><span class="number">10</span>)
+                .secp256k1_mul(p1, U256 { hi: <span class="number">2</span>, lo: <span class="number">0 </span>}, <span class="kw-2">&amp;mut </span><span class="number">10</span>)
                 .unwrap(),
             p1_double
         );
@@ -2480,12 +2478,12 @@
         <span class="comment">// 3 * P1
         </span><span class="kw">let </span>three_p1 = Secp256k1Point {
             x: U256 {
-                hi: <span class="number">331229800296699308591929724809569456681</span>,
-                lo: <span class="number">240848751772479376198639683648735950585</span>,
+                hi: <span class="number">240848751772479376198639683648735950585</span>,
+                lo: <span class="number">331229800296699308591929724809569456681</span>,
             },
             y: U256 {
-                hi: <span class="number">75181762170223969696219813306313470806</span>,
-                lo: <span class="number">134255467439736302886468555755295925874</span>,
+                hi: <span class="number">134255467439736302886468555755295925874</span>,
+                lo: <span class="number">75181762170223969696219813306313470806</span>,
             },
         };
         <span class="macro">assert_eq!</span>(
@@ -2494,7 +2492,7 @@
         );
         <span class="macro">assert_eq!</span>(
             test_syscall_handler
-                .secp256k1_mul(p1, U256 { hi: <span class="number">0</span>, lo: <span class="number">3 </span>}, <span class="kw-2">&amp;mut </span><span class="number">10</span>)
+                .secp256k1_mul(p1, U256 { hi: <span class="number">3</span>, lo: <span class="number">0 </span>}, <span class="kw-2">&amp;mut </span><span class="number">10</span>)
                 .unwrap(),
             three_p1
         );
@@ -2508,8 +2506,8 @@
             test_syscall_handler
                 .secp256k1_get_point_from_x(
                     U256 {
-                        hi: <span class="number">97179038819393695679</span>,
-                        lo: <span class="number">330631467365974629050427735731901850225</span>,
+                        hi: <span class="number">330631467365974629050427735731901850225</span>,
+                        lo: <span class="number">97179038819393695679</span>,
                     },
                     <span class="bool-val">false</span>,
                     <span class="kw-2">&amp;mut </span><span class="number">10
@@ -2518,13 +2516,13 @@
                 .unwrap(),
             Secp256k1Point {
                 x: U256 {
-                    hi: <span class="number">97179038819393695679</span>,
-                    lo: <span class="number">330631467365974629050427735731901850225</span>,
+                    hi: <span class="number">330631467365974629050427735731901850225</span>,
+                    lo: <span class="number">97179038819393695679</span>,
                 },
                 y: U256 {
-                    hi: <span class="number">26163136114030451075775058782541084873</span>,
-                    lo: <span class="number">68974579539311638391577168388077592842
-                </span>},
+                    hi: <span class="number">68974579539311638391577168388077592842</span>,
+                    lo: <span class="number">26163136114030451075775058782541084873</span>,
+                },
             }
         );
     }
@@ -2537,8 +2535,8 @@
             test_syscall_handler
                 .secp256k1_get_point_from_x(
                     U256 {
-                        hi: <span class="number">97179038819393695679</span>,
-                        lo: <span class="number">330631467365974629050427735731901850225</span>,
+                        hi: <span class="number">330631467365974629050427735731901850225</span>,
+                        lo: <span class="number">97179038819393695679</span>,
                     },
                     <span class="bool-val">true</span>,
                     <span class="kw-2">&amp;mut </span><span class="number">10
@@ -2547,13 +2545,13 @@
                 .unwrap(),
             Secp256k1Point {
                 x: U256 {
-                    hi: <span class="number">97179038819393695679</span>,
-                    lo: <span class="number">330631467365974629050427735731901850225</span>,
+                    hi: <span class="number">330631467365974629050427735731901850225</span>,
+                    lo: <span class="number">97179038819393695679</span>,
                 },
                 y: U256 {
-                    hi: <span class="number">314119230806908012387599548649227126582</span>,
-                    lo: <span class="number">271307787381626825071797439039395650341
-                </span>},
+                    hi: <span class="number">271307787381626825071797439039395650341</span>,
+                    lo: <span class="number">314119230806908012387599548649227126582</span>,
+                },
             }
         );
     }
@@ -2573,12 +2571,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>test_syscall_handler = TestSyscallHandler {};
 
         <span class="kw">let </span>x = U256 {
-            hi: <span class="number">97179038819393695679</span>,
-            lo: <span class="number">330631467365974629050427735731901850225</span>,
+            hi: <span class="number">330631467365974629050427735731901850225</span>,
+            lo: <span class="number">97179038819393695679</span>,
         };
         <span class="kw">let </span>y = U256 {
-            hi: <span class="number">118910939004298029402109603132816090461</span>,
-            lo: <span class="number">111045440647474106186537215379882575585</span>,
+            hi: <span class="number">111045440647474106186537215379882575585</span>,
+            lo: <span class="number">118910939004298029402109603132816090461</span>,
         };
 
         <span class="macro">assert_eq!</span>(
@@ -2609,12 +2607,12 @@
 
         <span class="kw">let </span>p1 = Secp256r1Point {
             x: U256 {
-                hi: <span class="number">97179038819393695679</span>,
-                lo: <span class="number">330631467365974629050427735731901850225</span>,
+                hi: <span class="number">330631467365974629050427735731901850225</span>,
+                lo: <span class="number">97179038819393695679</span>,
             },
             y: U256 {
-                hi: <span class="number">118910939004298029402109603132816090461</span>,
-                lo: <span class="number">111045440647474106186537215379882575585</span>,
+                hi: <span class="number">111045440647474106186537215379882575585</span>,
+                lo: <span class="number">118910939004298029402109603132816090461</span>,
             },
         };
 
@@ -2625,18 +2623,18 @@
 
         <span class="kw">let </span>p1_double = Secp256r1Point {
             x: U256 {
-                hi: <span class="number">280079427190737520201067412903899817878</span>,
-                lo: <span class="number">309339945874468445579793098896656960879</span>,
+                hi: <span class="number">309339945874468445579793098896656960879</span>,
+                lo: <span class="number">280079427190737520201067412903899817878</span>,
             },
             y: U256 {
-                hi: <span class="number">84249534056490759701994051847937833933</span>,
-                lo: <span class="number">231570843221643745062297421862629788481</span>,
+                hi: <span class="number">231570843221643745062297421862629788481</span>,
+                lo: <span class="number">84249534056490759701994051847937833933</span>,
             },
         };
         <span class="macro">assert_eq!</span>(p3, p1_double);
         <span class="macro">assert_eq!</span>(
             test_syscall_handler
-                .secp256r1_mul(p1, U256 { hi: <span class="number">0</span>, lo: <span class="number">2 </span>}, <span class="kw-2">&amp;mut </span><span class="number">10</span>)
+                .secp256r1_mul(p1, U256 { hi: <span class="number">2</span>, lo: <span class="number">0 </span>}, <span class="kw-2">&amp;mut </span><span class="number">10</span>)
                 .unwrap(),
             p1_double
         );
@@ -2644,12 +2642,12 @@
         <span class="comment">// 3 * P1
         </span><span class="kw">let </span>three_p1 = Secp256r1Point {
             x: U256 {
-                hi: <span class="number">23850518908906170876551962912581992002</span>,
-                lo: <span class="number">195259625777021303662291420857740525307</span>,
+                hi: <span class="number">195259625777021303662291420857740525307</span>,
+                lo: <span class="number">23850518908906170876551962912581992002</span>,
             },
             y: U256 {
-                hi: <span class="number">178681203065513270100417145499857169664</span>,
-                lo: <span class="number">282344931843342117515389970197013120959</span>,
+                hi: <span class="number">282344931843342117515389970197013120959</span>,
+                lo: <span class="number">178681203065513270100417145499857169664</span>,
             },
         };
         <span class="macro">assert_eq!</span>(
@@ -2658,7 +2656,7 @@
         );
         <span class="macro">assert_eq!</span>(
             test_syscall_handler
-                .secp256r1_mul(p1, U256 { hi: <span class="number">0</span>, lo: <span class="number">3 </span>}, <span class="kw-2">&amp;mut </span><span class="number">10</span>)
+                .secp256r1_mul(p1, U256 { hi: <span class="number">3</span>, lo: <span class="number">0 </span>}, <span class="kw-2">&amp;mut </span><span class="number">10</span>)
                 .unwrap(),
             three_p1
         );
@@ -2669,13 +2667,13 @@
         <span class="kw">let </span><span class="kw-2">mut </span>test_syscall_handler = TestSyscallHandler {};
 
         <span class="kw">let </span>x = U256 {
-            hi: <span class="number">97179038819393695679</span>,
-            lo: <span class="number">330631467365974629050427735731901850225</span>,
+            hi: <span class="number">330631467365974629050427735731901850225</span>,
+            lo: <span class="number">97179038819393695679</span>,
         };
 
         <span class="kw">let </span>y = U256 {
-            hi: <span class="number">118910939004298029402109603132816090461</span>,
-            lo: <span class="number">111045440647474106186537215379882575585</span>,
+            hi: <span class="number">111045440647474106186537215379882575585</span>,
+            lo: <span class="number">118910939004298029402109603132816090461</span>,
         };
 
         <span class="macro">assert_eq!</span>(
@@ -2692,13 +2690,13 @@
         <span class="kw">let </span><span class="kw-2">mut </span>test_syscall_handler = TestSyscallHandler {};
 
         <span class="kw">let </span>x = U256 {
-            hi: <span class="number">97179038819393695679</span>,
-            lo: <span class="number">330631467365974629050427735731901850225</span>,
+            hi: <span class="number">330631467365974629050427735731901850225</span>,
+            lo: <span class="number">97179038819393695679</span>,
         };
 
         <span class="kw">let </span>y = U256 {
-            hi: <span class="number">221371427837412271565447410779117722274</span>,
-            lo: <span class="number">229236926352692519791101729645429586206</span>,
+            hi: <span class="number">229236926352692519791101729645429586206</span>,
+            lo: <span class="number">221371427837412271565447410779117722274</span>,
         };
 
         <span class="macro">assert_eq!</span>(
