@@ -1628,7 +1628,7 @@ pub(crate) mod handler {
     }
 }
 
-thread_local!(pub static SYSCALL_HANDLER_VTABLE: std::cell::Cell<*mut ()>  = const { std::cell::Cell::new(null_mut()) });
+thread_local!(pub static SYSCALL_HANDLER_VTABLE: std::cell::Cell<*mut ()> = const { std::cell::Cell::new(null_mut()) });
 
 #[allow(non_snake_case)]
 /// Runtime function that calls the `cheatcode` syscall
