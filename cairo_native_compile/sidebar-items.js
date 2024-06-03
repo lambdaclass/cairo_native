@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["RunMode"],"fn":["check_compiler_path","main"],"struct":["Args"]};
+window.SIDEBAR_ITEMS = {"enum":["RunMode"],"fn":["main"],"struct":["Args"]};

@@ -82,29 +82,14 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context;
+<span class="kw">use </span>cairo_lang_compiler::project::check_compiler_path;
 <span class="kw">use </span>cairo_native::{
     context::NativeContext, module_to_object, object_to_shared_lib,
     utils::cairo_to_sierra_with_debug_info,
 };
 <span class="kw">use </span>clap::{Parser, ValueEnum};
-
-<span class="kw">use </span>std::path::{Path, PathBuf};
+<span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 <span class="attr">#[derive(Clone, Debug, ValueEnum)]
@@ -177,21 +162,6 @@
             .context(<span class="string">"Failed to write shared library."</span>)<span class="question-mark">?</span>;
     }
 
-    <span class="prelude-val">Ok</span>(())
-}
-
-<span class="kw">pub fn </span>check_compiler_path(single_file: bool, path: <span class="kw-2">&amp;</span>Path) -&gt; anyhow::Result&lt;()&gt; {
-    <span class="kw">if </span>path.is_file() {
-        <span class="kw">if </span>!single_file {
-            <span class="macro">anyhow::bail!</span>(<span class="string">"The given path is a file, but --single-file was not supplied."</span>);
-        }
-    } <span class="kw">else if </span>path.is_dir() {
-        <span class="kw">if </span>single_file {
-            <span class="macro">anyhow::bail!</span>(<span class="string">"The given path is a directory, but --single-file was supplied."</span>);
-        }
-    } <span class="kw">else </span>{
-        <span class="macro">anyhow::bail!</span>(<span class="string">"The given path does not exist."</span>);
-    }
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div></section></main></body></html>
