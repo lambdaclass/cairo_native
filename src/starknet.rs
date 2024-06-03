@@ -1638,15 +1638,7 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
     input: &ArrayAbi<Felt252Abi>,
 ) {
     let ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
-    if ptr.is_null() {
-        *result_ptr = ArrayAbi {
-            ptr: null_mut(),
-            since: 0,
-            until: 0,
-            capacity: 0,
-        };
-        return;
-    }
+    assert!(!ptr.is_null());
 
     let callbacks_ptr = ptr as *mut StarknetSyscallHandlerCallbacks<DummySyscallHandler>;
     let callbacks = unsafe { callbacks_ptr.as_mut().expect("should not be null") };
