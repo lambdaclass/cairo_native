@@ -549,7 +549,7 @@ pub(crate) mod handler {
     #[repr(C)]
     #[derive(Debug)]
     pub struct StarknetSyscallHandlerCallbacks<'a, T> {
-        pub self_ptr: &'a mut T,
+        self_ptr: &'a mut T,
 
         get_block_hash: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
