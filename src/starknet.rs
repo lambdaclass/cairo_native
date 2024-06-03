@@ -19,15 +19,13 @@ pub struct ArrayAbi<T> {
 
 /// Binary representation of a `Felt` (in MLIR).
 #[derive(Debug, Clone)]
-#[cfg_attr(target_arch = "x86_64", repr(C, align(16)))]
-#[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
+#[repr(C, align(16))]
 pub struct Felt252Abi(pub [u8; 32]);
 /// Binary representation of a `u256` (in MLIR).
 // TODO: This shouldn't need to be public.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(target_arch = "x86_64", repr(C, align(16)))]
-#[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
+#[repr(C, align(16))]
 pub struct U256 {
     pub hi: u128,
     pub lo: u128,
