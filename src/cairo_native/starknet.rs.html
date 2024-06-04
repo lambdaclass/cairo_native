@@ -1632,6 +1632,25 @@
 <a href="#1630" id="1630">1630</a>
 <a href="#1631" id="1631">1631</a>
 <a href="#1632" id="1632">1632</a>
+<a href="#1633" id="1633">1633</a>
+<a href="#1634" id="1634">1634</a>
+<a href="#1635" id="1635">1635</a>
+<a href="#1636" id="1636">1636</a>
+<a href="#1637" id="1637">1637</a>
+<a href="#1638" id="1638">1638</a>
+<a href="#1639" id="1639">1639</a>
+<a href="#1640" id="1640">1640</a>
+<a href="#1641" id="1641">1641</a>
+<a href="#1642" id="1642">1642</a>
+<a href="#1643" id="1643">1643</a>
+<a href="#1644" id="1644">1644</a>
+<a href="#1645" id="1645">1645</a>
+<a href="#1646" id="1646">1646</a>
+<a href="#1647" id="1647">1647</a>
+<a href="#1648" id="1648">1648</a>
+<a href="#1649" id="1649">1649</a>
+<a href="#1650" id="1650">1650</a>
+<a href="#1651" id="1651">1651</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -3060,7 +3079,9 @@
             x: <span class="kw-2">&amp;</span>U256,
             y: <span class="kw-2">&amp;</span>U256,
         ) {
-            <span class="kw">let </span>result = ptr.secp256k1_new(<span class="kw-2">*</span>x, <span class="kw-2">*</span>y, gas);
+            <span class="kw">let </span>x = <span class="kw-2">*</span>x;
+            <span class="kw">let </span>y = <span class="kw-2">*</span>y;
+            <span class="kw">let </span>result = ptr.secp256k1_new(x, y, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -3083,7 +3104,9 @@
             p0: <span class="kw-2">&amp;</span>Secp256k1Point,
             p1: <span class="kw-2">&amp;</span>Secp256k1Point,
         ) {
-            <span class="kw">let </span>result = ptr.secp256k1_add(<span class="kw-2">*</span>p0, <span class="kw-2">*</span>p1, gas);
+            <span class="kw">let </span>p0 = <span class="kw-2">*</span>p0;
+            <span class="kw">let </span>p1 = <span class="kw-2">*</span>p1;
+            <span class="kw">let </span>result = ptr.secp256k1_add(p0, p1, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -3103,7 +3126,10 @@
             p: <span class="kw-2">&amp;</span>Secp256k1Point,
             scalar: <span class="kw-2">&amp;</span>U256,
         ) {
-            <span class="kw">let </span>result = ptr.secp256k1_mul(<span class="kw-2">*</span>p, <span class="kw-2">*</span>scalar, gas);
+            <span class="comment">// Seems like it's important to dereference and create a local instead of at call site directly.
+            </span><span class="kw">let </span>scalar = <span class="kw-2">*</span>scalar;
+            <span class="kw">let </span>p = <span class="kw-2">*</span>p;
+            <span class="kw">let </span>result = ptr.secp256k1_mul(p, scalar, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -3123,7 +3149,9 @@
             x: <span class="kw-2">&amp;</span>U256,
             y_parity: <span class="kw-2">&amp;</span>bool,
         ) {
-            <span class="kw">let </span>result = ptr.secp256k1_get_point_from_x(<span class="kw-2">*</span>x, <span class="kw-2">*</span>y_parity, gas);
+            <span class="kw">let </span>x = <span class="kw-2">*</span>x;
+            <span class="kw">let </span>y_parity = <span class="kw-2">*</span>y_parity;
+            <span class="kw">let </span>result = ptr.secp256k1_get_point_from_x(x, y_parity, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -3145,7 +3173,8 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
             p: <span class="kw-2">&amp;</span>Secp256k1Point,
         ) {
-            <span class="kw">let </span>result = ptr.secp256k1_get_xy(<span class="kw-2">*</span>p, gas);
+            <span class="kw">let </span>p = <span class="kw-2">*</span>p;
+            <span class="kw">let </span>result = ptr.secp256k1_get_xy(p, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -3165,7 +3194,9 @@
             x: <span class="kw-2">&amp;</span>U256,
             y: <span class="kw-2">&amp;</span>U256,
         ) {
-            <span class="kw">let </span>result = ptr.secp256r1_new(<span class="kw-2">*</span>x, <span class="kw-2">*</span>y, gas);
+            <span class="kw">let </span>x = <span class="kw-2">*</span>x;
+            <span class="kw">let </span>y = <span class="kw-2">*</span>y;
+            <span class="kw">let </span>result = ptr.secp256r1_new(x, y, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -3188,7 +3219,9 @@
             p0: <span class="kw-2">&amp;</span>Secp256r1Point,
             p1: <span class="kw-2">&amp;</span>Secp256r1Point,
         ) {
-            <span class="kw">let </span>result = ptr.secp256r1_add(<span class="kw-2">*</span>p0, <span class="kw-2">*</span>p1, gas);
+            <span class="kw">let </span>p0 = <span class="kw-2">*</span>p0;
+            <span class="kw">let </span>p1 = <span class="kw-2">*</span>p1;
+            <span class="kw">let </span>result = ptr.secp256r1_add(p0, p1, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -3208,7 +3241,9 @@
             p: <span class="kw-2">&amp;</span>Secp256r1Point,
             scalar: <span class="kw-2">&amp;</span>U256,
         ) {
-            <span class="kw">let </span>result = ptr.secp256r1_mul(<span class="kw-2">*</span>p, <span class="kw-2">*</span>scalar, gas);
+            <span class="kw">let </span>scalar = <span class="kw-2">*</span>scalar;
+            <span class="kw">let </span>p = <span class="kw-2">*</span>p;
+            <span class="kw">let </span>result = ptr.secp256r1_mul(p, scalar, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -3228,7 +3263,9 @@
             x: <span class="kw-2">&amp;</span>U256,
             y_parity: <span class="kw-2">&amp;</span>bool,
         ) {
-            <span class="kw">let </span>result = ptr.secp256r1_get_point_from_x(<span class="kw-2">*</span>x, <span class="kw-2">*</span>y_parity, gas);
+            <span class="kw">let </span>x = <span class="kw-2">*</span>x;
+            <span class="kw">let </span>y_parity = <span class="kw-2">*</span>y_parity;
+            <span class="kw">let </span>result = ptr.secp256r1_get_point_from_x(x, y_parity, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -3250,7 +3287,8 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
             p: <span class="kw-2">&amp;</span>Secp256r1Point,
         ) {
-            <span class="kw">let </span>result = ptr.secp256r1_get_xy(<span class="kw-2">*</span>p, gas);
+            <span class="kw">let </span>p = <span class="kw-2">*</span>p;
+            <span class="kw">let </span>result = ptr.secp256r1_get_xy(p, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
