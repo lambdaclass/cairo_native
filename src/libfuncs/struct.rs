@@ -1,6 +1,7 @@
 //! # Struct-related libfuncs
 
 use super::LibfuncHelper;
+use crate::block_ext::BlockExt;
 use crate::{
     error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
 };
@@ -16,7 +17,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{attribute::DenseI64ArrayAttribute, Block, Location, Value},
+    ir::{Block, Location, Value},
     Context,
 };
 
@@ -87,18 +88,9 @@ pub fn build_struct_value<'ctx, 'this>(
 ) -> Result<Value<'ctx, 'this>> {
     let struct_ty = registry.build_type(context, helper, registry, metadata, struct_type)?;
 
-    let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
-    for (i, field) in fields.iter().enumerate() {
-        acc = entry.append_operation(llvm::insert_value(
-            context,
-            acc.result(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[i as _]),
-            *field,
-            location,
-        ));
-    }
+    let acc = entry.append_operation(llvm::undef(struct_ty, location));
 
-    Ok(acc.result(0)?.into())
+    Ok(entry.insert_values(context, location, acc.result(0)?.into(), fields)?)
 }
 
 /// Generate MLIR operations for the `struct_deconstruct` libfunc.
@@ -118,16 +110,7 @@ pub fn build_deconstruct<'ctx, 'this>(
         let type_info = registry.get_type(&var_info.ty)?;
         let field_ty = type_info.build(context, helper, registry, metadata, &var_info.ty)?;
 
-        let value = entry
-            .append_operation(llvm::extract_value(
-                context,
-                container,
-                DenseI64ArrayAttribute::new(context, &[i.try_into()?]),
-                field_ty,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let value = entry.extract_value(context, location, container, field_ty, i)?;
 
         fields.push(value);
     }
