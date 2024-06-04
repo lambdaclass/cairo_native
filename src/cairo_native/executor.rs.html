@@ -1513,10 +1513,7 @@
             libc::free(ptr.cast().as_ptr());
             <span class="prelude-val">Ok</span>(value)
         },
-        CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; {
-            <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
-        }
-        CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; {
+        CoreTypeConcrete::EcPoint(<span class="kw">_</span>) | CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; {
             <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
         }
         CoreTypeConcrete::Felt252(<span class="kw">_</span>)
@@ -1618,7 +1615,6 @@
                 <span class="prelude-val">Ok</span>(value)
             }
         },
-        CoreTypeConcrete::Uninitialized(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Enum(info) =&gt; {
             <span class="kw">let </span>(<span class="kw">_</span>, tag_layout, variant_layouts) =
                 <span class="kw">crate</span>::types::r#enum::get_layout_for_variants(registry, <span class="kw-2">&amp;</span>info.variants).unwrap();
@@ -1705,7 +1701,6 @@
                 registry,
             )),
         },
-        CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
             <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(
                 <span class="kw">unsafe </span>{ <span class="kw-2">*</span>return_ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ref() },
@@ -1718,20 +1713,25 @@
                 registry,
             )),
         },
-        CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::Snapshot(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+
         <span class="comment">// Builtins are handled before the call to parse_result
         // and should not be reached here.
-        </span>CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
-        CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
-        CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
-        CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
-        CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
-        CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
-        CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
-        CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
-        CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
-        <span class="kw">_ </span>=&gt; <span class="macro">todo!</span>(),
+        </span>CoreTypeConcrete::Bitwise(<span class="kw">_</span>)
+        | CoreTypeConcrete::Const(<span class="kw">_</span>)
+        | CoreTypeConcrete::EcOp(<span class="kw">_</span>)
+        | CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>)
+        | CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>)
+        | CoreTypeConcrete::RangeCheck(<span class="kw">_</span>)
+        | CoreTypeConcrete::Pedersen(<span class="kw">_</span>)
+        | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
+        | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+        CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>)
+        | CoreTypeConcrete::Span(<span class="kw">_</span>)
+        | CoreTypeConcrete::Snapshot(<span class="kw">_</span>)
+        | CoreTypeConcrete::BoundedInt(<span class="kw">_</span>)
+        | CoreTypeConcrete::Uninitialized(<span class="kw">_</span>)
+        | CoreTypeConcrete::Coupon(<span class="kw">_</span>)
+        | CoreTypeConcrete::StarkNet(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
     }
 }
 </code></pre></div></section></main></body></html>
