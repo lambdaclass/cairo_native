@@ -2,10 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
-    error::{Error, Result},
-    metadata::MetadataStorage,
-    utils::ProgramRegistryExt,
+    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -25,8 +22,8 @@ use melior::{
         cf, llvm, ods, scf,
     },
     ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Attribute,
-        Block, Location, Region, Value, ValueLike,
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -196,11 +193,7 @@ pub fn build_is_zero<'ctx, 'this>(
 ) -> Result<()> {
     let arg0: Value = entry.argument(0)?.into();
 
-    let const_0 = entry.append_op_result(arith::constant(
-        context,
-        IntegerAttribute::new(arg0.r#type(), 0).into(),
-        location,
-    ))?;
+    let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
 
     let condition = entry.append_op_result(arith::cmpi(
         context,
@@ -307,11 +300,7 @@ pub fn build_square_root<'ctx, 'this>(
     let i32_ty = IntegerType::new(context, 32).into();
     let i64_ty = IntegerType::new(context, 64).into();
 
-    let k1 = entry.append_op_result(arith::constant(
-        context,
-        IntegerAttribute::new(i64_ty, 1).into(),
-        location,
-    ))?;
+    let k1 = entry.const_int_from_type(context, location, 1, i64_ty)?;
 
     let is_small = entry.append_op_result(arith::cmpi(
         context,
@@ -336,11 +325,7 @@ pub fn build_square_root<'ctx, 'this>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let k64 = entry.append_op_result(arith::constant(
-                context,
-                IntegerAttribute::new(i64_ty, 64).into(),
-                location,
-            ))?;
+            let k64 = entry.const_int_from_type(context, location, 64, i64_ty)?;
 
             let leading_zeros = block.append_op_result(
                 ods::llvm::intr_ctlz(
@@ -357,19 +342,11 @@ pub fn build_square_root<'ctx, 'this>(
 
             let shift_amount = block.append_op_result(arith::addi(num_bits, k1, location))?;
 
-            let parity_mask = block.append_op_result(arith::constant(
-                context,
-                IntegerAttribute::new(i64_ty, -2).into(),
-                location,
-            ))?;
+            let parity_mask = block.const_int_from_type(context, location, -2, i64_ty)?;
             let shift_amount =
                 block.append_op_result(arith::andi(shift_amount, parity_mask, location))?;
 
-            let k0 = block.append_op_result(arith::constant(
-                context,
-                IntegerAttribute::new(i64_ty, 0).into(),
-                location,
-            ))?;
+            let k0 = block.const_int_from_type(context, location, 0, i64_ty)?;
             let result = block.append_op_result(scf::r#while(
                 &[k0, shift_amount],
                 &[i64_ty, i64_ty],
@@ -426,11 +403,7 @@ pub fn build_square_root<'ctx, 'this>(
                             .build()?,
                     )?;
 
-                    let k2 = block.append_op_result(arith::constant(
-                        context,
-                        IntegerAttribute::new(i64_ty, 2).into(),
-                        location,
-                    ))?;
+                    let k2 = block.const_int_from_type(context, location, 2, i64_ty)?;
 
                     let shift_amount = block.append_op_result(arith::subi(
                         block.argument(1)?.into(),
@@ -511,12 +484,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         &info.branch_signatures()[0].vars[1].ty,
     )?;
 
-    let const_max = entry.append_op_result(arith::constant(
-        context,
-        Attribute::parse(context, &format!("{} : {}", u64::MAX, felt252_ty))
-            .ok_or(Error::ParseAttributeError)?,
-        location,
-    ))?;
+    let const_max = entry.const_int_from_type(context, location, u64::MAX, felt252_ty)?;
 
     let is_ule = entry.append_op_result(arith::cmpi(
         context,
