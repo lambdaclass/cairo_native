@@ -921,6 +921,7 @@ dependencies = [
  "pretty_assertions_sorted",
  "proptest",
  "rstest",
+ "salsa",
  "scarb-metadata",
  "scarb-ui",
  "sec1",
