@@ -181,7 +181,7 @@ pub fn build_k1_new<'ctx, 'this>(
         context,
         location,
         llvm::r#type::r#struct(context, &[i128_ty, i128_ty], false),
-        None,
+        Some(16),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -196,7 +196,7 @@ pub fn build_k1_new<'ctx, 'this>(
         context,
         location,
         llvm::r#type::r#struct(context, &[i128_ty, i128_ty], false),
-        None,
+        Some(16),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1762,7 +1762,7 @@ pub fn build_r1_new<'ctx, 'this>(
         context,
         location,
         llvm::r#type::r#struct(context, &[i128_ty, i128_ty], false),
-        None,
+        Some(16),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1777,7 +1777,7 @@ pub fn build_r1_new<'ctx, 'this>(
         context,
         location,
         llvm::r#type::r#struct(context, &[i128_ty, i128_ty], false),
-        None,
+        Some(16),
     )?;
     entry.append_operation(llvm::store(
         context,
