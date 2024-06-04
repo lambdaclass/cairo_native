@@ -200,13 +200,15 @@ fn invoke_dynamic(
     // The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
     // so we must always allocate it in case it needs it, regardless of whether it's passed
     // as an argument to the entry point or not.
-    let mut syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
-        let syscall_handler = arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
-
+    let mut syscall_handler = syscall_handler
+        .as_mut()
+        .map(|syscall_handler| StarknetSyscallHandlerCallbacks::new(syscall_handler));
+    let previous_syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
+        let previous_syscall_handler = SYSCALL_HANDLER_VTABLE.get();
         let syscall_handler_ptr = std::ptr::addr_of!(*syscall_handler) as *mut ();
         SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
 
-        syscall_handler
+        previous_syscall_handler
     });
 
     // Generate argument list.
@@ -228,7 +230,7 @@ fn invoke_dynamic(
 
                 invoke_data.push_aligned(
                     get_integer_layout(64).align(),
-                    &[*syscall_handler as *mut _ as u64],
+                    &[syscall_handler as *mut _ as u64],
                 );
             }
             type_info => invoke_data
@@ -258,6 +260,11 @@ fn invoke_dynamic(
             invoke_data.invoke_data().len(),
             ret_registers.as_mut_ptr(),
         );
+    }
+
+    // If the syscall handler was changed, then reset the previous one.
+    if let Some(previous_syscall_handler) = previous_syscall_handler {
+        SYSCALL_HANDLER_VTABLE.set(previous_syscall_handler);
     }
 
     // Parse final gas.
