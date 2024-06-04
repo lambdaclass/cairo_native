@@ -864,6 +864,9 @@
 <a href="#862" id="862">862</a>
 <a href="#863" id="863">863</a>
 <a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -1178,15 +1181,20 @@
     </span><span class="kw">let </span>return_value = function_signature
         .ret_types
         .last()
-        .map(|ret_type| {
-            parse_result(
-                ret_type,
-                registry,
-                return_ptr,
-                ret_registers,
-                <span class="comment">// TODO: Consider returning an Option&lt;JitValue&gt; as return_value instead
-                // As cairo functions can not have a return value
-            </span>)
+        .and_then(|ret_type| {
+            <span class="kw">let </span>type_info = registry.get_type(ret_type).unwrap();
+            <span class="kw">if </span>type_info.is_builtin() {
+                <span class="prelude-val">None
+            </span>} <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>(parse_result(
+                    ret_type,
+                    registry,
+                    return_ptr,
+                    ret_registers,
+                    <span class="comment">// TODO: Consider returning an Option&lt;JitValue&gt; as return_value instead
+                    // As cairo functions can not have a return value
+                </span>))
+            }
         })
         .unwrap_or_else(|| {
             <span class="prelude-val">Ok</span>(JitValue::Struct {
@@ -1712,19 +1720,17 @@
         },
         CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         CoreTypeConcrete::Snapshot(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(JitValue::Struct {
-            fields: Vec::new(),
-            debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
-        }),
-        CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        <span class="comment">// Builtins are handled before the call to parse_result
+        // and should not be reached here.
+        </span>CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+        CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+        CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+        CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+        CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+        CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+        CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+        CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+        CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
         <span class="kw">_ </span>=&gt; <span class="macro">todo!</span>(),
     }
 }
