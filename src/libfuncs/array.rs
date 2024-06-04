@@ -28,7 +28,7 @@ use melior::{
         ods,
     },
     ir::{
-        attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute},
+        attribute::{DenseI32ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
         Block, Location, Value, ValueLike,
     },
@@ -98,62 +98,14 @@ pub fn build_new<'ctx, 'this>(
     )?;
 
     let ptr = entry
-        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
-        .result(0)?
-        .into();
-    let k0 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
 
-    let value = entry
-        .append_operation(llvm::undef(array_ty, location))
-        .result(0)?
-        .into();
-    let value = entry
-        .append_operation(llvm::insert_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            ptr,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let value = entry
-        .append_operation(llvm::insert_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            k0,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let value = entry
-        .append_operation(llvm::insert_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[2]),
-            k0,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let value = entry
-        .append_operation(llvm::insert_value(
-            context,
-            value,
-            DenseI64ArrayAttribute::new(context, &[3]),
-            k0,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let k0 = entry.const_int(context, location, 0, 32)?;
+    let value = entry.append_op_result(llvm::undef(array_ty, location))?;
+    let value = entry.insert_value(context, location, value, ptr, 0)?;
+    let value = entry.insert_value(context, location, value, k0, 1)?;
+    let value = entry.insert_value(context, location, value, k0, 2)?;
+    let value = entry.insert_value(context, location, value, k0, 3)?;
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())
@@ -202,16 +154,13 @@ pub fn build_append<'ctx, 'this>(
     let array_capacity =
         entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 3)?;
 
-    let has_tail_space = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Ult,
-            array_end,
-            array_capacity,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let has_tail_space = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Ult,
+        array_end,
+        array_capacity,
+        location,
+    ))?;
 
     let handle_block = helper.append_block(Block::new(&[]));
     let memmove_block = helper.append_block(Block::new(&[]));
@@ -233,16 +182,13 @@ pub fn build_append<'ctx, 'this>(
         let array_start =
             handle_block.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
 
-        let has_head_space = handle_block
-            .append_operation(arith::cmpi(
-                context,
-                CmpiPredicate::Ne,
-                array_start,
-                k0,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let has_head_space = handle_block.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Ne,
+            array_start,
+            k0,
+            location,
+        ))?;
         handle_block.append_operation(cf::cond_br(
             context,
             has_head_space,
@@ -258,50 +204,35 @@ pub fn build_append<'ctx, 'this>(
         let array_start =
             memmove_block.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
 
-        let start_offset = memmove_block
-            .append_operation(arith::extui(
-                array_start,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-        let start_offset = memmove_block
-            .append_operation(arith::muli(start_offset, elem_stride, location))
-            .result(0)?
-            .into();
+        let start_offset = memmove_block.append_op_result(arith::extui(
+            array_start,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
+        let start_offset =
+            memmove_block.append_op_result(arith::muli(start_offset, elem_stride, location))?;
 
         let dst_ptr =
             memmove_block.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
-        let src_ptr = memmove_block
-            .append_operation(llvm::get_element_ptr_dynamic(
-                context,
-                dst_ptr,
-                &[start_offset],
-                IntegerType::new(context, 8).into(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let src_ptr = memmove_block.append_op_result(llvm::get_element_ptr_dynamic(
+            context,
+            dst_ptr,
+            &[start_offset],
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
 
-        let array_len = memmove_block
-            .append_operation(arith::subi(array_end, array_start, location))
-            .result(0)?
-            .into();
-        let memmove_len = memmove_block
-            .append_operation(arith::extui(
-                array_len,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let array_len =
+            memmove_block.append_op_result(arith::subi(array_end, array_start, location))?;
+        let memmove_len = memmove_block.append_op_result(arith::extui(
+            array_len,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
 
-        let memmove_len = memmove_block
-            .append_operation(arith::muli(memmove_len, elem_stride, location))
-            .result(0)?
-            .into();
+        let memmove_len =
+            memmove_block.append_op_result(arith::muli(memmove_len, elem_stride, location))?;
         memmove_block.append_operation(
             ods::llvm::intr_memmove(
                 context,
@@ -328,49 +259,31 @@ pub fn build_append<'ctx, 'this>(
 
         // Array allocation growth formula:
         //   new_len = max(8, old_len + min(1024, 2 * old_len));
-        let new_capacity = realloc_block
-            .append_operation(arith::shli(array_end, k1, location))
-            .result(0)?
-            .into();
-        let new_capacity = realloc_block
-            .append_operation(arith::minui(new_capacity, k1024, location))
-            .result(0)?
-            .into();
-        let new_capacity = realloc_block
-            .append_operation(arith::addi(new_capacity, array_end, location))
-            .result(0)?
-            .into();
-        let new_capacity = realloc_block
-            .append_operation(arith::maxui(new_capacity, k8, location))
-            .result(0)?
-            .into();
+        let new_capacity = realloc_block.append_op_result(arith::shli(array_end, k1, location))?;
+        let new_capacity =
+            realloc_block.append_op_result(arith::minui(new_capacity, k1024, location))?;
+        let new_capacity =
+            realloc_block.append_op_result(arith::addi(new_capacity, array_end, location))?;
+        let new_capacity =
+            realloc_block.append_op_result(arith::maxui(new_capacity, k8, location))?;
 
         let realloc_size = {
-            let new_capacity = realloc_block
-                .append_operation(arith::extui(
-                    new_capacity,
-                    IntegerType::new(context, 64).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
-            realloc_block
-                .append_operation(arith::muli(new_capacity, elem_stride, location))
-                .result(0)?
-                .into()
+            let new_capacity = realloc_block.append_op_result(arith::extui(
+                new_capacity,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))?;
+            realloc_block.append_op_result(arith::muli(new_capacity, elem_stride, location))?
         };
 
         let ptr =
             realloc_block.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
-        let ptr = realloc_block
-            .append_operation(ReallocBindingsMeta::realloc(
-                context,
-                ptr,
-                realloc_size,
-                location,
-            ))
-            .result(0)?
-            .into();
+        let ptr = realloc_block.append_op_result(ReallocBindingsMeta::realloc(
+            context,
+            ptr,
+            realloc_size,
+            location,
+        ))?;
 
         // No need to memmove, guaranteed by the fact that if we needed to memmove we'd have gone
         // through the memmove block instead of reallocating.
@@ -398,29 +311,20 @@ pub fn build_append<'ctx, 'this>(
             2,
         )?;
 
-        let offset = append_block
-            .append_operation(arith::extui(
-                array_end,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-        let offset = append_block
-            .append_operation(arith::muli(offset, elem_stride, location))
-            .result(0)?
-            .into();
-        let ptr = append_block
-            .append_operation(llvm::get_element_ptr_dynamic(
-                context,
-                ptr,
-                &[offset],
-                IntegerType::new(context, 8).into(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let offset = append_block.append_op_result(arith::extui(
+            array_end,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
+        let offset = append_block.append_op_result(arith::muli(offset, elem_stride, location))?;
+        let ptr = append_block.append_op_result(llvm::get_element_ptr_dynamic(
+            context,
+            ptr,
+            &[offset],
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
 
         append_block.store(
             context,
@@ -430,10 +334,7 @@ pub fn build_append<'ctx, 'this>(
             Some(elem_layout.align()),
         );
 
-        let array_len = append_block
-            .append_operation(arith::addi(array_end, k1, location))
-            .result(0)?
-            .into();
+        let array_len = append_block.append_op_result(arith::addi(array_end, k1, location))?;
         let value = append_block.insert_value(
             context,
             location,
@@ -472,10 +373,7 @@ pub fn build_len<'ctx, 'this>(
     let array_start = entry.extract_value(context, location, array_value, len_ty, 1)?;
     let array_end = entry.extract_value(context, location, array_value, len_ty, 2)?;
 
-    let array_len = entry
-        .append_operation(arith::subi(array_end, array_start, location))
-        .result(0)?
-        .into();
+    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
 
     entry.append_operation(helper.br(0, &[array_len], location));
     Ok(())
@@ -519,20 +417,14 @@ pub fn build_get<'ctx, 'this>(
     let array_start = entry.extract_value(context, location, value, len_ty, 1)?;
     let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
 
-    let array_len = entry
-        .append_operation(arith::subi(array_end, array_start, location))
-        .result(0)?
-        .into();
-    let is_valid = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Ult,
-            index,
-            array_len,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
+    let is_valid = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Ult,
+        index,
+        array_len,
+        location,
+    ))?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let error_block = helper.append_block(Block::new(&[]));
@@ -550,58 +442,40 @@ pub fn build_get<'ctx, 'this>(
         let ptr = valid_block.extract_value(context, location, value, ptr_ty, 0)?;
 
         let index = {
-            let array_start = valid_block
-                .append_operation(arith::extui(
-                    array_start,
-                    IntegerType::new(context, 64).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
-            let index = valid_block
-                .append_operation(arith::extui(
-                    index,
-                    IntegerType::new(context, 64).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
-            valid_block
-                .append_operation(arith::addi(array_start, index, location))
-                .result(0)?
-                .into()
+            let array_start = valid_block.append_op_result(arith::extui(
+                array_start,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))?;
+            let index = valid_block.append_op_result(arith::extui(
+                index,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))?;
+            valid_block.append_op_result(arith::addi(array_start, index, location))?
         };
 
         let elem_stride = valid_block.const_int(context, location, elem_stride, 64)?;
-        let elem_offset = valid_block
-            .append_operation(arith::muli(elem_stride, index, location))
-            .result(0)?
-            .into();
+        let elem_offset =
+            valid_block.append_op_result(arith::muli(elem_stride, index, location))?;
 
-        let elem_ptr = valid_block
-            .append_operation(llvm::get_element_ptr_dynamic(
-                context,
-                ptr,
-                &[elem_offset],
-                IntegerType::new(context, 8).into(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let elem_ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
+            context,
+            ptr,
+            &[elem_offset],
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
 
         let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
 
-        let target_ptr = valid_block
-            .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
-            .result(0)?
-            .into();
-        let target_ptr = valid_block
-            .append_operation(ReallocBindingsMeta::realloc(
-                context, target_ptr, elem_size, location,
-            ))
-            .result(0)?
-            .into();
+        let target_ptr = valid_block.append_op_result(
+            ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+        )?;
+        let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
+            context, target_ptr, elem_size, location,
+        ))?;
         assert_nonnull(
             context,
             valid_block,
@@ -653,16 +527,13 @@ pub fn build_pop_front<'ctx, 'this>(
     let array_start = entry.extract_value(context, location, value, len_ty, 1)?;
     let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
 
-    let is_empty = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Eq,
-            array_start,
-            array_end,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let is_empty = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        array_start,
+        array_end,
+        location,
+    ))?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let empty_block = helper.append_block(Block::new(&[]));
@@ -680,40 +551,28 @@ pub fn build_pop_front<'ctx, 'this>(
         let ptr = valid_block.extract_value(context, location, value, ptr_ty, 0)?;
 
         let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
-        let elem_offset = valid_block
-            .append_operation(arith::extui(
-                array_start,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-        let elem_offset = valid_block
-            .append_operation(arith::muli(elem_offset, elem_size, location))
-            .result(0)?
-            .into();
-        let ptr = valid_block
-            .append_operation(llvm::get_element_ptr_dynamic(
-                context,
-                ptr,
-                &[elem_offset],
-                IntegerType::new(context, 8).into(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let elem_offset = valid_block.append_op_result(arith::extui(
+            array_start,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
+        let elem_offset =
+            valid_block.append_op_result(arith::muli(elem_offset, elem_size, location))?;
+        let ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
+            context,
+            ptr,
+            &[elem_offset],
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
 
-        let target_ptr = valid_block
-            .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
-            .result(0)?
-            .into();
-        let target_ptr = valid_block
-            .append_operation(ReallocBindingsMeta::realloc(
-                context, target_ptr, elem_size, location,
-            ))
-            .result(0)?
-            .into();
+        let target_ptr = valid_block.append_op_result(
+            ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+        )?;
+        let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
+            context, target_ptr, elem_size, location,
+        ))?;
         assert_nonnull(
             context,
             valid_block,
@@ -725,10 +584,7 @@ pub fn build_pop_front<'ctx, 'this>(
         valid_block.memcpy(context, location, ptr, target_ptr, elem_size);
 
         let k1 = valid_block.const_int(context, location, 1, 32)?;
-        let new_start = valid_block
-            .append_operation(arith::addi(array_start, k1, location))
-            .result(0)?
-            .into();
+        let new_start = valid_block.append_op_result(arith::addi(array_start, k1, location))?;
         let value = valid_block.insert_value(context, location, value, new_start, 1)?;
 
         valid_block.append_operation(helper.br(0, &[value, target_ptr], location));
@@ -797,16 +653,13 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
 
     let array_start = entry.extract_value(context, location, value, len_ty, 1)?;
     let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
-    let is_empty = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Eq,
-            array_start,
-            array_end,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let is_empty = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        array_start,
+        array_end,
+        location,
+    ))?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let empty_block = helper.append_block(Block::new(&[]));
@@ -822,48 +675,33 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
 
     {
         let k1 = valid_block.const_int(context, location, 1, 32)?;
-        let new_end = valid_block
-            .append_operation(arith::subi(array_end, k1, location))
-            .result(0)?
-            .into();
+        let new_end = valid_block.append_op_result(arith::subi(array_end, k1, location))?;
 
         let ptr = valid_block.extract_value(context, location, value, ptr_ty, 0)?;
 
         let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
-        let elem_offset = valid_block
-            .append_operation(arith::extui(
-                new_end,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
-        let elem_offset = valid_block
-            .append_operation(arith::muli(elem_offset, elem_size, location))
-            .result(0)?
-            .into();
-        let ptr = valid_block
-            .append_operation(llvm::get_element_ptr_dynamic(
-                context,
-                ptr,
-                &[elem_offset],
-                IntegerType::new(context, 8).into(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let elem_offset = valid_block.append_op_result(arith::extui(
+            new_end,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
+        let elem_offset =
+            valid_block.append_op_result(arith::muli(elem_offset, elem_size, location))?;
+        let ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
+            context,
+            ptr,
+            &[elem_offset],
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
 
-        let target_ptr = valid_block
-            .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
-            .result(0)?
-            .into();
-        let target_ptr = valid_block
-            .append_operation(ReallocBindingsMeta::realloc(
-                context, target_ptr, elem_size, location,
-            ))
-            .result(0)?
-            .into();
+        let target_ptr = valid_block.append_op_result(
+            ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+        )?;
+        let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
+            context, target_ptr, elem_size, location,
+        ))?;
         assert_nonnull(
             context,
             valid_block,
@@ -916,49 +754,31 @@ pub fn build_slice<'ctx, 'this>(
     let slice_since = entry.argument(2)?.into();
     let slice_length = entry.argument(3)?.into();
 
-    let slice_until = entry
-        .append_operation(arith::addi(slice_since, slice_length, location))
-        .result(0)?
-        .into();
+    let slice_until = entry.append_op_result(arith::addi(slice_since, slice_length, location))?;
 
     let array_start =
         entry.extract_value(context, location, entry.argument(1)?.into(), len_ty, 1)?;
     let array_end = entry.extract_value(context, location, entry.argument(1)?.into(), len_ty, 2)?;
 
-    let slice_since = entry
-        .append_operation(arith::addi(slice_since, array_start, location))
-        .result(0)?
-        .into();
-    let slice_until = entry
-        .append_operation(arith::addi(slice_until, array_start, location))
-        .result(0)?
-        .into();
+    let slice_since = entry.append_op_result(arith::addi(slice_since, array_start, location))?;
+    let slice_until = entry.append_op_result(arith::addi(slice_until, array_start, location))?;
 
-    let lhs_bound = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Uge,
-            slice_since,
-            array_start,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let rhs_bound = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Ule,
-            slice_until,
-            array_end,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let lhs_bound = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Uge,
+        slice_since,
+        array_start,
+        location,
+    ))?;
+    let rhs_bound = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Ule,
+        slice_until,
+        array_end,
+        location,
+    ))?;
 
-    let is_fully_contained = entry
-        .append_operation(arith::andi(lhs_bound, rhs_bound, location))
-        .result(0)?
-        .into();
+    let is_fully_contained = entry.append_op_result(arith::andi(lhs_bound, rhs_bound, location))?;
 
     let slice_block = helper.append_block(Block::new(&[]));
     let error_block = helper.append_block(Block::new(&[]));
@@ -975,14 +795,11 @@ pub fn build_slice<'ctx, 'this>(
     {
         let elem_size =
             slice_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
-        let dst_size = slice_block
-            .append_operation(arith::extui(
-                slice_length,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let dst_size = slice_block.append_op_result(arith::extui(
+            slice_length,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
         let dst_size = slice_block.append_op_result(arith::muli(dst_size, elem_size, location))?;
 
         let dst_ptr = slice_block.append_op_result(
@@ -1096,41 +913,29 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         entry.insert_value(context, location, array_container, array_len_value, 3)?;
 
     let ptr = entry
-        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
-        .result(0)?
-        .into();
+        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
 
     let field_size: Value = entry.const_int(context, location, field_stride, 64)?;
-    let array_len_value_i64 = entry
-        .append_operation(arith::extui(array_len_value, field_size.r#type(), location))
-        .result(0)?
-        .into();
-    let total_size = entry
-        .append_operation(arith::muli(field_size, array_len_value_i64, location))
-        .result(0)?
-        .into();
+    let array_len_value_i64 =
+        entry.append_op_result(arith::extui(array_len_value, field_size.r#type(), location))?;
+    let total_size =
+        entry.append_op_result(arith::muli(field_size, array_len_value_i64, location))?;
 
-    let ptr = entry
-        .append_operation(ReallocBindingsMeta::realloc(
-            context, ptr, total_size, location,
-        ))
-        .result(0)?
-        .into();
+    let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+        context, ptr, total_size, location,
+    ))?;
 
     for (i, _) in fields.iter().enumerate() {
         let value: Value = entry.extract_value(context, location, container, field_ty, i)?;
 
-        let target_ptr = entry
-            .append_operation(llvm::get_element_ptr(
-                context,
-                ptr,
-                DenseI32ArrayAttribute::new(context, &[i as i32]),
-                field_ty,
-                pointer(context, 0),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let target_ptr = entry.append_op_result(llvm::get_element_ptr(
+            context,
+            ptr,
+            DenseI32ArrayAttribute::new(context, &[i as i32]),
+            field_ty,
+            pointer(context, 0),
+            location,
+        ))?;
 
         entry.store(context, location, target_ptr, value, None);
     }
@@ -1154,16 +959,13 @@ fn assert_nonnull<'ctx, 'this>(
         ods::llvm::ptrtoint(context, IntegerType::new(context, 64).into(), ptr, location).into(),
     )?;
 
-    let ptr_is_not_null = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Ne,
-            ptr_value,
-            k0,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let ptr_is_not_null = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Ne,
+        ptr_value,
+        k0,
+        location,
+    ))?;
 
     entry.append_operation(cf::assert(context, ptr_is_not_null, msg, location));
     Ok(())
