@@ -327,15 +327,20 @@ fn invoke_dynamic(
     let return_value = function_signature
         .ret_types
         .last()
-        .map(|ret_type| {
-            parse_result(
-                ret_type,
-                registry,
-                return_ptr,
-                ret_registers,
-                // TODO: Consider returning an Option<JitValue> as return_value instead
-                // As cairo functions can not have a return value
-            )
+        .and_then(|ret_type| {
+            let type_info = registry.get_type(ret_type).unwrap();
+            if type_info.is_builtin() {
+                None
+            } else {
+                Some(parse_result(
+                    ret_type,
+                    registry,
+                    return_ptr,
+                    ret_registers,
+                    // TODO: Consider returning an Option<JitValue> as return_value instead
+                    // As cairo functions can not have a return value
+                ))
+            }
         })
         .unwrap_or_else(|| {
             Ok(JitValue::Struct {
@@ -861,19 +866,17 @@ fn parse_result(
         },
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::Snapshot(_) => todo!(),
-        CoreTypeConcrete::Bitwise(_) => todo!(),
-        CoreTypeConcrete::Const(_) => todo!(),
-        CoreTypeConcrete::EcOp(_) => todo!(),
-        CoreTypeConcrete::GasBuiltin(_) => Ok(JitValue::Struct {
-            fields: Vec::new(),
-            debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
-        }),
-        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-        CoreTypeConcrete::RangeCheck(_) => todo!(),
-        CoreTypeConcrete::Pedersen(_) => todo!(),
-        CoreTypeConcrete::Poseidon(_) => todo!(),
-        CoreTypeConcrete::SegmentArena(_) => todo!(),
-        CoreTypeConcrete::BoundedInt(_) => todo!(),
+        // Builtins are handled before the call to parse_result
+        // and should not be reached here.
+        CoreTypeConcrete::Bitwise(_) => unreachable!(),
+        CoreTypeConcrete::Const(_) => unreachable!(),
+        CoreTypeConcrete::EcOp(_) => unreachable!(),
+        CoreTypeConcrete::GasBuiltin(_) => unreachable!(),
+        CoreTypeConcrete::BuiltinCosts(_) => unreachable!(),
+        CoreTypeConcrete::RangeCheck(_) => unreachable!(),
+        CoreTypeConcrete::Pedersen(_) => unreachable!(),
+        CoreTypeConcrete::Poseidon(_) => unreachable!(),
+        CoreTypeConcrete::SegmentArena(_) => unreachable!(),
         _ => todo!(),
     }
 }
