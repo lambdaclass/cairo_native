@@ -1032,6 +1032,15 @@
 <a href="#1030" id="1030">1030</a>
 <a href="#1031" id="1031">1031</a>
 <a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -1076,6 +1085,7 @@
 <span class="kw">pub mod </span>r#box;
 <span class="kw">pub mod </span>builtin_costs;
 <span class="kw">pub mod </span>bytes31;
+<span class="kw">pub mod </span>coupon;
 <span class="kw">pub mod </span>ec_op;
 <span class="kw">pub mod </span>ec_point;
 <span class="kw">pub mod </span>ec_state;
@@ -1440,7 +1450,13 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Coupon(info) =&gt; <span class="self">self</span>::coupon::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
         }
     }
 
@@ -1454,6 +1470,7 @@
                 | CoreTypeConcrete::RangeCheck(<span class="kw">_</span>)
                 | CoreTypeConcrete::Pedersen(<span class="kw">_</span>)
                 | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
+                | CoreTypeConcrete::Coupon(<span class="kw">_</span>)
                 | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>))
                 | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>)
         )
@@ -1525,7 +1542,7 @@
             CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>)) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
         }
     }
 
@@ -1539,7 +1556,9 @@
             | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
             | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             <span class="comment">// Other builtins:
-            </span>CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) | CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            </span>CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>)
+            | CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>)
+            | CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 
             <span class="comment">// Normal types:
             </span>CoreTypeConcrete::Array(<span class="kw">_</span>)
@@ -1593,7 +1612,6 @@
                 type_info.is_zst(registry)
             }
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 
@@ -1699,7 +1717,7 @@
             CoreTypeConcrete::Const(const_type) =&gt; {
                 registry.get_type(<span class="kw-2">&amp;</span>const_type.inner_ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?
             </span>}
-            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; Layout::new::&lt;()&gt;(),
         }
         .pad_to_align())
     }
@@ -1774,7 +1792,7 @@
                 .get_type(<span class="kw-2">&amp;</span>info.inner_ty)
                 .unwrap()
                 .is_memory_allocated(registry),
-            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
         }
     }
 

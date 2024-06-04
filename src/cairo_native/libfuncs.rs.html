@@ -756,6 +756,12 @@
 <a href="#754" id="754">754</a>
 <a href="#755" id="755">755</a>
 <a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -786,6 +792,7 @@
 <span class="kw">pub mod </span>bytes31;
 <span class="kw">pub mod </span>cast;
 <span class="kw">pub mod </span>r#const;
+<span class="kw">pub mod </span>coupon;
 <span class="kw">pub mod </span>debug;
 <span class="kw">pub mod </span>drop;
 <span class="kw">pub mod </span>dup;
@@ -974,14 +981,19 @@
             <span class="self">Self</span>::UnwrapNonZero(info) =&gt; <span class="self">self</span>::unwrap_non_zero::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            <span class="self">Self</span>::Coupon(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            <span class="self">Self</span>::CouponCall(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::Coupon(info) =&gt; {
+                <span class="self">self</span>::coupon::build(context, registry, entry, location, helper, metadata, info)
+            }
+            <span class="self">Self</span>::CouponCall(info) =&gt; <span class="self">self</span>::function_call::build(
+                context, registry, entry, location, helper, metadata, info,
+            ),
         }
     }
 
     <span class="kw">fn </span>is_function_call(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>FunctionId&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             CoreConcreteLibfunc::FunctionCall(info) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>info.function.id),
+            CoreConcreteLibfunc::CouponCall(info) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>info.function.id),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
