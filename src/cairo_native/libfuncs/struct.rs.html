@@ -121,26 +121,10 @@
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Struct-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
+<span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
 <span class="kw">use crate</span>::{
     error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
 };
@@ -156,7 +140,7 @@
 };
 <span class="kw">use </span>melior::{
     dialect::llvm,
-    ir::{attribute::DenseI64ArrayAttribute, Block, Location, Value},
+    ir::{Block, Location, Value},
     Context,
 };
 
@@ -227,18 +211,9 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt; {
     <span class="kw">let </span>struct_ty = registry.build_type(context, helper, registry, metadata, struct_type)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span><span class="kw-2">mut </span>acc = entry.append_operation(llvm::undef(struct_ty, location));
-    <span class="kw">for </span>(i, field) <span class="kw">in </span>fields.iter().enumerate() {
-        acc = entry.append_operation(llvm::insert_value(
-            context,
-            acc.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[i <span class="kw">as _</span>]),
-            <span class="kw-2">*</span>field,
-            location,
-        ));
-    }
+    <span class="kw">let </span>acc = entry.append_operation(llvm::undef(struct_ty, location));
 
-    <span class="prelude-val">Ok</span>(acc.result(<span class="number">0</span>)<span class="question-mark">?</span>.into())
+    entry.insert_values(context, location, acc.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(), fields)
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `struct_deconstruct` libfunc.
@@ -258,16 +233,7 @@
         <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>;
         <span class="kw">let </span>field_ty = type_info.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>value = entry
-            .append_operation(llvm::extract_value(
-                context,
-                container,
-                DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[i.try_into()<span class="question-mark">?</span>]),
-                field_ty,
-                location,
-            ))
-            .result(<span class="number">0</span>)<span class="question-mark">?
-            </span>.into();
+        <span class="kw">let </span>value = entry.extract_value(context, location, container, field_ty, i)<span class="question-mark">?</span>;
 
         fields.push(value);
     }
