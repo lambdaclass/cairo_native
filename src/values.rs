@@ -668,8 +668,7 @@ impl JitValue {
                             as *mut _,
                     )
                     .unwrap();
-                    let payload =
-                        Self::from_jit(payload_ptr, &info.variants[tag_value], registry);
+                    let payload = Self::from_jit(payload_ptr, &info.variants[tag_value], registry);
 
                     Self::Enum {
                         tag: tag_value,

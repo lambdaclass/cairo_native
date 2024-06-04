@@ -532,9 +532,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | Self::Nullable(_) => false,
 
             // Containers:
-            Self::NonZero(info)
-            | Self::Uninitialized(info)
-            | Self::Snapshot(info) => {
+            Self::NonZero(info) | Self::Uninitialized(info) | Self::Snapshot(info) => {
                 let type_info = registry.get_type(&info.ty).unwrap();
                 type_info.is_zst(registry)
             }
@@ -594,9 +592,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
             Self::Nullable(_) => Layout::new::<*mut ()>(),
             Self::RangeCheck(_) => Layout::new::<u64>(),
-            Self::Uninitialized(info) => {
-                registry.get_type(&info.ty)?.layout(registry)?
-            }
+            Self::Uninitialized(info) => registry.get_type(&info.ty)?.layout(registry)?,
             Self::Enum(info) => {
                 let tag_layout =
                     get_integer_layout(info.variants.len().next_power_of_two().trailing_zeros());
@@ -662,9 +658,7 @@ impl TypeBuilder for CoreTypeConcrete {
                     .try_into()
                     .expect("should always fit u32"),
             ),
-            Self::Const(const_type) => {
-                registry.get_type(&const_type.inner_ty)?.layout(registry)?
-            }
+            Self::Const(const_type) => registry.get_type(&const_type.inner_ty)?.layout(registry)?,
             Self::Coupon(_) => todo!(),
         }
         .pad_to_align())
