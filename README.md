@@ -71,6 +71,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `call_contract_syscall` (StarkNet)
 1. `class_hash_to_felt252` (StarkNet)
 1. `class_hash_try_from_felt252` (StarkNet)
+1. `const_as_box`
 1. `contract_address_const` (StarkNet)
 1. `contract_address_to_felt252` (StarkNet)
 1. `contract_address_try_from_felt252` (StarkNet)
@@ -134,6 +135,16 @@ This is a list of the current progress implementing each **libfunc**.
 1. `rename`
 1. `replace_class_syscall` (StarkNet)
 1. `revoke_ap_tracking`
+1. `secp256k1_add_syscall` (StarkNet)
+1. `secp256k1_get_point_from_x_syscall` (StarkNet)
+1. `secp256k1_get_xy_syscall` (StarkNet)
+1. `secp256k1_mul_syscall` (StarkNet)
+1. `secp256k1_new_syscall` (StarkNet)
+1. `secp256r1_add_syscall` (StarkNet)
+1. `secp256r1_get_point_from_x_syscall` (StarkNet)
+1. `secp256r1_get_xy_syscall` (StarkNet)
+1. `secp256r1_mul_syscall` (StarkNet)
+1. `secp256r1_new_syscall` (StarkNet)
 1. `send_message_to_l1_syscall` (StarkNet)
 1. `snapshot_take` (1)
 1. `span_from_tuple`
@@ -214,18 +225,7 @@ This is a list of the current progress implementing each **libfunc**.
 
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
-
-1. `const_as_box`
-1. `secp256k1_add_syscall` (StarkNet)
-1. `secp256k1_get_point_from_x_syscall` (StarkNet)
-1. `secp256k1_get_xy_syscall` (StarkNet)
-1. `secp256k1_mul_syscall` (StarkNet)
-1. `secp256k1_new_syscall` (StarkNet)
-1. `secp256r1_add_syscall` (StarkNet)
-1. `secp256r1_get_point_from_x_syscall` (StarkNet)
-1. `secp256r1_get_xy_syscall` (StarkNet)
-1. `secp256r1_mul_syscall` (StarkNet)
-1. `secp256r1_new_syscall` (StarkNet)
+1. coupon
 </details>
 
 <details>
@@ -262,7 +262,7 @@ Footnotes on the libfuncs list:
 
 - Linux or macOS (aarch64 included) only for now
 - LLVM 18 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/), on macOS you can use brew
-- Rust 1.76.0
+- Rust 1.78.0 or later, since we make use of the u128 [abi change](https://blog.rust-lang.org/2024/03/30/i128-layout-update.html).
 - Git
 
 ### Setup
@@ -801,6 +801,31 @@ cairo-native-test ./cairo-tests/
 ```
 
 This will run all the tests (functions marked with the `#[test]` attribute).
+
+# scarb-native-test cli tool
+
+This tool mimics the `scarb test` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
+You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+
+```bash
+$ scarb-native-test --help
+Compiles all packages from a Scarb project matching `packages_filter` and
+runs all functions marked with `#[test]`. Exits with 1 if the compilation
+or run fails, otherwise 0.
+
+Usage: scarb-native-test [OPTIONS]
+
+Options:
+  -p, --package <SPEC>         Packages to run this command on, can be a concrete package name (`foobar`) or a prefix glob (`foo*`) [env: SCARB_PACKAGES_FILTER=] [default: *]
+  -w, --workspace              Run for all packages in the workspace
+  -f, --filter <FILTER>        Run only tests whose name contain FILTER [default: ]
+      --include-ignored        Run ignored and not ignored tests
+      --ignored                Run only ignored tests
+      --run-mode <RUN_MODE>    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
+  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                   Print help
+  -V, --version                Print version
+```
 
 ## Debugging Tips
 
