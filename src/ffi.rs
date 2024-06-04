@@ -3,7 +3,6 @@
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
 //! APIs that are missing from melior.
 
-use crate::error::Error as CompileError;
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -317,7 +316,7 @@ pub fn get_target_triple() -> String {
 /// Gets the data layout reprrsentation as a string, to be given to the MLIR module.
 /// LLVM uses this to know the proper alignments for the given sizes, etc.
 /// This function gets the data layout of the host target triple.
-pub fn get_data_layout_rep() -> Result<String, CompileError> {
+pub fn get_data_layout_rep() -> Result<String, crate::error::Error> {
     unsafe {
         let mut null = null_mut();
         let error_buffer = addr_of_mut!(null);
@@ -335,7 +334,7 @@ pub fn get_data_layout_rep() -> Result<String, CompileError> {
             let err = error.to_string_lossy().to_string();
             tracing::error!("error getting target triple: {}", err);
             LLVMDisposeMessage(*error_buffer);
-            Err(ErrorImpl::LLVMCompileError(err))?;
+            Err(crate::error::Error::LLVMCompileError(err))?;
         }
         if !(*error_buffer).is_null() {
             LLVMDisposeMessage(*error_buffer);
