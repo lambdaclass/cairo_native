@@ -785,7 +785,7 @@
 <span class="kw">pub mod </span>branch_align;
 <span class="kw">pub mod </span>bytes31;
 <span class="kw">pub mod </span>cast;
-<span class="kw">pub mod </span>const_libfunc;
+<span class="kw">pub mod </span>r#const;
 <span class="kw">pub mod </span>debug;
 <span class="kw">pub mod </span>drop;
 <span class="kw">pub mod </span>dup;
@@ -878,7 +878,7 @@
             <span class="self">Self</span>::Cast(selector) =&gt; <span class="self">self</span>::cast::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Const(selector) =&gt; <span class="self">self</span>::const_libfunc::build(
+            <span class="self">Self</span>::Const(selector) =&gt; <span class="self">self</span>::r#const::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             <span class="self">Self</span>::Debug(selector) =&gt; <span class="self">self</span>::debug::build(

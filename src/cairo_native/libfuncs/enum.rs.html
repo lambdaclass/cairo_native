@@ -680,6 +680,54 @@
 <a href="#678" id="678">678</a>
 <a href="#679" id="679">679</a>
 <a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -794,7 +842,8 @@
     )<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(<span class="kw">match </span>variant_tys.len() {
-        <span class="number">0 </span>| <span class="number">1 </span>=&gt; payload_value,
+        <span class="number">0 </span>=&gt; <span class="macro">panic!</span>(<span class="string">"attempt to initialize a zero-variant enum"</span>),
+        <span class="number">1 </span>=&gt; payload_value,
         <span class="kw">_ </span>=&gt; {
             <span class="kw">let </span>enum_ty = llvm::r#type::r#struct(
                 context,
@@ -907,7 +956,7 @@
     })
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `enum_init` libfunc.
+<span class="doccomment">/// Generate MLIR operations for the `enum_from_bounded_int` libfunc.
 </span><span class="kw">pub fn </span>build_from_bounded_int&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
@@ -980,7 +1029,22 @@
 
     <span class="kw">let </span>variant_ids = type_info.variants().unwrap();
     <span class="kw">match </span>variant_ids.len() {
-        <span class="number">0 </span>| <span class="number">1 </span>=&gt; {
+        <span class="number">0 </span>=&gt; {
+            <span class="comment">// The Cairo compiler will generate an enum match for enums without variants, so this
+            // case cannot be a compile-time error. We're assuming that even though it's been
+            // generated, it's just dead code and can be made into an assertion that always fails.
+
+            </span><span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
+            entry.append_operation(cf::assert(
+                context,
+                k0,
+                <span class="string">"attempt to match a zero-variant enum"</span>,
+                location,
+            ));
+
+            entry.append_operation(llvm::unreachable(location));
+        }
+        <span class="number">1 </span>=&gt; {
             entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
         }
         <span class="kw">_ </span>=&gt; {
@@ -1136,7 +1200,22 @@
         .expect(<span class="string">"enum should always have variants"</span>)
         .clone();
     <span class="kw">match </span>variant_ids.len() {
-        <span class="number">0 </span>| <span class="number">1 </span>=&gt; {
+        <span class="number">0 </span>=&gt; {
+            <span class="comment">// The Cairo compiler will generate an enum match for enums without variants, so this
+            // case cannot be a compile-time error. We're assuming that even though it's been
+            // generated, it's just dead code and can be made into an assertion that always fails.
+
+            </span><span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
+            entry.append_operation(cf::assert(
+                context,
+                k0,
+                <span class="string">"attempt to match a zero-variant enum"</span>,
+                location,
+            ));
+
+            entry.append_operation(llvm::unreachable(location));
+        }
+        <span class="number">1 </span>=&gt; {
             entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
         }
         <span class="kw">_ </span>=&gt; {
@@ -1274,7 +1353,10 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
-    <span class="kw">use </span><span class="kw">crate</span>::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
+    <span class="kw">use crate</span>::{
+        context::NativeContext,
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+    };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
     <span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -1358,6 +1440,20 @@
     </span><span class="kw">fn </span>enum_match() {
         run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">"match_a"</span>, <span class="kw-2">&amp;</span>[], Felt::from(<span class="number">5</span>).into());
         run_program_assert_output(<span class="kw-2">&amp;</span>ENUM_MATCH, <span class="string">"match_b"</span>, <span class="kw-2">&amp;</span>[], <span class="number">5u8</span>.into());
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>compile_enum_match_without_variants() {
+        <span class="kw">let </span>(<span class="kw">_</span>, program) = <span class="macro">load_cairo!</span> {
+            <span class="kw">enum </span>MyEnum {}
+
+            <span class="kw">fn </span>main(value: MyEnum) {
+                <span class="kw">match </span>value {}
+            }
+        };
+
+        <span class="kw">let </span>native_context = NativeContext::new();
+        native_context.compile(<span class="kw-2">&amp;</span>program, <span class="prelude-val">None</span>).unwrap();
     }
 }
 </code></pre></div></section></main></body></html>
