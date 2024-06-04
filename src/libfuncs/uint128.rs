@@ -243,11 +243,7 @@ pub fn build_is_zero<'ctx, 'this>(
 ) -> Result<()> {
     let arg0: Value = entry.argument(0)?.into();
 
-    let const_0 = entry.append_op_result(arith::constant(
-        context,
-        IntegerAttribute::new(arg0.r#type(), 0).into(),
-        location,
-    ))?;
+    let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
 
     let condition = entry.append_op_result(arith::cmpi(
         context,
@@ -332,11 +328,7 @@ pub fn build_square_root<'ctx, 'this>(
     let i64_ty = IntegerType::new(context, 64).into();
     let i128_ty = IntegerType::new(context, 128).into();
 
-    let k1 = entry.append_op_result(arith::constant(
-        context,
-        IntegerAttribute::new(i128_ty, 1).into(),
-        location,
-    ))?;
+    let k1 = entry.const_int_from_type(context, location, 1, i128_ty)?;
 
     let is_small = entry.append_op_result(arith::cmpi(
         context,
@@ -361,11 +353,7 @@ pub fn build_square_root<'ctx, 'this>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let k128 = entry.append_op_result(arith::constant(
-                context,
-                IntegerAttribute::new(i128_ty, 128).into(),
-                location,
-            ))?;
+            let k128 = entry.const_int_from_type(context, location, 128, i128_ty)?;
 
             let leading_zeros = block.append_op_result(
                 ods::llvm::intr_ctlz(
@@ -382,19 +370,11 @@ pub fn build_square_root<'ctx, 'this>(
 
             let shift_amount = block.append_op_result(arith::addi(num_bits, k1, location))?;
 
-            let parity_mask = block.append_op_result(arith::constant(
-                context,
-                IntegerAttribute::new(i128_ty, -2).into(),
-                location,
-            ))?;
+            let parity_mask = block.const_int_from_type(context, location, -2, i128_ty)?;
             let shift_amount =
                 block.append_op_result(arith::andi(shift_amount, parity_mask, location))?;
 
-            let k0 = block.append_op_result(arith::constant(
-                context,
-                IntegerAttribute::new(i128_ty, 0).into(),
-                location,
-            ))?;
+            let k0 = block.const_int_from_type(context, location, 0, i128_ty)?;
             let result = block.append_op_result(scf::r#while(
                 &[k0, shift_amount],
                 &[i128_ty, i128_ty],
@@ -451,11 +431,7 @@ pub fn build_square_root<'ctx, 'this>(
                             .build()?,
                     )?;
 
-                    let k2 = block.append_op_result(arith::constant(
-                        context,
-                        IntegerAttribute::new(i128_ty, 2).into(),
-                        location,
-                    ))?;
+                    let k2 = block.const_int_from_type(context, location, 2, i128_ty)?;
 
                     let shift_amount = block.append_op_result(arith::subi(
                         block.argument(1)?.into(),
@@ -555,11 +531,7 @@ pub fn build_guarantee_mul<'ctx, 'this>(
     let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
     let result_lo = entry.append_op_result(arith::trunci(result, origin_type, location))?;
 
-    let const_128 = entry.append_op_result(arith::constant(
-        context,
-        IntegerAttribute::new(target_type, 128).into(),
-        location,
-    ))?;
+    let const_128 = entry.const_int_from_type(context, location, 128, target_type)?;
 
     let result_hi = entry.append_op_result(arith::shrui(result, const_128, location))?;
     let result_hi = entry.append_op_result(arith::trunci(result_hi, origin_type, location))?;
