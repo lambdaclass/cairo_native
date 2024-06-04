@@ -28,6 +28,7 @@ pub mod branch_align;
 pub mod bytes31;
 pub mod cast;
 pub mod r#const;
+pub mod coupon;
 pub mod debug;
 pub mod drop;
 pub mod dup;
