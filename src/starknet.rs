@@ -1469,7 +1469,9 @@ pub(crate) mod handler {
             p: &Secp256k1Point,
             scalar: &U256,
         ) {
-            let result = ptr.secp256k1_mul(*p, *scalar, gas);
+            let scalar = *scalar;
+            let p = *p;
+            let result = ptr.secp256k1_mul(p, scalar, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
