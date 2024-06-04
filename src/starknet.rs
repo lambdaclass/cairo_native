@@ -1426,7 +1426,9 @@ pub(crate) mod handler {
             x: &U256,
             y: &U256,
         ) {
-            let result = ptr.secp256k1_new(*x, *y, gas);
+            let x = *x;
+            let y = *y;
+            let result = ptr.secp256k1_new(x, y, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1449,7 +1451,9 @@ pub(crate) mod handler {
             p0: &Secp256k1Point,
             p1: &Secp256k1Point,
         ) {
-            let result = ptr.secp256k1_add(*p0, *p1, gas);
+            let p0 = *p0;
+            let p1 = *p1;
+            let result = ptr.secp256k1_add(p0, p1, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1469,7 +1473,10 @@ pub(crate) mod handler {
             p: &Secp256k1Point,
             scalar: &U256,
         ) {
-            let result = ptr.secp256k1_mul(*p, *scalar, gas);
+            // Seems like it's important to dereference and create a local instead of at call site directly.
+            let scalar = *scalar;
+            let p = *p;
+            let result = ptr.secp256k1_mul(p, scalar, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1489,7 +1496,9 @@ pub(crate) mod handler {
             x: &U256,
             y_parity: &bool,
         ) {
-            let result = ptr.secp256k1_get_point_from_x(*x, *y_parity, gas);
+            let x = *x;
+            let y_parity = *y_parity;
+            let result = ptr.secp256k1_get_point_from_x(x, y_parity, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1511,7 +1520,8 @@ pub(crate) mod handler {
             gas: &mut u128,
             p: &Secp256k1Point,
         ) {
-            let result = ptr.secp256k1_get_xy(*p, gas);
+            let p = *p;
+            let result = ptr.secp256k1_get_xy(p, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1531,7 +1541,9 @@ pub(crate) mod handler {
             x: &U256,
             y: &U256,
         ) {
-            let result = ptr.secp256r1_new(*x, *y, gas);
+            let x = *x;
+            let y = *y;
+            let result = ptr.secp256r1_new(x, y, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1554,7 +1566,9 @@ pub(crate) mod handler {
             p0: &Secp256r1Point,
             p1: &Secp256r1Point,
         ) {
-            let result = ptr.secp256r1_add(*p0, *p1, gas);
+            let p0 = *p0;
+            let p1 = *p1;
+            let result = ptr.secp256r1_add(p0, p1, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1574,7 +1588,9 @@ pub(crate) mod handler {
             p: &Secp256r1Point,
             scalar: &U256,
         ) {
-            let result = ptr.secp256r1_mul(*p, *scalar, gas);
+            let scalar = *scalar;
+            let p = *p;
+            let result = ptr.secp256r1_mul(p, scalar, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1594,7 +1610,9 @@ pub(crate) mod handler {
             x: &U256,
             y_parity: &bool,
         ) {
-            let result = ptr.secp256r1_get_point_from_x(*x, *y_parity, gas);
+            let x = *x;
+            let y_parity = *y_parity;
+            let result = ptr.secp256r1_get_point_from_x(x, y_parity, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1616,7 +1634,8 @@ pub(crate) mod handler {
             gas: &mut u128,
             p: &Secp256r1Point,
         ) {
-            let result = ptr.secp256r1_get_xy(*p, gas);
+            let p = *p;
+            let result = ptr.secp256r1_get_xy(p, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {

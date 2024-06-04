@@ -242,8 +242,22 @@ pub fn build_const_type_value<'ctx, 'this>(
             _ => Err(Error::ConstDataMismatch),
         },
         CoreTypeConcrete::NonZero(_) => match &info.inner_data[..] {
-            [GenericArg::Type(_inner)] => {
-                todo!()
+            [GenericArg::Type(inner)] => {
+                let inner_type = registry.get_type(inner)?;
+                let const_inner_type = match inner_type {
+                    CoreTypeConcrete::Const(inner) => inner,
+                    _ => unreachable!(),
+                };
+
+                build_const_type_value(
+                    context,
+                    registry,
+                    entry,
+                    location,
+                    helper,
+                    metadata,
+                    const_inner_type,
+                )
             }
             _ => Err(Error::ConstDataMismatch),
         },
