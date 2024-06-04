@@ -1,4 +1,5 @@
-use crate::common::compare_inputless_program;
+use crate::common::{compare_contract, compare_inputless_program};
+use starknet_types_core::felt::Felt;
 use test_case::test_case;
 
 // Test cases for programs without input, it checks the outputs are correct automatically.
@@ -141,4 +142,11 @@ use test_case::test_case;
 #[test_case("tests/cases/brainfuck.cairo")]
 fn test_program_cases(program_path: &str) {
     compare_inputless_program(program_path)
+}
+
+// Contracts copied from the cairo-vm
+// https://github.com/lambdaclass/cairo-vm/tree/main/cairo_programs/cairo-1-contracts
+#[test_case("tests/cases/cairo_vm/contracts/fib.cairo", &[Felt::THREE, Felt::THREE, Felt::THREE])]
+fn test_contract_cases(program_path: &str, args: &[Felt]) {
+    compare_contract(program_path, args);
 }

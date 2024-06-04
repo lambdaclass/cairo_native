@@ -273,6 +273,11 @@ pub fn compare_inputless_program(program_path: &str) {
     .expect("compare error");
 }
 
+#[track_caller]
+pub fn compare_contract(program_path: &str, args: &[Felt]) {
+    todo!()
+}
+
 /// Runs the program using cairo-native JIT.
 pub fn run_native_starknet_contract(
     sierra_program: &Program,
