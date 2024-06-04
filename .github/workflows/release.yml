@@ -25,11 +25,11 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.76.0
+        uses: dtolnay/rust-toolchain@1.78.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@10
+        uses: myci-actions/add-deb-repo@11
         with:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
@@ -47,4 +47,6 @@ jobs:
             target/release/cairo-native-compile
             target/release/cairo-native-dump
             target/release/cairo-native-run
+            target/release/scarb-native-test
+            target/release/scarb-native-dump
             target/release/libcairo_native_runtime.a
