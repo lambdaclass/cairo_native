@@ -24,11 +24,16 @@ required-features = ["build-cli"]
 name = "cairo-native-test"
 required-features = ["build-cli"]
 
+[[bin]]
+name = "scarb-native-test"
+required-features = ["scarb"]
+
 [features]
 default = ["build-cli", "with-runtime"]
 build-cli = ["dep:clap", "dep:tracing-subscriber", "dep:anyhow", "dep:cairo-lang-test-plugin",
 "dep:cairo-lang-runner", "dep:colored", "dep:cairo-felt", "dep:keccak",
 "dep:k256", "dep:p256", "dep:sec1"]
+scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
 with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
 with-serde = ["dep:serde"]
@@ -48,9 +53,9 @@ id-arena = "2.2"
 itertools = "0.12"
 lazy_static = "1.4"
 libc = "0.2.153"
-llvm-sys = "170.0.0"
-melior = { version = "0.17.1", features = ["ods-dialects"] }
-mlir-sys = "=0.2.1" # 0.2.2 is llvm 18
+llvm-sys = "180.0.0"
+melior = { version = "0.18.1", features = ["ods-dialects"] }
+mlir-sys = "0.2.2"
 num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "0.1.1", default-features = false, features = [
@@ -69,7 +74,7 @@ cairo-lang-utils = "2.6.3"
 cairo-lang-starknet-classes = "2.6.3"
 cairo-native-runtime = { version = "0.1.0", path = "runtime", optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
-libloading = "0.8.1"
+libloading = "0.8.3"
 tracing-subscriber = { version = "0.3", features = [
   "env-filter",
 ], optional = true }
@@ -83,7 +88,10 @@ cairo-felt = { version = "0.9.1", optional = true }
 keccak = { version = "0.1.3", optional = true }
 k256 = { version = "0.13.3", optional = true }
 p256 = { version = "0.13.2", optional = true }
+scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.6.3", optional = true }
+scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.6.3", optional = true }
 sec1 = { version = "0.7.3", optional = true }
+serde_json = { version = "1.0.117", optional = true }
 
 [dev-dependencies]
 cairo-felt = "0.9.1"
@@ -97,9 +105,10 @@ rstest = "0.19.0"
 test-case = "3.3"
 walkdir = "2"
 serde_json = { version = "1.0" }
+salsa = "0.16.1"
 
 [build-dependencies]
-cc = "1.0.95"
+cc = "1.0.96"
 
 [profile.optimized-dev]
 inherits = "dev"

@@ -26,7 +26,10 @@ use cairo_native::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
-    types::felt252::{HALF_PRIME, PRIME},
+    types::{
+        felt252::{HALF_PRIME, PRIME},
+        TypeBuilder,
+    },
     utils::find_entry_point_by_idx,
     values::JitValue,
     OptLevel,
@@ -341,6 +344,9 @@ pub fn compare_outputs(
                         .sum(),
                     CoreTypeConcrete::NonZero(info) => map_vm_sizes(size_cache, registry, &info.ty),
                     CoreTypeConcrete::EcState(_) => 4,
+                    CoreTypeConcrete::Snapshot(info) => {
+                        map_vm_sizes(size_cache, registry, &info.ty)
+                    }
                     x => todo!("vm size not yet implemented: {:?}", x.info()),
                 };
                 size_cache.insert(ty.clone(), type_size);
@@ -458,6 +464,30 @@ pub fn compare_outputs(
                     .collect(),
                 debug_name: ty.debug_name.as_deref().map(String::from),
             },
+            CoreTypeConcrete::SquashedFelt252Dict(info) => JitValue::Felt252Dict {
+                value: (values[0].to_usize().unwrap()..values[1].to_usize().unwrap())
+                    .step_by(3)
+                    .map(|index| {
+                        (
+                            Felt::from_bytes_le(&memory[index].clone().unwrap().to_le_bytes()),
+                            match &info.info.long_id.generic_args[0] {
+                                cairo_lang_sierra::program::GenericArg::Type(ty) => map_vm_values(
+                                    size_cache,
+                                    registry,
+                                    memory,
+                                    &[memory[index + 2].clone().unwrap()],
+                                    ty,
+                                ),
+                                _ => unimplemented!("unsupported dict value type"),
+                            },
+                        )
+                    })
+                    .collect(),
+                debug_name: ty.debug_name.as_deref().map(String::from),
+            },
+            CoreTypeConcrete::Snapshot(info) => {
+                map_vm_values(size_cache, registry, memory, values, &info.ty)
+            }
             CoreTypeConcrete::Nullable(info) => {
                 assert_eq!(values.len(), 1);
 
@@ -502,6 +532,22 @@ pub fn compare_outputs(
                     Felt::from_bytes_le(&values[3].to_le_bytes()),
                 )
             }
+            CoreTypeConcrete::Bytes31(_) => {
+                let mut bytes = values[0].to_le_bytes().to_vec();
+                bytes.pop();
+                JitValue::Bytes31(bytes.try_into().unwrap())
+            }
+            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => unreachable!(),
+            CoreTypeConcrete::Const(_) => unreachable!(),
+            CoreTypeConcrete::EcOp(_) => unreachable!(),
+            CoreTypeConcrete::GasBuiltin(_) => unreachable!(),
+            CoreTypeConcrete::BuiltinCosts(_) => unreachable!(),
+            CoreTypeConcrete::RangeCheck(_) => unreachable!(),
+            CoreTypeConcrete::Pedersen(_) => unreachable!(),
+            CoreTypeConcrete::Poseidon(_) => unreachable!(),
+            CoreTypeConcrete::SegmentArena(_) => unreachable!(),
+            CoreTypeConcrete::BoundedInt(_) => unreachable!(),
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }
@@ -509,13 +555,14 @@ pub fn compare_outputs(
     }
 
     let mut size_cache = HashMap::new();
-    let ty = function.signature.ret_types.last().unwrap();
-    let returns_panic = ty
-        .debug_name
-        .as_ref()
-        .map(|x| x.starts_with("core::panics::PanicResult"))
-        .unwrap_or(false);
-
+    let ty = function.signature.ret_types.last();
+    let is_builtin = ty.map_or(false, |ty| registry.get_type(ty).unwrap().is_builtin());
+    let returns_panic = ty.map_or(false, |ty| {
+        ty.debug_name
+            .as_ref()
+            .map(|x| x.starts_with("core::panics::PanicResult"))
+            .unwrap_or(false)
+    });
     assert_eq!(
         vm_result
             .gas_counter
@@ -525,9 +572,9 @@ pub fn compare_outputs(
     );
 
     let vm_result = match &vm_result.value {
-        RunResultValue::Success(values) => {
+        RunResultValue::Success(values) if !values.is_empty() | returns_panic => {
             if returns_panic {
-                let inner_ty = match registry.get_type(ty)? {
+                let inner_ty = match registry.get_type(ty.unwrap())? {
                     CoreTypeConcrete::Enum(info) => &info.variants[0],
                     _ => unreachable!(),
                 };
@@ -542,8 +589,19 @@ pub fn compare_outputs(
                     )),
                     debug_name: None,
                 }
+            } else if !is_builtin {
+                map_vm_values(
+                    &mut size_cache,
+                    &registry,
+                    &vm_result.memory,
+                    values,
+                    ty.unwrap(),
+                )
             } else {
-                map_vm_values(&mut size_cache, &registry, &vm_result.memory, values, ty)
+                JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None,
+                }
             }
         }
         RunResultValue::Panic(values) => JitValue::Enum {
@@ -564,6 +622,10 @@ pub fn compare_outputs(
                 ],
                 debug_name: None,
             }),
+            debug_name: None,
+        },
+        _ => JitValue::Struct {
+            fields: vec![],
             debug_name: None,
         },
     };

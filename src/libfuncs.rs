@@ -27,7 +27,7 @@ pub mod r#box;
 pub mod branch_align;
 pub mod bytes31;
 pub mod cast;
-pub mod const_libfunc;
+pub mod r#const;
 pub mod debug;
 pub mod drop;
 pub mod dup;
@@ -120,7 +120,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Cast(selector) => self::cast::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Const(selector) => self::const_libfunc::build(
+            Self::Const(selector) => self::r#const::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Debug(selector) => self::debug::build(
@@ -569,7 +569,7 @@ mod tests {
             // Push a default block and external operand to the branches vector
             lib_func_helper
                 .branches
-                .push((&default_block, vec![BranchArg::External(operand)]));
+                .push((default_block, vec![BranchArg::External(operand)]));
 
             // Push a new vector of result cells to the results vector
             lib_func_helper.results.push([Cell::new(None)].into());
@@ -645,7 +645,7 @@ mod tests {
             // Push a default block and a returned operand index to the branches vector
             lib_func_helper
                 .branches
-                .push((&default_block, vec![BranchArg::Returned(3)]));
+                .push((default_block, vec![BranchArg::Returned(3)]));
 
             // Push a new vector of result cells to the results vector
             lib_func_helper.results.push([Cell::new(None)].into());
@@ -728,7 +728,7 @@ mod tests {
         // Loop to add branches and results to the LibfuncHelper struct
         for _ in 0..20 {
             // Push a default block and an empty vector of operands to the branches vector
-            lib_func_helper.branches.push((&default_block, Vec::new()));
+            lib_func_helper.branches.push((default_block, Vec::new()));
 
             // Push a new vector of result cells to the results vector
             lib_func_helper.results.push([Cell::new(None)].into());
