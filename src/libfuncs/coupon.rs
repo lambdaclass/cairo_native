@@ -22,7 +22,8 @@ use melior::{
     Context,
 };
 
-/// Generate MLIR operations for the `coupon` libfunc.
+/// Generate MLIR operations for the `coupon` libfuncs.
+/// In native it's mostly a no-op operation.
 pub fn build<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -34,9 +35,15 @@ pub fn build<'ctx, 'this>(
 ) -> Result<()> {
     match selector {
         CouponConcreteLibfunc::Buy(info) => {
+            // Libfunc for buying a coupon for a function. The cost of the coupon is the cost of running the
+            // function (not including the `call` and `ret` instructions).
+            // The coupon can be used to pay in advance for running the function, and run it later for
+            // free (paying only for the `call` and `ret` instructions) using `coupon_call`.
             build_buy(context, registry, entry, location, helper, metadata, info)
         }
         CouponConcreteLibfunc::Refund(info) => {
+            // Libfunc for getting a refund for an unused coupon. The refund is the cost of the function
+            // and it is added back to the gas wallet.
             build_refund(context, registry, entry, location, helper, metadata, info)
         }
     }
