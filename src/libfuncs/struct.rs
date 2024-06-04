@@ -90,7 +90,7 @@ pub fn build_struct_value<'ctx, 'this>(
 
     let acc = entry.append_operation(llvm::undef(struct_ty, location));
 
-    Ok(entry.insert_values(context, location, acc.result(0)?.into(), fields)?)
+    entry.insert_values(context, location, acc.result(0)?.into(), fields)
 }
 
 /// Generate MLIR operations for the `struct_deconstruct` libfunc.
