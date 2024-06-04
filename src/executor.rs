@@ -644,10 +644,7 @@ fn parse_result(
             libc::free(ptr.cast().as_ptr());
             Ok(value)
         },
-        CoreTypeConcrete::EcPoint(_) => {
-            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
-        }
-        CoreTypeConcrete::EcState(_) => {
+        CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
             Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
         }
         CoreTypeConcrete::Felt252(_)
@@ -749,7 +746,6 @@ fn parse_result(
                 Ok(value)
             }
         },
-        CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(info) => {
             let (_, tag_layout, variant_layouts) =
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
@@ -836,7 +832,6 @@ fn parse_result(
                 registry,
             )),
         },
-        CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
         CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
             Some(return_ptr) => Ok(JitValue::from_jit(
                 unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
@@ -849,19 +844,24 @@ fn parse_result(
                 registry,
             )),
         },
-        CoreTypeConcrete::Span(_) => todo!(),
-        CoreTypeConcrete::Snapshot(_) => todo!(),
+
         // Builtins are handled before the call to parse_result
         // and should not be reached here.
-        CoreTypeConcrete::Bitwise(_) => unreachable!(),
-        CoreTypeConcrete::Const(_) => unreachable!(),
-        CoreTypeConcrete::EcOp(_) => unreachable!(),
-        CoreTypeConcrete::GasBuiltin(_) => unreachable!(),
-        CoreTypeConcrete::BuiltinCosts(_) => unreachable!(),
-        CoreTypeConcrete::RangeCheck(_) => unreachable!(),
-        CoreTypeConcrete::Pedersen(_) => unreachable!(),
-        CoreTypeConcrete::Poseidon(_) => unreachable!(),
-        CoreTypeConcrete::SegmentArena(_) => unreachable!(),
-        _ => todo!(),
+        CoreTypeConcrete::Bitwise(_)
+        | CoreTypeConcrete::Const(_)
+        | CoreTypeConcrete::EcOp(_)
+        | CoreTypeConcrete::GasBuiltin(_)
+        | CoreTypeConcrete::BuiltinCosts(_)
+        | CoreTypeConcrete::RangeCheck(_)
+        | CoreTypeConcrete::Pedersen(_)
+        | CoreTypeConcrete::Poseidon(_)
+        | CoreTypeConcrete::SegmentArena(_) => unreachable!(),
+        CoreTypeConcrete::Felt252DictEntry(_)
+        | CoreTypeConcrete::Span(_)
+        | CoreTypeConcrete::Snapshot(_)
+        | CoreTypeConcrete::BoundedInt(_)
+        | CoreTypeConcrete::Uninitialized(_)
+        | CoreTypeConcrete::Coupon(_)
+        | CoreTypeConcrete::StarkNet(_) => todo!(),
     }
 }
