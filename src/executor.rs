@@ -263,6 +263,7 @@ fn invoke_dynamic(
     }
 
     // If the syscall handler was changed, then reset the previous one.
+    // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)
     if let Some(previous_syscall_handler) = previous_syscall_handler {
         SYSCALL_HANDLER_VTABLE.set(previous_syscall_handler);
     }
