@@ -27,7 +27,7 @@ pub mod r#box;
 pub mod branch_align;
 pub mod bytes31;
 pub mod cast;
-pub mod const_libfunc;
+pub mod r#const;
 pub mod debug;
 pub mod drop;
 pub mod dup;
@@ -120,7 +120,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Cast(selector) => self::cast::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Const(selector) => self::const_libfunc::build(
+            Self::Const(selector) => self::r#const::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Debug(selector) => self::debug::build(

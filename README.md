@@ -808,6 +808,31 @@ cairo-native-test ./cairo-tests/
 
 This will run all the tests (functions marked with the `#[test]` attribute).
 
+# scarb-native-test cli tool
+
+This tool mimics the `scarb test` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
+You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+
+```bash
+$ scarb-native-test --help
+Compiles all packages from a Scarb project matching `packages_filter` and
+runs all functions marked with `#[test]`. Exits with 1 if the compilation
+or run fails, otherwise 0.
+
+Usage: scarb-native-test [OPTIONS]
+
+Options:
+  -p, --package <SPEC>         Packages to run this command on, can be a concrete package name (`foobar`) or a prefix glob (`foo*`) [env: SCARB_PACKAGES_FILTER=] [default: *]
+  -w, --workspace              Run for all packages in the workspace
+  -f, --filter <FILTER>        Run only tests whose name contain FILTER [default: ]
+      --include-ignored        Run ignored and not ignored tests
+      --ignored                Run only ignored tests
+      --run-mode <RUN_MODE>    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
+  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                   Print help
+  -V, --version                Print version
+```
+
 ## Debugging Tips
 
 ### Useful environment variables
