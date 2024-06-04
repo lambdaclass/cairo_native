@@ -497,6 +497,30 @@ mod tests {
         let result = jitvalue_to_felt(&JitValue::Felt252Dict {
             value: HashMap::from([
                 (Felt::ONE, JitValue::Felt252(Felt::from(101))),
+                (Felt::TWO, JitValue::Felt252(Felt::from(102))),
+            ]),
+            debug_name: None,
+        });
+
+        let first_dict_entry = vec![Felt::from(1), Felt::from(101)];
+        let second_dict_entry = vec![Felt::from(2), Felt::from(102)];
+
+        // Check that the two Key, value pairs are in the result
+        assert!(is_subsequence(&first_dict_entry, &result));
+        assert!(is_subsequence(&second_dict_entry, &result));
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_felt252_dict_with_array() {
+        let result = jitvalue_to_felt(&JitValue::Felt252Dict {
+            value: HashMap::from([
+                (
+                    Felt::ONE,
+                    JitValue::Array(Vec::from([
+                        JitValue::Felt252(Felt::from(101)),
+                        JitValue::Felt252(Felt::from(102)),
+                    ])),
+                ),
                 (
                     Felt::TWO,
                     JitValue::Array(Vec::from([
@@ -508,7 +532,7 @@ mod tests {
             debug_name: None,
         });
 
-        let first_dict_entry = vec![Felt::from(1), Felt::from(101)];
+        let first_dict_entry = vec![Felt::from(1), Felt::from(101), Felt::from(102)];
         let second_dict_entry = vec![Felt::from(2), Felt::from(201), Felt::from(202)];
 
         // Check that the two Key, value pairs are in the result
