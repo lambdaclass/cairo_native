@@ -406,62 +406,62 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            Self::Coupon(_) => todo!(),
         }
     }
 
     fn is_builtin(&self) -> bool {
         matches!(
             self,
-            CoreTypeConcrete::Bitwise(_)
-                | CoreTypeConcrete::EcOp(_)
-                | CoreTypeConcrete::GasBuiltin(_)
-                | CoreTypeConcrete::BuiltinCosts(_)
-                | CoreTypeConcrete::RangeCheck(_)
-                | CoreTypeConcrete::Pedersen(_)
-                | CoreTypeConcrete::Poseidon(_)
-                | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
-                | CoreTypeConcrete::SegmentArena(_)
+            Self::Bitwise(_)
+                | Self::EcOp(_)
+                | Self::GasBuiltin(_)
+                | Self::BuiltinCosts(_)
+                | Self::RangeCheck(_)
+                | Self::Pedersen(_)
+                | Self::Poseidon(_)
+                | Self::StarkNet(StarkNetTypeConcrete::System(_))
+                | Self::SegmentArena(_)
         )
     }
 
     fn is_complex(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
         match self {
             // Builtins.
-            CoreTypeConcrete::Bitwise(_)
-            | CoreTypeConcrete::EcOp(_)
-            | CoreTypeConcrete::GasBuiltin(_) // u128 is not complex
-            | CoreTypeConcrete::BuiltinCosts(_)
-            | CoreTypeConcrete::RangeCheck(_)
-            | CoreTypeConcrete::Pedersen(_)
-            | CoreTypeConcrete::Poseidon(_)
-            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) // u64 is not complex
-            | CoreTypeConcrete::SegmentArena(_) => false,
+            Self::Bitwise(_)
+            | Self::EcOp(_)
+            | Self::GasBuiltin(_) // u128 is not complex
+            | Self::BuiltinCosts(_)
+            | Self::RangeCheck(_)
+            | Self::Pedersen(_)
+            | Self::Poseidon(_)
+            | Self::StarkNet(StarkNetTypeConcrete::System(_)) // u64 is not complex
+            | Self::SegmentArena(_) => false,
 
-            CoreTypeConcrete::Box(_)
-            | CoreTypeConcrete::Uint8(_)
-            | CoreTypeConcrete::Uint16(_)
-            | CoreTypeConcrete::Uint32(_)
-            | CoreTypeConcrete::Uint64(_)
-            | CoreTypeConcrete::Uint128(_)
-            | CoreTypeConcrete::Uint128MulGuarantee(_)
-            | CoreTypeConcrete::Sint8(_)
-            | CoreTypeConcrete::Sint16(_)
-            | CoreTypeConcrete::Sint32(_)
-            | CoreTypeConcrete::Sint64(_)
-            | CoreTypeConcrete::Sint128(_)
-            | CoreTypeConcrete::Nullable(_)
-            | CoreTypeConcrete::Felt252Dict(_)
-            | CoreTypeConcrete::SquashedFelt252Dict(_) => false,
+            Self::Box(_)
+            | Self::Uint8(_)
+            | Self::Uint16(_)
+            | Self::Uint32(_)
+            | Self::Uint64(_)
+            | Self::Uint128(_)
+            | Self::Uint128MulGuarantee(_)
+            | Self::Sint8(_)
+            | Self::Sint16(_)
+            | Self::Sint32(_)
+            | Self::Sint64(_)
+            | Self::Sint128(_)
+            | Self::Nullable(_)
+            | Self::Felt252Dict(_)
+            | Self::SquashedFelt252Dict(_) => false,
 
-            CoreTypeConcrete::Array(_) => true,
-            CoreTypeConcrete::EcPoint(_) => true,
-            CoreTypeConcrete::EcState(_) => true,
-            CoreTypeConcrete::Felt252DictEntry(_) => true,
+            Self::Array(_) => true,
+            Self::EcPoint(_) => true,
+            Self::EcState(_) => true,
+            Self::Felt252DictEntry(_) => true,
 
-            CoreTypeConcrete::Felt252(_)
-            | CoreTypeConcrete::Bytes31(_)
-            | CoreTypeConcrete::StarkNet(
+            Self::Felt252(_)
+            | Self::Bytes31(_)
+            | Self::StarkNet(
                 StarkNetTypeConcrete::ClassHash(_)
                 | StarkNetTypeConcrete::ContractAddress(_)
                 | StarkNetTypeConcrete::StorageAddress(_)
@@ -476,71 +476,71 @@ impl TypeBuilder for CoreTypeConcrete {
                 value
             },
 
-            CoreTypeConcrete::NonZero(info)
-            | CoreTypeConcrete::Uninitialized(info)
-            | CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty).unwrap().is_complex(registry),
+            Self::NonZero(info)
+            | Self::Uninitialized(info)
+            | Self::Snapshot(info) => registry.get_type(&info.ty).unwrap().is_complex(registry),
 
-            CoreTypeConcrete::Enum(info) => match info.variants.len() {
+            Self::Enum(info) => match info.variants.len() {
                 0 => false,
                 1 => registry.get_type(&info.variants[0]).unwrap().is_complex(registry),
                 _ => !self.is_zst(registry),
             },
-            CoreTypeConcrete::Struct(_) => true,
+            Self::Struct(_) => true,
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
-            CoreTypeConcrete::Const(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            Self::BoundedInt(_) => todo!(),
+            Self::Const(_) => todo!(),
+            Self::Span(_) => todo!(),
+            Self::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
+            Self::Coupon(_) => todo!(),
         }
     }
 
     fn is_zst(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
         match self {
             // Builtin counters:
-            CoreTypeConcrete::Bitwise(_)
-            | CoreTypeConcrete::EcOp(_)
-            | CoreTypeConcrete::RangeCheck(_)
-            | CoreTypeConcrete::Pedersen(_)
-            | CoreTypeConcrete::Poseidon(_)
-            | CoreTypeConcrete::SegmentArena(_) => false,
+            Self::Bitwise(_)
+            | Self::EcOp(_)
+            | Self::RangeCheck(_)
+            | Self::Pedersen(_)
+            | Self::Poseidon(_)
+            | Self::SegmentArena(_) => false,
             // Other builtins:
-            CoreTypeConcrete::BuiltinCosts(_) | CoreTypeConcrete::Uint128MulGuarantee(_) => true,
+            Self::BuiltinCosts(_) | Self::Uint128MulGuarantee(_) => true,
 
             // Normal types:
-            CoreTypeConcrete::Array(_)
-            | CoreTypeConcrete::Box(_)
-            | CoreTypeConcrete::Bytes31(_)
-            | CoreTypeConcrete::EcPoint(_)
-            | CoreTypeConcrete::EcState(_)
-            | CoreTypeConcrete::Felt252(_)
-            | CoreTypeConcrete::GasBuiltin(_)
-            | CoreTypeConcrete::Uint8(_)
-            | CoreTypeConcrete::Uint16(_)
-            | CoreTypeConcrete::Uint32(_)
-            | CoreTypeConcrete::Uint64(_)
-            | CoreTypeConcrete::Uint128(_)
-            | CoreTypeConcrete::Sint8(_)
-            | CoreTypeConcrete::Sint16(_)
-            | CoreTypeConcrete::Sint32(_)
-            | CoreTypeConcrete::Sint64(_)
-            | CoreTypeConcrete::Sint128(_)
-            | CoreTypeConcrete::Felt252Dict(_)
-            | CoreTypeConcrete::Felt252DictEntry(_)
-            | CoreTypeConcrete::SquashedFelt252Dict(_)
-            | CoreTypeConcrete::StarkNet(_)
-            | CoreTypeConcrete::Nullable(_) => false,
+            Self::Array(_)
+            | Self::Box(_)
+            | Self::Bytes31(_)
+            | Self::EcPoint(_)
+            | Self::EcState(_)
+            | Self::Felt252(_)
+            | Self::GasBuiltin(_)
+            | Self::Uint8(_)
+            | Self::Uint16(_)
+            | Self::Uint32(_)
+            | Self::Uint64(_)
+            | Self::Uint128(_)
+            | Self::Sint8(_)
+            | Self::Sint16(_)
+            | Self::Sint32(_)
+            | Self::Sint64(_)
+            | Self::Sint128(_)
+            | Self::Felt252Dict(_)
+            | Self::Felt252DictEntry(_)
+            | Self::SquashedFelt252Dict(_)
+            | Self::StarkNet(_)
+            | Self::Nullable(_) => false,
 
             // Containers:
-            CoreTypeConcrete::NonZero(info)
-            | CoreTypeConcrete::Uninitialized(info)
-            | CoreTypeConcrete::Snapshot(info) => {
+            Self::NonZero(info)
+            | Self::Uninitialized(info)
+            | Self::Snapshot(info) => {
                 let type_info = registry.get_type(&info.ty).unwrap();
                 type_info.is_zst(registry)
             }
 
             // Enums and structs:
-            CoreTypeConcrete::Enum(info) => {
+            Self::Enum(info) => {
                 info.variants.is_empty()
                     || (info.variants.len() == 1
                         && registry
@@ -548,18 +548,18 @@ impl TypeBuilder for CoreTypeConcrete {
                             .unwrap()
                             .is_zst(registry))
             }
-            CoreTypeConcrete::Struct(info) => info
+            Self::Struct(info) => info
                 .members
                 .iter()
                 .all(|id| registry.get_type(id).unwrap().is_zst(registry)),
 
-            CoreTypeConcrete::BoundedInt(_) => false,
-            CoreTypeConcrete::Const(info) => {
+            Self::BoundedInt(_) => false,
+            Self::Const(info) => {
                 let type_info = registry.get_type(&info.inner_ty).unwrap();
                 type_info.is_zst(registry)
             }
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            Self::Span(_) => todo!(),
+            Self::Coupon(_) => todo!(),
         }
     }
 
@@ -568,7 +568,7 @@ impl TypeBuilder for CoreTypeConcrete {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<Layout, Self::Error> {
         Ok(match self {
-            CoreTypeConcrete::Array(_) => {
+            Self::Array(_) => {
                 Layout::new::<*mut ()>()
                     .extend(get_integer_layout(32))?
                     .0
@@ -577,27 +577,27 @@ impl TypeBuilder for CoreTypeConcrete {
                     .extend(get_integer_layout(32))?
                     .0
             }
-            CoreTypeConcrete::Bitwise(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
-            CoreTypeConcrete::EcOp(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
-            CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
-            CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
-            CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(128),
-            CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Uint8(_) => get_integer_layout(8),
-            CoreTypeConcrete::Uint16(_) => get_integer_layout(16),
-            CoreTypeConcrete::Uint32(_) => get_integer_layout(32),
-            CoreTypeConcrete::Uint64(_) => get_integer_layout(64),
-            CoreTypeConcrete::Uint128(_) => get_integer_layout(128),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => Layout::new::<()>(),
-            CoreTypeConcrete::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
-            CoreTypeConcrete::Nullable(_) => Layout::new::<*mut ()>(),
-            CoreTypeConcrete::RangeCheck(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Uninitialized(info) => {
+            Self::Bitwise(_) => Layout::new::<u64>(),
+            Self::Box(_) => Layout::new::<*mut ()>(),
+            Self::EcOp(_) => Layout::new::<u64>(),
+            Self::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
+            Self::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
+            Self::Felt252(_) => get_integer_layout(252),
+            Self::GasBuiltin(_) => get_integer_layout(128),
+            Self::BuiltinCosts(_) => Layout::new::<()>(),
+            Self::Uint8(_) => get_integer_layout(8),
+            Self::Uint16(_) => get_integer_layout(16),
+            Self::Uint32(_) => get_integer_layout(32),
+            Self::Uint64(_) => get_integer_layout(64),
+            Self::Uint128(_) => get_integer_layout(128),
+            Self::Uint128MulGuarantee(_) => Layout::new::<()>(),
+            Self::NonZero(info) => registry.get_type(&info.ty)?.layout(registry)?,
+            Self::Nullable(_) => Layout::new::<*mut ()>(),
+            Self::RangeCheck(_) => Layout::new::<u64>(),
+            Self::Uninitialized(info) => {
                 registry.get_type(&info.ty)?.layout(registry)?
             }
-            CoreTypeConcrete::Enum(info) => {
+            Self::Enum(info) => {
                 let tag_layout =
                     get_integer_layout(info.variants.len().next_power_of_two().trailing_zeros());
 
@@ -612,7 +612,7 @@ impl TypeBuilder for CoreTypeConcrete {
                     )?)
                 })?
             }
-            CoreTypeConcrete::Struct(info) => info
+            Self::Struct(info) => info
                 .members
                 .iter()
                 .try_fold(Option::<Layout>::None, |acc, id| {
@@ -622,8 +622,8 @@ impl TypeBuilder for CoreTypeConcrete {
                     }))
                 })?
                 .unwrap_or(Layout::from_size_align(0, 1)?),
-            CoreTypeConcrete::Felt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
-            CoreTypeConcrete::Felt252DictEntry(_) => {
+            Self::Felt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
+            Self::Felt252DictEntry(_) => {
                 get_integer_layout(252)
                     .extend(Layout::new::<*mut std::ffi::c_void>())
                     .unwrap()
@@ -632,11 +632,11 @@ impl TypeBuilder for CoreTypeConcrete {
                     .unwrap()
                     .0
             }
-            CoreTypeConcrete::SquashedFelt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
-            CoreTypeConcrete::Pedersen(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Poseidon(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(info) => match info {
+            Self::SquashedFelt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
+            Self::Pedersen(_) => Layout::new::<u64>(),
+            Self::Poseidon(_) => Layout::new::<u64>(),
+            Self::Span(_) => todo!(),
+            Self::StarkNet(info) => match info {
                 StarkNetTypeConcrete::ClassHash(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::ContractAddress(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::StorageBaseAddress(_) => get_integer_layout(252),
@@ -649,23 +649,23 @@ impl TypeBuilder for CoreTypeConcrete {
                         .0
                 }
             },
-            CoreTypeConcrete::SegmentArena(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
-            CoreTypeConcrete::Sint8(_) => get_integer_layout(8),
-            CoreTypeConcrete::Sint16(_) => get_integer_layout(16),
-            CoreTypeConcrete::Sint32(_) => get_integer_layout(32),
-            CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
-            CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
-            CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
-            CoreTypeConcrete::BoundedInt(info) => get_integer_layout(
+            Self::SegmentArena(_) => Layout::new::<u64>(),
+            Self::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
+            Self::Sint8(_) => get_integer_layout(8),
+            Self::Sint16(_) => get_integer_layout(16),
+            Self::Sint32(_) => get_integer_layout(32),
+            Self::Sint64(_) => get_integer_layout(64),
+            Self::Sint128(_) => get_integer_layout(128),
+            Self::Bytes31(_) => get_integer_layout(248),
+            Self::BoundedInt(info) => get_integer_layout(
                 (info.range.lower.bits().max(info.range.upper.bits()) + 1)
                     .try_into()
                     .expect("should always fit u32"),
             ),
-            CoreTypeConcrete::Const(const_type) => {
+            Self::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            Self::Coupon(_) => todo!(),
         }
         .pad_to_align())
     }
@@ -674,31 +674,31 @@ impl TypeBuilder for CoreTypeConcrete {
         // Right now, only enums and other structures which may end up passing a flattened enum as
         // arguments.
         match self {
-            CoreTypeConcrete::Array(_) => false,
-            CoreTypeConcrete::Bitwise(_) => false,
-            CoreTypeConcrete::Box(_) => false,
-            CoreTypeConcrete::EcOp(_) => false,
-            CoreTypeConcrete::EcPoint(_) => false,
-            CoreTypeConcrete::EcState(_) => false,
-            CoreTypeConcrete::Felt252(_) => false,
-            CoreTypeConcrete::GasBuiltin(_) => false,
-            CoreTypeConcrete::BuiltinCosts(_) => false,
-            CoreTypeConcrete::Uint8(_) => false,
-            CoreTypeConcrete::Uint16(_) => false,
-            CoreTypeConcrete::Uint32(_) => false,
-            CoreTypeConcrete::Uint64(_) => false,
-            CoreTypeConcrete::Uint128(_) => false,
-            CoreTypeConcrete::Uint128MulGuarantee(_) => false,
-            CoreTypeConcrete::Sint8(_) => false,
-            CoreTypeConcrete::Sint16(_) => false,
-            CoreTypeConcrete::Sint32(_) => false,
-            CoreTypeConcrete::Sint64(_) => false,
-            CoreTypeConcrete::Sint128(_) => false,
-            CoreTypeConcrete::NonZero(_) => false,
-            CoreTypeConcrete::Nullable(_) => false,
-            CoreTypeConcrete::RangeCheck(_) => false,
-            CoreTypeConcrete::Uninitialized(_) => false,
-            CoreTypeConcrete::Enum(info) => {
+            Self::Array(_) => false,
+            Self::Bitwise(_) => false,
+            Self::Box(_) => false,
+            Self::EcOp(_) => false,
+            Self::EcPoint(_) => false,
+            Self::EcState(_) => false,
+            Self::Felt252(_) => false,
+            Self::GasBuiltin(_) => false,
+            Self::BuiltinCosts(_) => false,
+            Self::Uint8(_) => false,
+            Self::Uint16(_) => false,
+            Self::Uint32(_) => false,
+            Self::Uint64(_) => false,
+            Self::Uint128(_) => false,
+            Self::Uint128MulGuarantee(_) => false,
+            Self::Sint8(_) => false,
+            Self::Sint16(_) => false,
+            Self::Sint32(_) => false,
+            Self::Sint64(_) => false,
+            Self::Sint128(_) => false,
+            Self::NonZero(_) => false,
+            Self::Nullable(_) => false,
+            Self::RangeCheck(_) => false,
+            Self::Uninitialized(_) => false,
+            Self::Enum(info) => {
                 // Enums are memory-allocated if either:
                 //   - Has only variant which is memory-allocated.
                 //   - Has more than one variants, at least one of them being non-ZST.
@@ -714,33 +714,33 @@ impl TypeBuilder for CoreTypeConcrete {
                         .any(|type_id| !registry.get_type(type_id).unwrap().is_zst(registry)),
                 }
             }
-            CoreTypeConcrete::Struct(info) => info.members.iter().any(|type_id| {
+            Self::Struct(info) => info.members.iter().any(|type_id| {
                 // Structs are memory-allocated if any of its members is memory-allocated.
                 registry
                     .get_type(type_id)
                     .unwrap()
                     .is_memory_allocated(registry)
             }),
-            CoreTypeConcrete::Felt252Dict(_) => false,
-            CoreTypeConcrete::Felt252DictEntry(_) => false,
-            CoreTypeConcrete::SquashedFelt252Dict(_) => false,
-            CoreTypeConcrete::Pedersen(_) => false,
-            CoreTypeConcrete::Poseidon(_) => false,
-            CoreTypeConcrete::Span(_) => false,
-            CoreTypeConcrete::StarkNet(_) => false,
-            CoreTypeConcrete::SegmentArena(_) => false,
-            CoreTypeConcrete::Snapshot(info) => registry
+            Self::Felt252Dict(_) => false,
+            Self::Felt252DictEntry(_) => false,
+            Self::SquashedFelt252Dict(_) => false,
+            Self::Pedersen(_) => false,
+            Self::Poseidon(_) => false,
+            Self::Span(_) => false,
+            Self::StarkNet(_) => false,
+            Self::SegmentArena(_) => false,
+            Self::Snapshot(info) => registry
                 .get_type(&info.ty)
                 .unwrap()
                 .is_memory_allocated(registry),
-            CoreTypeConcrete::Bytes31(_) => false,
+            Self::Bytes31(_) => false,
 
-            CoreTypeConcrete::BoundedInt(_) => false,
-            CoreTypeConcrete::Const(info) => registry
+            Self::BoundedInt(_) => false,
+            Self::Const(info) => registry
                 .get_type(&info.inner_ty)
                 .unwrap()
                 .is_memory_allocated(registry),
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            Self::Coupon(_) => todo!(),
         }
     }
 
@@ -758,9 +758,9 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Sint64(_) => Some(64),
             Self::Sint128(_) => Some(128),
 
-            CoreTypeConcrete::BoundedInt(_) => Some(252),
-            CoreTypeConcrete::Bytes31(_) => Some(248),
-            CoreTypeConcrete::Const(_) => todo!(),
+            Self::BoundedInt(_) => Some(252),
+            Self::Bytes31(_) => Some(248),
+            Self::Const(_) => todo!(),
 
             _ => None,
         }
@@ -780,11 +780,11 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Sint64(_) => Some(true),
             Self::Sint128(_) => Some(true),
 
-            CoreTypeConcrete::BoundedInt(info) => {
+            Self::BoundedInt(info) => {
                 Some(info.range.lower.is_negative() || info.range.upper.is_negative())
             }
-            CoreTypeConcrete::Bytes31(_) => Some(false),
-            CoreTypeConcrete::Const(_) => todo!(),
+            Self::Bytes31(_) => Some(false),
+            Self::Const(_) => todo!(),
 
             _ => None,
         }
@@ -926,7 +926,7 @@ impl TypeBuilder for CoreTypeConcrete {
         self_ty: &ConcreteTypeId,
     ) -> Result<(), Self::Error> {
         match self {
-            CoreTypeConcrete::Array(_info) => {
+            Self::Array(_info) => {
                 if metadata.get::<ReallocBindingsMeta>().is_none() {
                     metadata.insert(ReallocBindingsMeta::new(context, helper));
                 }
@@ -948,13 +948,13 @@ impl TypeBuilder for CoreTypeConcrete {
 
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }
-            CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
+            Self::Felt252Dict(_) | Self::SquashedFelt252Dict(_) => {
                 let runtime: &mut RuntimeBindingsMeta = metadata.get_mut().unwrap();
                 let ptr = entry.argument(0)?.into();
 
                 runtime.dict_alloc_free(context, helper, ptr, entry, location)?;
             }
-            CoreTypeConcrete::Box(_) | CoreTypeConcrete::Nullable(_) => {
+            Self::Box(_) | Self::Nullable(_) => {
                 if metadata.get::<ReallocBindingsMeta>().is_none() {
                     metadata.insert(ReallocBindingsMeta::new(context, helper));
                 }

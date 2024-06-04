@@ -81,10 +81,10 @@ pub enum OptLevel {
 impl From<usize> for OptLevel {
     fn from(value: usize) -> Self {
         match value {
-            0 => OptLevel::None,
-            1 => OptLevel::Less,
-            2 => OptLevel::Default,
-            _ => OptLevel::Aggressive,
+            0 => Self::None,
+            1 => Self::Less,
+            2 => Self::Default,
+            _ => Self::Aggressive,
         }
     }
 }
@@ -103,10 +103,10 @@ impl From<OptLevel> for usize {
 impl From<u8> for OptLevel {
     fn from(value: u8) -> Self {
         match value {
-            0 => OptLevel::None,
-            1 => OptLevel::Less,
-            2 => OptLevel::Default,
-            _ => OptLevel::Aggressive,
+            0 => Self::None,
+            1 => Self::Less,
+            2 => Self::Default,
+            _ => Self::Aggressive,
         }
     }
 }

@@ -223,7 +223,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
 
     fn is_function_call(&self) -> Option<&FunctionId> {
         match self {
-            CoreConcreteLibfunc::FunctionCall(info) => Some(&info.function.id),
+            Self::FunctionCall(info) => Some(&info.function.id),
             _ => None,
         }
     }

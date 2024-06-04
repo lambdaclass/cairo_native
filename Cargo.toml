@@ -38,6 +38,9 @@ with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
 with-serde = ["dep:serde"]
 
+[lints.clippy]
+use_self = "warn"
+
 [dependencies]
 bumpalo = "3.14"
 cairo-lang-compiler = "2.6.3"

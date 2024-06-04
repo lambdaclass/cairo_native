@@ -151,19 +151,19 @@ impl From<i128> for JitValue {
     }
 }
 
-impl<T: Into<JitValue> + Clone> From<&[T]> for JitValue {
+impl<T: Into<Self> + Clone> From<&[T]> for JitValue {
     fn from(value: &[T]) -> Self {
         Self::Array(value.iter().map(|x| x.clone().into()).collect())
     }
 }
 
-impl<T: Into<JitValue>> From<Vec<T>> for JitValue {
+impl<T: Into<Self>> From<Vec<T>> for JitValue {
     fn from(value: Vec<T>) -> Self {
         Self::Array(value.into_iter().map(Into::into).collect())
     }
 }
 
-impl<T: Into<JitValue>, const N: usize> From<[T; N]> for JitValue {
+impl<T: Into<Self>, const N: usize> From<[T; N]> for JitValue {
     fn from(value: [T; N]) -> Self {
         Self::Array(value.into_iter().map(Into::into).collect())
     }
@@ -669,9 +669,9 @@ impl JitValue {
                     )
                     .unwrap();
                     let payload =
-                        JitValue::from_jit(payload_ptr, &info.variants[tag_value], registry);
+                        Self::from_jit(payload_ptr, &info.variants[tag_value], registry);
 
-                    JitValue::Enum {
+                    Self::Enum {
                         tag: tag_value,
                         value: Box::new(payload),
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
@@ -698,7 +698,7 @@ impl JitValue {
                         ));
                     }
 
-                    JitValue::Struct {
+                    Self::Struct {
                         fields: members,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -717,7 +717,7 @@ impl JitValue {
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
                     }
 
-                    JitValue::Felt252Dict {
+                    Self::Felt252Dict {
                         value: output_map,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -744,7 +744,7 @@ impl JitValue {
                         // felt values
                         let data = ptr.cast::<[u8; 32]>().as_ref();
                         let data = Felt::from_bytes_le(data);
-                        JitValue::Felt252(data)
+                        Self::Felt252(data)
                     }
                     StarkNetTypeConcrete::System(_) => {
                         unimplemented!("should be handled before")
@@ -756,8 +756,8 @@ impl JitValue {
                         let y = (data[1][0], data[1][1]);
 
                         match info {
-                            Secp256PointTypeConcrete::K1(_) => JitValue::Secp256K1Point { x, y },
-                            Secp256PointTypeConcrete::R1(_) => JitValue::Secp256R1Point { x, y },
+                            Secp256PointTypeConcrete::K1(_) => Self::Secp256K1Point { x, y },
+                            Secp256PointTypeConcrete::R1(_) => Self::Secp256R1Point { x, y },
                         }
                     }
                 },

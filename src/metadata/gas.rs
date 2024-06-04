@@ -57,7 +57,7 @@ impl GasMetadata {
     pub fn new(
         sierra_program: &Program,
         config: Option<MetadataComputationConfig>,
-    ) -> Result<GasMetadata, GasMetadataError> {
+    ) -> Result<Self, GasMetadataError> {
         if let Some(metadata_config) = config {
             calc_metadata(sierra_program, metadata_config)
         } else {
