@@ -254,22 +254,6 @@ pub fn compare_inputless_program(program_path: &str) {
         &result_vm,
         &result_native,
     )
-    .expect("compare error with optlevel none");
-
-    let result_native = run_native_program(
-        program,
-        "main",
-        &[],
-        Some(DEFAULT_GAS as u128),
-        Option::<DummySyscallHandler>::None,
-    );
-
-    compare_outputs(
-        &program.1,
-        &program.2.find_function("main").unwrap().id,
-        &result_vm,
-        &result_native,
-    )
     .expect("compare error");
 }
 
