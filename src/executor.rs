@@ -203,6 +203,7 @@ fn invoke_dynamic(
     let mut syscall_handler = syscall_handler
         .as_mut()
         .map(|syscall_handler| StarknetSyscallHandlerCallbacks::new(syscall_handler));
+    // We only care for the previous syscall handler if we actually modify it
     let previous_syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
         let previous_syscall_handler = SYSCALL_HANDLER_VTABLE.get();
         let syscall_handler_ptr = std::ptr::addr_of!(*syscall_handler) as *mut ();
