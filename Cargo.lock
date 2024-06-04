@@ -899,6 +899,7 @@ dependencies = [
  "p256",
  "pretty_assertions_sorted",
  "proptest",
+ "salsa",
  "rstest",
  "scarb-metadata",
  "scarb-ui",

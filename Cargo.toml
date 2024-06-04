@@ -28,11 +28,25 @@ required-features = ["build-cli"]
 name = "scarb-native-test"
 required-features = ["scarb"]
 
+[[bin]]
+name = "scarb-native-dump"
+required-features = ["scarb"]
+
 [features]
 default = ["build-cli", "with-runtime"]
-build-cli = ["dep:clap", "dep:tracing-subscriber", "dep:anyhow", "dep:cairo-lang-test-plugin",
-"dep:cairo-lang-runner", "dep:colored", "dep:cairo-felt", "dep:keccak",
-"dep:k256", "dep:p256", "dep:sec1"]
+build-cli = [
+  "dep:clap",
+  "dep:tracing-subscriber",
+  "dep:anyhow",
+  "dep:cairo-lang-test-plugin",
+  "dep:cairo-lang-runner",
+  "dep:colored",
+  "dep:cairo-felt",
+  "dep:keccak",
+  "dep:k256",
+  "dep:p256",
+  "dep:sec1",
+]
 scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
 with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
@@ -105,6 +119,7 @@ rstest = "0.21.0"
 test-case = "3.3"
 walkdir = "2.5.0"
 serde_json = { version = "1.0.117" }
+salsa = "0.16.1"
 
 [build-dependencies]
 cc = "1.0.96"
