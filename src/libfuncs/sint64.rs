@@ -24,10 +24,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, llvm,
     },
-    ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Attribute,
-        Block, Location, Value, ValueLike,
-    },
+    ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
 use starknet_types_core::felt::Felt;
@@ -131,11 +128,7 @@ pub fn build_operation<'ctx, 'this>(
     let op_result = entry.extract_value(context, location, result, values_type, 0)?;
 
     // Create a const operation to get the 0 value to compare against
-    let zero_const = entry.append_op_result(arith::constant(
-        context,
-        IntegerAttribute::new(values_type, 0.into()).into(),
-        location,
-    ))?;
+    let zero_const = entry.const_int_from_type(context, location, 0, values_type)?;
     // Check if the result is positive
     let is_positive = entry.append_op_result(arith::cmpi(
         context,
@@ -223,12 +216,7 @@ pub fn build_is_zero<'ctx, 'this>(
 ) -> Result<()> {
     let arg0: Value = entry.argument(0)?.into();
 
-    let op = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(arg0.r#type(), 0).into(),
-        location,
-    ));
-    let const_0 = op.result(0)?.into();
+    let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
 
     let condition = entry.append_op_result(arith::cmpi(
         context,
@@ -328,40 +316,24 @@ pub fn build_from_felt252<'ctx, 'this>(
         &info.branch_signatures()[0].vars[1].ty,
     )?;
 
-    let const_max = entry.append_op_result(arith::constant(
-        context,
-        Attribute::parse(context, &format!("{} : {}", i64::MAX, felt252_ty))
-            .ok_or(Error::ParseAttributeError)?,
-        location,
-    ))?;
-
-    let const_min = entry.append_op_result(arith::constant(
-        context,
-        Attribute::parse(context, &format!("{} : {}", i64::MIN, felt252_ty))
-            .ok_or(Error::ParseAttributeError)?,
-        location,
-    ))?;
+    let const_max = entry.const_int_from_type(context, location, i64::MAX, felt252_ty)?;
+    let const_min = entry.const_int_from_type(context, location, i64::MIN, felt252_ty)?;
 
     let mut block = entry;
 
     // make unsigned felt into signed felt
     // felt > half prime = negative
     let value = {
-        let attr_halfprime_i252 = Attribute::parse(
+        let half_prime: melior::ir::Value = block.const_int_from_type(
             context,
-            &format!(
-                "{} : {}",
-                metadata
-                    .get::<PrimeModuloMeta<Felt>>()
-                    .ok_or(Error::MissingMetadata)?
-                    .prime()
-                    .shr(1),
-                felt252_ty
-            ),
-        )
-        .ok_or(Error::ParseAttributeError)?;
-        let half_prime: melior::ir::Value =
-            block.append_op_result(arith::constant(context, attr_halfprime_i252, location))?;
+            location,
+            metadata
+                .get::<PrimeModuloMeta<Felt>>()
+                .ok_or(Error::MissingMetadata)?
+                .prime()
+                .shr(1),
+            felt252_ty,
+        )?;
 
         let is_felt_neg = block.append_op_result(arith::cmpi(
             context,
@@ -386,32 +358,21 @@ pub fn build_from_felt252<'ctx, 'this>(
         ));
 
         {
-            let prime = is_neg_block.append_op_result(arith::constant(
+            let prime = is_neg_block.const_int_from_type(
                 context,
-                Attribute::parse(
-                    context,
-                    &format!(
-                        "{} : {}",
-                        metadata
-                            .get::<PrimeModuloMeta<Felt>>()
-                            .ok_or(Error::MissingMetadata)?
-                            .prime(),
-                        felt252_ty
-                    ),
-                )
-                .ok_or(Error::ParseAttributeError)?,
                 location,
-            ))?;
+                metadata
+                    .get::<PrimeModuloMeta<Felt>>()
+                    .ok_or(Error::MissingMetadata)?
+                    .prime()
+                    .clone(),
+                felt252_ty,
+            )?;
 
             let mut src_value_is_neg: melior::ir::Value =
                 is_neg_block.append_op_result(arith::subi(prime, value, location))?;
 
-            let kneg1 = is_neg_block.append_op_result(arith::constant(
-                context,
-                Attribute::parse(context, &format!("-1 : {}", felt252_ty))
-                    .ok_or(Error::ParseAttributeError)?,
-                location,
-            ))?;
+            let kneg1 = is_neg_block.const_int_from_type(context, location, -1, felt252_ty)?;
 
             src_value_is_neg =
                 is_neg_block.append_op_result(arith::muli(src_value_is_neg, kneg1, location))?;
