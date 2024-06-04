@@ -138,6 +138,7 @@ use test_case::test_case;
 #[test_case("tests/cases/cairo_vm/simple_struct.cairo")]
 #[test_case("tests/cases/cairo_vm/struct_span_return.cairo")]
 // #[test_case("tests/cases/cairo_vm/tensor_new.cairo")]
+#[test_case("tests/cases/brainfuck.cairo")]
 fn test_cases(program_path: &str) {
     compare_inputless_program(program_path)
 }
