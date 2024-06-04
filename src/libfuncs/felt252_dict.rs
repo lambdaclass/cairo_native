@@ -1,6 +1,7 @@
 //! # `Felt` dictionary libfuncs
 
 use super::LibfuncHelper;
+use crate::block_ext::BlockExt;
 use crate::{
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
@@ -86,19 +87,13 @@ pub fn build_squash<'ctx, 'this>(
         .dict_gas_refund(context, helper, entry, dict_ptr, location)?
         .result(0)?
         .into();
-    let gas_refund = entry
-        .append_operation(arith::extui(
-            gas_refund,
-            IntegerType::new(context, 128).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let gas_refund = entry.append_op_result(arith::extui(
+        gas_refund,
+        IntegerType::new(context, 128).into(),
+        location,
+    ))?;
 
-    let new_gas_builtin = entry
-        .append_operation(arith::addi(gas_builtin, gas_refund, location))
-        .result(0)?
-        .into();
+    let new_gas_builtin = entry.append_op_result(arith::addi(gas_builtin, gas_refund, location))?;
 
     entry.append_operation(helper.br(
         0,
