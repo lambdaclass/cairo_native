@@ -115,7 +115,7 @@ pub trait BlockExt<'ctx> {
         addr: Value<'ctx, '_>,
         value: Value<'ctx, '_>,
         align: Option<usize>,
-    );
+    )-> Result<(), Error>;
 
     /// Creates a memcpy operation.
     fn memcpy(
@@ -247,17 +247,19 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         addr: Value<'ctx, '_>,
         value: Value<'ctx, '_>,
         align: Option<usize>,
-    ) {
+    ) -> Result<(), Error>{
         let mut op = ods::llvm::store(context, value, addr, location);
 
         if let Some(align) = align {
             op.set_alignment(IntegerAttribute::new(
                 IntegerType::new(context, 64).into(),
-                align as i64,
+                align.try_into()?,
             ));
         }
 
         self.append_operation(op.into());
+
+        Ok(())
     }
 
     // Use this only when returning the result. Otherwise, append_operation is fine.

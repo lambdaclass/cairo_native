@@ -62,7 +62,7 @@ pub fn build<'ctx, 'this>(
                         stack_ptr,
                         entry.argument(idx)?.into(),
                         Some(type_info.layout(registry)?.align()),
-                    );
+                    )?;
 
                     stack_ptr
                 } else {
