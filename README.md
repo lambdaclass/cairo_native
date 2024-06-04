@@ -411,6 +411,12 @@ make check
 make runtime
 ```
 
+- Run Fuzzer for the sierra target
+
+```bash
+make fuzz
+```
+
 ## Command Line Interface
 
 `cairo-native-dump`:

@@ -1,4 +1,4 @@
-.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb install-scarb-macos build-alexandria runtime test-ci proptest-ci
+.PHONY: usage build book build-dev build-native coverage check test bench bench-ci doc doc-open install clean install-scarb install-scarb-macos build-alexandria runtime test-ci proptest-ci fuzz
 
 #
 # Environment detection.
@@ -143,3 +143,6 @@ runtime:
 
 runtime-ci:
 	cargo b --profile ci --all-features -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .
+
+fuzz: check-llvm needs-cairo2 build-alexandria runtime-ci
+	cargo +nightly fuzz run fuzz-sierra

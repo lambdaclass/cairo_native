@@ -74,6 +74,7 @@ num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "0.1.1", default-features = false, features = [
   "serde",
+  "arbitrary"
 ] }
 tempfile = "3.6"
 thiserror = "1.0.59"
@@ -158,4 +159,4 @@ name = "libfuncs"
 harness = false
 
 [workspace]
-members = ["runtime"]
+members = ["runtime", "fuzz"]
