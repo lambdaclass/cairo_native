@@ -1521,7 +1521,7 @@ pub(crate) mod handler {
             p: &Secp256k1Point,
         ) {
             let p = *p;
-            let result = ptr.secp256k1_get_xy(*p, gas);
+            let result = ptr.secp256k1_get_xy(p, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
