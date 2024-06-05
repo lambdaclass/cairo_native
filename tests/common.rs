@@ -26,7 +26,10 @@ use cairo_native::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
-    types::felt252::{HALF_PRIME, PRIME},
+    types::{
+        felt252::{HALF_PRIME, PRIME},
+        TypeBuilder,
+    },
     utils::find_entry_point_by_idx,
     values::JitValue,
     OptLevel,
@@ -313,7 +316,7 @@ pub fn compare_outputs(
             Some(&type_size) => type_size,
             None => {
                 let type_size = match registry.get_type(ty).unwrap() {
-                    CoreTypeConcrete::Array(_info) => 2,
+                    CoreTypeConcrete::Array(_) | CoreTypeConcrete::EcPoint(_) => 2,
                     CoreTypeConcrete::Felt252(_)
                     | CoreTypeConcrete::Uint128(_)
                     | CoreTypeConcrete::Uint64(_)
@@ -324,7 +327,8 @@ pub fn compare_outputs(
                     | CoreTypeConcrete::Sint64(_)
                     | CoreTypeConcrete::Sint32(_)
                     | CoreTypeConcrete::Sint16(_)
-                    | CoreTypeConcrete::Sint8(_) => 1,
+                    | CoreTypeConcrete::Sint8(_)
+                    | CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::Enum(info) => {
                         1 + info
                             .variants
@@ -338,9 +342,7 @@ pub fn compare_outputs(
                         .iter()
                         .map(|member_ty| map_vm_sizes(size_cache, registry, member_ty))
                         .sum(),
-                    CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::NonZero(info) => map_vm_sizes(size_cache, registry, &info.ty),
-                    CoreTypeConcrete::EcPoint(_) => 2,
                     CoreTypeConcrete::EcState(_) => 4,
                     CoreTypeConcrete::Snapshot(info) => {
                         map_vm_sizes(size_cache, registry, &info.ty)
@@ -535,9 +537,17 @@ pub fn compare_outputs(
                 bytes.pop();
                 JitValue::Bytes31(bytes.try_into().unwrap())
             }
-            CoreTypeConcrete::Const(_) => todo!(),
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => unreachable!(),
+            CoreTypeConcrete::Const(_) => unreachable!(),
+            CoreTypeConcrete::EcOp(_) => unreachable!(),
+            CoreTypeConcrete::GasBuiltin(_) => unreachable!(),
+            CoreTypeConcrete::BuiltinCosts(_) => unreachable!(),
+            CoreTypeConcrete::RangeCheck(_) => unreachable!(),
+            CoreTypeConcrete::Pedersen(_) => unreachable!(),
+            CoreTypeConcrete::Poseidon(_) => unreachable!(),
+            CoreTypeConcrete::SegmentArena(_) => unreachable!(),
+            CoreTypeConcrete::BoundedInt(_) => unreachable!(),
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }
@@ -546,6 +556,7 @@ pub fn compare_outputs(
 
     let mut size_cache = HashMap::new();
     let ty = function.signature.ret_types.last();
+    let is_builtin = ty.map_or(false, |ty| registry.get_type(ty).unwrap().is_builtin());
     let returns_panic = ty.map_or(false, |ty| {
         ty.debug_name
             .as_ref()
@@ -578,7 +589,7 @@ pub fn compare_outputs(
                     )),
                     debug_name: None,
                 }
-            } else {
+            } else if !is_builtin {
                 map_vm_values(
                     &mut size_cache,
                     &registry,
@@ -586,6 +597,11 @@ pub fn compare_outputs(
                     values,
                     ty.unwrap(),
                 )
+            } else {
+                JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None,
+                }
             }
         }
         RunResultValue::Panic(values) => JitValue::Enum {
@@ -608,7 +624,6 @@ pub fn compare_outputs(
             }),
             debug_name: None,
         },
-        // Empty return value
         _ => JitValue::Struct {
             fields: vec![],
             debug_name: None,
