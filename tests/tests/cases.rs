@@ -133,7 +133,7 @@ use test_case::test_case;
 #[test_case("tests/cases/cairo_vm/print.cairo")]
 #[test_case("tests/cases/cairo_vm/recursion.cairo")]
 #[test_case("tests/cases/cairo_vm/sample.cairo")]
-// #[test_case("tests/cases/cairo_vm/short_string.cairo")]
+#[test_case("tests/cases/cairo_vm/short_string.cairo")]
 #[test_case("tests/cases/cairo_vm/simple.cairo")]
 #[test_case("tests/cases/cairo_vm/simple_struct.cairo")]
 #[test_case("tests/cases/cairo_vm/struct_span_return.cairo")]

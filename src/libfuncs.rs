@@ -28,6 +28,7 @@ pub mod branch_align;
 pub mod bytes31;
 pub mod cast;
 pub mod r#const;
+pub mod coupon;
 pub mod debug;
 pub mod drop;
 pub mod dup;
@@ -216,14 +217,19 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::Coupon(_) => todo!(),
-            Self::CouponCall(_) => todo!(),
+            Self::Coupon(info) => {
+                self::coupon::build(context, registry, entry, location, helper, metadata, info)
+            }
+            Self::CouponCall(info) => self::function_call::build(
+                context, registry, entry, location, helper, metadata, info,
+            ),
         }
     }
 
     fn is_function_call(&self) -> Option<&FunctionId> {
         match self {
             CoreConcreteLibfunc::FunctionCall(info) => Some(&info.function.id),
+            CoreConcreteLibfunc::CouponCall(info) => Some(&info.function.id),
             _ => None,
         }
     }
