@@ -151,8 +151,8 @@ fn test_program_cases(program_path: &str) {
 
 // Contracts copied from the cairo-vm
 // https://github.com/lambdaclass/cairo-vm/tree/main/cairo_programs/cairo-1-contracts
-// #[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/alloc_segment.cairo", &[])]
+// #[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[Felt::THREE, Felt::THREE, Felt::THREE])]
+#[test_case("tests/cases/cairo_vm/contracts/alloc_segment.cairo", &[])]
 // #[test_case("tests/cases/cairo_vm/contracts/assert_le_find_small_arcs.cairo", &[])]
 // #[test_case("tests/cases/cairo_vm/contracts/dict_test.cairo", &[])]
 // #[test_case("tests/cases/cairo_vm/contracts/divmod.cairo", &[])]
@@ -160,7 +160,7 @@ fn test_program_cases(program_path: &str) {
 // #[test_case("tests/cases/cairo_vm/contracts/felt252_dict_entry_init.cairo", &[])]
 // #[test_case("tests/cases/cairo_vm/contracts/felt252_dict_entry_update.cairo", &[])]
 // #[test_case("tests/cases/cairo_vm/contracts/felt_252_dict.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/fib.cairo", &[Felt::TWO, Felt::THREE, Felt::THREE])]
+#[test_case("tests/cases/cairo_vm/contracts/fib.cairo", &[Felt::THREE, Felt::THREE, Felt::THREE])]
 // #[test_case("tests/cases/cairo_vm/contracts/field_sqrt.cairo", &[])]
 // #[test_case("tests/cases/cairo_vm/contracts/get_segment_arena_index.cairo", &[])]
 // #[test_case("tests/cases/cairo_vm/contracts/init_squash_data.cairo", &[])]
