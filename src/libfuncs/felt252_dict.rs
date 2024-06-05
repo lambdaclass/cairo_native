@@ -116,7 +116,10 @@ pub fn build_squash<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{jit_dict, jit_struct, load_cairo, run_program_assert_output};
+    use crate::{
+        utils::test::{jit_dict, jit_struct, load_cairo, run_program_assert_output},
+        values::JitValue,
+    };
 
     #[test]
     fn run_dict_new() {
@@ -205,6 +208,41 @@ mod test {
                 3 => 4u32,
                 4 => 5u32,
                 5 => 6u32,
+            ),
+        );
+    }
+
+    #[test]
+    // #[ignore]
+    fn run_dict_deserialize2() {
+        let program = load_cairo!(
+            use traits::Default;
+            use dict::Felt252DictTrait;
+
+            fn run_test(mut dict: Felt252Dict<u32>) -> (felt252, Felt252Dict<u32>) {
+                (0, dict)
+            }
+        );
+
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[jit_dict!(
+                1 => 2u32,
+                2 => 3u32,
+                3 => 4u32,
+                4 => 5u32,
+                5 => 6u32,
+            )],
+            jit_struct!(
+                JitValue::Felt252(0.into()),
+                jit_dict!(
+                    1 => 2u32,
+                    2 => 3u32,
+                    3 => 4u32,
+                    4 => 5u32,
+                    5 => 6u32,
+                )
             ),
         );
     }
