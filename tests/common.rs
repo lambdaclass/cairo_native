@@ -324,6 +324,7 @@ pub fn compare_outputs(
                     | CoreTypeConcrete::Sint32(_)
                     | CoreTypeConcrete::Sint16(_)
                     | CoreTypeConcrete::Sint8(_)
+                    | CoreTypeConcrete::Box(_)
                     | CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::Enum(info) => {
                         1 + info
@@ -343,6 +344,7 @@ pub fn compare_outputs(
                     CoreTypeConcrete::Snapshot(info) => {
                         map_vm_sizes(size_cache, registry, &info.ty)
                     }
+                    CoreTypeConcrete::SquashedFelt252Dict(_) => 2,
                     x => todo!("vm size not yet implemented: {:?}", x.info()),
                 };
                 size_cache.insert(ty.clone(), type_size);
@@ -490,6 +492,28 @@ pub fn compare_outputs(
                 let ty_size = map_vm_sizes(size_cache, registry, &info.ty);
                 match values[0].to_usize().unwrap() {
                     0 => JitValue::Null,
+                    ptr if ty_size == 0 => {
+                        assert_eq!(ptr, 1);
+                        map_vm_values(size_cache, registry, memory, &[], &info.ty)
+                    }
+                    ptr => map_vm_values(
+                        size_cache,
+                        registry,
+                        memory,
+                        &memory[ptr..ptr + ty_size]
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap)
+                            .collect::<Vec<_>>(),
+                        &info.ty,
+                    ),
+                }
+            }
+            CoreTypeConcrete::Box(info) => {
+                assert_eq!(values.len(), 1);
+
+                let ty_size = map_vm_sizes(size_cache, registry, &info.ty);
+                match values[0].to_usize().unwrap() {
                     ptr if ty_size == 0 => {
                         assert_eq!(ptr, 1);
                         map_vm_values(size_cache, registry, memory, &[], &info.ty)
