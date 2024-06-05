@@ -25,14 +25,10 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, llvm,
     },
-    ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Attribute, Block, Location, Value, ValueLike,
-    },
+    ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
+use num_bigint::ToBigInt;
 use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -363,8 +359,12 @@ pub fn build_from_felt252<'ctx, 'this>(
                 .get::<PrimeModuloMeta<Felt>>()
                 .ok_or(Error::MissingMetadata)?
                 .prime();
-            let prime =
-                is_neg_block.const_int_from_type(context, location, prime_biguint, felt252_ty)?;
+            let prime = is_neg_block.const_int_from_type(
+                context,
+                location,
+                prime_biguint.to_bigint().unwrap(),
+                felt252_ty,
+            )?;
 
             let mut src_value_is_neg: melior::ir::Value =
                 is_neg_block.append_op_result(arith::subi(prime, value, location))?;
