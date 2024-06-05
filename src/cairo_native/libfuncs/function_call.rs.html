@@ -287,14 +287,6 @@
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Function call libfuncs
 //!
 //! Includes logic for handling direct tail recursive function calls. More information on this topic
@@ -421,15 +413,10 @@
             <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>;
 
             <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
-                results.push(
-                    cont_block
-                        .append_operation(llvm::undef(
-                            type_info.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>,
-                            location,
-                        ))
-                        .result(<span class="number">0</span>)<span class="question-mark">?
-                        </span>.into(),
-                );
+                results.push(cont_block.append_op_result(llvm::undef(
+                    type_info.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>,
+                    location,
+                ))<span class="question-mark">?</span>);
             } <span class="kw">else </span>{
                 <span class="kw">let </span>val = cont_block.argument(count)<span class="question-mark">?</span>.into();
                 count += <span class="number">1</span>;
@@ -521,17 +508,14 @@
                         <span class="kw">let </span>ret_layout = type_info.layout(registry)<span class="question-mark">?</span>;
                         (layout, offset) = layout.extend(ret_layout)<span class="question-mark">?</span>;
 
-                        <span class="kw">let </span>pointer_val = entry
-                            .append_operation(llvm::get_element_ptr(
-                                context,
-                                val,
-                                DenseI32ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[offset <span class="kw">as </span>i32]),
-                                IntegerType::new(context, <span class="number">8</span>).into(),
-                                llvm::r#type::pointer(context, <span class="number">0</span>),
-                                location,
-                            ))
-                            .result(<span class="number">0</span>)<span class="question-mark">?
-                            </span>.into();
+                        <span class="kw">let </span>pointer_val = entry.append_op_result(llvm::get_element_ptr(
+                            context,
+                            val,
+                            DenseI32ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[offset <span class="kw">as </span>i32]),
+                            IntegerType::new(context, <span class="number">8</span>).into(),
+                            llvm::r#type::pointer(context, <span class="number">0</span>),
+                            location,
+                        ))<span class="question-mark">?</span>;
 
                         results.push(entry.load(
                             context,
