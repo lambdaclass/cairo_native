@@ -20,7 +20,12 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
-use cairo_lang_starknet::contract::get_contracts_info;
+use cairo_lang_starknet::{
+    compile::compile_contract_in_prepared_db, contract::get_contracts_info, starknet_plugin_suite,
+};
+use cairo_lang_starknet_classes::{
+    casm_contract_class::CasmContractClass, contract_class::ContractClass,
+};
 use cairo_native::{
     context::NativeContext,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -34,6 +39,7 @@ use cairo_native::{
     values::JitValue,
     OptLevel,
 };
+use cairo_vm::vm::runners::cairo_runner::CairoRunner;
 use lambdaworks_math::{
     field::{
         element::FieldElement, fields::montgomery_backed_prime_fields::MontgomeryBackendPrimeField,
@@ -179,6 +185,41 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     (module_name.to_string(), program, runner)
 }
 
+pub fn load_cairo_contract_path(path: &str) -> (ContractClass, CairoRunner) {
+    let mut db = RootDatabase::builder()
+        .detect_corelib()
+        .with_plugin_suite(starknet_plugin_suite())
+        .build()
+        .unwrap();
+
+    let main_crate_ids = setup_project(&mut db, Path::new(&path)).unwrap();
+    let contract = compile_contract_in_prepared_db(
+        &mut db,
+        None,
+        main_crate_ids.clone(),
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let casm_contract =
+        CasmContractClass::from_contract_class(contract.clone(), false, usize::MAX).unwrap();
+
+    let casm_program = casm_contract.clone().try_into().unwrap();
+
+    let runner = CairoRunner::new(
+        &(casm_program),
+        cairo_vm::types::layout_name::LayoutName::all_cairo,
+        false,
+        false,
+    )
+    .unwrap();
+
+    (contract, runner)
+}
+
 pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
@@ -274,8 +315,11 @@ pub fn compare_inputless_program(program_path: &str) {
 }
 
 #[track_caller]
-pub fn compare_contract(program_path: &str, args: &[Felt]) {
-    todo!()
+pub fn compare_contract(program_path: &str, _args: &[Felt]) {
+    let (contract, _runner) = load_cairo_contract_path(program_path);
+
+    dbg!(contract);
+    // dbg!(runner);
 }
 
 /// Runs the program using cairo-native JIT.
