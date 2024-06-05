@@ -1,4 +1,9 @@
-use crate::common::{compare_contract, compare_inputless_program};
+use crate::common::{
+    compare_inputless_program, load_cairo_contract_path, run_native_starknet_contract,
+    run_vm_contract,
+};
+use cairo_native::starknet::DummySyscallHandler;
+use pretty_assertions_sorted::assert_eq_sorted;
 use starknet_types_core::felt::Felt;
 use test_case::test_case;
 
@@ -146,7 +151,16 @@ fn test_program_cases(program_path: &str) {
 
 // Contracts copied from the cairo-vm
 // https://github.com/lambdaclass/cairo-vm/tree/main/cairo_programs/cairo-1-contracts
-#[test_case("tests/cases/cairo_vm/contracts/fib.cairo", &[Felt::THREE, Felt::THREE, Felt::THREE])]
+#[test_case("tests/cases/cairo_vm/contracts/fib.cairo", &[Felt::TWO, Felt::THREE, Felt::THREE])]
 fn test_contract_cases(program_path: &str, args: &[Felt]) {
-    compare_contract(program_path, args);
+    let contract = load_cairo_contract_path(program_path);
+
+    let vm_output = run_vm_contract(&contract, args);
+
+    let program = contract.extract_sierra_program().unwrap();
+
+    let native_output =
+        run_native_starknet_contract(&program, 0, args, DummySyscallHandler).return_values;
+
+    assert_eq_sorted!(vm_output, native_output);
 }

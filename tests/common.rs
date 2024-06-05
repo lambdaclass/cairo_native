@@ -39,7 +39,12 @@ use cairo_native::{
     values::JitValue,
     OptLevel,
 };
-use cairo_vm::vm::runners::cairo_runner::CairoRunner;
+use cairo_vm::{
+    hint_processor::cairo_1_hint_processor::hint_processor::Cairo1HintProcessor,
+    types::{builtin_name::BuiltinName, layout_name::LayoutName, relocatable::MaybeRelocatable},
+    vm::runners::cairo_runner::{CairoArg, CairoRunner, RunResources},
+};
+use itertools::Itertools;
 use lambdaworks_math::{
     field::{
         element::FieldElement, fields::montgomery_backed_prime_fields::MontgomeryBackendPrimeField,
@@ -185,7 +190,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     (module_name.to_string(), program, runner)
 }
 
-pub fn load_cairo_contract_path(path: &str) -> (ContractClass, CairoRunner) {
+pub fn load_cairo_contract_path(path: &str) -> ContractClass {
     let mut db = RootDatabase::builder()
         .detect_corelib()
         .with_plugin_suite(starknet_plugin_suite())
@@ -204,20 +209,7 @@ pub fn load_cairo_contract_path(path: &str) -> (ContractClass, CairoRunner) {
     )
     .unwrap();
 
-    let casm_contract =
-        CasmContractClass::from_contract_class(contract.clone(), false, usize::MAX).unwrap();
-
-    let casm_program = casm_contract.clone().try_into().unwrap();
-
-    let runner = CairoRunner::new(
-        &(casm_program),
-        cairo_vm::types::layout_name::LayoutName::all_cairo,
-        false,
-        false,
-    )
-    .unwrap();
-
-    (contract, runner)
+    contract
 }
 
 pub fn run_native_program(
@@ -275,6 +267,119 @@ pub fn run_vm_program(
     )
 }
 
+pub fn run_vm_contract(contract: &ContractClass, args: &[Felt]) -> Vec<Felt> {
+    let args = args
+        .iter()
+        .map(|arg| MaybeRelocatable::Int(arg.clone()))
+        .collect_vec();
+
+    let casm_contract =
+        CasmContractClass::from_contract_class(contract.clone(), false, usize::MAX).unwrap();
+    let entrypoint_offset = 0;
+
+    let casm_program = casm_contract.clone().try_into().unwrap();
+
+    let contract_class =
+        CasmContractClass::from_contract_class(contract.clone(), true, usize::MAX).unwrap();
+    let mut hint_processor =
+        Cairo1HintProcessor::new(&contract_class.hints, RunResources::default());
+
+    let mut runner = CairoRunner::new(&casm_program, LayoutName::all_cairo, false, false).unwrap();
+
+    let program_builtins = contract_class
+        .entry_points_by_type
+        .external
+        .iter()
+        .find(|e| e.offset == entrypoint_offset)
+        .unwrap()
+        .builtins
+        .iter()
+        .map(|s| BuiltinName::from_str(s).expect("Invalid builtin name"))
+        .collect_vec();
+
+    runner
+        .initialize_function_runner_cairo_1(&program_builtins)
+        .unwrap();
+
+    // Implicit Args
+    let syscall_segment = MaybeRelocatable::from(runner.vm.add_memory_segment());
+
+    let builtins = runner.get_program_builtins();
+
+    let builtin_segment: Vec<MaybeRelocatable> = runner
+        .vm
+        .get_builtin_runners()
+        .iter()
+        .filter(|b| builtins.contains(&b.name()))
+        .flat_map(|b| b.initial_stack())
+        .collect();
+
+    let initial_gas = MaybeRelocatable::from(usize::MAX);
+
+    let mut implicit_args = builtin_segment;
+    implicit_args.extend([initial_gas]);
+    implicit_args.extend([syscall_segment]);
+
+    // Other args
+
+    // Load builtin costs
+    let builtin_costs: Vec<MaybeRelocatable> =
+        vec![0.into(), 0.into(), 0.into(), 0.into(), 0.into()];
+    let builtin_costs_ptr = runner.vm.add_memory_segment();
+    runner
+        .vm
+        .load_data(builtin_costs_ptr, &builtin_costs)
+        .unwrap();
+
+    // Load extra data
+    let core_program_end_ptr =
+        (runner.program_base.unwrap() + runner.get_program().data_len()).unwrap();
+    let program_extra_data: Vec<MaybeRelocatable> =
+        vec![0x208B7FFF7FFF7FFE.into(), builtin_costs_ptr.into()];
+    runner
+        .vm
+        .load_data(core_program_end_ptr, &program_extra_data)
+        .unwrap();
+
+    // Load calldata
+    let calldata_start = runner.vm.add_memory_segment();
+    let calldata_end = runner.vm.load_data(calldata_start, &args.to_vec()).unwrap();
+
+    // Create entrypoint_args
+    let mut entrypoint_args: Vec<CairoArg> = implicit_args
+        .iter()
+        .map(|m| CairoArg::from(m.clone()))
+        .collect();
+    entrypoint_args.extend([
+        MaybeRelocatable::from(calldata_start).into(),
+        MaybeRelocatable::from(calldata_end).into(),
+    ]);
+    let entrypoint_args: Vec<&CairoArg> = entrypoint_args.iter().collect();
+
+    // Run contract entrypoint
+    runner
+        .run_from_entrypoint(
+            entrypoint_offset,
+            &entrypoint_args,
+            true,
+            Some(runner.get_program().data_len() + program_extra_data.len()),
+            &mut hint_processor,
+        )
+        .unwrap();
+
+    // Extract return values
+    let return_values = runner.vm.get_return_values(5).unwrap();
+    let retdata_start = return_values[3].get_relocatable().unwrap();
+    let retdata_end = return_values[4].get_relocatable().unwrap();
+    runner
+        .vm
+        .get_integer_range(retdata_start, (retdata_end - retdata_start).unwrap())
+        .unwrap()
+        .iter()
+        .map(|c| c.clone().into_owned())
+        .collect_vec()
+}
+
 #[track_caller]
 pub fn compare_inputless_program(program_path: &str) {
     let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
@@ -312,14 +417,6 @@ pub fn compare_inputless_program(program_path: &str) {
         &result_native,
     )
     .expect("compare error");
-}
-
-#[track_caller]
-pub fn compare_contract(program_path: &str, _args: &[Felt]) {
-    let (contract, _runner) = load_cairo_contract_path(program_path);
-
-    dbg!(contract);
-    // dbg!(runner);
 }
 
 /// Runs the program using cairo-native JIT.
