@@ -213,7 +213,6 @@ mod test {
     }
 
     #[test]
-    // #[ignore]
     fn run_dict_deserialize2() {
         let program = load_cairo!(
             use traits::Default;
