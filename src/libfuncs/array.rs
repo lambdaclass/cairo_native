@@ -954,18 +954,20 @@ fn assert_nonnull<'ctx, 'this>(
     ptr: Value<'ctx, 'this>,
     msg: &str,
 ) -> Result<()> {
-    let k0 = entry.const_int(context, location, 0, 64)?;
-    let ptr_value = entry.append_op_result(
-        ods::llvm::ptrtoint(context, IntegerType::new(context, 64).into(), ptr, location).into(),
-    )?;
+    let null_ptr =
+        entry.append_op_result(ods::llvm::mlir_zero(context, ptr.r#type(), location).into())?;
 
-    let ptr_is_not_null = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ne,
-        ptr_value,
-        k0,
-        location,
-    ))?;
+    let ptr_is_not_null = entry.append_op_result(
+        ods::llvm::icmp(
+            context,
+            IntegerType::new(context, 1).into(),
+            ptr,
+            null_ptr,
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
+            location,
+        )
+        .into(),
+    )?;
 
     entry.append_operation(cf::assert(context, ptr_is_not_null, msg, location));
     Ok(())
