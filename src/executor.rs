@@ -27,7 +27,7 @@ use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     arch::global_asm,
-    ptr::{null_mut, NonNull},
+    ptr::{addr_of_mut, null_mut, NonNull},
     rc::Rc,
 };
 
@@ -661,10 +661,7 @@ fn parse_result(
             libc::free(ptr.cast().as_ptr());
             Ok(value)
         },
-        CoreTypeConcrete::EcPoint(_) => {
-            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
-        }
-        CoreTypeConcrete::EcState(_) => {
+        CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
             Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
         }
         CoreTypeConcrete::Felt252(_)
@@ -766,7 +763,6 @@ fn parse_result(
                 Ok(value)
             }
         },
-        CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(info) => {
             let (_, tag_layout, variant_layouts) =
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
@@ -841,44 +837,31 @@ fn parse_result(
                 Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
             }
         }
-        CoreTypeConcrete::Felt252Dict(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(
-                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
-                type_id,
-                registry,
-            )),
-            None => Ok(JitValue::from_jit(
-                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
-                type_id,
-                registry,
-            )),
+        CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
+            let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
+                addr_of_mut!(ret_registers[0]) as *mut ()
+            ));
+            let value = JitValue::from_jit(ptr, type_id, registry);
+            Ok(value)
         },
-        CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-        CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(
-                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
-                type_id,
-                registry,
-            )),
-            None => Ok(JitValue::from_jit(
-                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
-                type_id,
-                registry,
-            )),
-        },
-        CoreTypeConcrete::Span(_) => todo!(),
-        CoreTypeConcrete::Snapshot(_) => todo!(),
+
         // Builtins are handled before the call to parse_result
         // and should not be reached here.
-        CoreTypeConcrete::Bitwise(_) => unreachable!(),
-        CoreTypeConcrete::Const(_) => unreachable!(),
-        CoreTypeConcrete::EcOp(_) => unreachable!(),
-        CoreTypeConcrete::GasBuiltin(_) => unreachable!(),
-        CoreTypeConcrete::BuiltinCosts(_) => unreachable!(),
-        CoreTypeConcrete::RangeCheck(_) => unreachable!(),
-        CoreTypeConcrete::Pedersen(_) => unreachable!(),
-        CoreTypeConcrete::Poseidon(_) => unreachable!(),
-        CoreTypeConcrete::SegmentArena(_) => unreachable!(),
-        _ => todo!(),
+        CoreTypeConcrete::Bitwise(_)
+        | CoreTypeConcrete::Const(_)
+        | CoreTypeConcrete::EcOp(_)
+        | CoreTypeConcrete::GasBuiltin(_)
+        | CoreTypeConcrete::BuiltinCosts(_)
+        | CoreTypeConcrete::RangeCheck(_)
+        | CoreTypeConcrete::Pedersen(_)
+        | CoreTypeConcrete::Poseidon(_)
+        | CoreTypeConcrete::SegmentArena(_) => unreachable!(),
+        CoreTypeConcrete::Felt252DictEntry(_)
+        | CoreTypeConcrete::Span(_)
+        | CoreTypeConcrete::Snapshot(_)
+        | CoreTypeConcrete::BoundedInt(_)
+        | CoreTypeConcrete::Uninitialized(_)
+        | CoreTypeConcrete::Coupon(_)
+        | CoreTypeConcrete::StarkNet(_) => todo!(),
     }
 }

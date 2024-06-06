@@ -734,7 +734,7 @@ pub fn build_storage_read<'ctx, 'this>(
         address_arg_ptr,
         entry.argument(3)?.into(),
         None,
-    );
+    )?;
 
     // Extract function pointer.
     let fn_ptr = entry
@@ -1007,7 +1007,7 @@ pub fn build_storage_write<'ctx, 'this>(
         address_arg_ptr,
         entry.argument(3)?.into(),
         None,
-    );
+    )?;
 
     // Allocate `value` argument and write the value.
     let value_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
@@ -1017,7 +1017,7 @@ pub fn build_storage_write<'ctx, 'this>(
         value_arg_ptr,
         entry.argument(4)?.into(),
         None,
-    );
+    )?;
 
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -1488,7 +1488,7 @@ pub fn build_emit_event<'ctx, 'this>(
         keys_arg_ptr,
         entry.argument(2)?.into(),
         None,
-    );
+    )?;
 
     // Allocate `data` argument and write the value.
     let data_arg_ptr = helper.init_block().alloca1(
@@ -1516,7 +1516,7 @@ pub fn build_emit_event<'ctx, 'this>(
         data_arg_ptr,
         entry.argument(3)?.into(),
         None,
-    );
+    )?;
 
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -2589,7 +2589,7 @@ pub fn build_deploy<'ctx, 'this>(
         class_hash_arg_ptr,
         entry.argument(2)?.into(),
         None,
-    );
+    )?;
 
     // Allocate `entry_point_selector` argument and write the value.
     let contract_address_salt_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
@@ -2599,7 +2599,7 @@ pub fn build_deploy<'ctx, 'this>(
         contract_address_salt_arg_ptr,
         entry.argument(3)?.into(),
         None,
-    );
+    )?;
 
     // Allocate `calldata` argument and write the value.
     let calldata_arg_ptr = helper.init_block().alloca1(
@@ -2627,7 +2627,7 @@ pub fn build_deploy<'ctx, 'this>(
         calldata_arg_ptr,
         entry.argument(4)?.into(),
         None,
-    );
+    )?;
 
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -2945,7 +2945,7 @@ pub fn build_keccak<'ctx, 'this>(
         input_arg_ptr,
         entry.argument(2)?.into(),
         None,
-    );
+    )?;
 
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
