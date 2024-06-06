@@ -198,8 +198,9 @@ pub fn load_cairo_contract_path(path: &str) -> ContractClass {
         .unwrap();
 
     let main_crate_ids = setup_project(&mut db, Path::new(&path)).unwrap();
-    let contract = compile_contract_in_prepared_db(
-        &mut db,
+
+    compile_contract_in_prepared_db(
+        &db,
         None,
         main_crate_ids.clone(),
         CompilerConfig {
@@ -207,9 +208,7 @@ pub fn load_cairo_contract_path(path: &str) -> ContractClass {
             ..Default::default()
         },
     )
-    .unwrap();
-
-    contract
+    .unwrap()
 }
 
 pub fn run_native_program(
@@ -275,7 +274,7 @@ pub fn run_vm_contract(
 ) -> Vec<Felt> {
     let args = args
         .iter()
-        .map(|arg| MaybeRelocatable::Int(arg.clone()))
+        .map(|arg| MaybeRelocatable::Int(*arg))
         .collect_vec();
 
     let contract =
