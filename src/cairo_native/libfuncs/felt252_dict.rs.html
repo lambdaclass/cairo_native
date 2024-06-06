@@ -302,14 +302,10 @@
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
+<span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
 <span class="kw">use crate</span>::{
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
@@ -395,19 +391,13 @@
         .dict_gas_refund(context, helper, entry, dict_ptr, location)<span class="question-mark">?
         </span>.result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
-    <span class="kw">let </span>gas_refund = entry
-        .append_operation(arith::extui(
-            gas_refund,
-            IntegerType::new(context, <span class="number">128</span>).into(),
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>gas_refund = entry.append_op_result(arith::extui(
+        gas_refund,
+        IntegerType::new(context, <span class="number">128</span>).into(),
+        location,
+    ))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>new_gas_builtin = entry
-        .append_operation(arith::addi(gas_builtin, gas_refund, location))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>new_gas_builtin = entry.append_op_result(arith::addi(gas_builtin, gas_refund, location))<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(
         <span class="number">0</span>,
