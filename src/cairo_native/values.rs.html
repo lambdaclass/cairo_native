@@ -1464,6 +1464,8 @@
 <a href="#1462" id="1462">1462</a>
 <a href="#1463" id="1463">1463</a>
 <a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -2171,8 +2173,10 @@
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) =&gt; {
-                    <span class="kw">let </span>map = Box::from_raw(
-                        ptr.cast::&lt;HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;&gt;()
+                    <span class="kw">let </span>(map, <span class="kw">_</span>) = <span class="kw-2">*</span>Box::from_raw(
+                        ptr.cast::&lt;NonNull&lt;()&gt;&gt;()
+                            .as_ref()
+                            .cast::&lt;(HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;, u64)&gt;()
                             .as_ptr(),
                     );
 
