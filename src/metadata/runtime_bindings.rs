@@ -30,6 +30,8 @@ enum RuntimeBinding {
     DictGasRefund,
     DictInsert,
     DictFree,
+    #[cfg(feature = "with-cheatcode")]
+    VtableCheatcode,
 }
 
 /// Runtime library bindings metadata.
@@ -647,6 +649,60 @@ impl RuntimeBindingsMeta {
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_gas_refund"),
             &[dict_ptr],
             &[IntegerType::new(context, 64).into()],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `vtable_cheatcode()` runtime function.
+    ///
+    /// Calls the cheatcode syscall with the given arguments.
+    ///
+    /// The result is stored in `result_ptr`.
+    #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "with-cheatcode")]
+    pub fn vtable_cheatcode<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        result_ptr: Value<'c, 'a>,
+        selector_ptr: Value<'c, 'a>,
+        args: Value<'c, 'a>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::VtableCheatcode) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__vtable_cheatcode"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__vtable_cheatcode"),
+            &[result_ptr, selector_ptr, args],
+            &[],
             location,
         )))
     }
