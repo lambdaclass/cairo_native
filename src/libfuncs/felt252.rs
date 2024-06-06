@@ -162,7 +162,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
 
             let prime = entry.const_int_from_type(context, location, prime.clone(), i512)?;
-            let result_mod = entry.append_op_result(arith::addi(result, prime, location))?;
+            let result_mod = entry.append_op_result(arith::remui(result, prime, location))?;
             let is_out_of_range = entry.append_op_result(arith::cmpi(
                 context,
                 CmpiPredicate::Uge,
