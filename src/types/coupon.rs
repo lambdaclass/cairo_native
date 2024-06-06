@@ -1,17 +1,17 @@
-//! # Squashed `Felt` dictionary type
+//! # Coupon type.
 
 use super::WithSelf;
 use crate::{error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        types::InfoAndTypeConcreteType,
+        coupon::CouponConcreteType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::llvm,
-    ir::{Module, Type},
+    ir::{r#type::IntegerType, Module, Type},
     Context,
 };
 
@@ -23,7 +23,7 @@ pub fn build<'ctx>(
     _module: &Module<'ctx>,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _metadata: &mut MetadataStorage,
-    _info: WithSelf<InfoAndTypeConcreteType>,
+    _info: WithSelf<CouponConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(llvm::r#type::pointer(context, 0))
+    Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
 }

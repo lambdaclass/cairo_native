@@ -27,7 +27,7 @@ use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     arch::global_asm,
-    ptr::{null_mut, NonNull},
+    ptr::{addr_of_mut, null_mut, NonNull},
     rc::Rc,
 };
 
@@ -151,7 +151,6 @@ fn invoke_dynamic(
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
-
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
 
@@ -196,6 +195,22 @@ fn invoke_dynamic(
         None
     };
 
+    // The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
+    // so we must always allocate it in case it needs it, regardless of whether it's passed
+    // as an argument to the entry point or not.
+    let mut syscall_handler = syscall_handler
+        .as_mut()
+        .map(|syscall_handler| StarknetSyscallHandlerCallbacks::new(syscall_handler));
+    // We only care for the previous syscall handler if we actually modify it
+    #[cfg(feature = "with-cheatcode")]
+    let previous_syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
+        let previous_syscall_handler = crate::starknet::SYSCALL_HANDLER_VTABLE.get();
+        let syscall_handler_ptr = std::ptr::addr_of!(*syscall_handler) as *mut ();
+        crate::starknet::SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
+
+        previous_syscall_handler
+    });
+
     // Generate argument list.
     let mut iter = args.iter();
     for type_id in function_signature.param_types.iter().filter(|id| {
@@ -209,19 +224,14 @@ fn invoke_dynamic(
                 &[gas as u64, (gas >> 64) as u64],
             ),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
-                match syscall_handler.as_mut() {
-                    Some(syscall_handler) => {
-                        let syscall_handler =
-                            arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
-                        invoke_data.push_aligned(
-                            get_integer_layout(64).align(),
-                            &[syscall_handler as *mut _ as u64],
-                        )
-                    }
-                    None => {
-                        panic!("Syscall handler is required");
-                    }
-                }
+                let syscall_handler = syscall_handler
+                    .as_mut()
+                    .expect("syscall handler is required");
+
+                invoke_data.push_aligned(
+                    get_integer_layout(64).align(),
+                    &[syscall_handler as *mut _ as u64],
+                );
             }
             type_info => invoke_data
                 .push(
@@ -250,6 +260,13 @@ fn invoke_dynamic(
             invoke_data.invoke_data().len(),
             ret_registers.as_mut_ptr(),
         );
+    }
+
+    // If the syscall handler was changed, then reset the previous one.
+    // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)
+    #[cfg(feature = "with-cheatcode")]
+    if let Some(previous_syscall_handler) = previous_syscall_handler {
+        crate::starknet::SYSCALL_HANDLER_VTABLE.set(previous_syscall_handler);
     }
 
     // Parse final gas.
@@ -644,10 +661,7 @@ fn parse_result(
             libc::free(ptr.cast().as_ptr());
             Ok(value)
         },
-        CoreTypeConcrete::EcPoint(_) => {
-            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
-        }
-        CoreTypeConcrete::EcState(_) => {
+        CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
             Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
         }
         CoreTypeConcrete::Felt252(_)
@@ -749,7 +763,6 @@ fn parse_result(
                 Ok(value)
             }
         },
-        CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(info) => {
             let (_, tag_layout, variant_layouts) =
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
@@ -824,44 +837,31 @@ fn parse_result(
                 Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
             }
         }
-        CoreTypeConcrete::Felt252Dict(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(
-                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
-                type_id,
-                registry,
-            )),
-            None => Ok(JitValue::from_jit(
-                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
-                type_id,
-                registry,
-            )),
+        CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
+            let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
+                addr_of_mut!(ret_registers[0]) as *mut ()
+            ));
+            let value = JitValue::from_jit(ptr, type_id, registry);
+            Ok(value)
         },
-        CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-        CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(
-                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
-                type_id,
-                registry,
-            )),
-            None => Ok(JitValue::from_jit(
-                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
-                type_id,
-                registry,
-            )),
-        },
-        CoreTypeConcrete::Span(_) => todo!(),
-        CoreTypeConcrete::Snapshot(_) => todo!(),
+
         // Builtins are handled before the call to parse_result
         // and should not be reached here.
-        CoreTypeConcrete::Bitwise(_) => unreachable!(),
-        CoreTypeConcrete::Const(_) => unreachable!(),
-        CoreTypeConcrete::EcOp(_) => unreachable!(),
-        CoreTypeConcrete::GasBuiltin(_) => unreachable!(),
-        CoreTypeConcrete::BuiltinCosts(_) => unreachable!(),
-        CoreTypeConcrete::RangeCheck(_) => unreachable!(),
-        CoreTypeConcrete::Pedersen(_) => unreachable!(),
-        CoreTypeConcrete::Poseidon(_) => unreachable!(),
-        CoreTypeConcrete::SegmentArena(_) => unreachable!(),
-        _ => todo!(),
+        CoreTypeConcrete::Bitwise(_)
+        | CoreTypeConcrete::Const(_)
+        | CoreTypeConcrete::EcOp(_)
+        | CoreTypeConcrete::GasBuiltin(_)
+        | CoreTypeConcrete::BuiltinCosts(_)
+        | CoreTypeConcrete::RangeCheck(_)
+        | CoreTypeConcrete::Pedersen(_)
+        | CoreTypeConcrete::Poseidon(_)
+        | CoreTypeConcrete::SegmentArena(_) => unreachable!(),
+        CoreTypeConcrete::Felt252DictEntry(_)
+        | CoreTypeConcrete::Span(_)
+        | CoreTypeConcrete::Snapshot(_)
+        | CoreTypeConcrete::BoundedInt(_)
+        | CoreTypeConcrete::Uninitialized(_)
+        | CoreTypeConcrete::Coupon(_)
+        | CoreTypeConcrete::StarkNet(_) => todo!(),
     }
 }

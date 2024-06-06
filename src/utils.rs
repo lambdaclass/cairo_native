@@ -340,6 +340,14 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
                 as *const fn(*const std::ffi::c_void, NonNull<std::ffi::c_void>) -> u64
                 as *mut (),
         );
+
+        #[cfg(feature = "with-cheatcode")]
+        {
+            engine.register_symbol(
+                "cairo_native__vtable_cheatcode",
+                crate::starknet::cairo_native__vtable_cheatcode as *mut (),
+            );
+        }
     }
 }
 
