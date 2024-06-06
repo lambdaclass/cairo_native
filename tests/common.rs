@@ -190,6 +190,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     (module_name.to_string(), program, runner)
 }
 
+// Compiles a cairo contract from the given path, with the starknet plugin suite.
 pub fn load_cairo_contract_path(path: &str) -> ContractClass {
     let mut db = RootDatabase::builder()
         .detect_corelib()
