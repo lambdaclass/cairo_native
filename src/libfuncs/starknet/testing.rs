@@ -70,9 +70,10 @@ pub fn build<'ctx, 'this>(
         IntegerType::new(context, 256).into(),
         None,
     )?;
+
     helper
         .init_block()
-        .store(context, location, selector_ptr, selector, None);
+        .store(context, location, selector_ptr, selector, None)?;
 
     // Allocate and store arguments. The cairo type is a Span<Felt252> (the outer struct),
     // which contains an Array<Felt252> (the inner struct)
@@ -93,7 +94,7 @@ pub fn build<'ctx, 'this>(
     let args_ptr = helper
         .init_block()
         .alloca1(context, location, span_felt252_type, None)?;
-    entry.store(context, location, args_ptr, entry.argument(0)?.into(), None);
+    entry.store(context, location, args_ptr, entry.argument(0)?.into(), None)?;
 
     // Call runtime cheatcode syscall wrapper
     metadata
