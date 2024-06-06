@@ -117,7 +117,7 @@ pub fn build_squash<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_dict, jit_struct, load_cairo, run_program_assert_output},
+        utils::test::{jit_dict, jit_enum, jit_struct, load_cairo, run_program_assert_output},
         values::JitValue,
     };
 
@@ -242,6 +242,65 @@ mod test {
                     4 => 5u32,
                     5 => 6u32,
                 )
+            ),
+        );
+    }
+
+    #[test]
+    fn run_dict_deserialize_struct() {
+        let program = load_cairo! {
+            use core::{dict::Felt252DictTrait, nullable::Nullable};
+
+            fn run_test() -> Felt252Dict<Nullable<(u32, u64, u128)>> {
+                let mut x: Felt252Dict<Nullable<(u32, u64, u128)>> = Default::default();
+                x.insert(0, NullableTrait::new((1_u32, 2_u64, 3_u128)));
+                x.insert(1, NullableTrait::new((2_u32, 3_u64, 4_u128)));
+                x.insert(2, NullableTrait::new((3_u32, 4_u64, 5_u128)));
+                x
+            }
+        };
+
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            jit_dict!(
+                0 => jit_struct!(1u32.into(), 2u64.into(), 3u128.into()),
+                1 => jit_struct!(2u32.into(), 3u64.into(), 4u128.into()),
+                2 => jit_struct!(3u32.into(), 4u64.into(), 5u128.into()),
+            ),
+        );
+    }
+
+    #[test]
+    fn run_dict_deserialize_enum() {
+        let program = load_cairo! {
+            use core::{dict::Felt252DictTrait, nullable::Nullable};
+
+            #[derive(Drop)]
+            enum MyEnum {
+                A: u32,
+                B: u64,
+                C: u128,
+            }
+
+            fn run_test() -> Felt252Dict<Nullable<MyEnum>> {
+                let mut x: Felt252Dict<Nullable<MyEnum>> = Default::default();
+                x.insert(0, NullableTrait::new(MyEnum::A(1)));
+                x.insert(1, NullableTrait::new(MyEnum::B(2)));
+                x.insert(2, NullableTrait::new(MyEnum::C(3)));
+                x
+            }
+        };
+
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            jit_dict!(
+                0 => jit_enum!(0, 1u32.into()),
+                1 => jit_enum!(1, 2u64.into()),
+                2 => jit_enum!(2, 3u128.into()),
             ),
         );
     }
