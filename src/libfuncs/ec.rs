@@ -428,10 +428,7 @@ pub fn build_state_init<'ctx, 'this>(
         false,
     );
 
-    let point = entry
-        .append_operation(llvm::undef(ec_state_ty, location))
-        .result(0)?
-        .into();
+    let point = entry.append_op_result(llvm::undef(ec_state_ty, location))?;
 
     let value = BigInt::parse_bytes(
         b"3151312365169595090315724863753927489909436624354740709748557281394568342450",
@@ -562,10 +559,7 @@ pub fn build_zero<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let point = entry
-        .append_operation(llvm::undef(ec_point_ty, location))
-        .result(0)?
-        .into();
+    let point = entry.append_op_result(llvm::undef(ec_point_ty, location))?;
 
     let k0 = entry.const_int(context, location, 0, 252)?;
 
