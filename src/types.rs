@@ -513,9 +513,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | Self::Poseidon(_)
             | Self::SegmentArena(_) => false,
             // Other builtins:
-            Self::BuiltinCosts(_)
-            | Self::Uint128MulGuarantee(_)
-            | Self::Coupon(_) => true,
+            Self::BuiltinCosts(_) | Self::Uint128MulGuarantee(_) | Self::Coupon(_) => true,
 
             // Normal types:
             Self::Array(_)
@@ -667,9 +665,7 @@ impl TypeBuilder for CoreTypeConcrete {
                     .try_into()
                     .expect("should always fit u32"),
             ),
-            Self::Const(const_type) => {
-                registry.get_type(&const_type.inner_ty)?.layout(registry)?
-            }
+            Self::Const(const_type) => registry.get_type(&const_type.inner_ty)?.layout(registry)?,
             Self::Coupon(_) => Layout::new::<()>(),
         }
         .pad_to_align())
