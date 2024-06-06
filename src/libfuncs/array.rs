@@ -428,7 +428,7 @@ pub fn build_append<'ctx, 'this>(
             ptr,
             entry.argument(1)?.into(),
             Some(elem_layout.align()),
-        );
+        )?;
 
         let array_len = append_block
             .append_operation(arith::addi(array_end, k1, location))
@@ -1132,7 +1132,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
             .result(0)?
             .into();
 
-        entry.store(context, location, target_ptr, value, None);
+        entry.store(context, location, target_ptr, value, None)?;
     }
 
     let array_container = entry.insert_value(context, location, array_container, ptr, 0)?;
