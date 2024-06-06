@@ -267,60 +267,50 @@ pub fn run_vm_program(
     )
 }
 
-pub fn run_vm_contract(contract: &ContractClass, args: &[Felt]) -> Vec<Felt> {
+/// Runs the contract on the cairo-vm
+pub fn run_vm_contract(
+    cairo_contract: &ContractClass,
+    entrypoint: usize,
+    args: &[Felt],
+) -> Vec<Felt> {
     let args = args
         .iter()
         .map(|arg| MaybeRelocatable::Int(arg.clone()))
         .collect_vec();
 
-    let casm_contract =
-        CasmContractClass::from_contract_class(contract.clone(), false, usize::MAX).unwrap();
-    let entrypoint_offset = 0;
+    let contract =
+        CasmContractClass::from_contract_class(cairo_contract.clone(), false, usize::MAX).unwrap();
+    let program = contract.clone().try_into().unwrap();
 
-    let casm_program = casm_contract.clone().try_into().unwrap();
-
-    let contract_class =
-        CasmContractClass::from_contract_class(contract.clone(), true, usize::MAX).unwrap();
-    let mut hint_processor =
-        Cairo1HintProcessor::new(&contract_class.hints, RunResources::default());
-
-    let mut runner = CairoRunner::new(&casm_program, LayoutName::all_cairo, false, false).unwrap();
-
-    let program_builtins = contract_class
+    // Initialize runner and builtins
+    let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, false, false).unwrap();
+    let program_builtins = contract
         .entry_points_by_type
         .external
         .iter()
-        .find(|e| e.offset == entrypoint_offset)
+        .find(|e| e.offset == entrypoint)
         .unwrap()
         .builtins
         .iter()
         .map(|s| BuiltinName::from_str(s).expect("Invalid builtin name"))
         .collect_vec();
-
     runner
         .initialize_function_runner_cairo_1(&program_builtins)
         .unwrap();
 
-    // Implicit Args
-    let syscall_segment = MaybeRelocatable::from(runner.vm.add_memory_segment());
-
+    // Initialize implicit Args
     let builtins = runner.get_program_builtins();
-
-    let builtin_segment: Vec<MaybeRelocatable> = runner
+    let mut implicit_args: Vec<MaybeRelocatable> = runner
         .vm
         .get_builtin_runners()
         .iter()
         .filter(|b| builtins.contains(&b.name()))
         .flat_map(|b| b.initial_stack())
         .collect();
-
     let initial_gas = MaybeRelocatable::from(usize::MAX);
-
-    let mut implicit_args = builtin_segment;
     implicit_args.extend([initial_gas]);
+    let syscall_segment = MaybeRelocatable::from(runner.vm.add_memory_segment());
     implicit_args.extend([syscall_segment]);
-
-    // Other args
 
     // Load builtin costs
     let builtin_costs: Vec<MaybeRelocatable> =
@@ -357,9 +347,10 @@ pub fn run_vm_contract(contract: &ContractClass, args: &[Felt]) -> Vec<Felt> {
     let entrypoint_args: Vec<&CairoArg> = entrypoint_args.iter().collect();
 
     // Run contract entrypoint
+    let mut hint_processor = Cairo1HintProcessor::new(&contract.hints, RunResources::default());
     runner
         .run_from_entrypoint(
-            entrypoint_offset,
+            entrypoint,
             &entrypoint_args,
             true,
             Some(runner.get_program().data_len() + program_extra_data.len()),

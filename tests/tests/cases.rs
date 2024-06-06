@@ -185,13 +185,18 @@ fn test_contract_cases(program_path: &str, args: &[u128]) {
         .collect_vec();
 
     let contract = load_cairo_contract_path(program_path);
-
-    let vm_output = run_vm_contract(&contract, &args);
-
+    let entrypoint = contract
+        .entry_points_by_type
+        .external
+        .first()
+        .unwrap()
+        .function_idx;
     let program = contract.extract_sierra_program().unwrap();
 
+    let vm_output = run_vm_contract(&contract, entrypoint, &args);
     let native_output =
-        run_native_starknet_contract(&program, 0, &args, DummySyscallHandler).return_values;
+        run_native_starknet_contract(&program, entrypoint, &args, DummySyscallHandler)
+            .return_values;
 
     assert_eq_sorted!(vm_output, native_output);
 }
