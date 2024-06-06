@@ -407,7 +407,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Coupon(info) => self::coupon::build(
+            Self::Coupon(info) => self::coupon::build(
                 context,
                 module,
                 registry,
@@ -420,16 +420,16 @@ impl TypeBuilder for CoreTypeConcrete {
     fn is_builtin(&self) -> bool {
         matches!(
             self,
-            CoreTypeConcrete::Bitwise(_)
-                | CoreTypeConcrete::EcOp(_)
-                | CoreTypeConcrete::GasBuiltin(_)
-                | CoreTypeConcrete::BuiltinCosts(_)
-                | CoreTypeConcrete::RangeCheck(_)
-                | CoreTypeConcrete::Pedersen(_)
-                | CoreTypeConcrete::Poseidon(_)
-                | CoreTypeConcrete::Coupon(_)
-                | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
-                | CoreTypeConcrete::SegmentArena(_)
+            Self::Bitwise(_)
+                | Self::EcOp(_)
+                | Self::GasBuiltin(_)
+                | Self::BuiltinCosts(_)
+                | Self::RangeCheck(_)
+                | Self::Pedersen(_)
+                | Self::Poseidon(_)
+                | Self::Coupon(_)
+                | Self::StarkNet(StarkNetTypeConcrete::System(_))
+                | Self::SegmentArena(_)
         )
     }
 
@@ -495,11 +495,11 @@ impl TypeBuilder for CoreTypeConcrete {
             },
             Self::Struct(_) => true,
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
-            CoreTypeConcrete::Const(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
-            CoreTypeConcrete::Coupon(_) => false,
+            Self::BoundedInt(_) => todo!(),
+            Self::Const(_) => todo!(),
+            Self::Span(_) => todo!(),
+            Self::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
+            Self::Coupon(_) => false,
         }
     }
 
@@ -513,9 +513,9 @@ impl TypeBuilder for CoreTypeConcrete {
             | Self::Poseidon(_)
             | Self::SegmentArena(_) => false,
             // Other builtins:
-            CoreTypeConcrete::BuiltinCosts(_)
-            | CoreTypeConcrete::Uint128MulGuarantee(_)
-            | CoreTypeConcrete::Coupon(_) => true,
+            Self::BuiltinCosts(_)
+            | Self::Uint128MulGuarantee(_)
+            | Self::Coupon(_) => true,
 
             // Normal types:
             Self::Array(_)
@@ -566,7 +566,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.inner_ty).unwrap();
                 type_info.is_zst(registry)
             }
-            CoreTypeConcrete::Span(_) => todo!(),
+            Self::Span(_) => todo!(),
         }
     }
 
@@ -667,10 +667,10 @@ impl TypeBuilder for CoreTypeConcrete {
                     .try_into()
                     .expect("should always fit u32"),
             ),
-            CoreTypeConcrete::Const(const_type) => {
+            Self::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
-            CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
+            Self::Coupon(_) => Layout::new::<()>(),
         }
         .pad_to_align())
     }
@@ -745,7 +745,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .get_type(&info.inner_ty)
                 .unwrap()
                 .is_memory_allocated(registry),
-            CoreTypeConcrete::Coupon(_) => false,
+            Self::Coupon(_) => false,
         }
     }
 
