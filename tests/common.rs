@@ -26,7 +26,10 @@ use cairo_native::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
-    types::felt252::{HALF_PRIME, PRIME},
+    types::{
+        felt252::{HALF_PRIME, PRIME},
+        TypeBuilder,
+    },
     utils::find_entry_point_by_idx,
     values::JitValue,
     OptLevel,
@@ -142,11 +145,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     let mut db = RootDatabase::default();
     init_dev_corelib(
         &mut db,
-        Path::new(
-            &var("CARGO_MANIFEST_DIR")
-                .unwrap_or_else(|_| "/Users/esteve/Documents/LambdaClass/cairo_native".to_string()),
-        )
-        .join("corelib/src"),
+        Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
     );
     let main_crate_ids = setup_project(&mut db, program_file).unwrap();
     let program = compile_prepared_db(
@@ -251,22 +250,6 @@ pub fn compare_inputless_program(program_path: &str) {
         &result_vm,
         &result_native,
     )
-    .expect("compare error with optlevel none");
-
-    let result_native = run_native_program(
-        program,
-        "main",
-        &[],
-        Some(DEFAULT_GAS as u128),
-        Option::<DummySyscallHandler>::None,
-    );
-
-    compare_outputs(
-        &program.1,
-        &program.2.find_function("main").unwrap().id,
-        &result_vm,
-        &result_native,
-    )
     .expect("compare error");
 }
 
@@ -313,7 +296,7 @@ pub fn compare_outputs(
             Some(&type_size) => type_size,
             None => {
                 let type_size = match registry.get_type(ty).unwrap() {
-                    CoreTypeConcrete::Array(_info) => 2,
+                    CoreTypeConcrete::Array(_) | CoreTypeConcrete::EcPoint(_) => 2,
                     CoreTypeConcrete::Felt252(_)
                     | CoreTypeConcrete::Uint128(_)
                     | CoreTypeConcrete::Uint64(_)
@@ -324,7 +307,9 @@ pub fn compare_outputs(
                     | CoreTypeConcrete::Sint64(_)
                     | CoreTypeConcrete::Sint32(_)
                     | CoreTypeConcrete::Sint16(_)
-                    | CoreTypeConcrete::Sint8(_) => 1,
+                    | CoreTypeConcrete::Sint8(_)
+                    | CoreTypeConcrete::Box(_)
+                    | CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::Enum(info) => {
                         1 + info
                             .variants
@@ -338,13 +323,12 @@ pub fn compare_outputs(
                         .iter()
                         .map(|member_ty| map_vm_sizes(size_cache, registry, member_ty))
                         .sum(),
-                    CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::NonZero(info) => map_vm_sizes(size_cache, registry, &info.ty),
-                    CoreTypeConcrete::EcPoint(_) => 2,
                     CoreTypeConcrete::EcState(_) => 4,
                     CoreTypeConcrete::Snapshot(info) => {
                         map_vm_sizes(size_cache, registry, &info.ty)
                     }
+                    CoreTypeConcrete::SquashedFelt252Dict(_) => 2,
                     x => todo!("vm size not yet implemented: {:?}", x.info()),
                 };
                 size_cache.insert(ty.clone(), type_size);
@@ -509,6 +493,28 @@ pub fn compare_outputs(
                     ),
                 }
             }
+            CoreTypeConcrete::Box(info) => {
+                assert_eq!(values.len(), 1);
+
+                let ty_size = map_vm_sizes(size_cache, registry, &info.ty);
+                match values[0].to_usize().unwrap() {
+                    ptr if ty_size == 0 => {
+                        assert_eq!(ptr, 1);
+                        map_vm_values(size_cache, registry, memory, &[], &info.ty)
+                    }
+                    ptr => map_vm_values(
+                        size_cache,
+                        registry,
+                        memory,
+                        &memory[ptr..ptr + ty_size]
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap)
+                            .collect::<Vec<_>>(),
+                        &info.ty,
+                    ),
+                }
+            }
             CoreTypeConcrete::NonZero(info) => {
                 map_vm_values(size_cache, registry, memory, values, &info.ty)
             }
@@ -535,9 +541,17 @@ pub fn compare_outputs(
                 bytes.pop();
                 JitValue::Bytes31(bytes.try_into().unwrap())
             }
-            CoreTypeConcrete::Const(_) => todo!(),
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => unreachable!(),
+            CoreTypeConcrete::Const(_) => unreachable!(),
+            CoreTypeConcrete::EcOp(_) => unreachable!(),
+            CoreTypeConcrete::GasBuiltin(_) => unreachable!(),
+            CoreTypeConcrete::BuiltinCosts(_) => unreachable!(),
+            CoreTypeConcrete::RangeCheck(_) => unreachable!(),
+            CoreTypeConcrete::Pedersen(_) => unreachable!(),
+            CoreTypeConcrete::Poseidon(_) => unreachable!(),
+            CoreTypeConcrete::SegmentArena(_) => unreachable!(),
+            CoreTypeConcrete::BoundedInt(_) => unreachable!(),
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }
@@ -546,6 +560,7 @@ pub fn compare_outputs(
 
     let mut size_cache = HashMap::new();
     let ty = function.signature.ret_types.last();
+    let is_builtin = ty.map_or(false, |ty| registry.get_type(ty).unwrap().is_builtin());
     let returns_panic = ty.map_or(false, |ty| {
         ty.debug_name
             .as_ref()
@@ -578,7 +593,7 @@ pub fn compare_outputs(
                     )),
                     debug_name: None,
                 }
-            } else {
+            } else if !is_builtin {
                 map_vm_values(
                     &mut size_cache,
                     &registry,
@@ -586,6 +601,11 @@ pub fn compare_outputs(
                     values,
                     ty.unwrap(),
                 )
+            } else {
+                JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None,
+                }
             }
         }
         RunResultValue::Panic(values) => JitValue::Enum {
@@ -608,7 +628,6 @@ pub fn compare_outputs(
             }),
             debug_name: None,
         },
-        // Empty return value
         _ => JitValue::Struct {
             fields: vec![],
             debug_name: None,

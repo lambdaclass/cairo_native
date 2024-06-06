@@ -117,7 +117,7 @@ fn snapshot_take<'ctx, 'this>(
                 dst_ptr,
                 value,
                 Some(inner_layout.align()),
-            );
+            )?;
         }
         None => {
             entry.append_operation(
