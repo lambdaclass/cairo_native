@@ -341,10 +341,13 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
                 as *mut (),
         );
 
-        engine.register_symbol(
-            "cairo_native__vtable_cheatcode",
-            crate::starknet::cairo_native__vtable_cheatcode as *mut (),
-        );
+        #[cfg(feature = "with-cheatcode")]
+        {
+            engine.register_symbol(
+                "cairo_native__vtable_cheatcode",
+                crate::starknet::cairo_native__vtable_cheatcode as *mut (),
+            );
+        }
     }
 }
 

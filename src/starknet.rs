@@ -1,10 +1,6 @@
 //! Starknet related code for `cairo_native`
 
-use std::ptr::null_mut;
-
 use starknet_types_core::felt::Felt;
-
-use self::handler::StarknetSyscallHandlerCallbacks;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
 
@@ -246,6 +242,7 @@ pub trait StarknetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)>;
 
+    #[cfg(feature = "with-cheatcode")]
     fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
         unimplemented!();
     }
@@ -701,6 +698,7 @@ pub(crate) mod handler {
             p: &Secp256r1Point,
         ),
         // testing syscalls
+        #[cfg(feature = "with-cheatcode")]
         pub cheatcode: extern "C" fn(
             result_ptr: &mut ArrayAbi<Felt252Abi>,
             ptr: &mut T,
@@ -771,6 +769,7 @@ pub(crate) mod handler {
                 secp256r1_mul: Self::wrap_secp256r1_mul,
                 secp256r1_get_point_from_x: Self::wrap_secp256r1_get_point_from_x,
                 secp256r1_get_xy: Self::wrap_secp256r1_get_xy,
+                #[cfg(feature = "with-cheatcode")]
                 cheatcode: Self::wrap_cheatcode,
             }
         }
@@ -833,6 +832,7 @@ pub(crate) mod handler {
             };
         }
 
+        #[cfg(feature = "with-cheatcode")]
         extern "C" fn wrap_cheatcode(
             result_ptr: &mut ArrayAbi<Felt252Abi>,
             ptr: &mut T,
@@ -1625,9 +1625,11 @@ pub(crate) mod handler {
     }
 }
 
-thread_local!(pub static SYSCALL_HANDLER_VTABLE: std::cell::Cell<*mut ()> = const { std::cell::Cell::new(null_mut()) });
+#[cfg(feature = "with-cheatcode")]
+thread_local!(pub static SYSCALL_HANDLER_VTABLE: std::cell::Cell<*mut ()> = const { std::cell::Cell::new(std::ptr::null_mut()) });
 
 #[allow(non_snake_case)]
+#[cfg(feature = "with-cheatcode")]
 /// Runtime function that calls the `cheatcode` syscall
 ///
 /// The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
@@ -1640,7 +1642,7 @@ pub extern "C" fn cairo_native__vtable_cheatcode(
     let ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
     assert!(!ptr.is_null());
 
-    let callbacks_ptr = ptr as *mut StarknetSyscallHandlerCallbacks<DummySyscallHandler>;
+    let callbacks_ptr = ptr as *mut handler::StarknetSyscallHandlerCallbacks<DummySyscallHandler>;
     let callbacks = unsafe { callbacks_ptr.as_mut().expect("should not be null") };
 
     // The `StarknetSyscallHandler` is stored as a reference in the first field of `StarknetSyscalLHandlerCallbacks`,

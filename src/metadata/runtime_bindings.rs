@@ -30,6 +30,7 @@ enum RuntimeBinding {
     DictGasRefund,
     DictInsert,
     DictFree,
+    #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
 
@@ -658,6 +659,7 @@ impl RuntimeBindingsMeta {
     ///
     /// The result is stored in `result_ptr`.
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "with-cheatcode")]
     pub fn vtable_cheatcode<'c, 'a>(
         &mut self,
         context: &'c Context,

@@ -305,6 +305,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         unimplemented!()
     }
 
+    #[cfg(feature = "with-cheatcode")]
     fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt> {
         let selector_bytes = selector.to_bytes_be();
 

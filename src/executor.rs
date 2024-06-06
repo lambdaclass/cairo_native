@@ -7,9 +7,7 @@ pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
     error::Error,
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
-    starknet::{
-        handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler, SYSCALL_HANDLER_VTABLE,
-    },
+    starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::get_integer_layout,
     values::JitValue,
@@ -204,10 +202,11 @@ fn invoke_dynamic(
         .as_mut()
         .map(|syscall_handler| StarknetSyscallHandlerCallbacks::new(syscall_handler));
     // We only care for the previous syscall handler if we actually modify it
+    #[cfg(feature = "with-cheatcode")]
     let previous_syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
-        let previous_syscall_handler = SYSCALL_HANDLER_VTABLE.get();
+        let previous_syscall_handler = crate::starknet::SYSCALL_HANDLER_VTABLE.get();
         let syscall_handler_ptr = std::ptr::addr_of!(*syscall_handler) as *mut ();
-        SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
+        crate::starknet::SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
 
         previous_syscall_handler
     });
@@ -265,8 +264,9 @@ fn invoke_dynamic(
 
     // If the syscall handler was changed, then reset the previous one.
     // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)
+    #[cfg(feature = "with-cheatcode")]
     if let Some(previous_syscall_handler) = previous_syscall_handler {
-        SYSCALL_HANDLER_VTABLE.set(previous_syscall_handler);
+        crate::starknet::SYSCALL_HANDLER_VTABLE.set(previous_syscall_handler);
     }
 
     // Parse final gas.

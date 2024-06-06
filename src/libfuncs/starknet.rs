@@ -39,6 +39,8 @@ use num_bigint::{Sign, ToBigUint};
 use std::alloc::Layout;
 
 mod secp256;
+
+#[cfg(feature = "with-cheatcode")]
 mod testing;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -139,8 +141,13 @@ pub fn build<'ctx, 'this>(
         StarkNetConcreteLibfunc::Secp256(selector) => self::secp256::build(
             context, registry, entry, location, helper, metadata, selector,
         ),
+        #[cfg(feature = "with-cheatcode")]
         StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
             self::testing::build(context, registry, entry, location, helper, metadata, info)
+        }
+        #[cfg(not(feature = "with-cheatcode"))]
+        StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(_)) => {
+            unimplemented!("feature 'with-cheatcode' is required to compile with cheatcode syscall")
         }
     }
 }
