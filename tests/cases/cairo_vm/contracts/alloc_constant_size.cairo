@@ -3,10 +3,10 @@ mod AllocConstantSizeContract {
     use box::BoxTrait;
 
 
-    // Calculates fib, but all variables are boxes.
     #[storage]
     struct Storage {}
 
+    // Calculates fib, but all variables are boxes.
     #[external(v0)]
     fn fib(self: @ContractState, a: felt252, b: felt252, n: felt252) -> felt252 {
         let a = BoxTrait::new(a);

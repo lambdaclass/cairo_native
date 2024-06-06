@@ -3,6 +3,8 @@ use crate::common::{
     run_vm_contract,
 };
 use cairo_native::starknet::DummySyscallHandler;
+use itertools::Itertools;
+use num_traits::FromPrimitive;
 use pretty_assertions_sorted::assert_eq_sorted;
 use starknet_types_core::felt::Felt;
 use test_case::test_case;
@@ -151,40 +153,45 @@ fn test_program_cases(program_path: &str) {
 
 // Contracts copied from the cairo-vm
 // https://github.com/lambdaclass/cairo-vm/tree/main/cairo_programs/cairo-1-contracts
-// #[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[Felt::THREE, Felt::THREE, Felt::THREE])]
 #[test_case("tests/cases/cairo_vm/contracts/alloc_segment.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/assert_le_find_small_arcs.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/dict_test.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/divmod.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/factorial.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/felt252_dict_entry_init.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/felt252_dict_entry_update.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/felt_252_dict.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/fib.cairo", &[Felt::THREE, Felt::THREE, Felt::THREE])]
+#[test_case("tests/cases/cairo_vm/contracts/assert_le_find_small_arcs.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/dict_test.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/divmod.cairo", &[100, 10])]
+#[test_case("tests/cases/cairo_vm/contracts/factorial.cairo", &[10])]
+#[test_case("tests/cases/cairo_vm/contracts/felt252_dict_entry_init.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/felt252_dict_entry_update.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/felt_252_dict.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/fib.cairo", &[10, 10, 10])]
+#[test_case("tests/cases/cairo_vm/contracts/get_segment_arena_index.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/init_squash_data.cairo", &[10])]
+#[test_case("tests/cases/cairo_vm/contracts/linear_split.cairo", &[10])]
+#[test_case("tests/cases/cairo_vm/contracts/should_skip_squash_loop.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/test_less_than.cairo", &[10])]
+#[test_case("tests/cases/cairo_vm/contracts/u128_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/u16_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/u256_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/u32_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/u64_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/u8_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/uint512_div_mod.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/widemul128.cairo", &[100, 100])]
+// #[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[10, 10, 10])]
 // #[test_case("tests/cases/cairo_vm/contracts/field_sqrt.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/get_segment_arena_index.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/init_squash_data.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/linear_split.cairo", &[])]
 // #[test_case("tests/cases/cairo_vm/contracts/random_ec_point.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/should_skip_squash_loop.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/test_less_than.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/u128_sqrt.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/u16_sqrt.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/u256_sqrt.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/u32_sqrt.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/u64_sqrt.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/u8_sqrt.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/uint512_div_mod.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/widemul128.cairo", &[])]
-fn test_contract_cases(program_path: &str, args: &[Felt]) {
+fn test_contract_cases(program_path: &str, args: &[u128]) {
+    let args = args
+        .iter()
+        .map(|&arg| Felt::from_u128(arg).unwrap())
+        .collect_vec();
+
     let contract = load_cairo_contract_path(program_path);
 
-    let vm_output = run_vm_contract(&contract, args);
+    let vm_output = run_vm_contract(&contract, &args);
 
     let program = contract.extract_sierra_program().unwrap();
 
     let native_output =
-        run_native_starknet_contract(&program, 0, args, DummySyscallHandler).return_values;
+        run_native_starknet_contract(&program, 0, &args, DummySyscallHandler).return_values;
 
     assert_eq_sorted!(vm_output, native_output);
 }

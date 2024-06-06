@@ -1,11 +1,14 @@
-#[contract]
+#[starknet::contract]
 mod SegmentArenaIndex {
-use dict::Felt252DictTrait;
+    #[storage]
+    struct Storage {}
 
-    #[external]
-    fn test_arena_index() -> bool {
-        let mut dict: Felt252Dict<felt252> = Felt252DictTrait::new();
-        let squashed_dict = dict.squash();
+    use dict::Felt252DictTrait;
+
+    #[external(v0)]
+    fn test_arena_index(self: @ContractState) -> bool {
+        let mut dict: Felt252Dict<felt252> = Default::default();
+        dict.squash();
         return true;
     }
 }

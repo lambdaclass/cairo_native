@@ -1,13 +1,15 @@
-#[contract]
-mod DictEntryInitTest{
-
+#[starknet::contract]
+mod DictEntryInitTest {
     use dict::{Felt252DictTrait, Felt252DictEntryTrait};
     use traits::Index;
     use array::{ArrayTrait, SpanTrait};
 
-    #[external]
-    fn felt252_dict_entry_init() {
-        let mut dict: Felt252Dict<felt252> = Felt252DictTrait::new();
+    #[storage]
+    struct Storage {}
+
+    #[external(v0)]
+    fn felt252_dict_entry_init(self: @ContractState) {
+        let mut dict: Felt252Dict<felt252> = Default::default();
 
         // Generates hint Felt252DictEntryInit by creating a new dict entry
         dict.insert(10, 110);
@@ -18,6 +20,5 @@ mod DictEntryInitTest{
         assert(val11 == 111, 'dict[11] == 111');
 
         dict.squash();
-
-  }
+    }
 }

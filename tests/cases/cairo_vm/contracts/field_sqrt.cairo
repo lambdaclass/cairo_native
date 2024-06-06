@@ -1,13 +1,16 @@
-#[contract]
+#[starknet::contract]
 mod FieldSqrt {
+    #[storage]
+    struct Storage {}
+
     use core::traits::Into;
     use option::OptionTrait;   
     use ec::ec_point_from_x;
     use ec::ec_point_non_zero;
     use ec::ec_point_unwrap;
 
-    #[external]
-    fn field_sqrt() -> felt252 {
+    #[external(v0)]
+    fn field_sqrt(self: @ContractState) -> felt252 {
         let p = ec_point_from_x(10).unwrap();
         let p_nz = ec_point_non_zero(p);
 

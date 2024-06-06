@@ -10,7 +10,7 @@ mod AllocSegment {
     #[external(v0)]
     fn alloc_segment(self: @ContractState) {
         // generates hint AllocSegment for felt252 dict when compiled to casm
-        let mut dict: Felt252Dict<felt252> = Felt252DictTrait::new();
+        let mut dict: Felt252Dict<felt252> = Default::default();
         dict.squash();
 
         // generates hint AllocSegment for array
@@ -18,6 +18,6 @@ mod AllocSegment {
 
         arr.append(10);
         assert(*arr[0] == 10, 'array[0] == 10');
-  }
+    }
 }
-        
+
