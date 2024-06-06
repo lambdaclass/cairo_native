@@ -850,6 +850,23 @@
 <a href="#848" id="848">848</a>
 <a href="#849" id="849">849</a>
 <a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -1003,7 +1020,6 @@
     <span class="kw-2">mut </span>syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw">impl </span>StarknetSyscallHandler&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, Error&gt; {
     <span class="macro">tracing::info!</span>(<span class="string">"Invoking function with signature: {function_signature:?}."</span>);
-
     <span class="kw">let </span>arena = Bump::new();
     <span class="kw">let </span><span class="kw-2">mut </span>invoke_data = ArgumentMapper::new(<span class="kw-2">&amp;</span>arena, registry);
 
@@ -1048,6 +1064,22 @@
         <span class="prelude-val">None
     </span>};
 
+    <span class="comment">// The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
+    // so we must always allocate it in case it needs it, regardless of whether it's passed
+    // as an argument to the entry point or not.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = syscall_handler
+        .as_mut()
+        .map(|syscall_handler| StarknetSyscallHandlerCallbacks::new(syscall_handler));
+    <span class="comment">// We only care for the previous syscall handler if we actually modify it
+    </span><span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+    </span><span class="kw">let </span>previous_syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
+        <span class="kw">let </span>previous_syscall_handler = <span class="kw">crate</span>::starknet::SYSCALL_HANDLER_VTABLE.get();
+        <span class="kw">let </span>syscall_handler_ptr = <span class="macro">std::ptr::addr_of!</span>(<span class="kw-2">*</span>syscall_handler) <span class="kw">as </span><span class="kw-2">*mut </span>();
+        <span class="kw">crate</span>::starknet::SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
+
+        previous_syscall_handler
+    });
+
     <span class="comment">// Generate argument list.
     </span><span class="kw">let </span><span class="kw-2">mut </span>iter = args.iter();
     <span class="kw">for </span>type_id <span class="kw">in </span>function_signature.param_types.iter().filter(|id| {
@@ -1061,19 +1093,14 @@
                 <span class="kw-2">&amp;</span>[gas <span class="kw">as </span>u64, (gas &gt;&gt; <span class="number">64</span>) <span class="kw">as </span>u64],
             ),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
-                <span class="kw">match </span>syscall_handler.as_mut() {
-                    <span class="prelude-val">Some</span>(syscall_handler) =&gt; {
-                        <span class="kw">let </span>syscall_handler =
-                            arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
-                        invoke_data.push_aligned(
-                            get_integer_layout(<span class="number">64</span>).align(),
-                            <span class="kw-2">&amp;</span>[syscall_handler <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_ as </span>u64],
-                        )
-                    }
-                    <span class="prelude-val">None </span>=&gt; {
-                        <span class="macro">panic!</span>(<span class="string">"Syscall handler is required"</span>);
-                    }
-                }
+                <span class="kw">let </span>syscall_handler = syscall_handler
+                    .as_mut()
+                    .expect(<span class="string">"syscall handler is required"</span>);
+
+                invoke_data.push_aligned(
+                    get_integer_layout(<span class="number">64</span>).align(),
+                    <span class="kw-2">&amp;</span>[syscall_handler <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_ as </span>u64],
+                );
             }
             type_info =&gt; invoke_data
                 .push(
@@ -1102,6 +1129,13 @@
             invoke_data.invoke_data().len(),
             ret_registers.as_mut_ptr(),
         );
+    }
+
+    <span class="comment">// If the syscall handler was changed, then reset the previous one.
+    // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)
+    </span><span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(previous_syscall_handler) = previous_syscall_handler {
+        <span class="kw">crate</span>::starknet::SYSCALL_HANDLER_VTABLE.set(previous_syscall_handler);
     }
 
     <span class="comment">// Parse final gas.

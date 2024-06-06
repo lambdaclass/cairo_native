@@ -4231,6 +4231,16 @@
 <a href="#4229" id="4229">4229</a>
 <a href="#4230" id="4230">4230</a>
 <a href="#4231" id="4231">4231</a>
+<a href="#4232" id="4232">4232</a>
+<a href="#4233" id="4233">4233</a>
+<a href="#4234" id="4234">4234</a>
+<a href="#4235" id="4235">4235</a>
+<a href="#4236" id="4236">4236</a>
+<a href="#4237" id="4237">4237</a>
+<a href="#4238" id="4238">4238</a>
+<a href="#4239" id="4239">4239</a>
+<a href="#4240" id="4240">4240</a>
+<a href="#4241" id="4241">4241</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Starknet libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -4248,7 +4258,7 @@
         consts::SignatureAndConstConcreteLibfunc,
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
-        starknet::StarkNetConcreteLibfunc,
+        starknet::{testing::TestingConcreteLibfunc, StarkNetConcreteLibfunc},
         ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
@@ -4272,6 +4282,9 @@
 <span class="kw">use </span>std::alloc::Layout;
 
 <span class="kw">mod </span>secp256;
+
+<span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+</span><span class="kw">mod </span>testing;
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
@@ -4371,7 +4384,14 @@
         StarkNetConcreteLibfunc::Secp256(selector) =&gt; <span class="self">self</span>::secp256::build(
             context, registry, entry, location, helper, metadata, selector,
         ),
-        StarkNetConcreteLibfunc::Testing(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">"implement starknet testing libfunc"</span>),
+        <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+        </span>StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) =&gt; {
+            <span class="self">self</span>::testing::build(context, registry, entry, location, helper, metadata, info)
+        }
+        <span class="attr">#[cfg(not(feature = <span class="string">"with-cheatcode"</span>))]
+        </span>StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(<span class="kw">_</span>)) =&gt; {
+            <span class="macro">unimplemented!</span>(<span class="string">"feature 'with-cheatcode' is required to compile with cheatcode syscall"</span>)
+        }
     }
 }
 

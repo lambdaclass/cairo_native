@@ -1651,6 +1651,31 @@
 <a href="#1649" id="1649">1649</a>
 <a href="#1650" id="1650">1650</a>
 <a href="#1651" id="1651">1651</a>
+<a href="#1652" id="1652">1652</a>
+<a href="#1653" id="1653">1653</a>
+<a href="#1654" id="1654">1654</a>
+<a href="#1655" id="1655">1655</a>
+<a href="#1656" id="1656">1656</a>
+<a href="#1657" id="1657">1657</a>
+<a href="#1658" id="1658">1658</a>
+<a href="#1659" id="1659">1659</a>
+<a href="#1660" id="1660">1660</a>
+<a href="#1661" id="1661">1661</a>
+<a href="#1662" id="1662">1662</a>
+<a href="#1663" id="1663">1663</a>
+<a href="#1664" id="1664">1664</a>
+<a href="#1665" id="1665">1665</a>
+<a href="#1666" id="1666">1666</a>
+<a href="#1667" id="1667">1667</a>
+<a href="#1668" id="1668">1668</a>
+<a href="#1669" id="1669">1669</a>
+<a href="#1670" id="1670">1670</a>
+<a href="#1671" id="1671">1671</a>
+<a href="#1672" id="1672">1672</a>
+<a href="#1673" id="1673">1673</a>
+<a href="#1674" id="1674">1674</a>
+<a href="#1675" id="1675">1675</a>
+<a href="#1676" id="1676">1676</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -1895,57 +1920,9 @@
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
     ) -&gt; SyscallResult&lt;(U256, U256)&gt;;
 
-    <span class="comment">// Testing syscalls.
-    </span><span class="kw">fn </span>pop_log(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_account_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _contract_address: Felt) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_block_number(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _block_number: u64) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_block_timestamp(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _block_timestamp: u64) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_caller_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _address: Felt) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_chain_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _chain_id: Felt) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_contract_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _address: Felt) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_max_fee(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _max_fee: u128) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_nonce(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _nonce: Felt) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_sequencer_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _address: Felt) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_signature(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _signature: <span class="kw-2">&amp;</span>[Felt]) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_transaction_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _transaction_hash: Felt) {
-        <span class="macro">unimplemented!</span>()
-    }
-
-    <span class="kw">fn </span>set_version(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _version: Felt) {
-        <span class="macro">unimplemented!</span>()
+    <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+    </span><span class="kw">fn </span>cheatcode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _selector: Felt, _input: <span class="kw-2">&amp;</span>[Felt]) -&gt; Vec&lt;Felt&gt; {
+        <span class="macro">unimplemented!</span>();
     }
 }
 
@@ -2237,7 +2214,14 @@
         nonce: Felt252Abi,
     }
 
-    <span class="attr">#[repr(C)]
+    <span class="doccomment">/// A C ABI Wrapper around the StarknetSyscallHandler
+    ///
+    /// It contains pointers to functions which can be called through MLIR based on the field offset.
+    /// The functions convert C ABI structures to the Rust equivalent and calls the wrapped implementation.
+    ///
+    /// Unlike runtime functions, the callback table is generic to the StarknetSyscallHandler,
+    /// which allows the user to specify the desired implementation to use during the execution.
+    </span><span class="attr">#[repr(C)]
     #[derive(Debug)]
     </span><span class="kw">pub struct </span>StarknetSyscallHandlerCallbacks&lt;<span class="lifetime">'a</span>, T&gt; {
         self_ptr: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>T,
@@ -2394,6 +2378,14 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
             p: <span class="kw-2">&amp;</span>Secp256r1Point,
         ),
+        <span class="comment">// testing syscalls
+        </span><span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+        </span><span class="kw">pub </span>cheatcode: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
+            result_ptr: <span class="kw-2">&amp;mut </span>ArrayAbi&lt;Felt252Abi&gt;,
+            ptr: <span class="kw-2">&amp;mut </span>T,
+            selector: <span class="kw-2">&amp;</span>Felt252Abi,
+            input: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
+        ),
     }
 
     <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T&gt; StarknetSyscallHandlerCallbacks&lt;<span class="lifetime">'a</span>, T&gt;
@@ -2458,6 +2450,8 @@
                 secp256r1_mul: <span class="self">Self</span>::wrap_secp256r1_mul,
                 secp256r1_get_point_from_x: <span class="self">Self</span>::wrap_secp256r1_get_point_from_x,
                 secp256r1_get_xy: <span class="self">Self</span>::wrap_secp256r1_get_xy,
+                <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+                </span>cheatcode: <span class="self">Self</span>::wrap_cheatcode,
             }
         }
 
@@ -2517,6 +2511,34 @@
                 },
                 <span class="prelude-val">Err</span>(e) =&gt; <span class="self">Self</span>::wrap_error(<span class="kw-2">&amp;</span>e),
             };
+        }
+
+        <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+        </span><span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_cheatcode(
+            result_ptr: <span class="kw-2">&amp;mut </span>ArrayAbi&lt;Felt252Abi&gt;,
+            ptr: <span class="kw-2">&amp;mut </span>T,
+            selector: <span class="kw-2">&amp;</span>Felt252Abi,
+            input: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
+        ) {
+            <span class="kw">let </span>input: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
+                <span class="kw">let </span>since_offset = input.since <span class="kw">as </span>usize;
+                <span class="kw">let </span>until_offset = input.until <span class="kw">as </span>usize;
+                <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
+                <span class="kw">let </span>len = until_offset - since_offset;
+                std::slice::from_raw_parts(input.ptr.add(since_offset), len)
+            }
+            .iter()
+            .map(|x| Felt::from_bytes_le(<span class="kw-2">&amp;</span>x.<span class="number">0</span>))
+            .collect();
+            <span class="kw">let </span>selector = Felt::from_bytes_le(<span class="kw-2">&amp;</span>selector.<span class="number">0</span>);
+
+            <span class="kw">let </span>result = ptr
+                .cheatcode(selector, <span class="kw-2">&amp;</span>input)
+                .into_iter()
+                .map(|x| Felt252Abi(x.to_bytes_le()))
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+
+            <span class="kw-2">*</span>result_ptr = <span class="kw">unsafe </span>{ <span class="self">Self</span>::alloc_mlir_array(<span class="kw-2">&amp;</span>result) };
         }
 
         <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_get_execution_info(
@@ -3301,5 +3323,33 @@
             };
         }
     }
+}
+
+<span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+</span><span class="macro">thread_local!</span>(<span class="kw">pub static </span>SYSCALL_HANDLER_VTABLE: std::cell::Cell&lt;<span class="kw-2">*mut </span>()&gt; = <span class="kw">const </span>{ std::cell::Cell::new(std::ptr::null_mut()) });
+
+<span class="attr">#[allow(non_snake_case)]
+#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+</span><span class="doccomment">/// Runtime function that calls the `cheatcode` syscall
+///
+/// The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
+/// so a pointer to `StarknetSyscallHandlerCallbacks` is stored as a `thread::LocalKey` and accesed in runtime by this function.
+</span><span class="kw">pub extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__vtable_cheatcode(
+    result_ptr: <span class="kw-2">&amp;mut </span>ArrayAbi&lt;Felt252Abi&gt;,
+    selector: <span class="kw-2">&amp;</span>Felt252Abi,
+    input: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
+) {
+    <span class="kw">let </span>ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
+    <span class="macro">assert!</span>(!ptr.is_null());
+
+    <span class="kw">let </span>callbacks_ptr = ptr <span class="kw">as </span><span class="kw-2">*mut </span>handler::StarknetSyscallHandlerCallbacks&lt;DummySyscallHandler&gt;;
+    <span class="kw">let </span>callbacks = <span class="kw">unsafe </span>{ callbacks_ptr.as_mut().expect(<span class="string">"should not be null"</span>) };
+
+    <span class="comment">// The `StarknetSyscallHandler` is stored as a reference in the first field of `StarknetSyscalLHandlerCallbacks`,
+    // so we can interpret `ptr` as a double pointer to the handler.
+    </span><span class="kw">let </span>handler_ptr_ptr = ptr <span class="kw">as </span><span class="kw-2">*mut *mut </span>DummySyscallHandler;
+    <span class="kw">let </span>handler = <span class="kw">unsafe </span>{ (<span class="kw-2">*</span>handler_ptr_ptr).as_mut().expect(<span class="string">"should not be null"</span>) };
+
+    (callbacks.cheatcode)(result_ptr, handler, selector, input);
 }
 </code></pre></div></section></main></body></html>

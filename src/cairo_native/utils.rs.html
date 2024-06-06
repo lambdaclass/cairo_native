@@ -1438,6 +1438,14 @@
 <a href="#1436" id="1436">1436</a>
 <a href="#1437" id="1437">1437</a>
 <a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1780,6 +1788,14 @@
                 <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*const </span>std::ffi::c_void, NonNull&lt;std::ffi::c_void&gt;) -&gt; u64
                 <span class="kw">as </span><span class="kw-2">*mut </span>(),
         );
+
+        <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+        </span>{
+            engine.register_symbol(
+                <span class="string">"cairo_native__vtable_cheatcode"</span>,
+                <span class="kw">crate</span>::starknet::cairo_native__vtable_cheatcode <span class="kw">as </span><span class="kw-2">*mut </span>(),
+            );
+        }
     }
 }
 
