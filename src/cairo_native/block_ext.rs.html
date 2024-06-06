@@ -364,6 +364,8 @@
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Trait that extends the melior Block type to aid in codegen and consistency.
 
 </span><span class="kw">use </span>melior::{
@@ -481,7 +483,7 @@
         addr: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
         value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
         align: <span class="prelude-ty">Option</span>&lt;usize&gt;,
-    );
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
     <span class="doccomment">/// Creates a memcpy operation.
     </span><span class="kw">fn </span>memcpy(
@@ -613,17 +615,19 @@
         addr: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
         value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
         align: <span class="prelude-ty">Option</span>&lt;usize&gt;,
-    ) {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>op = ods::llvm::store(context, value, addr, location);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(align) = align {
             op.set_alignment(IntegerAttribute::new(
                 IntegerType::new(context, <span class="number">64</span>).into(),
-                align <span class="kw">as </span>i64,
+                align.try_into()<span class="question-mark">?</span>,
             ));
         }
 
         <span class="self">self</span>.append_operation(op.into());
+
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="comment">// Use this only when returning the result. Otherwise, append_operation is fine.

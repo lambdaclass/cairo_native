@@ -1137,7 +1137,7 @@
     <span class="kw">let </span>point = entry.append_op_result(llvm::undef(ec_point_ty, location))<span class="question-mark">?</span>;
     <span class="kw">let </span>point = entry.insert_value(context, location, point, entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(), <span class="number">0</span>)<span class="question-mark">?</span>;
 
-    entry.store(context, location, point_ptr, point, <span class="prelude-val">None</span>);
+    entry.store(context, location, point_ptr, point, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>result = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?
@@ -1197,7 +1197,7 @@
         state_ptr,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     entry.store(
         context,
@@ -1205,7 +1205,7 @@
         point_ptr,
         entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -1264,21 +1264,21 @@
         state_ptr,
         entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
     entry.store(
         context,
         location,
         scalar_ptr,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
     entry.store(
         context,
         location,
         point_ptr,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -1330,7 +1330,7 @@
         state_ptr,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>is_zero = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -1427,7 +1427,7 @@
     <span class="kw">let </span>point = entry.insert_value(context, location, point, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), <span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>point = entry.insert_value(context, location, point, entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(), <span class="number">1</span>)<span class="question-mark">?</span>;
 
-    entry.store(context, location, point_ptr, point, <span class="prelude-val">None</span>);
+    entry.store(context, location, point_ptr, point, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>result = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()

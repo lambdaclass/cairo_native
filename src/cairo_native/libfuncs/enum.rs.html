@@ -1075,7 +1075,7 @@
                     stack_ptr,
                     entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
                     <span class="prelude-val">Some</span>(layout.align()),
-                );
+                )<span class="question-mark">?</span>;
                 <span class="kw">let </span>tag_val =
                     entry.load(context, location, stack_ptr, tag_ty, <span class="prelude-val">Some</span>(layout.align()))<span class="question-mark">?</span>;
 
@@ -1246,7 +1246,7 @@
                     stack_ptr,
                     entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
                     <span class="prelude-val">Some</span>(layout.align()),
-                );
+                )<span class="question-mark">?</span>;
                 <span class="kw">let </span>tag_val =
                     entry.load(context, location, stack_ptr, tag_ty, <span class="prelude-val">Some</span>(layout.align()))<span class="question-mark">?</span>;
 

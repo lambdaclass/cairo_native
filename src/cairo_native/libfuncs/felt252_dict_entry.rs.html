@@ -468,7 +468,7 @@
         key_ptr,
         key_value,
         <span class="prelude-val">Some</span>(key_layout.align()),
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>runtime_bindings = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -611,7 +611,7 @@
         value_ptr,
         new_value,
         <span class="prelude-val">Some</span>(value_layout.align()),
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>key_ptr =
         helper
@@ -624,7 +624,7 @@
         key_ptr,
         key_value,
         <span class="prelude-val">Some</span>(key_layout.align()),
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="comment">// call insert
 

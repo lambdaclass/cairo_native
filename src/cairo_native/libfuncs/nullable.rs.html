@@ -283,13 +283,12 @@
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Nullable libfuncs
 //!
 //! Like a Box but it can be null.
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
+<span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
 <span class="kw">use crate</span>::{error::Result, metadata::MetadataStorage};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -385,11 +384,10 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>arg = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>op =
-        entry.append_operation(ods::llvm::mlir_zero(context, pointer(context, <span class="number">0</span>), location).into());
-    <span class="kw">let </span>nullptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>nullptr = entry
+        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, <span class="number">0</span>), location).into())<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>op = entry.append_operation(
+    <span class="kw">let </span>is_null_ptr = entry.append_op_result(
         OperationBuilder::new(<span class="string">"llvm.icmp"</span>, location)
             .add_operands(<span class="kw-2">&amp;</span>[arg, nullptr])
             .add_attributes(<span class="kw-2">&amp;</span>[(
@@ -398,9 +396,7 @@
             )])
             .add_results(<span class="kw-2">&amp;</span>[IntegerType::new(context, <span class="number">1</span>).into()])
             .build()<span class="question-mark">?</span>,
-    );
-
-    <span class="kw">let </span>is_null_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>block_is_null = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     <span class="kw">let </span>block_is_not_null = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));

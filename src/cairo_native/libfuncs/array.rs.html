@@ -2304,7 +2304,7 @@
             ptr,
             entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
             <span class="prelude-val">Some</span>(elem_layout.align()),
-        );
+        )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>array_len = append_block
             .append_operation(arith::addi(array_end, k1, location))
@@ -3008,7 +3008,7 @@
             .result(<span class="number">0</span>)<span class="question-mark">?
             </span>.into();
 
-        entry.store(context, location, target_ptr, value, <span class="prelude-val">None</span>);
+        entry.store(context, location, target_ptr, value, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
     }
 
     <span class="kw">let </span>array_container = entry.insert_value(context, location, array_container, ptr, <span class="number">0</span>)<span class="question-mark">?</span>;

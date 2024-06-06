@@ -163,19 +163,6 @@
 <a href="#161" id="161">161</a>
 <a href="#162" id="162">162</a>
 <a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Pedersen hashing libfuncs
 //!
 
@@ -196,12 +183,8 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{
-        arith,
-        llvm::{<span class="self">self</span>, LoadStoreOptions},
-        ods,
-    },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    dialect::{arith, ods},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -276,26 +259,20 @@
     <span class="kw">let </span>rhs_be =
         entry.append_op_result(ods::llvm::intr_bswap(context, rhs_i256, location).into())<span class="question-mark">?</span>;
 
-    entry.append_operation(llvm::store(
+    entry.store(
         context,
-        lhs_be,
+        location,
         lhs_ptr,
-        location,
-        LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            IntegerType::new(context, <span class="number">64</span>).into(),
-            layout_i256.align().try_into()<span class="question-mark">?</span>,
-        ))),
-    ));
-    entry.append_operation(llvm::store(
+        lhs_be,
+        <span class="prelude-val">Some</span>(layout_i256.align()),
+    )<span class="question-mark">?</span>;
+    entry.store(
         context,
-        rhs_be,
-        rhs_ptr,
         location,
-        LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            IntegerType::new(context, <span class="number">64</span>).into(),
-            layout_i256.align().try_into()<span class="question-mark">?</span>,
-        ))),
-    ));
+        rhs_ptr,
+        rhs_be,
+        <span class="prelude-val">Some</span>(layout_i256.align()),
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>runtime_bindings = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -304,16 +281,13 @@
     runtime_bindings
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>result_be = entry.append_op_result(llvm::load(
+    <span class="kw">let </span>result_be = entry.load(
         context,
+        location,
         dst_ptr,
         i256_ty,
-        location,
-        LoadStoreOptions::default().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-            IntegerType::new(context, <span class="number">64</span>).into(),
-            layout_i256.align().try_into()<span class="question-mark">?</span>,
-        ))),
-    ))<span class="question-mark">?</span>;
+        <span class="prelude-val">Some</span>(layout_i256.align()),
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op = entry.append_op_result(ods::llvm::intr_bswap(context, result_be, location).into())<span class="question-mark">?</span>;
 

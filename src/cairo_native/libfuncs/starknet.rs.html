@@ -4957,7 +4957,7 @@
         address_arg_ptr,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="comment">// Extract function pointer.
     </span><span class="kw">let </span>fn_ptr = entry
@@ -5230,7 +5230,7 @@
         address_arg_ptr,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate `value` argument and write the value.
     </span><span class="kw">let </span>value_arg_ptr = helper.init_block().alloca_int(context, location, <span class="number">252</span>)<span class="question-mark">?</span>;
@@ -5240,7 +5240,7 @@
         value_arg_ptr,
         entry.argument(<span class="number">4</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -5711,7 +5711,7 @@
         keys_arg_ptr,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate `data` argument and write the value.
     </span><span class="kw">let </span>data_arg_ptr = helper.init_block().alloca1(
@@ -5739,7 +5739,7 @@
         data_arg_ptr,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -6812,7 +6812,7 @@
         class_hash_arg_ptr,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate `entry_point_selector` argument and write the value.
     </span><span class="kw">let </span>contract_address_salt_arg_ptr = helper.init_block().alloca_int(context, location, <span class="number">252</span>)<span class="question-mark">?</span>;
@@ -6822,7 +6822,7 @@
         contract_address_salt_arg_ptr,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate `calldata` argument and write the value.
     </span><span class="kw">let </span>calldata_arg_ptr = helper.init_block().alloca1(
@@ -6850,7 +6850,7 @@
         calldata_arg_ptr,
         entry.argument(<span class="number">4</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -7168,7 +7168,7 @@
         input_arg_ptr,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
         <span class="prelude-val">None</span>,
-    );
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
