@@ -51,6 +51,7 @@ scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
 with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
 with-serde = ["dep:serde"]
+with-cheatcode = []
 
 [dependencies]
 bumpalo = "3.14"
