@@ -27,7 +27,7 @@ use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     arch::global_asm,
-    ptr::{null_mut, NonNull},
+    ptr::{addr_of_mut, null_mut, NonNull},
     rc::Rc,
 };
 
@@ -820,29 +820,12 @@ fn parse_result(
                 Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
             }
         }
-        CoreTypeConcrete::Felt252Dict(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(
-                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
-                type_id,
-                registry,
-            )),
-            None => Ok(JitValue::from_jit(
-                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
-                type_id,
-                registry,
-            )),
-        },
-        CoreTypeConcrete::SquashedFelt252Dict(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(
-                unsafe { *return_ptr.cast::<NonNull<()>>().as_ref() },
-                type_id,
-                registry,
-            )),
-            None => Ok(JitValue::from_jit(
-                NonNull::new(ret_registers[0] as *mut ()).unwrap(),
-                type_id,
-                registry,
-            )),
+        CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
+            let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
+                addr_of_mut!(ret_registers[0]) as *mut ()
+            ));
+            let value = JitValue::from_jit(ptr, type_id, registry);
+            Ok(value)
         },
 
         // Builtins are handled before the call to parse_result
