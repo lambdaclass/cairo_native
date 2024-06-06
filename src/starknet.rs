@@ -538,8 +538,11 @@ pub(crate) mod handler {
 
     /// A C ABI Wrapper around the StarknetSyscallHandler
     ///
-    /// It contains pointers to functions which can be called through MLIR based on the field offset
+    /// It contains pointers to functions which can be called through MLIR based on the field offset.
     /// The functions convert C ABI structures to the Rust equivalent and calls the wrapped implementation.
+    ///
+    /// Unlike runtime functions, the callback table is generic to the StarknetSyscallHandler,
+    /// which allows the user to specify the desired implementation to use during the execution.
     #[repr(C)]
     #[derive(Debug)]
     pub struct StarknetSyscallHandlerCallbacks<'a, T> {
