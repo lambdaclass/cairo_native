@@ -790,119 +790,6 @@
 <a href="#788" id="788">788</a>
 <a href="#789" id="789">789</a>
 <a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
-<a href="#816" id="816">816</a>
-<a href="#817" id="817">817</a>
-<a href="#818" id="818">818</a>
-<a href="#819" id="819">819</a>
-<a href="#820" id="820">820</a>
-<a href="#821" id="821">821</a>
-<a href="#822" id="822">822</a>
-<a href="#823" id="823">823</a>
-<a href="#824" id="824">824</a>
-<a href="#825" id="825">825</a>
-<a href="#826" id="826">826</a>
-<a href="#827" id="827">827</a>
-<a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a>
-<a href="#830" id="830">830</a>
-<a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
-<a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a>
-<a href="#876" id="876">876</a>
-<a href="#877" id="877">877</a>
-<a href="#878" id="878">878</a>
-<a href="#879" id="879">879</a>
-<a href="#880" id="880">880</a>
-<a href="#881" id="881">881</a>
-<a href="#882" id="882">882</a>
-<a href="#883" id="883">883</a>
-<a href="#884" id="884">884</a>
-<a href="#885" id="885">885</a>
-<a href="#886" id="886">886</a>
-<a href="#887" id="887">887</a>
-<a href="#888" id="888">888</a>
-<a href="#889" id="889">889</a>
-<a href="#890" id="890">890</a>
-<a href="#891" id="891">891</a>
-<a href="#892" id="892">892</a>
-<a href="#893" id="893">893</a>
-<a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
-<a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `i8`-related libfuncs
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use </span>std::ops::Shr;
@@ -930,12 +817,7 @@
         arith::{<span class="self">self</span>, CmpiPredicate},
         cf, llvm,
     },
-    ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Attribute, Block, Location, Value, ValueLike,
-    },
+    ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
 <span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -1028,59 +910,35 @@
         <span class="bool-val">false</span>,
     );
 
-    <span class="kw">let </span>result = entry
-        .append_operation(
-            OperationBuilder::new(op_name, location)
-                .add_operands(<span class="kw-2">&amp;</span>[lhs, rhs])
-                .add_results(<span class="kw-2">&amp;</span>[result_type])
-                .build()<span class="question-mark">?</span>,
-        )
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>result = entry.append_op_result(
+        OperationBuilder::new(op_name, location)
+            .add_operands(<span class="kw-2">&amp;</span>[lhs, rhs])
+            .add_results(<span class="kw-2">&amp;</span>[result_type])
+            .build()<span class="question-mark">?</span>,
+    )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>op_result = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-            values_type,
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>op_result = entry.extract_value(context, location, result, values_type, <span class="number">0</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// Create a const operation to get the 0 value to compare against
-    </span><span class="kw">let </span>zero_const = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(values_type, <span class="number">0</span>.into()).into(),
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    </span><span class="kw">let </span>zero_const = entry.const_int_from_type(context, location, <span class="number">0</span>, values_type)<span class="question-mark">?</span>;
+
     <span class="comment">// Check if the result is positive
-    </span><span class="kw">let </span>is_positive = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Sge,
-            op_result,
-            zero_const,
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    </span><span class="kw">let </span>is_positive = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Sge,
+        op_result,
+        zero_const,
+        location,
+    ))<span class="question-mark">?</span>;
 
     <span class="comment">// Check overflow flag
-    </span><span class="kw">let </span>op_overflow = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">1</span>]),
-            IntegerType::new(context, <span class="number">1</span>).into(),
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    </span><span class="kw">let </span>op_overflow = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, <span class="number">1</span>).into(),
+        <span class="number">1</span>,
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>block_not_overflow = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     <span class="kw">let </span>block_overflow = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
@@ -1151,23 +1009,15 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>arg0: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>op = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(arg0.r#type(), <span class="number">0</span>).into(),
-        location,
-    ));
-    <span class="kw">let </span>const_0 = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>const_0 = entry.const_int_from_type(context, location, <span class="number">0</span>, arg0.r#type())<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>condition = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Eq,
-            arg0,
-            const_0,
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>condition = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        arg0,
+        const_0,
+        location,
+    ))<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(context, condition, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[arg0]], location));
 
@@ -1194,19 +1044,10 @@
     <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>lhs = entry
-        .append_operation(arith::extsi(lhs, target_type, location))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
-    <span class="kw">let </span>rhs = entry
-        .append_operation(arith::extsi(rhs, target_type, location))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>lhs = entry.append_op_result(arith::extsi(lhs, target_type, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs = entry.append_op_result(arith::extsi(rhs, target_type, location))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>result = entry
-        .append_operation(arith::muli(lhs, rhs, location))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>result = entry.append_op_result(arith::muli(lhs, rhs, location))<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
     <span class="prelude-val">Ok</span>(())
@@ -1231,10 +1072,7 @@
     )<span class="question-mark">?</span>;
     <span class="kw">let </span>value: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>result = entry
-        .append_operation(arith::extui(value, felt252_ty, location))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>result = entry.append_op_result(arith::extui(value, felt252_ty, location))<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
 
@@ -1271,59 +1109,33 @@
         <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>const_max = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{} : {}"</span>, i8::MAX, felt252_ty))
-                .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>const_max = entry.const_int_from_type(context, location, i8::MAX, felt252_ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>const_min = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{} : {}"</span>, i8::MIN, felt252_ty))
-                .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>const_min = entry.const_int_from_type(context, location, i8::MIN, felt252_ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span><span class="kw-2">mut </span>block = entry;
 
     <span class="comment">// make unsigned felt into signed felt
     // felt &gt; half prime = negative
     </span><span class="kw">let </span>value = {
-        <span class="kw">let </span>attr_halfprime_i252 = Attribute::parse(
+        <span class="kw">let </span>half_prime: melior::ir::Value = block.const_int_from_type(
             context,
-            <span class="kw-2">&amp;</span><span class="macro">format!</span>(
-                <span class="string">"{} : {}"</span>,
-                metadata
-                    .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                    </span>.prime()
-                    .shr(<span class="number">1</span>),
-                felt252_ty
-            ),
-        )
-        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>;
-        <span class="kw">let </span>half_prime: melior::ir::Value = block
-            .append_operation(arith::constant(context, attr_halfprime_i252, location))
-            .result(<span class="number">0</span>)<span class="question-mark">?
-            </span>.into();
+            location,
+            metadata
+                .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
+                .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                </span>.prime()
+                .shr(<span class="number">1</span>),
+            felt252_ty,
+        )<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>is_felt_neg = block
-            .append_operation(arith::cmpi(
-                context,
-                CmpiPredicate::Ugt,
-                value,
-                half_prime,
-                location,
-            ))
-            .result(<span class="number">0</span>)<span class="question-mark">?
-            </span>.into();
+        <span class="kw">let </span>is_felt_neg = block.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Ugt,
+            value,
+            half_prime,
+            location,
+        ))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>is_neg_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
         <span class="kw">let </span>is_not_neg_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
@@ -1340,45 +1152,24 @@
         ));
 
         {
-            <span class="kw">let </span>prime = is_neg_block
-                .append_operation(arith::constant(
-                    context,
-                    Attribute::parse(
-                        context,
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(
-                            <span class="string">"{} : {}"</span>,
-                            metadata
-                                .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                                .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                                </span>.prime(),
-                            felt252_ty
-                        ),
-                    )
-                    .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
-                    location,
-                ))
-                .result(<span class="number">0</span>)<span class="question-mark">?
-                </span>.into();
+            <span class="kw">let </span>prime = is_neg_block.const_int_from_type(
+                context,
+                location,
+                metadata
+                    .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
+                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                    </span>.prime()
+                    .clone(),
+                felt252_ty,
+            )<span class="question-mark">?</span>;
 
-            <span class="kw">let </span><span class="kw-2">mut </span>src_value_is_neg: melior::ir::Value = is_neg_block
-                .append_operation(arith::subi(prime, value, location))
-                .result(<span class="number">0</span>)<span class="question-mark">?
-                </span>.into();
+            <span class="kw">let </span><span class="kw-2">mut </span>src_value_is_neg: melior::ir::Value =
+                is_neg_block.append_op_result(arith::subi(prime, value, location))<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>kneg1 = is_neg_block
-                .append_operation(arith::constant(
-                    context,
-                    Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"-1 : {}"</span>, felt252_ty))
-                        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
-                    location,
-                ))
-                .result(<span class="number">0</span>)<span class="question-mark">?
-                </span>.into();
+            <span class="kw">let </span>kneg1 = is_neg_block.const_int_from_type(context, location, -<span class="number">1</span>, felt252_ty)<span class="question-mark">?</span>;
 
-            src_value_is_neg = is_neg_block
-                .append_operation(arith::muli(src_value_is_neg, kneg1, location))
-                .result(<span class="number">0</span>)<span class="question-mark">?
-                </span>.into();
+            src_value_is_neg =
+                is_neg_block.append_op_result(arith::muli(src_value_is_neg, kneg1, location))<span class="question-mark">?</span>;
 
             is_neg_block.append_operation(cf::br(final_block, <span class="kw-2">&amp;</span>[src_value_is_neg], location));
         }
@@ -1390,32 +1181,23 @@
         block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()
     };
 
-    <span class="kw">let </span>is_smaller_eq = block
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Sle,
-            value,
-            const_max,
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>is_smaller_eq = block.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Sle,
+        value,
+        const_max,
+        location,
+    ))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>is_bigger_eq = block
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Sge,
-            value,
-            const_min,
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>is_bigger_eq = block.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Sge,
+        value,
+        const_min,
+        location,
+    ))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>is_ok = block
-        .append_operation(arith::andi(is_smaller_eq, is_bigger_eq, location))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>is_ok = block.append_op_result(arith::andi(is_smaller_eq, is_bigger_eq, location))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>block_success = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     <span class="kw">let </span>block_failure = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
@@ -1430,10 +1212,7 @@
         location,
     ));
 
-    <span class="kw">let </span>value = block_success
-        .append_operation(arith::trunci(value, result_ty, location))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>value = block_success.append_op_result(arith::trunci(value, result_ty, location))<span class="question-mark">?</span>;
 
     block_success.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, value], location));
     block_failure.append_operation(helper.br(<span class="number">1</span>, <span class="kw-2">&amp;</span>[range_check], location));
@@ -1457,15 +1236,10 @@
     <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
 
     <span class="comment">// Check if lhs &gt;= rhs
-    </span><span class="kw">let </span>is_ge = entry
-        .append_operation(arith::cmpi(context, CmpiPredicate::Sge, lhs, rhs, location))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    </span><span class="kw">let </span>is_ge =
+        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Sge, lhs, rhs, location))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>result = entry
-        .append_operation(arith::subi(lhs, rhs, location))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>result = entry.append_op_result(arith::subi(lhs, rhs, location))<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
