@@ -20,7 +20,12 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
-use cairo_lang_starknet::contract::get_contracts_info;
+use cairo_lang_starknet::{
+    compile::compile_contract_in_prepared_db, contract::get_contracts_info, starknet_plugin_suite,
+};
+use cairo_lang_starknet_classes::{
+    casm_contract_class::CasmContractClass, contract_class::ContractClass,
+};
 use cairo_native::{
     context::NativeContext,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -34,6 +39,12 @@ use cairo_native::{
     values::JitValue,
     OptLevel,
 };
+use cairo_vm::{
+    hint_processor::cairo_1_hint_processor::hint_processor::Cairo1HintProcessor,
+    types::{builtin_name::BuiltinName, layout_name::LayoutName, relocatable::MaybeRelocatable},
+    vm::runners::cairo_runner::{CairoArg, CairoRunner, RunResources},
+};
+use itertools::Itertools;
 use lambdaworks_math::{
     field::{
         element::FieldElement, fields::montgomery_backed_prime_fields::MontgomeryBackendPrimeField,
@@ -175,6 +186,29 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     (module_name.to_string(), program, runner)
 }
 
+/// Compiles a cairo starknet contract from the given path
+pub fn load_cairo_contract_path(path: &str) -> ContractClass {
+    let mut db = RootDatabase::builder()
+        .detect_corelib()
+        .with_plugin_suite(starknet_plugin_suite())
+        .build()
+        .expect("failed to build database");
+
+    let main_crate_ids = setup_project(&mut db, Path::new(&path))
+        .expect("path should be a valid cairo project or file");
+
+    compile_contract_in_prepared_db(
+        &db,
+        None,
+        main_crate_ids.clone(),
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )
+    .expect("path should contain a single valid contract")
+}
+
 pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
@@ -228,6 +262,134 @@ pub fn run_vm_program(
         gas,
         StarknetState::default(),
     )
+}
+
+/// Runs the contract on the cairo-vm
+pub fn run_vm_contract(
+    cairo_contract: &ContractClass,
+    entrypoint: usize,
+    args: &[Felt],
+) -> Vec<Felt> {
+    let args = args
+        .iter()
+        .map(|arg| MaybeRelocatable::Int(*arg))
+        .collect_vec();
+
+    let contract =
+        CasmContractClass::from_contract_class(cairo_contract.clone(), false, usize::MAX)
+            .expect("failed to compile sierra contract to casm");
+
+    let program = contract
+        .clone()
+        .try_into()
+        .expect("failed to extract program from casm contract");
+
+    // Initialize runner and builtins
+    let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, false, false)
+        .expect("failed to build runner");
+
+    let program_builtins = contract
+        .entry_points_by_type
+        .external
+        .iter()
+        .find(|e| e.offset == entrypoint)
+        .expect("given entrypoint index should exist")
+        .builtins
+        .iter()
+        .map(|s| BuiltinName::from_str(s).expect("invalid builtin name"))
+        .collect_vec();
+    runner
+        .initialize_function_runner_cairo_1(&program_builtins)
+        .expect("failed to initialize runner");
+
+    // Initialize implicit Args
+    let builtins = runner.get_program_builtins();
+    let mut implicit_args: Vec<MaybeRelocatable> = runner
+        .vm
+        .get_builtin_runners()
+        .iter()
+        .filter(|b| builtins.contains(&b.name()))
+        .flat_map(|b| b.initial_stack())
+        .collect();
+    let initial_gas = MaybeRelocatable::from(usize::MAX);
+    implicit_args.extend([initial_gas]);
+    let syscall_segment = MaybeRelocatable::from(runner.vm.add_memory_segment());
+    implicit_args.extend([syscall_segment]);
+
+    // Load builtin costs
+    let builtin_costs: Vec<MaybeRelocatable> =
+        vec![0.into(), 0.into(), 0.into(), 0.into(), 0.into()];
+    let builtin_costs_ptr = runner.vm.add_memory_segment();
+
+    runner
+        .vm
+        .load_data(builtin_costs_ptr, &builtin_costs)
+        .expect("failed to load builtin costs data to vm");
+
+    // Load extra data
+    let core_program_end_ptr = (runner.program_base.expect("program base is missing")
+        + runner.get_program().data_len())
+    .expect("memory pointer overflowed");
+
+    let program_extra_data: Vec<MaybeRelocatable> =
+        vec![0x208B7FFF7FFF7FFE.into(), builtin_costs_ptr.into()];
+    runner
+        .vm
+        .load_data(core_program_end_ptr, &program_extra_data)
+        .expect("failed to load extra data to vm");
+
+    // Load calldata
+    let calldata_start = runner.vm.add_memory_segment();
+    let calldata_end = runner
+        .vm
+        .load_data(calldata_start, &args.to_vec())
+        .expect("failed to load calldata to vm");
+
+    // Create entrypoint_args
+    let mut entrypoint_args: Vec<CairoArg> = implicit_args
+        .iter()
+        .map(|m| CairoArg::from(m.clone()))
+        .collect();
+    entrypoint_args.extend([
+        MaybeRelocatable::from(calldata_start).into(),
+        MaybeRelocatable::from(calldata_end).into(),
+    ]);
+    let entrypoint_args: Vec<&CairoArg> = entrypoint_args.iter().collect();
+
+    // Run contract entrypoint
+    let mut hint_processor = Cairo1HintProcessor::new(&contract.hints, RunResources::default());
+    runner
+        .run_from_entrypoint(
+            entrypoint,
+            &entrypoint_args,
+            true,
+            Some(runner.get_program().data_len() + program_extra_data.len()),
+            &mut hint_processor,
+        )
+        .expect("failed to execute contract");
+
+    // Extract return values
+    let return_values = runner
+        .vm
+        .get_return_values(5)
+        .expect("failed to extract return values");
+    let retdata_start = return_values[3]
+        .get_relocatable()
+        .expect("failed to get return data start");
+    let retdata_end = return_values[4]
+        .get_relocatable()
+        .expect("failed to get return data end");
+
+    runner
+        .vm
+        .get_integer_range(
+            retdata_start,
+            (retdata_end - retdata_start).expect("return data length should not be negative"),
+        )
+        .expect("failed to access vm memory")
+        .iter()
+        .map(|c| c.clone().into_owned())
+        .collect_vec()
 }
 
 #[track_caller]
