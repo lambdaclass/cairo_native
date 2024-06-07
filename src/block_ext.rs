@@ -140,7 +140,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         T: Into<BigInt>,
     {
         let ty = IntegerType::new(context, bits).into();
-        Ok(self.append_op_result(
+        self.append_op_result(
             ods::arith::constant(
                 context,
                 ty,
@@ -149,7 +149,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
                 location,
             )
             .into(),
-        )?)
+        )
     }
 
     fn const_int_from_type<T>(
@@ -162,7 +162,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
     where
         T: Into<BigInt>,
     {
-        Ok(self.append_op_result(
+        self.append_op_result(
             ods::arith::constant(
                 context,
                 ty,
@@ -171,7 +171,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
                 location,
             )
             .into(),
-        )?)
+        )
     }
 
     fn extract_value(
@@ -182,7 +182,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         value_type: Type<'ctx>,
         index: usize,
     ) -> Result<Value<'ctx, '_>, Error> {
-        Ok(self.append_op_result(
+        self.append_op_result(
             ods::llvm::extractvalue(
                 context,
                 value_type,
@@ -191,7 +191,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
                 location,
             )
             .into(),
-        )?)
+        )
     }
 
     fn insert_value(
@@ -202,7 +202,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         value: Value<'ctx, '_>,
         index: usize,
     ) -> Result<Value<'ctx, '_>, Error> {
-        Ok(self.append_op_result(
+        self.append_op_result(
             ods::llvm::insertvalue(
                 context,
                 container.r#type(),
@@ -212,7 +212,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
                 location,
             )
             .into(),
-        )?)
+        )
     }
 
     fn insert_values<'block>(
