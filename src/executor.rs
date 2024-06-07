@@ -151,7 +151,6 @@ fn invoke_dynamic(
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
-
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
 
@@ -196,6 +195,22 @@ fn invoke_dynamic(
         None
     };
 
+    // The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
+    // so we must always allocate it in case it needs it, regardless of whether it's passed
+    // as an argument to the entry point or not.
+    let mut syscall_handler = syscall_handler
+        .as_mut()
+        .map(|syscall_handler| StarknetSyscallHandlerCallbacks::new(syscall_handler));
+    // We only care for the previous syscall handler if we actually modify it
+    #[cfg(feature = "with-cheatcode")]
+    let previous_syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
+        let previous_syscall_handler = crate::starknet::SYSCALL_HANDLER_VTABLE.get();
+        let syscall_handler_ptr = std::ptr::addr_of!(*syscall_handler) as *mut ();
+        crate::starknet::SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
+
+        previous_syscall_handler
+    });
+
     // Generate argument list.
     let mut iter = args.iter();
     for type_id in function_signature.param_types.iter().filter(|id| {
@@ -209,19 +224,14 @@ fn invoke_dynamic(
                 &[gas as u64, (gas >> 64) as u64],
             ),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
-                match syscall_handler.as_mut() {
-                    Some(syscall_handler) => {
-                        let syscall_handler =
-                            arena.alloc(StarknetSyscallHandlerCallbacks::new(syscall_handler));
-                        invoke_data.push_aligned(
-                            get_integer_layout(64).align(),
-                            &[syscall_handler as *mut _ as u64],
-                        )
-                    }
-                    None => {
-                        panic!("Syscall handler is required");
-                    }
-                }
+                let syscall_handler = syscall_handler
+                    .as_mut()
+                    .expect("syscall handler is required");
+
+                invoke_data.push_aligned(
+                    get_integer_layout(64).align(),
+                    &[syscall_handler as *mut _ as u64],
+                );
             }
             type_info => invoke_data
                 .push(
@@ -250,6 +260,13 @@ fn invoke_dynamic(
             invoke_data.invoke_data().len(),
             ret_registers.as_mut_ptr(),
         );
+    }
+
+    // If the syscall handler was changed, then reset the previous one.
+    // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)
+    #[cfg(feature = "with-cheatcode")]
+    if let Some(previous_syscall_handler) = previous_syscall_handler {
+        crate::starknet::SYSCALL_HANDLER_VTABLE.set(previous_syscall_handler);
     }
 
     // Parse final gas.
