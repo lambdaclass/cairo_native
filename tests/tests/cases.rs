@@ -4,9 +4,7 @@ use crate::common::{
 };
 use cairo_native::starknet::DummySyscallHandler;
 use itertools::Itertools;
-use num_traits::FromPrimitive;
 use pretty_assertions_sorted::assert_eq_sorted;
-use starknet_types_core::felt::Felt;
 use test_case::test_case;
 
 // Test cases for programs without input, it checks the outputs are correct automatically.
@@ -179,23 +177,28 @@ fn test_program_cases(program_path: &str) {
 #[test_case("tests/cases/cairo_vm/contracts/random_ec_point.cairo", &[])]
 // #[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[10, 10, 10])]
 fn test_contract_cases(program_path: &str, args: &[u128]) {
-    let args = args
-        .iter()
-        .map(|&arg| Felt::from_u128(arg).unwrap())
-        .collect_vec();
+    let args = args.iter().map(|&arg| arg.into()).collect_vec();
 
     let contract = load_cairo_contract_path(program_path);
     let entrypoint = contract
         .entry_points_by_type
         .external
         .first()
-        .unwrap()
+        .expect("contract should have at least one external entrypoint")
         .function_idx;
-    let program = contract.extract_sierra_program().unwrap();
+
+    let program = contract
+        .extract_sierra_program()
+        .expect("contract bytes should be a valid sierra program");
 
     let native_result =
         run_native_starknet_contract(&program, entrypoint, &args, DummySyscallHandler);
-    assert!(!native_result.failure_flag);
+
+    assert!(
+        !native_result.failure_flag,
+        "native contract execution failed"
+    );
+
     let native_output = native_result.return_values;
 
     let vm_output = run_vm_contract(&contract, entrypoint, &args);
