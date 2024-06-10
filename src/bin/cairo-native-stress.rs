@@ -31,7 +31,7 @@ fn main() {
 
         let execution_result = executor
             .invoke_contract_dynamic(&entry_point_id, &[], Some(u128::MAX), DummySyscallHandler)
-            .unwrap();
+            .expect("contract execution failed");
 
         assert!(
             execution_result.failure_flag == false,
@@ -65,14 +65,20 @@ mod {name} {{
         .prefix("test_")
         .suffix(".cairo")
         .tempfile()
-        .unwrap();
-    fs::write(&mut program_file, program_str).unwrap();
+        .expect("temporary file creation failed");
+    fs::write(&mut program_file, program_str).expect("writing to temporary file failed");
 
-    let contract_class = compile_path(program_file.path(), None, Default::default()).unwrap();
+    let contract_class = compile_path(program_file.path(), None, Default::default())
+        .expect("compiling contract failed");
 
-    let program = contract_class.extract_sierra_program().unwrap();
+    let program = contract_class
+        .extract_sierra_program()
+        .expect("extracting sierra failed");
 
-    let entry_point_id = find_entry_point_by_idx(&program, 0).unwrap().id.clone();
+    let entry_point_id = find_entry_point_by_idx(&program, 0)
+        .expect("cairo file should have an entry point")
+        .id
+        .clone();
 
     (entry_point_id, program)
 }
