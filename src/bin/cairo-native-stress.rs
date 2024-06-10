@@ -1,60 +1,51 @@
 use std::fs;
 
-use cairo_lang_sierra::program_registry::ProgramRegistry;
+use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_starknet::compile::compile_path;
 use cairo_native::{
-    context::NativeContext,
-    executor::AotNativeExecutor,
-    metadata::gas::GasMetadata,
-    module_to_object, object_to_shared_lib,
-    starknet::DummySyscallHandler,
-    utils::{find_entry_point_by_idx, SHARED_LIBRARY_EXT},
+    cache::AotProgramCache, context::NativeContext, starknet::DummySyscallHandler,
+    utils::find_entry_point_by_idx,
 };
-use libloading::Library;
+use clap::Parser;
 
-fn main() {
-    let program = generate_program("Name", 252);
-
-    let native_context = NativeContext::new();
-    let native_module = native_context
-        .compile(&program, None)
-        .expect("should compile");
-
-    let object_data =
-        module_to_object(native_module.module(), cairo_native::OptLevel::None).unwrap();
-    let shared_library_path = tempfile::Builder::new()
-        .prefix("lib")
-        .suffix(SHARED_LIBRARY_EXT)
-        .tempfile()
-        .unwrap()
-        .into_temp_path();
-    object_to_shared_lib(&object_data, &shared_library_path).unwrap();
-    let shared_library = unsafe { Library::new(shared_library_path).unwrap() };
-
-    let registry = ProgramRegistry::new(&program).unwrap();
-
-    let executor = AotNativeExecutor::new(
-        shared_library,
-        registry,
-        native_module
-            .metadata()
-            .get::<GasMetadata>()
-            .cloned()
-            .unwrap(),
-    );
-
-    let entry_point_id = &find_entry_point_by_idx(&program, 0).unwrap().id;
-    let execution_result = executor
-        .invoke_contract_dynamic(entry_point_id, &[], Some(u128::MAX), DummySyscallHandler)
-        .unwrap();
-
-    assert!(
-        execution_result.failure_flag == false,
-        "contract execution failed"
-    )
+#[derive(Parser, Debug)]
+struct CliArgs {
+    /// Amount of iterations to perform
+    iterations: u32,
 }
 
-fn generate_program(name: &str, output: u32) -> cairo_lang_sierra::program::Program {
+fn main() {
+    let cli_args = CliArgs::parse();
+
+    let native_context = NativeContext::new();
+    let mut cache = AotProgramCache::new(&native_context);
+
+    for round in 0..cli_args.iterations {
+        let (entry_point_id, program) = generate_program("Name", round);
+
+        if cache.get(&round).is_some() {
+            panic!("encountered cache hit, all contracts must be different")
+        }
+
+        let executor = cache.compile_and_insert(round, &program, cairo_native::OptLevel::None);
+
+        let execution_result = executor
+            .invoke_contract_dynamic(&entry_point_id, &[], Some(u128::MAX), DummySyscallHandler)
+            .unwrap();
+
+        assert!(
+            execution_result.failure_flag == false,
+            "contract execution failed"
+        );
+
+        println!(
+            "Finished round {round} with result {}",
+            execution_result.return_values[0]
+        );
+    }
+}
+
+fn generate_program(name: &str, output: u32) -> (FunctionId, cairo_lang_sierra::program::Program) {
     let program_str = format!(
         "\
 #[starknet::contract]
@@ -81,5 +72,7 @@ mod {name} {{
 
     let program = contract_class.extract_sierra_program().unwrap();
 
-    program
+    let entry_point_id = find_entry_point_by_idx(&program, 0).unwrap().id.clone();
+
+    (entry_point_id, program)
 }
