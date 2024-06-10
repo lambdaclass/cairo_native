@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, time::Instant};
 
 use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_starknet::compile::compile_path;
@@ -7,6 +7,8 @@ use cairo_native::{
     utils::find_entry_point_by_idx,
 };
 use clap::Parser;
+use tracing::{info, info_span, trace};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Parser, Debug)]
 struct CliArgs {
@@ -15,30 +17,48 @@ struct CliArgs {
 }
 
 fn main() {
+    tracing::subscriber::set_global_default(
+        FmtSubscriber::builder()
+            .with_env_filter(EnvFilter::from_default_env())
+            .finish(),
+    )
+    .expect("failed to set global tracing subscriber");
+
     let cli_args = CliArgs::parse();
 
     let native_context = NativeContext::new();
     let mut cache = AotProgramCache::new(&native_context);
 
     for round in 0..cli_args.iterations {
+        let _enter_span = info_span!("round");
+
+        let now = Instant::now();
         let (entry_point, program) = generate_program("Name", round);
+        let elapsed = now.elapsed().as_millis();
+        trace!("generated test program, took {elapsed}ms");
 
         if cache.get(&round).is_some() {
             panic!("all contracts should be different")
         }
 
+        let now = Instant::now();
         let executor = cache.compile_and_insert(round, &program, cairo_native::OptLevel::None);
+        let elapsed = now.elapsed().as_millis();
+        trace!("compiled test program, took {elapsed}ms");
 
+        let now = Instant::now();
         let execution_result = executor
             .invoke_contract_dynamic(&entry_point, &[], Some(u128::MAX), DummySyscallHandler)
             .expect("failed to execute contract");
+        let elapsed = now.elapsed().as_millis();
+        trace!("executed test program, took {elapsed}ms");
 
         assert!(
             execution_result.failure_flag == false,
             "contract execution had failure flag set"
         );
 
-        println!(
+        info!(
             "Finished round {round} with result {}",
             execution_result.return_values[0]
         );
