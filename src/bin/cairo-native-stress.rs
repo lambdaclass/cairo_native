@@ -21,21 +21,21 @@ fn main() {
     let mut cache = AotProgramCache::new(&native_context);
 
     for round in 0..cli_args.iterations {
-        let (entry_point_id, program) = generate_program("Name", round);
+        let (entry_point, program) = generate_program("Name", round);
 
         if cache.get(&round).is_some() {
-            panic!("encountered cache hit, all contracts must be different")
+            panic!("all contracts should be different")
         }
 
         let executor = cache.compile_and_insert(round, &program, cairo_native::OptLevel::None);
 
         let execution_result = executor
-            .invoke_contract_dynamic(&entry_point_id, &[], Some(u128::MAX), DummySyscallHandler)
-            .expect("contract execution failed");
+            .invoke_contract_dynamic(&entry_point, &[], Some(u128::MAX), DummySyscallHandler)
+            .expect("failed to execute contract");
 
         assert!(
             execution_result.failure_flag == false,
-            "contract execution failed"
+            "contract execution had failure flag set"
         );
 
         println!(
@@ -65,20 +65,27 @@ mod {name} {{
         .prefix("test_")
         .suffix(".cairo")
         .tempfile()
-        .expect("temporary file creation failed");
-    fs::write(&mut program_file, program_str).expect("writing to temporary file failed");
+        .expect("failed to create temporary file for cairo test program");
+    fs::write(&mut program_file, program_str).expect("failed to write cairo test file");
 
     let contract_class = compile_path(program_file.path(), None, Default::default())
-        .expect("compiling contract failed");
+        .expect("failed to compile cairo contract");
 
     let program = contract_class
         .extract_sierra_program()
-        .expect("extracting sierra failed");
+        .expect("failed to extract sierra program");
 
-    let entry_point_id = find_entry_point_by_idx(&program, 0)
-        .expect("cairo file should have an entry point")
+    let entry_point_idx = contract_class
+        .entry_points_by_type
+        .external
+        .first()
+        .expect("contrat should have at least one entrypoint")
+        .function_idx;
+
+    let entry_point = find_entry_point_by_idx(&program, entry_point_idx)
+        .expect("failed to find entrypoint")
         .id
         .clone();
 
-    (entry_point_id, program)
+    (entry_point, program)
 }
