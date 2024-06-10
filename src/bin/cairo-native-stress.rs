@@ -33,7 +33,7 @@ fn main() {
         let _enter_span = info_span!("round");
 
         let now = Instant::now();
-        let (entry_point, program) = generate_program("Name", round);
+        let (entry_point, program) = generate_program_from_scratch("Name", round);
         let elapsed = now.elapsed().as_millis();
         trace!("generated test program, took {elapsed}ms");
 
@@ -65,7 +65,10 @@ fn main() {
     }
 }
 
-fn generate_program(name: &str, output: u32) -> (FunctionId, cairo_lang_sierra::program::Program) {
+fn generate_program_from_scratch(
+    name: &str,
+    output: u32,
+) -> (FunctionId, cairo_lang_sierra::program::Program) {
     let program_str = format!(
         "\
 #[starknet::contract]
