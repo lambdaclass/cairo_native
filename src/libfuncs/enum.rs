@@ -345,7 +345,7 @@ pub fn build_match<'ctx, 'this>(
                     stack_ptr,
                     entry.argument(0)?.into(),
                     Some(layout.align()),
-                );
+                )?;
                 let tag_val =
                     entry.load(context, location, stack_ptr, tag_ty, Some(layout.align()))?;
 
@@ -516,7 +516,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
                     stack_ptr,
                     entry.argument(0)?.into(),
                     Some(layout.align()),
-                );
+                )?;
                 let tag_val =
                     entry.load(context, location, stack_ptr, tag_ty, Some(layout.align()))?;
 

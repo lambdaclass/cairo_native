@@ -6,6 +6,7 @@
 //! `Box<T>` we can reuse its pointer, just leaving it null when there's no value.
 
 use super::{TypeBuilder, WithSelf};
+use crate::block_ext::BlockExt;
 use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
@@ -22,13 +23,12 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{
-        arith::{self, CmpiPredicate},
         llvm::{self, r#type::pointer},
         ods, scf,
     },
     ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Location, Module, Region, Type, Value,
+        attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Region, Type,
+        Value,
     },
     Context,
 };
@@ -75,39 +75,20 @@ fn snapshot_take<'ctx, 'this>(
 
     let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
 
-    let k0 = entry
-        .append_operation(arith::constant(
+    let null_ptr = entry
+        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
+
+    let is_null = entry.append_op_result(
+        ods::llvm::icmp(
             context,
+            IntegerType::new(context, 1).into(),
+            src_value,
+            null_ptr,
             IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             location,
-        ))
-        .result(0)?
-        .into();
-    let null_ptr = entry
-        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
-        .result(0)?
-        .into();
-
-    let ptr_value = entry
-        .append_operation(
-            OperationBuilder::new("llvm.ptrtoint", location)
-                .add_operands(&[src_value])
-                .add_results(&[IntegerType::new(context, 64).into()])
-                .build()?,
         )
-        .result(0)?
-        .into();
-
-    let is_null = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Eq,
-            ptr_value,
-            k0,
-            location,
-        ))
-        .result(0)?
-        .into();
+        .into(),
+    )?;
 
     let value = entry
         .append_operation(scf::r#if(
@@ -124,25 +105,11 @@ fn snapshot_take<'ctx, 'this>(
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
-                let alloc_len = block
-                    .append_operation(arith::constant(
-                        context,
-                        IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            elem_layout.size() as i64,
-                        )
-                        .into(),
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
+                let alloc_len = block.const_int(context, location, elem_layout.size(), 64)?;
 
-                let cloned_ptr = block
-                    .append_operation(ReallocBindingsMeta::realloc(
-                        context, null_ptr, alloc_len, location,
-                    ))
-                    .result(0)?
-                    .into();
+                let cloned_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                    context, null_ptr, alloc_len, location,
+                ))?;
 
                 block.append_operation(
                     ods::llvm::intr_memcpy(

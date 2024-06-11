@@ -1,4 +1,10 @@
-use crate::common::compare_inputless_program;
+use crate::common::{
+    compare_inputless_program, load_cairo_contract_path, run_native_starknet_contract,
+    run_vm_contract,
+};
+use cairo_native::starknet::DummySyscallHandler;
+use itertools::Itertools;
+use pretty_assertions_sorted::assert_eq_sorted;
 use test_case::test_case;
 
 // Test cases for programs without input, it checks the outputs are correct automatically.
@@ -105,40 +111,97 @@ use test_case::test_case;
 #[test_case("tests/cases/nullable/test_nullable.cairo")]
 // Programs copied from the cairo-vm
 // https://github.com/lambdaclass/cairo-vm/tree/main/cairo_programs/cairo-1-programs
-#[test_case("tests/cases/cairo_vm/array_append.cairo")]
-#[test_case("tests/cases/cairo_vm/array_get.cairo")]
-#[test_case("tests/cases/cairo_vm/array_integer_tuple.cairo")]
-#[test_case("tests/cases/cairo_vm/bitwise.cairo")]
-#[test_case("tests/cases/cairo_vm/bytes31_ret.cairo")]
-#[test_case("tests/cases/cairo_vm/dict_with_struct.cairo")]
-#[test_case("tests/cases/cairo_vm/dictionaries.cairo")]
-#[test_case("tests/cases/cairo_vm/ecdsa_recover.cairo")]
-#[test_case("tests/cases/cairo_vm/enum_flow.cairo")]
-#[test_case("tests/cases/cairo_vm/enum_match.cairo")]
-#[test_case("tests/cases/cairo_vm/factorial.cairo")]
-// #[test_case("tests/cases/cairo_vm/felt_dict.cairo")]
-#[test_case("tests/cases/cairo_vm/felt_dict_squash.cairo")]
-// #[test_case("tests/cases/cairo_vm/felt_span.cairo")]
-#[test_case("tests/cases/cairo_vm/fibonacci.cairo")]
-#[test_case("tests/cases/cairo_vm/hello.cairo")]
-#[test_case("tests/cases/cairo_vm/my_rectangle.cairo")]
-// #[test_case("tests/cases/cairo_vm/null_ret.cairo")]
-// #[test_case("tests/cases/cairo_vm/nullable_box_vec.cairo")]
-// #[test_case("tests/cases/cairo_vm/nullable_dict.cairo")]
-#[test_case("tests/cases/cairo_vm/ops.cairo")]
-#[test_case("tests/cases/cairo_vm/pedersen_example.cairo")]
-#[test_case("tests/cases/cairo_vm/poseidon.cairo")]
-#[test_case("tests/cases/cairo_vm/poseidon_pedersen.cairo")]
-#[test_case("tests/cases/cairo_vm/primitive_types2.cairo")]
-// #[test_case("tests/cases/cairo_vm/print.cairo")]
-#[test_case("tests/cases/cairo_vm/recursion.cairo")]
-#[test_case("tests/cases/cairo_vm/sample.cairo")]
-// #[test_case("tests/cases/cairo_vm/short_string.cairo")]
-#[test_case("tests/cases/cairo_vm/simple.cairo")]
-#[test_case("tests/cases/cairo_vm/simple_struct.cairo")]
-#[test_case("tests/cases/cairo_vm/struct_span_return.cairo")]
-// #[test_case("tests/cases/cairo_vm/tensor_new.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/array_append.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/array_get.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/array_integer_tuple.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/bitwise.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/bytes31_ret.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/dict_with_struct.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/dictionaries.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/ecdsa_recover.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/enum_flow.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/enum_match.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/factorial.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/felt_dict.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/felt_dict_squash.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/felt_span.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/fibonacci.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/hello.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/my_rectangle.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/null_ret.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/nullable_box_vec.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/nullable_dict.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/ops.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/pedersen_example.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/poseidon.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/poseidon_pedersen.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/primitive_types2.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/print.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/recursion.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/sample.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/short_string.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/simple.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/simple_struct.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/struct_span_return.cairo")]
+#[test_case("tests/cases/cairo_vm/programs/tensor_new.cairo")]
 #[test_case("tests/cases/brainfuck.cairo")]
-fn test_cases(program_path: &str) {
+fn test_program_cases(program_path: &str) {
     compare_inputless_program(program_path)
+}
+
+// Contracts copied from the cairo-vm
+// https://github.com/lambdaclass/cairo-vm/tree/main/cairo_programs/cairo-1-contracts
+#[test_case("tests/cases/cairo_vm/contracts/alloc_segment.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/assert_le_find_small_arcs.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/dict_test.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/divmod.cairo", &[100, 10])]
+#[test_case("tests/cases/cairo_vm/contracts/factorial.cairo", &[10])]
+#[test_case("tests/cases/cairo_vm/contracts/felt252_dict_entry_init.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/felt252_dict_entry_update.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/felt_252_dict.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/fib.cairo", &[10, 10, 10])]
+#[test_case("tests/cases/cairo_vm/contracts/get_segment_arena_index.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/init_squash_data.cairo", &[10])]
+#[test_case("tests/cases/cairo_vm/contracts/linear_split.cairo", &[10])]
+#[test_case("tests/cases/cairo_vm/contracts/should_skip_squash_loop.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/test_less_than.cairo", &[10])]
+#[test_case("tests/cases/cairo_vm/contracts/u128_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/u16_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/u256_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/u32_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/u64_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/u8_sqrt.cairo", &[100])]
+#[test_case("tests/cases/cairo_vm/contracts/uint512_div_mod.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/widemul128.cairo", &[100, 100])]
+#[test_case("tests/cases/cairo_vm/contracts/field_sqrt.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/random_ec_point.cairo", &[])]
+#[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[10, 10, 10])]
+fn test_contract_cases(program_path: &str, args: &[u128]) {
+    let args = args.iter().map(|&arg| arg.into()).collect_vec();
+
+    let contract = load_cairo_contract_path(program_path);
+    let entrypoint = contract
+        .entry_points_by_type
+        .external
+        .first()
+        .expect("contract should have at least one external entrypoint")
+        .function_idx;
+
+    let program = contract
+        .extract_sierra_program()
+        .expect("contract bytes should be a valid sierra program");
+
+    let native_result =
+        run_native_starknet_contract(&program, entrypoint, &args, DummySyscallHandler);
+
+    assert!(
+        !native_result.failure_flag,
+        "native contract execution failed"
+    );
+
+    let native_output = native_result.return_values;
+
+    let vm_output = run_vm_contract(&contract, entrypoint, &args);
+
+    assert_eq_sorted!(vm_output, native_output);
 }

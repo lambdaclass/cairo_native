@@ -51,6 +51,7 @@ scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
 with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
 with-serde = ["dep:serde"]
+with-cheatcode = []
 
 [dependencies]
 bumpalo = "3.16.0"
@@ -108,6 +109,7 @@ sec1 = { version = "0.7.3", optional = true }
 serde_json = { version = "1.0.117", optional = true }
 
 [dev-dependencies]
+cairo-vm = { version = "1.0.0-rc3", features = ["cairo-1-hints"] }
 cairo-felt = "0.9.1"
 cairo-lang-runner = "2.6.3"
 cairo-lang-semantic = { version = "2.6.3", features = ["testing"] }
