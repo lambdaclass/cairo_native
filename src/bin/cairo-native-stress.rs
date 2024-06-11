@@ -140,15 +140,15 @@ fn main() {
 fn generate_starknet_contract() -> (FunctionId, cairo_lang_sierra::program::Program) {
     let program_str = "\
 #[starknet::contract]
-mod Contract {{
+mod Contract {
     #[storage]
-    struct Storage {{}}
+    struct Storage {}
 
     #[external(v0)]
-    fn main(self: @ContractState) -> felt252 {{
+    fn main(self: @ContractState) -> felt252 {
         return 252;
-    }}
-}}
+    }
+}
 ";
 
     let mut program_file = tempfile::Builder::new()
