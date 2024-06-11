@@ -735,38 +735,12 @@
 <a href="#733" id="733">733</a>
 <a href="#734" id="734">734</a>
 <a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
-<a href="#753" id="753">753</a>
-<a href="#754" id="754">754</a>
-<a href="#755" id="755">755</a>
-<a href="#756" id="756">756</a>
-<a href="#757" id="757">757</a>
-<a href="#758" id="758">758</a>
-<a href="#759" id="759">759</a>
-<a href="#760" id="760">760</a>
-<a href="#761" id="761">761</a>
-<a href="#762" id="762">762</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-</span><span class="kw">use crate</span>::{error::Error <span class="kw">as </span>CoreLibfuncBuilderError, metadata::MetadataStorage};
+</span><span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
+<span class="kw">use crate</span>::{error::Error <span class="kw">as </span>CoreLibfuncBuilderError, metadata::MetadataStorage};
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
@@ -775,10 +749,7 @@
 };
 <span class="kw">use </span>melior::{
     dialect::{arith, cf},
-    ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockRef, Location, Module,
-        Operation, Region, Value, ValueLike,
-    },
+    ir::{Block, BlockRef, Location, Module, Operation, Region, Value, ValueLike},
     Context,
 };
 <span class="kw">use </span>std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
@@ -1268,25 +1239,18 @@
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
 ) -&gt; <span class="kw">crate</span>::error::Result&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'a</span>&gt;&gt; {
-    <span class="kw">let </span>k1 = block
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
-
-    <span class="prelude-val">Ok</span>(block
-        .append_operation(arith::addi(value, k1, location))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into())
+    block.append_op_result(arith::addi(
+        value,
+        block.const_int(context, location, <span class="number">1</span>, <span class="number">64</span>)<span class="question-mark">?</span>,
+        location,
+    ))
 }
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::context::NativeContext;
+    <span class="kw">use </span>melior::ir::r#type::IntegerType;
     <span class="kw">use </span>melior::ir::Type;
 
     <span class="attr">#[test]
@@ -1325,14 +1289,8 @@
 
         <span class="comment">// Append a constant arithmetic operation to the block and obtain its result operand
         </span><span class="kw">let </span>operand = block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(i32_type, <span class="number">1</span>).into(),
-                location,
-            ))
-            .result(<span class="number">0</span>)
-            .unwrap()
-            .into();
+            .const_int_from_type(context, location, <span class="number">1</span>, i32_type)
+            .unwrap();
 
         <span class="comment">// Loop to add branches and results to the LibfuncHelper struct
         </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">20 </span>{
@@ -1401,14 +1359,8 @@
 
         <span class="comment">// Append a constant arithmetic operation to the block and obtain its result operand
         </span><span class="kw">let </span>operand = block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(i32_type, <span class="number">1</span>).into(),
-                location,
-            ))
-            .result(<span class="number">0</span>)
-            .unwrap()
-            .into();
+            .const_int_from_type(context, location, <span class="number">1</span>, i32_type)
+            .unwrap();
 
         <span class="comment">// Loop to add branches and results to the LibfuncHelper struct
         </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">20 </span>{
@@ -1486,14 +1438,8 @@
 
         <span class="comment">// Append a constant arithmetic operation to the block and obtain its result operand
         </span><span class="kw">let </span>operand = block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(i32_type, <span class="number">1</span>).into(),
-                location,
-            ))
-            .result(<span class="number">0</span>)
-            .unwrap()
-            .into();
+            .const_int_from_type(context, location, <span class="number">1</span>, i32_type)
+            .unwrap();
 
         <span class="comment">// Loop to add branches and results to the LibfuncHelper struct
         </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">20 </span>{
