@@ -3,8 +3,9 @@
 //! See `StressTestCommand`
 
 use std::fmt::Display;
-use std::fs::create_dir_all;
+use std::fs::{create_dir_all, read_dir};
 use std::hash::Hash;
+use std::io;
 use std::path::Path;
 use std::{collections::HashMap, fs, rc::Rc, time::Instant};
 
@@ -21,7 +22,7 @@ use cairo_native::{
 use cairo_native::{module_to_object, object_to_shared_lib, OptLevel};
 use clap::Parser;
 use libloading::Library;
-use tracing::{debug, debug_span, info, info_span};
+use tracing::{debug, debug_span, info, info_span, warn};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 /// The directory used to store compiled native programs
@@ -48,6 +49,10 @@ fn main() {
             .finish(),
     )
     .expect("failed to set global tracing subscriber");
+
+    if !directory_is_empty(AOT_CACHE_DIR).expect("failed to open aot cache dir") {
+        warn!("{AOT_CACHE_DIR} directory is not empty")
+    }
 
     let before_stress_test = Instant::now();
 
@@ -109,13 +114,18 @@ fn main() {
             );
         }
 
-        let elapsed = before_round.elapsed().as_millis();
-        info!(
-            round,
-            time = elapsed,
-            cache_len = cache.len(),
-            "finished round"
-        );
+        {
+            let cache_disk_size =
+                directory_get_size(AOT_CACHE_DIR).expect("failed to calculate cache disk size");
+            let elapsed = before_round.elapsed().as_millis();
+            info!(
+                round = round,
+                time = elapsed,
+                cache_mem_len = cache.len(),
+                cache_disk_size = cache_disk_size,
+                "finished round"
+            );
+        }
     }
 
     let elapsed = before_stress_test.elapsed().as_millis();
@@ -252,4 +262,32 @@ where
 
         executor
     }
+}
+
+/// Returns the size of a directory in bytes
+fn directory_get_size(path: impl AsRef<Path>) -> io::Result<u64> {
+    let mut dir = read_dir(path)?;
+
+    dir.try_fold(0, |total_size, entry| {
+        let entry = entry?;
+
+        let size = match entry.metadata()? {
+            data if data.is_dir() => directory_get_size(entry.path())?,
+            data => data.len(),
+        };
+
+        return Ok(total_size + size);
+    })
+}
+
+fn directory_is_empty(path: impl AsRef<Path>) -> io::Result<bool> {
+    let is_empty = match read_dir(path) {
+        Ok(mut directory) => directory.next().is_none(),
+        Err(error) => match error.kind() {
+            io::ErrorKind::NotFound => true,
+            _ => return Err(error),
+        },
+    };
+
+    Ok(is_empty)
 }
