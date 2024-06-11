@@ -21,7 +21,7 @@ use cairo_native::{
 use cairo_native::{module_to_object, object_to_shared_lib, OptLevel};
 use clap::Parser;
 use libloading::Library;
-use tracing::{info, info_span, trace};
+use tracing::{debug, debug_span, info, info_span};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 /// The directory used to store compiled native programs
@@ -33,8 +33,10 @@ const AOT_CACHE_DIR: &str = ".aot-cache";
 /// The compiled dynamic libraries are stores in `AOT_CACHE_DIR` relative to the current working directory.
 #[derive(Parser, Debug)]
 struct StressTestCommand {
-    /// Amount of programs to generate and test
-    iterations: u32,
+    /// Amount of rounds to execute
+    rounds: u32,
+    /// Amount of programs to generate and test per round
+    programs: u32,
 }
 
 fn main() {
@@ -57,52 +59,67 @@ fn main() {
         let before_generate = Instant::now();
         let initial_program = generate_starknet_contract();
         let elapsed = before_generate.elapsed().as_millis();
-        trace!("generated test program, took {elapsed}ms");
+        info!(time = elapsed, "generated test program");
         initial_program
     };
 
-    for round in 1..=cli_args.iterations {
-        let _enter_span = info_span!("round");
+    for round in 0..cli_args.rounds {
+        let _enter_round_span = info_span!("round");
+        let before_round = Instant::now();
 
-        // The round count is used as a key. After making sure each iteration uses
-        // a different unique program, the program hash should be used.
-        if cache.get(&round).is_some() {
-            panic!("all program keys should be different")
+        for program_number in 0..cli_args.programs {
+            let _enter_program_span = debug_span!("program");
+
+            // The round and program count is used as a key. After making sure each iteration uses
+            // a different unique program, the program hash should be used.
+            let key = round * cli_args.programs + program_number;
+            if cache.get(&key).is_some() {
+                panic!("all program keys should be different")
+            }
+
+            // Compile and caches the program
+            let executor = {
+                let before_compile = Instant::now();
+                let executor =
+                    cache.compile_and_insert(key, &program, cairo_native::OptLevel::None);
+                let elapsed = before_compile.elapsed().as_millis();
+                debug!(time = elapsed, "compiled test program");
+                executor
+            };
+
+            // Executes the program
+            let execution_result = {
+                let now = Instant::now();
+                let execution_result = executor
+                    .invoke_contract_dynamic(
+                        &entry_point,
+                        &[],
+                        Some(u128::MAX),
+                        DummySyscallHandler,
+                    )
+                    .expect("failed to execute contract");
+                let elapsed = now.elapsed().as_millis();
+                debug!(time = elapsed, "executed test program");
+                execution_result
+            };
+
+            assert!(
+                execution_result.failure_flag == false,
+                "contract execution had failure flag set"
+            );
         }
 
-        // Compile and caches the program
-        let executor = {
-            let before_compile = Instant::now();
-            let executor = cache.compile_and_insert(round, &program, cairo_native::OptLevel::None);
-            let elapsed = before_compile.elapsed().as_millis();
-            trace!("compiled test program, took {elapsed}ms");
-            executor
-        };
-
-        // Executes the program
-        let execution_result = {
-            let now = Instant::now();
-            let execution_result = executor
-                .invoke_contract_dynamic(&entry_point, &[], Some(u128::MAX), DummySyscallHandler)
-                .expect("failed to execute contract");
-            let elapsed = now.elapsed().as_millis();
-            trace!("executed test program, took {elapsed}ms");
-            execution_result
-        };
-
-        assert!(
-            execution_result.failure_flag == false,
-            "contract execution had failure flag set"
-        );
-
+        let elapsed = before_round.elapsed().as_millis();
         info!(
-            "Finished round {round} with result {}",
-            execution_result.return_values[0]
+            round,
+            time = elapsed,
+            cache_len = cache.len(),
+            "finished round"
         );
     }
 
     let elapsed = before_stress_test.elapsed().as_millis();
-    info!("finished stress test, took {elapsed}ms");
+    info!(time = elapsed, "finished stress test");
 }
 
 /// Generate a dummy starknet contract
@@ -181,8 +198,13 @@ where
             cache: Default::default(),
         }
     }
+
     pub fn get(&self, key: &K) -> Option<Rc<AotNativeExecutor>> {
         self.cache.get(key).cloned()
+    }
+
+    pub fn len(&self) -> usize {
+        self.cache.len()
     }
 
     /// Compiles and inserts a given program into the cache
