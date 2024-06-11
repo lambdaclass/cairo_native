@@ -1,12 +1,19 @@
-use std::{fs, time::Instant};
+use std::hash::Hash;
+use std::{collections::HashMap, fs, rc::Rc, time::Instant};
 
 use cairo_lang_sierra::ids::FunctionId;
+use cairo_lang_sierra::program::Program;
+use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_starknet::compile::compile_path;
+use cairo_native::metadata::gas::GasMetadata;
+use cairo_native::utils::SHARED_LIBRARY_EXT;
 use cairo_native::{
-    cache::AotProgramCache, context::NativeContext, starknet::DummySyscallHandler,
+    context::NativeContext, executor::AotNativeExecutor, starknet::DummySyscallHandler,
     utils::find_entry_point_by_idx,
 };
+use cairo_native::{module_to_object, object_to_shared_lib, OptLevel};
 use clap::Parser;
+use libloading::Library;
 use tracing::{info, info_span, trace};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -108,4 +115,65 @@ mod Contract {{
         .clone();
 
     (entry_point, program)
+}
+
+struct AotProgramCache<'a, K>
+where
+    K: PartialEq + Eq + Hash,
+{
+    context: &'a NativeContext,
+    cache: HashMap<K, Rc<AotNativeExecutor>>,
+}
+
+impl<'a, K> AotProgramCache<'a, K>
+where
+    K: PartialEq + Eq + Hash,
+{
+    pub fn new(context: &'a NativeContext) -> Self {
+        Self {
+            context,
+            cache: Default::default(),
+        }
+    }
+    pub fn get(&self, key: &K) -> Option<Rc<AotNativeExecutor>> {
+        self.cache.get(key).cloned()
+    }
+
+    pub fn compile_and_insert(
+        &mut self,
+        key: K,
+        program: &Program,
+        opt_level: OptLevel,
+    ) -> Rc<AotNativeExecutor> {
+        let native_module = self.context.compile(program, None).expect("should compile");
+
+        let object_data = module_to_object(&native_module.module(), opt_level).unwrap();
+
+        let shared_library_path = tempfile::Builder::new()
+            .prefix("lib")
+            .suffix(SHARED_LIBRARY_EXT)
+            .tempfile()
+            .unwrap()
+            .into_temp_path();
+        object_to_shared_lib(&object_data, &shared_library_path).unwrap();
+
+        let registry = ProgramRegistry::new(program).unwrap();
+
+        let shared_library = unsafe { Library::new(shared_library_path).unwrap() };
+        let executor = AotNativeExecutor::new(
+            shared_library,
+            registry,
+            native_module
+                .metadata()
+                .get::<GasMetadata>()
+                .cloned()
+                .unwrap(),
+        );
+
+        let executor = Rc::new(executor);
+
+        self.cache.insert(key, executor.clone());
+
+        executor
+    }
 }
