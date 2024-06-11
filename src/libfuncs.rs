@@ -2,6 +2,7 @@
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
+use crate::block_ext::BlockExt;
 use crate::{error::Error as CoreLibfuncBuilderError, metadata::MetadataStorage};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -11,10 +12,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf},
-    ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockRef, Location, Module,
-        Operation, Region, Value, ValueLike,
-    },
+    ir::{Block, BlockRef, Location, Module, Operation, Region, Value, ValueLike},
     Context,
 };
 use std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
@@ -27,7 +25,8 @@ pub mod r#box;
 pub mod branch_align;
 pub mod bytes31;
 pub mod cast;
-pub mod const_libfunc;
+pub mod r#const;
+pub mod coupon;
 pub mod debug;
 pub mod drop;
 pub mod dup;
@@ -120,7 +119,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Cast(selector) => self::cast::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Const(selector) => self::const_libfunc::build(
+            Self::Const(selector) => self::r#const::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Debug(selector) => self::debug::build(
@@ -216,14 +215,19 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::Coupon(_) => todo!(),
-            Self::CouponCall(_) => todo!(),
+            Self::Coupon(info) => {
+                self::coupon::build(context, registry, entry, location, helper, metadata, info)
+            }
+            Self::CouponCall(info) => self::function_call::build(
+                context, registry, entry, location, helper, metadata, info,
+            ),
         }
     }
 
     fn is_function_call(&self) -> Option<&FunctionId> {
         match self {
             CoreConcreteLibfunc::FunctionCall(info) => Some(&info.function.id),
+            CoreConcreteLibfunc::CouponCall(info) => Some(&info.function.id),
             _ => None,
         }
     }
@@ -498,25 +502,18 @@ pub fn increment_builtin_counter<'ctx: 'a, 'a>(
     location: Location<'ctx>,
     value: Value<'ctx, '_>,
 ) -> crate::error::Result<Value<'ctx, 'a>> {
-    let k1 = block
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-
-    Ok(block
-        .append_operation(arith::addi(value, k1, location))
-        .result(0)?
-        .into())
+    block.append_op_result(arith::addi(
+        value,
+        block.const_int(context, location, 1, 64)?,
+        location,
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::context::NativeContext;
+    use melior::ir::r#type::IntegerType;
     use melior::ir::Type;
 
     #[test]
@@ -555,14 +552,8 @@ mod tests {
 
         // Append a constant arithmetic operation to the block and obtain its result operand
         let operand = block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(i32_type, 1).into(),
-                location,
-            ))
-            .result(0)
-            .unwrap()
-            .into();
+            .const_int_from_type(context, location, 1, i32_type)
+            .unwrap();
 
         // Loop to add branches and results to the LibfuncHelper struct
         for _ in 0..20 {
@@ -631,14 +622,8 @@ mod tests {
 
         // Append a constant arithmetic operation to the block and obtain its result operand
         let operand = block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(i32_type, 1).into(),
-                location,
-            ))
-            .result(0)
-            .unwrap()
-            .into();
+            .const_int_from_type(context, location, 1, i32_type)
+            .unwrap();
 
         // Loop to add branches and results to the LibfuncHelper struct
         for _ in 0..20 {
@@ -716,14 +701,8 @@ mod tests {
 
         // Append a constant arithmetic operation to the block and obtain its result operand
         let operand = block
-            .append_operation(arith::constant(
-                context,
-                IntegerAttribute::new(i32_type, 1).into(),
-                location,
-            ))
-            .result(0)
-            .unwrap()
-            .into();
+            .const_int_from_type(context, location, 1, i32_type)
+            .unwrap();
 
         // Loop to add branches and results to the LibfuncHelper struct
         for _ in 0..20 {

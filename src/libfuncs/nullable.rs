@@ -3,6 +3,7 @@
 //! Like a Box but it can be null.
 
 use super::LibfuncHelper;
+use crate::block_ext::BlockExt;
 use crate::{error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
@@ -98,11 +99,10 @@ fn build_match_nullable<'ctx, 'this>(
 ) -> Result<()> {
     let arg = entry.argument(0)?.into();
 
-    let op =
-        entry.append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into());
-    let nullptr = op.result(0)?.into();
+    let nullptr = entry
+        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
 
-    let op = entry.append_operation(
+    let is_null_ptr = entry.append_op_result(
         OperationBuilder::new("llvm.icmp", location)
             .add_operands(&[arg, nullptr])
             .add_attributes(&[(
@@ -111,9 +111,7 @@ fn build_match_nullable<'ctx, 'this>(
             )])
             .add_results(&[IntegerType::new(context, 1).into()])
             .build()?,
-    );
-
-    let is_null_ptr = op.result(0)?.into();
+    )?;
 
     let block_is_null = helper.append_block(Block::new(&[]));
     let block_is_not_null = helper.append_block(Block::new(&[]));

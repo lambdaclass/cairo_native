@@ -102,6 +102,15 @@ lazy_static! {
             recursion(arr.span())
         }
     };
+
+    pub static ref NO_OP: (String, Program, SierraCasmRunner) = load_cairo! {
+        #[inline(never)]
+        fn no_op() {}
+
+        fn run_test() {
+            no_op();
+        }
+    };
 }
 
 #[test]
@@ -381,6 +390,26 @@ fn self_referencing_struct() {
     compare_outputs(
         &SELF_REFERENCING.1,
         &SELF_REFERENCING.2.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
+}
+
+#[test]
+fn no_op() {
+    let result_vm = run_vm_program(&NO_OP, "run_test", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_native = run_native_program(
+        &NO_OP,
+        "run_test",
+        &[],
+        Some(DEFAULT_GAS as u128),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &NO_OP.1,
+        &NO_OP.2.find_function("run_test").unwrap().id,
         &result_vm,
         &result_native,
     )

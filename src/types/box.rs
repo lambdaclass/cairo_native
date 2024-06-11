@@ -88,15 +88,10 @@ fn snapshot_take<'ctx, 'this>(
     let value_len = entry.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
 
     let ptr = entry
-        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
-        .result(0)?
-        .into();
-    let dst_ptr = entry
-        .append_operation(ReallocBindingsMeta::realloc(
-            context, ptr, value_len, location,
-        ))
-        .result(0)?
-        .into();
+        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
+    let dst_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+        context, ptr, value_len, location,
+    ))?;
 
     match inner_snapshot_take {
         Some(inner_snapshot_take) => {
@@ -117,7 +112,7 @@ fn snapshot_take<'ctx, 'this>(
                 dst_ptr,
                 value,
                 Some(inner_layout.align()),
-            );
+            )?;
         }
         None => {
             entry.append_operation(

@@ -29,6 +29,9 @@ To read more in-depth documentation, visit [this page](https://lambdaclass.notio
 - [Benchmarking](#benchmarking)
 - [API usage example](#api--usage-example)
 - [From MLIR to native binary](#from-mlir-to-native-binary)
+- [Cairo Test CLI Tool](#cairo-native-test-cli-tool)
+- [Scarb Test CLI Tool](#scarb-native-test-cli-tool)
+- [Scarb Dump CLI Tool](#scarb-native-dump-cli-tool)
 
 ## ⚠️ Disclaimer
 
@@ -704,9 +707,9 @@ For more examples, check out the `examples/` directory.
 ### Requirements
 
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo >=1.0](https://github.com/starkware-libs/cairo)
+- [cairo 2.6.3](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
-- LLVM 16 with MLIR
+- LLVM 18 with MLIR
 
 You need to setup some environment variables:
 
@@ -801,6 +804,39 @@ cairo-native-test ./cairo-tests/
 ```
 
 This will run all the tests (functions marked with the `#[test]` attribute).
+
+# scarb-native-test cli tool
+
+This tool mimics the `scarb test` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
+You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+
+```bash
+$ scarb-native-test --help
+Compiles all packages from a Scarb project matching `packages_filter` and
+runs all functions marked with `#[test]`. Exits with 1 if the compilation
+or run fails, otherwise 0.
+
+Usage: scarb-native-test [OPTIONS]
+
+Options:
+  -p, --package <SPEC>         Packages to run this command on, can be a concrete package name (`foobar`) or a prefix glob (`foo*`) [env: SCARB_PACKAGES_FILTER=] [default: *]
+  -w, --workspace              Run for all packages in the workspace
+  -f, --filter <FILTER>        Run only tests whose name contain FILTER [default: ]
+      --include-ignored        Run ignored and not ignored tests
+      --ignored                Run only ignored tests
+      --run-mode <RUN_MODE>    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
+  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                   Print help
+  -V, --version                Print version
+```
+
+# scarb-native-dump cli tool
+
+This tool mimics the `scarb build` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
+You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+
+This tool should be run at the directory where a `Scarb.toml` file is and it will behave like `scarb build`, leaving the MLIR files under
+the `target/` folder besides the generated JSON sierra files.
 
 ## Debugging Tips
 
