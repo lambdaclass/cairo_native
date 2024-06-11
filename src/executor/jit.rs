@@ -164,11 +164,7 @@ mod test {
 
     #[test]
     fn test_invoke_contract_dynamic() {
-        // Initialize a vector to hold call data for contract invocation.
-        let mut call_data = Vec::new();
-
-        // Define an array of hex values representing contract call data.
-        let values = [
+        let calldata = [
             "0x1",
             "0x1",
             "0x7099f594eb65e00576e1b940a8a735f80bf7604ac401c48627045c4cc286f0",
@@ -206,22 +202,15 @@ mod test {
             "0x0",
             "0x0",
             "0x0",
-            "0x0",
-            "0x0",
             "0x12",
             "0x34",
             "0x80",
             "0x80",
             "0xc0",
-        ];
-
-        // Push each hex value as Felt type into the call_data vector.
-        for value in &values {
-            call_data.push(Felt::from_hex(value).unwrap());
-        }
-
-        // Define the initial gas for the contract execution.
-        let initial_gas: u128 = 340282366920938463463374607431768211455;
+        ]
+        .into_iter()
+        .map(|x| Felt::from_hex(x).unwrap())
+        .collect::<Vec<_>>();
 
         // Define the function ID for the contract function to invoke.
         let function_id = FunctionId {
@@ -257,12 +246,7 @@ mod test {
 
         // Invoke the contract function dynamically with provided parameters.
         let result = native_executor
-            .invoke_contract_dynamic(
-                &function_id,
-                &call_data,
-                Some(initial_gas),
-                TestSyscallHandler,
-            )
+            .invoke_contract_dynamic(&function_id, &calldata, Some(u128::MAX), TestSyscallHandler)
             .unwrap();
 
         // Print the result of the contract invocation.
