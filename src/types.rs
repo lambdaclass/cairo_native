@@ -42,6 +42,7 @@ pub mod bounded_int;
 pub mod r#box;
 pub mod builtin_costs;
 pub mod bytes31;
+pub mod coupon;
 pub mod ec_op;
 pub mod ec_point;
 pub mod ec_state;
@@ -406,7 +407,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(info) => self::coupon::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
         }
     }
 
@@ -420,6 +427,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 | CoreTypeConcrete::RangeCheck(_)
                 | CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
+                | CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
                 | CoreTypeConcrete::SegmentArena(_)
         )
@@ -491,7 +499,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => false,
         }
     }
 
@@ -505,7 +513,9 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Poseidon(_)
             | CoreTypeConcrete::SegmentArena(_) => false,
             // Other builtins:
-            CoreTypeConcrete::BuiltinCosts(_) | CoreTypeConcrete::Uint128MulGuarantee(_) => true,
+            CoreTypeConcrete::BuiltinCosts(_)
+            | CoreTypeConcrete::Uint128MulGuarantee(_)
+            | CoreTypeConcrete::Coupon(_) => true,
 
             // Normal types:
             CoreTypeConcrete::Array(_)
@@ -559,7 +569,6 @@ impl TypeBuilder for CoreTypeConcrete {
                 type_info.is_zst(registry)
             }
             CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 
@@ -665,7 +674,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
         }
         .pad_to_align())
     }
@@ -740,7 +749,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .get_type(&info.inner_ty)
                 .unwrap()
                 .is_memory_allocated(registry),
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => false,
         }
     }
 

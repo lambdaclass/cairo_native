@@ -7,6 +7,10 @@ on:
   merge_group:
     types: [checks_requested]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   check:
     name: clippy
@@ -17,7 +21,7 @@ jobs:
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.76
+      - uses: dtolnay/rust-toolchain@1.78.0
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
@@ -37,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.76
+      - uses: dtolnay/rust-toolchain@1.78.0
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
@@ -110,7 +114,7 @@ jobs:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUST_LOG: debug
+      RUST_LOG: debug,cairo_native_test=trace
     steps:
       - uses: actions/checkout@v4
       - name: check and free hdd space left
@@ -133,15 +137,16 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.76
+        uses: dtolnay/rust-toolchain@1.78.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@10
+        uses: myci-actions/add-deb-repo@11
         with:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - run: sudo apt-get update && sudo apt-get upgrade -y
       - name: Install LLVM
         run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: Install deps
@@ -161,11 +166,11 @@ jobs:
       MLIR_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
       LLVM_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
       TABLEGEN_180_PREFIX: /opt/homebrew/opt/llvm@18
-      RUST_LOG: debug
+      RUST_LOG: debug,cairo_native_test=trace
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.76.0
+        uses: dtolnay/rust-toolchain@1.78.0
         with:
           components: clippy
       - uses: Homebrew/actions/setup-homebrew@master
@@ -213,7 +218,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.76
+        uses: dtolnay/rust-toolchain@1.78.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
