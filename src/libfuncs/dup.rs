@@ -6,7 +6,10 @@
 //! However, types like an array need special handling.
 
 use super::LibfuncHelper;
-use crate::{error::Result, metadata::MetadataStorage};
+use crate::{
+    error::Result,
+    metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -21,25 +24,47 @@ use melior::{
 
 /// Generate MLIR operations for the `dup` libfunc.
 pub fn build<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    // Note: All non-trivially-copyable are automatically handled by the cairo compiler (to Sierra).
-    //   In other words, this function will only be called for copyable types.
-    //
-    //   Proof: The following code will fail in Cairo with an unsupported generic argument:
-    //   `dup(ArrayTrait::<u8>::new())`.
+    // Note: The Cairo compiler will avoid using `dup` for some non-trivially-copyable types, but
+    //   not all of them. For example, it'll not generate a clone implementation for `Box<T>`.
+    //   That's why we need to check for clone implementations within the compiler.
 
-    entry.append_operation(helper.br(
-        0,
-        &[entry.argument(0)?.into(), entry.argument(0)?.into()],
-        location,
-    ));
+    match metadata
+        .get::<SnapshotClonesMeta>()
+        .and_then(|meta| meta.wrap_invoke(&info.signature.param_signatures[0].ty))
+    {
+        Some(clone_fn) => {
+            let (entry, cloned_value) = clone_fn(
+                context,
+                registry,
+                entry,
+                location,
+                helper,
+                metadata,
+                entry.argument(0)?.into(),
+            )?;
+
+            entry.append_operation(helper.br(
+                0,
+                &[entry.argument(0)?.into(), cloned_value],
+                location,
+            ));
+        }
+        None => {
+            entry.append_operation(helper.br(
+                0,
+                &[entry.argument(0)?.into(), entry.argument(0)?.into()],
+                location,
+            ));
+        }
+    }
 
     Ok(())
 }

@@ -140,19 +140,16 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         T: Into<BigInt>,
     {
         let ty = IntegerType::new(context, bits).into();
-        Ok(self
-            .append_operation(
-                ods::arith::constant(
-                    context,
-                    ty,
-                    Attribute::parse(context, &format!("{} : {}", value.into(), ty))
-                        .ok_or(Error::ParseAttributeError)?,
-                    location,
-                )
-                .into(),
+        self.append_op_result(
+            ods::arith::constant(
+                context,
+                ty,
+                Attribute::parse(context, &format!("{} : {}", value.into(), ty))
+                    .ok_or(Error::ParseAttributeError)?,
+                location,
             )
-            .result(0)?
-            .into())
+            .into(),
+        )
     }
 
     fn const_int_from_type<T>(
@@ -165,19 +162,16 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
     where
         T: Into<BigInt>,
     {
-        Ok(self
-            .append_operation(
-                ods::arith::constant(
-                    context,
-                    ty,
-                    Attribute::parse(context, &format!("{} : {}", value.into(), ty))
-                        .ok_or(Error::ParseAttributeError)?,
-                    location,
-                )
-                .into(),
+        self.append_op_result(
+            ods::arith::constant(
+                context,
+                ty,
+                Attribute::parse(context, &format!("{} : {}", value.into(), ty))
+                    .ok_or(Error::ParseAttributeError)?,
+                location,
             )
-            .result(0)?
-            .into())
+            .into(),
+        )
     }
 
     fn extract_value(
@@ -188,19 +182,16 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         value_type: Type<'ctx>,
         index: usize,
     ) -> Result<Value<'ctx, '_>, Error> {
-        Ok(self
-            .append_operation(
-                ods::llvm::extractvalue(
-                    context,
-                    value_type,
-                    container,
-                    DenseI64ArrayAttribute::new(context, &[index.try_into().unwrap()]).into(),
-                    location,
-                )
-                .into(),
+        self.append_op_result(
+            ods::llvm::extractvalue(
+                context,
+                value_type,
+                container,
+                DenseI64ArrayAttribute::new(context, &[index.try_into().unwrap()]).into(),
+                location,
             )
-            .result(0)?
-            .into())
+            .into(),
+        )
     }
 
     fn insert_value(
@@ -211,20 +202,17 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         value: Value<'ctx, '_>,
         index: usize,
     ) -> Result<Value<'ctx, '_>, Error> {
-        Ok(self
-            .append_operation(
-                ods::llvm::insertvalue(
-                    context,
-                    container.r#type(),
-                    container,
-                    value,
-                    DenseI64ArrayAttribute::new(context, &[index.try_into().unwrap()]).into(),
-                    location,
-                )
-                .into(),
+        self.append_op_result(
+            ods::llvm::insertvalue(
+                context,
+                container.r#type(),
+                container,
+                value,
+                DenseI64ArrayAttribute::new(context, &[index.try_into().unwrap()]).into(),
+                location,
             )
-            .result(0)?
-            .into())
+            .into(),
+        )
     }
 
     fn insert_values<'block>(

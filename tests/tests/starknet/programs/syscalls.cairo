@@ -4,6 +4,7 @@ use core::starknet::{
     keccak_syscall,
     library_call_syscall, replace_class_syscall, send_message_to_l1_syscall,
     storage_address_try_from_felt252, storage_read_syscall, storage_write_syscall, SyscallResult,
+    testing::cheatcode,
 };
 use core::starknet::syscalls::get_execution_info_syscall;
 use core::starknet::syscalls::get_execution_info_v2_syscall;
@@ -54,4 +55,60 @@ fn send_message_to_l1() -> SyscallResult<()> {
 
 fn keccak() -> SyscallResult<u256> {
     keccak_syscall(array![].span())
+}
+
+fn set_sequencer_address(address: felt252) -> Span<felt252> {
+    return cheatcode::<'set_sequencer_address'>(array![address].span());
+}
+
+fn set_account_contract_address(address: felt252) -> Span<felt252> {
+    return cheatcode::<'set_account_contract_address'>(array![address].span());
+}
+
+fn set_block_number(number: felt252) -> Span<felt252> {
+    return cheatcode::<'set_block_number'>(array![number].span());
+}
+
+fn set_block_timestamp(timestamp: felt252) -> Span<felt252> {
+    return cheatcode::<'set_block_timestamp'>(array![timestamp].span());
+}
+
+fn set_caller_address(address: felt252) -> Span<felt252> {
+    return cheatcode::<'set_caller_address'>(array![address].span());
+}
+
+fn set_chain_id(id: felt252) -> Span<felt252> {
+    return cheatcode::<'set_chain_id'>(array![id].span());
+}
+
+fn set_contract_address(address: felt252) -> Span<felt252> {
+    return cheatcode::<'set_contract_address'>(array![address].span());
+}
+
+fn set_max_fee(fee: felt252) -> Span<felt252> {
+    return cheatcode::<'set_max_fee'>(array![fee].span());
+}
+
+fn set_nonce(nonce: felt252) -> Span<felt252> {
+    return cheatcode::<'set_nonce'>(array![nonce].span());
+}
+
+fn set_signature(signature: Array<felt252>) -> Span<felt252> {
+    return cheatcode::<'set_signature'>(signature.span());
+}
+
+fn set_transaction_hash(hash: felt252) -> Span<felt252> {
+    return cheatcode::<'set_transaction_hash'>(array![hash].span());
+}
+
+fn set_version(version: felt252) -> Span<felt252> {
+    return cheatcode::<'set_version'>(array![version].span());
+}
+
+fn pop_log(log: felt252) -> Span<felt252> {
+    return cheatcode::<'pop_log'>(array![log].span());
+}
+
+fn pop_l2_to_l1_message(message: felt252) -> Span<felt252> {
+    return cheatcode::<'pop_l2_to_l1_message'>(array![message].span());
 }

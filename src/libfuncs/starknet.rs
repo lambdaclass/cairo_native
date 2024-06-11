@@ -15,7 +15,7 @@ use cairo_lang_sierra::{
         consts::SignatureAndConstConcreteLibfunc,
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
-        starknet::StarkNetConcreteLibfunc,
+        starknet::{testing::TestingConcreteLibfunc, StarkNetConcreteLibfunc},
         ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
@@ -39,6 +39,9 @@ use num_bigint::{Sign, ToBigUint};
 use std::alloc::Layout;
 
 mod secp256;
+
+#[cfg(feature = "with-cheatcode")]
+mod testing;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -138,7 +141,14 @@ pub fn build<'ctx, 'this>(
         StarkNetConcreteLibfunc::Secp256(selector) => self::secp256::build(
             context, registry, entry, location, helper, metadata, selector,
         ),
-        StarkNetConcreteLibfunc::Testing(_) => todo!("implement starknet testing libfunc"),
+        #[cfg(feature = "with-cheatcode")]
+        StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
+            self::testing::build(context, registry, entry, location, helper, metadata, info)
+        }
+        #[cfg(not(feature = "with-cheatcode"))]
+        StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(_)) => {
+            unimplemented!("feature 'with-cheatcode' is required to compile with cheatcode syscall")
+        }
     }
 }
 
