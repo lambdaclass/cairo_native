@@ -1,11 +1,11 @@
 use anyhow::Context;
+use cairo_lang_compiler::project::check_compiler_path;
 use cairo_native::{
     context::NativeContext, module_to_object, object_to_shared_lib,
     utils::cairo_to_sierra_with_debug_info,
 };
 use clap::{Parser, ValueEnum};
-
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Clone, Debug, ValueEnum)]
@@ -78,20 +78,5 @@ fn main() -> anyhow::Result<()> {
             .context("Failed to write shared library.")?;
     }
 
-    Ok(())
-}
-
-pub fn check_compiler_path(single_file: bool, path: &Path) -> anyhow::Result<()> {
-    if path.is_file() {
-        if !single_file {
-            anyhow::bail!("The given path is a file, but --single-file was not supplied.");
-        }
-    } else if path.is_dir() {
-        if single_file {
-            anyhow::bail!("The given path is a directory, but --single-file was supplied.");
-        }
-    } else {
-        anyhow::bail!("The given path does not exist.");
-    }
     Ok(())
 }

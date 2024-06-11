@@ -100,7 +100,7 @@ pub fn build_get<'ctx, 'this>(
         key_ptr,
         key_value,
         Some(key_layout.align()),
-    );
+    )?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -243,7 +243,7 @@ pub fn build_finalize<'ctx, 'this>(
         value_ptr,
         new_value,
         Some(value_layout.align()),
-    );
+    )?;
 
     let key_ptr =
         helper
@@ -256,7 +256,7 @@ pub fn build_finalize<'ctx, 'this>(
         key_ptr,
         key_value,
         Some(key_layout.align()),
-    );
+    )?;
 
     // call insert
 
