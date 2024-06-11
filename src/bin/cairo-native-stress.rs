@@ -70,6 +70,9 @@ fn main() {
             execution_result.return_values[0]
         );
     }
+
+    let elapsed = now.elapsed().as_millis();
+    trace!("finished stress test, took {elapsed}ms");
 }
 
 fn generate_initial_program() -> (FunctionId, cairo_lang_sierra::program::Program) {
