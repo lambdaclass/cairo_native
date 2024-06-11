@@ -18,12 +18,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith,
-        llvm::{self, LoadStoreOptions},
-        ods,
-    },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    dialect::{arith, ods},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -98,26 +94,20 @@ pub fn build_pedersen<'ctx>(
     let rhs_be =
         entry.append_op_result(ods::llvm::intr_bswap(context, rhs_i256, location).into())?;
 
-    entry.append_operation(llvm::store(
+    entry.store(
         context,
-        lhs_be,
+        location,
         lhs_ptr,
-        location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            layout_i256.align().try_into()?,
-        ))),
-    ));
-    entry.append_operation(llvm::store(
+        lhs_be,
+        Some(layout_i256.align()),
+    )?;
+    entry.store(
         context,
-        rhs_be,
-        rhs_ptr,
         location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            layout_i256.align().try_into()?,
-        ))),
-    ));
+        rhs_ptr,
+        rhs_be,
+        Some(layout_i256.align()),
+    )?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -126,16 +116,13 @@ pub fn build_pedersen<'ctx>(
     runtime_bindings
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)?;
 
-    let result_be = entry.append_op_result(llvm::load(
+    let result_be = entry.load(
         context,
+        location,
         dst_ptr,
         i256_ty,
-        location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            layout_i256.align().try_into()?,
-        ))),
-    ))?;
+        Some(layout_i256.align()),
+    )?;
 
     let op = entry.append_op_result(ods::llvm::intr_bswap(context, result_be, location).into())?;
 
