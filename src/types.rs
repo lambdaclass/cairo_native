@@ -2,6 +2,7 @@
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
+use crate::block_ext::BlockExt;
 use crate::{
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
@@ -22,15 +23,10 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{
-        arith,
         llvm::{self, r#type::pointer},
         ods,
     },
-    ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        r#type::IntegerType,
-        Block, Location, Module, Type, Value,
-    },
+    ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
 use num_traits::Signed;
@@ -830,96 +826,33 @@ impl TypeBuilder for CoreTypeConcrete {
         Ok(match self {
             Self::Enum(info) => match &info.info.long_id.generic_args[0] {
                 GenericArg::UserType(id) if id == bool_user_type_id => {
-                    let tag = entry
-                        .append_operation(arith::constant(
-                            context,
-                            IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
-                            location,
-                        ))
-                        .result(0)?
-                        .into();
+                    let tag = entry.const_int(context, location, 0, 1)?;
 
-                    let value = entry
-                        .append_operation(llvm::undef(
-                            llvm::r#type::r#struct(
-                                context,
-                                &[
-                                    IntegerType::new(context, 1).into(),
-                                    llvm::r#type::array(IntegerType::new(context, 8).into(), 0),
-                                ],
-                                false,
-                            ),
-                            location,
-                        ))
-                        .result(0)?
-                        .into();
-                    entry
-                        .append_operation(llvm::insert_value(
+                    let value = entry.append_op_result(llvm::undef(
+                        llvm::r#type::r#struct(
                             context,
-                            value,
-                            DenseI64ArrayAttribute::new(context, &[0]),
-                            tag,
-                            location,
-                        ))
-                        .result(0)?
-                        .into()
+                            &[
+                                IntegerType::new(context, 1).into(),
+                                llvm::r#type::array(IntegerType::new(context, 8).into(), 0),
+                            ],
+                            false,
+                        ),
+                        location,
+                    ))?;
+
+                    entry.insert_value(context, location, value, tag, 0)?
                 }
                 _ => unimplemented!("unsupported dict value type"),
             },
-            Self::Felt252(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 252).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Nullable(_) => entry
-                .append_operation(
-                    ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
-                )
-                .result(0)?
-                .into(),
-            Self::Uint8(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 8).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Uint16(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 16).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Uint32(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Uint64(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Uint128(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 128).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
+            Self::Felt252(_) => entry.const_int(context, location, 0, 252)?,
+            Self::Nullable(_) => entry.append_op_result(
+                ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+            )?,
+            Self::Uint8(_) => entry.const_int(context, location, 0, 8)?,
+            Self::Uint16(_) => entry.const_int(context, location, 0, 16)?,
+            Self::Uint32(_) => entry.const_int(context, location, 0, 32)?,
+            Self::Uint64(_) => entry.const_int(context, location, 0, 64)?,
+            Self::Uint128(_) => entry.const_int(context, location, 0, 128)?,
             _ => unimplemented!("unsupported dict value type"),
         })
     }
@@ -946,14 +879,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
                 let array_val = entry.argument(0)?.into();
 
-                let op = entry.append_operation(llvm::extract_value(
-                    context,
-                    array_val,
-                    DenseI64ArrayAttribute::new(context, &[0]),
-                    ptr_ty,
-                    location,
-                ));
-                let ptr: Value = op.result(0)?.into();
+                let ptr = entry.extract_value(context, location, array_val, ptr_ty, 0)?;
 
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }
