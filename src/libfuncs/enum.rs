@@ -112,7 +112,8 @@ pub fn build_enum_value<'ctx, 'this>(
     )?;
 
     Ok(match variant_tys.len() {
-        0 | 1 => payload_value,
+        0 => panic!("attempt to initialize a zero-variant enum"),
+        1 => payload_value,
         _ => {
             let enum_ty = llvm::r#type::r#struct(
                 context,
@@ -225,7 +226,7 @@ pub fn build_enum_value<'ctx, 'this>(
     })
 }
 
-/// Generate MLIR operations for the `enum_init` libfunc.
+/// Generate MLIR operations for the `enum_from_bounded_int` libfunc.
 pub fn build_from_bounded_int<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -298,7 +299,22 @@ pub fn build_match<'ctx, 'this>(
 
     let variant_ids = type_info.variants().unwrap();
     match variant_ids.len() {
-        0 | 1 => {
+        0 => {
+            // The Cairo compiler will generate an enum match for enums without variants, so this
+            // case cannot be a compile-time error. We're assuming that even though it's been
+            // generated, it's just dead code and can be made into an assertion that always fails.
+
+            let k0 = entry.const_int(context, location, 0, 1)?;
+            entry.append_operation(cf::assert(
+                context,
+                k0,
+                "attempt to match a zero-variant enum",
+                location,
+            ));
+
+            entry.append_operation(llvm::unreachable(location));
+        }
+        1 => {
             entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
         }
         _ => {
@@ -329,7 +345,7 @@ pub fn build_match<'ctx, 'this>(
                     stack_ptr,
                     entry.argument(0)?.into(),
                     Some(layout.align()),
-                );
+                )?;
                 let tag_val =
                     entry.load(context, location, stack_ptr, tag_ty, Some(layout.align()))?;
 
@@ -454,7 +470,22 @@ pub fn build_snapshot_match<'ctx, 'this>(
         .expect("enum should always have variants")
         .clone();
     match variant_ids.len() {
-        0 | 1 => {
+        0 => {
+            // The Cairo compiler will generate an enum match for enums without variants, so this
+            // case cannot be a compile-time error. We're assuming that even though it's been
+            // generated, it's just dead code and can be made into an assertion that always fails.
+
+            let k0 = entry.const_int(context, location, 0, 1)?;
+            entry.append_operation(cf::assert(
+                context,
+                k0,
+                "attempt to match a zero-variant enum",
+                location,
+            ));
+
+            entry.append_operation(llvm::unreachable(location));
+        }
+        1 => {
             entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
         }
         _ => {
@@ -485,7 +516,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
                     stack_ptr,
                     entry.argument(0)?.into(),
                     Some(layout.align()),
-                );
+                )?;
                 let tag_val =
                     entry.load(context, location, stack_ptr, tag_ty, Some(layout.align()))?;
 
@@ -592,7 +623,10 @@ pub fn build_snapshot_match<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output};
+    use crate::{
+        context::NativeContext,
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+    };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;
@@ -676,5 +710,19 @@ mod test {
     fn enum_match() {
         run_program_assert_output(&ENUM_MATCH, "match_a", &[], Felt::from(5).into());
         run_program_assert_output(&ENUM_MATCH, "match_b", &[], 5u8.into());
+    }
+
+    #[test]
+    fn compile_enum_match_without_variants() {
+        let (_, program) = load_cairo! {
+            enum MyEnum {}
+
+            fn main(value: MyEnum) {
+                match value {}
+            }
+        };
+
+        let native_context = NativeContext::new();
+        native_context.compile(&program, None).unwrap();
     }
 }
