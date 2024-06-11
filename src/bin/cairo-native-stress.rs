@@ -1,4 +1,7 @@
+use std::fmt::Display;
+use std::fs::create_dir_all;
 use std::hash::Hash;
+use std::path::Path;
 use std::{collections::HashMap, fs, rc::Rc, time::Instant};
 
 use cairo_lang_sierra::ids::FunctionId;
@@ -24,6 +27,8 @@ struct CliArgs {
 }
 
 fn main() {
+    let cli_args = CliArgs::parse();
+
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
             .with_env_filter(EnvFilter::from_default_env())
@@ -31,15 +36,18 @@ fn main() {
     )
     .expect("failed to set global tracing subscriber");
 
-    let cli_args = CliArgs::parse();
+    let before_stress_test = Instant::now();
 
     let native_context = NativeContext::new();
     let mut cache = AotProgramCache::new(&native_context);
 
-    let now = Instant::now();
-    let (entry_point, program) = generate_initial_program();
-    let elapsed = now.elapsed().as_millis();
-    trace!("generated test program, took {elapsed}ms");
+    let (entry_point, program) = {
+        let before_generate = Instant::now();
+        let initial_program = generate_initial_program();
+        let elapsed = before_generate.elapsed().as_millis();
+        trace!("generated test program, took {elapsed}ms");
+        initial_program
+    };
 
     for round in 0..cli_args.iterations {
         let _enter_span = info_span!("round");
@@ -48,17 +56,23 @@ fn main() {
             panic!("all keys should be different")
         }
 
-        let now = Instant::now();
-        let executor = cache.compile_and_insert(round, &program, cairo_native::OptLevel::None);
-        let elapsed = now.elapsed().as_millis();
-        trace!("compiled test program, took {elapsed}ms");
+        let executor = {
+            let before_compile = Instant::now();
+            let executor = cache.compile_and_insert(round, &program, cairo_native::OptLevel::None);
+            let elapsed = before_compile.elapsed().as_millis();
+            trace!("compiled test program, took {elapsed}ms");
+            executor
+        };
 
-        let now = Instant::now();
-        let execution_result = executor
-            .invoke_contract_dynamic(&entry_point, &[], Some(u128::MAX), DummySyscallHandler)
-            .expect("failed to execute contract");
-        let elapsed = now.elapsed().as_millis();
-        trace!("executed test program, took {elapsed}ms");
+        let execution_result = {
+            let now = Instant::now();
+            let execution_result = executor
+                .invoke_contract_dynamic(&entry_point, &[], Some(u128::MAX), DummySyscallHandler)
+                .expect("failed to execute contract");
+            let elapsed = now.elapsed().as_millis();
+            trace!("executed test program, took {elapsed}ms");
+            execution_result
+        };
 
         assert!(
             execution_result.failure_flag == false,
@@ -71,8 +85,8 @@ fn main() {
         );
     }
 
-    let elapsed = now.elapsed().as_millis();
-    trace!("finished stress test, took {elapsed}ms");
+    let elapsed = before_stress_test.elapsed().as_millis();
+    info!("finished stress test, took {elapsed}ms");
 }
 
 fn generate_initial_program() -> (FunctionId, cairo_lang_sierra::program::Program) {
@@ -122,7 +136,7 @@ mod Contract {{
 
 struct AotProgramCache<'a, K>
 where
-    K: PartialEq + Eq + Hash,
+    K: PartialEq + Eq + Hash + Display,
 {
     context: &'a NativeContext,
     cache: HashMap<K, Rc<AotNativeExecutor>>,
@@ -130,7 +144,7 @@ where
 
 impl<'a, K> AotProgramCache<'a, K>
 where
-    K: PartialEq + Eq + Hash,
+    K: PartialEq + Eq + Hash + Display,
 {
     pub fn new(context: &'a NativeContext) -> Self {
         Self {
@@ -148,31 +162,36 @@ where
         program: &Program,
         opt_level: OptLevel,
     ) -> Rc<AotNativeExecutor> {
-        let native_module = self.context.compile(program, None).expect("should compile");
+        let native_module = self
+            .context
+            .compile(program, None)
+            .expect("failed to compile program");
 
-        let object_data = module_to_object(&native_module.module(), opt_level).unwrap();
+        let registry = ProgramRegistry::new(program).expect("failed to get program registry");
+        let metadata = native_module
+            .metadata()
+            .get::<GasMetadata>()
+            .cloned()
+            .expect("module should have gas metadata");
 
-        let shared_library_path = tempfile::Builder::new()
-            .prefix("lib")
-            .suffix(SHARED_LIBRARY_EXT)
-            .tempfile()
-            .unwrap()
-            .into_temp_path();
-        object_to_shared_lib(&object_data, &shared_library_path).unwrap();
+        let shared_library = {
+            let object_data = module_to_object(&native_module.module(), opt_level)
+                .expect("failed to convert MLIR to object");
 
-        let registry = ProgramRegistry::new(program).unwrap();
+            let shared_library_dir = Path::new(".aot-cache");
+            create_dir_all(shared_library_dir).expect("failed to create shared library directory");
+            let shared_library_name = format!("lib{key}{SHARED_LIBRARY_EXT}");
+            let shared_library_path = shared_library_dir.join(&shared_library_name);
 
-        let shared_library = unsafe { Library::new(shared_library_path).unwrap() };
-        let executor = AotNativeExecutor::new(
-            shared_library,
-            registry,
-            native_module
-                .metadata()
-                .get::<GasMetadata>()
-                .cloned()
-                .unwrap(),
-        );
+            object_to_shared_lib(&object_data, &shared_library_path)
+                .expect("failed to link object into shared library");
 
+            unsafe {
+                Library::new(shared_library_path).expect("failed to load dynamic shared library")
+            }
+        };
+
+        let executor = AotNativeExecutor::new(shared_library, registry, metadata);
         let executor = Rc::new(executor);
 
         self.cache.insert(key, executor.clone());
