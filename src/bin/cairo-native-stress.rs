@@ -109,7 +109,7 @@ fn main() {
             };
 
             assert!(
-                execution_result.failure_flag == false,
+                !execution_result.failure_flag,
                 "contract execution had failure flag set"
             );
         }
@@ -138,8 +138,7 @@ fn main() {
 /// We should modify the program returned from this to obtain
 /// different unique programs without recompiling each time
 fn generate_starknet_contract() -> (FunctionId, cairo_lang_sierra::program::Program) {
-    let program_str = format!(
-        "\
+    let program_str = "\
 #[starknet::contract]
 mod Contract {{
     #[storage]
@@ -150,8 +149,7 @@ mod Contract {{
         return 252;
     }}
 }}
-"
-    );
+";
 
     let mut program_file = tempfile::Builder::new()
         .prefix("test_")
@@ -239,13 +237,13 @@ where
             .expect("module should have gas metadata");
 
         let shared_library = {
-            let object_data = module_to_object(&native_module.module(), opt_level)
+            let object_data = module_to_object(native_module.module(), opt_level)
                 .expect("failed to convert MLIR to object");
 
             let shared_library_dir = Path::new(AOT_CACHE_DIR);
             create_dir_all(shared_library_dir).expect("failed to create shared library directory");
             let shared_library_name = format!("lib{key}{SHARED_LIBRARY_EXT}");
-            let shared_library_path = shared_library_dir.join(&shared_library_name);
+            let shared_library_path = shared_library_dir.join(shared_library_name);
 
             object_to_shared_lib(&object_data, &shared_library_path)
                 .expect("failed to link object into shared library");
@@ -276,7 +274,7 @@ fn directory_get_size(path: impl AsRef<Path>) -> io::Result<u64> {
             data => data.len(),
         };
 
-        return Ok(total_size + size);
+        Ok(total_size + size)
     })
 }
 
