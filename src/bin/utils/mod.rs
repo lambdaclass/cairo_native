@@ -154,11 +154,19 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
         JitValue::Sint32(x) => vec![(*x).into()],
         JitValue::Sint64(x) => vec![(*x).into()],
         JitValue::Sint128(x) => vec![(*x).into()],
-        JitValue::Bytes31(_)
-        | JitValue::EcPoint(_, _)
-        | JitValue::EcState(_, _, _, _)
-        | JitValue::Secp256K1Point { .. }
-        | JitValue::Secp256R1Point { .. } => todo!(),
+        JitValue::Bytes31(bytes) => vec![Felt::from_bytes_le_slice(bytes)],
+        JitValue::EcPoint(x, y) => {
+            vec![*x, *y]
+        }
+        JitValue::EcState(a, b, c, d) => {
+            vec![*a, *b, *c, *d]
+        }
+        JitValue::Secp256K1Point { x, y } => {
+            vec![x.0.into(), x.1.into(), y.0.into(), y.1.into()]
+        }
+        JitValue::Secp256R1Point { x, y } => {
+            vec![x.0.into(), x.1.into(), y.0.into(), y.1.into()]
+        }
         JitValue::Null => vec![0.into()],
     }
 }
@@ -168,6 +176,19 @@ mod tests {
     use super::*;
     use cairo_felt::Felt252;
     use cairo_lang_sierra::ProgramParser;
+    use std::collections::HashMap;
+
+    /// Check if subsequence is present in sequence
+    fn is_subsequence<T: PartialEq>(subsequence: &[T], mut sequence: &[T]) -> bool {
+        for search in subsequence {
+            if let Some(index) = sequence.iter().position(|element| search == element) {
+                sequence = &sequence[index + 1..];
+            } else {
+                return false;
+            }
+        }
+        true
+    }
 
     #[test]
     fn test_find_function() {
@@ -469,5 +490,95 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_null() {
         assert_eq!(jitvalue_to_felt(&JitValue::Null), vec![Felt::ZERO]);
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_felt252_dict() {
+        let result = jitvalue_to_felt(&JitValue::Felt252Dict {
+            value: HashMap::from([
+                (Felt::ONE, JitValue::Felt252(Felt::from(101))),
+                (Felt::TWO, JitValue::Felt252(Felt::from(102))),
+            ]),
+            debug_name: None,
+        });
+
+        let first_dict_entry = vec![Felt::from(1), Felt::from(101)];
+        let second_dict_entry = vec![Felt::from(2), Felt::from(102)];
+
+        // Check that the two Key, value pairs are in the result
+        assert!(is_subsequence(&first_dict_entry, &result));
+        assert!(is_subsequence(&second_dict_entry, &result));
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_felt252_dict_with_array() {
+        let result = jitvalue_to_felt(&JitValue::Felt252Dict {
+            value: HashMap::from([
+                (
+                    Felt::ONE,
+                    JitValue::Array(Vec::from([
+                        JitValue::Felt252(Felt::from(101)),
+                        JitValue::Felt252(Felt::from(102)),
+                    ])),
+                ),
+                (
+                    Felt::TWO,
+                    JitValue::Array(Vec::from([
+                        JitValue::Felt252(Felt::from(201)),
+                        JitValue::Felt252(Felt::from(202)),
+                    ])),
+                ),
+            ]),
+            debug_name: None,
+        });
+
+        let first_dict_entry = vec![Felt::from(1), Felt::from(101), Felt::from(102)];
+        let second_dict_entry = vec![Felt::from(2), Felt::from(201), Felt::from(202)];
+
+        // Check that the two Key, value pairs are in the result
+        assert!(is_subsequence(&first_dict_entry, &result));
+        assert!(is_subsequence(&second_dict_entry, &result));
+    }
+    #[test]
+    fn test_jitvalue_to_felt_ec_point() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::EcPoint(Felt::ONE, Felt::TWO,)),
+            vec![Felt::ONE, Felt::TWO,]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_ec_state() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::EcState(
+                Felt::ONE,
+                Felt::TWO,
+                Felt::THREE,
+                Felt::from(4)
+            )),
+            vec![Felt::ONE, Felt::TWO, Felt::THREE, Felt::from(4)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_secp256_k1_point() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Secp256K1Point {
+                x: (1, 2),
+                y: (3, 4)
+            }),
+            vec![Felt::ONE, Felt::TWO, Felt::THREE, Felt::from(4)]
+        );
+    }
+
+    #[test]
+    fn test_jitvalue_to_felt_secp256_r1_point() {
+        assert_eq!(
+            jitvalue_to_felt(&JitValue::Secp256R1Point {
+                x: (1, 2),
+                y: (3, 4)
+            }),
+            vec![Felt::ONE, Felt::TWO, Felt::THREE, Felt::from(4)]
+        );
     }
 }
