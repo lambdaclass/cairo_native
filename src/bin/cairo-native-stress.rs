@@ -29,16 +29,16 @@ fn main() {
     let native_context = NativeContext::new();
     let mut cache = AotProgramCache::new(&native_context);
 
+    let now = Instant::now();
+    let (entry_point, program) = generate_initial_program();
+    let elapsed = now.elapsed().as_millis();
+    trace!("generated test program, took {elapsed}ms");
+
     for round in 0..cli_args.iterations {
         let _enter_span = info_span!("round");
 
-        let now = Instant::now();
-        let (entry_point, program) = generate_program_from_scratch("Name", round);
-        let elapsed = now.elapsed().as_millis();
-        trace!("generated test program, took {elapsed}ms");
-
         if cache.get(&round).is_some() {
-            panic!("all contracts should be different")
+            panic!("all keys should be different")
         }
 
         let now = Instant::now();
@@ -65,20 +65,17 @@ fn main() {
     }
 }
 
-fn generate_program_from_scratch(
-    name: &str,
-    output: u32,
-) -> (FunctionId, cairo_lang_sierra::program::Program) {
+fn generate_initial_program() -> (FunctionId, cairo_lang_sierra::program::Program) {
     let program_str = format!(
         "\
 #[starknet::contract]
-mod {name} {{
+mod Contract {{
     #[storage]
     struct Storage {{}}
 
     #[external(v0)]
     fn main(self: @ContractState) -> felt252 {{
-        return {output};
+        return 252;
     }}
 }}
 "
