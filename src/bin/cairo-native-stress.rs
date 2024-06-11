@@ -1,3 +1,7 @@
+//! A stress tester for Cairo Native
+//!
+//! See `StressTestCommand`
+
 use std::fmt::Display;
 use std::fs::create_dir_all;
 use std::hash::Hash;
@@ -20,14 +24,21 @@ use libloading::Library;
 use tracing::{info, info_span, trace};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
+/// The directory used to store compiled native programs
+const AOT_CACHE_DIR: &str = ".aot-cache";
+
+/// A stress tester for Cairo Native
+///
+/// It Sierra programs compiles with Cairo Native, caches, and executes them with AOT runner.
+/// The compiled dynamic libraries are stores in `AOT_CACHE_DIR` relative to the current working directory.
 #[derive(Parser, Debug)]
-struct CliArgs {
-    /// Amount of iterations to perform
+struct StressTestCommand {
+    /// Amount of programs to generate and test
     iterations: u32,
 }
 
 fn main() {
-    let cli_args = CliArgs::parse();
+    let cli_args = StressTestCommand::parse();
 
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
@@ -39,23 +50,27 @@ fn main() {
     let before_stress_test = Instant::now();
 
     let native_context = NativeContext::new();
-    let mut cache = AotProgramCache::new(&native_context);
+    let mut cache = NaiveAotCache::new(&native_context);
 
+    // Generate initial program.
     let (entry_point, program) = {
         let before_generate = Instant::now();
-        let initial_program = generate_initial_program();
+        let initial_program = generate_starknet_contract();
         let elapsed = before_generate.elapsed().as_millis();
         trace!("generated test program, took {elapsed}ms");
         initial_program
     };
 
-    for round in 0..cli_args.iterations {
+    for round in 1..=cli_args.iterations {
         let _enter_span = info_span!("round");
 
+        // The round count is used as a key. After making sure each iteration uses
+        // a different unique program, the program hash should be used.
         if cache.get(&round).is_some() {
-            panic!("all keys should be different")
+            panic!("all program keys should be different")
         }
 
+        // Compile and caches the program
         let executor = {
             let before_compile = Instant::now();
             let executor = cache.compile_and_insert(round, &program, cairo_native::OptLevel::None);
@@ -64,6 +79,7 @@ fn main() {
             executor
         };
 
+        // Executes the program
         let execution_result = {
             let now = Instant::now();
             let execution_result = executor
@@ -89,7 +105,12 @@ fn main() {
     info!("finished stress test, took {elapsed}ms");
 }
 
-fn generate_initial_program() -> (FunctionId, cairo_lang_sierra::program::Program) {
+/// Generate a dummy starknet contract
+///
+/// This is should only be done once as it takes a long time.
+/// We should modify the program returned from this to obtain
+/// different unique programs without recompiling each time
+fn generate_starknet_contract() -> (FunctionId, cairo_lang_sierra::program::Program) {
     let program_str = format!(
         "\
 #[starknet::contract]
@@ -134,7 +155,15 @@ mod Contract {{
     (entry_point, program)
 }
 
-struct AotProgramCache<'a, K>
+/// A naive implementation of an AOT Program Cache.
+///
+/// Stores `AotNativeExecutor`s by a given key. Each executors has it's corresponding
+/// dynamic shared library loaded.
+///
+/// Possible improvements include:
+/// - Keeping only some executores on memory, while storing the remianing compiled shared libraries on disk.
+/// - When restarting the program, reutilize already compiled programs from `AOT_CACHE_DIR`
+struct NaiveAotCache<'a, K>
 where
     K: PartialEq + Eq + Hash + Display,
 {
@@ -142,7 +171,7 @@ where
     cache: HashMap<K, Rc<AotNativeExecutor>>,
 }
 
-impl<'a, K> AotProgramCache<'a, K>
+impl<'a, K> NaiveAotCache<'a, K>
 where
     K: PartialEq + Eq + Hash + Display,
 {
@@ -156,6 +185,9 @@ where
         self.cache.get(key).cloned()
     }
 
+    /// Compiles and inserts a given program into the cache
+    ///
+    /// The dynamic library is stored in `AOT_CACHE_DIR` directory
     pub fn compile_and_insert(
         &mut self,
         key: K,
@@ -178,7 +210,7 @@ where
             let object_data = module_to_object(&native_module.module(), opt_level)
                 .expect("failed to convert MLIR to object");
 
-            let shared_library_dir = Path::new(".aot-cache");
+            let shared_library_dir = Path::new(AOT_CACHE_DIR);
             create_dir_all(shared_library_dir).expect("failed to create shared library directory");
             let shared_library_name = format!("lib{key}{SHARED_LIBRARY_EXT}");
             let shared_library_path = shared_library_dir.join(&shared_library_name);
