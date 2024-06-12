@@ -190,7 +190,7 @@ mod Contract {{
     (entry_point, program)
 }
 
-/// Modifies the given contract by replacing the `anchor_value` with `new_value`
+/// Modifies the given contract by replacing the `anchor_value` with `new_value` in any type declaration
 ///
 /// The contract must only contain the value `anchor_value` once
 fn modify_starknet_contract(mut program: Program, anchor_value: u32, new_value: u32) -> Program {
