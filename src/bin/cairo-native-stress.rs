@@ -11,7 +11,7 @@ use std::path::Path;
 use std::{collections::HashMap, fs, rc::Rc, time::Instant};
 
 use cairo_lang_sierra::ids::FunctionId;
-use cairo_lang_sierra::program::Program;
+use cairo_lang_sierra::program::{GenericArg, Program};
 use cairo_lang_sierra::program_registry::ProgramRegistry;
 use cairo_lang_starknet::compile::compile_path;
 use cairo_native::metadata::gas::GasMetadata;
@@ -23,6 +23,7 @@ use cairo_native::{
 use cairo_native::{module_to_object, object_to_shared_lib, OptLevel};
 use clap::Parser;
 use libloading::Library;
+use num_bigint::BigInt;
 use stats_alloc::{Region, StatsAlloc, INSTRUMENTED_SYSTEM};
 use tracing::{debug, info, info_span, warn};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -32,6 +33,12 @@ static GLOBAL_ALLOC: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
 
 /// The directory used to store compiled native programs
 const AOT_CACHE_DIR: &str = ".aot-cache";
+
+/// An unique value hardcoded into the first contract that it's
+/// used as an anchor point to safely modify the return value on
+/// the following contracts.
+/// It can be any value as long as it's unique in the initial contract.
+const RETURN_ANCHOR: u32 = 835;
 
 /// A stress tester for Cairo Native
 ///
@@ -80,22 +87,20 @@ fn main() {
 
         let before_round = Instant::now();
 
-        // The program is cloned to simulate that it received a new program
-        let program = program.clone();
-        // The round count is used as a key. After making sure each iteration uses
-        // a different unique program, the program hash should be used.
-        let key = round;
+        let program = modify_starknet_contract(program.clone(), round);
+        // TODO: use the program hash instead of round number.
+        let hash = round;
 
-        debug!(hash = key, "obtained test program");
+        debug!(hash, "obtained test program");
 
-        if cache.get(&key).is_some() {
+        if cache.get(&hash).is_some() {
             panic!("all program keys should be different")
         }
 
         // Compile and caches the program
         let executor = {
             let before_compile = Instant::now();
-            let executor = cache.compile_and_insert(key, &program, cairo_native::OptLevel::None);
+            let executor = cache.compile_and_insert(hash, &program, cairo_native::OptLevel::None);
             let elapsed = before_compile.elapsed().as_millis();
             debug!(time = elapsed, "compiled test program");
             executor
@@ -142,18 +147,20 @@ fn main() {
 /// We should modify the program returned from this to obtain
 /// different unique programs without recompiling each time
 fn generate_starknet_contract() -> (FunctionId, cairo_lang_sierra::program::Program) {
-    let program_str = "\
+    let program_str = format!(
+        "\
 #[starknet::contract]
-mod Contract {
+mod Contract {{
     #[storage]
-    struct Storage {}
+    struct Storage {{}}
 
     #[external(v0)]
-    fn main(self: @ContractState) -> felt252 {
-        return 252;
-    }
-}
-";
+    fn main(self: @ContractState) -> felt252 {{
+        return {RETURN_ANCHOR};
+    }}
+}}
+"
+    );
 
     let mut program_file = tempfile::Builder::new()
         .prefix("test_")
@@ -182,6 +189,34 @@ mod Contract {
         .clone();
 
     (entry_point, program)
+}
+
+/// Modifies the given contract by replacing the `RETURN_ANCHOR` wtith `new_return_value`
+///
+/// The contract must only contain the value `RETURN_ANCHOR` exactly once
+fn modify_starknet_contract(mut program: Program, new_return_value: u32) -> Program {
+    let mut anchor_counter = 0;
+
+    for type_declaration in &mut program.type_declarations {
+        for generic_arg in &mut type_declaration.long_id.generic_args {
+            let anchor = BigInt::from(RETURN_ANCHOR);
+
+            match generic_arg {
+                GenericArg::Value(return_value) if *return_value == anchor => {
+                    *return_value = BigInt::from(new_return_value);
+                    anchor_counter += 1;
+                }
+                _ => {}
+            };
+        }
+    }
+
+    assert!(
+        anchor_counter == 1,
+        "RETURN_ANCHOR was not found exactly once"
+    );
+
+    program
 }
 
 /// A naive implementation of an AOT Program Cache.
