@@ -107,6 +107,7 @@ scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = 
 scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.6.3", optional = true }
 sec1 = { version = "0.7.3", optional = true }
 serde_json = { version = "1.0.117", optional = true }
+stats_alloc = "0.1.10"
 
 [dev-dependencies]
 cairo-vm = { version = "1.0.0-rc3", features = ["cairo-1-hints"] }

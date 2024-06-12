@@ -2,6 +2,7 @@
 //!
 //! See `StressTestCommand`
 
+use std::alloc::System;
 use std::fmt::Display;
 use std::fs::{create_dir_all, read_dir};
 use std::hash::Hash;
@@ -22,8 +23,12 @@ use cairo_native::{
 use cairo_native::{module_to_object, object_to_shared_lib, OptLevel};
 use clap::Parser;
 use libloading::Library;
+use stats_alloc::{Region, StatsAlloc, INSTRUMENTED_SYSTEM};
 use tracing::{debug, debug_span, info, info_span, warn};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
+
+#[global_allocator]
+static GLOBAL_ALLOC: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
 
 /// The directory used to store compiled native programs
 const AOT_CACHE_DIR: &str = ".aot-cache";
@@ -54,19 +59,22 @@ fn main() {
         warn!("{AOT_CACHE_DIR} directory is not empty")
     }
 
-    let before_stress_test = Instant::now();
-
-    let native_context = NativeContext::new();
-    let mut cache = NaiveAotCache::new(&native_context);
-
     // Generate initial program.
     let (entry_point, program) = {
         let before_generate = Instant::now();
         let initial_program = generate_starknet_contract();
         let elapsed = before_generate.elapsed().as_millis();
-        info!(time = elapsed, "generated test program");
+        debug!(time = elapsed, "generated test program");
         initial_program
     };
+
+    let global_region = Region::new(GLOBAL_ALLOC);
+    let before_stress_test = Instant::now();
+
+    // Initialize context and cache
+    let native_context = NativeContext::new();
+    let mut cache = NaiveAotCache::new(&native_context);
+    info!("initialized context and cache");
 
     for round in 0..cli_args.rounds {
         let _enter_round_span = info_span!("round");
@@ -75,9 +83,15 @@ fn main() {
         for program_number in 0..cli_args.programs {
             let _enter_program_span = debug_span!("program");
 
+            // The program is cloned to simulate that it received a new program
+            let program = program.clone();
+
             // The round and program count is used as a key. After making sure each iteration uses
             // a different unique program, the program hash should be used.
             let key = round * cli_args.programs + program_number;
+
+            debug!(hash = key, "obtained test program");
+
             if cache.get(&key).is_some() {
                 panic!("all program keys should be different")
             }
@@ -115,13 +129,16 @@ fn main() {
         }
 
         {
+            let elapsed = before_round.elapsed().as_millis();
             let cache_disk_size =
                 directory_get_size(AOT_CACHE_DIR).expect("failed to calculate cache disk size");
-            let elapsed = before_round.elapsed().as_millis();
+            let global_stats = global_region.change();
+            let cache_mem_size = global_stats.bytes_allocated - global_stats.bytes_deallocated;
             info!(
-                round = round,
+                number = round,
                 time = elapsed,
                 cache_mem_len = cache.len(),
+                cache_mem_size = cache_mem_size,
                 cache_disk_size = cache_disk_size,
                 "finished round"
             );
