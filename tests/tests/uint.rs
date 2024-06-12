@@ -1,1096 +1,2192 @@
+//use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS};
 use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS};
+//use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
+//use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra::program::Program;
+//use cairo_native::{starknet::DummySyscallHandler, values::JitValue};
 use cairo_native::{starknet::DummySyscallHandler, values::JitValue};
+//use lazy_static::lazy_static;
 use lazy_static::lazy_static;
+//use proptest::prelude::*;
 use proptest::prelude::*;
+//
 
+//lazy_static! {
 lazy_static! {
+//    static ref U8_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U8_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u8, rhs: u8) -> u8 {
         fn program(lhs: u8, rhs: u8) -> u8 {
+//            lhs + rhs
             lhs + rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> u8 {
         fn run_test(lhs: felt252, rhs: felt252) -> u8 {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U8_OVERFLOWING_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U8_OVERFLOWING_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u8, rhs: u8) -> u8 {
         fn program(lhs: u8, rhs: u8) -> u8 {
+//            lhs - rhs
             lhs - rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> u8 {
         fn run_test(lhs: felt252, rhs: felt252) -> u8 {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U8_SAFE_DIVMOD: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U8_SAFE_DIVMOD: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u8, rhs: u8) -> (u8, u8) {
         fn program(lhs: u8, rhs: u8) -> (u8, u8) {
+//            let q = lhs / rhs;
             let q = lhs / rhs;
+//            let r = lhs % rhs;
             let r = lhs % rhs;
+//
 
+//            (q, r)
             (q, r)
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> (u8, u8) {
         fn run_test(lhs: felt252, rhs: felt252) -> (u8, u8) {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U8_EQUAL: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U8_EQUAL: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u8, rhs: u8) -> bool {
         fn program(lhs: u8, rhs: u8) -> bool {
+//            lhs == rhs
             lhs == rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> bool {
         fn run_test(lhs: felt252, rhs: felt252) -> bool {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U8_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U8_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use zeroable::IsZeroResult;
         use zeroable::IsZeroResult;
+//
 
+//        extern fn u8_is_zero(a: u8) -> IsZeroResult<u8> implicits() nopanic;
         extern fn u8_is_zero(a: u8) -> IsZeroResult<u8> implicits() nopanic;
+//
 
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(value: u8) -> bool {
         fn program(value: u8) -> bool {
+//            match u8_is_zero(value) {
             match u8_is_zero(value) {
+//                IsZeroResult::Zero(_) => true,
                 IsZeroResult::Zero(_) => true,
+//                IsZeroResult::NonZero(_) => false,
                 IsZeroResult::NonZero(_) => false,
+//            }
             }
+//        }
         }
+//
 
+//        fn run_test(value: felt252) -> bool {
         fn run_test(value: felt252) -> bool {
+//            program(value.try_into().unwrap())
             program(value.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U8_SQRT: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U8_SQRT: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use core::integer::u8_sqrt;
         use core::integer::u8_sqrt;
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(value: u8) -> u8 {
         fn program(value: u8) -> u8 {
+//            u8_sqrt(value)
             u8_sqrt(value)
+//        }
         }
+//
 
+//        fn run_test(value: felt252) -> u8 {
         fn run_test(value: felt252) -> u8 {
+//            program(value.try_into().unwrap())
             program(value.try_into().unwrap())
+//        }
         }
+//    };
     };
+//
 
+//    // U16
     // U16
+//
 
+//    static ref U16_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U16_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u16, rhs: u16) -> u16 {
         fn program(lhs: u16, rhs: u16) -> u16 {
+//            lhs + rhs
             lhs + rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> u16 {
         fn run_test(lhs: felt252, rhs: felt252) -> u16 {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U16_OVERFLOWING_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U16_OVERFLOWING_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u16, rhs: u16) -> u16 {
         fn program(lhs: u16, rhs: u16) -> u16 {
+//            lhs - rhs
             lhs - rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> u16 {
         fn run_test(lhs: felt252, rhs: felt252) -> u16 {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U16_SAFE_DIVMOD: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U16_SAFE_DIVMOD: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u16, rhs: u16) -> (u16, u16) {
         fn program(lhs: u16, rhs: u16) -> (u16, u16) {
+//            let q = lhs / rhs;
             let q = lhs / rhs;
+//            let r = lhs % rhs;
             let r = lhs % rhs;
+//
 
+//            (q, r)
             (q, r)
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> (u16, u16) {
         fn run_test(lhs: felt252, rhs: felt252) -> (u16, u16) {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U16_EQUAL: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U16_EQUAL: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u16, rhs: u16) -> bool {
         fn program(lhs: u16, rhs: u16) -> bool {
+//            lhs == rhs
             lhs == rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> bool {
         fn run_test(lhs: felt252, rhs: felt252) -> bool {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U16_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U16_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use zeroable::IsZeroResult;
         use zeroable::IsZeroResult;
+//
 
+//        extern fn u16_is_zero(a: u16) -> IsZeroResult<u16> implicits() nopanic;
         extern fn u16_is_zero(a: u16) -> IsZeroResult<u16> implicits() nopanic;
+//
 
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(value: u16) -> bool {
         fn program(value: u16) -> bool {
+//            match u16_is_zero(value) {
             match u16_is_zero(value) {
+//                IsZeroResult::Zero(_) => true,
                 IsZeroResult::Zero(_) => true,
+//                IsZeroResult::NonZero(_) => false,
                 IsZeroResult::NonZero(_) => false,
+//            }
             }
+//        }
         }
+//
 
+//        fn run_test(value: felt252) -> bool {
         fn run_test(value: felt252) -> bool {
+//            program(value.try_into().unwrap())
             program(value.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U16_SQRT: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U16_SQRT: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use core::integer::u16_sqrt;
         use core::integer::u16_sqrt;
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(value: u16) -> u16 {
         fn program(value: u16) -> u16 {
+//            u16_sqrt(value)
             u16_sqrt(value)
+//        }
         }
+//
 
+//        fn run_test(value: felt252) -> u16 {
         fn run_test(value: felt252) -> u16 {
+//            program(value.try_into().unwrap())
             program(value.try_into().unwrap())
+//        }
         }
+//    };
     };
+//
 
+//    // U32
     // U32
+//
 
+//    static ref U32_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U32_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u32, rhs: u32) -> u32 {
         fn program(lhs: u32, rhs: u32) -> u32 {
+//            lhs + rhs
             lhs + rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> u32 {
         fn run_test(lhs: felt252, rhs: felt252) -> u32 {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U32_OVERFLOWING_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U32_OVERFLOWING_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u32, rhs: u32) -> u32 {
         fn program(lhs: u32, rhs: u32) -> u32 {
+//            lhs - rhs
             lhs - rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> u32 {
         fn run_test(lhs: felt252, rhs: felt252) -> u32 {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U32_SAFE_DIVMOD: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U32_SAFE_DIVMOD: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u32, rhs: u32) -> (u32, u32) {
         fn program(lhs: u32, rhs: u32) -> (u32, u32) {
+//            let q = lhs / rhs;
             let q = lhs / rhs;
+//            let r = lhs % rhs;
             let r = lhs % rhs;
+//
 
+//            (q, r)
             (q, r)
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> (u32, u32) {
         fn run_test(lhs: felt252, rhs: felt252) -> (u32, u32) {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U32_EQUAL: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U32_EQUAL: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u32, rhs: u32) -> bool {
         fn program(lhs: u32, rhs: u32) -> bool {
+//            lhs == rhs
             lhs == rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> bool {
         fn run_test(lhs: felt252, rhs: felt252) -> bool {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U32_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U32_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use zeroable::IsZeroResult;
         use zeroable::IsZeroResult;
+//
 
+//        extern fn u32_is_zero(a: u32) -> IsZeroResult<u32> implicits() nopanic;
         extern fn u32_is_zero(a: u32) -> IsZeroResult<u32> implicits() nopanic;
+//
 
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(value: u32) -> bool {
         fn program(value: u32) -> bool {
+//            match u32_is_zero(value) {
             match u32_is_zero(value) {
+//                IsZeroResult::Zero(_) => true,
                 IsZeroResult::Zero(_) => true,
+//                IsZeroResult::NonZero(_) => false,
                 IsZeroResult::NonZero(_) => false,
+//            }
             }
+//        }
         }
+//
 
+//        fn run_test(value: felt252) -> bool {
         fn run_test(value: felt252) -> bool {
+//            program(value.try_into().unwrap())
             program(value.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U32_SQRT: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U32_SQRT: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use core::integer::u32_sqrt;
         use core::integer::u32_sqrt;
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(value: u32) -> u32 {
         fn program(value: u32) -> u32 {
+//            u32_sqrt(value)
             u32_sqrt(value)
+//        }
         }
+//
 
+//        fn run_test(value: felt252) -> u32 {
         fn run_test(value: felt252) -> u32 {
+//            program(value.try_into().unwrap())
             program(value.try_into().unwrap())
+//        }
         }
+//    };
     };
+//
 
+//    // U64
     // U64
+//
 
+//    static ref U64_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U64_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u64, rhs: u64) -> u64 {
         fn program(lhs: u64, rhs: u64) -> u64 {
+//            lhs + rhs
             lhs + rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> u64 {
         fn run_test(lhs: felt252, rhs: felt252) -> u64 {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U64_OVERFLOWING_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U64_OVERFLOWING_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u64, rhs: u64) -> u64 {
         fn program(lhs: u64, rhs: u64) -> u64 {
+//            lhs - rhs
             lhs - rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> u64 {
         fn run_test(lhs: felt252, rhs: felt252) -> u64 {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U64_SAFE_DIVMOD: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U64_SAFE_DIVMOD: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u64, rhs: u64) -> (u64, u64) {
         fn program(lhs: u64, rhs: u64) -> (u64, u64) {
+//            let q = lhs / rhs;
             let q = lhs / rhs;
+//            let r = lhs % rhs;
             let r = lhs % rhs;
+//
 
+//            (q, r)
             (q, r)
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> (u64, u64) {
         fn run_test(lhs: felt252, rhs: felt252) -> (u64, u64) {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U64_EQUAL: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U64_EQUAL: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u64, rhs: u64) -> bool {
         fn program(lhs: u64, rhs: u64) -> bool {
+//            lhs == rhs
             lhs == rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> bool {
         fn run_test(lhs: felt252, rhs: felt252) -> bool {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U64_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U64_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use zeroable::IsZeroResult;
         use zeroable::IsZeroResult;
+//
 
+//        extern fn u64_is_zero(a: u64) -> IsZeroResult<u64> implicits() nopanic;
         extern fn u64_is_zero(a: u64) -> IsZeroResult<u64> implicits() nopanic;
+//
 
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(value: u64) -> bool {
         fn program(value: u64) -> bool {
+//            match u64_is_zero(value) {
             match u64_is_zero(value) {
+//                IsZeroResult::Zero(_) => true,
                 IsZeroResult::Zero(_) => true,
+//                IsZeroResult::NonZero(_) => false,
                 IsZeroResult::NonZero(_) => false,
+//            }
             }
+//        }
         }
+//
 
+//        fn run_test(value: felt252) -> bool {
         fn run_test(value: felt252) -> bool {
+//            program(value.try_into().unwrap())
             program(value.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U64_SQRT: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U64_SQRT: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use core::integer::u64_sqrt;
         use core::integer::u64_sqrt;
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(value: u64) -> u64 {
         fn program(value: u64) -> u64 {
+//            u64_sqrt(value)
             u64_sqrt(value)
+//        }
         }
+//
 
+//        fn run_test(value: felt252) -> u64 {
         fn run_test(value: felt252) -> u64 {
+//            program(value.try_into().unwrap())
             program(value.try_into().unwrap())
+//        }
         }
+//    };
     };
+//
 
+//    // U128
     // U128
+//
 
+//    static ref U128_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U128_OVERFLOWING_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u128, rhs: u128) -> u128 {
         fn program(lhs: u128, rhs: u128) -> u128 {
+//            lhs + rhs
             lhs + rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> u128 {
         fn run_test(lhs: felt252, rhs: felt252) -> u128 {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U128_OVERFLOWING_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U128_OVERFLOWING_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u128, rhs: u128) -> u128 {
         fn program(lhs: u128, rhs: u128) -> u128 {
+//            lhs - rhs
             lhs - rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> u128 {
         fn run_test(lhs: felt252, rhs: felt252) -> u128 {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U128_SAFE_DIVMOD: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U128_SAFE_DIVMOD: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u128, rhs: u128) -> (u128, u128) {
         fn program(lhs: u128, rhs: u128) -> (u128, u128) {
+//            let q = lhs / rhs;
             let q = lhs / rhs;
+//            let r = lhs % rhs;
             let r = lhs % rhs;
+//
 
+//            (q, r)
             (q, r)
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> (u128, u128) {
         fn run_test(lhs: felt252, rhs: felt252) -> (u128, u128) {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U128_EQUAL: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U128_EQUAL: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(lhs: u128, rhs: u128) -> bool {
         fn program(lhs: u128, rhs: u128) -> bool {
+//            lhs == rhs
             lhs == rhs
+//        }
         }
+//
 
+//        fn run_test(lhs: felt252, rhs: felt252) -> bool {
         fn run_test(lhs: felt252, rhs: felt252) -> bool {
+//            program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
             program(lhs.try_into().unwrap(), rhs.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U128_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U128_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use zeroable::IsZeroResult;
         use zeroable::IsZeroResult;
+//
 
+//        extern fn u128_is_zero(a: u128) -> IsZeroResult<u128> implicits() nopanic;
         extern fn u128_is_zero(a: u128) -> IsZeroResult<u128> implicits() nopanic;
+//
 
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(value: u128) -> bool {
         fn program(value: u128) -> bool {
+//            match u128_is_zero(value) {
             match u128_is_zero(value) {
+//                IsZeroResult::Zero(_) => true,
                 IsZeroResult::Zero(_) => true,
+//                IsZeroResult::NonZero(_) => false,
                 IsZeroResult::NonZero(_) => false,
+//            }
             }
+//        }
         }
+//
 
+//        fn run_test(value: felt252) -> bool {
         fn run_test(value: felt252) -> bool {
+//            program(value.try_into().unwrap())
             program(value.try_into().unwrap())
+//        }
         }
+//    };
     };
+//    static ref U128_SQRT: (String, Program, SierraCasmRunner) = load_cairo! {
     static ref U128_SQRT: (String, Program, SierraCasmRunner) = load_cairo! {
+//        use core::integer::u128_sqrt;
         use core::integer::u128_sqrt;
+//        use traits::TryInto;
         use traits::TryInto;
+//        use core::option::OptionTrait;
         use core::option::OptionTrait;
+//
 
+//        fn program(value: u128) -> u128 {
         fn program(value: u128) -> u128 {
+//            u128_sqrt(value)
             u128_sqrt(value)
+//        }
         }
+//
 
+//        fn run_test(value: felt252) -> u128 {
         fn run_test(value: felt252) -> u128 {
+//            program(value.try_into().unwrap())
             program(value.try_into().unwrap())
+//        }
         }
+//    };
     };
+//}
 }
+//
 
+//proptest! {
 proptest! {
+//    #[test]
     #[test]
+//    fn u8_overflowing_add_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
     fn u8_overflowing_add_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
+//        let program = &U8_OVERFLOWING_ADD;
         let program = &U8_OVERFLOWING_ADD;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u8_overflowing_sub_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
     fn u8_overflowing_sub_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
+//        let program = &U8_OVERFLOWING_SUB;
         let program = &U8_OVERFLOWING_SUB;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u8_safe_divmod_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
     fn u8_safe_divmod_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
+//        let program = &U8_SAFE_DIVMOD;
         let program = &U8_SAFE_DIVMOD;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u8_equal_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
     fn u8_equal_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
+//        let program = &U8_EQUAL;
         let program = &U8_EQUAL;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u8_is_zero_proptest(a in 0..u8::MAX) {
     fn u8_is_zero_proptest(a in 0..u8::MAX) {
+//        let program = &U8_IS_ZERO;
         let program = &U8_IS_ZERO;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into())],
             &[Arg::Value(a.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into())],
             &[JitValue::Felt252(a.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    // u16
     // u16
+//
 
+//    #[test]
     #[test]
+//    fn u16_overflowing_add_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
     fn u16_overflowing_add_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
+//        let program = &U16_OVERFLOWING_ADD;
         let program = &U16_OVERFLOWING_ADD;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u16_overflowing_sub_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
     fn u16_overflowing_sub_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
+//        let program = &U16_OVERFLOWING_SUB;
         let program = &U16_OVERFLOWING_SUB;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u16_safe_divmod_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
     fn u16_safe_divmod_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
+//        let program = &U16_SAFE_DIVMOD;
         let program = &U16_SAFE_DIVMOD;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u16_equal_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
     fn u16_equal_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
+//        let program = &U16_EQUAL;
         let program = &U16_EQUAL;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u16_is_zero_proptest(a in 0..u16::MAX) {
     fn u16_is_zero_proptest(a in 0..u16::MAX) {
+//        let program = &U16_IS_ZERO;
         let program = &U16_IS_ZERO;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into())],
             &[Arg::Value(a.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into())],
             &[JitValue::Felt252(a.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    // u32
     // u32
+//
 
+//    #[test]
     #[test]
+//    fn u32_overflowing_add_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
     fn u32_overflowing_add_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
+//        let program = &U32_OVERFLOWING_ADD;
         let program = &U32_OVERFLOWING_ADD;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u32_overflowing_sub_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
     fn u32_overflowing_sub_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
+//        let program = &U32_OVERFLOWING_SUB;
         let program = &U32_OVERFLOWING_SUB;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u32_safe_divmod_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
     fn u32_safe_divmod_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
+//        let program = &U32_SAFE_DIVMOD;
         let program = &U32_SAFE_DIVMOD;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u32_equal_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
     fn u32_equal_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
+//        let program = &U32_EQUAL;
         let program = &U32_EQUAL;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u32_is_zero_proptest(a in 0..u32::MAX) {
     fn u32_is_zero_proptest(a in 0..u32::MAX) {
+//        let program = &U32_IS_ZERO;
         let program = &U32_IS_ZERO;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into())],
             &[Arg::Value(a.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into())],
             &[JitValue::Felt252(a.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    // u64
     // u64
+//
 
+//    #[test]
     #[test]
+//    fn u64_overflowing_add_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
     fn u64_overflowing_add_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
+//        let program = &U64_OVERFLOWING_ADD;
         let program = &U64_OVERFLOWING_ADD;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u64_overflowing_sub_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
     fn u64_overflowing_sub_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
+//        let program = &U64_OVERFLOWING_SUB;
         let program = &U64_OVERFLOWING_SUB;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u64_safe_divmod_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
     fn u64_safe_divmod_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
+//        let program = &U64_SAFE_DIVMOD;
         let program = &U64_SAFE_DIVMOD;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u64_equal_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
     fn u64_equal_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
+//        let program = &U64_EQUAL;
         let program = &U64_EQUAL;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u64_is_zero_proptest(a in 0..u64::MAX) {
     fn u64_is_zero_proptest(a in 0..u64::MAX) {
+//        let program = &U64_IS_ZERO;
         let program = &U64_IS_ZERO;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into())],
             &[Arg::Value(a.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into())],
             &[JitValue::Felt252(a.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    // u128
     // u128
+//
 
+//    #[test]
     #[test]
+//    fn u128_overflowing_add_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
     fn u128_overflowing_add_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
+//        let program = &U128_OVERFLOWING_ADD;
         let program = &U128_OVERFLOWING_ADD;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u128_overflowing_sub_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
     fn u128_overflowing_sub_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
+//        let program = &U128_OVERFLOWING_SUB;
         let program = &U128_OVERFLOWING_SUB;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u128_safe_divmod_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
     fn u128_safe_divmod_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
+//        let program = &U128_SAFE_DIVMOD;
         let program = &U128_SAFE_DIVMOD;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u128_equal_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
     fn u128_equal_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
+//        let program = &U128_EQUAL;
         let program = &U128_EQUAL;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into()), Arg::Value(b.into())],
             &[Arg::Value(a.into()), Arg::Value(b.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
             &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//
 
+//    #[test]
     #[test]
+//    fn u128_is_zero_proptest(a in 0..u128::MAX) {
     fn u128_is_zero_proptest(a in 0..u128::MAX) {
+//        let program = &U128_IS_ZERO;
         let program = &U128_IS_ZERO;
+//        let result_vm = run_vm_program(
         let result_vm = run_vm_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[Arg::Value(a.into())],
             &[Arg::Value(a.into())],
+//            Some(DEFAULT_GAS as usize),
             Some(DEFAULT_GAS as usize),
+//        )
         )
+//        .unwrap();
         .unwrap();
+//        let result_native = run_native_program(
         let result_native = run_native_program(
+//            program,
             program,
+//            "run_test",
             "run_test",
+//            &[JitValue::Felt252(a.into())],
             &[JitValue::Felt252(a.into())],
+//            Some(DEFAULT_GAS as u128),
             Some(DEFAULT_GAS as u128),
+//            Option::<DummySyscallHandler>::None,
             Option::<DummySyscallHandler>::None,
+//        );
         );
+//
 
+//        compare_outputs(
         compare_outputs(
+//            &program.1,
             &program.1,
+//            &program.2.find_function("run_test").unwrap().id,
             &program.2.find_function("run_test").unwrap().id,
+//            &result_vm,
             &result_vm,
+//            &result_native,
             &result_native,
+//        )?;
         )?;
+//    }
     }
+//}
 }

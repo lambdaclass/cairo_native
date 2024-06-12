@@ -1,138 +1,276 @@
+////! # Struct-related libfuncs
 //! # Struct-related libfuncs
+//
 
+//use super::LibfuncHelper;
 use super::LibfuncHelper;
+//use crate::{
 use crate::{
+//    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
     error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
+//};
 };
+//use cairo_lang_sierra::{
 use cairo_lang_sierra::{
+//    extensions::{
     extensions::{
+//        core::{CoreLibfunc, CoreType},
         core::{CoreLibfunc, CoreType},
+//        lib_func::SignatureOnlyConcreteLibfunc,
         lib_func::SignatureOnlyConcreteLibfunc,
+//        structure::StructConcreteLibfunc,
         structure::StructConcreteLibfunc,
+//        ConcreteLibfunc,
         ConcreteLibfunc,
+//    },
     },
+//    ids::ConcreteTypeId,
     ids::ConcreteTypeId,
+//    program_registry::ProgramRegistry,
     program_registry::ProgramRegistry,
+//};
 };
+//use melior::{
 use melior::{
+//    dialect::llvm,
     dialect::llvm,
+//    ir::{attribute::DenseI64ArrayAttribute, Block, Location, Value},
     ir::{attribute::DenseI64ArrayAttribute, Block, Location, Value},
+//    Context,
     Context,
+//};
 };
+//
 
+///// Select and call the correct libfunc builder function from the selector.
 /// Select and call the correct libfunc builder function from the selector.
+//pub fn build<'ctx, 'this>(
 pub fn build<'ctx, 'this>(
+//    context: &'ctx Context,
     context: &'ctx Context,
+//    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+//    entry: &'this Block<'ctx>,
     entry: &'this Block<'ctx>,
+//    location: Location<'ctx>,
     location: Location<'ctx>,
+//    helper: &LibfuncHelper<'ctx, 'this>,
     helper: &LibfuncHelper<'ctx, 'this>,
+//    metadata: &mut MetadataStorage,
     metadata: &mut MetadataStorage,
+//    selector: &StructConcreteLibfunc,
     selector: &StructConcreteLibfunc,
+//) -> Result<()> {
 ) -> Result<()> {
+//    match selector {
     match selector {
+//        StructConcreteLibfunc::Construct(info) => {
         StructConcreteLibfunc::Construct(info) => {
+//            build_construct(context, registry, entry, location, helper, metadata, info)
             build_construct(context, registry, entry, location, helper, metadata, info)
+//        }
         }
+//        StructConcreteLibfunc::Deconstruct(info)
         StructConcreteLibfunc::Deconstruct(info)
+//        | StructConcreteLibfunc::SnapshotDeconstruct(info) => {
         | StructConcreteLibfunc::SnapshotDeconstruct(info) => {
+//            build_deconstruct(context, registry, entry, location, helper, metadata, info)
             build_deconstruct(context, registry, entry, location, helper, metadata, info)
+//        }
         }
+//    }
     }
+//}
 }
+//
 
+///// Generate MLIR operations for the `struct_construct` libfunc.
 /// Generate MLIR operations for the `struct_construct` libfunc.
+//pub fn build_construct<'ctx, 'this>(
 pub fn build_construct<'ctx, 'this>(
+//    context: &'ctx Context,
     context: &'ctx Context,
+//    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+//    entry: &'this Block<'ctx>,
     entry: &'this Block<'ctx>,
+//    location: Location<'ctx>,
     location: Location<'ctx>,
+//    helper: &LibfuncHelper<'ctx, 'this>,
     helper: &LibfuncHelper<'ctx, 'this>,
+//    metadata: &mut MetadataStorage,
     metadata: &mut MetadataStorage,
+//    info: &SignatureOnlyConcreteLibfunc,
     info: &SignatureOnlyConcreteLibfunc,
+//) -> Result<()> {
 ) -> Result<()> {
+//    let mut fields = Vec::new();
     let mut fields = Vec::new();
+//
 
+//    for (i, _) in info.param_signatures().iter().enumerate() {
     for (i, _) in info.param_signatures().iter().enumerate() {
+//        fields.push(entry.argument(i).unwrap().into());
         fields.push(entry.argument(i).unwrap().into());
+//    }
     }
+//
 
+//    let value = build_struct_value(
     let value = build_struct_value(
+//        context,
         context,
+//        registry,
         registry,
+//        entry,
         entry,
+//        location,
         location,
+//        helper,
         helper,
+//        metadata,
         metadata,
+//        &info.branch_signatures()[0].vars[0].ty,
         &info.branch_signatures()[0].vars[0].ty,
+//        &fields,
         &fields,
+//    )?;
     )?;
+//
 
+//    entry.append_operation(helper.br(0, &[value], location));
     entry.append_operation(helper.br(0, &[value], location));
+//
 
+//    Ok(())
     Ok(())
+//}
 }
+//
 
+///// Generate MLIR operations for the `struct_construct` libfunc.
 /// Generate MLIR operations for the `struct_construct` libfunc.
+//#[allow(clippy::too_many_arguments)]
 #[allow(clippy::too_many_arguments)]
+//pub fn build_struct_value<'ctx, 'this>(
 pub fn build_struct_value<'ctx, 'this>(
+//    context: &'ctx Context,
     context: &'ctx Context,
+//    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+//    entry: &'this Block<'ctx>,
     entry: &'this Block<'ctx>,
+//    location: Location<'ctx>,
     location: Location<'ctx>,
+//    helper: &LibfuncHelper<'ctx, 'this>,
     helper: &LibfuncHelper<'ctx, 'this>,
+//    metadata: &mut MetadataStorage,
     metadata: &mut MetadataStorage,
+//    struct_type: &ConcreteTypeId,
     struct_type: &ConcreteTypeId,
+//    fields: &[Value<'ctx, 'this>],
     fields: &[Value<'ctx, 'this>],
+//) -> Result<Value<'ctx, 'this>> {
 ) -> Result<Value<'ctx, 'this>> {
+//    let struct_ty = registry.build_type(context, helper, registry, metadata, struct_type)?;
     let struct_ty = registry.build_type(context, helper, registry, metadata, struct_type)?;
+//
 
+//    let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
     let mut acc = entry.append_operation(llvm::undef(struct_ty, location));
+//    for (i, field) in fields.iter().enumerate() {
     for (i, field) in fields.iter().enumerate() {
+//        acc = entry.append_operation(llvm::insert_value(
         acc = entry.append_operation(llvm::insert_value(
+//            context,
             context,
+//            acc.result(0)?.into(),
             acc.result(0)?.into(),
+//            DenseI64ArrayAttribute::new(context, &[i as _]),
             DenseI64ArrayAttribute::new(context, &[i as _]),
+//            *field,
             *field,
+//            location,
             location,
+//        ));
         ));
+//    }
     }
+//
 
+//    Ok(acc.result(0)?.into())
     Ok(acc.result(0)?.into())
+//}
 }
+//
 
+///// Generate MLIR operations for the `struct_deconstruct` libfunc.
 /// Generate MLIR operations for the `struct_deconstruct` libfunc.
+//pub fn build_deconstruct<'ctx, 'this>(
 pub fn build_deconstruct<'ctx, 'this>(
+//    context: &'ctx Context,
     context: &'ctx Context,
+//    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+//    entry: &'this Block<'ctx>,
     entry: &'this Block<'ctx>,
+//    location: Location<'ctx>,
     location: Location<'ctx>,
+//    helper: &LibfuncHelper<'ctx, 'this>,
     helper: &LibfuncHelper<'ctx, 'this>,
+//    metadata: &mut MetadataStorage,
     metadata: &mut MetadataStorage,
+//    info: &SignatureOnlyConcreteLibfunc,
     info: &SignatureOnlyConcreteLibfunc,
+//) -> Result<()> {
 ) -> Result<()> {
+//    let container = entry.argument(0)?.into();
     let container = entry.argument(0)?.into();
+//
 
+//    let mut fields = Vec::<Value>::with_capacity(info.branch_signatures()[0].vars.len());
     let mut fields = Vec::<Value>::with_capacity(info.branch_signatures()[0].vars.len());
+//    for (i, var_info) in info.branch_signatures()[0].vars.iter().enumerate() {
     for (i, var_info) in info.branch_signatures()[0].vars.iter().enumerate() {
+//        let type_info = registry.get_type(&var_info.ty)?;
         let type_info = registry.get_type(&var_info.ty)?;
+//        let field_ty = type_info.build(context, helper, registry, metadata, &var_info.ty)?;
         let field_ty = type_info.build(context, helper, registry, metadata, &var_info.ty)?;
+//
 
+//        let value = entry
         let value = entry
+//            .append_operation(llvm::extract_value(
             .append_operation(llvm::extract_value(
+//                context,
                 context,
+//                container,
                 container,
+//                DenseI64ArrayAttribute::new(context, &[i.try_into()?]),
                 DenseI64ArrayAttribute::new(context, &[i.try_into()?]),
+//                field_ty,
                 field_ty,
+//                location,
                 location,
+//            ))
             ))
+//            .result(0)?
             .result(0)?
+//            .into();
             .into();
+//
 
+//        fields.push(value);
         fields.push(value);
+//    }
     }
+//
 
+//    entry.append_operation(helper.br(0, &fields, location));
     entry.append_operation(helper.br(0, &fields, location));
+//
 
+//    Ok(())
     Ok(())
+//}
 }
