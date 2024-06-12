@@ -113,7 +113,8 @@ fn main() {
                 .invoke_contract_dynamic(&entry_point, &[], Some(u128::MAX), DummySyscallHandler)
                 .expect("failed to execute contract");
             let elapsed = now.elapsed().as_millis();
-            debug!(time = elapsed, "executed test program");
+            let result = execution_result.return_values[0];
+            debug!(time = elapsed, result = %result, "executed test program");
             execution_result
         };
 
