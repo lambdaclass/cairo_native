@@ -24,7 +24,7 @@ use cairo_native::{module_to_object, object_to_shared_lib, OptLevel};
 use clap::Parser;
 use libloading::Library;
 use stats_alloc::{Region, StatsAlloc, INSTRUMENTED_SYSTEM};
-use tracing::{debug, debug_span, info, info_span, warn};
+use tracing::{debug, info, info_span, warn};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[global_allocator]
@@ -36,13 +36,11 @@ const AOT_CACHE_DIR: &str = ".aot-cache";
 /// A stress tester for Cairo Native
 ///
 /// It Sierra programs compiles with Cairo Native, caches, and executes them with AOT runner.
-/// The compiled dynamic libraries are stores in `AOT_CACHE_DIR` relative to the current working directory.
+/// The compiled dynamic libraries are stored in `AOT_CACHE_DIR` relative to the current working directory.
 #[derive(Parser, Debug)]
 struct StressTestCommand {
     /// Amount of rounds to execute
     rounds: u32,
-    /// Amount of programs to generate and test per round
-    programs: u32,
 }
 
 fn main() {
@@ -59,7 +57,7 @@ fn main() {
         warn!("{AOT_CACHE_DIR} directory is not empty")
     }
 
-    // Generate initial program.
+    // Generate initial program
     let (entry_point, program) = {
         let before_generate = Instant::now();
         let initial_program = generate_starknet_contract();
@@ -74,71 +72,60 @@ fn main() {
     // Initialize context and cache
     let native_context = NativeContext::new();
     let mut cache = NaiveAotCache::new(&native_context);
-    info!("initialized context and cache");
+
+    info!("starting stress test");
 
     for round in 0..cli_args.rounds {
-        let _enter_round_span = info_span!("round");
+        let _enter_round_span = info_span!("round", number = round).entered();
+
         let before_round = Instant::now();
 
-        for program_number in 0..cli_args.programs {
-            let _enter_program_span = debug_span!("program");
+        // The program is cloned to simulate that it received a new program
+        let program = program.clone();
+        // The round count is used as a key. After making sure each iteration uses
+        // a different unique program, the program hash should be used.
+        let key = round;
 
-            // The program is cloned to simulate that it received a new program
-            let program = program.clone();
+        debug!(hash = key, "obtained test program");
 
-            // The round and program count is used as a key. After making sure each iteration uses
-            // a different unique program, the program hash should be used.
-            let key = round * cli_args.programs + program_number;
-
-            debug!(hash = key, "obtained test program");
-
-            if cache.get(&key).is_some() {
-                panic!("all program keys should be different")
-            }
-
-            // Compile and caches the program
-            let executor = {
-                let before_compile = Instant::now();
-                let executor =
-                    cache.compile_and_insert(key, &program, cairo_native::OptLevel::None);
-                let elapsed = before_compile.elapsed().as_millis();
-                debug!(time = elapsed, "compiled test program");
-                executor
-            };
-
-            // Executes the program
-            let execution_result = {
-                let now = Instant::now();
-                let execution_result = executor
-                    .invoke_contract_dynamic(
-                        &entry_point,
-                        &[],
-                        Some(u128::MAX),
-                        DummySyscallHandler,
-                    )
-                    .expect("failed to execute contract");
-                let elapsed = now.elapsed().as_millis();
-                debug!(time = elapsed, "executed test program");
-                execution_result
-            };
-
-            assert!(
-                !execution_result.failure_flag,
-                "contract execution had failure flag set"
-            );
+        if cache.get(&key).is_some() {
+            panic!("all program keys should be different")
         }
+
+        // Compile and caches the program
+        let executor = {
+            let before_compile = Instant::now();
+            let executor = cache.compile_and_insert(key, &program, cairo_native::OptLevel::None);
+            let elapsed = before_compile.elapsed().as_millis();
+            debug!(time = elapsed, "compiled test program");
+            executor
+        };
+
+        // Executes the program
+        let execution_result = {
+            let now = Instant::now();
+            let execution_result = executor
+                .invoke_contract_dynamic(&entry_point, &[], Some(u128::MAX), DummySyscallHandler)
+                .expect("failed to execute contract");
+            let elapsed = now.elapsed().as_millis();
+            debug!(time = elapsed, "executed test program");
+            execution_result
+        };
+
+        assert!(
+            !execution_result.failure_flag,
+            "contract execution had failure flag set"
+        );
 
         {
             let elapsed = before_round.elapsed().as_millis();
             let cache_disk_size =
                 directory_get_size(AOT_CACHE_DIR).expect("failed to calculate cache disk size");
             let global_stats = global_region.change();
-            let cache_mem_size = global_stats.bytes_allocated - global_stats.bytes_deallocated;
+            let memory_used = global_stats.bytes_allocated - global_stats.bytes_deallocated;
             info!(
-                number = round,
                 time = elapsed,
-                cache_mem_len = cache.len(),
-                cache_mem_size = cache_mem_size,
+                memory_used = memory_used,
                 cache_disk_size = cache_disk_size,
                 "finished round"
             );
@@ -226,10 +213,6 @@ where
 
     pub fn get(&self, key: &K) -> Option<Rc<AotNativeExecutor>> {
         self.cache.get(key).cloned()
-    }
-
-    pub fn len(&self) -> usize {
-        self.cache.len()
     }
 
     /// Compiles and inserts a given program into the cache
