@@ -36,7 +36,7 @@ const AOT_CACHE_DIR: &str = ".aot-cache";
 
 /// An unique value hardcoded into the initial contract that it's
 /// used as an anchor point to safely modify it.
-/// It can be any value as long as it's unique.
+/// It can be any value as long as it's unique in the contract.
 const CONTRACT_MODIFICATION_ANCHOR: u32 = 835;
 
 /// A stress tester for Cairo Native
@@ -66,7 +66,7 @@ fn main() {
     // Generate initial program
     let (entry_point, program) = {
         let before_generate = Instant::now();
-        let initial_program = generate_starknet_contract();
+        let initial_program = generate_starknet_contract(CONTRACT_MODIFICATION_ANCHOR);
         let elapsed = before_generate.elapsed().as_millis();
         debug!(time = elapsed, "generated test program");
         initial_program
@@ -86,7 +86,8 @@ fn main() {
 
         let before_round = Instant::now();
 
-        let program = modify_starknet_contract(program.clone(), round);
+        let program =
+            modify_starknet_contract(program.clone(), CONTRACT_MODIFICATION_ANCHOR, round);
         // TODO: use the program hash instead of round number.
         let hash = round;
 
@@ -96,7 +97,7 @@ fn main() {
             panic!("all program keys should be different")
         }
 
-        // Compile and caches the program
+        // Compiles and caches the program
         let executor = {
             let before_compile = Instant::now();
             let executor = cache.compile_and_insert(hash, &program, cairo_native::OptLevel::None);
@@ -141,10 +142,10 @@ fn main() {
 
 /// Generate a dummy starknet contract
 ///
-/// This is should only be done once as it takes a long time.
-/// We should modify the program returned from this to obtain
-/// different unique programs without recompiling each time
-fn generate_starknet_contract() -> (FunctionId, cairo_lang_sierra::program::Program) {
+/// The contract contains an external main function that returns `return_value`
+fn generate_starknet_contract(
+    return_value: u32,
+) -> (FunctionId, cairo_lang_sierra::program::Program) {
     let program_str = format!(
         "\
 #[starknet::contract]
@@ -154,7 +155,7 @@ mod Contract {{
 
     #[external(v0)]
     fn main(self: @ContractState) -> felt252 {{
-        return {CONTRACT_MODIFICATION_ANCHOR};
+        return {return_value};
     }}
 }}
 "
@@ -189,19 +190,19 @@ mod Contract {{
     (entry_point, program)
 }
 
-/// Modifies the given contract by replacing the `RETURN_ANCHOR` wtith `new_return_value`
+/// Modifies the given contract by replacing the `anchor_value` with `new_value`
 ///
-/// The contract must only contain the value `RETURN_ANCHOR` exactly once
-fn modify_starknet_contract(mut program: Program, new_return_value: u32) -> Program {
+/// The contract must only contain the value `anchor_value` once
+fn modify_starknet_contract(mut program: Program, anchor_value: u32, new_value: u32) -> Program {
     let mut anchor_counter = 0;
 
     for type_declaration in &mut program.type_declarations {
         for generic_arg in &mut type_declaration.long_id.generic_args {
-            let anchor = BigInt::from(CONTRACT_MODIFICATION_ANCHOR);
+            let anchor = BigInt::from(anchor_value);
 
             match generic_arg {
                 GenericArg::Value(return_value) if *return_value == anchor => {
-                    *return_value = BigInt::from(new_return_value);
+                    *return_value = BigInt::from(new_value);
                     anchor_counter += 1;
                 }
                 _ => {}
@@ -223,7 +224,7 @@ fn modify_starknet_contract(mut program: Program, new_return_value: u32) -> Prog
 /// dynamic shared library loaded.
 ///
 /// Possible improvements include:
-/// - Keeping only some executores on memory, while storing the remianing compiled shared libraries on disk.
+/// - Keeping only some executores on memory, while storing the remaianing compiled shared libraries on disk.
 /// - When restarting the program, reutilize already compiled programs from `AOT_CACHE_DIR`
 struct NaiveAotCache<'a, K>
 where
