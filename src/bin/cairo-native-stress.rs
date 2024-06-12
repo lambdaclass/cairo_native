@@ -224,7 +224,7 @@ fn modify_starknet_contract(mut program: Program, anchor_value: u32, new_value: 
 /// dynamic shared library loaded.
 ///
 /// Possible improvements include:
-/// - Keeping only some executores on memory, while storing the remaianing compiled shared libraries on disk.
+/// - Keeping only some executors on memory, while storing the remaining compiled shared libraries on disk.
 /// - When restarting the program, reutilize already compiled programs from `AOT_CACHE_DIR`
 struct NaiveAotCache<'a, K>
 where
