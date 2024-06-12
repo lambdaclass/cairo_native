@@ -34,11 +34,10 @@ static GLOBAL_ALLOC: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
 /// The directory used to store compiled native programs
 const AOT_CACHE_DIR: &str = ".aot-cache";
 
-/// An unique value hardcoded into the first contract that it's
-/// used as an anchor point to safely modify the return value on
-/// the following contracts.
-/// It can be any value as long as it's unique in the initial contract.
-const RETURN_ANCHOR: u32 = 835;
+/// An unique value hardcoded into the initial contract that it's
+/// used as an anchor point to safely modify it.
+/// It can be any value as long as it's unique.
+const CONTRACT_MODIFICATION_ANCHOR: u32 = 835;
 
 /// A stress tester for Cairo Native
 ///
@@ -122,19 +121,18 @@ fn main() {
             "contract execution had failure flag set"
         );
 
-        {
-            let elapsed = before_round.elapsed().as_millis();
-            let cache_disk_size =
-                directory_get_size(AOT_CACHE_DIR).expect("failed to calculate cache disk size");
-            let global_stats = global_region.change();
-            let memory_used = global_stats.bytes_allocated - global_stats.bytes_deallocated;
-            info!(
-                time = elapsed,
-                memory_used = memory_used,
-                cache_disk_size = cache_disk_size,
-                "finished round"
-            );
-        }
+        // Logs end of round
+        let elapsed = before_round.elapsed().as_millis();
+        let cache_disk_size =
+            directory_get_size(AOT_CACHE_DIR).expect("failed to calculate cache disk size");
+        let global_stats = global_region.change();
+        let memory_used = global_stats.bytes_allocated - global_stats.bytes_deallocated;
+        info!(
+            time = elapsed,
+            memory_used = memory_used,
+            cache_disk_size = cache_disk_size,
+            "finished round"
+        );
     }
 
     let elapsed = before_stress_test.elapsed().as_millis();
@@ -156,7 +154,7 @@ mod Contract {{
 
     #[external(v0)]
     fn main(self: @ContractState) -> felt252 {{
-        return {RETURN_ANCHOR};
+        return {CONTRACT_MODIFICATION_ANCHOR};
     }}
 }}
 "
@@ -180,7 +178,7 @@ mod Contract {{
         .entry_points_by_type
         .external
         .first()
-        .expect("contrat should have at least one entrypoint")
+        .expect("contract should have at least one entrypoint")
         .function_idx;
 
     let entry_point = find_entry_point_by_idx(&program, entry_point_idx)
@@ -199,7 +197,7 @@ fn modify_starknet_contract(mut program: Program, new_return_value: u32) -> Prog
 
     for type_declaration in &mut program.type_declarations {
         for generic_arg in &mut type_declaration.long_id.generic_args {
-            let anchor = BigInt::from(RETURN_ANCHOR);
+            let anchor = BigInt::from(CONTRACT_MODIFICATION_ANCHOR);
 
             match generic_arg {
                 GenericArg::Value(return_value) if *return_value == anchor => {
@@ -213,7 +211,7 @@ fn modify_starknet_contract(mut program: Program, new_return_value: u32) -> Prog
 
     assert!(
         anchor_counter == 1,
-        "RETURN_ANCHOR was not found exactly once"
+        "CONTRACT_MODIFICATION_ANCHOR was not found exactly once"
     );
 
     program
