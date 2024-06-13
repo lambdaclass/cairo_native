@@ -328,6 +328,7 @@ fn directory_is_empty(path: impl AsRef<Path>) -> io::Result<bool> {
 fn set_global_subscriber(args: &StressTestCommand) {
     let stdout = tracing_subscriber::fmt::layer().with_filter(EnvFilter::from_default_env());
 
+    // Enables file logging conditionally, as Option<Layer> also implements Layer
     let file = args.output.as_ref().map(|path| {
         let file = OpenOptions::new()
             .create(true)
