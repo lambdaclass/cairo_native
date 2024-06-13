@@ -3,11 +3,11 @@
 //! See `StressTestCommand`
 
 use std::alloc::System;
-use std::fmt::Display;
-use std::fs::{create_dir_all, read_dir};
+use std::fmt::{Debug, Display};
+use std::fs::{create_dir_all, read_dir, OpenOptions};
 use std::hash::Hash;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fs, rc::Rc, time::Instant};
 
 use cairo_lang_sierra::ids::FunctionId;
@@ -26,7 +26,9 @@ use libloading::Library;
 use num_bigint::BigInt;
 use stats_alloc::{Region, StatsAlloc, INSTRUMENTED_SYSTEM};
 use tracing::{debug, info, info_span, warn};
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, Layer};
 
 #[global_allocator]
 static GLOBAL_ALLOC: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
@@ -47,17 +49,15 @@ const CONTRACT_MODIFICATION_ANCHOR: u32 = 835;
 struct StressTestCommand {
     /// Amount of rounds to execute
     rounds: u32,
+    /// Output file for JSON formatted logs
+    #[arg(short, long)]
+    output: Option<PathBuf>,
 }
 
 fn main() {
-    let cli_args = StressTestCommand::parse();
+    let args = StressTestCommand::parse();
 
-    tracing::subscriber::set_global_default(
-        FmtSubscriber::builder()
-            .with_env_filter(EnvFilter::from_default_env())
-            .finish(),
-    )
-    .expect("failed to set global tracing subscriber");
+    set_global_subscriber(&args);
 
     if !directory_is_empty(AOT_CACHE_DIR).expect("failed to open aot cache dir") {
         warn!("{AOT_CACHE_DIR} directory is not empty")
@@ -81,7 +81,7 @@ fn main() {
 
     info!("starting stress test");
 
-    for round in 0..cli_args.rounds {
+    for round in 0..args.rounds {
         let _enter_round_span = info_span!("round", number = round).entered();
 
         let before_round = Instant::now();
@@ -323,4 +323,26 @@ fn directory_is_empty(path: impl AsRef<Path>) -> io::Result<bool> {
     };
 
     Ok(is_empty)
+}
+
+fn set_global_subscriber(args: &StressTestCommand) {
+    let stdout = tracing_subscriber::fmt::layer().with_filter(EnvFilter::from_default_env());
+
+    let file = args.output.as_ref().map(|path| {
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .expect("failed to open output file");
+
+        tracing_subscriber::fmt::layer()
+            .json()
+            .with_writer(file)
+            .with_filter(EnvFilter::from_default_env())
+    });
+
+    tracing_subscriber::Registry::default()
+        .with(stdout)
+        .with(file)
+        .init();
 }
