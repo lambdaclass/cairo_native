@@ -8,6 +8,9 @@ argument_parser.add_argument("logs_path")
 arguments = argument_parser.parse_args()
 
 
+dataset = pd.read_json(arguments.logs_path, lines=True, typ="series")
+
+
 def canonicalize(event):
     if event["fields"]["message"] != "finished round":
         return None
@@ -20,22 +23,24 @@ def canonicalize(event):
     }
 
 
-def regression_line(label_x, label_y, data={}):
-    b, a = np.polyfit(data[label_x], data[label_y], deg=1)
+dataset = dataset.map(canonicalize).dropna().apply(pd.Series)
+
+
+def trend_line(label_x, label_y, data={}, degrees=1):
+    coefficients = np.polyfit(data[label_x], data[label_y], deg=degrees)[::-1]
     xseq = np.linspace(min(data[label_x]), max(data[label_x]))
 
-    return xseq, a + b * xseq
+    yseq = sum([coefficient * xseq ** degree for degree,
+               coefficient in enumerate(coefficients)])
 
+    return xseq, yseq
 
-dataset = pd.read_json(arguments.logs_path, lines=True, typ="series")
-dataset = dataset.map(canonicalize).dropna()
-dataset = dataset.apply(pd.Series)
 
 figure, axes = plt.subplots()
 
-axes.scatter("round", "time", data=dataset)
+axes.scatter("round", "time", data=dataset, s=5)
 
-x, y = regression_line("round", "time", dataset)
+x, y = trend_line("round", "time", dataset, degrees=3)
 axes.plot(x, y, lw=2.5, color="k")
 
 plt.show()
