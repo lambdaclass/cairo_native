@@ -149,7 +149,6 @@ pub fn build_enum_value<'ctx, 'this>(
             };
 
             if type_info.is_memory_allocated(registry) {
-
                 let stack_ptr = helper.init_block().alloca1(
                     context,
                     location,
