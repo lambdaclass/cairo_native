@@ -43,4 +43,8 @@ axes.scatter("round", "time", data=dataset, s=5)
 x, y = trend_line("round", "time", dataset, degrees=3)
 axes.plot(x, y, lw=2.5, color="k")
 
+axes.set_xlabel('Round')
+axes.set_ylabel('Time [ms]')
+axes.set_title('Compilation Time')
+
 plt.show()
