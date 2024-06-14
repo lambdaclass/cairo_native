@@ -30,3 +30,5 @@ cairo-*.tar
 *.mlir
 /*.info
 .aot-cache
+
+*.ipynb
