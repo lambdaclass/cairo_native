@@ -18,8 +18,8 @@ def canonicalize(event):
     return {
         "round": int(event["span"]["number"]),
         "time": int(event["fields"]["time"]),
-        "memory_used": int(event["fields"]["memory_used"]),
-        "cache_disk_size": int(event["fields"]["cache_disk_size"]),
+        "memory used": int(event["fields"]["memory_used"]) / 2**20,
+        "cache disk size": int(event["fields"]["cache_disk_size"]) / 2**20,
     }
 
 
@@ -36,15 +36,22 @@ def trend_line(label_x, label_y, data={}, degrees=1):
     return xseq, yseq
 
 
-figure, axes = plt.subplots()
+figure, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
+figure.tight_layout(pad=2)
 
-axes.scatter("round", "time", data=dataset, s=5)
-
+axes[0].scatter("round", "time", data=dataset, s=5, alpha=0.1)
 x, y = trend_line("round", "time", dataset, degrees=3)
-axes.plot(x, y, lw=2.5, color="k")
+axes[0].plot(x, y, lw=2.5, color="k")
+axes[0].set_xlabel('Round')
+axes[0].set_ylabel('Time [ms]')
+axes[0].set_title('Compilation Time')
 
-axes.set_xlabel('Round')
-axes.set_ylabel('Time [ms]')
-axes.set_title('Compilation Time')
+
+axes[1].plot("round", "memory used", data=dataset)
+axes[1].plot("round", "cache disk size", data=dataset)
+axes[1].set_xlabel("Round")
+axes[1].set_ylabel("Megabytes")
+axes[1].set_title('Space Usage')
+axes[1].legend()
 
 plt.show()
