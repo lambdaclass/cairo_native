@@ -16,10 +16,10 @@ def canonicalize(event):
         return None
 
     return {
-        "round": event["span"]["number"],
+        "round": int(event["span"]["number"]),
         "time": int(event["fields"]["time"]),
-        "memory_used": event["fields"]["memory_used"],
-        "cache_disk_size": event["fields"]["cache_disk_size"],
+        "memory_used": int(event["fields"]["memory_used"]),
+        "cache_disk_size": int(event["fields"]["cache_disk_size"]),
     }
 
 
