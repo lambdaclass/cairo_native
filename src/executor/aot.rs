@@ -73,7 +73,7 @@ impl AotNativeExecutor {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|e| crate::error::Error::GasMetadataError(e))?;
+            .map_err(crate::error::Error::GasMetadataError)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -95,7 +95,7 @@ impl AotNativeExecutor {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|e| crate::error::Error::GasMetadataError(e))?;
+            .map_err(crate::error::Error::GasMetadataError)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -117,7 +117,7 @@ impl AotNativeExecutor {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|e| crate::error::Error::GasMetadataError(e))?;
+            .map_err(crate::error::Error::GasMetadataError)?;
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
