@@ -41,7 +41,7 @@ const UNIQUE_CONTRACT_VALUE: u32 = 835;
 
 /// A stress tester for Cairo Native
 ///
-/// It Sierra programs compiles with Cairo Native, caches, and executes them with AOT runner.
+/// It compiles Sierra programs with Cairo Native, caches, and executes them with AOT runner.
 /// The compiled dynamic libraries are stored in `AOT_CACHE_DIR` relative to the current working directory.
 #[derive(Parser, Debug)]
 struct StressTestCommand {
