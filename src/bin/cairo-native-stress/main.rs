@@ -39,11 +39,11 @@ const AOT_CACHE_DIR: &str = ".aot-cache";
 /// An unique value hardcoded into the initial contract that it's
 /// used as an anchor point to safely modify it.
 /// It can be any value as long as it's unique in the contract.
-const CONTRACT_MODIFICATION_ANCHOR: u32 = 835;
+const UNIQUE_CONTRACT_VALUE: u32 = 835;
 
 /// A stress tester for Cairo Native
 ///
-/// It Sierra programs compiles with Cairo Native, caches, and executes them with AOT runner.
+/// It compiles Sierra programs with Cairo Native, caches, and executes them with AOT runner.
 /// The compiled dynamic libraries are stored in `AOT_CACHE_DIR` relative to the current working directory.
 #[derive(Parser, Debug)]
 struct StressTestCommand {
@@ -66,7 +66,7 @@ fn main() {
     // Generate initial program
     let (entry_point, program) = {
         let before_generate = Instant::now();
-        let initial_program = generate_starknet_contract(CONTRACT_MODIFICATION_ANCHOR);
+        let initial_program = generate_starknet_contract(UNIQUE_CONTRACT_VALUE);
         let elapsed = before_generate.elapsed().as_millis();
         debug!(time = elapsed, "generated test program");
         initial_program
@@ -86,8 +86,7 @@ fn main() {
 
         let before_round = Instant::now();
 
-        let program =
-            modify_starknet_contract(program.clone(), CONTRACT_MODIFICATION_ANCHOR, round);
+        let program = modify_starknet_contract(program.clone(), UNIQUE_CONTRACT_VALUE, round);
         // TODO: use the program hash instead of round number.
         let hash = round;
 
@@ -191,20 +190,20 @@ mod Contract {{
     (entry_point, program)
 }
 
-/// Modifies the given contract by replacing the `anchor_value` with `new_value` in any type declaration
+/// Modifies the given contract by replacing the `old_value` with `new_value` in any type declaration
 ///
-/// The contract must only contain the value `anchor_value` once
-fn modify_starknet_contract(mut program: Program, anchor_value: u32, new_value: u32) -> Program {
-    let mut anchor_counter = 0;
+/// The contract must only contain the value `old_value` once
+fn modify_starknet_contract(mut program: Program, old_value: u32, new_value: u32) -> Program {
+    let mut old_value_counter = 0;
 
     for type_declaration in &mut program.type_declarations {
         for generic_arg in &mut type_declaration.long_id.generic_args {
-            let anchor = BigInt::from(anchor_value);
+            let anchor = BigInt::from(old_value);
 
             match generic_arg {
                 GenericArg::Value(return_value) if *return_value == anchor => {
                     *return_value = BigInt::from(new_value);
-                    anchor_counter += 1;
+                    old_value_counter += 1;
                 }
                 _ => {}
             };
@@ -212,8 +211,8 @@ fn modify_starknet_contract(mut program: Program, anchor_value: u32, new_value: 
     }
 
     assert!(
-        anchor_counter == 1,
-        "CONTRACT_MODIFICATION_ANCHOR was not found exactly once"
+        old_value_counter == 1,
+        "old_value was not found exactly once"
     );
 
     program
