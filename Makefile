@@ -83,7 +83,7 @@ bench: build needs-cairo2 runtime
 bench-ci: check-llvm needs-cairo2 runtime
 	cargo criterion --all-features
 
-stress-test:
+stress-test: check-llvm
 	RUST_LOG=cairo_native_stress=DEBUG cargo run --bin cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
 
 stress-plot:
