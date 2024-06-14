@@ -834,7 +834,7 @@ To quickly run a stress test and save logs as json, run:
 make stress-test
 ```
 
-This takes a lot of time (will probably crash your computer first), you can kill the program at any time.
+This takes a lot of time to finish (it will probably crash first), you can kill the program at any time.
 
 To plot the results, run:
 ```bash
