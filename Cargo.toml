@@ -13,6 +13,7 @@ keywords = ["starknet", "cairo", "compiler", "mlir"]
 resolver = "2"
 
 # PLT: each of these binaries weights about 400MB. Consider making a single multicall binary to trim that down.
+# This will also save a lot in linking time, due to linking once rather than five times.
 # Also explore which features from deps can be disabled to further drive the size down.
 [[bin]]
 name = "cairo-native-dump"
