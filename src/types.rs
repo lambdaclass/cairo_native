@@ -2,6 +2,7 @@
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
+use crate::block_ext::BlockExt;
 use crate::{
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
@@ -21,12 +22,11 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
-    ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        r#type::IntegerType,
-        Block, Location, Module, Type, Value,
+    dialect::{
+        llvm::{self, r#type::pointer},
+        ods,
     },
+    ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
 use num_traits::Signed;
@@ -38,6 +38,7 @@ pub mod bounded_int;
 pub mod r#box;
 pub mod builtin_costs;
 pub mod bytes31;
+pub mod coupon;
 pub mod ec_op;
 pub mod ec_point;
 pub mod ec_state;
@@ -402,7 +403,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(info) => self::coupon::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
         }
     }
 
@@ -416,6 +423,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 | CoreTypeConcrete::RangeCheck(_)
                 | CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
+                | CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
                 | CoreTypeConcrete::SegmentArena(_)
         )
@@ -456,6 +464,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Felt252DictEntry(_) => true,
 
             CoreTypeConcrete::Felt252(_)
+            | CoreTypeConcrete::Bytes31(_)
             | CoreTypeConcrete::StarkNet(
                 StarkNetTypeConcrete::ClassHash(_)
                 | StarkNetTypeConcrete::ContractAddress(_)
@@ -483,11 +492,10 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Struct(_) => true,
 
             CoreTypeConcrete::BoundedInt(_) => todo!(),
-            CoreTypeConcrete::Bytes31(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => false,
         }
     }
 
@@ -501,7 +509,9 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Poseidon(_)
             | CoreTypeConcrete::SegmentArena(_) => false,
             // Other builtins:
-            CoreTypeConcrete::BuiltinCosts(_) | CoreTypeConcrete::Uint128MulGuarantee(_) => true,
+            CoreTypeConcrete::BuiltinCosts(_)
+            | CoreTypeConcrete::Uint128MulGuarantee(_)
+            | CoreTypeConcrete::Coupon(_) => true,
 
             // Normal types:
             CoreTypeConcrete::Array(_)
@@ -555,7 +565,6 @@ impl TypeBuilder for CoreTypeConcrete {
                 type_info.is_zst(registry)
             }
             CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::Coupon(_) => todo!(),
         }
     }
 
@@ -661,7 +670,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
         }
         .pad_to_align())
     }
@@ -736,7 +745,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .get_type(&info.inner_ty)
                 .unwrap()
                 .is_memory_allocated(registry),
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => false,
         }
     }
 
@@ -754,9 +763,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Sint64(_) => Some(64),
             Self::Sint128(_) => Some(128),
 
-            CoreTypeConcrete::BoundedInt(info) => {
-                Some((info.range.lower.bits().max(info.range.upper.bits()) + 1) as usize)
-            }
+            CoreTypeConcrete::BoundedInt(_) => Some(252),
             CoreTypeConcrete::Bytes31(_) => Some(248),
             CoreTypeConcrete::Const(_) => todo!(),
 
@@ -819,97 +826,33 @@ impl TypeBuilder for CoreTypeConcrete {
         Ok(match self {
             Self::Enum(info) => match &info.info.long_id.generic_args[0] {
                 GenericArg::UserType(id) if id == bool_user_type_id => {
-                    let tag = entry
-                        .append_operation(arith::constant(
-                            context,
-                            IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
-                            location,
-                        ))
-                        .result(0)?
-                        .into();
+                    let tag = entry.const_int(context, location, 0, 1)?;
 
-                    let value = entry
-                        .append_operation(llvm::undef(
-                            llvm::r#type::r#struct(
-                                context,
-                                &[
-                                    IntegerType::new(context, 1).into(),
-                                    llvm::r#type::array(IntegerType::new(context, 8).into(), 0),
-                                ],
-                                false,
-                            ),
-                            location,
-                        ))
-                        .result(0)?
-                        .into();
-                    entry
-                        .append_operation(llvm::insert_value(
+                    let value = entry.append_op_result(llvm::undef(
+                        llvm::r#type::r#struct(
                             context,
-                            value,
-                            DenseI64ArrayAttribute::new(context, &[0]),
-                            tag,
-                            location,
-                        ))
-                        .result(0)?
-                        .into()
+                            &[
+                                IntegerType::new(context, 1).into(),
+                                llvm::r#type::array(IntegerType::new(context, 8).into(), 0),
+                            ],
+                            false,
+                        ),
+                        location,
+                    ))?;
+
+                    entry.insert_value(context, location, value, tag, 0)?
                 }
                 _ => unimplemented!("unsupported dict value type"),
             },
-            Self::Felt252(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 252).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Nullable(_) => entry
-                .append_operation(llvm::nullptr(
-                    llvm::r#type::opaque_pointer(context),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Uint8(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 8).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Uint16(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 16).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Uint32(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Uint64(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
-            Self::Uint128(_) => entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(IntegerType::new(context, 128).into(), 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into(),
+            Self::Felt252(_) => entry.const_int(context, location, 0, 252)?,
+            Self::Nullable(_) => entry.append_op_result(
+                ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+            )?,
+            Self::Uint8(_) => entry.const_int(context, location, 0, 8)?,
+            Self::Uint16(_) => entry.const_int(context, location, 0, 16)?,
+            Self::Uint32(_) => entry.const_int(context, location, 0, 32)?,
+            Self::Uint64(_) => entry.const_int(context, location, 0, 64)?,
+            Self::Uint128(_) => entry.const_int(context, location, 0, 128)?,
             _ => unimplemented!("unsupported dict value type"),
         })
     }
@@ -926,20 +869,17 @@ impl TypeBuilder for CoreTypeConcrete {
     ) -> Result<(), Self::Error> {
         match self {
             CoreTypeConcrete::Array(_info) => {
+                if metadata.get::<ReallocBindingsMeta>().is_none() {
+                    metadata.insert(ReallocBindingsMeta::new(context, helper));
+                }
+
                 let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
 
                 let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
 
                 let array_val = entry.argument(0)?.into();
 
-                let op = entry.append_operation(llvm::extract_value(
-                    context,
-                    array_val,
-                    DenseI64ArrayAttribute::new(context, &[0]),
-                    ptr_ty,
-                    location,
-                ));
-                let ptr: Value = op.result(0)?.into();
+                let ptr = entry.extract_value(context, location, array_val, ptr_ty, 0)?;
 
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }

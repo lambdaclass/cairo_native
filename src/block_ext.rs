@@ -1,7 +1,7 @@
 //! Trait that extends the melior Block type to aid in codegen and consistency.
 
 use melior::{
-    dialect::{llvm::r#type::opaque_pointer, ods},
+    dialect::{llvm::r#type::pointer, ods},
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
@@ -11,7 +11,7 @@ use melior::{
 };
 use num_bigint::BigInt;
 
-use crate::error::Error;
+use crate::{error::Error, utils::get_integer_layout};
 
 pub trait BlockExt<'ctx> {
     /// Appends the operation and returns the first result.
@@ -99,6 +99,14 @@ pub trait BlockExt<'ctx> {
         align: Option<usize>,
     ) -> Result<Value<'ctx, '_>, Error>;
 
+    /// Allocates one integer of the given bit width.
+    fn alloca_int(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        bits: u32,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
     /// Stores a value at the given addr.
     fn store(
         &self,
@@ -107,7 +115,7 @@ pub trait BlockExt<'ctx> {
         addr: Value<'ctx, '_>,
         value: Value<'ctx, '_>,
         align: Option<usize>,
-    );
+    ) -> Result<(), Error>;
 
     /// Creates a memcpy operation.
     fn memcpy(
@@ -132,19 +140,16 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         T: Into<BigInt>,
     {
         let ty = IntegerType::new(context, bits).into();
-        Ok(self
-            .append_operation(
-                ods::arith::constant(
-                    context,
-                    ty,
-                    Attribute::parse(context, &format!("{} : {}", value.into(), ty))
-                        .ok_or(Error::ParseAttributeError)?,
-                    location,
-                )
-                .into(),
+        self.append_op_result(
+            ods::arith::constant(
+                context,
+                ty,
+                Attribute::parse(context, &format!("{} : {}", value.into(), ty))
+                    .ok_or(Error::ParseAttributeError)?,
+                location,
             )
-            .result(0)?
-            .into())
+            .into(),
+        )
     }
 
     fn const_int_from_type<T>(
@@ -157,19 +162,16 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
     where
         T: Into<BigInt>,
     {
-        Ok(self
-            .append_operation(
-                ods::arith::constant(
-                    context,
-                    ty,
-                    Attribute::parse(context, &format!("{} : {}", value.into(), ty))
-                        .ok_or(Error::ParseAttributeError)?,
-                    location,
-                )
-                .into(),
+        self.append_op_result(
+            ods::arith::constant(
+                context,
+                ty,
+                Attribute::parse(context, &format!("{} : {}", value.into(), ty))
+                    .ok_or(Error::ParseAttributeError)?,
+                location,
             )
-            .result(0)?
-            .into())
+            .into(),
+        )
     }
 
     fn extract_value(
@@ -180,19 +182,16 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         value_type: Type<'ctx>,
         index: usize,
     ) -> Result<Value<'ctx, '_>, Error> {
-        Ok(self
-            .append_operation(
-                ods::llvm::extractvalue(
-                    context,
-                    value_type,
-                    container,
-                    DenseI64ArrayAttribute::new(context, &[index.try_into().unwrap()]).into(),
-                    location,
-                )
-                .into(),
+        self.append_op_result(
+            ods::llvm::extractvalue(
+                context,
+                value_type,
+                container,
+                DenseI64ArrayAttribute::new(context, &[index.try_into().unwrap()]).into(),
+                location,
             )
-            .result(0)?
-            .into())
+            .into(),
+        )
     }
 
     fn insert_value(
@@ -203,20 +202,17 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         value: Value<'ctx, '_>,
         index: usize,
     ) -> Result<Value<'ctx, '_>, Error> {
-        Ok(self
-            .append_operation(
-                ods::llvm::insertvalue(
-                    context,
-                    container.r#type(),
-                    container,
-                    value,
-                    DenseI64ArrayAttribute::new(context, &[index.try_into().unwrap()]).into(),
-                    location,
-                )
-                .into(),
+        self.append_op_result(
+            ods::llvm::insertvalue(
+                context,
+                container.r#type(),
+                container,
+                value,
+                DenseI64ArrayAttribute::new(context, &[index.try_into().unwrap()]).into(),
+                location,
             )
-            .result(0)?
-            .into())
+            .into(),
+        )
     }
 
     fn insert_values<'block>(
@@ -239,17 +235,19 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         addr: Value<'ctx, '_>,
         value: Value<'ctx, '_>,
         align: Option<usize>,
-    ) {
+    ) -> Result<(), Error> {
         let mut op = ods::llvm::store(context, value, addr, location);
 
         if let Some(align) = align {
             op.set_alignment(IntegerAttribute::new(
                 IntegerType::new(context, 64).into(),
-                align as i64,
+                align.try_into()?,
             ));
         }
 
         self.append_operation(op.into());
+
+        Ok(())
     }
 
     // Use this only when returning the result. Otherwise, append_operation is fine.
@@ -307,7 +305,13 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         num_elems: Value<'ctx, '_>,
         align: Option<usize>,
     ) -> Result<Value<'ctx, '_>, Error> {
-        let mut op = ods::llvm::alloca(context, opaque_pointer(context), num_elems, location);
+        let mut op = ods::llvm::alloca(
+            context,
+            pointer(context, 0),
+            num_elems,
+            TypeAttribute::new(elem_type),
+            location,
+        );
 
         op.set_elem_type(TypeAttribute::new(elem_type));
 
@@ -330,5 +334,21 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
     ) -> Result<Value<'ctx, '_>, Error> {
         let num_elems = self.const_int(context, location, 1, 64)?;
         self.alloca(context, location, elem_type, num_elems, align)
+    }
+
+    fn alloca_int(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        bits: u32,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        let num_elems = self.const_int(context, location, 1, 64)?;
+        self.alloca(
+            context,
+            location,
+            IntegerType::new(context, bits).into(),
+            num_elems,
+            Some(get_integer_layout(bits).align()),
+        )
     }
 }

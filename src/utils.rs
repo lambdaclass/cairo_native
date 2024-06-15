@@ -54,17 +54,9 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
 
 /// Return the layout for an integer of arbitrary width.
 ///
-/// This assumes the platform's maximum (effective) alignment is 8 bytes, and that every integer
+/// This assumes the platform's maximum (effective) alignment is 16 bytes, and that every integer
 /// with a size in bytes of a power of two has the same alignment as its size.
 pub fn get_integer_layout(width: u32) -> Layout {
-    // TODO: Fix integer layouts properly.
-    if width == 248 || width == 252 || width == 256 {
-        #[cfg(target_arch = "x86_64")]
-        return Layout::from_size_align(32, 8).unwrap();
-        #[cfg(not(target_arch = "x86_64"))]
-        return Layout::from_size_align(32, 16).unwrap();
-    }
-
     if width == 0 {
         Layout::new::<()>()
     } else if width <= 8 {
@@ -76,14 +68,17 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 64 {
         Layout::new::<u64>()
     } else if width <= 128 {
-        Layout::new::<u128>()
-    } else {
-        #[cfg(target_arch = "x86_64")]
-        let value = Layout::array::<u64>(next_multiple_of_u32(width, 64) as usize >> 6).unwrap();
         #[cfg(not(target_arch = "x86_64"))]
-        let value = Layout::array::<u128>(next_multiple_of_u32(width, 128) as usize >> 7).unwrap();
-
-        value
+        {
+            Layout::new::<u128>()
+        }
+        #[cfg(target_arch = "x86_64")]
+        {
+            Layout::new::<u128>().align_to(16).unwrap()
+        }
+    } else {
+        let width = (width as usize).next_multiple_of(8).next_power_of_two();
+        Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
     }
 }
 
@@ -345,6 +340,14 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
                 as *const fn(*const std::ffi::c_void, NonNull<std::ffi::c_void>) -> u64
                 as *mut (),
         );
+
+        #[cfg(feature = "with-cheatcode")]
+        {
+            engine.register_symbol(
+                "cairo_native__vtable_cheatcode",
+                crate::starknet::cairo_native__vtable_cheatcode as *mut (),
+            );
+        }
     }
 }
 
@@ -516,129 +519,6 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         ))
     }
 }
-
-/// The `mlir_asm!` macro is a shortcut to manually building operations.
-///
-/// It works by forwarding the custom DSL code to their respective functions within melior's
-/// `OperationBuilder`.
-///
-/// The DSL's syntax is similar to that of MLIR, but has some differences, or rather restrictions,
-/// due to the way declarative macros work:
-///   - All macro invocations need the MLIR context, the target block and the operations' locations.
-///   - The operations are defined using a syntax similar to that of MLIR's generic operations, with
-///     some differences. The results are Rust variables (MLIR values) and the inputs (operands,
-///     attributes...) are all Rust expressions that evaluate to their respective type.
-///
-/// Check out the [felt252 libfunc implementations](crate::libfuncs::felt252) for an example on their usage.
-macro_rules! mlir_asm {
-    (
-        $context:expr, $block:expr, $location:expr =>
-            $( ; $( $( $ret:ident ),+ = )? $op:literal
-                ( $( $( $arg:expr ),+ $(,)? )? ) // Operands.
-                $( [ $( $( ^ $successor:ident $( ( $( $( $successor_arg:expr ),+ $(,)? )? ) )? ),+ $(,)? )? ] )? // Successors.
-                $( < { $( $( $prop_name:pat_param = $prop_value:expr ),+ $(,)? )? } > )? // Properties.
-                $( ( $( $( $region:expr ),+ $(,)? )? ) )? // Regions.
-                $( { $( $( $attr_name:literal = $attr_value:expr ),+ $(,)? )? } )? // Attributes.
-                : $args_ty:tt -> $rets_ty:tt // Signature.
-            )*
-    ) => { $(
-        #[allow(unused_mut)]
-        $( let $crate::utils::codegen_ret_decl!($($ret),+) = )? {
-            #[allow(unused_variables)]
-            let context = $context;
-            let mut builder = melior::ir::operation::OperationBuilder::new($op, $location);
-
-            // Process operands.
-            $( let builder = builder.add_operands(&[$( $arg, )+]); )?
-
-            // TODO: Process successors.
-            // TODO: Process properties.
-            // TODO: Process regions.
-
-            // Process attributes.
-            $( $(
-                let builder = $crate::utils::codegen_attributes!(context, builder => $($attr_name = $attr_value),+);
-            )? )?
-
-            // Process signature.
-            // #[cfg(debug_assertions)]
-            // $crate::utils::codegen_signature!( PARAMS $args_ty );
-            let builder = $crate::utils::codegen_signature!( RETS builder => $rets_ty );
-
-            #[allow(unused_variables)]
-            let op = $block.append_operation(builder.build()?);
-            $( $crate::utils::codegen_ret_extr!(op => $($ret),+) )?
-        };
-    )* };
-}
-pub(crate) use mlir_asm;
-
-macro_rules! codegen_attributes {
-    // Macro entry points.
-    ( $context:ident, $builder:ident => $name:literal = $value:expr ) => {
-        $builder.add_attributes(&[
-            $crate::utils::codegen_attributes!(INTERNAL $context, $builder => $name = $value),
-        ])
-    };
-    ( $context:ident, $builder:ident => $( $name:literal = $value:expr ),+ ) => {
-        $builder.add_attributes(&[
-            $( $crate::utils::codegen_attributes!(INTERNAL $context, $builder => $name = $value), )+
-        ])
-    };
-
-    ( INTERNAL $context:ident, $builder:ident => $name:literal = $value:expr ) => {
-        (
-            melior::ir::Identifier::new($context, $name),
-            $value,
-        )
-    };
-}
-pub(crate) use codegen_attributes;
-
-macro_rules! codegen_signature {
-    ( PARAMS ) => {
-        // TODO: Check operand types.
-    };
-
-    ( RETS $builder:ident => () ) => { $builder };
-    ( RETS $builder:ident => $ret_ty:expr ) => {
-        $builder.add_results(&[$ret_ty])
-    };
-    ( RETS $builder:ident => $( $ret_ty:expr ),+ $(,)? ) => {
-        $builder.add_results(&[$($ret_ty),+])
-    };
-}
-pub(crate) use codegen_signature;
-
-macro_rules! codegen_ret_decl {
-    // Macro entry points.
-    ( $ret:ident ) => { $ret };
-    ( $( $ret:ident ),+ ) => {
-        ( $( codegen_ret_decl!($ret) ),+ )
-    };
-}
-pub(crate) use codegen_ret_decl;
-
-macro_rules! codegen_ret_extr {
-    // Macro entry points.
-    ( $op:ident => $ret:ident ) => {{
-        melior::ir::Value::from($op.result(0)?)
-    }};
-    ( $op:ident => $( $ret:ident ),+ ) => {{
-        let mut idx = 0;
-        ( $( codegen_ret_extr!(INTERNAL idx, $op => $ret) ),+ )
-    }};
-
-    // Internal entry points.
-    ( INTERNAL $count:ident, $op:ident => $ret:ident ) => {
-        {
-            let idx = $count;
-            $count += 1;
-            melior::ir::Value::from($op.result(idx)?)
-        }
-    };
-}
-pub(crate) use codegen_ret_extr;
 
 #[cfg(test)]
 pub mod test {
@@ -841,15 +721,12 @@ pub mod test {
 
     /// Ensures that the host's `u128` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_u128() {
-        // FIXME: Uncomment once LLVM fixes its u128 alignment issues.
         assert_eq!(get_integer_layout(128).align(), 16);
     }
 
     /// Ensures that the host's `u256` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_u256() {
         assert_eq!(get_integer_layout(256).align(), 16);
     }
@@ -857,17 +734,13 @@ pub mod test {
     /// Ensures that the host's `u512` is compatible with its compiled counterpart.
     #[test]
     fn test_alignment_compatibility_u512() {
-        #[cfg(target_arch = "x86_64")]
-        assert_eq!(get_integer_layout(512).align(), 8);
-        #[cfg(not(target_arch = "x86_64"))]
         assert_eq!(get_integer_layout(512).align(), 16);
     }
 
     /// Ensures that the host's `Felt` is compatible with its compiled counterpart.
     #[test]
-    #[ignore]
     fn test_alignment_compatibility_felt() {
-        assert_eq!(get_integer_layout(252).align(), 8);
+        assert_eq!(get_integer_layout(252).align(), 16);
     }
 
     // ==============================
@@ -1205,8 +1078,8 @@ pub mod test {
     pub struct TestSyscallHandler;
 
     impl StarknetSyscallHandler for TestSyscallHandler {
-        fn get_block_hash(&mut self, _block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
-            Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
+        fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
+            Ok(Felt::from(block_number))
         }
 
         fn get_execution_info(

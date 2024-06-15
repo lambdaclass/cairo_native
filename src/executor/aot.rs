@@ -75,14 +75,14 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
-        Ok(super::invoke_dynamic(
+        super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
-        ))
+        )
     }
 
     pub fn invoke_dynamic_with_syscall_handler(
@@ -97,14 +97,14 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
 
-        Ok(super::invoke_dynamic(
+        super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
             args,
             available_gas,
             Some(syscall_handler),
-        ))
+        )
     }
 
     pub fn invoke_contract_dynamic(
@@ -132,7 +132,7 @@ impl AotNativeExecutor {
             }],
             available_gas,
             Some(syscall_handler),
-        ))
+        )?)
     }
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
@@ -247,7 +247,7 @@ mod tests {
             tag: 0,
             value: JitValue::Struct {
                 fields: vec![JitValue::Felt252(
-                    syscall_handler.get_block_hash(0, &mut 0).unwrap(),
+                    syscall_handler.get_block_hash(1, &mut 0).unwrap(),
                 )],
                 debug_name: Some("Tuple<felt252>".into()),
             }

@@ -7,28 +7,32 @@ on:
   merge_group:
     types: [checks_requested]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   check:
     name: clippy
     runs-on: ubuntu-latest
     env:
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.76
+      - uses: dtolnay/rust-toolchain@1.78.0
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: Clippy
         run: make check
 
@@ -37,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.76
+      - uses: dtolnay/rust-toolchain@1.78.0
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
@@ -79,9 +83,9 @@ jobs:
   udeps:
     runs-on: ubuntu-latest
     env:
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUSTUP_TOOLCHAIN: nightly-2024-02-01  # udeps needs nightly
     steps:
       - uses: actions/checkout@v4
@@ -93,11 +97,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: "Download and run cargo-udeps"
         run: |
           wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.45/cargo-udeps-v0.1.45-x86_64-unknown-linux-gnu.tar.gz | tar -xz
@@ -107,10 +111,10 @@ jobs:
     name: test (linux, amd64)
     runs-on: ubuntu-latest
     env:
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
-      RUST_LOG: debug
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      RUST_LOG: debug,cairo_native_test=trace
     steps:
       - uses: actions/checkout@v4
       - name: check and free hdd space left
@@ -133,17 +137,18 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.76
+        uses: dtolnay/rust-toolchain@1.78.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@10
+        uses: myci-actions/add-deb-repo@11
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - run: sudo apt-get update && sudo apt-get upgrade -y
       - name: Install LLVM
-        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -158,14 +163,14 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       LIBRARY_PATH: /opt/homebrew/lib
-      MLIR_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
-      LLVM_SYS_170_PREFIX: /opt/homebrew/opt/llvm@17
-      TABLEGEN_170_PREFIX: /opt/homebrew/opt/llvm@17
-      RUST_LOG: debug
+      MLIR_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
+      LLVM_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
+      TABLEGEN_180_PREFIX: /opt/homebrew/opt/llvm@18
+      RUST_LOG: debug,cairo_native_test=trace
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.76.0
+        uses: dtolnay/rust-toolchain@1.78.0
         with:
           components: clippy
       - uses: Homebrew/actions/setup-homebrew@master
@@ -187,9 +192,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_170_PREFIX: /usr/lib/llvm-17/
-      LLVM_SYS_170_PREFIX: /usr/lib/llvm-17/
-      TABLEGEN_170_PREFIX: /usr/lib/llvm-17/
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUST_LOG: debug
     steps:
       - uses: actions/checkout@v4
@@ -213,17 +218,17 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.76
+        uses: dtolnay/rust-toolchain@1.78.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@10
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-17 llvm-17-dev llvm-17-runtime clang-17 clang-tools-17 lld-17 libpolly-17-dev libmlir-17-dev mlir-17-tools
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Install scarb

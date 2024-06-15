@@ -10,6 +10,7 @@
 //         U+0020 SPACE
 
 use super::LibfuncHelper;
+use crate::block_ext::BlockExt;
 use crate::{
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
@@ -24,11 +25,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf, llvm},
-    ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        r#type::IntegerType,
-        Block, Location,
-    },
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -57,100 +54,65 @@ pub fn build_print<'ctx>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let stdout_fd = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 32).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let stdout_fd = entry.const_int(context, location, 1, 32)?;
 
-    let values_ptr = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[0]),
-            llvm::r#type::opaque_pointer(context),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let values_start = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[1]),
-            IntegerType::new(context, 32).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let values_end = entry
-        .append_operation(llvm::extract_value(
-            context,
-            entry.argument(0)?.into(),
-            DenseI64ArrayAttribute::new(context, &[2]),
-            IntegerType::new(context, 32).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let values_ptr = entry.extract_value(
+        context,
+        location,
+        entry.argument(0)?.into(),
+        llvm::r#type::pointer(context, 0),
+        0,
+    )?;
+    let values_start = entry.extract_value(
+        context,
+        location,
+        entry.argument(0)?.into(),
+        IntegerType::new(context, 32).into(),
+        1,
+    )?;
+    let values_end = entry.extract_value(
+        context,
+        location,
+        entry.argument(0)?.into(),
+        IntegerType::new(context, 32).into(),
+        2,
+    )?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
-    let values_len = entry
-        .append_operation(arith::subi(values_end, values_start, location))
-        .result(0)?
-        .into();
+    let values_len = entry.append_op_result(arith::subi(values_end, values_start, location))?;
 
     let values_ptr = {
-        let values_start = entry
-            .append_operation(arith::extui(
-                values_start,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))
-            .result(0)?
-            .into();
+        let values_start = entry.append_op_result(arith::extui(
+            values_start,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
 
-        entry
-            .append_operation(llvm::get_element_ptr_dynamic(
-                context,
-                values_ptr,
-                &[values_start],
-                IntegerType::new(context, 252).into(),
-                llvm::r#type::opaque_pointer(context),
-                location,
-            ))
-            .result(0)?
-            .into()
+        entry.append_op_result(llvm::get_element_ptr_dynamic(
+            context,
+            values_ptr,
+            &[values_start],
+            IntegerType::new(context, 252).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?
     };
 
     let return_code = runtime_bindings.libfunc_debug_print(
         context, helper, entry, stdout_fd, values_ptr, values_len, location,
     )?;
 
-    let k0 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 32).into(), 0).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let return_code_is_ok = entry
-        .append_operation(arith::cmpi(
-            context,
-            arith::CmpiPredicate::Eq,
-            return_code,
-            k0,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let k0 = entry.const_int(context, location, 0, 32)?;
+    let return_code_is_ok = entry.append_op_result(arith::cmpi(
+        context,
+        arith::CmpiPredicate::Eq,
+        return_code,
+        k0,
+        location,
+    ))?;
     cf::assert(
         context,
         return_code_is_ok,

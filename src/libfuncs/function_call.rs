@@ -62,7 +62,7 @@ pub fn build<'ctx, 'this>(
                         stack_ptr,
                         entry.argument(idx)?.into(),
                         Some(type_info.layout(registry)?.align()),
-                    );
+                    )?;
 
                     stack_ptr
                 } else {
@@ -124,15 +124,10 @@ pub fn build<'ctx, 'this>(
             let type_info = registry.get_type(&var_info.ty)?;
 
             if type_info.is_builtin() && type_info.is_zst(registry) {
-                results.push(
-                    cont_block
-                        .append_operation(llvm::undef(
-                            type_info.build(context, helper, registry, metadata, &var_info.ty)?,
-                            location,
-                        ))
-                        .result(0)?
-                        .into(),
-                );
+                results.push(cont_block.append_op_result(llvm::undef(
+                    type_info.build(context, helper, registry, metadata, &var_info.ty)?,
+                    location,
+                ))?);
             } else {
                 let val = cont_block.argument(count)?.into();
                 count += 1;
@@ -189,10 +184,12 @@ pub fn build<'ctx, 'this>(
             arguments.insert(0, stack_ptr);
 
             Some(true)
-        } else {
+        } else if return_types.first().is_some() {
             let (type_id, type_info) = return_types[0];
             result_types.push(type_info.build(context, helper, registry, metadata, type_id)?);
 
+            None
+        } else {
             None
         };
 
@@ -222,17 +219,14 @@ pub fn build<'ctx, 'this>(
                         let ret_layout = type_info.layout(registry)?;
                         (layout, offset) = layout.extend(ret_layout)?;
 
-                        let pointer_val = entry
-                            .append_operation(llvm::get_element_ptr(
-                                context,
-                                val,
-                                DenseI32ArrayAttribute::new(context, &[offset as i32]),
-                                IntegerType::new(context, 8).into(),
-                                llvm::r#type::opaque_pointer(context),
-                                location,
-                            ))
-                            .result(0)?
-                            .into();
+                        let pointer_val = entry.append_op_result(llvm::get_element_ptr(
+                            context,
+                            val,
+                            DenseI32ArrayAttribute::new(context, &[offset as i32]),
+                            IntegerType::new(context, 8).into(),
+                            llvm::r#type::pointer(context, 0),
+                            location,
+                        ))?;
 
                         results.push(entry.load(
                             context,

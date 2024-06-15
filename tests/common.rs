@@ -20,17 +20,31 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
-use cairo_lang_starknet::contract::get_contracts_info;
+use cairo_lang_starknet::{
+    compile::compile_contract_in_prepared_db, contract::get_contracts_info, starknet_plugin_suite,
+};
+use cairo_lang_starknet_classes::{
+    casm_contract_class::CasmContractClass, contract_class::ContractClass,
+};
 use cairo_native::{
     context::NativeContext,
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
-    types::felt252::{HALF_PRIME, PRIME},
+    types::{
+        felt252::{HALF_PRIME, PRIME},
+        TypeBuilder,
+    },
     utils::find_entry_point_by_idx,
     values::JitValue,
     OptLevel,
 };
+use cairo_vm::{
+    hint_processor::cairo_1_hint_processor::hint_processor::Cairo1HintProcessor,
+    types::{builtin_name::BuiltinName, layout_name::LayoutName, relocatable::MaybeRelocatable},
+    vm::runners::cairo_runner::{CairoArg, CairoRunner, RunResources},
+};
+use itertools::Itertools;
 use lambdaworks_math::{
     field::{
         element::FieldElement, fields::montgomery_backed_prime_fields::MontgomeryBackendPrimeField,
@@ -142,11 +156,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     let mut db = RootDatabase::default();
     init_dev_corelib(
         &mut db,
-        Path::new(
-            &var("CARGO_MANIFEST_DIR")
-                .unwrap_or_else(|_| "/Users/esteve/Documents/LambdaClass/cairo_native".to_string()),
-        )
-        .join("corelib/src"),
+        Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
     );
     let main_crate_ids = setup_project(&mut db, program_file).unwrap();
     let program = compile_prepared_db(
@@ -174,6 +184,29 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     .unwrap();
 
     (module_name.to_string(), program, runner)
+}
+
+/// Compiles a cairo starknet contract from the given path
+pub fn load_cairo_contract_path(path: &str) -> ContractClass {
+    let mut db = RootDatabase::builder()
+        .detect_corelib()
+        .with_plugin_suite(starknet_plugin_suite())
+        .build()
+        .expect("failed to build database");
+
+    let main_crate_ids = setup_project(&mut db, Path::new(&path))
+        .expect("path should be a valid cairo project or file");
+
+    compile_contract_in_prepared_db(
+        &db,
+        None,
+        main_crate_ids.clone(),
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )
+    .expect("path should contain a single valid contract")
 }
 
 pub fn run_native_program(
@@ -231,28 +264,140 @@ pub fn run_vm_program(
     )
 }
 
+/// Runs the contract on the cairo-vm
+pub fn run_vm_contract(
+    cairo_contract: &ContractClass,
+    entrypoint: usize,
+    args: &[Felt],
+) -> Vec<Felt> {
+    let args = args
+        .iter()
+        .map(|arg| MaybeRelocatable::Int(*arg))
+        .collect_vec();
+
+    let contract =
+        CasmContractClass::from_contract_class(cairo_contract.clone(), false, usize::MAX)
+            .expect("failed to compile sierra contract to casm");
+
+    let program = contract
+        .clone()
+        .try_into()
+        .expect("failed to extract program from casm contract");
+
+    // Initialize runner and builtins
+    let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, false, false)
+        .expect("failed to build runner");
+
+    let program_builtins = contract
+        .entry_points_by_type
+        .external
+        .iter()
+        .find(|e| e.offset == entrypoint)
+        .expect("given entrypoint index should exist")
+        .builtins
+        .iter()
+        .map(|s| BuiltinName::from_str(s).expect("invalid builtin name"))
+        .collect_vec();
+    runner
+        .initialize_function_runner_cairo_1(&program_builtins)
+        .expect("failed to initialize runner");
+
+    // Initialize implicit Args
+    let builtins = runner.get_program_builtins();
+    let mut implicit_args: Vec<MaybeRelocatable> = runner
+        .vm
+        .get_builtin_runners()
+        .iter()
+        .filter(|b| builtins.contains(&b.name()))
+        .flat_map(|b| b.initial_stack())
+        .collect();
+    let initial_gas = MaybeRelocatable::from(usize::MAX);
+    implicit_args.extend([initial_gas]);
+    let syscall_segment = MaybeRelocatable::from(runner.vm.add_memory_segment());
+    implicit_args.extend([syscall_segment]);
+
+    // Load builtin costs
+    let builtin_costs: Vec<MaybeRelocatable> =
+        vec![0.into(), 0.into(), 0.into(), 0.into(), 0.into()];
+    let builtin_costs_ptr = runner.vm.add_memory_segment();
+
+    runner
+        .vm
+        .load_data(builtin_costs_ptr, &builtin_costs)
+        .expect("failed to load builtin costs data to vm");
+
+    // Load extra data
+    let core_program_end_ptr = (runner.program_base.expect("program base is missing")
+        + runner.get_program().data_len())
+    .expect("memory pointer overflowed");
+
+    let program_extra_data: Vec<MaybeRelocatable> =
+        vec![0x208B7FFF7FFF7FFE.into(), builtin_costs_ptr.into()];
+    runner
+        .vm
+        .load_data(core_program_end_ptr, &program_extra_data)
+        .expect("failed to load extra data to vm");
+
+    // Load calldata
+    let calldata_start = runner.vm.add_memory_segment();
+    let calldata_end = runner
+        .vm
+        .load_data(calldata_start, &args.to_vec())
+        .expect("failed to load calldata to vm");
+
+    // Create entrypoint_args
+    let mut entrypoint_args: Vec<CairoArg> = implicit_args
+        .iter()
+        .map(|m| CairoArg::from(m.clone()))
+        .collect();
+    entrypoint_args.extend([
+        MaybeRelocatable::from(calldata_start).into(),
+        MaybeRelocatable::from(calldata_end).into(),
+    ]);
+    let entrypoint_args: Vec<&CairoArg> = entrypoint_args.iter().collect();
+
+    // Run contract entrypoint
+    let mut hint_processor = Cairo1HintProcessor::new(&contract.hints, RunResources::default());
+    runner
+        .run_from_entrypoint(
+            entrypoint,
+            &entrypoint_args,
+            true,
+            Some(runner.get_program().data_len() + program_extra_data.len()),
+            &mut hint_processor,
+        )
+        .expect("failed to execute contract");
+
+    // Extract return values
+    let return_values = runner
+        .vm
+        .get_return_values(5)
+        .expect("failed to extract return values");
+    let retdata_start = return_values[3]
+        .get_relocatable()
+        .expect("failed to get return data start");
+    let retdata_end = return_values[4]
+        .get_relocatable()
+        .expect("failed to get return data end");
+
+    runner
+        .vm
+        .get_integer_range(
+            retdata_start,
+            (retdata_end - retdata_start).expect("return data length should not be negative"),
+        )
+        .expect("failed to access vm memory")
+        .iter()
+        .map(|c| c.clone().into_owned())
+        .collect_vec()
+}
+
 #[track_caller]
 pub fn compare_inputless_program(program_path: &str) {
     let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
     let program = &program;
 
     let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
-    let result_native = run_native_program(
-        program,
-        "main",
-        &[],
-        Some(DEFAULT_GAS as u128),
-        Option::<DummySyscallHandler>::None,
-    );
-
-    compare_outputs(
-        &program.1,
-        &program.2.find_function("main").unwrap().id,
-        &result_vm,
-        &result_native,
-    )
-    .expect("compare error with optlevel none");
-
     let result_native = run_native_program(
         program,
         "main",
@@ -313,7 +458,7 @@ pub fn compare_outputs(
             Some(&type_size) => type_size,
             None => {
                 let type_size = match registry.get_type(ty).unwrap() {
-                    CoreTypeConcrete::Array(_info) => 2,
+                    CoreTypeConcrete::Array(_) | CoreTypeConcrete::EcPoint(_) => 2,
                     CoreTypeConcrete::Felt252(_)
                     | CoreTypeConcrete::Uint128(_)
                     | CoreTypeConcrete::Uint64(_)
@@ -324,7 +469,9 @@ pub fn compare_outputs(
                     | CoreTypeConcrete::Sint64(_)
                     | CoreTypeConcrete::Sint32(_)
                     | CoreTypeConcrete::Sint16(_)
-                    | CoreTypeConcrete::Sint8(_) => 1,
+                    | CoreTypeConcrete::Sint8(_)
+                    | CoreTypeConcrete::Box(_)
+                    | CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::Enum(info) => {
                         1 + info
                             .variants
@@ -338,10 +485,12 @@ pub fn compare_outputs(
                         .iter()
                         .map(|member_ty| map_vm_sizes(size_cache, registry, member_ty))
                         .sum(),
-                    CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::NonZero(info) => map_vm_sizes(size_cache, registry, &info.ty),
-                    CoreTypeConcrete::EcPoint(_) => 2,
                     CoreTypeConcrete::EcState(_) => 4,
+                    CoreTypeConcrete::Snapshot(info) => {
+                        map_vm_sizes(size_cache, registry, &info.ty)
+                    }
+                    CoreTypeConcrete::SquashedFelt252Dict(_) => 2,
                     x => todo!("vm size not yet implemented: {:?}", x.info()),
                 };
                 size_cache.insert(ty.clone(), type_size);
@@ -459,12 +608,58 @@ pub fn compare_outputs(
                     .collect(),
                 debug_name: ty.debug_name.as_deref().map(String::from),
             },
+            CoreTypeConcrete::SquashedFelt252Dict(info) => JitValue::Felt252Dict {
+                value: (values[0].to_usize().unwrap()..values[1].to_usize().unwrap())
+                    .step_by(3)
+                    .map(|index| {
+                        (
+                            Felt::from_bytes_le(&memory[index].clone().unwrap().to_le_bytes()),
+                            match &info.info.long_id.generic_args[0] {
+                                cairo_lang_sierra::program::GenericArg::Type(ty) => map_vm_values(
+                                    size_cache,
+                                    registry,
+                                    memory,
+                                    &[memory[index + 2].clone().unwrap()],
+                                    ty,
+                                ),
+                                _ => unimplemented!("unsupported dict value type"),
+                            },
+                        )
+                    })
+                    .collect(),
+                debug_name: ty.debug_name.as_deref().map(String::from),
+            },
+            CoreTypeConcrete::Snapshot(info) => {
+                map_vm_values(size_cache, registry, memory, values, &info.ty)
+            }
             CoreTypeConcrete::Nullable(info) => {
                 assert_eq!(values.len(), 1);
 
                 let ty_size = map_vm_sizes(size_cache, registry, &info.ty);
                 match values[0].to_usize().unwrap() {
                     0 => JitValue::Null,
+                    ptr if ty_size == 0 => {
+                        assert_eq!(ptr, 1);
+                        map_vm_values(size_cache, registry, memory, &[], &info.ty)
+                    }
+                    ptr => map_vm_values(
+                        size_cache,
+                        registry,
+                        memory,
+                        &memory[ptr..ptr + ty_size]
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap)
+                            .collect::<Vec<_>>(),
+                        &info.ty,
+                    ),
+                }
+            }
+            CoreTypeConcrete::Box(info) => {
+                assert_eq!(values.len(), 1);
+
+                let ty_size = map_vm_sizes(size_cache, registry, &info.ty);
+                match values[0].to_usize().unwrap() {
                     ptr if ty_size == 0 => {
                         assert_eq!(ptr, 1);
                         map_vm_values(size_cache, registry, memory, &[], &info.ty)
@@ -503,10 +698,22 @@ pub fn compare_outputs(
                     Felt::from_bytes_le(&values[3].to_le_bytes()),
                 )
             }
-            CoreTypeConcrete::Bytes31(_) => todo!(),
-            CoreTypeConcrete::Const(_) => todo!(),
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => {
+                let mut bytes = values[0].to_le_bytes().to_vec();
+                bytes.pop();
+                JitValue::Bytes31(bytes.try_into().unwrap())
+            }
             CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => unreachable!(),
+            CoreTypeConcrete::Const(_) => unreachable!(),
+            CoreTypeConcrete::EcOp(_) => unreachable!(),
+            CoreTypeConcrete::GasBuiltin(_) => unreachable!(),
+            CoreTypeConcrete::BuiltinCosts(_) => unreachable!(),
+            CoreTypeConcrete::RangeCheck(_) => unreachable!(),
+            CoreTypeConcrete::Pedersen(_) => unreachable!(),
+            CoreTypeConcrete::Poseidon(_) => unreachable!(),
+            CoreTypeConcrete::SegmentArena(_) => unreachable!(),
+            CoreTypeConcrete::BoundedInt(_) => unreachable!(),
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }
@@ -514,13 +721,14 @@ pub fn compare_outputs(
     }
 
     let mut size_cache = HashMap::new();
-    let ty = function.signature.ret_types.last().unwrap();
-    let returns_panic = ty
-        .debug_name
-        .as_ref()
-        .map(|x| x.starts_with("core::panics::PanicResult"))
-        .unwrap_or(false);
-
+    let ty = function.signature.ret_types.last();
+    let is_builtin = ty.map_or(false, |ty| registry.get_type(ty).unwrap().is_builtin());
+    let returns_panic = ty.map_or(false, |ty| {
+        ty.debug_name
+            .as_ref()
+            .map(|x| x.starts_with("core::panics::PanicResult"))
+            .unwrap_or(false)
+    });
     assert_eq!(
         vm_result
             .gas_counter
@@ -530,9 +738,9 @@ pub fn compare_outputs(
     );
 
     let vm_result = match &vm_result.value {
-        RunResultValue::Success(values) => {
+        RunResultValue::Success(values) if !values.is_empty() | returns_panic => {
             if returns_panic {
-                let inner_ty = match registry.get_type(ty)? {
+                let inner_ty = match registry.get_type(ty.unwrap())? {
                     CoreTypeConcrete::Enum(info) => &info.variants[0],
                     _ => unreachable!(),
                 };
@@ -547,8 +755,19 @@ pub fn compare_outputs(
                     )),
                     debug_name: None,
                 }
+            } else if !is_builtin {
+                map_vm_values(
+                    &mut size_cache,
+                    &registry,
+                    &vm_result.memory,
+                    values,
+                    ty.unwrap(),
+                )
             } else {
-                map_vm_values(&mut size_cache, &registry, &vm_result.memory, values, ty)
+                JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None,
+                }
             }
         }
         RunResultValue::Panic(values) => JitValue::Enum {
@@ -569,6 +788,10 @@ pub fn compare_outputs(
                 ],
                 debug_name: None,
             }),
+            debug_name: None,
+        },
+        _ => JitValue::Struct {
+            fields: vec![],
             debug_name: None,
         },
     };

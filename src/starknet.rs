@@ -15,15 +15,13 @@ pub struct ArrayAbi<T> {
 
 /// Binary representation of a `Felt` (in MLIR).
 #[derive(Debug, Clone)]
-#[cfg_attr(target_arch = "x86_64", repr(C, align(8)))]
-#[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
+#[repr(C, align(16))]
 pub struct Felt252Abi(pub [u8; 32]);
 /// Binary representation of a `u256` (in MLIR).
 // TODO: This shouldn't need to be public.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(target_arch = "x86_64", repr(C, align(8)))]
-#[cfg_attr(not(target_arch = "x86_64"), repr(C, align(16)))]
+#[repr(C, align(16))]
 pub struct U256 {
     pub hi: u128,
     pub lo: u128,
@@ -244,57 +242,9 @@ pub trait StarknetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)>;
 
-    // Testing syscalls.
-    fn pop_log(&mut self) {
-        unimplemented!()
-    }
-
-    fn set_account_contract_address(&mut self, _contract_address: Felt) {
-        unimplemented!()
-    }
-
-    fn set_block_number(&mut self, _block_number: u64) {
-        unimplemented!()
-    }
-
-    fn set_block_timestamp(&mut self, _block_timestamp: u64) {
-        unimplemented!()
-    }
-
-    fn set_caller_address(&mut self, _address: Felt) {
-        unimplemented!()
-    }
-
-    fn set_chain_id(&mut self, _chain_id: Felt) {
-        unimplemented!()
-    }
-
-    fn set_contract_address(&mut self, _address: Felt) {
-        unimplemented!()
-    }
-
-    fn set_max_fee(&mut self, _max_fee: u128) {
-        unimplemented!()
-    }
-
-    fn set_nonce(&mut self, _nonce: Felt) {
-        unimplemented!()
-    }
-
-    fn set_sequencer_address(&mut self, _address: Felt) {
-        unimplemented!()
-    }
-
-    fn set_signature(&mut self, _signature: &[Felt]) {
-        unimplemented!()
-    }
-
-    fn set_transaction_hash(&mut self, _transaction_hash: Felt) {
-        unimplemented!()
-    }
-
-    fn set_version(&mut self, _version: Felt) {
-        unimplemented!()
+    #[cfg(feature = "with-cheatcode")]
+    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
+        unimplemented!();
     }
 }
 
@@ -586,6 +536,13 @@ pub(crate) mod handler {
         nonce: Felt252Abi,
     }
 
+    /// A C ABI Wrapper around the StarknetSyscallHandler
+    ///
+    /// It contains pointers to functions which can be called through MLIR based on the field offset.
+    /// The functions convert C ABI structures to the Rust equivalent and calls the wrapped implementation.
+    ///
+    /// Unlike runtime functions, the callback table is generic to the StarknetSyscallHandler,
+    /// which allows the user to specify the desired implementation to use during the execution.
     #[repr(C)]
     #[derive(Debug)]
     pub struct StarknetSyscallHandlerCallbacks<'a, T> {
@@ -743,6 +700,14 @@ pub(crate) mod handler {
             gas: &mut u128,
             p: &Secp256r1Point,
         ),
+        // testing syscalls
+        #[cfg(feature = "with-cheatcode")]
+        pub cheatcode: extern "C" fn(
+            result_ptr: &mut ArrayAbi<Felt252Abi>,
+            ptr: &mut T,
+            selector: &Felt252Abi,
+            input: &ArrayAbi<Felt252Abi>,
+        ),
     }
 
     impl<'a, T> StarknetSyscallHandlerCallbacks<'a, T>
@@ -807,6 +772,8 @@ pub(crate) mod handler {
                 secp256r1_mul: Self::wrap_secp256r1_mul,
                 secp256r1_get_point_from_x: Self::wrap_secp256r1_get_point_from_x,
                 secp256r1_get_xy: Self::wrap_secp256r1_get_xy,
+                #[cfg(feature = "with-cheatcode")]
+                cheatcode: Self::wrap_cheatcode,
             }
         }
 
@@ -866,6 +833,34 @@ pub(crate) mod handler {
                 },
                 Err(e) => Self::wrap_error(&e),
             };
+        }
+
+        #[cfg(feature = "with-cheatcode")]
+        extern "C" fn wrap_cheatcode(
+            result_ptr: &mut ArrayAbi<Felt252Abi>,
+            ptr: &mut T,
+            selector: &Felt252Abi,
+            input: &ArrayAbi<Felt252Abi>,
+        ) {
+            let input: Vec<_> = unsafe {
+                let since_offset = input.since as usize;
+                let until_offset = input.until as usize;
+                debug_assert!(since_offset <= until_offset);
+                let len = until_offset - since_offset;
+                std::slice::from_raw_parts(input.ptr.add(since_offset), len)
+            }
+            .iter()
+            .map(|x| Felt::from_bytes_le(&x.0))
+            .collect();
+            let selector = Felt::from_bytes_le(&selector.0);
+
+            let result = ptr
+                .cheatcode(selector, &input)
+                .into_iter()
+                .map(|x| Felt252Abi(x.to_bytes_le()))
+                .collect::<Vec<_>>();
+
+            *result_ptr = unsafe { Self::alloc_mlir_array(&result) };
         }
 
         extern "C" fn wrap_get_execution_info(
@@ -1009,6 +1004,8 @@ pub(crate) mod handler {
                                     .map(|x| Felt252Abi(x.to_bytes_le()))
                                     .collect::<Vec<_>>(),
                             );
+                            tx_info_ptr.as_mut().account_contract_address =
+                                Felt252Abi(x.tx_info.account_contract_address.to_bytes_le());
 
                             execution_info_ptr.as_mut().block_info = block_info_ptr;
                             execution_info_ptr.as_mut().tx_info = tx_info_ptr;
@@ -1054,7 +1051,10 @@ pub(crate) mod handler {
                 let until_offset = calldata.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(calldata.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1137,7 +1137,10 @@ pub(crate) mod handler {
                 let until_offset = calldata.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(calldata.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1190,7 +1193,10 @@ pub(crate) mod handler {
                 let until_offset = calldata.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(calldata.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1287,7 +1293,10 @@ pub(crate) mod handler {
                 let until_offset = keys.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(keys.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(keys.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1304,7 +1313,10 @@ pub(crate) mod handler {
                 let until_offset = data.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(data.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(data.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1346,7 +1358,10 @@ pub(crate) mod handler {
                 let until_offset = payload.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(payload.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(payload.ptr.add(since_offset), len),
+                }
             }
             .iter()
             .map(|x| {
@@ -1382,7 +1397,10 @@ pub(crate) mod handler {
                 let until_offset = input.until as usize;
                 debug_assert!(since_offset <= until_offset);
                 let len = until_offset - since_offset;
-                std::slice::from_raw_parts(input.ptr.add(since_offset), len)
+                match len {
+                    0 => &[],
+                    _ => std::slice::from_raw_parts(input.ptr.add(since_offset), len),
+                }
             };
 
             let result = ptr.keccak(input, gas);
@@ -1405,7 +1423,9 @@ pub(crate) mod handler {
             x: &U256,
             y: &U256,
         ) {
-            let result = ptr.secp256k1_new(*x, *y, gas);
+            let x = *x;
+            let y = *y;
+            let result = ptr.secp256k1_new(x, y, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1428,7 +1448,9 @@ pub(crate) mod handler {
             p0: &Secp256k1Point,
             p1: &Secp256k1Point,
         ) {
-            let result = ptr.secp256k1_add(*p0, *p1, gas);
+            let p0 = *p0;
+            let p1 = *p1;
+            let result = ptr.secp256k1_add(p0, p1, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1448,7 +1470,10 @@ pub(crate) mod handler {
             p: &Secp256k1Point,
             scalar: &U256,
         ) {
-            let result = ptr.secp256k1_mul(*p, *scalar, gas);
+            // Seems like it's important to dereference and create a local instead of at call site directly.
+            let scalar = *scalar;
+            let p = *p;
+            let result = ptr.secp256k1_mul(p, scalar, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1468,7 +1493,9 @@ pub(crate) mod handler {
             x: &U256,
             y_parity: &bool,
         ) {
-            let result = ptr.secp256k1_get_point_from_x(*x, *y_parity, gas);
+            let x = *x;
+            let y_parity = *y_parity;
+            let result = ptr.secp256k1_get_point_from_x(x, y_parity, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1490,7 +1517,8 @@ pub(crate) mod handler {
             gas: &mut u128,
             p: &Secp256k1Point,
         ) {
-            let result = ptr.secp256k1_get_xy(*p, gas);
+            let p = *p;
+            let result = ptr.secp256k1_get_xy(p, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1510,7 +1538,9 @@ pub(crate) mod handler {
             x: &U256,
             y: &U256,
         ) {
-            let result = ptr.secp256r1_new(*x, *y, gas);
+            let x = *x;
+            let y = *y;
+            let result = ptr.secp256r1_new(x, y, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1533,7 +1563,9 @@ pub(crate) mod handler {
             p0: &Secp256r1Point,
             p1: &Secp256r1Point,
         ) {
-            let result = ptr.secp256r1_add(*p0, *p1, gas);
+            let p0 = *p0;
+            let p1 = *p1;
+            let result = ptr.secp256r1_add(p0, p1, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1553,7 +1585,9 @@ pub(crate) mod handler {
             p: &Secp256r1Point,
             scalar: &U256,
         ) {
-            let result = ptr.secp256r1_mul(*p, *scalar, gas);
+            let scalar = *scalar;
+            let p = *p;
+            let result = ptr.secp256r1_mul(p, scalar, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1573,7 +1607,9 @@ pub(crate) mod handler {
             x: &U256,
             y_parity: &bool,
         ) {
-            let result = ptr.secp256r1_get_point_from_x(*x, *y_parity, gas);
+            let x = *x;
+            let y_parity = *y_parity;
+            let result = ptr.secp256r1_get_point_from_x(x, y_parity, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1595,7 +1631,8 @@ pub(crate) mod handler {
             gas: &mut u128,
             p: &Secp256r1Point,
         ) {
-            let result = ptr.secp256r1_get_xy(*p, gas);
+            let p = *p;
+            let result = ptr.secp256r1_get_xy(p, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1608,4 +1645,32 @@ pub(crate) mod handler {
             };
         }
     }
+}
+
+#[cfg(feature = "with-cheatcode")]
+thread_local!(pub static SYSCALL_HANDLER_VTABLE: std::cell::Cell<*mut ()> = const { std::cell::Cell::new(std::ptr::null_mut()) });
+
+#[allow(non_snake_case)]
+#[cfg(feature = "with-cheatcode")]
+/// Runtime function that calls the `cheatcode` syscall
+///
+/// The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
+/// so a pointer to `StarknetSyscallHandlerCallbacks` is stored as a `thread::LocalKey` and accesed in runtime by this function.
+pub extern "C" fn cairo_native__vtable_cheatcode(
+    result_ptr: &mut ArrayAbi<Felt252Abi>,
+    selector: &Felt252Abi,
+    input: &ArrayAbi<Felt252Abi>,
+) {
+    let ptr = SYSCALL_HANDLER_VTABLE.with(|ptr| ptr.get());
+    assert!(!ptr.is_null());
+
+    let callbacks_ptr = ptr as *mut handler::StarknetSyscallHandlerCallbacks<DummySyscallHandler>;
+    let callbacks = unsafe { callbacks_ptr.as_mut().expect("should not be null") };
+
+    // The `StarknetSyscallHandler` is stored as a reference in the first field of `StarknetSyscalLHandlerCallbacks`,
+    // so we can interpret `ptr` as a double pointer to the handler.
+    let handler_ptr_ptr = ptr as *mut *mut DummySyscallHandler;
+    let handler = unsafe { (*handler_ptr_ptr).as_mut().expect("should not be null") };
+
+    (callbacks.cheatcode)(result_ptr, handler, selector, input);
 }

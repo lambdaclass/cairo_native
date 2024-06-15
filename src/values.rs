@@ -12,12 +12,14 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        utils::Range,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use educe::Educe;
-use num_bigint::{BigInt, Sign};
+use num_bigint::{BigInt, Sign, ToBigInt};
+use num_traits::Euclid;
 use starknet_types_core::felt::Felt;
 use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 
@@ -71,6 +73,11 @@ pub enum JitValue {
     Secp256R1Point {
         x: (u128, u128),
         y: (u128, u128),
+    },
+    BoundedInt {
+        value: Felt,
+        #[cfg_attr(feature = "with-serde", serde(with = "range_serde"))]
+        range: Range,
     },
     /// Used as return value for Nullables that are null.
     Null,
@@ -191,6 +198,36 @@ impl JitValue {
                     ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
+                Self::BoundedInt {
+                    value,
+                    range: Range { lower, upper },
+                } => {
+                    let value = value.to_bigint();
+
+                    if lower < upper {
+                        return Err(Error::Error("BoundedInt range is invalid".to_string()));
+                    }
+
+                    let prime = &PRIME.to_bigint().unwrap();
+                    let lower = lower.rem_euclid(prime);
+                    let upper = upper.rem_euclid(prime);
+
+                    if lower <= upper {
+                        if !(lower <= value && value < upper) {
+                            return Err(Error::Error(
+                                "BoundedInt value is out of range".to_string(),
+                            ));
+                        }
+                    } else if !(upper > value && value >= lower) {
+                        return Err(Error::Error("BoundedInt value is out of range".to_string()));
+                    }
+
+                    let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
+                    let data = felt252_bigint(value);
+                    ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
+                    ptr
+                }
+
                 Self::Bytes31(_) => todo!(),
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {
@@ -521,26 +558,26 @@ impl JitValue {
                         .cast::<u32>()
                         .as_ref();
 
-                    let init_data_ptr = *ptr.cast::<NonNull<()>>().as_ref();
-                    let data_ptr = NonNull::new_unchecked(
-                        init_data_ptr
-                            .as_ptr()
-                            .byte_add(elem_stride * offset_value as usize),
-                    );
+                    // this pointer can be null if the array has a size of 0.
+                    let init_data_ptr = *ptr.cast::<*mut ()>().as_ref();
+                    let data_ptr = init_data_ptr.byte_add(elem_stride * offset_value as usize);
 
                     assert!(length_value >= offset_value);
                     let num_elems = (length_value - offset_value) as usize;
                     let mut array_value = Vec::with_capacity(num_elems);
+
                     for i in 0..num_elems {
-                        let cur_elem_ptr = NonNull::new(
-                            ((data_ptr.as_ptr() as usize) + elem_stride * i) as *mut (),
-                        )
-                        .unwrap();
+                        // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
+                        let cur_elem_ptr =
+                            NonNull::new(((data_ptr as usize) + elem_stride * i) as *mut ())
+                                .unwrap();
 
                         array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
                     }
 
-                    libc::free(init_data_ptr.as_ptr().cast());
+                    if !init_data_ptr.is_null() {
+                        libc::free(init_data_ptr.cast());
+                    }
 
                     Self::Array(array_value)
                 }
@@ -567,7 +604,7 @@ impl JitValue {
                 }
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_ref();
-                    let data = Felt::from_bytes_le(data);
+                    let data = Felt::from_bytes_le_slice(data);
                     Self::Felt252(data)
                 }
                 CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),
@@ -668,8 +705,10 @@ impl JitValue {
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
-                    let map = Box::from_raw(
-                        ptr.cast::<HashMap<[u8; 32], NonNull<std::ffi::c_void>>>()
+                    let (map, _) = *Box::from_raw(
+                        ptr.cast::<NonNull<()>>()
+                            .as_ref()
+                            .cast::<(HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>()
                             .as_ptr(),
                     );
 
@@ -727,13 +766,19 @@ impl JitValue {
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
                 CoreTypeConcrete::Bytes31(_) => {
-                    let mut data = *ptr.cast::<[u8; 31]>().as_ref();
-                    data.reverse();
+                    let data = *ptr.cast::<[u8; 31]>().as_ref();
                     Self::Bytes31(data)
                 }
 
                 CoreTypeConcrete::Const(_) => todo!(),
-                CoreTypeConcrete::BoundedInt(_) => todo!(),
+                CoreTypeConcrete::BoundedInt(info) => {
+                    let data = ptr.cast::<[u8; 32]>().as_ref();
+                    let data = Felt::from_bytes_le(data);
+                    Self::BoundedInt {
+                        value: data,
+                        range: info.range.clone(),
+                    }
+                }
                 CoreTypeConcrete::Coupon(_) => todo!(),
             }
         }
@@ -1337,5 +1382,85 @@ mod test {
             }
             _ => panic!("Unexpected error type: {:?}", result),
         }
+    }
+}
+
+#[cfg(feature = "with-serde")]
+mod range_serde {
+    use std::fmt;
+
+    use cairo_lang_sierra::extensions::utils::Range;
+    use serde::{
+        de::{self, Visitor},
+        ser::SerializeStruct,
+        Deserializer, Serializer,
+    };
+
+    pub fn serialize<S>(range: &Range, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = ser.serialize_struct("Range", 2)?;
+
+        state.serialize_field("lower", &range.lower)?;
+        state.serialize_field("upper", &range.upper)?;
+
+        state.end()
+    }
+
+    pub fn deserialize<'de, D>(de: D) -> Result<Range, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct RangeVisitor;
+
+        impl<'de> Visitor<'de> for RangeVisitor {
+            type Value = Range;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("an integer between -2^31 and 2^31")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let lower = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let upper = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+
+                Ok(Range { lower, upper })
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::MapAccess<'de>,
+            {
+                let mut lower = None;
+                let mut upper = None;
+
+                while let Some((field, value)) = map.next_entry()? {
+                    match field {
+                        "lower" => {
+                            lower = Some(value);
+                        }
+                        "upper" => {
+                            upper = Some(value);
+                        }
+                        _ => return Err(de::Error::unknown_field(field, &["lower", "upper"])),
+                    }
+                }
+
+                Ok(Range {
+                    lower: lower.ok_or_else(|| de::Error::missing_field("lower"))?,
+                    upper: upper.ok_or_else(|| de::Error::missing_field("upper"))?,
+                })
+            }
+        }
+
+        de.deserialize_struct("Range", &["lower", "upper"], RangeVisitor)
     }
 }

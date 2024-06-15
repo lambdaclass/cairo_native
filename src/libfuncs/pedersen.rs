@@ -18,15 +18,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith,
-        llvm::{self, LoadStoreOptions},
-        ods,
-    },
-    ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Identifier, Location,
-    },
+    dialect::{arith, ods},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -71,8 +64,6 @@ pub fn build_pedersen<'ctx>(
         &info.param_signatures()[1].ty,
     )?;
 
-    let i64_ty = IntegerType::new(context, 64).into();
-
     let i256_ty = IntegerType::new(context, 256).into();
     let layout_i256 = get_integer_layout(256);
 
@@ -81,52 +72,18 @@ pub fn build_pedersen<'ctx>(
 
     // We must extend to i256 because bswap must be an even number of bytes.
 
-    let const_1 = entry.const_int_from_type(context, location, 1, i64_ty)?;
-
-    let lhs_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    layout_i256.align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build()?,
-    )?;
-
-    let rhs_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    layout_i256.align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build()?,
-    )?;
-
-    let dst_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.alloca", location)
-            .add_attributes(&[(
-                Identifier::new(context, "alignment"),
-                IntegerAttribute::new(
-                    IntegerType::new(context, 64).into(),
-                    layout_i256.align().try_into()?,
-                )
-                .into(),
-            )])
-            .add_operands(&[const_1])
-            .add_results(&[llvm::r#type::pointer(i256_ty, 0)])
-            .build()?,
-    )?;
+    let lhs_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
+    let rhs_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
+    let dst_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
 
     let lhs_i256 = entry.append_op_result(arith::extui(lhs, i256_ty, location))?;
     let rhs_i256 = entry.append_op_result(arith::extui(rhs, i256_ty, location))?;
@@ -137,26 +94,20 @@ pub fn build_pedersen<'ctx>(
     let rhs_be =
         entry.append_op_result(ods::llvm::intr_bswap(context, rhs_i256, location).into())?;
 
-    entry.append_operation(llvm::store(
+    entry.store(
         context,
-        lhs_be,
+        location,
         lhs_ptr,
-        location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            layout_i256.align().try_into()?,
-        ))),
-    ));
-    entry.append_operation(llvm::store(
+        lhs_be,
+        Some(layout_i256.align()),
+    )?;
+    entry.store(
         context,
-        rhs_be,
-        rhs_ptr,
         location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            layout_i256.align().try_into()?,
-        ))),
-    ));
+        rhs_ptr,
+        rhs_be,
+        Some(layout_i256.align()),
+    )?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -165,16 +116,13 @@ pub fn build_pedersen<'ctx>(
     runtime_bindings
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)?;
 
-    let result_be = entry.append_op_result(llvm::load(
+    let result_be = entry.load(
         context,
+        location,
         dst_ptr,
         i256_ty,
-        location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            layout_i256.align().try_into()?,
-        ))),
-    ))?;
+        Some(layout_i256.align()),
+    )?;
 
     let op = entry.append_op_result(ods::llvm::intr_bswap(context, result_be, location).into())?;
 

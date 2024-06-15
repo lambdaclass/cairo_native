@@ -2,9 +2,10 @@
 
 use super::LibfuncHelper;
 use crate::{
+    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    utils::{mlir_asm, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -23,10 +24,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
-    ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value,
-        ValueLike,
-    },
+    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
 use num_bigint::{Sign, ToBigInt};
@@ -69,7 +67,6 @@ pub fn build_binary_operation<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &Felt252BinaryOperationConcrete,
 ) -> Result<()> {
-    let bool_ty = IntegerType::new(context, 1).into();
     let felt252_ty = registry.build_type(
         context,
         helper,
@@ -80,39 +77,10 @@ pub fn build_binary_operation<'ctx, 'this>(
     let i256 = IntegerType::new(context, 256).into();
     let i512 = IntegerType::new(context, 512).into();
 
-    let attr_prime_i256 = Attribute::parse(
-        context,
-        &format!(
-            "{} : {i256}",
-            metadata
-                .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(Error::MissingMetadata)?
-                .prime()
-        ),
-    )
-    .ok_or(Error::ParseAttributeError)?;
-    let attr_prime_i512 = Attribute::parse(
-        context,
-        &format!(
-            "{} : {i512}",
-            metadata
-                .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(Error::MissingMetadata)?
-                .prime()
-        ),
-    )
-    .ok_or(Error::ParseAttributeError)?;
-
-    let attr_cmp_uge = IntegerAttribute::new(
-        IntegerType::new(context, 64).into(),
-        CmpiPredicate::Uge as i64,
-    )
-    .into();
-    let attr_cmp_ult = IntegerAttribute::new(
-        IntegerType::new(context, 64).into(),
-        CmpiPredicate::Ult as i64,
-    )
-    .into();
+    let prime = metadata
+        .get::<PrimeModuloMeta<Felt>>()
+        .ok_or(Error::MissingMetadata)?
+        .prime();
 
     let (op, lhs, rhs) = match info {
         Felt252BinaryOperationConcrete::WithVar(operation) => (
@@ -134,13 +102,8 @@ pub fn build_binary_operation<'ctx, 'this>(
                 _ => operation.c.to_biguint().expect("sign already checked"),
             };
 
-            let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}"))
-                .ok_or(Error::MissingMetadata)?;
-
             // TODO: Ensure that the constant is on the correct side of the operation.
-            mlir_asm! { context, entry, location =>
-                ; rhs = "arith.constant"() { "value" = attr_c } : () -> felt252_ty
-            }
+            let rhs = entry.const_int_from_type(context, location, value, felt252_ty)?;
 
             (operation.operator, entry.argument(0)?.into(), rhs)
         }
@@ -148,52 +111,73 @@ pub fn build_binary_operation<'ctx, 'this>(
 
     let result = match op {
         Felt252BinaryOperator::Add => {
-            mlir_asm! { context, entry, location =>
-                ; lhs = "arith.extui"(lhs) : (felt252_ty) -> i256
-                ; rhs = "arith.extui"(rhs) : (felt252_ty) -> i256
-                ; result = "arith.addi"(lhs, rhs) : (i256, i256) -> i256
+            let lhs = entry.append_op_result(arith::extui(lhs, i256, location))?;
+            let rhs = entry.append_op_result(arith::extui(rhs, i256, location))?;
+            let result = entry.append_op_result(arith::addi(lhs, rhs, location))?;
 
-                ; prime = "arith.constant"() { "value" = attr_prime_i256 } : () -> i256
-                ; result_mod = "arith.subi"(result, prime) : (i256, i256) -> i256
-                ; is_out_of_range = "arith.cmpi"(result, prime) { "predicate" = attr_cmp_uge } : (i256, i256) -> bool_ty
+            let prime = entry.const_int_from_type(context, location, prime.clone(), i256)?;
+            let result_mod = entry.append_op_result(arith::subi(result, prime, location))?;
+            let is_out_of_range = entry.append_op_result(arith::cmpi(
+                context,
+                CmpiPredicate::Uge,
+                result,
+                prime,
+                location,
+            ))?;
 
-                ; result = "arith.select"(is_out_of_range, result_mod, result) : (bool_ty, i256, i256) -> i256
-                ; result = "arith.trunci"(result) : (i256) -> felt252_ty
-            };
-
-            result
+            let result = entry.append_op_result(arith::select(
+                is_out_of_range,
+                result_mod,
+                result,
+                location,
+            ))?;
+            entry.append_op_result(arith::trunci(result, felt252_ty, location))?
         }
         Felt252BinaryOperator::Sub => {
-            mlir_asm! { context, entry, location =>
-                ; lhs = "arith.extui"(lhs) : (felt252_ty) -> i256
-                ; rhs = "arith.extui"(rhs) : (felt252_ty) -> i256
-                ; result = "arith.subi"(lhs, rhs) : (i256, i256) -> i256
+            let lhs = entry.append_op_result(arith::extui(lhs, i256, location))?;
+            let rhs = entry.append_op_result(arith::extui(rhs, i256, location))?;
+            let result = entry.append_op_result(arith::subi(lhs, rhs, location))?;
 
-                ; prime = "arith.constant"() { "value" = attr_prime_i256 } : () -> i256
-                ; result_mod = "arith.addi"(result, prime) : (i256, i256) -> i256
-                ; is_out_of_range = "arith.cmpi"(lhs, rhs) { "predicate" = attr_cmp_ult } : (i256, i256) -> bool_ty
+            let prime = entry.const_int_from_type(context, location, prime.clone(), i256)?;
+            let result_mod = entry.append_op_result(arith::addi(result, prime, location))?;
+            let is_out_of_range = entry.append_op_result(arith::cmpi(
+                context,
+                CmpiPredicate::Ult,
+                lhs,
+                rhs,
+                location,
+            ))?;
 
-                ; result = "arith.select"(is_out_of_range, result_mod, result) : (bool_ty, i256, i256) -> i256
-                ; result = "arith.trunci"(result) : (i256) -> felt252_ty
-            }
-
-            result
+            let result = entry.append_op_result(arith::select(
+                is_out_of_range,
+                result_mod,
+                result,
+                location,
+            ))?;
+            entry.append_op_result(arith::trunci(result, felt252_ty, location))?
         }
         Felt252BinaryOperator::Mul => {
-            mlir_asm! { context, entry, location =>
-                ; lhs = "arith.extui"(lhs) : (felt252_ty) -> i512
-                ; rhs = "arith.extui"(rhs) : (felt252_ty) -> i512
-                ; result = "arith.muli"(lhs, rhs) : (i512, i512) -> i512
+            let lhs = entry.append_op_result(arith::extui(lhs, i512, location))?;
+            let rhs = entry.append_op_result(arith::extui(rhs, i512, location))?;
+            let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
 
-                ; prime = "arith.constant"() { "value" = attr_prime_i512 } : () -> i512
-                ; result_mod = "arith.remui"(result, prime) : (i512, i512) -> i512
-                ; is_out_of_range = "arith.cmpi"(result, prime) { "predicate" = attr_cmp_uge } : (i512, i512) -> bool_ty
+            let prime = entry.const_int_from_type(context, location, prime.clone(), i512)?;
+            let result_mod = entry.append_op_result(arith::remui(result, prime, location))?;
+            let is_out_of_range = entry.append_op_result(arith::cmpi(
+                context,
+                CmpiPredicate::Uge,
+                result,
+                prime,
+                location,
+            ))?;
 
-                ; result = "arith.select"(is_out_of_range, result_mod, result) : (bool_ty, i512, i512) -> i512
-                ; result = "arith.trunci"(result) : (i512) -> felt252_ty
-            }
-
-            result
+            let result = entry.append_op_result(arith::select(
+                is_out_of_range,
+                result_mod,
+                result,
+                location,
+            ))?;
+            entry.append_op_result(arith::trunci(result, felt252_ty, location))?
         }
         Felt252BinaryOperator::Div => {
             // The extended euclidean algorithm calculates the greatest common divisor of two integers,
@@ -217,28 +201,12 @@ pub fn build_binary_operation<'ctx, 'this>(
             // Egcd works by calculating a series of remainders, each the remainder of dividing the previous two
             // For the initial setup, r0 = PRIME, r1 = a
             // This order is chosen because if we reverse them, then the first iteration will just swap them
-            let prev_remainder = start_block
-                .append_operation(arith::constant(context, attr_prime_i512, location))
-                .result(0)?
-                .into();
+            let prev_remainder =
+                start_block.const_int_from_type(context, location, prime.clone(), i512)?;
             let remainder = start_block.argument(0)?.into();
             // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
-            let prev_inverse = start_block
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(i512, 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
-            let inverse = start_block
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(i512, 1).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
+            let prev_inverse = start_block.const_int_from_type(context, location, 0, i512)?;
+            let inverse = start_block.const_int_from_type(context, location, 1, i512)?;
             start_block.append_operation(cf::br(
                 loop_block,
                 &[prev_remainder, remainder, prev_inverse, inverse],
@@ -253,47 +221,30 @@ pub fn build_binary_operation<'ctx, 'this>(
             let inverse = loop_block.argument(3)?.into();
 
             // First calculate q = rem_(i-1)/rem_i, rounded down
-            let quotient = loop_block
-                .append_operation(arith::divui(prev_remainder, remainder, location))
-                .result(0)?
-                .into();
+            let quotient =
+                loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
             // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
-            let rem_times_quo = loop_block
-                .append_operation(arith::muli(remainder, quotient, location))
-                .result(0)?
-                .into();
-            let inv_times_quo = loop_block
-                .append_operation(arith::muli(inverse, quotient, location))
-                .result(0)?
-                .into();
-            let next_remainder = loop_block
-                .append_operation(arith::subi(prev_remainder, rem_times_quo, location))
-                .result(0)?
-                .into();
-            let next_inverse = loop_block
-                .append_operation(arith::subi(prev_inverse, inv_times_quo, location))
-                .result(0)?
-                .into();
+            let rem_times_quo =
+                loop_block.append_op_result(arith::muli(remainder, quotient, location))?;
+            let inv_times_quo =
+                loop_block.append_op_result(arith::muli(inverse, quotient, location))?;
+            let next_remainder = loop_block.append_op_result(arith::subi(
+                prev_remainder,
+                rem_times_quo,
+                location,
+            ))?;
+            let next_inverse =
+                loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
 
             // If r_(i+1) is 0, then inv_i is the inverse
-            let zero = loop_block
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(i512, 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
-            let next_remainder_eq_zero = loop_block
-                .append_operation(arith::cmpi(
-                    context,
-                    CmpiPredicate::Eq,
-                    next_remainder,
-                    zero,
-                    location,
-                ))
-                .result(0)?
-                .into();
+            let zero = loop_block.const_int_from_type(context, location, 0, i512)?;
+            let next_remainder_eq_zero = loop_block.append_op_result(arith::cmpi(
+                context,
+                CmpiPredicate::Eq,
+                next_remainder,
+                zero,
+                location,
+            ))?;
             loop_block.append_operation(cf::cond_br(
                 context,
                 next_remainder_eq_zero,
@@ -307,14 +258,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             // egcd sometimes returns a negative number for the inverse,
             // in such cases we must simply wrap it around back into [0, PRIME)
             // this suffices because |inv_i| <= divfloor(PRIME,2)
-            let zero = negative_check_block
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(i512, 0).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
+            let zero = negative_check_block.const_int_from_type(context, location, 0, i512)?;
 
             let is_negative = negative_check_block
                 .append_operation(arith::cmpi(
@@ -327,23 +271,16 @@ pub fn build_binary_operation<'ctx, 'this>(
                 .result(0)?
                 .into();
             // if the inverse is < 0, add PRIME
-            let prime = negative_check_block
-                .append_operation(arith::constant(context, attr_prime_i512, location))
-                .result(0)?
-                .into();
-            let wrapped_inverse = negative_check_block
-                .append_operation(arith::addi(inverse, prime, location))
-                .result(0)?
-                .into();
-            let inverse = negative_check_block
-                .append_operation(arith::select(
-                    is_negative,
-                    wrapped_inverse,
-                    inverse,
-                    location,
-                ))
-                .result(0)?
-                .into();
+            let prime =
+                negative_check_block.const_int_from_type(context, location, prime.clone(), i512)?;
+            let wrapped_inverse =
+                negative_check_block.append_op_result(arith::addi(inverse, prime, location))?;
+            let inverse = negative_check_block.append_op_result(arith::select(
+                is_negative,
+                wrapped_inverse,
+                inverse,
+                location,
+            ))?;
             negative_check_block.append_operation(cf::br(
                 inverse_result_block,
                 &[inverse],
@@ -352,31 +289,35 @@ pub fn build_binary_operation<'ctx, 'this>(
 
             // Div Logic Start
             // Fetch operands
-            let lhs = entry
-                .append_operation(arith::extui(lhs, i512, location))
-                .result(0)?
-                .into();
-            let rhs = entry
-                .append_operation(arith::extui(rhs, i512, location))
-                .result(0)?
-                .into();
+            let lhs = entry.append_op_result(arith::extui(lhs, i512, location))?;
+            let rhs = entry.append_op_result(arith::extui(rhs, i512, location))?;
             // Calculate inverse of rhs, callling the inverse implementation's starting block
             entry.append_operation(cf::br(start_block, &[rhs], location));
             // Fetch the inverse result from the result block
             let inverse = inverse_result_block.argument(0)?.into();
             // Peform lhs * (1/ rhs)
-            let result = inverse_result_block
-                .append_operation(arith::muli(lhs, inverse, location))
-                .result(0)?
-                .into();
+            let result =
+                inverse_result_block.append_op_result(arith::muli(lhs, inverse, location))?;
             // Apply modulo and convert result to felt252
-            mlir_asm! { context, inverse_result_block, location =>
-                ; result_mod = "arith.remui"(result, prime) : (i512, i512) -> i512
-                ; is_out_of_range = "arith.cmpi"(result, prime) { "predicate" = attr_cmp_uge } : (i512, i512) -> bool_ty
+            let result_mod =
+                inverse_result_block.append_op_result(arith::remui(result, prime, location))?;
+            let is_out_of_range = inverse_result_block.append_op_result(arith::cmpi(
+                context,
+                CmpiPredicate::Uge,
+                result,
+                prime,
+                location,
+            ))?;
 
-                ; result = "arith.select"(is_out_of_range, result_mod, result) : (bool_ty, i512, i512) -> i512
-                ; result = "arith.trunci"(result) : (i512) -> felt252_ty
-            }
+            let result = inverse_result_block.append_op_result(arith::select(
+                is_out_of_range,
+                result_mod,
+                result,
+                location,
+            ))?;
+            let result = inverse_result_block
+                .append_op_result(arith::trunci(result, felt252_ty, location))?;
+
             inverse_result_block.append_operation(helper.br(0, &[result], location));
             return Ok(());
         }
@@ -418,14 +359,8 @@ pub fn build_const<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let attr_c = Attribute::parse(context, &format!("{value} : {felt252_ty}"))
-        .ok_or(Error::ParseAttributeError)?;
-
-    mlir_asm! { context, entry, location =>
-        ; k0 = "arith.constant"() { "value" = attr_c } : () -> felt252_ty
-    }
-
-    entry.append_operation(helper.br(0, &[k0], location));
+    let value = entry.const_int_from_type(context, location, value, felt252_ty)?;
+    entry.append_operation(helper.br(0, &[value], location));
     Ok(())
 }
 
@@ -441,24 +376,11 @@ pub fn build_is_zero<'ctx, 'this>(
 ) -> Result<()> {
     let arg0: Value = entry.argument(0)?.into();
 
-    let op = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(arg0.r#type(), 0).into(),
-        location,
-    ));
-    let const_0 = op.result(0)?.into();
-
-    let op = entry.append_operation(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        arg0,
-        const_0,
-        location,
-    ));
-    let condition = op.result(0)?.into();
+    let k0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
+    let condition =
+        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, arg0, k0, location))?;
 
     entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
-
     Ok(())
 }
 
@@ -473,8 +395,15 @@ pub mod test {
 
     lazy_static! {
         static ref FELT252_ADD: (String, Program) = load_cairo! {
+            use core::debug::PrintTrait;
             fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs + rhs
+                lhs.print();
+                rhs.print();
+                let result = lhs + rhs;
+
+    result.print();
+
+    result
             }
         };
 
@@ -514,28 +443,6 @@ pub mod test {
     }
 
     #[test]
-    fn felt252_add_new() {
-        run_program_assert_output(
-            &FELT252_ADD,
-            "run_test",
-            &[JitValue::felt_str("0"), JitValue::felt_str("0")],
-            JitValue::felt_str("0"),
-        );
-        run_program_assert_output(
-            &FELT252_ADD,
-            "run_test",
-            &[JitValue::felt_str("0"), JitValue::felt_str("1")],
-            JitValue::felt_str("1"),
-        );
-        run_program_assert_output(
-            &FELT252_ADD,
-            "run_test",
-            &[JitValue::felt_str("0"), JitValue::felt_str("0")],
-            JitValue::felt_str("0"),
-        );
-    }
-
-    #[test]
     fn felt252_add() {
         run_program_assert_output(
             &FELT252_ADD,
@@ -546,14 +453,8 @@ pub mod test {
         run_program_assert_output(
             &FELT252_ADD,
             "run_test",
-            &[JitValue::felt_str("0"), JitValue::felt_str("1")],
-            JitValue::felt_str("1"),
-        );
-        run_program_assert_output(
-            &FELT252_ADD,
-            "run_test",
-            &[JitValue::felt_str("0"), JitValue::felt_str("0")],
-            JitValue::felt_str("0"),
+            &[JitValue::felt_str("1"), JitValue::felt_str("2")],
+            JitValue::felt_str("3"),
         );
 
         fn r(lhs: JitValue, rhs: JitValue) -> JitValue {
