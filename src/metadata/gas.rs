@@ -41,8 +41,8 @@ pub enum GasMetadataError {
     CostError(#[from] CostError),
     #[error("Not enough gas to run the operation. Required: {required_gas}, Available: {available_gas}.")]
     NotEnoughGas {
-        required_gas: u128,
-        available_gas: u128,
+        required_gas: Box<u128>,
+        available_gas: Box<u128>,
     },
 }
 
@@ -89,8 +89,8 @@ impl GasMetadata {
         available_gas
             .checked_sub(required_gas)
             .ok_or(GasMetadataError::NotEnoughGas {
-                required_gas,
-                available_gas,
+                required_gas: Box::new(required_gas),
+                available_gas: Box::new(available_gas),
             })
     }
 
