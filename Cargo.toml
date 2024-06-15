@@ -12,6 +12,8 @@ keywords = ["starknet", "cairo", "compiler", "mlir"]
 # https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
 resolver = "2"
 
+# PLT: each of these binaries weights about 400MB. Consider making a single multicall binary to trim that down.
+# Also explore which features from deps can be disabled to further drive the size down.
 [[bin]]
 name = "cairo-native-dump"
 required-features = ["build-cli"]
