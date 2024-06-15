@@ -193,8 +193,7 @@ pub fn build_downcast<'ctx, 'this>(
             .intersection(&info.from_range)
             .ok_or_else(|| {
                 Error::SierraAssert(SierraAssertError::Range {
-                    from_range: info.from_range.clone().into(),
-                    to_range: info.to_range.clone().into(),
+                    ranges: Box::new((info.from_range.clone(), info.to_range.clone())),
                 })
             })?;
 

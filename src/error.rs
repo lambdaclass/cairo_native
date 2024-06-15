@@ -78,10 +78,8 @@ impl Error {
 pub enum SierraAssertError {
     #[error("casts always happen between numerical types")]
     Cast,
-    #[error("range should always intersect, from {ranges.0:?} to {ranges.1:?}")]
-    Range {
-        ranges: Box<(Range, Range)>,
-    },
+    #[error("range should always intersect, from {:?} to {:?}", ranges.0, ranges.1)]
+    Range { ranges: Box<(Range, Range)> },
 }
 
 #[cfg(test)]
