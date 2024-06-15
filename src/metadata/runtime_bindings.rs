@@ -38,6 +38,8 @@ enum RuntimeBinding {
 #[derive(Debug)]
 pub struct RuntimeBindingsMeta {
     active_map: HashSet<RuntimeBinding>,
+    // PLT: what do we need this field for? Is it for forward compatibility in case we add
+    // lifetimes and the like? In that case, write a comment.
     phantom: PhantomData<()>,
 }
 
@@ -708,6 +710,7 @@ impl RuntimeBindingsMeta {
     }
 }
 
+// PLT: shouldn't derive work here?
 impl Default for RuntimeBindingsMeta {
     fn default() -> Self {
         Self {
@@ -716,3 +719,4 @@ impl Default for RuntimeBindingsMeta {
         }
     }
 }
+// PLT: ACK

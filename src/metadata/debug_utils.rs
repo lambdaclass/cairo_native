@@ -120,6 +120,8 @@ pub struct DebugUtils {
     active_map: HashSet<DebugBinding>,
 }
 
+// PLT: maybe we can write a helper to build the function symbols in the `active_map.insert`'s.
+// They seem to differ only on name and arguments, so those could be the parameters.
 impl DebugUtils {
     pub fn breakpoint_marker<'c, 'a>(
         &mut self,
@@ -196,6 +198,8 @@ impl DebugUtils {
 
         let ptr = block.alloca1(context, location, ty, None)?;
 
+        // PLT: we could refactor constant building into helpers. Have global types for the most
+        // used ones as well. Is `IntegerType::new` `const`?
         let msg = block
             .append_operation(
                 ods::llvm::mlir_constant(
@@ -248,6 +252,7 @@ impl DebugUtils {
         Ok(())
     }
 
+    // PLT: maybe all these `print_{type}` functions could be abstracted? Or made generic?
     pub fn print_pointer<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -359,6 +364,49 @@ impl DebugUtils {
             ));
         }
 
+
+        // PLT: maybe write a little `get_limb` helper? Or a loop used?
+        // The callsite would look like this:
+        // ```
+        // let args = [
+        //     get_limb(value, 0, context, block, location)?,
+        //     get_limb(value, 1, context, block, location)?,
+        //     get_limb(value, 2, context, block, location)?,
+        //     get_limb(value, 3, context, block, location)?,
+        // ];
+        // ```
+        // The body would be approximately:
+        // ```
+        // fn get_limb(
+        //     index: usize,
+        //     value: Value<'c, '_>,
+        //     context: &'c Context,
+        //     block: &'a Block<'c>,
+        //     location: Location<'c>,
+        // ) -> Result<Value> {
+        //     let shift = block
+        //         .append_operation(arith::constant(
+        //             context,
+        //             IntegerAttribute::new(IntegerType::new(context, 64).into(), index * 64).into(),
+        //             location,
+        //         ))
+        //         .result(0)?
+        //         .into();
+        //     let shifted = block
+        //        .append_operation(arith::shrui(value, shift, location))
+        //        .result(0)?
+        //        .into();
+        //     let limb = block
+        //          .append_operation(arith::trunci(
+        //             value,
+        //             IntegerType::new(context, 64).into(),
+        //             location,
+        //         ))
+        //         .result(0)?
+        //         .into();
+        //     Ok(limb)
+        // }
+        // ```
         let k64 = block
             .append_operation(arith::constant(
                 context,
@@ -367,7 +415,6 @@ impl DebugUtils {
             ))
             .result(0)?
             .into();
-
         let l0 = block
             .append_operation(arith::trunci(
                 value,
@@ -583,6 +630,12 @@ impl DebugUtils {
             .result(0)?
             .into();
 
+        // PLT: the proposed `get_limb` helper could also be used here:
+        // ```
+        // let args = [
+        //     get_limb(0, value, context, block, location)?,
+        //     get_limb(1, value, context, block, location)?,
+        // ];
         let value_lo = block
             .append_operation(arith::trunci(value, i64_ty, location))
             .result(0)?
@@ -659,6 +712,9 @@ impl DebugUtils {
     }
 
     pub fn register_impls(&self, engine: &ExecutionEngine) {
+        // PLT: minor refactor: this could be a table with `(variant, symbol_name, fn_ptr)`
+        // that we iterate through while checking if `variant` is in `active_map` and registering
+        // `symbol` to be `fn_ptr` if it is.
         if self.active_map.contains(&DebugBinding::BreakpointMarker) {
             unsafe {
                 engine.register_symbol(
@@ -763,6 +819,7 @@ extern "C" fn debug_print_impl(message: *const std::ffi::c_char, len: u64) {
     if let Ok(message) = message {
         println!("[DEBUG] Message: {}", message);
     } else {
+        // PLT: this would print the parse error I think. Maybe we wanted to print the byte slice?
         println!("[DEBUG] Message: {:?}", message);
     }
 }
@@ -816,3 +873,4 @@ extern "C" fn print_felt252(l0: u64, l1: u64, l2: u64, l3: u64) {
         ),
     );
 }
+// PLT: ACK

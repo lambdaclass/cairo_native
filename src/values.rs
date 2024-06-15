@@ -204,6 +204,7 @@ impl JitValue {
                 } => {
                     let value = value.to_bigint();
 
+                    // PLT: this is exactly how the bounds should be, isn't it?
                     if lower < upper {
                         return Err(Error::Error("BoundedInt range is invalid".to_string()));
                     }
@@ -212,6 +213,7 @@ impl JitValue {
                     let lower = lower.rem_euclid(prime);
                     let upper = upper.rem_euclid(prime);
 
+                    // PLT: TODO: I need to check this logic carefully, it seems excessively complicated.
                     if lower <= upper {
                         if !(lower <= value && value < upper) {
                             return Err(Error::Error(
@@ -228,6 +230,7 @@ impl JitValue {
                     ptr
                 }
 
+                // PLT: do?
                 Self::Bytes31(_) => todo!(),
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry) {

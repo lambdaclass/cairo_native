@@ -340,6 +340,7 @@ make deps
 
 #### MacOS
 
+# PLT: s/execute/source/
 The makefile `deps` target (which you should have ran before) installs LLVM 18 with brew for you, afterwards you need to execute the `env-macos.sh` script to setup the
 needed environment variables.
 

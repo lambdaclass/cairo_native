@@ -94,3 +94,5 @@ impl ReallocBindingsMeta {
         )
     }
 }
+// PLT: could abstract away function creation as mentioned in `DebugImpl`.
+// PLT: ACK

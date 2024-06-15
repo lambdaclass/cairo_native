@@ -1,6 +1,7 @@
 .text
 
-
+// PLT: maybe name the branch targets to make flow easier to follow.
+// PLT: add link to calling conventions. Are these MacOS only or do they work on Linux as well?
 .global _invoke_trampoline
 _invoke_trampoline:
     // x0 <- fn_ptr: extern "C" fn()
@@ -42,6 +43,7 @@ _invoke_trampoline:
     // Process registers.
     //
 
+    // PLT: do we really need a Duff device here? If so, document why and how it works properly.
     adr     x0,     3f                      // Load address of label 3f.
     sub     x0,     x0,     x2,     lsl 2   // Subtract 4 * n_args.
     br      x0                              // Jump.
@@ -69,3 +71,5 @@ _invoke_trampoline:
     stp     x2,     x3,     [x4]
 
     ret
+
+// PLT: ACK

@@ -28,6 +28,7 @@ pub struct JitNativeExecutor<'m> {
     gas_metadata: GasMetadata,
 }
 
+// PLT: maybe use `Educe`
 impl std::fmt::Debug for JitNativeExecutor<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("JitNativeExecutor")
@@ -49,6 +50,8 @@ impl<'m> JitNativeExecutor<'m> {
             engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
+            // PLT: `metadata` is getting dropped anyway, so maybe use `remove` to skip the
+            // `cloned`.
             gas_metadata: metadata.get::<GasMetadata>().cloned().unwrap(),
         }
     }
@@ -121,6 +124,7 @@ impl<'m> JitNativeExecutor<'m> {
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
             .map_err(|_| crate::error::Error::InsufficientGasError)?;
+        // PLT: yes, do that.
         // TODO: Check signature for contract interface.
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
@@ -137,6 +141,9 @@ impl<'m> JitNativeExecutor<'m> {
             Some(syscall_handler),
         )?)
     }
+    // PLT: same comments about `invoke_*` functions in AOT apply here as well.
+    // PLT: I suspect most of the logic could be provided at the `enum-impl` level instead of
+    // these, saving repetition. We can probably implement only `invoke_dynamic_with_syscall_handler`.
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
         let function_name = generate_function_name(function_id);

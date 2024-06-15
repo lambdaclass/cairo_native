@@ -27,6 +27,10 @@ pub mod tail_recursion;
 #[cfg_attr(not(feature = "with-debug-utils"), derive(Default))]
 #[derive(Debug)]
 pub struct MetadataStorage {
+    // PLT: do we really need the `Box<dyn Any>`? Why not impl a trait that returns
+    // metadata for anything that implements Any instead, and store the result?
+    // PLT: second round: it seems what we really build here is singletons for some
+    // metafunctionality, rather than metadata about types.
     entries: HashMap<TypeId, Box<dyn Any>>,
 }
 
@@ -120,6 +124,7 @@ impl Default for MetadataStorage {
 mod test {
     use super::{runtime_bindings::RuntimeBindingsMeta, *};
 
+    // PLT: missing tests for most of the behavior
     #[test]
     fn runtime_library_insert_works() {
         let mut metadata = MetadataStorage::new();
@@ -128,3 +133,5 @@ mod test {
         assert!(ret.is_some());
     }
 }
+
+// PLT: ACK

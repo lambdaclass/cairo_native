@@ -2,6 +2,7 @@
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
 //! of time. It also provides a cache to avoid recompiling previously compiled programs.
+//! PLT: maybe extract the cache to a separate module to avoid mixing mechanism with policy.
 
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
@@ -38,12 +39,17 @@ mod jit;
 global_asm!(include_str!("arch/aarch64.s"));
 #[cfg(target_arch = "x86_64")]
 global_asm!(include_str!("arch/x86_64.s"));
+// PLT: do we need a third `cfg` to fail compilation when trying
+// to build for an unsupported arch?
 
 extern "C" {
     /// Invoke an AOT or JIT-compiled function.
     ///
     /// The `ret_ptr` argument is only used when the first argument (the actual return pointer) is
     /// unused. Used for u8, u16, u32, u64, u128 and felt252, but not for arrays, enums or structs.
+    /// PLT: what happens on MacOS? What happens on *BSD? I think this is implicitly for Linux
+    /// only. Unsupported targets should have an explicit build time failure with a reasonable
+    /// message.
     #[cfg_attr(not(target_os = "macos"), link_name = "_invoke_trampoline")]
     fn invoke_trampoline(
         fn_ptr: *const c_void,
@@ -137,6 +143,7 @@ impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
 ///
 /// Invokes the given function by constructing the function call depending on the arguments given.
 /// Usually calling a function requires knowing it's signature at compile time, but we need to be
+/// PLT: s/signatue/signature/
 /// able to call any given function provided it's signatue (arguments and return type) at runtime,
 /// to do so we have a "trampoline" in the given platform assembly (x86_64, aarch64) which
 /// constructs the function call in place.
@@ -152,6 +159,9 @@ fn invoke_dynamic(
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
     let arena = Bump::new();
+    // PLT: check what `ArgumentMapper` does with `arena`.
+    // PLT: check if we may need to preallocate here. Or if there is any real advantage from using
+    // bumpalo here.
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
 
     // Generate return pointer (if necessary).
@@ -160,6 +170,9 @@ fn invoke_dynamic(
     //   - There are more than one non-zst return values.
     //     - All builtins except GasBuiltin and Starknet are ZST.
     //     - The unit struct is a ZST.
+    //     PLT: empty enums and structs are ZSTs. May be obvious, but since we list unit struct I
+    //     guess we're trying to be exhaustive here.
+    //     PLT: it may be sensible to talk about "compound" rather than "complex" types.
     //   - The return argument is complex.
     let mut ret_types_iter = function_signature
         .ret_types
@@ -171,7 +184,14 @@ fn invoke_dynamic(
         .peekable();
 
     let num_return_args = ret_types_iter.clone().count();
+    // PLT: I think we could get away with implementing these type-bound methods for
+    // `Option<T: Type>` with `Some(v)` forwarding and `None` returning values that make sense
+    // (say, `None` may behave like the unit struct).
+    // That would cleanly remove all the `unwrap`s here.
+    // Alternatively, at least add a `debug_assert!` (or even `assert!` if we feel confident) that
+    // checks that all types in the function signature have a matching entry in the registry.
     let mut return_ptr = if num_return_args > 1
+        // PLT: this is rather hard to grok here, maybe extract to a variable.
         || ret_types_iter
             .peek()
             .is_some_and(|id| registry.get_type(id).unwrap().is_complex(registry))
@@ -240,6 +260,7 @@ fn invoke_dynamic(
                     if type_info.is_builtin() {
                         &JitValue::Uint64(0)
                     } else {
+                        // PLT: how do we ensure this is safe?
                         iter.next().unwrap()
                     },
                 )
@@ -266,10 +287,15 @@ fn invoke_dynamic(
     // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)
     #[cfg(feature = "with-cheatcode")]
     if let Some(previous_syscall_handler) = previous_syscall_handler {
+        // PLT: will this work properly in concurrent settings?
+        // Maybe we should pass an explicit vtable instead via context so they always belong only
+        // to the executing program.
         crate::starknet::SYSCALL_HANDLER_VTABLE.set(previous_syscall_handler);
     }
 
     // Parse final gas.
+    // PLT: this seems to implement an iterator-like logic for typed pointers. I would suggest
+    // renaming to something like `next_value` or `consume_value`.
     unsafe fn read_value<T>(ptr: &mut NonNull<()>) -> &T {
         let align_offset = ptr
             .cast::<u8>()
@@ -321,6 +347,8 @@ fn invoke_dynamic(
                     }
                 }
             }
+            // PLT: is the order guaranteed? Otherwise, a non-builtin return coming before the
+            // others would end the loop early and leave that data unhandled.
             _ => break,
         }
     }
@@ -339,6 +367,8 @@ fn invoke_dynamic(
                     registry,
                     return_ptr,
                     ret_registers,
+                    // PLT: "can not have" means it is impossible for them to have one or that it
+                    // is optional for them? I'd rephrase to "may not" in the latter case.
                     // TODO: Consider returning an Option<JitValue> as return_value instead
                     // As cairo functions can not have a return value
                 ))
@@ -351,6 +381,8 @@ fn invoke_dynamic(
             })
         })?;
 
+    // PLT: when will we fix this? Can the arena be privately part of `ExecutionResult` so we can
+    // drop it when we're done with it?
     // FIXME: Arena deallocation.
     std::mem::forget(arena);
 
@@ -382,7 +414,11 @@ impl<'a> ArgumentMapper<'a> {
     }
 
     pub fn push_aligned(&mut self, align: usize, mut values: &[u64]) {
+        // PLT: I'd advise against panic in a public function for a library. Consider returning a
+        // `Result` for invalid arguments.
         assert!(align.is_power_of_two());
+        // PLT: is a >16 bytes alignment really forbidden? I've seen it used for structures meant
+        // for SIMD operation.
         assert!(align <= 16);
 
         #[cfg(target_arch = "x86_64")]
@@ -396,6 +432,7 @@ impl<'a> ArgumentMapper<'a> {
 
             // Whenever a value spans across multiple registers, if it's in a position where it would be split between
             // registers and the stack it must be padded so that the entire value is stored within the stack.
+            // PLT: this needs better documentation.
             if self.invoke_data.len() >= NUM_REGISTER_ARGS {
                 if self.invoke_data.len() & 1 != 0 {
                     self.invoke_data.push(0);
@@ -406,6 +443,11 @@ impl<'a> ArgumentMapper<'a> {
                 let new_len = self.invoke_data.len() + values.len();
                 if new_len >= NUM_REGISTER_ARGS && new_len % 2 != 0 {
                     let chunk;
+                    // PLT: maybe use:
+                    // ```
+                    // (chunk, values) = values.split_at_checked(4)
+                    //     .unwrap_or_else(|| (values, [].as_slice())
+                    // ```
                     (chunk, values) = if values.len() >= 4 {
                         values.split_at(4)
                     } else {
@@ -428,15 +470,23 @@ impl<'a> ArgumentMapper<'a> {
     ) -> Result<(), Box<ProgramRegistryError>> {
         match (type_info, value) {
             (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
+                // PLT: yes, check and return an error.
                 // TODO: Assert that `info.ty` matches all the values' types.
 
                 let type_info = self.registry.get_type(&info.ty)?;
+                // PLT: is success guaranteed?
                 let type_layout = type_info.layout(self.registry).unwrap().pad_to_align();
 
                 // This needs to be a heap-allocated pointer because it's the actual array data.
+                // PLT: the if is not needed. Asking `malloc/realloc` for zero-sized allocations
+                // is well defined. It will return either `NULL` or a different, unique pointer
+                // that can be passed to `free`. For access we need to check bounds either way.
                 let ptr = if values.is_empty() {
                     null_mut()
                 } else {
+                    // PLT: why not malloc?
+                    // PLT: are ZST working correctly here? It needs to check on access to avoid
+                    // accessing a zero-sized allocation later on.
                     unsafe { libc::realloc(null_mut(), type_layout.size() * values.len()) }
                 };
 
@@ -448,6 +498,7 @@ impl<'a> ArgumentMapper<'a> {
                                 .unwrap()
                                 .cast()
                                 .as_ptr(),
+                            // PLT: this doesn't satisfy alignment AFAICT.
                             (ptr as usize + type_layout.size() * idx) as *mut u8,
                             type_layout.size(),
                         );
@@ -488,6 +539,7 @@ impl<'a> ArgumentMapper<'a> {
                             2 => *ptr.cast::<u16>().as_mut() = *tag as u16,
                             4 => *ptr.cast::<u32>().as_mut() = *tag as u32,
                             8 => *ptr.cast::<u64>().as_mut() = *tag as u64,
+                            // PLT: is repr(u128) forbidden? Signed reprs?
                             _ => unreachable!(),
                         }
                     }
@@ -536,14 +588,17 @@ impl<'a> ArgumentMapper<'a> {
                 );
             }
             (CoreTypeConcrete::Felt252Dict(_), JitValue::Felt252Dict { .. }) => {
+                // PLT: are we planning on implementing it?
                 #[cfg(not(feature = "with-runtime"))]
                 unimplemented!("enable the `with-runtime` feature to use felt252 dicts");
 
+                // PLT: yes, do it. But return an error, don't panic.
                 // TODO: Assert that `info.ty` matches all the values' types.
 
                 self.invoke_data.push(
                     value
                         .to_jit(self.arena, self.registry, type_id)
+                        // PLT: is success guaranteed?
                         .unwrap()
                         .as_ptr() as u64,
                 );
@@ -557,6 +612,8 @@ impl<'a> ArgumentMapper<'a> {
                     )?;
                 }
             }
+            // PLT: signedness doesn't matter here, so we can pair the arms.
+            // E.g.: (CoreTypeConcrete::Uint64(_), JitValue::Uint64(value))|(CoreTypeConcrete::Sint64(_), JitValue::Sint64(value))
             (CoreTypeConcrete::Uint128(_), JitValue::Uint128(value)) => self.push_aligned(
                 get_integer_layout(128).align(),
                 &[*value as u64, (value >> 64) as u64],
@@ -592,6 +649,7 @@ impl<'a> ArgumentMapper<'a> {
                 self.push_aligned(get_integer_layout(8).align(), &[*value as u64]);
             }
             (CoreTypeConcrete::NonZero(info), _) => {
+                // PLT: yes, check it.
                 // TODO: Check that the value is indeed non-zero.
                 let type_info = self.registry.get_type(&info.ty)?;
                 self.push(&info.ty, type_info, value)?;
@@ -631,6 +689,7 @@ fn parse_result(
     type_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     mut return_ptr: Option<NonNull<()>>,
+    // PLT: can we use the global const instead of cfg tags?
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> Result<JitValue, Error> {
@@ -677,6 +736,9 @@ fn parse_result(
                 // Since x86_64's return values hold at most two different 64bit registers,
                 // everything bigger than u128 will be returned by memory, therefore making
                 // this branch is unreachable on that architecture.
+                // PLT: consistency: either remove the other `unwrap`s in cases where data is
+                // guaranteed to spill to RAM, or make this one an `unreachable!` instead of
+                // an error.
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
@@ -694,6 +756,9 @@ fn parse_result(
                 // Since x86_64's return values hold at most two different 64bit registers,
                 // everything bigger than u128 will be returned by memory, therefore making
                 // this branch is unreachable on that architecture.
+                // PLT: consistency: either remove the other `unwrap`s in cases where data is
+                // guaranteed to spill to RAM, or make this one an `unreachable!` instead of
+                // an error.
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
@@ -743,6 +808,7 @@ fn parse_result(
         },
         CoreTypeConcrete::Sint128(_) => match return_ptr {
             Some(return_ptr) => Ok(JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() })),
+            // PLT: check signed shift semantics for Rust.
             None => Ok(JitValue::Sint128(
                 ((ret_registers[1] as i128) << 64) | ret_registers[0] as i128,
             )),
@@ -758,6 +824,7 @@ fn parse_result(
                 Ok(JitValue::Null)
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
+                // PLT: TODO: check that `JitValue` doesn't keep a copy of the pointer.
                 let value = JitValue::from_jit(ptr, &info.ty, registry);
                 libc::free(ptr.as_ptr().cast());
                 Ok(value)
@@ -768,6 +835,8 @@ fn parse_result(
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
 
             let (tag, ptr) = if type_info.is_memory_allocated(registry) || return_ptr.is_some() {
+                // PLT: this logic seems repeated for most of the enum handling, maybe it could be
+                // abstracted into a function.
                 let ptr = return_ptr.unwrap();
 
                 let tag = unsafe {
@@ -777,6 +846,7 @@ fn parse_result(
                         2 => *ptr.cast::<u16>().as_ref() as usize,
                         4 => *ptr.cast::<u32>().as_ref() as usize,
                         8 => *ptr.cast::<u64>().as_ref() as usize,
+                        // PLT: is repr(u64) the max?
                         _ => return Err(Error::ParseAttributeError),
                     }
                 };
@@ -811,6 +881,9 @@ fn parse_result(
             let value = match ptr {
                 Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)),
                 Err(offset) => {
+                    // PLT: this feels a bit magical and I can't really be sure about its
+                    // correctness. The fact that we encode the offset to copy from as an error
+                    // looks really unintuitive.
                     ret_registers.copy_within(offset.., 0);
                     Box::new(parse_result(
                         &info.variants[tag],
@@ -856,6 +929,7 @@ fn parse_result(
         | CoreTypeConcrete::Pedersen(_)
         | CoreTypeConcrete::Poseidon(_)
         | CoreTypeConcrete::SegmentArena(_) => unreachable!(),
+        // PLT: what is missing for these ones?
         CoreTypeConcrete::Felt252DictEntry(_)
         | CoreTypeConcrete::Span(_)
         | CoreTypeConcrete::Snapshot(_)
@@ -865,3 +939,10 @@ fn parse_result(
         | CoreTypeConcrete::StarkNet(_) => todo!(),
     }
 }
+
+// PLT: exactly 0 tests. Are we verifying somewhere else?
+// PLT: potential optimization: intern `debug_name`s or store a function pointer that returns it,
+// rather than forcing a string allocation for each value created. It's typically used in an error
+// path only. Or maybe even split the debug data to somewhere else or use a function to create the
+// strings.
+// PLT: ACK

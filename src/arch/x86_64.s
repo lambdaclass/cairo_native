@@ -1,11 +1,13 @@
 .text
 
 
+// PLT: document in more detail how the trampolines work.
 .global _invoke_trampoline
 _invoke_trampoline:
     # rdi <- fn_ptr: extern "C" fn()
     # rsi <- args_ptr: *const u64
     # rdx <- args_len: usize
+    # PLT: why is the pointer to [u64; 2] here but [u64; 4] for ARM?
     # rcx <- ret_ptr: &mut [u64; 2]
 
     push    rbp                     # Push rbp (callee-saved).
@@ -70,3 +72,4 @@ _invoke_trampoline:
     mov     [rcx + 8],  rdx
 
     ret
+// PLT: ACK

@@ -26,6 +26,8 @@ pub struct GasCost(pub Option<u128>);
 /// Configuration for metadata computation.
 #[derive(Debug, Clone)]
 pub struct MetadataComputationConfig {
+    // PLT: why are these `Ordered` rather than regular `HashMap`s? If there is a good reason, it
+    // should be documented.
     pub function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>>,
     // ignored, its always used
     pub linear_gas_solver: bool,
@@ -95,6 +97,7 @@ impl GasMetadata {
         Some(
             self.gas_info.function_costs[func]
                 .iter()
+                // PLT: this looks like the sum might overflow before conversion to `u128`.
                 .map(|(token_type, val)| val.into_or_panic::<usize>() * token_gas_cost(*token_type))
                 .sum::<usize>() as u128,
         )
@@ -129,6 +132,7 @@ impl GasMetadata {
 }
 
 impl Clone for GasMetadata {
+    // PLT: why not derive?
     fn clone(&self) -> Self {
         Self {
             ap_change_info: ApChangeInfo {
@@ -143,6 +147,8 @@ impl Clone for GasMetadata {
     }
 }
 
+// PLT: maybe keep these in a separate source file for vendored code?
+// PLT: it seems strange that we vendor this but still import things like `calc_ap_changes`.
 /// Methods from https://github.com/starkware-libs/cairo/blob/fbdbbe4c42a6808eccbff8436078f73d0710c772/crates/cairo-lang-sierra-to-casm/src/metadata.rs#L71
 
 /// Calculates the metadata for a Sierra program, with ap change info only.
@@ -197,3 +203,4 @@ fn calc_metadata(
         gas_info: pre_gas_info.combine(post_gas_info),
     })
 }
+// PLT: ACK

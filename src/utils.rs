@@ -42,6 +42,7 @@ pub const SHARED_LIBRARY_EXT: &str = "so";
 ///
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
 /// identifier number.
+/// PLT: why not just return an owned string? It's allocating one anyway.
 pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
     // Generic functions can omit their type in the debug_name, leading to multiple functions
     // having the same name, we solve this by adding the id number even if the function has a debug_name
@@ -372,6 +373,7 @@ where
     FmtWrapper(fmt)
 }
 
+// PLT: I think these has been stabilized.
 // POLYFILLS of nightly features
 
 #[inline]
@@ -390,6 +392,7 @@ pub const fn next_multiple_of_u32(lhs: u32, rhs: u32) -> u32 {
     }
 }
 
+// PLT: do you mean "note"?
 /// Edit: Copied from the std lib.
 ///
 /// Returns the amount of padding we must insert after `layout`

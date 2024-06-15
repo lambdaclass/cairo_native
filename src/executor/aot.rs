@@ -70,6 +70,8 @@ impl AotNativeExecutor {
         args: &[JitValue],
         gas: Option<u128>,
     ) -> Result<ExecutionResult, Error> {
+        // PLT: this could be a call to `invoke_dynamic_with_syscall_handler` with
+        // `Option::<DummySyscallHandler>::None` as `syscall_handler`.
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
@@ -114,6 +116,8 @@ impl AotNativeExecutor {
         gas: Option<u128>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, Error> {
+        // PLT: this could be a call to `invoke_dynamic_with_syscall_handler` on prepared arguments
+        // and a passing of its result to `ContractExecutionResult::from_execution_result`.
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
@@ -134,6 +138,7 @@ impl AotNativeExecutor {
             Some(syscall_handler),
         )?)
     }
+    // PLT: the `invoke_*` methods need proper documentation of usecases.
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
         let function_name = generate_function_name(function_id);
@@ -143,13 +148,14 @@ impl AotNativeExecutor {
         unsafe {
             self.library
                 .get::<extern "C" fn()>(function_name.as_bytes())
-                .unwrap()
+                .unwrap() // PLT: maybe return an error?
                 .into_raw()
                 .into_raw()
         }
     }
 
     fn extract_signature(&self, function_id: &FunctionId) -> &FunctionSignature {
+        // PLT: maybe return an error?
         &self.registry.get_function(function_id).unwrap().signature
     }
 }
@@ -284,3 +290,5 @@ mod tests {
         assert_eq!(result.return_values, vec![Felt::from(42)]);
     }
 }
+// PLT: maybe use some test utils to reduce boilerplate.
+// PLT: ACK

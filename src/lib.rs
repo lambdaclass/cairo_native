@@ -23,6 +23,8 @@
 //!
 //! let program_path = Path::new("programs/examples/hello.cairo");
 //! // Compile the cairo program to sierra.
+//! // PLT: could this be extracted to a separate crate?
+//! // That would aid reusability and save a heavyweight dependency for users of the JIT only.
 //! let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 //!
 //! // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
@@ -33,6 +35,8 @@
 //! let native_program = native_context.compile(&sierra_program, None).unwrap();
 //!
 //! // The parameters of the entry point.
+//! // PLT: could implement `From<Felt> for JitValue::Felt252` so this becomes a call to `into`.
+//! // PLT: does JitValue work for AOT? Why call it JitValue?
 //! let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
 //!
 //! // Find the entry point id by its name.
@@ -64,6 +68,9 @@
 //!
 //! ## Project layout
 //!
+//! // PLT: lexicographic order could make this prettier and easier to compare with `ls` output.
+//! // PLT: the layout seems outdated. Missing cache.rs and cache dir, debug_info, values.rs.
+//! // PLT: should use `tree` or `ls` to update this.
 //! ```txt
 //!  src
 //!  ├─ context.rs - The MLIR context wrapper, provides the compile method.
@@ -80,12 +87,14 @@
 //!  ├─ ffi.rs - Missing FFI C wrappers, rust side.
 //!  ├─ block_ext.rs - A melior (MLIR) block trait extension to write less code.
 //!  ├─ lib.rs - The main lib file.
+//!  PLT: s/Program result/Program execution result/
 //!  ├─ execution_result.rs - Program result parsing.
 //!  ├─ values.rs - JIT serialization.
 //!  ├─ metadata.rs - Metadata injector to use within the compilation process.
 //!  ├─ compiler.rs - The glue code of the compiler, has the codegen for the function signatures
 //!  and calls the libfunc codegen implementations.
 //!  ├─ error.rs - Error handling
+//!  // PLT: which ones? For what? Seem to contain source code.
 //!  ├─ bin - Binary programs
 //!  ├─ types - Cairo to MLIR type information
 //! ```
@@ -114,3 +123,4 @@ pub mod starknet;
 pub mod types;
 pub mod utils;
 pub mod values;
+// PLT: ACK

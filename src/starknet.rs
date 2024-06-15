@@ -1,3 +1,5 @@
+//! PLT: TODO: (nota personal): lunes al final del día si veo que me queda para solo un día más ya avisar
+//! a Lean que vuelvo el miércoles.
 //! Starknet related code for `cairo_native`
 
 use starknet_types_core::felt::Felt;
@@ -435,6 +437,7 @@ impl StarknetSyscallHandler for DummySyscallHandler {
     }
 }
 
+// PLT: TODO: check this module carefully, see if indeed unused.
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
@@ -546,6 +549,11 @@ pub(crate) mod handler {
     #[repr(C)]
     #[derive(Debug)]
     pub struct StarknetSyscallHandlerCallbacks<'a, T> {
+        // PLT: this could be a pointer and a `PhantomData`.
+        // The pointer could be to `()` and the `new` method receive a trait object.
+        // This way we keep the check for type compliance at compile-time without having to use
+        // generics, and we still only use the methods in the structure and opaque pointers.
+        // This also saves us from extra monomorphization and from having to use dummy types.
         self_ptr: &'a mut T,
 
         get_block_hash: extern "C" fn(

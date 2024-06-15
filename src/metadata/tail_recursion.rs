@@ -4,6 +4,7 @@
 //! If the libfunc handler decides to use it by setting a return target, the compiler will insert
 //! the required instructions to make it really tail-recursive.
 //!
+//! PLT: consider simply applying to all tail-calls. If the stack data can be recycled, just jump.
 //! Directly recursive functions are detected by checking if the current statement is a function
 //! call. Indirect recursion is not handled and generates normal recursive code.
 //!
@@ -83,3 +84,5 @@ impl TailRecursionMeta {
         self.return_target = Some(block.to_raw());
     }
 }
+// PLT: TODO: do a second round after checking usage.
+// PLT: ACK

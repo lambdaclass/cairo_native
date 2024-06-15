@@ -36,16 +36,23 @@ pub struct ContractExecutionResult {
 }
 
 impl ContractExecutionResult {
+    // PLT: s/ExecuteResult/ExecutionResult/
+    // PLT: why not just an `impl TryFrom`?
     /// Convert a [`ExecuteResult`] to a [`NativeExecutionResult`]
     pub fn from_execution_result(result: ExecutionResult) -> Result<Self, Error> {
         let mut error_msg = None;
         let failure_flag;
 
+        // PLT: it's late and this is quite ugly code, I'm not sure I can grok it today.
+        // It could be made flatter I think.
+        // The error message is almost always the same, so maybe we could use an inner function
+        // that returns `Some` on success and `None` on error and use `ok_or_else` on the output.
         let return_values = match &result.return_value {
             JitValue::Enum { tag, value, .. } => {
                 failure_flag = *tag != 0;
 
                 if !failure_flag {
+                    // PLT: flatten this, e.g. with `let-else`.
                     if let JitValue::Struct { fields, .. } = &**value {
                         if let JitValue::Struct { fields, .. } = &fields[0] {
                             if let JitValue::Array(data) = &fields[0] {
@@ -136,3 +143,4 @@ impl ContractExecutionResult {
         })
     }
 }
+// PLT: ACK

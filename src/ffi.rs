@@ -40,6 +40,7 @@ extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
 
     /// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
+    /// PLT: s/dilalect/dialect/
     /// This translates operations from any dilalect that has a registered implementation of LLVMTranslationDialectInterface.
     fn mlirTranslateModuleToLLVMIR(
         module_operation_ptr: MlirOperation,
@@ -140,6 +141,7 @@ pub fn module_to_object(
         let target_cpu = LLVMGetHostCPUName();
         let target_cpu_features = LLVMGetHostCPUFeatures();
 
+        // PLT: extract to helper `get_target`.
         let mut target: MaybeUninit<LLVMTargetRef> = MaybeUninit::uninit();
 
         if LLVMGetTargetFromTriple(target_triple, target.as_mut_ptr(), error_buffer) != 0 {
@@ -153,12 +155,15 @@ pub fn module_to_object(
         }
 
         let target = target.assume_init();
+        // PLT: end `get_target`.
 
         let machine = LLVMCreateTargetMachine(
             target,
             target_triple.cast(),
             target_cpu.cast(),
             target_cpu_features.cast(),
+            // PLT: implement `From<OptLevel> for LLVMCodeGenOptLevel`.
+            // Then call this with `opt_level.into()`.
             match opt_level {
                 OptLevel::None => LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
                 OptLevel::Less => LLVMCodeGenOptLevel::LLVMCodeGenLevelLess,
@@ -307,6 +312,7 @@ pub fn get_data_layout_rep() -> Result<String, CompileError> {
 
         let target_cpu_features = LLVMGetHostCPUFeatures();
 
+        // PLT: use `get_target` helper.
         let mut target: MaybeUninit<LLVMTargetRef> = MaybeUninit::uninit();
 
         if LLVMGetTargetFromTriple(target_triple, target.as_mut_ptr(), error_buffer) != 0 {
@@ -321,6 +327,7 @@ pub fn get_data_layout_rep() -> Result<String, CompileError> {
         }
 
         let target = target.assume_init();
+        // PLT: end `get_target`.
 
         let machine = LLVMCreateTargetMachine(
             target,
@@ -378,3 +385,4 @@ mod tests {
         assert_eq!(OptLevel::from(30u8), OptLevel::Aggressive);
     }
 }
+// PLT: ACK

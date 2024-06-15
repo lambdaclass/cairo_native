@@ -9,6 +9,8 @@
 #include <mlir/Target/LLVMIR/ModuleTranslation.h>
 
 
+// PLT: I need docs on this. I'm assuming Melior doesn't implement these because of a lack of a C API.
+// If that's the case, a comment mentioning the last versions of both Melior and MLIR we checked that lacked it.
 extern "C" const void *LLVMStructType_getFieldTypeAt(const void *ty_ptr, unsigned index)
 {
     mlir::LLVM::LLVMStructType type = mlir::LLVM::LLVMStructType::getFromOpaquePointer(ty_ptr);
@@ -29,3 +31,4 @@ extern "C" LLVMModuleRef mlirTranslateModuleToLLVMIR(MlirOperation module,
 
   return moduleRef;
 }
+// PLT: ACK

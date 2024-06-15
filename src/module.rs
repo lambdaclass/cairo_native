@@ -71,6 +71,7 @@ impl<'m> NativeModule<'m> {
     }
 }
 
+// PLT: since we already use Educe, this could be replaced by an Educe derive.
 impl Debug for NativeModule<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.module.as_operation().to_string())
@@ -85,6 +86,8 @@ mod test {
     use melior::ir::Location;
     use starknet_types_core::felt::Felt;
 
+    // PLT: make a test helper to reduce boilerplate.
+    // E.g., it could create the context, location and module.
     #[test]
     fn test_insert_metadata() {
         // Create a new context for MLIR operations
@@ -168,3 +171,4 @@ mod test {
         assert_eq!(module.get_metadata::<u32>(), Some(&44u32));
     }
 }
+// PLT: ACK

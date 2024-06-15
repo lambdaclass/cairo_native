@@ -11,6 +11,9 @@ use melior::{
 };
 use std::{collections::HashMap, sync::Arc};
 
+// PLT: for<'lifetime> is a rather obscure feature of Rust. I suggest commenting:
+// 1. What it does, with a link to docs.
+// 2. Why we use it and whether there are other alternatives.
 pub type CloneFn<P> = for<'ctx, 'this> fn(
     &'ctx Context,
     &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -68,3 +71,4 @@ impl SnapshotClonesMeta {
         self.mappings.get(id).cloned()
     }
 }
+// PLT: ACK
