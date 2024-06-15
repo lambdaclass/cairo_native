@@ -851,108 +851,65 @@ mod test {
 
     #[test]
     fn test_breakpoint_marker() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new context for the test.
         let context = Context::new();
-        // Create an unknown location within the context.
         let location = Location::unknown(&context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Call the breakpoint_marker function with the context, module, block, and location.
         let res = debug_utils.breakpoint_marker(&context, &module, &block, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Create a set with the expected active debug binding.
         let expected_active_map: HashSet<_> =
             vec![DebugBinding::BreakpointMarker].into_iter().collect();
 
-        // Assert that the active_map of debug_utils matches the expected set.
         assert_eq!(debug_utils.active_map, expected_active_map);
     }
 
     #[test]
     fn test_debug_print() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
-
-        // Define the message to be printed.
         let message = "random message!";
 
-        // Call the debug_print function with the context, module, block, message, and location.
         let res = debug_utils.debug_print(context, &module, &block, message, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Create a set with the expected active debug binding.
         let expected_active_map: HashSet<_> = vec![DebugBinding::DebugPrint].into_iter().collect();
 
-        // Assert that the active_map of debug_utils matches the expected set.
         assert_eq!(debug_utils.active_map, expected_active_map);
     }
 
     #[test]
     fn test_debug_breakpoint_trap() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Call the debug_breakpoint_trap function with the block and location.
         let res = debug_utils.debug_breakpoint_trap(&block, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Assert that the active_map in debug_utils is still empty
         assert!(debug_utils.active_map.is_empty());
     }
 
     #[test]
     fn test_print_pointer() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, an integer constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -963,13 +920,10 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_pointer function with the context, module, block, value, and location.
         let res = debug_utils.print_pointer(context, &module, &block, value, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Ensure that the active_map contains the DebugBinding::PrintPointer after calling print_pointer.
         let expected_active_map: HashSet<_> =
             vec![DebugBinding::PrintPointer].into_iter().collect();
         assert_eq!(debug_utils.active_map, expected_active_map);
@@ -977,22 +931,13 @@ mod test {
 
     #[test]
     fn test_print_i1() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, a boolean constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1003,13 +948,10 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_i1 function with the context, module, block, value, and location.
         let res = debug_utils.print_i1(context, &module, &block, value, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Ensure that the active_map contains the DebugBinding::PrintI1 after calling print_i1.
         let expected_active_map = [DebugBinding::PrintI1]
             .iter()
             .cloned()
@@ -1019,22 +961,13 @@ mod test {
 
     #[test]
     fn test_print_felt252() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, a felt252 constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1045,13 +978,10 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_felt252 function with the context, module, block, value, and location.
         let res = debug_utils.print_felt252(context, &module, &block, value, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Ensure that the active_map contains the DebugBinding::PrintFelt252 after calling print_felt252.
         let expected_active_map = [DebugBinding::PrintFelt252]
             .iter()
             .cloned()
@@ -1061,22 +991,13 @@ mod test {
 
     #[test]
     fn test_print_i8() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, an i8 constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1087,13 +1008,10 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_i8 function with the context, module, block, value, and location.
         let res = debug_utils.print_i8(context, &module, &block, value, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Ensure that the active_map contains the DebugBinding::PrintI8 after calling print_i8.
         let expected_active_map = [DebugBinding::PrintI8]
             .iter()
             .cloned()
@@ -1103,22 +1021,13 @@ mod test {
 
     #[test]
     fn test_print_i32() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, an i32 constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1129,13 +1038,10 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_i32 function with the context, module, block, value, and location.
         let res = debug_utils.print_i32(context, &module, &block, value, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Ensure that the active_map contains the DebugBinding::PrintI32 after calling print_i32.
         let expected_active_map = [DebugBinding::PrintI32]
             .iter()
             .cloned()
@@ -1145,22 +1051,13 @@ mod test {
 
     #[test]
     fn test_print_i64() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, an i64 constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1171,13 +1068,10 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_i64 function with the context, module, block, value, and location.
         let res = debug_utils.print_i64(context, &module, &block, value, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Ensure that the active_map contains the DebugBinding::PrintI64 after calling print_i64.
         let expected_active_map = [DebugBinding::PrintI64]
             .iter()
             .cloned()
@@ -1187,22 +1081,13 @@ mod test {
 
     #[test]
     fn test_print_i128() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, an i128 constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1213,13 +1098,10 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_i128 function with the context, module, block, value, and location.
         let res = debug_utils.print_i128(context, &module, &block, value, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Ensure that the active_map contains the DebugBinding::PrintI128 after calling print_i128.
         let expected_active_map = [DebugBinding::PrintI128]
             .iter()
             .cloned()
@@ -1229,22 +1111,13 @@ mod test {
 
     #[test]
     fn test_dump_mem() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a pointer value (e.g., an opaque pointer) to be dumped.
         let ptr = block
             .append_operation(arith::constant(
                 context,
@@ -1258,13 +1131,10 @@ mod test {
         // Define the length of the memory region to be dumped.
         let len = 100;
 
-        // Call the dump_mem function with the context, module, block, pointer, length, and location.
         let res = debug_utils.dump_mem(context, &module, &block, ptr, len, location);
 
-        // Assert that the result is Ok, indicating success.
         assert!(res.is_ok());
 
-        // Ensure that the active_map contains the DebugBinding::DumpMemRegion after calling dump_mem.
         let expected_active_map = [DebugBinding::DumpMemRegion]
             .iter()
             .cloned()
@@ -1274,42 +1144,24 @@ mod test {
 
     #[test]
     fn test_register_impl_break_point_marker() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
-
-        // Call the breakpoint_marker function with the context, module, block, and location.
         let _ = debug_utils.breakpoint_marker(context, &module, &block, location);
 
-        // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
-        // Compile the Cairo program to Sierra.
         let sierra_program = utils::cairo_to_sierra(program_path);
 
-        // Instantiate a Cairo Native MLIR context. This data structure is responsible for MLIR
-        // initialization and compilation of Sierra programs into an MLIR module.
         let native_context = NativeContext::new();
-
-        // Compile the Sierra program into an MLIR module.
         let native_program = native_context.compile(&sierra_program, None).unwrap();
 
-        // Create an execution engine for the MLIR module.
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
-        // Register debug implementations in the engine.
         debug_utils.register_impls(&engine);
 
-        // Verify that the debug functions are properly registered in the engine.
         assert!(!engine.lookup("__debug__breakpoint_marker").is_null());
         assert!(engine.lookup("__debug__debug_print_impl").is_null());
         assert!(engine.lookup("__debug__print_i1").is_null());
@@ -1324,37 +1176,24 @@ mod test {
 
     #[test]
     fn test_register_impl_debug_print_impl() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Call the debug_print function with the context, module, block, and message.
         let _ = debug_utils.debug_print(context, &module, &block, "Test message", location);
 
-        // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
-        // Compile the Cairo program to Sierra.
         let sierra_program = utils::cairo_to_sierra(program_path);
-        // Instantiate a Cairo Native MLIR context.
         let native_context = NativeContext::new();
-        // Compile the Sierra program into an MLIR module.
         let native_program = native_context.compile(&sierra_program, None).unwrap();
-        // Create an execution engine for the MLIR module.
+
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
-        // Register debug implementations in the engine.
         debug_utils.register_impls(&engine);
 
-        // Verify that the debug functions are properly registered in the engine.
         assert!(!engine.lookup("__debug__debug_print_impl").is_null());
         assert!(engine.lookup("__debug__breakpoint_marker").is_null());
         assert!(engine.lookup("__debug__print_i1").is_null());
@@ -1369,20 +1208,13 @@ mod test {
 
     #[test]
     fn test_register_impl_print_i1() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, a boolean constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1393,24 +1225,17 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_i1 function with the context, module, block, and value.
         let _ = debug_utils.print_i1(context, &module, &block, value, location);
 
-        // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
-        // Compile the Cairo program to Sierra.
         let sierra_program = utils::cairo_to_sierra(program_path);
-        // Instantiate a Cairo Native MLIR context.
         let native_context = NativeContext::new();
-        // Compile the Sierra program into an MLIR module.
         let native_program = native_context.compile(&sierra_program, None).unwrap();
-        // Create an execution engine for the MLIR module.
+
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
-        // Register debug implementations in the engine.
         debug_utils.register_impls(&engine);
 
-        // Verify that the debug functions are properly registered in the engine.
         assert!(!engine.lookup("__debug__print_i1").is_null());
         assert!(engine.lookup("__debug__breakpoint_marker").is_null());
         assert!(engine.lookup("__debug__debug_print_impl").is_null());
@@ -1425,20 +1250,13 @@ mod test {
 
     #[test]
     fn test_register_impl_print_i8() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, an 8-bit integer constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1449,24 +1267,16 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_i8 function with the context, module, block, and value.
         let _ = debug_utils.print_i8(context, &module, &block, value, location);
 
-        // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
-        // Compile the Cairo program to Sierra.
         let sierra_program = utils::cairo_to_sierra(program_path);
-        // Instantiate a Cairo Native MLIR context.
         let native_context = NativeContext::new();
-        // Compile the Sierra program into an MLIR module.
         let native_program = native_context.compile(&sierra_program, None).unwrap();
-        // Create an execution engine for the MLIR module.
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
-        // Register debug implementations in the engine.
         debug_utils.register_impls(&engine);
 
-        // Verify that the debug functions are properly registered in the engine.
         assert!(!engine.lookup("__debug__print_i8").is_null());
         assert!(engine.lookup("__debug__breakpoint_marker").is_null());
         assert!(engine.lookup("__debug__debug_print_impl").is_null());
@@ -1481,20 +1291,13 @@ mod test {
 
     #[test]
     fn test_register_impl_print_i32() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, a 32-bit integer constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1505,24 +1308,15 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_i32 function with the context, module, block, and value.
         let _ = debug_utils.print_i32(context, &module, &block, value, location);
-
-        // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
-        // Compile the Cairo program to Sierra.
         let sierra_program = utils::cairo_to_sierra(program_path);
-        // Instantiate a Cairo Native MLIR context.
         let native_context = NativeContext::new();
-        // Compile the Sierra program into an MLIR module.
         let native_program = native_context.compile(&sierra_program, None).unwrap();
-        // Create an execution engine for the MLIR module.
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
-        // Register debug implementations in the engine.
         debug_utils.register_impls(&engine);
 
-        // Verify that the debug functions are properly registered in the engine.
         assert!(!engine.lookup("__debug__print_i32").is_null());
         assert!(engine.lookup("__debug__breakpoint_marker").is_null());
         assert!(engine.lookup("__debug__debug_print_impl").is_null());
@@ -1538,20 +1332,13 @@ mod test {
     /// Test to verify the registration of `print_i64` implementation.
     #[test]
     fn test_register_impl_print_i64() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, a 64-bit integer constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1562,24 +1349,16 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_i64 function with the context, module, block, and value.
         let _ = debug_utils.print_i64(context, &module, &block, value, location);
 
-        // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
-        // Compile the Cairo program to Sierra.
         let sierra_program = utils::cairo_to_sierra(program_path);
-        // Instantiate a Cairo Native MLIR context.
         let native_context = NativeContext::new();
-        // Compile the Sierra program into an MLIR module.
         let native_program = native_context.compile(&sierra_program, None).unwrap();
-        // Create an execution engine for the MLIR module.
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
-        // Register debug implementations in the engine.
         debug_utils.register_impls(&engine);
 
-        // Verify that the debug functions are properly registered in the engine.
         assert!(!engine.lookup("__debug__print_i64").is_null());
         assert!(engine.lookup("__debug__breakpoint_marker").is_null());
         assert!(engine.lookup("__debug__debug_print_impl").is_null());
@@ -1592,23 +1371,15 @@ mod test {
         assert!(engine.lookup("__debug__dump_mem").is_null());
     }
 
-    /// Test to verify the registration of `print_i128` implementation.
     #[test]
     fn test_register_impl_print_i128() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, a 128-bit integer constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1619,24 +1390,20 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_i128 function with the context, module, block, and value.
         let _ = debug_utils.print_i128(context, &module, &block, value, location);
 
-        // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
-        // Compile the Cairo program to Sierra.
+
         let sierra_program = utils::cairo_to_sierra(program_path);
-        // Instantiate a Cairo Native MLIR context.
+
         let native_context = NativeContext::new();
-        // Compile the Sierra program into an MLIR module.
+
         let native_program = native_context.compile(&sierra_program, None).unwrap();
-        // Create an execution engine for the MLIR module.
+
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
-        // Register debug implementations in the engine.
         debug_utils.register_impls(&engine);
 
-        // Verify that the debug functions are properly registered in the engine.
         assert!(!engine.lookup("__debug__print_i128").is_null());
         assert!(engine.lookup("__debug__breakpoint_marker").is_null());
         assert!(engine.lookup("__debug__debug_print_impl").is_null());
@@ -1651,20 +1418,13 @@ mod test {
 
     #[test]
     fn test_register_impl_print_pointer() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, a pointer constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1675,24 +1435,16 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_pointer function with the context, module, block, and value.
         let _ = debug_utils.print_pointer(context, &module, &block, value, location);
 
-        // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
-        // Compile the Cairo program to Sierra.
         let sierra_program = utils::cairo_to_sierra(program_path);
-        // Instantiate a Cairo Native MLIR context.
         let native_context = NativeContext::new();
-        // Compile the Sierra program into an MLIR module.
         let native_program = native_context.compile(&sierra_program, None).unwrap();
-        // Create an execution engine for the MLIR module.
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
-        // Register debug implementations in the engine.
         debug_utils.register_impls(&engine);
 
-        // Verify that the debug functions are properly registered in the engine.
         assert!(!engine.lookup("__debug__print_pointer").is_null());
         assert!(engine.lookup("__debug__breakpoint_marker").is_null());
         assert!(engine.lookup("__debug__debug_print_impl").is_null());
@@ -1707,20 +1459,13 @@ mod test {
 
     #[test]
     fn test_register_impl_print_felt252() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a value to be printed (for example, a felt252 constant).
         let value = block
             .append_operation(arith::constant(
                 context,
@@ -1731,24 +1476,16 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the print_felt252 function with the context, module, block, and value.
         let _ = debug_utils.print_felt252(context, &module, &block, value, location);
 
-        // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
-        // Compile the Cairo program to Sierra.
         let sierra_program = utils::cairo_to_sierra(program_path);
-        // Instantiate a Cairo Native MLIR context.
         let native_context = NativeContext::new();
-        // Compile the Sierra program into an MLIR module.
         let native_program = native_context.compile(&sierra_program, None).unwrap();
-        // Create an execution engine for the MLIR module.
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
-        // Register debug implementations in the engine.
         debug_utils.register_impls(&engine);
 
-        // Verify that the debug functions are properly registered in the engine.
         assert!(!engine.lookup("__debug__print_felt252").is_null());
         assert!(engine.lookup("__debug__breakpoint_marker").is_null());
         assert!(engine.lookup("__debug__debug_print_impl").is_null());
@@ -1763,20 +1500,13 @@ mod test {
 
     #[test]
     fn test_register_impl_dump_mem() {
-        // Create a default instance of DebugUtils.
         let mut debug_utils = DebugUtils::default();
-        // Create a new native context for the test.
         let native_context = NativeContext::new();
-        // Get the context from the native context.
         let context = native_context.context();
-        // Create an unknown location within the context.
         let location = Location::unknown(context);
-        // Create a new module with the given location.
         let module = Module::new(location);
-        // Create a new block with no instructions.
         let block = Block::new(&[]);
 
-        // Create a pointer value to be dumped (for example, a pointer constant).
         let ptr_value = block
             .append_operation(arith::constant(
                 context,
@@ -1787,24 +1517,16 @@ mod test {
             .unwrap()
             .into();
 
-        // Call the dump_mem function with the context, module, block, pointer value, length, and location.
         let _ = debug_utils.dump_mem(context, &module, &block, ptr_value, 10, location);
 
-        // Path to the Cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
-        // Compile the Cairo program to Sierra.
         let sierra_program = utils::cairo_to_sierra(program_path);
-        // Instantiate a Cairo Native MLIR context.
         let native_context = NativeContext::new();
-        // Compile the Sierra program into an MLIR module.
         let native_program = native_context.compile(&sierra_program, None).unwrap();
-        // Create an execution engine for the MLIR module.
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
-        // Register debug implementations in the engine.
         debug_utils.register_impls(&engine);
 
-        // Verify that the debug functions are properly registered in the engine.
         assert!(!engine.lookup("__debug__dump_mem").is_null());
         assert!(engine.lookup("__debug__breakpoint_marker").is_null());
         assert!(engine.lookup("__debug__debug_print_impl").is_null());
