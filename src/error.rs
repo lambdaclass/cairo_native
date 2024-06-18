@@ -23,9 +23,6 @@ pub enum Error {
     #[error("unexpected value, expected value of type '{0}'")]
     UnexpectedValue(String),
 
-    #[error("not enough gas to run")]
-    InsufficientGasError,
-
     #[error("a syscall handler was expected but was not provided")]
     MissingSyscallHandler,
 
@@ -53,7 +50,7 @@ pub enum Error {
     #[error(transparent)]
     EditStateError(#[from] EditStateError),
 
-    #[error("gas metadata error")]
+    #[error(transparent)]
     GasMetadataError(#[from] GasMetadataError),
 
     #[error("llvm error")]

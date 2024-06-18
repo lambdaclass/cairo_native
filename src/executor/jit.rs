@@ -73,7 +73,7 @@ impl<'m> JitNativeExecutor<'m> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::Error::InsufficientGasError)?;
+            .map_err(crate::error::Error::GasMetadataError)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -98,7 +98,7 @@ impl<'m> JitNativeExecutor<'m> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::Error::InsufficientGasError)?;
+            .map_err(crate::error::Error::GasMetadataError)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -120,7 +120,7 @@ impl<'m> JitNativeExecutor<'m> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::Error::InsufficientGasError)?;
+            .map_err(crate::error::Error::GasMetadataError)?;
         // TODO: Check signature for contract interface.
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
