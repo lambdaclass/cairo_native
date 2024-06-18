@@ -625,7 +625,7 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(align) = align {
             op.set_alignment(IntegerAttribute::new(
                 IntegerType::new(context, <span class="number">64</span>).into(),
-                align <span class="kw">as </span>i64,
+                align.try_into()<span class="question-mark">?</span>,
             ));
         }
 
