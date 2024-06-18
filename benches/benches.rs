@@ -183,15 +183,13 @@ fn load_contract_for_vm(path: impl AsRef<Path>) -> SierraCasmRunner {
     let contracts_info =
         get_contracts_info(&db, main_crate_ids, &replacer).expect("failed to get contracts info");
 
-    let runner = SierraCasmRunner::new(
+    SierraCasmRunner::new(
         program.clone(),
         Some(Default::default()),
         contracts_info,
         None,
     )
-    .expect("failed to create runner");
-
-    runner
+    .expect("failed to create runner")
 }
 
 criterion_group!(benches, criterion_benchmark);
