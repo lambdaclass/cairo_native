@@ -5,7 +5,7 @@ use std::ops::Shr;
 use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
-    error::{Error, Result},
+    error::{Error, Result, SierraAssertError},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::TypeBuilder,
 };
@@ -65,12 +65,12 @@ pub fn build_downcast<'ctx, 'this>(
 
     let src_type = registry.get_type(&info.from_ty)?;
     let dst_type = registry.get_type(&info.to_ty)?;
-    let src_width = src_type.integer_width().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
-    })?;
-    let dst_width = dst_type.integer_width().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
-    })?;
+    let src_width = src_type
+        .integer_width()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
+    let dst_width = dst_type
+        .integer_width()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
 
     let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
     let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
@@ -81,12 +81,12 @@ pub fn build_downcast<'ctx, 'this>(
         location,
     );
 
-    let src_is_signed = src_type.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
-    })?;
-    let dst_is_signed = dst_type.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
-    })?;
+    let src_is_signed = src_type
+        .is_integer_signed()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
+    let dst_is_signed = dst_type
+        .is_integer_signed()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
     let any_is_signed = src_is_signed | dst_is_signed;
     let src_is_felt = matches!(
         src_type,
@@ -188,18 +188,18 @@ pub fn build_downcast<'ctx, 'this>(
             (result, dst_ty)
         };
 
-        let mut int_max_value: BigInt = info
+        let info_range = info
             .to_range
             .intersection(&info.from_range)
-            .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
-            .upper
-            - 1;
+            .ok_or_else(|| {
+                Error::SierraAssert(SierraAssertError::Range {
+                    ranges: Box::new((info.from_range.clone(), info.to_range.clone())),
+                })
+            })?;
 
-        let mut int_min_value = info
-            .to_range
-            .intersection(&info.from_range)
-            .ok_or_else(|| Error::SierraAssert("range should always interesct".to_string()))?
-            .lower;
+        let mut int_max_value: BigInt = info_range.upper - 1;
+
+        let mut int_min_value = info_range.lower;
 
         if dst_is_felt {
             let prime = &metadata
@@ -290,17 +290,17 @@ pub fn build_upcast<'ctx, 'this>(
         location,
     );
 
-    let src_width = src_ty.integer_width().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
-    })?;
-    let dst_width = dst_ty.integer_width().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
-    })?;
+    let src_width = src_ty
+        .integer_width()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
+    let dst_width = dst_ty
+        .integer_width()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
     assert!(src_width <= dst_width);
 
-    let is_signed = src_ty.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert("casts always happen between numerical types".to_string())
-    })?;
+    let is_signed = src_ty
+        .is_integer_signed()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
 
     let is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
 
