@@ -1,7 +1,10 @@
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
+use cairo_lang_runner::{SierraCasmRunner, StarknetState};
 use cairo_lang_sierra::program::Program;
+use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
+use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     cache::{AotProgramCache, JitProgramCache},
     context::NativeContext,
@@ -19,6 +22,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let factorial = load_contract("programs/benches/factorial_2M.cairo");
     let fibonacci = load_contract("programs/benches/fib_2M.cairo");
+    let fibonacci_runner = load_contract_for_vm("programs/benches/fib_2M.cairo");
     let logistic_map = load_contract("programs/benches/logistic_map.cairo");
 
     let aot_factorial = aot_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::None);
@@ -54,6 +58,20 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     c.bench_function("Cached AOT logistic_map", |b| {
         b.iter(|| aot_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX)));
+    });
+
+    let fibonacci_function = fibonacci_runner
+        .find_function("main")
+        .expect("failed to find main function");
+    c.bench_function("VM fib_2M", |b| {
+        b.iter(|| {
+            fibonacci_runner.run_function_with_starknet_context(
+                fibonacci_function,
+                &[],
+                Some(usize::MAX),
+                StarknetState::default(),
+            )
+        });
     });
 
     #[cfg(target_arch = "x86_64")]
@@ -143,6 +161,37 @@ fn load_contract(path: impl AsRef<Path>) -> Program {
         },
     )
     .unwrap()
+}
+
+fn load_contract_for_vm(path: impl AsRef<Path>) -> SierraCasmRunner {
+    let mut db = RootDatabase::builder()
+        .detect_corelib()
+        .build()
+        .expect("failed to build database");
+    let main_crate_ids = setup_project(&mut db, path.as_ref()).expect("failed to setup project");
+    let program = compile_prepared_db(
+        &mut db,
+        main_crate_ids.clone(),
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )
+    .expect("failed to compile program");
+
+    let replacer = DebugReplacer { db: &db };
+    let contracts_info =
+        get_contracts_info(&db, main_crate_ids, &replacer).expect("failed to get contracts info");
+
+    let runner = SierraCasmRunner::new(
+        program.clone(),
+        Some(Default::default()),
+        contracts_info,
+        None,
+    )
+    .expect("failed to create runner");
+
+    runner
 }
 
 criterion_group!(benches, criterion_benchmark);
