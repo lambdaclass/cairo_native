@@ -731,6 +731,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         Ok((p.x, p.y))
     }
 
+    #[cfg(feature = "with-cheatcode")]
     #[instrument(skip(self))]
     fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt> {
         tracing::debug!("called");
