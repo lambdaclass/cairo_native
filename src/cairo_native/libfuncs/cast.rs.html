@@ -700,7 +700,7 @@
 <span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
     block_ext::BlockExt,
-    error::{Error, <span class="prelude-ty">Result</span>},
+    error::{Error, <span class="prelude-ty">Result</span>, SierraAssertError},
     metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::TypeBuilder,
 };
@@ -760,12 +760,12 @@
 
     <span class="kw">let </span>src_type = registry.get_type(<span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_type = registry.get_type(<span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>src_width = src_type.integer_width().ok_or_else(|| {
-        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
-    })<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_width = dst_type.integer_width().ok_or_else(|| {
-        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
-    })<span class="question-mark">?</span>;
+    <span class="kw">let </span>src_width = src_type
+        .integer_width()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
+    <span class="kw">let </span>dst_width = dst_type
+        .integer_width()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>src_ty = src_type.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_ty = dst_type.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
@@ -776,12 +776,12 @@
         location,
     );
 
-    <span class="kw">let </span>src_is_signed = src_type.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
-    })<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_is_signed = dst_type.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
-    })<span class="question-mark">?</span>;
+    <span class="kw">let </span>src_is_signed = src_type
+        .is_integer_signed()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
+    <span class="kw">let </span>dst_is_signed = dst_type
+        .is_integer_signed()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
     <span class="kw">let </span>any_is_signed = src_is_signed | dst_is_signed;
     <span class="kw">let </span>src_is_felt = <span class="macro">matches!</span>(
         src_type,
@@ -883,18 +883,18 @@
             (result, dst_ty)
         };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>int_max_value: BigInt = info
+        <span class="kw">let </span>info_range = info
             .to_range
             .intersection(<span class="kw-2">&amp;</span>info.from_range)
-            .ok_or_else(|| Error::SierraAssert(<span class="string">"range should always interesct"</span>.to_string()))<span class="question-mark">?
-            </span>.upper
-            - <span class="number">1</span>;
+            .ok_or_else(|| {
+                Error::SierraAssert(SierraAssertError::Range {
+                    ranges: Box::new((info.from_range.clone(), info.to_range.clone())),
+                })
+            })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>int_min_value = info
-            .to_range
-            .intersection(<span class="kw-2">&amp;</span>info.from_range)
-            .ok_or_else(|| Error::SierraAssert(<span class="string">"range should always interesct"</span>.to_string()))<span class="question-mark">?
-            </span>.lower;
+        <span class="kw">let </span><span class="kw-2">mut </span>int_max_value: BigInt = info_range.upper - <span class="number">1</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>int_min_value = info_range.lower;
 
         <span class="kw">if </span>dst_is_felt {
             <span class="kw">let </span>prime = <span class="kw-2">&amp;</span>metadata
@@ -985,17 +985,17 @@
         location,
     );
 
-    <span class="kw">let </span>src_width = src_ty.integer_width().ok_or_else(|| {
-        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
-    })<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_width = dst_ty.integer_width().ok_or_else(|| {
-        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
-    })<span class="question-mark">?</span>;
+    <span class="kw">let </span>src_width = src_ty
+        .integer_width()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
+    <span class="kw">let </span>dst_width = dst_ty
+        .integer_width()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
     <span class="macro">assert!</span>(src_width &lt;= dst_width);
 
-    <span class="kw">let </span>is_signed = src_ty.is_integer_signed().ok_or_else(|| {
-        Error::SierraAssert(<span class="string">"casts always happen between numerical types"</span>.to_string())
-    })<span class="question-mark">?</span>;
+    <span class="kw">let </span>is_signed = src_ty
+        .is_integer_signed()
+        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>is_felt = <span class="macro">matches!</span>(dst_ty, CoreTypeConcrete::Felt252(<span class="kw">_</span>));
 

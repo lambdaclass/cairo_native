@@ -104,8 +104,18 @@
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
 </span><span class="kw">use </span><span class="kw">crate</span>::metadata::gas::GasMetadataError;
+<span class="kw">use </span>cairo_lang_sierra::extensions::modules::utils::Range;
 <span class="kw">use </span>cairo_lang_sierra::{
     edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
 };
@@ -149,8 +159,8 @@
     <span class="attr">#[error(<span class="string">"missing metadata"</span>)]
     </span>MissingMetadata,
 
-    <span class="attr">#[error(<span class="string">"a cairo-native sierra related assert failed: {0}"</span>)]
-    </span>SierraAssert(String),
+    <span class="attr">#[error(transparent)]
+    </span>SierraAssert(SierraAssertError),
 
     <span class="attr">#[error(<span class="string">"a compiler related error happened: {0}"</span>)]
     </span>Error(String),
@@ -177,6 +187,14 @@
                 .unwrap_or_default(),
         )
     }
+}
+
+<span class="attr">#[derive(Error, Debug)]
+</span><span class="kw">pub enum </span>SierraAssertError {
+    <span class="attr">#[error(<span class="string">"casts always happen between numerical types"</span>)]
+    </span>Cast,
+    <span class="attr">#[error(<span class="string">"range should always intersect, from {:?} to {:?}"</span>, ranges.<span class="number">0</span>, ranges.<span class="number">1</span>)]
+    </span>Range { ranges: Box&lt;(Range, Range)&gt; },
 }
 
 <span class="attr">#[cfg(test)]
