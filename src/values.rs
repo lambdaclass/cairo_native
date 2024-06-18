@@ -1324,7 +1324,7 @@ mod test {
 
         assert!(matches!(
             result,
-            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange))
+            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange { .. }))
         ));
     }
 
@@ -1353,7 +1353,7 @@ mod test {
 
         assert!(matches!(
             result,
-            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange))
+            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange { .. }))
         ));
     }
 
@@ -1382,7 +1382,7 @@ mod test {
 
         assert!(matches!(
             result,
-            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange))
+            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange { .. }))
         ));
     }
 
@@ -1411,7 +1411,7 @@ mod test {
 
         assert!(matches!(
             result,
-            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange))
+            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange { .. }))
         ));
     }
 
