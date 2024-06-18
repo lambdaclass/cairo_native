@@ -4,6 +4,7 @@ var srcIndex = new Map(JSON.parse('[\
 ["cairo_native_dump",["",[],["cairo-native-dump.rs"]]],\
 ["cairo_native_run",["",[["utils",[],["mod.rs","test.rs"]]],["cairo-native-run.rs"]]],\
 ["cairo_native_runtime",["",[],["lib.rs"]]],\
+["cairo_native_stress",["",[],["cairo-native-stress.rs"]]],\
 ["cairo_native_test",["",[["utils",[],["mod.rs","test.rs"]]],["cairo-native-test.rs"]]],\
 ["scarb_native_dump",["",[["utils",[],["mod.rs","test.rs"]]],["scarb-native-dump.rs"]]],\
 ["scarb_native_test",["",[["utils",[],["mod.rs","test.rs"]]],["scarb-native-test.rs"]]]\
