@@ -656,78 +656,6 @@
 <a href="#654" id="654">654</a>
 <a href="#655" id="655">655</a>
 <a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
-<a href="#670" id="670">670</a>
-<a href="#671" id="671">671</a>
-<a href="#672" id="672">672</a>
-<a href="#673" id="673">673</a>
-<a href="#674" id="674">674</a>
-<a href="#675" id="675">675</a>
-<a href="#676" id="676">676</a>
-<a href="#677" id="677">677</a>
-<a href="#678" id="678">678</a>
-<a href="#679" id="679">679</a>
-<a href="#680" id="680">680</a>
-<a href="#681" id="681">681</a>
-<a href="#682" id="682">682</a>
-<a href="#683" id="683">683</a>
-<a href="#684" id="684">684</a>
-<a href="#685" id="685">685</a>
-<a href="#686" id="686">686</a>
-<a href="#687" id="687">687</a>
-<a href="#688" id="688">688</a>
-<a href="#689" id="689">689</a>
-<a href="#690" id="690">690</a>
-<a href="#691" id="691">691</a>
-<a href="#692" id="692">692</a>
-<a href="#693" id="693">693</a>
-<a href="#694" id="694">694</a>
-<a href="#695" id="695">695</a>
-<a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a>
-<a href="#701" id="701">701</a>
-<a href="#702" id="702">702</a>
-<a href="#703" id="703">703</a>
-<a href="#704" id="704">704</a>
-<a href="#705" id="705">705</a>
-<a href="#706" id="706">706</a>
-<a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
-<a href="#711" id="711">711</a>
-<a href="#712" id="712">712</a>
-<a href="#713" id="713">713</a>
-<a href="#714" id="714">714</a>
-<a href="#715" id="715">715</a>
-<a href="#716" id="716">716</a>
-<a href="#717" id="717">717</a>
-<a href="#718" id="718">718</a>
-<a href="#719" id="719">719</a>
-<a href="#720" id="720">720</a>
-<a href="#721" id="721">721</a>
-<a href="#722" id="722">722</a>
-<a href="#723" id="723">723</a>
-<a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
-<a href="#728" id="728">728</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -750,13 +678,9 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{
-        arith, cf,
-        llvm::{<span class="self">self</span>, AllocaOptions, LoadStoreOptions},
-        ods,
-    },
+    dialect::{arith, cf, llvm, ods},
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
         Block, Location, Value,
     },
@@ -873,75 +797,25 @@
                 .result(<span class="number">0</span>)<span class="question-mark">?
                 </span>.into();
 
-            <span class="kw">let </span>val = entry
-                .append_operation(llvm::undef(enum_ty, location))
-                .result(<span class="number">0</span>)<span class="question-mark">?
-                </span>.into();
-            <span class="kw">let </span>val = entry
-                .append_operation(llvm::insert_value(
-                    context,
-                    val,
-                    DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-                    tag_val,
-                    location,
-                ))
-                .result(<span class="number">0</span>)<span class="question-mark">?
-                </span>.into();
+            <span class="kw">let </span>val = entry.append_op_result(llvm::undef(enum_ty, location))<span class="question-mark">?</span>;
+            <span class="kw">let </span>val = entry.insert_value(context, location, val, tag_val, <span class="number">0</span>)<span class="question-mark">?</span>;
+
             <span class="kw">let </span><span class="kw-2">mut </span>val = <span class="kw">if </span>payload_type_info.is_zst(registry) {
                 val
             } <span class="kw">else </span>{
-                entry
-                    .append_operation(llvm::insert_value(
-                        context,
-                        val,
-                        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">1</span>]),
-                        payload_value,
-                        location,
-                    ))
-                    .result(<span class="number">0</span>)<span class="question-mark">?
-                    </span>.into()
-            };
+                entry.insert_value(context, location, val, payload_value, <span class="number">1</span>)<span class="question-mark">?
+            </span>};
 
             <span class="kw">if </span>type_info.is_memory_allocated(registry) {
-                <span class="kw">let </span>k1 = helper
-                    .init_block()
-                    .append_operation(arith::constant(
-                        context,
-                        IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">1</span>).into(),
-                        location,
-                    ))
-                    .result(<span class="number">0</span>)<span class="question-mark">?
-                    </span>.into();
-                <span class="kw">let </span>stack_ptr = helper
-                    .init_block()
-                    .append_operation(llvm::alloca(
-                        context,
-                        k1,
-                        llvm::r#type::pointer(context, <span class="number">0</span>),
-                        location,
-                        AllocaOptions::new()
-                            .align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                                IntegerType::new(context, <span class="number">64</span>).into(),
-                                layout.align() <span class="kw">as </span>i64,
-                            )))
-                            .elem_type(<span class="prelude-val">Some</span>(TypeAttribute::new(
-                                type_info.build(context, helper, registry, metadata, enum_type)<span class="question-mark">?</span>,
-                            ))),
-                    ))
-                    .result(<span class="number">0</span>)<span class="question-mark">?
-                    </span>.into();
+                <span class="kw">let </span>stack_ptr = helper.init_block().alloca1(
+                    context,
+                    location,
+                    type_info.build(context, helper, registry, metadata, enum_type)<span class="question-mark">?</span>,
+                    <span class="prelude-val">Some</span>(layout.align()),
+                )<span class="question-mark">?</span>;
 
                 <span class="comment">// Convert the enum from the concrete variant to the internal representation.
-                </span>entry.append_operation(llvm::store(
-                    context,
-                    val,
-                    stack_ptr,
-                    location,
-                    LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
-                        IntegerType::new(context, <span class="number">64</span>).into(),
-                        layout.align() <span class="kw">as </span>i64,
-                    ))),
-                ));
+                </span>entry.store(context, location, stack_ptr, val, <span class="prelude-val">Some</span>(layout.align()))<span class="question-mark">?</span>;
                 val = entry.load(
                     context,
                     location,
@@ -1252,16 +1126,8 @@
 
                 (<span class="prelude-val">Some</span>(stack_ptr), tag_val)
             } <span class="kw">else </span>{
-                <span class="kw">let </span>tag_val = entry
-                    .append_operation(llvm::extract_value(
-                        context,
-                        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                        DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-                        tag_ty,
-                        location,
-                    ))
-                    .result(<span class="number">0</span>)<span class="question-mark">?
-                    </span>.into();
+                <span class="kw">let </span>tag_val =
+                    entry.extract_value(context, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), tag_ty, <span class="number">0</span>)<span class="question-mark">?</span>;
 
                 (<span class="prelude-val">None</span>, tag_val)
             };
@@ -1292,14 +1158,7 @@
 
             <span class="comment">// Default block.
             </span>{
-                <span class="kw">let </span>val = default_block
-                    .append_operation(arith::constant(
-                        context,
-                        IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>).into(),
-                        location,
-                    ))
-                    .result(<span class="number">0</span>)<span class="question-mark">?
-                    </span>.into();
+                <span class="kw">let </span>val = default_block.const_int(context, location, <span class="number">0</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
 
                 default_block.append_operation(cf::assert(
                     context,
@@ -1335,11 +1194,8 @@
                             entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()
                         } <span class="kw">else </span>{
                             <span class="macro">assert!</span>(registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>.is_zst(registry));
-                            block
-                                .append_operation(llvm::undef(payload_ty, location))
-                                .result(<span class="number">0</span>)<span class="question-mark">?
-                                </span>.into()
-                        }
+                            block.append_op_result(llvm::undef(payload_ty, location))<span class="question-mark">?
+                        </span>}
                     }
                 };
 
