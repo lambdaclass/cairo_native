@@ -361,7 +361,7 @@
         <span class="kw">let </span>available_gas = <span class="self">self
             </span>.gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::Error::InsufficientGasError)<span class="question-mark">?</span>;
+            .map_err(<span class="kw">crate</span>::error::Error::GasMetadataError)<span class="question-mark">?</span>;
 
         <span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
@@ -383,7 +383,7 @@
         <span class="kw">let </span>available_gas = <span class="self">self
             </span>.gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::Error::InsufficientGasError)<span class="question-mark">?</span>;
+            .map_err(<span class="kw">crate</span>::error::Error::GasMetadataError)<span class="question-mark">?</span>;
 
         <span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
@@ -405,7 +405,7 @@
         <span class="kw">let </span>available_gas = <span class="self">self
             </span>.gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|<span class="kw">_</span>| <span class="kw">crate</span>::error::Error::InsufficientGasError)<span class="question-mark">?</span>;
+            .map_err(<span class="kw">crate</span>::error::Error::GasMetadataError)<span class="question-mark">?</span>;
 
         ContractExecutionResult::from_execution_result(<span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
