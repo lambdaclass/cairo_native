@@ -269,7 +269,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         if let Some(align) = align {
             op.set_alignment(IntegerAttribute::new(
                 IntegerType::new(context, 64).into(),
-                align as i64,
+                align.try_into()?,
             ));
         }
 

@@ -65,7 +65,7 @@ itertools = "0.13.0"
 lazy_static = "1.4"
 libc = "0.2.155"
 llvm-sys = "180.0.0"
-melior = { version = "0.18.1", features = ["ods-dialects"] }
+melior = { version = "0.18.4", features = ["ods-dialects"] }
 mlir-sys = "0.2.2"
 num-bigint = "0.4.4"
 num-traits = "0.2"
@@ -103,6 +103,7 @@ scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = 
 scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.6.3", optional = true }
 sec1 = "0.7.3"
 serde_json = { version = "1.0.117", optional = true }
+stats_alloc = "0.1.10"
 
 [dev-dependencies]
 cairo-vm = { version = "1.0.0-rc3", features = ["cairo-1-hints"] }
