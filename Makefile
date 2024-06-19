@@ -83,6 +83,15 @@ bench: build needs-cairo2 runtime
 bench-ci: check-llvm needs-cairo2 runtime
 	cargo criterion --all-features
 
+stress-test: check-llvm
+	RUST_LOG=cairo_native_stress=DEBUG cargo run --bin cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
+
+stress-plot:
+	python3 src/bin/cairo-native-stress/plotter.py cairo-native-stress-logs.jsonl
+
+stress-clean:
+	rm -rf .aot-cache
+
 install: check-llvm
 	RUSTFLAGS="-C target-cpu=native" cargo install --all-features --locked --path .
 
