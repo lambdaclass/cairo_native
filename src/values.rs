@@ -205,7 +205,7 @@ impl JitValue {
                 } => {
                     let value = value.to_bigint();
 
-                    if lower > upper {
+                    if lower >= upper {
                         // If lower bound is greater than or equal to upper bound
                         // Should not happen with correct range definition
                         return Err(CompilerError::BoundedIntOutOfRange {
