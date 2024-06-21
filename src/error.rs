@@ -1,5 +1,6 @@
 //! Various error types used thorough the crate.
 use crate::metadata::gas::GasMetadataError;
+use cairo_lang_sierra::extensions::modules::utils::Range;
 use cairo_lang_sierra::{
     edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
 };
@@ -22,9 +23,6 @@ pub enum Error {
     #[error("unexpected value, expected value of type '{0}'")]
     UnexpectedValue(String),
 
-    #[error("not enough gas to run")]
-    InsufficientGasError,
-
     #[error("a syscall handler was expected but was not provided")]
     MissingSyscallHandler,
 
@@ -43,8 +41,8 @@ pub enum Error {
     #[error("missing metadata")]
     MissingMetadata,
 
-    #[error("a cairo-native sierra related assert failed: {0}")]
-    SierraAssert(String),
+    #[error(transparent)]
+    SierraAssert(SierraAssertError),
 
     #[error("a compiler related error happened: {0}")]
     Error(String),
@@ -52,7 +50,7 @@ pub enum Error {
     #[error(transparent)]
     EditStateError(#[from] EditStateError),
 
-    #[error("gas metadata error")]
+    #[error(transparent)]
     GasMetadataError(#[from] GasMetadataError),
 
     #[error("llvm error")]
@@ -71,6 +69,14 @@ impl Error {
                 .unwrap_or_default(),
         )
     }
+}
+
+#[derive(Error, Debug)]
+pub enum SierraAssertError {
+    #[error("casts always happen between numerical types")]
+    Cast,
+    #[error("range should always intersect, from {:?} to {:?}", ranges.0, ranges.1)]
+    Range { ranges: Box<(Range, Range)> },
 }
 
 #[cfg(test)]
