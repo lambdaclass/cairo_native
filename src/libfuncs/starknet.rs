@@ -1191,7 +1191,7 @@ pub fn build_emit_event<'ctx, 'this>(
             )],
             false,
         ),
-        None, // TODO: Specify alignment.
+        Some(get_integer_layout(64).align()),
     )?;
     entry.store(
         context,
@@ -1219,7 +1219,7 @@ pub fn build_emit_event<'ctx, 'this>(
             )],
             false,
         ),
-        None, // TODO: Specify alignment.
+        Some(get_integer_layout(64).align()),
     )?;
     entry.store(
         context,
@@ -2050,7 +2050,7 @@ pub fn build_deploy<'ctx, 'this>(
             )],
             false,
         ),
-        None, // TODO: Specify alignment.
+        Some(get_integer_layout(64).align()),
     )?;
     entry.store(
         context,
@@ -2290,7 +2290,7 @@ pub fn build_keccak<'ctx, 'this>(
             ],
             false,
         ),
-        None, // TODO: Specify alignment.
+        Some(get_integer_layout(64).align()),
     )?;
     entry.store(
         context,
@@ -2476,28 +2476,28 @@ pub fn build_library_call<'ctx, 'this>(
     entry.store(
         context,
         location,
-        entry.argument(0)?.into(),
         gas_builtin_ptr,
+        entry.argument(0)?.into(),
         None,
     )?;
 
     // Allocate `class_hash` argument and write the value.
-    let class_hash_arg_ptr = helper.init_block().alloca_int(context, location, 252)?; // TODO: Do not use for felts?
+    let class_hash_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
     entry.store(
         context,
         location,
-        entry.argument(2)?.into(),
         class_hash_arg_ptr,
+        entry.argument(2)?.into(),
         None,
     )?;
 
     // Allocate `entry_point_selector` argument and write the value.
-    let function_selector_arg_ptr = helper.init_block().alloca_int(context, location, 252)?; // TODO: Do not use for felts?
+    let function_selector_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
     entry.store(
         context,
         location,
-        entry.argument(3)?.into(),
         function_selector_arg_ptr,
+        entry.argument(3)?.into(),
         None,
     )?;
 
@@ -2519,13 +2519,13 @@ pub fn build_library_call<'ctx, 'this>(
             )],
             false,
         ),
-        None, // TODO: Specify alignment.
+        Some(get_integer_layout(64).align()),
     )?;
     entry.store(
         context,
         location,
-        entry.argument(4)?.into(),
         calldata_arg_ptr,
+        entry.argument(4)?.into(),
         None,
     )?;
 
@@ -2717,8 +2717,8 @@ pub fn build_replace_class<'ctx, 'this>(
     entry.store(
         context,
         location,
-        entry.argument(0)?.into(),
         gas_builtin_ptr,
+        entry.argument(0)?.into(),
         None,
     )?;
 
@@ -2727,8 +2727,8 @@ pub fn build_replace_class<'ctx, 'this>(
     entry.store(
         context,
         location,
-        entry.argument(2)?.into(),
         class_hash_arg_ptr,
+        entry.argument(2)?.into(),
         None,
     )?;
 
@@ -2912,8 +2912,8 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     entry.store(
         context,
         location,
-        entry.argument(0)?.into(),
         gas_builtin_ptr,
+        entry.argument(0)?.into(),
         None,
     )?;
 
@@ -2922,8 +2922,8 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     entry.store(
         context,
         location,
-        entry.argument(2)?.into(),
         to_address_arg_ptr,
+        entry.argument(2)?.into(),
         None,
     )?;
 
@@ -2941,13 +2941,13 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
             ],
             false,
         ),
-        None, // TODO: Specify alignment.
+        Some(get_integer_layout(64).align()),
     )?;
     entry.store(
         context,
         location,
-        entry.argument(3)?.into(),
         payload_arg_ptr,
+        entry.argument(3)?.into(),
         None,
     )?;
 
