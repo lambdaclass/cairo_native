@@ -30,3 +30,6 @@ cairo-*.tar
 *.mlir
 /*.info
 .aot-cache
+
+*.ipynb
+cairo-native-stress-logs.jsonl
