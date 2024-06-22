@@ -12,7 +12,7 @@ The gas builtin is used in Sierra in order to perform gas accounting. It is pass
 
 ## Gas metadata
 
-The process of calculating gas begins at the very outset of the compilation process. During the initial setup of the Sierra program, metadata about the program, including gas information, is extracted. Using gas helper functions for the [Cairo compiler](https://github.com/starkware-libs/cairo/tree/main), the consumed cost (steps, memory holes, builtins usage) for each statement in the Sierra code is stored in a HashMap.
+The process of calculating gas begins at the very outset of the compilation process. During the initial setup of the Sierra program, metadata about the program, including gas information, is extracted. Using gas helper functions from the [Cairo compiler](https://github.com/starkware-libs/cairo/tree/main), the consumed cost (steps, memory holes, builtins usage) for each statement in the Sierra code is stored in a HashMap.
 
 ## Withdrawing gas
 
@@ -74,24 +74,24 @@ const_as_immediate<Const<u8, 5>>() -> ([8]); // 28
 ...
 ```
 
-When the Cairo native compiler reaches statement 26, it combines all costs into gas using the Cairo compiler code. In this example, the total cost is 2680 gas. This value is then used in the outputted IR to withdraw the gas and determine whether execution should revert or continue. This can be observed in the following MLIR dump:
+When the Cairo native compiler reaches statement 26, it combines all costs into gas using the Cairo compiler code. In this example, the total cost is 2680 gas. This value is used in the `withdraw_gas` libfunc and the compiled corresponding IR to withdraw the gas and determine whether execution should revert or continue. This can be observed in the following MLIR dump:
 
 ```assembly
 llvm.func @"test::test::run_test[expr16](f0)"(%arg0: i64 loc(unknown), %arg1: i128 loc(unknown), %arg2: i8 loc(unknown), %arg3: i8 loc(unknown)) -> !llvm.struct<(i64, i128, struct<(i64, array<24 x i8>)>)> attributes {llvm.emit_c_interface} {
-...
-%12 = llvm.mlir.constant(5 : i8) : i8 loc(#loc1)
-%13 = llvm.mlir.constant(2680 : i128) : i128 loc(#loc1)
-%14 = llvm.mlir.constant(1 : i64) : i64 loc(#loc1)
-...
-^bb1(%27: i64 loc(unknown), %28: i128 loc(unknown), %29: i8 loc(unknown), %30: i8 loc(unknown)):  // 2 preds: ^bb0, ^bb6
-  %31 = llvm.add %27, %14  : i64 loc(#loc13)
-  %32 = llvm.icmp "uge" %28, %13 : i128 loc(#loc13)
-  %33 = llvm.intr.usub.sat(%28, %13)  : (i128, i128) -> i128 loc(#loc13)
-  llvm.cond_br %32, ^bb2(%29 : i8), ^bb7(%5, %23, %23, %31 : i252, !llvm.ptr, !llvm.ptr, i64) loc(#loc13)
- ...
+  ...
+  %12 = llvm.mlir.constant(5 : i8) : i8 loc(#loc1)
+  %13 = llvm.mlir.constant(2680 : i128) : i128 loc(#loc1)
+  %14 = llvm.mlir.constant(1 : i64) : i64 loc(#loc1)
+  ...
+  ^bb1(%27: i64 loc(unknown), %28: i128 loc(unknown), %29: i8 loc(unknown), %30: i8 loc(unknown)):  // 2 preds: ^bb0, ^bb6
+    %31 = llvm.add %27, %14  : i64 loc(#loc13)
+    %32 = llvm.icmp "uge" %28, %13 : i128 loc(#loc13)
+    %33 = llvm.intr.usub.sat(%28, %13)  : (i128, i128) -> i128 loc(#loc13)
+    llvm.cond_br %32, ^bb2(%29 : i8), ^bb7(%5, %23, %23, %31 : i252, !llvm.ptr, !llvm.ptr, i64) loc(#loc13)
+    ...
 ```
 
-Here, we see the constant `2680` defined at the begining of the function's definition. In basic block 1, the withdraw_gas operations are performed: by comparing %28 (remaining gas) and %13 (gas cost), the result stored in %32 determines the conditional branching. A saturating subtraction between the remaining gas and the gas cost is then performed, updating the remaining gas in the IR.
+Here, we see the constant `2680` defined at the begining of the function. In basic block 1, the withdraw_gas operations are performed: by comparing `%28` (remaining gas) and `%13` (gas cost), the result stored in `%32` determines the conditional branching. A saturating subtraction between the remaining gas and the gas cost is then performed, updating the remaining gas in the IR.
 
 ## Final gas usage
 
