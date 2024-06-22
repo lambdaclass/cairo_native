@@ -865,3 +865,379 @@ fn parse_result(
         | CoreTypeConcrete::StarkNet(_) => todo!(),
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use cairo_lang_sierra::extensions::types::InfoOnlyConcreteType;
+    use cairo_lang_sierra::extensions::types::TypeInfo;
+    use cairo_lang_sierra::program::ConcreteTypeLongId;
+    use cairo_lang_sierra::ProgramParser;
+
+    #[test]
+    fn test_argument_mapper_push_sint8() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Sint8(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint8(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint8(0));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint8(-12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint8(i8::MIN));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint8(i8::MAX));
+
+        assert_eq!(
+            argument_mapper.invoke_data,
+            vec![12, 0, (-12 as i8) as u64, i8::MIN as u64, i8::MAX as u64]
+        );
+    }
+
+    #[test]
+    fn test_argument_mapper_push_sint16() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Sint16(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint16(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint16(0));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint16(-12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint16(i16::MIN));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint16(i16::MAX));
+
+        assert_eq!(
+            argument_mapper.invoke_data,
+            vec![12, 0, (-12 as i16) as u64, i16::MIN as u64, i16::MAX as u64]
+        );
+    }
+
+    #[test]
+    fn test_argument_mapper_push_sint32() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Sint32(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint32(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint32(0));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint32(-12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint32(i32::MIN));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint32(i32::MAX));
+
+        assert_eq!(
+            argument_mapper.invoke_data,
+            vec![12, 0, (-12 as i32) as u64, i32::MIN as u64, i32::MAX as u64]
+        );
+    }
+
+    #[test]
+    fn test_argument_mapper_push_sint64() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Sint64(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint64(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint64(0));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint64(-12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint64(i64::MIN));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint64(i64::MAX));
+
+        assert_eq!(
+            argument_mapper.invoke_data,
+            vec![12, 0, (-12 as i64) as u64, i64::MIN as u64, i64::MAX as u64]
+        );
+    }
+
+    #[test]
+    fn test_argument_mapper_push_sint128() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Sint128(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint128(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint128(0));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint128(-12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint128(i128::MIN));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint128(i128::MAX));
+
+        assert_eq!(
+            argument_mapper.invoke_data,
+            vec![
+                12,
+                0,
+                0,
+                0,
+                (-12 as i128) as u64,
+                ((-12 as i128) as u128 >> 64) as u64,
+                (i128::MIN as i128) as u64,
+                ((i128::MIN as i128) as u128 >> 64) as u64,
+                (i128::MAX as i128) as u64,
+                ((i128::MAX as i128) as u128 >> 64) as u64,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_argument_mapper_push_uint8() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Uint8(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint8(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint8(0));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint8(u8::MIN));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint8(u8::MAX));
+
+        assert_eq!(argument_mapper.invoke_data, vec![12, 0, 0, 0xFF]);
+    }
+
+    #[test]
+    fn test_argument_mapper_push_uint16() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Uint16(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &&JitValue::Uint16(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(0));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(u16::MIN));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(u16::MAX));
+
+        assert_eq!(argument_mapper.invoke_data, vec![12, 0, 0, 0xFFFF]);
+    }
+
+    #[test]
+    fn test_argument_mapper_push_uint32() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Uint32(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &&JitValue::Uint32(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(0));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(u32::MIN));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(u32::MAX));
+
+        assert_eq!(argument_mapper.invoke_data, vec![12, 0, 0, 0xFFFFFFFF]);
+    }
+
+    #[test]
+    fn test_argument_mapper_push_uint64() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Uint64(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &&JitValue::Uint64(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(0));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(u64::MIN));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(u64::MAX));
+
+        assert_eq!(
+            argument_mapper.invoke_data,
+            vec![12, 0, 0, 0xFFFFFFFFFFFFFFFF]
+        );
+    }
+
+    #[test]
+    fn test_argument_mapper_push_uint128() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Uint128(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &&JitValue::Uint128(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(0));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(u128::MIN));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(u128::MAX));
+
+        assert_eq!(
+            argument_mapper.invoke_data,
+            vec![12, 0, 0, 0, 0, 0, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF]
+        );
+    }
+}
