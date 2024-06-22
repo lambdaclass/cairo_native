@@ -907,7 +907,7 @@ mod test {
 
         assert_eq!(
             argument_mapper.invoke_data,
-            vec![12, 0, (-12 as i8) as u64, i8::MIN as u64, i8::MAX as u64]
+            vec![12, 0, (-12_i8) as u64, i8::MIN as u64, i8::MAX as u64]
         );
     }
 
@@ -944,7 +944,7 @@ mod test {
 
         assert_eq!(
             argument_mapper.invoke_data,
-            vec![12, 0, (-12 as i16) as u64, i16::MIN as u64, i16::MAX as u64]
+            vec![12, 0, (-12_i16) as u64, i16::MIN as u64, i16::MAX as u64]
         );
     }
 
@@ -981,7 +981,7 @@ mod test {
 
         assert_eq!(
             argument_mapper.invoke_data,
-            vec![12, 0, (-12 as i32) as u64, i32::MIN as u64, i32::MAX as u64]
+            vec![12, 0, (-12_i32) as u64, i32::MIN as u64, i32::MAX as u64]
         );
     }
 
@@ -1018,7 +1018,7 @@ mod test {
 
         assert_eq!(
             argument_mapper.invoke_data,
-            vec![12, 0, (-12 as i64) as u64, i64::MIN as u64, i64::MAX as u64]
+            vec![12, 0, (-12_i64) as u64, i64::MIN as u64, i64::MAX as u64]
         );
     }
 
@@ -1060,12 +1060,12 @@ mod test {
                 0,
                 0,
                 0,
-                (-12 as i128) as u64,
-                ((-12 as i128) as u128 >> 64) as u64,
-                (i128::MIN as i128) as u64,
-                ((i128::MIN as i128) as u128 >> 64) as u64,
-                (i128::MAX as i128) as u64,
-                ((i128::MAX as i128) as u128 >> 64) as u64,
+                (-12_i128) as u64,
+                ((-12_i128) as u128 >> 64) as u64,
+                i128::MIN as u64,
+                (i128::MIN as u128 >> 64) as u64,
+                i128::MAX as u64,
+                (i128::MAX as u128 >> 64) as u64,
             ]
         );
     }
@@ -1128,7 +1128,7 @@ mod test {
             },
         });
 
-        let _ = argument_mapper.push(&type_id, &type_info, &&JitValue::Uint16(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(12));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(0));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(u16::MIN));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(u16::MAX));
@@ -1161,7 +1161,7 @@ mod test {
             },
         });
 
-        let _ = argument_mapper.push(&type_id, &type_info, &&JitValue::Uint32(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(12));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(0));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(u32::MIN));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(u32::MAX));
@@ -1194,7 +1194,7 @@ mod test {
             },
         });
 
-        let _ = argument_mapper.push(&type_id, &type_info, &&JitValue::Uint64(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(12));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(0));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(u64::MIN));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(u64::MAX));
@@ -1230,7 +1230,7 @@ mod test {
             },
         });
 
-        let _ = argument_mapper.push(&type_id, &type_info, &&JitValue::Uint128(12));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(12));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(0));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(u128::MIN));
         let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(u128::MAX));
