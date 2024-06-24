@@ -82,7 +82,7 @@ pub enum SierraAssertError {
 
 #[derive(Error, Debug)]
 pub enum CompilerError {
-    #[error("BoundedInt value is out of range: {:?} not within [{:?}, {:?}[", value, range.0, range.1)]
+    #[error("BoundedInt value is out of range: {:?} not within [{:?}, {:?})", value, range.0, range.1)]
     BoundedIntOutOfRange {
         value: Box<BigInt>,
         range: Box<(BigInt, BigInt)>,
