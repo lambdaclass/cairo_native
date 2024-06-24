@@ -284,6 +284,8 @@
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -445,7 +447,8 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use crate</span>::{
         context::NativeContext,
-        utils::test::{load_cairo, load_starknet, TestSyscallHandler},
+        starknet_stub::StubSyscallHandler,
+        utils::test::{load_cairo, load_starknet},
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>rstest::<span class="kw-2">*</span>;
@@ -519,22 +522,23 @@
         <span class="comment">// The second function in the program is `get_block_hash`.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>program.funcs.get(<span class="number">1</span>).expect(<span class="string">"should have a function"</span>).id;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = TestSyscallHandler;
+        <span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = <span class="kw-2">&amp;mut </span>StubSyscallHandler::default();
+
+        <span class="kw">let </span>expected_value = syscall_handler.get_block_hash(<span class="number">1</span>, <span class="kw-2">&amp;mut </span><span class="number">0</span>).unwrap();
+
         <span class="kw">let </span>result = executor
             .invoke_dynamic_with_syscall_handler(
                 entrypoint_function_id,
                 <span class="kw-2">&amp;</span>[],
                 <span class="prelude-val">Some</span>(u128::MAX),
-                syscall_handler.clone(),
+                syscall_handler,
             )
             .unwrap();
 
         <span class="kw">let </span>expected_value = JitValue::Enum {
             tag: <span class="number">0</span>,
             value: JitValue::Struct {
-                fields: <span class="macro">vec!</span>[JitValue::Felt252(
-                    syscall_handler.get_block_hash(<span class="number">1</span>, <span class="kw-2">&amp;mut </span><span class="number">0</span>).unwrap(),
-                )],
+                fields: <span class="macro">vec!</span>[JitValue::Felt252(expected_value)],
                 debug_name: <span class="prelude-val">Some</span>(<span class="string">"Tuple&lt;felt252&gt;"</span>.into()),
             }
             .into(),
@@ -563,7 +567,7 @@
                 entrypoint_function_id,
                 <span class="kw-2">&amp;</span>[],
                 <span class="prelude-val">Some</span>(u128::MAX),
-                TestSyscallHandler,
+                <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )
             .unwrap();
 

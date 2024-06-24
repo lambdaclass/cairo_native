@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["TestStatus"],"fn":["display_tests_summary","filter_test_cases","find_testable_targets","run_tests"],"struct":["TestResult","TestSyscallHandler","TestsSummary"]};
+window.SIDEBAR_ITEMS = {"enum":["TestStatus"],"fn":["display_tests_summary","filter_test_cases","find_testable_targets","run_tests"],"struct":["TestResult","TestsSummary"]};
