@@ -523,15 +523,8 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
 #[cfg(test)]
 pub mod test {
     use crate::{
-        context::NativeContext,
-        execution_result::ExecutionResult,
-        executor::JitNativeExecutor,
-        starknet::{
-            BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, StarknetSyscallHandler,
-            SyscallResult, TxInfo, TxV2Info, U256,
-        },
-        utils::*,
-        values::JitValue,
+        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
+        starknet_stub::StubSyscallHandler, utils::*, values::JitValue,
     };
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
@@ -545,7 +538,6 @@ pub mod test {
     };
     use cairo_lang_starknet::starknet_plugin_suite;
     use pretty_assertions_sorted::assert_eq;
-    use starknet_types_core::felt::Felt;
     use std::io::Write;
     use std::{env::var, fmt::Formatter, fs, path::Path};
 
@@ -676,7 +668,7 @@ pub mod test {
                 entry_point_id,
                 args,
                 Some(u128::MAX),
-                TestSyscallHandler,
+                &mut StubSyscallHandler::default(),
             )
             .unwrap()
     }
@@ -1072,252 +1064,5 @@ pub mod test {
             .funcs
             .keys()
             .any(|func| func.debug_name == Some("hello::hello::greet".into())));
-    }
-
-    #[derive(Debug, Clone)]
-    pub struct TestSyscallHandler;
-
-    impl StarknetSyscallHandler for TestSyscallHandler {
-        fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
-            Ok(Felt::from(block_number))
-        }
-
-        fn get_execution_info(
-            &mut self,
-            _gas: &mut u128,
-        ) -> SyscallResult<crate::starknet::ExecutionInfo> {
-            Ok(ExecutionInfo {
-                block_info: BlockInfo {
-                    block_number: 1234,
-                    block_timestamp: 2345,
-                    sequencer_address: 3456.into(),
-                },
-                tx_info: TxInfo {
-                    version: 4567.into(),
-                    account_contract_address: 5678.into(),
-                    max_fee: 6789,
-                    signature: vec![1248.into(), 2486.into()],
-                    transaction_hash: 9876.into(),
-                    chain_id: 8765.into(),
-                    nonce: 7654.into(),
-                },
-                caller_address: 6543.into(),
-                contract_address: 5432.into(),
-                entry_point_selector: 4321.into(),
-            })
-        }
-
-        fn get_execution_info_v2(
-            &mut self,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<crate::starknet::ExecutionInfoV2> {
-            Ok(ExecutionInfoV2 {
-                block_info: BlockInfo {
-                    block_number: 1234,
-                    block_timestamp: 2345,
-                    sequencer_address: 3456.into(),
-                },
-                tx_info: TxV2Info {
-                    version: 1.into(),
-                    account_contract_address: 1.into(),
-                    max_fee: 0,
-                    signature: vec![1.into()],
-                    transaction_hash: 1.into(),
-                    chain_id: 1.into(),
-                    nonce: 1.into(),
-                    tip: 1,
-                    paymaster_data: vec![1.into()],
-                    nonce_data_availability_mode: 0,
-                    fee_data_availability_mode: 0,
-                    account_deployment_data: vec![1.into()],
-                    resource_bounds: vec![ResourceBounds {
-                        resource: 2.into(),
-                        max_amount: 10,
-                        max_price_per_unit: 20,
-                    }],
-                },
-                caller_address: 6543.into(),
-                contract_address: 5432.into(),
-                entry_point_selector: 4321.into(),
-            })
-        }
-
-        fn deploy(
-            &mut self,
-            class_hash: Felt,
-            contract_address_salt: Felt,
-            calldata: &[Felt],
-            _deploy_from_zero: bool,
-            _gas: &mut u128,
-        ) -> SyscallResult<(Felt, Vec<Felt>)> {
-            Ok((
-                class_hash + contract_address_salt,
-                calldata.iter().map(|x| x + Felt::ONE).collect(),
-            ))
-        }
-
-        fn replace_class(&mut self, _class_hash: Felt, _gas: &mut u128) -> SyscallResult<()> {
-            Ok(())
-        }
-
-        fn library_call(
-            &mut self,
-            _class_hash: Felt,
-            _function_selector: Felt,
-            calldata: &[Felt],
-            _gas: &mut u128,
-        ) -> SyscallResult<Vec<Felt>> {
-            Ok(calldata.iter().map(|x| x * Felt::from(3)).collect())
-        }
-
-        fn call_contract(
-            &mut self,
-            _address: Felt,
-            _entry_point_selector: Felt,
-            calldata: &[Felt],
-            _gas: &mut u128,
-        ) -> SyscallResult<Vec<Felt>> {
-            Ok(calldata.iter().map(|x| x * Felt::from(3)).collect())
-        }
-
-        fn storage_read(
-            &mut self,
-            _address_domain: u32,
-            address: Felt,
-            _gas: &mut u128,
-        ) -> SyscallResult<Felt> {
-            Ok(address * Felt::from(3))
-        }
-
-        fn storage_write(
-            &mut self,
-            _address_domain: u32,
-            _address: Felt,
-            _value: Felt,
-            _gas: &mut u128,
-        ) -> SyscallResult<()> {
-            Ok(())
-        }
-
-        fn emit_event(
-            &mut self,
-            _keys: &[Felt],
-            _data: &[Felt],
-            _gas: &mut u128,
-        ) -> SyscallResult<()> {
-            Ok(())
-        }
-
-        fn send_message_to_l1(
-            &mut self,
-            _to_address: Felt,
-            _payload: &[Felt],
-            _gas: &mut u128,
-        ) -> SyscallResult<()> {
-            Ok(())
-        }
-
-        fn keccak(
-            &mut self,
-            _input: &[u64],
-            gas: &mut u128,
-        ) -> SyscallResult<crate::starknet::U256> {
-            *gas -= 1000;
-            Ok(U256 {
-                hi: 0,
-                lo: 1234567890,
-            })
-        }
-
-        // Implementing the secp256 syscalls for testing doesn't make sense. They're already
-        // properly tested in integration tests.
-
-        fn secp256k1_new(
-            &mut self,
-            _x: U256,
-            _y: U256,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            unimplemented!()
-        }
-
-        fn secp256k1_add(
-            &mut self,
-            _p0: crate::starknet::Secp256k1Point,
-            _p1: crate::starknet::Secp256k1Point,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<crate::starknet::Secp256k1Point> {
-            unimplemented!()
-        }
-
-        fn secp256k1_mul(
-            &mut self,
-            _p: crate::starknet::Secp256k1Point,
-            _m: U256,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<crate::starknet::Secp256k1Point> {
-            unimplemented!()
-        }
-
-        fn secp256k1_get_point_from_x(
-            &mut self,
-            _x: U256,
-            _y_parity: bool,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256k1Point>> {
-            unimplemented!()
-        }
-
-        fn secp256k1_get_xy(
-            &mut self,
-            _p: crate::starknet::Secp256k1Point,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<(U256, U256)> {
-            unimplemented!()
-        }
-
-        fn secp256r1_new(
-            &mut self,
-            _x: U256,
-            _y: U256,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256r1Point>> {
-            unimplemented!()
-        }
-
-        fn secp256r1_add(
-            &mut self,
-            _p0: crate::starknet::Secp256r1Point,
-            _p1: crate::starknet::Secp256r1Point,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<crate::starknet::Secp256r1Point> {
-            unimplemented!()
-        }
-
-        fn secp256r1_mul(
-            &mut self,
-            _p: crate::starknet::Secp256r1Point,
-            _m: U256,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<crate::starknet::Secp256r1Point> {
-            unimplemented!()
-        }
-
-        fn secp256r1_get_point_from_x(
-            &mut self,
-            _x: U256,
-            _y_parity: bool,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<Option<crate::starknet::Secp256r1Point>> {
-            unimplemented!()
-        }
-
-        fn secp256r1_get_xy(
-            &mut self,
-            _p: crate::starknet::Secp256r1Point,
-            _remaining_gas: &mut u128,
-        ) -> SyscallResult<(U256, U256)> {
-            unimplemented!()
-        }
     }
 }
