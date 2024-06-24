@@ -299,10 +299,10 @@ If you decide to build from source, here are some indications:
 # The blob to download is called llvm-project-18.x.x.src.tar.xz
 
 # For example
-wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.4/llvm-project-18.1.4.src.tar.xz
-tar xf llvm-project-18.1.4.src.tar.xz
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.7/llvm-project-18.1.7.src.tar.xz
+tar xf llvm-project-18.1.7.src.tar.xz
 
-cd llvm-project-18.1.4.src.tar
+cd llvm-project-18.1.7.src.tar
 mkdir build
 cd build
 
@@ -804,6 +804,47 @@ cairo-native-test ./cairo-tests/
 ```
 
 This will run all the tests (functions marked with the `#[test]` attribute).
+
+# cairo-native-stress cli tool
+
+This tool runs a stress test on Cairo Native.
+
+```bash
+$ cairo-native-stress --help
+A stress tester for Cairo Native
+
+It Sierra programs compiles with Cairo Native, caches, and executes them with AOT runner. The compiled dynamic libraries are stored in `AOT_CACHE_DIR` relative to the current working directory.
+
+Usage: cairo-native-stress [OPTIONS] <ROUNDS>
+
+Arguments:
+  <ROUNDS>
+          Amount of rounds to execute
+
+Options:
+  -o, --output <OUTPUT>
+          Output file for JSON formatted logs
+
+  -h, --help
+          Print help (see a summary with '-h')
+```
+
+To quickly run a stress test and save logs as json, run:
+```bash
+make stress-test
+```
+
+This takes a lot of time to finish (it will probably crash first), you can kill the program at any time.
+
+To plot the results, run:
+```bash
+make stress-plot
+```
+
+To clear the cache directory, run:
+```bash
+make stress-clean
+```
 
 # scarb-native-test cli tool
 

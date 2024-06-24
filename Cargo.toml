@@ -25,6 +25,10 @@ name = "cairo-native-test"
 required-features = ["build-cli"]
 
 [[bin]]
+name = "cairo-native-stress"
+required-features = ["build-cli"]
+
+[[bin]]
 name = "scarb-native-test"
 required-features = ["scarb"]
 
@@ -42,10 +46,6 @@ build-cli = [
   "dep:cairo-lang-runner",
   "dep:colored",
   "dep:cairo-felt",
-  "dep:keccak",
-  "dep:k256",
-  "dep:p256",
-  "dep:sec1",
 ]
 scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
 with-debug-utils = []
@@ -90,9 +90,7 @@ cairo-lang-starknet-classes = "2.6.3"
 cairo-native-runtime = { version = "0.2.0", path = "runtime", optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
 libloading = "0.8.3"
-tracing-subscriber = { version = "0.3", features = [
-  "env-filter",
-], optional = true }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json", "registry"] , optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 anyhow = { version = "1.0", optional = true }
 cairo-lang-test-plugin = { version = "2.6.3", optional = true }
@@ -100,12 +98,12 @@ cairo-lang-runner = { version = "2.6.3", optional = true }
 colored = { version = "2.1.0", optional = true }
 # needed to interface with cairo-lang-*
 cairo-felt = { version = "0.9.1", optional = true }
-keccak = { version = "0.1.3", optional = true }
-k256 = { version = "0.13.3", optional = true }
-p256 = { version = "0.13.2", optional = true }
+keccak = "0.1.3"
+k256 = "0.13.3"
+p256 = "0.13.2"
 scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.6.3", optional = true }
 scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.6.3", optional = true }
-sec1 = { version = "0.7.3", optional = true }
+sec1 = "0.7.3"
 serde_json = { version = "1.0.117", optional = true }
 stats_alloc = "0.1.10"
 
