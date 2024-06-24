@@ -4,7 +4,7 @@
 
 Gas management in a blockchain environment involves accounting for the amount of computation performed during the execution of a transaction. This is used to accurately charge the user at the end of the execution or to revert early if the transaction consumes more gas than provided by the sender.
 
-This documentation assumes prior knowledge about Sierra and about the way gas accounting is performed in Sierra. This documentation assumes prior knowledge about Sierra and the way gas accounting is performed in Sierra. This documentation assumes familiarity with Sierra and its gas accounting mechanisms. For those seeking to deepen their understanding, refer to Enitrat’s Medium post about [Sierra](https://medium.com/nethermind-eth/under-the-hood-of-cairo-1-0-exploring-sierra-7f32808421f5) and greged’s about [gas accounting in Sierra](https://blog.kakarot.org/understanding-sierra-gas-accounting-19d6141d28b9).
+This documentation assumes prior knowledge about Sierra and about the way gas accounting is performed in Sierra. For those seeking to deepen their understanding, refer to Enitrat’s Medium post about [Sierra](https://medium.com/nethermind-eth/under-the-hood-of-cairo-1-0-exploring-sierra-7f32808421f5) and greged’s about [gas accounting in Sierra](https://blog.kakarot.org/understanding-sierra-gas-accounting-19d6141d28b9).
 
 ## Gas builtin
 
