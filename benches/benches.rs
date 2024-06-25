@@ -45,7 +45,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("Cached JIT factorial_2M", |b| {
         b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
     });
-    c.bench_function("Cached JIT fib_2M", |b| {
+    c.bench_function("Cached JIT fibonacci_2M", |b| {
         b.iter(|| jit_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
     });
     c.bench_function("Cached JIT logistic_map", |b| {
@@ -55,7 +55,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("Cached AOT factorial_2M", |b| {
         b.iter(|| aot_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
     });
-    c.bench_function("Cached AOT fib_2M", |b| {
+    c.bench_function("Cached AOT fibonacci_2M", |b| {
         b.iter(|| aot_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
     });
     c.bench_function("Cached AOT logistic_map", |b| {
@@ -65,7 +65,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let fibonacci_function = fibonacci_runner
         .find_function("main")
         .expect("failed to find main function");
-    c.bench_function("VM fibonacci_2M", |b| {
+    c.bench_function("VM fib_2M", |b| {
         b.iter(|| {
             fibonacci_runner.run_function_with_starknet_context(
                 fibonacci_function,
