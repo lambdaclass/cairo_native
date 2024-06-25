@@ -246,9 +246,12 @@ pub fn build_call_contract<'ctx, 'this>(
         )],
         false,
     );
-    let calldata_arg_ptr = helper
-        .init_block()
-        .alloca1(context, location, calldata_arg_ty, None)?;
+    let calldata_arg_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        calldata_arg_ty,
+        Some(get_integer_layout(64).align()),
+    )?;
     entry.store(
         context,
         location,
