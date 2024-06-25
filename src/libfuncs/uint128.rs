@@ -22,10 +22,8 @@ use melior::{
         llvm, ods, scf,
     },
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Block, Location, Region, Value, ValueLike,
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -95,10 +93,7 @@ pub fn build_byte_reverse<'ctx, 'this>(
 
     let arg1 = entry.argument(1)?.into();
 
-    let res = entry
-        .append_operation(ods::llvm::intr_bswap(context, arg1, location).into())
-        .result(0)?
-        .into();
+    let res = entry.append_op_result(ods::llvm::intr_bswap(context, arg1, location).into())?;
 
     entry.append_operation(helper.br(0, &[bitwise, res], location));
     Ok(())
@@ -147,11 +142,8 @@ pub fn build_divmod<'ctx, 'this>(
     let lhs: Value = entry.argument(1)?.into();
     let rhs: Value = entry.argument(2)?.into();
 
-    let op = entry.append_operation(arith::divui(lhs, rhs, location));
-    let result_div = op.result(0)?.into();
-
-    let op = entry.append_operation(arith::remui(lhs, rhs, location));
-    let result_rem = op.result(0)?.into();
+    let result_div = entry.append_op_result(arith::divui(lhs, rhs, location))?;
+    let result_rem = entry.append_op_result(arith::remui(lhs, rhs, location))?;
 
     entry.append_operation(helper.br(0, &[range_check, result_div, result_rem], location));
     Ok(())
@@ -204,59 +196,30 @@ pub fn build_from_felt252<'ctx, 'this>(
 
     let arg1 = entry.argument(1)?.into();
 
-    let k1 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 252).into(), 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
-    let k128 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(IntegerType::new(context, 252).into(), 128).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let k1 = entry.const_int(context, location, 1, 252)?;
+    let k128 = entry.const_int(context, location, 128, 252)?;
 
-    let min_wide_val = entry
-        .append_operation(arith::shli(k1, k128, location))
-        .result(0)?
-        .into();
-    let is_wide = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Uge,
-            arg1,
-            min_wide_val,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let min_wide_val = entry.append_op_result(arith::shli(k1, k128, location))?;
+    let is_wide = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Uge,
+        arg1,
+        min_wide_val,
+        location,
+    ))?;
 
-    let lsb_bits = entry
-        .append_operation(arith::trunci(
-            arg1,
-            IntegerType::new(context, 128).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let lsb_bits = entry.append_op_result(arith::trunci(
+        arg1,
+        IntegerType::new(context, 128).into(),
+        location,
+    ))?;
 
-    let msb_bits = entry
-        .append_operation(arith::shrui(arg1, k128, location))
-        .result(0)?
-        .into();
-    let msb_bits = entry
-        .append_operation(arith::trunci(
-            msb_bits,
-            IntegerType::new(context, 128).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let msb_bits = entry.append_op_result(arith::shrui(arg1, k128, location))?;
+    let msb_bits = entry.append_op_result(arith::trunci(
+        msb_bits,
+        IntegerType::new(context, 128).into(),
+        location,
+    ))?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -280,21 +243,15 @@ pub fn build_is_zero<'ctx, 'this>(
 ) -> Result<()> {
     let arg0: Value = entry.argument(0)?.into();
 
-    let op = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(arg0.r#type(), 0).into(),
-        location,
-    ));
-    let const_0 = op.result(0)?.into();
+    let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
 
-    let op = entry.append_operation(arith::cmpi(
+    let condition = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Eq,
         arg0,
         const_0,
         location,
-    ));
-    let condition = op.result(0)?.into();
+    ))?;
 
     entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
     Ok(())
@@ -329,36 +286,21 @@ pub fn build_operation<'ctx, 'this>(
         false,
     );
 
-    let result_struct: Value = entry
-        .append_operation(
-            OperationBuilder::new(op_name, location)
-                .add_operands(&[lhs, rhs])
-                .add_results(&[result_type])
-                .build()?,
-        )
-        .result(0)?
-        .into();
+    let result_struct: Value = entry.append_op_result(
+        OperationBuilder::new(op_name, location)
+            .add_operands(&[lhs, rhs])
+            .add_results(&[result_type])
+            .build()?,
+    )?;
 
-    let result = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result_struct,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            values_type,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let overflow = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result_struct,
-            DenseI64ArrayAttribute::new(context, &[1]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let result = entry.extract_value(context, location, result_struct, values_type, 0)?;
+    let overflow = entry.extract_value(
+        context,
+        location,
+        result_struct,
+        IntegerType::new(context, 1).into(),
+        1,
+    )?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -386,246 +328,155 @@ pub fn build_square_root<'ctx, 'this>(
     let i64_ty = IntegerType::new(context, 64).into();
     let i128_ty = IntegerType::new(context, 128).into();
 
-    let k1 = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(i128_ty, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let k1 = entry.const_int_from_type(context, location, 1, i128_ty)?;
 
-    let is_small = entry
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Ule,
-            entry.argument(1)?.into(),
-            k1,
-            location,
-        ))
-        .result(0)?
-        .into();
+    let is_small = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Ule,
+        entry.argument(1)?.into(),
+        k1,
+        location,
+    ))?;
 
-    let result = entry
-        .append_operation(scf::r#if(
-            is_small,
-            &[i128_ty],
-            {
-                let region = Region::new();
-                let block = region.append_block(Block::new(&[]));
+    let result = entry.append_op_result(scf::r#if(
+        is_small,
+        &[i128_ty],
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
 
-                block.append_operation(scf::r#yield(&[entry.argument(1)?.into()], location));
+            block.append_operation(scf::r#yield(&[entry.argument(1)?.into()], location));
 
-                region
-            },
-            {
-                let region = Region::new();
-                let block = region.append_block(Block::new(&[]));
+            region
+        },
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
 
-                let k128 = entry
-                    .append_operation(arith::constant(
+            let k128 = entry.const_int_from_type(context, location, 128, i128_ty)?;
+
+            let leading_zeros = block.append_op_result(
+                ods::llvm::intr_ctlz(
+                    context,
+                    i128_ty,
+                    entry.argument(1)?.into(),
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 1),
+                    location,
+                )
+                .into(),
+            )?;
+
+            let num_bits = block.append_op_result(arith::subi(k128, leading_zeros, location))?;
+
+            let shift_amount = block.append_op_result(arith::addi(num_bits, k1, location))?;
+
+            let parity_mask = block.const_int_from_type(context, location, -2, i128_ty)?;
+            let shift_amount =
+                block.append_op_result(arith::andi(shift_amount, parity_mask, location))?;
+
+            let k0 = block.const_int_from_type(context, location, 0, i128_ty)?;
+            let result = block.append_op_result(scf::r#while(
+                &[k0, shift_amount],
+                &[i128_ty, i128_ty],
+                {
+                    let region = Region::new();
+                    let block = region
+                        .append_block(Block::new(&[(i128_ty, location), (i128_ty, location)]));
+
+                    let result = block.append_op_result(arith::shli(
+                        block.argument(0)?.into(),
+                        k1,
+                        location,
+                    ))?;
+                    let large_candidate =
+                        block.append_op_result(arith::xori(result, k1, location))?;
+
+                    let large_candidate_squared = block.append_op_result(arith::muli(
+                        large_candidate,
+                        large_candidate,
+                        location,
+                    ))?;
+
+                    let threshold = block.append_op_result(arith::shrui(
+                        entry.argument(1)?.into(),
+                        block.argument(1)?.into(),
+                        location,
+                    ))?;
+                    let threshold_is_poison = block.append_op_result(arith::cmpi(
                         context,
-                        IntegerAttribute::new(i128_ty, 128).into(),
+                        CmpiPredicate::Eq,
+                        block.argument(1)?.into(),
+                        k128,
                         location,
-                    ))
-                    .result(0)?
-                    .into();
+                    ))?;
+                    let threshold = block.append_op_result(
+                        OperationBuilder::new("arith.select", location)
+                            .add_operands(&[threshold_is_poison, k0, threshold])
+                            .add_results(&[i128_ty])
+                            .build()?,
+                    )?;
 
-                let leading_zeros = block
-                    .append_operation(
-                        ods::llvm::intr_ctlz(
-                            context,
-                            i128_ty,
-                            entry.argument(1)?.into(),
-                            IntegerAttribute::new(IntegerType::new(context, 1).into(), 1),
-                            location,
-                        )
-                        .into(),
-                    )
-                    .result(0)?
-                    .into();
-
-                let num_bits = block
-                    .append_operation(arith::subi(k128, leading_zeros, location))
-                    .result(0)?
-                    .into();
-
-                let shift_amount = block
-                    .append_operation(arith::addi(num_bits, k1, location))
-                    .result(0)?
-                    .into();
-
-                let parity_mask = block
-                    .append_operation(arith::constant(
+                    let is_in_range = block.append_op_result(arith::cmpi(
                         context,
-                        IntegerAttribute::new(i128_ty, -2).into(),
+                        CmpiPredicate::Ule,
+                        large_candidate_squared,
+                        threshold,
                         location,
-                    ))
-                    .result(0)?
-                    .into();
-                let shift_amount = block
-                    .append_operation(arith::andi(shift_amount, parity_mask, location))
-                    .result(0)?
-                    .into();
+                    ))?;
 
-                let k0 = block
-                    .append_operation(arith::constant(
+                    let result = block.append_op_result(
+                        OperationBuilder::new("arith.select", location)
+                            .add_operands(&[is_in_range, large_candidate, result])
+                            .add_results(&[i128_ty])
+                            .build()?,
+                    )?;
+
+                    let k2 = block.const_int_from_type(context, location, 2, i128_ty)?;
+
+                    let shift_amount = block.append_op_result(arith::subi(
+                        block.argument(1)?.into(),
+                        k2,
+                        location,
+                    ))?;
+
+                    let should_continue = block.append_op_result(arith::cmpi(
                         context,
-                        IntegerAttribute::new(i128_ty, 0).into(),
+                        CmpiPredicate::Sge,
+                        shift_amount,
+                        k0,
                         location,
-                    ))
-                    .result(0)?
-                    .into();
-                let result = block
-                    .append_operation(scf::r#while(
-                        &[k0, shift_amount],
-                        &[i128_ty, i128_ty],
-                        {
-                            let region = Region::new();
-                            let block = region.append_block(Block::new(&[
-                                (i128_ty, location),
-                                (i128_ty, location),
-                            ]));
-
-                            let result = block
-                                .append_operation(arith::shli(
-                                    block.argument(0)?.into(),
-                                    k1,
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-                            let large_candidate = block
-                                .append_operation(arith::xori(result, k1, location))
-                                .result(0)?
-                                .into();
-
-                            let large_candidate_squared = block
-                                .append_operation(arith::muli(
-                                    large_candidate,
-                                    large_candidate,
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-
-                            let threshold = block
-                                .append_operation(arith::shrui(
-                                    entry.argument(1)?.into(),
-                                    block.argument(1)?.into(),
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-                            let threshold_is_poison = block
-                                .append_operation(arith::cmpi(
-                                    context,
-                                    CmpiPredicate::Eq,
-                                    block.argument(1)?.into(),
-                                    k128,
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-                            let threshold = block
-                                .append_operation(
-                                    OperationBuilder::new("arith.select", location)
-                                        .add_operands(&[threshold_is_poison, k0, threshold])
-                                        .add_results(&[i128_ty])
-                                        .build()?,
-                                )
-                                .result(0)?
-                                .into();
-
-                            let is_in_range = block
-                                .append_operation(arith::cmpi(
-                                    context,
-                                    CmpiPredicate::Ule,
-                                    large_candidate_squared,
-                                    threshold,
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-
-                            let result = block
-                                .append_operation(
-                                    OperationBuilder::new("arith.select", location)
-                                        .add_operands(&[is_in_range, large_candidate, result])
-                                        .add_results(&[i128_ty])
-                                        .build()?,
-                                )
-                                .result(0)?
-                                .into();
-
-                            let k2 = block
-                                .append_operation(arith::constant(
-                                    context,
-                                    IntegerAttribute::new(i128_ty, 2).into(),
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-
-                            let shift_amount = block
-                                .append_operation(arith::subi(
-                                    block.argument(1)?.into(),
-                                    k2,
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-
-                            let should_continue = block
-                                .append_operation(arith::cmpi(
-                                    context,
-                                    CmpiPredicate::Sge,
-                                    shift_amount,
-                                    k0,
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-                            block.append_operation(scf::condition(
-                                should_continue,
-                                &[result, shift_amount],
-                                location,
-                            ));
-
-                            region
-                        },
-                        {
-                            let region = Region::new();
-                            let block = region.append_block(Block::new(&[
-                                (i128_ty, location),
-                                (i128_ty, location),
-                            ]));
-
-                            block.append_operation(scf::r#yield(
-                                &[block.argument(0)?.into(), block.argument(1)?.into()],
-                                location,
-                            ));
-
-                            region
-                        },
+                    ))?;
+                    block.append_operation(scf::condition(
+                        should_continue,
+                        &[result, shift_amount],
                         location,
-                    ))
-                    .result(0)?
-                    .into();
+                    ));
 
-                block.append_operation(scf::r#yield(&[result], location));
+                    region
+                },
+                {
+                    let region = Region::new();
+                    let block = region
+                        .append_block(Block::new(&[(i128_ty, location), (i128_ty, location)]));
 
-                region
-            },
-            location,
-        ))
-        .result(0)?
-        .into();
+                    block.append_operation(scf::r#yield(
+                        &[block.argument(0)?.into(), block.argument(1)?.into()],
+                        location,
+                    ));
 
-    let result = entry
-        .append_operation(arith::trunci(result, i64_ty, location))
-        .result(0)?
-        .into();
+                    region
+                },
+                location,
+            ))?;
+
+            block.append_operation(scf::r#yield(&[result], location));
+
+            region
+        },
+        location,
+    ))?;
+
+    let result = entry.append_op_result(arith::trunci(result, i64_ty, location))?;
 
     entry.append_operation(helper.br(0, &[range_check, result], location));
     Ok(())
@@ -675,32 +526,17 @@ pub fn build_guarantee_mul<'ctx, 'this>(
         &info.output_types()[0][2],
     )?;
 
-    let op = entry.append_operation(arith::extui(lhs, target_type, location));
-    let lhs = op.result(0)?.into();
+    let lhs = entry.append_op_result(arith::extui(lhs, target_type, location))?;
+    let rhs = entry.append_op_result(arith::extui(rhs, target_type, location))?;
+    let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
+    let result_lo = entry.append_op_result(arith::trunci(result, origin_type, location))?;
 
-    let op = entry.append_operation(arith::extui(rhs, target_type, location));
-    let rhs = op.result(0)?.into();
+    let const_128 = entry.const_int_from_type(context, location, 128, target_type)?;
 
-    let op = entry.append_operation(arith::muli(lhs, rhs, location));
-    let result = op.result(0)?.into();
+    let result_hi = entry.append_op_result(arith::shrui(result, const_128, location))?;
+    let result_hi = entry.append_op_result(arith::trunci(result_hi, origin_type, location))?;
 
-    let op = entry.append_operation(arith::trunci(result, origin_type, location));
-    let result_lo = op.result(0)?.into();
-
-    let op = entry.append_operation(arith::constant(
-        context,
-        IntegerAttribute::new(target_type, 128).into(),
-        location,
-    ));
-    let const_128 = op.result(0)?.into();
-
-    let op = entry.append_operation(arith::shrui(result, const_128, location));
-    let result_hi = op.result(0)?.into();
-    let op = entry.append_operation(arith::trunci(result_hi, origin_type, location));
-    let result_hi = op.result(0)?.into();
-
-    let op = entry.append_operation(llvm::undef(guarantee_type, location));
-    let guarantee = op.result(0)?.into();
+    let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
     entry.append_operation(helper.br(0, &[result_hi, result_lo, guarantee], location));
     Ok(())

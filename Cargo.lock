@@ -952,6 +952,7 @@ dependencies = [
  "serde",
  "serde_json",
  "starknet-types-core",
+ "stats_alloc",
  "tempfile",
  "test-case",
  "thiserror",
@@ -2315,9 +2316,9 @@ dependencies = [
 
 [[package]]
 name = "melior"
-version = "0.18.2"
+version = "0.18.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f904b36a8146f1c99548f6b38eca76595e346d2f59fcc4f75c07efe847bd8e1"
+checksum = "3305124ad8c564104cdac5e69b547fbd8a5c9e9f198fbe9028033ed1c8321b12"
 dependencies = [
  "dashmap",
  "melior-macro",
@@ -2327,9 +2328,9 @@ dependencies = [
 
 [[package]]
 name = "melior-macro"
-version = "0.11.2"
+version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3426487cfa27f472c09150149b972ef0c0dacb17cae00734c2c4862e98725bca"
+checksum = "1c4b6cc7044d57b9fcf1cb04025d7cff7e164ac402b5ce559447842a38b4ee34"
 dependencies = [
  "comrak",
  "convert_case",
@@ -2975,9 +2976,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.10.4"
+version = "1.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c117dbdfde9c8308975b6a18d71f3f385c89461f7b3fb054288ecf2a2058ba4c"
+checksum = "b91213439dad192326a0d7c6ee3955910425f441d7038e0d6933b0aec5c4517f"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -3482,6 +3483,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "stats_alloc"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c0e04424e733e69714ca1bbb9204c1a57f09f5493439520f9f68c132ad25eec"
+
+[[package]]
 name = "string_cache"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3536,9 +3543,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tblgen-alt"
-version = "0.3.3"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8128e684b18b518f32cd15779659c4a8dbb54ef6a36b532f7e3520f27dd01c95"
+checksum = "7ae726d43658a13a9cd479de814be1311fea69236cd821e931a4fb9ca4d70e50"
 dependencies = [
  "bindgen",
  "cc",
@@ -3779,6 +3786,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-serde"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc6b213177105856957181934e4920de57730fc69bf42c37ee5bb664d406d9e1"
+dependencies = [
+ "serde",
+ "tracing-core",
+]
+
+[[package]]
 name = "tracing-subscriber"
 version = "0.3.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3788,12 +3805,15 @@ dependencies = [
  "nu-ansi-term",
  "once_cell",
  "regex",
+ "serde",
+ "serde_json",
  "sharded-slab",
  "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",
  "tracing-log",
+ "tracing-serde",
 ]
 
 [[package]]

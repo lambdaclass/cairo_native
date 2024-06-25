@@ -2,6 +2,6 @@ coverage:
   status:
     project:
       default: # This can be anything, but it needs to exist as the name
-        threshold: 65%
+        threshold: 90%
         paths:
           - "src"
