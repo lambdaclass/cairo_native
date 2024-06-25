@@ -419,7 +419,11 @@ pub mod test {
             }
         };
 
-        // TODO: Add test program for `felt252_div`.
+        static ref FELT252_DIV: (String, Program) = load_cairo! {
+            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
+                felt252_div(lhs, rhs.try_into().unwrap())
+            }
+        };
 
         // TODO: Add test program for `felt252_add_const`.
         // TODO: Add test program for `felt252_sub_const`.
@@ -669,6 +673,102 @@ pub mod test {
         assert_eq!(
             r(JitValue::felt_str("-1"), JitValue::felt_str("-1")),
             JitValue::felt_str("1")
+        );
+    }
+
+    #[test]
+    fn felt252_div() {
+        // Helper function to run the test and extract the return value.
+        let run_test = |lhs, rhs| run_program(&FELT252_DIV, "run_test", &[lhs, rhs]).return_value;
+
+        // Helper function to extract the result struct field from the return value.
+        let extract_struct_field = |result| match result {
+            JitValue::Enum { value, .. } => match *value {
+                JitValue::Struct { fields, .. } => fields[0].clone(),
+                _ => panic!("Expected Struct"),
+            },
+            _ => panic!("Expected Enum"),
+        };
+
+        // Helper function to assert that a division panics.
+        let assert_panics = |lhs, rhs| match run_test(lhs, rhs) {
+            JitValue::Enum { debug_name, .. } => {
+                assert_eq!(
+                    debug_name,
+                    Some("core::panics::PanicResult::<(core::felt252,)>".into())
+                );
+            }
+            _ => panic!("division by 0 is expected to panic"),
+        };
+
+        // Division by zero is expected to panic.
+        assert_panics(JitValue::felt_str("0"), JitValue::felt_str("0"));
+        assert_panics(JitValue::felt_str("1"), JitValue::felt_str("0"));
+        assert_panics(JitValue::felt_str("-2"), JitValue::felt_str("0"));
+
+        // Test cases for valid division results.
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("0"), JitValue::felt_str("1"))),
+            JitValue::felt_str("0")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("0"), JitValue::felt_str("-2"))),
+            JitValue::felt_str("0")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("0"), JitValue::felt_str("-1"))),
+            JitValue::felt_str("0")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("1"), JitValue::felt_str("1"))),
+            JitValue::felt_str("1")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("1"), JitValue::felt_str("-2"))),
+            JitValue::felt_str(
+                "1809251394333065606848661391547535052811553607665798349986546028067936010240"
+            )
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("1"), JitValue::felt_str("-1"))),
+            JitValue::felt_str("-1")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("-2"), JitValue::felt_str("1"))),
+            JitValue::felt_str("-2")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("-2"), JitValue::felt_str("-2"))),
+            JitValue::felt_str("1")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("-2"), JitValue::felt_str("-1"))),
+            JitValue::felt_str("2")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("-1"), JitValue::felt_str("1"))),
+            JitValue::felt_str("-1")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("-1"), JitValue::felt_str("-2"))),
+            JitValue::felt_str(
+                "1809251394333065606848661391547535052811553607665798349986546028067936010241"
+            )
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("-1"), JitValue::felt_str("-1"))),
+            JitValue::felt_str("1")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(JitValue::felt_str("6"), JitValue::felt_str("2"))),
+            JitValue::felt_str("3")
+        );
+        assert_eq!(
+            extract_struct_field(run_test(
+                JitValue::felt_str("1000"),
+                JitValue::felt_str("2")
+            )),
+            JitValue::felt_str("500")
         );
     }
 
