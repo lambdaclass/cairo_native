@@ -73,7 +73,7 @@ impl AotNativeExecutor {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::Error::InsufficientGasError)?;
+            .map_err(crate::error::Error::GasMetadataError)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -95,7 +95,7 @@ impl AotNativeExecutor {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::Error::InsufficientGasError)?;
+            .map_err(crate::error::Error::GasMetadataError)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -117,7 +117,7 @@ impl AotNativeExecutor {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::Error::InsufficientGasError)?;
+            .map_err(crate::error::Error::GasMetadataError)?;
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
@@ -159,7 +159,8 @@ mod tests {
     use super::*;
     use crate::{
         context::NativeContext,
-        utils::test::{load_cairo, load_starknet, TestSyscallHandler},
+        starknet_stub::StubSyscallHandler,
+        utils::test::{load_cairo, load_starknet},
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
@@ -233,22 +234,23 @@ mod tests {
         // The second function in the program is `get_block_hash`.
         let entrypoint_function_id = &program.funcs.get(1).expect("should have a function").id;
 
-        let mut syscall_handler = TestSyscallHandler;
+        let mut syscall_handler = &mut StubSyscallHandler::default();
+
+        let expected_value = syscall_handler.get_block_hash(1, &mut 0).unwrap();
+
         let result = executor
             .invoke_dynamic_with_syscall_handler(
                 entrypoint_function_id,
                 &[],
                 Some(u128::MAX),
-                syscall_handler.clone(),
+                syscall_handler,
             )
             .unwrap();
 
         let expected_value = JitValue::Enum {
             tag: 0,
             value: JitValue::Struct {
-                fields: vec![JitValue::Felt252(
-                    syscall_handler.get_block_hash(1, &mut 0).unwrap(),
-                )],
+                fields: vec![JitValue::Felt252(expected_value)],
                 debug_name: Some("Tuple<felt252>".into()),
             }
             .into(),
@@ -277,7 +279,7 @@ mod tests {
                 entrypoint_function_id,
                 &[],
                 Some(u128::MAX),
-                TestSyscallHandler,
+                &mut StubSyscallHandler::default(),
             )
             .unwrap();
 
