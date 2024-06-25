@@ -5,7 +5,7 @@ use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::ProgramRegistryExt,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -65,16 +65,11 @@ pub fn build<'ctx, 'this>(
     let selector = helper
         .init_block()
         .const_int(context, location, info.selector.clone(), 256)?;
-    let selector_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        IntegerType::new(context, 256).into(),
-        None,
-    )?;
+    let selector_ptr = helper.init_block().alloca_int(context, location, 256)?;
 
     helper
         .init_block()
-        .store(context, location, selector_ptr, selector, None)?;
+        .store(context, location, selector_ptr, selector)?;
 
     // Allocate and store arguments. The cairo type is a Span<Felt252> (the outer struct),
     // which contains an Array<Felt252> (the inner struct)
@@ -92,10 +87,13 @@ pub fn build<'ctx, 'this>(
         )],
         false,
     );
-    let args_ptr = helper
-        .init_block()
-        .alloca1(context, location, span_felt252_type, None)?;
-    entry.store(context, location, args_ptr, entry.argument(0)?.into(), None)?;
+    let args_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        span_felt252_type,
+        get_integer_layout(64).align(),
+    )?;
+    entry.store(context, location, args_ptr, entry.argument(0)?.into())?;
 
     // Call runtime cheatcode syscall wrapper
     metadata

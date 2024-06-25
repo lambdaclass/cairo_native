@@ -326,13 +326,7 @@ pub fn build_append<'ctx, 'this>(
             location,
         ))?;
 
-        append_block.store(
-            context,
-            location,
-            ptr,
-            entry.argument(1)?.into(),
-            Some(elem_layout.align()),
-        )?;
+        append_block.store(context, location, ptr, entry.argument(1)?.into())?;
 
         let array_len = append_block.append_op_result(arith::addi(array_end, k1, location))?;
         let value = append_block.insert_value(
@@ -877,13 +871,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     let container: Value = {
         // load box
-        entry.load(
-            context,
-            location,
-            entry.argument(0)?.into(),
-            struct_ty,
-            Some(struct_type_info.layout(registry)?.align()),
-        )?
+        entry.load(context, location, entry.argument(0)?.into(), struct_ty)?
     };
 
     let fields = struct_type_info.fields().expect("should have fields");
@@ -937,7 +925,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
             location,
         ))?;
 
-        entry.store(context, location, target_ptr, value, None)?;
+        entry.store(context, location, target_ptr, value)?;
     }
 
     let array_container = entry.insert_value(context, location, array_container, ptr, 0)?;

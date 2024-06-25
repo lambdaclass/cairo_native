@@ -163,7 +163,6 @@ pub fn build_call_contract<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -193,7 +192,7 @@ pub fn build_call_contract<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -201,14 +200,13 @@ pub fn build_call_contract<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.store(
         context,
         location,
         gas_builtin_ptr,
         entry.argument(0)?.into(),
-        None,
     )?;
 
     // Allocate `address` argument and write the value.
@@ -218,7 +216,6 @@ pub fn build_call_contract<'ctx, 'this>(
         location,
         address_arg_ptr,
         entry.argument(2)?.into(),
-        None,
     )?;
 
     // Allocate `entry_point_selector` argument and write the value.
@@ -228,7 +225,6 @@ pub fn build_call_contract<'ctx, 'this>(
         location,
         entry_point_selector_arg_ptr,
         entry.argument(3)?.into(),
-        None,
     )?;
 
     // Allocate `calldata` argument and write the value.
@@ -250,14 +246,13 @@ pub fn build_call_contract<'ctx, 'this>(
         context,
         location,
         calldata_arg_ty,
-        Some(get_integer_layout(64).align()),
+        get_integer_layout(64).align(),
     )?;
     entry.store(
         context,
         location,
         calldata_arg_ptr,
         entry.argument(4)?.into(),
-        None,
     )?;
 
     // Extract function pointer.
@@ -272,13 +267,7 @@ pub fn build_call_contract<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -309,7 +298,6 @@ pub fn build_call_contract<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -340,7 +328,7 @@ pub fn build_call_contract<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -363,7 +351,7 @@ pub fn build_call_contract<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -371,7 +359,6 @@ pub fn build_call_contract<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -558,7 +545,6 @@ pub fn build_storage_read<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -588,7 +574,7 @@ pub fn build_storage_read<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -596,14 +582,13 @@ pub fn build_storage_read<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.store(
         context,
         location,
         gas_builtin_ptr,
         entry.argument(0)?.into(),
-        None,
     )?;
 
     // Allocate `address` argument and write the value.
@@ -613,7 +598,6 @@ pub fn build_storage_read<'ctx, 'this>(
         location,
         address_arg_ptr,
         entry.argument(3)?.into(),
-        None,
     )?;
 
     // Extract function pointer.
@@ -628,13 +612,7 @@ pub fn build_storage_read<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -664,7 +642,6 @@ pub fn build_storage_read<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -695,7 +672,7 @@ pub fn build_storage_read<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -718,7 +695,7 @@ pub fn build_storage_read<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -726,7 +703,6 @@ pub fn build_storage_read<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -757,7 +733,6 @@ pub fn build_storage_write<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -791,7 +766,7 @@ pub fn build_storage_write<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -799,14 +774,13 @@ pub fn build_storage_write<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.store(
         context,
         location,
         gas_builtin_ptr,
         entry.argument(0)?.into(),
-        None,
     )?;
 
     // Allocate `address` argument and write the value.
@@ -816,18 +790,11 @@ pub fn build_storage_write<'ctx, 'this>(
         location,
         address_arg_ptr,
         entry.argument(3)?.into(),
-        None,
     )?;
 
     // Allocate `value` argument and write the value.
     let value_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
-    entry.store(
-        context,
-        location,
-        value_arg_ptr,
-        entry.argument(4)?.into(),
-        None,
-    )?;
+    entry.store(context, location, value_arg_ptr, entry.argument(4)?.into())?;
 
     let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
         context,
@@ -840,13 +807,7 @@ pub fn build_storage_write<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -877,7 +838,6 @@ pub fn build_storage_write<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -908,7 +868,7 @@ pub fn build_storage_write<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -931,7 +891,7 @@ pub fn build_storage_write<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -939,7 +899,6 @@ pub fn build_storage_write<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -1124,7 +1083,6 @@ pub fn build_emit_event<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -1158,7 +1116,7 @@ pub fn build_emit_event<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -1166,7 +1124,7 @@ pub fn build_emit_event<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1194,15 +1152,9 @@ pub fn build_emit_event<'ctx, 'this>(
             )],
             false,
         ),
-        Some(get_integer_layout(64).align()),
+        get_integer_layout(64).align(),
     )?;
-    entry.store(
-        context,
-        location,
-        keys_arg_ptr,
-        entry.argument(2)?.into(),
-        None,
-    )?;
+    entry.store(context, location, keys_arg_ptr, entry.argument(2)?.into())?;
 
     // Allocate `data` argument and write the value.
     let data_arg_ptr = helper.init_block().alloca1(
@@ -1222,15 +1174,9 @@ pub fn build_emit_event<'ctx, 'this>(
             )],
             false,
         ),
-        Some(get_integer_layout(64).align()),
+        get_integer_layout(64).align(),
     )?;
-    entry.store(
-        context,
-        location,
-        data_arg_ptr,
-        entry.argument(3)?.into(),
-        None,
-    )?;
+    entry.store(context, location, data_arg_ptr, entry.argument(3)?.into())?;
 
     let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
         context,
@@ -1243,13 +1189,7 @@ pub fn build_emit_event<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -1279,7 +1219,6 @@ pub fn build_emit_event<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -1310,7 +1249,7 @@ pub fn build_emit_event<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -1333,7 +1272,7 @@ pub fn build_emit_event<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -1341,7 +1280,6 @@ pub fn build_emit_event<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -1372,7 +1310,6 @@ pub fn build_get_block_hash<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -1402,7 +1339,7 @@ pub fn build_get_block_hash<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -1410,7 +1347,7 @@ pub fn build_get_block_hash<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1432,13 +1369,7 @@ pub fn build_get_block_hash<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -1467,7 +1398,6 @@ pub fn build_get_block_hash<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -1498,7 +1428,7 @@ pub fn build_get_block_hash<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -1521,7 +1451,7 @@ pub fn build_get_block_hash<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -1529,7 +1459,6 @@ pub fn build_get_block_hash<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -1560,7 +1489,6 @@ pub fn build_get_execution_info<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -1590,7 +1518,7 @@ pub fn build_get_execution_info<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -1598,14 +1526,13 @@ pub fn build_get_execution_info<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.store(
         context,
         location,
         gas_builtin_ptr,
         entry.argument(0)?.into(),
-        None,
     )?;
 
     // Extract function pointer.
@@ -1620,13 +1547,7 @@ pub fn build_get_execution_info<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -1649,7 +1570,6 @@ pub fn build_get_execution_info<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -1680,7 +1600,7 @@ pub fn build_get_execution_info<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -1703,7 +1623,7 @@ pub fn build_get_execution_info<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -1711,7 +1631,6 @@ pub fn build_get_execution_info<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -1742,7 +1661,6 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -1772,7 +1690,7 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -1780,14 +1698,13 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.store(
         context,
         location,
         gas_builtin_ptr,
         entry.argument(0)?.into(),
-        None,
     )?;
 
     // Extract function pointer.
@@ -1802,13 +1719,7 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -1831,7 +1742,6 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -1862,7 +1772,7 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -1885,7 +1795,7 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -1893,7 +1803,6 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -1924,7 +1833,6 @@ pub fn build_deploy<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -1997,7 +1905,7 @@ pub fn build_deploy<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -2005,14 +1913,13 @@ pub fn build_deploy<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.store(
         context,
         location,
         gas_builtin_ptr,
         entry.argument(0)?.into(),
-        None,
     )?;
 
     // Allocate `class_hash` argument and write the value.
@@ -2022,7 +1929,6 @@ pub fn build_deploy<'ctx, 'this>(
         location,
         class_hash_arg_ptr,
         entry.argument(2)?.into(),
-        None,
     )?;
 
     // Allocate `entry_point_selector` argument and write the value.
@@ -2032,7 +1938,6 @@ pub fn build_deploy<'ctx, 'this>(
         location,
         contract_address_salt_arg_ptr,
         entry.argument(3)?.into(),
-        None,
     )?;
 
     // Allocate `calldata` argument and write the value.
@@ -2053,14 +1958,13 @@ pub fn build_deploy<'ctx, 'this>(
             )],
             false,
         ),
-        Some(get_integer_layout(64).align()),
+        get_integer_layout(64).align(),
     )?;
     entry.store(
         context,
         location,
         calldata_arg_ptr,
         entry.argument(4)?.into(),
-        None,
     )?;
 
     let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
@@ -2074,13 +1978,7 @@ pub fn build_deploy<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -2121,7 +2019,6 @@ pub fn build_deploy<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -2152,7 +2049,7 @@ pub fn build_deploy<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -2175,7 +2072,7 @@ pub fn build_deploy<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -2183,7 +2080,6 @@ pub fn build_deploy<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -2231,7 +2127,6 @@ pub fn build_keccak<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -2261,7 +2156,7 @@ pub fn build_keccak<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -2269,14 +2164,13 @@ pub fn build_keccak<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.store(
         context,
         location,
         gas_builtin_ptr,
         entry.argument(0)?.into(),
-        None,
     )?;
 
     // Allocate `input` argument and write the value.
@@ -2293,15 +2187,9 @@ pub fn build_keccak<'ctx, 'this>(
             ],
             false,
         ),
-        Some(get_integer_layout(64).align()),
+        get_integer_layout(64).align(),
     )?;
-    entry.store(
-        context,
-        location,
-        input_arg_ptr,
-        entry.argument(2)?.into(),
-        None,
-    )?;
+    entry.store(context, location, input_arg_ptr, entry.argument(2)?.into())?;
 
     let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
         context,
@@ -2314,13 +2202,7 @@ pub fn build_keccak<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -2343,7 +2225,6 @@ pub fn build_keccak<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -2374,7 +2255,7 @@ pub fn build_keccak<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -2397,7 +2278,7 @@ pub fn build_keccak<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -2405,7 +2286,6 @@ pub fn build_keccak<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -2436,7 +2316,6 @@ pub fn build_library_call<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -2466,7 +2345,7 @@ pub fn build_library_call<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -2474,14 +2353,13 @@ pub fn build_library_call<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.store(
         context,
         location,
         gas_builtin_ptr,
         entry.argument(0)?.into(),
-        None,
     )?;
 
     // Allocate `class_hash` argument and write the value.
@@ -2491,7 +2369,6 @@ pub fn build_library_call<'ctx, 'this>(
         location,
         class_hash_arg_ptr,
         entry.argument(2)?.into(),
-        None,
     )?;
 
     // Allocate `entry_point_selector` argument and write the value.
@@ -2501,7 +2378,6 @@ pub fn build_library_call<'ctx, 'this>(
         location,
         function_selector_arg_ptr,
         entry.argument(3)?.into(),
-        None,
     )?;
 
     // Allocate `calldata` argument and write the value.
@@ -2522,14 +2398,13 @@ pub fn build_library_call<'ctx, 'this>(
             )],
             false,
         ),
-        Some(get_integer_layout(64).align()),
+        get_integer_layout(64).align(),
     )?;
     entry.store(
         context,
         location,
         calldata_arg_ptr,
         entry.argument(4)?.into(),
-        None,
     )?;
 
     let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
@@ -2543,13 +2418,7 @@ pub fn build_library_call<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -2580,7 +2449,6 @@ pub fn build_library_call<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -2611,7 +2479,7 @@ pub fn build_library_call<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -2634,7 +2502,7 @@ pub fn build_library_call<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -2642,7 +2510,6 @@ pub fn build_library_call<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -2673,7 +2540,6 @@ pub fn build_replace_class<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -2707,7 +2573,7 @@ pub fn build_replace_class<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -2715,14 +2581,13 @@ pub fn build_replace_class<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.store(
         context,
         location,
         gas_builtin_ptr,
         entry.argument(0)?.into(),
-        None,
     )?;
 
     // Allocate `class_hash` argument and write the value.
@@ -2732,7 +2597,6 @@ pub fn build_replace_class<'ctx, 'this>(
         location,
         class_hash_arg_ptr,
         entry.argument(2)?.into(),
-        None,
     )?;
 
     let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
@@ -2746,13 +2610,7 @@ pub fn build_replace_class<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -2775,7 +2633,6 @@ pub fn build_replace_class<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -2806,7 +2663,7 @@ pub fn build_replace_class<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -2829,7 +2686,7 @@ pub fn build_replace_class<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -2837,7 +2694,6 @@ pub fn build_replace_class<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -2868,7 +2724,6 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         location,
         entry.argument(1)?.into(),
         llvm::r#type::pointer(context, 0),
-        None,
     )?;
 
     // Allocate space for the return value.
@@ -2902,7 +2757,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
             ],
             false,
         ),
-        Some(result_layout.align()),
+        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -2910,14 +2765,13 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.store(
         context,
         location,
         gas_builtin_ptr,
         entry.argument(0)?.into(),
-        None,
     )?;
 
     // Allocate `to_address` argument and write the value.
@@ -2927,7 +2781,6 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         location,
         to_address_arg_ptr,
         entry.argument(2)?.into(),
-        None,
     )?;
 
     // Allocate `payload` argument and write the value.
@@ -2944,14 +2797,13 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
             ],
             false,
         ),
-        Some(get_integer_layout(64).align()),
+        get_integer_layout(64).align(),
     )?;
     entry.store(
         context,
         location,
         payload_arg_ptr,
         entry.argument(3)?.into(),
-        None,
     )?;
 
     let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
@@ -2965,13 +2817,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         location,
     ))?;
-    let fn_ptr = entry.load(
-        context,
-        location,
-        fn_ptr,
-        llvm::r#type::pointer(context, 0),
-        None,
-    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
@@ -3001,7 +2847,6 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
             ],
             false,
         ),
-        None,
     )?;
     let result_tag = entry.extract_value(
         context,
@@ -3032,7 +2877,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[0].0, None)?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry.append_op_result(
@@ -3055,7 +2900,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )?;
-        entry.load(context, location, ptr, variant_tys[1].0, None)?
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
@@ -3063,7 +2908,6 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         location,
         gas_builtin_ptr,
         IntegerType::new(context, 128).into(),
-        None,
     )?;
 
     entry.append_operation(helper.cond_br(
