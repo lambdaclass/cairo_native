@@ -1240,4 +1240,194 @@ mod test {
             vec![12, 0, 0, 0, 0, 0, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF]
         );
     }
+
+    #[test]
+    fn test_argument_mapper_push_felt252() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Felt252(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Felt252(Felt::from(42)));
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Felt252(Felt::ZERO));
+        // 0x800000000000011000000000000000000000000000000000000000000000001 - 1
+        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Felt252(Felt::MAX));
+
+        assert_eq!(
+            argument_mapper.invoke_data,
+            vec![42, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 576460752303423505]
+        );
+    }
+
+    #[test]
+    fn test_argument_mapper_push_ecpoint() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::EcPoint(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(
+            &type_id,
+            &type_info,
+            &JitValue::EcPoint(Felt::from(42), Felt::from(42)),
+        );
+        let _ = argument_mapper.push(
+            &type_id,
+            &type_info,
+            &JitValue::EcPoint(Felt::ZERO, Felt::ZERO),
+        );
+        // 0x800000000000011000000000000000000000000000000000000000000000001 - 1
+        let _ = argument_mapper.push(
+            &type_id,
+            &type_info,
+            &JitValue::EcPoint(Felt::MAX, Felt::MAX),
+        );
+
+        assert_eq!(
+            argument_mapper.invoke_data,
+            vec![
+                42,
+                0,
+                0,
+                0,
+                42,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                576460752303423505,
+                0,
+                0,
+                0,
+                576460752303423505
+            ]
+        );
+    }
+
+    #[test]
+    fn test_argument_mapper_push_ecstate() {
+        let program = ProgramParser::new().parse("").unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::EcState(InfoOnlyConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        let _ = argument_mapper.push(
+            &type_id,
+            &type_info,
+            &JitValue::EcState(
+                Felt::from(42),
+                Felt::from(42),
+                Felt::from(42),
+                Felt::from(42),
+            ),
+        );
+        // 0x800000000000011000000000000000000000000000000000000000000000001 - 1
+        let _ = argument_mapper.push(
+            &type_id,
+            &type_info,
+            &JitValue::EcState(Felt::MAX, Felt::MAX, Felt::MAX, Felt::MAX),
+        );
+
+        assert_eq!(
+            argument_mapper.invoke_data,
+            vec![
+                42,
+                0,
+                0,
+                0,
+                42,
+                0,
+                0,
+                0,
+                42,
+                0,
+                0,
+                0,
+                42,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                576460752303423505,
+                0,
+                0,
+                0,
+                576460752303423505,
+                0,
+                0,
+                0,
+                576460752303423505,
+                0,
+                0,
+                0,
+                576460752303423505
+            ]
+        );
+    }
 }
