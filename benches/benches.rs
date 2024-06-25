@@ -21,11 +21,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut jit_cache = JitProgramCache::new(&context);
 
     let factorial = load_contract("programs/benches/factorial_2M.cairo");
-    let factorial_runner = load_contract_for_vm("programs/benches/factorial_2M.cairo");
     let fibonacci = load_contract("programs/benches/fib_2M.cairo");
-    let fibonacci_runner = load_contract_for_vm("programs/benches/fib_2M.cairo");
     let logistic_map = load_contract("programs/benches/logistic_map.cairo");
-    let logistic_map_runner = load_contract_for_vm("programs/benches/logistic_map.cairo");
 
     let aot_factorial = aot_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::None);
     let aot_fibonacci = aot_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::None);
@@ -42,65 +39,95 @@ fn criterion_benchmark(c: &mut Criterion) {
     let logistic_map_function_id =
         find_function_id(&logistic_map, "logistic_map::logistic_map::main");
 
-    c.bench_function("Cached JIT factorial_2M", |b| {
-        b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
-    });
-    c.bench_function("Cached JIT fibonacci_2M", |b| {
-        b.iter(|| jit_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
-    });
-    c.bench_function("Cached JIT logistic_map", |b| {
-        b.iter(|| jit_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX)));
-    });
+    let factorial_runner = load_contract_for_vm("programs/benches/factorial_2M.cairo");
+    let fibonacci_runner = load_contract_for_vm("programs/benches/fib_2M.cairo");
+    let logistic_map_runner = load_contract_for_vm("programs/benches/logistic_map.cairo");
 
-    c.bench_function("Cached AOT factorial_2M", |b| {
-        b.iter(|| aot_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
-    });
-    c.bench_function("Cached AOT fibonacci_2M", |b| {
-        b.iter(|| aot_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
-    });
-    c.bench_function("Cached AOT logistic_map", |b| {
-        b.iter(|| aot_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX)));
-    });
-
-    let fibonacci_function = fibonacci_runner
-        .find_function("main")
-        .expect("failed to find main fibonacci function");
-    c.bench_function("VM fib_2M", |b| {
-        b.iter(|| {
-            fibonacci_runner.run_function_with_starknet_context(
-                fibonacci_function,
-                &[],
-                Some(usize::MAX),
-                StarknetState::default(),
-            )
-        });
-    });
     let factorial_function = factorial_runner
         .find_function("main")
         .expect("failed to find main factorial function");
-    c.bench_function("VM factorial_2M", |b| {
-        b.iter(|| {
-            factorial_runner.run_function_with_starknet_context(
-                factorial_function,
-                &[],
-                Some(usize::MAX),
-                StarknetState::default(),
-            )
-        });
-    });
+    let fibonacci_function = fibonacci_runner
+        .find_function("main")
+        .expect("failed to find main fibonacci function");
     let logistic_map_function = logistic_map_runner
         .find_function("main")
         .expect("failed to find main logistic map function");
-    c.bench_function("VM logistic_map", |b| {
-        b.iter(|| {
-            logistic_map_runner.run_function_with_starknet_context(
-                logistic_map_function,
-                &[],
-                Some(usize::MAX),
-                StarknetState::default(),
-            )
+
+    {
+        let mut factorial_group = c.benchmark_group("factorial_2M");
+
+        factorial_group.bench_function("Cached JIT", |b| {
+            b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
         });
-    });
+        factorial_group.bench_function("Cached AOT", |b| {
+            b.iter(|| aot_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
+        });
+
+        factorial_group.bench_function("VM", |b| {
+            b.iter(|| {
+                factorial_runner.run_function_with_starknet_context(
+                    factorial_function,
+                    &[],
+                    Some(usize::MAX),
+                    StarknetState::default(),
+                )
+            });
+        });
+
+        factorial_group.finish();
+    }
+
+    {
+        let mut fibonacci_group = c.benchmark_group("fibonacci_2M");
+
+        fibonacci_group.bench_function("Cached JIT", |b| {
+            b.iter(|| jit_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
+        });
+        fibonacci_group.bench_function("Cached AOT", |b| {
+            b.iter(|| aot_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
+        });
+        fibonacci_group.bench_function("VM", |b| {
+            b.iter(|| {
+                fibonacci_runner.run_function_with_starknet_context(
+                    fibonacci_function,
+                    &[],
+                    Some(usize::MAX),
+                    StarknetState::default(),
+                )
+            });
+        });
+
+        fibonacci_group.finish();
+    }
+
+    {
+        let mut logistic_map_group = c.benchmark_group("logistic_map");
+
+        logistic_map_group.bench_function("Cached JIT", |b| {
+            b.iter(|| {
+                jit_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX))
+            });
+        });
+
+        logistic_map_group.bench_function("Cached AOT", |b| {
+            b.iter(|| {
+                aot_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX))
+            });
+        });
+
+        logistic_map_group.bench_function("VM", |b| {
+            b.iter(|| {
+                logistic_map_runner.run_function_with_starknet_context(
+                    logistic_map_function,
+                    &[],
+                    Some(usize::MAX),
+                    StarknetState::default(),
+                )
+            });
+        });
+
+        logistic_map_group.finish();
+    }
 
     #[cfg(target_arch = "x86_64")]
     {
