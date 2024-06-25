@@ -20,6 +20,7 @@ target/
 corelib
 
 .env
+.envrc
 .vscode/
 
 cairo-*.tar

@@ -161,7 +161,7 @@ pub fn build_operation<'ctx, 'this>(
         &[],
         location,
     ));
-    // Check wether the result is positive to distinguish between undeflowing & overflowing results
+    // Check wether the result is positive to distinguish between underflowing & overflowing results
     block_overflow.append_operation(helper.cond_br(
         context,
         is_positive,
