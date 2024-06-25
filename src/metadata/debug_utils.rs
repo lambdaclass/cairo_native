@@ -83,7 +83,7 @@
 
 #![cfg(feature = "with-debug-utils")]
 
-use crate::{block_ext::BlockExt, error::Result};
+use crate::{block_ext::BlockExt, error::Result, utils::get_integer_layout};
 use melior::{
     dialect::{
         arith, func,
@@ -194,7 +194,7 @@ impl DebugUtils {
             message.len().try_into().unwrap(),
         );
 
-        let ptr = block.alloca1(context, location, ty, None)?;
+        let ptr = block.alloca1(context, location, ty, get_integer_layout(8).align())?;
 
         let msg = block
             .append_operation(

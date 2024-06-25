@@ -236,7 +236,7 @@ pub fn build_call_contract<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -281,9 +281,12 @@ pub fn build_call_contract<'ctx, 'this>(
         )],
         false,
     );
-    let calldata_arg_ptr = helper
-        .init_block()
-        .alloca1(context, location, calldata_arg_ty, None)?;
+    let calldata_arg_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        calldata_arg_ty,
+        get_integer_layout(64).align(),
+    )?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(4)?.into(),
@@ -716,7 +719,7 @@ pub fn build_storage_read<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -733,7 +736,6 @@ pub fn build_storage_read<'ctx, 'this>(
         location,
         address_arg_ptr,
         entry.argument(3)?.into(),
-        None,
     )?;
 
     // Extract function pointer.
@@ -989,7 +991,7 @@ pub fn build_storage_write<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1006,18 +1008,11 @@ pub fn build_storage_write<'ctx, 'this>(
         location,
         address_arg_ptr,
         entry.argument(3)?.into(),
-        None,
     )?;
 
     // Allocate `value` argument and write the value.
     let value_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
-    entry.store(
-        context,
-        location,
-        value_arg_ptr,
-        entry.argument(4)?.into(),
-        None,
-    )?;
+    entry.store(context, location, value_arg_ptr, entry.argument(4)?.into())?;
 
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -1452,7 +1447,7 @@ pub fn build_emit_event<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1480,15 +1475,9 @@ pub fn build_emit_event<'ctx, 'this>(
             )],
             false,
         ),
-        None,
+        get_integer_layout(64).align(),
     )?;
-    entry.store(
-        context,
-        location,
-        keys_arg_ptr,
-        entry.argument(2)?.into(),
-        None,
-    )?;
+    entry.store(context, location, keys_arg_ptr, entry.argument(2)?.into())?;
 
     // Allocate `data` argument and write the value.
     let data_arg_ptr = helper.init_block().alloca1(
@@ -1508,15 +1497,9 @@ pub fn build_emit_event<'ctx, 'this>(
             )],
             false,
         ),
-        None,
+        get_integer_layout(64).align(),
     )?;
-    entry.store(
-        context,
-        location,
-        data_arg_ptr,
-        entry.argument(3)?.into(),
-        None,
-    )?;
+    entry.store(context, location, data_arg_ptr, entry.argument(3)?.into())?;
 
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -1766,7 +1749,7 @@ pub fn build_get_block_hash<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2024,7 +2007,7 @@ pub fn build_get_execution_info<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2276,7 +2259,7 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2571,7 +2554,7 @@ pub fn build_deploy<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2588,7 +2571,6 @@ pub fn build_deploy<'ctx, 'this>(
         location,
         class_hash_arg_ptr,
         entry.argument(2)?.into(),
-        None,
     )?;
 
     // Allocate `entry_point_selector` argument and write the value.
@@ -2598,7 +2580,6 @@ pub fn build_deploy<'ctx, 'this>(
         location,
         contract_address_salt_arg_ptr,
         entry.argument(3)?.into(),
-        None,
     )?;
 
     // Allocate `calldata` argument and write the value.
@@ -2619,14 +2600,13 @@ pub fn build_deploy<'ctx, 'this>(
             )],
             false,
         ),
-        None,
+        get_integer_layout(64).align(),
     )?;
     entry.store(
         context,
         location,
         calldata_arg_ptr,
         entry.argument(4)?.into(),
-        None,
     )?;
 
     let fn_ptr = entry
@@ -2913,7 +2893,7 @@ pub fn build_keccak<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2937,15 +2917,9 @@ pub fn build_keccak<'ctx, 'this>(
             ],
             false,
         ),
-        None,
+        get_integer_layout(64).align(),
     )?;
-    entry.store(
-        context,
-        location,
-        input_arg_ptr,
-        entry.argument(2)?.into(),
-        None,
-    )?;
+    entry.store(context, location, input_arg_ptr, entry.argument(2)?.into())?;
 
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -3188,7 +3162,7 @@ pub fn build_library_call<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -3236,7 +3210,7 @@ pub fn build_library_call<'ctx, 'this>(
             )],
             false,
         ),
-        None,
+        get_integer_layout(64).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -3499,7 +3473,7 @@ pub fn build_replace_class<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -3764,7 +3738,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -3798,7 +3772,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
             ],
             false,
         ),
-        None,
+        get_integer_layout(64).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
