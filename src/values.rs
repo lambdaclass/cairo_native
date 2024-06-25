@@ -180,9 +180,10 @@ impl JitValue {
             (JitValue::Bytes31(_), CoreTypeConcrete::Bytes31(_)) => Ok(true),
             (JitValue::Array(values), CoreTypeConcrete::Array(info)) => {
                 let type_info = registry.get_type(&info.ty)?;
-                values.iter().try_fold(true, |acc, v| {
-                    Ok(acc & v.matches_type(registry, &type_info)?)
-                })
+                values.iter().try_fold(
+                    true,
+                    |acc, v| Ok(acc & v.matches_type(registry, type_info)?),
+                )
             }
             (JitValue::Struct { fields, .. }, CoreTypeConcrete::Struct(info)) => {
                 if fields.len() != info.members.len() {
@@ -190,7 +191,7 @@ impl JitValue {
                 }
                 for (jit_value, ty) in fields.iter().zip(info.members.iter()) {
                     let type_info = registry.get_type(ty)?;
-                    if !jit_value.matches_type(registry, &type_info)? {
+                    if !jit_value.matches_type(registry, type_info)? {
                         return Ok(false);
                     }
                 }
@@ -201,7 +202,7 @@ impl JitValue {
                     return Ok(false);
                 }
                 let type_info = registry.get_type(&info.variants[*tag])?;
-                value.matches_type(registry, &type_info)
+                value.matches_type(registry, type_info)
             }
             (JitValue::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(_)) => Ok(true),
             (JitValue::Uint8(_), CoreTypeConcrete::Uint8(_)) => Ok(true),
