@@ -234,8 +234,7 @@ impl JitValue {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let ptr: *mut NonNull<()> =
-                            libc::malloc(elem_layout.size() * data.len()).cast();
+                        let ptr: *mut () = libc::malloc(elem_layout.size() * data.len()).cast();
                         let len: u32 = data.len().try_into().unwrap();
 
                         for elem in data {
@@ -243,47 +242,36 @@ impl JitValue {
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::<u8>().as_ptr(),
-                                NonNull::new(
-                                    ((NonNull::new_unchecked(ptr).as_ptr() as usize)
-                                        + len as usize * elem_layout.size())
-                                        as *mut u8,
-                                )
-                                .unwrap()
-                                .cast()
-                                .as_ptr(),
+                                ptr.byte_add(len as usize * elem_layout.size()).cast::<u8>(),
                                 elem_layout.size(),
                             );
                         }
 
-                        let target = arena.alloc_layout(
-                            Layout::new::<*mut NonNull<()>>()
-                                .extend(Layout::new::<u32>())?
-                                .0
-                                .extend(Layout::new::<u32>())?
-                                .0,
-                        );
+                        let target = arena
+                            .alloc_layout(
+                                Layout::new::<*mut ()>() // ptr
+                                    .extend(Layout::new::<u32>())? // start
+                                    .0
+                                    .extend(Layout::new::<u32>())? // end
+                                    .0
+                                    .extend(Layout::new::<u32>())? // capacity
+                                    .0
+                                    .pad_to_align(),
+                            )
+                            .as_ptr();
 
-                        *target.cast::<*mut NonNull<()>>().as_mut() = ptr;
+                        *target.cast::<*mut ()>() = ptr;
 
                         let (layout, offset) =
                             Layout::new::<*mut NonNull<()>>().extend(Layout::new::<u32>())?;
-                        *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
-                            .unwrap()
-                            .cast()
-                            .as_mut() = 0;
+                        *target.byte_add(offset).cast::<u32>() = 0;
 
                         let (layout, offset) = layout.extend(Layout::new::<u32>())?;
-                        *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
-                            .unwrap()
-                            .cast()
-                            .as_mut() = len;
+                        *target.byte_add(offset).cast::<u32>() = len;
 
                         let (_, offset) = layout.extend(Layout::new::<u32>())?;
-                        *NonNull::new(((target.as_ptr() as usize) + offset) as *mut u32)
-                            .unwrap()
-                            .cast()
-                            .as_mut() = len;
-                        target.cast()
+                        *target.byte_add(offset).cast::<u32>() = len;
+                        NonNull::new_unchecked(target).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got an array",
@@ -326,26 +314,22 @@ impl JitValue {
                         }
 
                         let ptr = arena
-                            .alloc_layout(layout.unwrap_or(Layout::new::<()>()))
-                            .cast();
+                            .alloc_layout(layout.unwrap_or(Layout::new::<()>()).pad_to_align())
+                            .as_ptr();
 
                         for (layout, offset, member_ptr) in data {
                             std::ptr::copy_nonoverlapping(
                                 member_ptr.cast::<u8>().as_ptr(),
-                                NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut u8)
-                                    .unwrap()
-                                    .cast()
-                                    .as_ptr(),
+                                ptr.byte_add(offset),
                                 layout.size(),
                             );
                         }
 
                         if is_memory_allocated {
-                            NonNull::new(arena.alloc(ptr.as_ptr()) as *mut _)
-                                .unwrap()
-                                .cast()
+                            // alloc returns a ref, so its never null
+                            NonNull::new_unchecked(arena.alloc(ptr) as *mut _).cast()
                         } else {
-                            ptr
+                            NonNull::new_unchecked(ptr).cast()
                         }
                     } else {
                         Err(Error::UnexpectedValue(format!(
@@ -364,33 +348,26 @@ impl JitValue {
                         let (layout, tag_layout, variant_layouts) =
                             crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
                                 .unwrap();
-                        let ptr = arena.alloc_layout(layout).cast::<()>();
+                        let ptr = arena.alloc_layout(layout).cast::<()>().as_ptr();
 
                         match tag_layout.size() {
                             0 => panic!("An enum without variants cannot be instantiated."),
-                            1 => *ptr.cast::<u8>().as_mut() = *tag as u8,
-                            2 => *ptr.cast::<u16>().as_mut() = *tag as u16,
-                            4 => *ptr.cast::<u32>().as_mut() = *tag as u32,
-                            8 => *ptr.cast::<u64>().as_mut() = *tag as u64,
+                            1 => *ptr.cast::<u8>() = *tag as u8,
+                            2 => *ptr.cast::<u16>() = *tag as u16,
+                            4 => *ptr.cast::<u32>() = *tag as u32,
+                            8 => *ptr.cast::<u64>() = *tag as u64,
                             _ => unreachable!(),
                         }
 
                         std::ptr::copy_nonoverlapping(
                             payload.cast::<u8>().as_ptr(),
-                            NonNull::new(
-                                ((ptr.as_ptr() as usize)
-                                    + tag_layout.extend(variant_layouts[*tag]).unwrap().1)
-                                    as *mut u8,
-                            )
-                            .unwrap()
-                            .cast()
-                            .as_ptr(),
+                            ptr.byte_add(tag_layout.extend(variant_layouts[*tag]).unwrap().1)
+                                .cast(),
                             variant_layouts[*tag].size(),
                         );
 
-                        NonNull::new(arena.alloc(ptr.as_ptr()) as *mut _)
-                            .unwrap()
-                            .cast()
+                        // alloc returns a reference so its never null
+                        NonNull::new_unchecked(arena.alloc(ptr) as *mut _).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got an enum value",
@@ -411,16 +388,20 @@ impl JitValue {
                             let key = key.to_bytes_le();
                             let value = value.to_jit(arena, registry, &info.ty)?;
 
-                            let value_malloc_ptr =
-                                NonNull::new(libc::malloc(elem_layout.size())).unwrap();
+                            let value_malloc_ptr = libc::malloc(elem_layout.size());
 
                             std::ptr::copy_nonoverlapping(
                                 value.cast::<u8>().as_ptr(),
-                                value_malloc_ptr.cast().as_ptr(),
+                                value_malloc_ptr.cast(),
                                 elem_layout.size(),
                             );
 
-                            value_map.insert(key, value_malloc_ptr);
+                            value_map.insert(
+                                key,
+                                NonNull::new(value_malloc_ptr)
+                                    .expect("malloc shouldn't return null ptrs")
+                                    .cast(),
+                            );
                         }
 
                         NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
@@ -493,7 +474,12 @@ impl JitValue {
                 }
                 Self::EcPoint(a, b) => {
                     let ptr = arena
-                        .alloc_layout(layout_repeat(&get_integer_layout(252), 2).unwrap().0)
+                        .alloc_layout(
+                            layout_repeat(&get_integer_layout(252), 2)
+                                .unwrap()
+                                .0
+                                .pad_to_align(),
+                        )
                         .cast();
 
                     let a = felt252_bigint(a.to_bigint());
@@ -506,7 +492,12 @@ impl JitValue {
                 }
                 Self::EcState(a, b, c, d) => {
                     let ptr = arena
-                        .alloc_layout(layout_repeat(&get_integer_layout(252), 4).unwrap().0)
+                        .alloc_layout(
+                            layout_repeat(&get_integer_layout(252), 4)
+                                .unwrap()
+                                .0
+                                .pad_to_align(),
+                        )
                         .cast();
 
                     let a = felt252_bigint(a.to_bigint());
@@ -548,29 +539,29 @@ impl JitValue {
                     let len_layout = crate::utils::get_integer_layout(32);
 
                     let (ptr_layout, offset) = ptr_layout.extend(len_layout).unwrap();
-                    let offset_value = *NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ())
+                    let start_offset_value = *NonNull::new(ptr.as_ptr().byte_add(offset))
                         .unwrap()
                         .cast::<u32>()
                         .as_ref();
                     let (_, offset) = ptr_layout.extend(len_layout).unwrap();
-                    let length_value = *NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ())
+                    let end_offset_value = *NonNull::new(ptr.as_ptr().byte_add(offset))
                         .unwrap()
                         .cast::<u32>()
                         .as_ref();
 
                     // this pointer can be null if the array has a size of 0.
                     let init_data_ptr = *ptr.cast::<*mut ()>().as_ref();
-                    let data_ptr = init_data_ptr.byte_add(elem_stride * offset_value as usize);
+                    let data_ptr =
+                        init_data_ptr.byte_add(elem_stride * start_offset_value as usize);
 
-                    assert!(length_value >= offset_value);
-                    let num_elems = (length_value - offset_value) as usize;
+                    assert!(end_offset_value >= start_offset_value);
+                    let num_elems = (end_offset_value - start_offset_value) as usize;
                     let mut array_value = Vec::with_capacity(num_elems);
 
                     for i in 0..num_elems {
                         // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
                         let cur_elem_ptr =
-                            NonNull::new(((data_ptr as usize) + elem_stride * i) as *mut ())
-                                .unwrap();
+                            NonNull::new(data_ptr.byte_add(elem_stride * i)).unwrap();
 
                         array_value.push(Self::from_jit(cur_elem_ptr, &info.ty, registry));
                     }
@@ -664,8 +655,8 @@ impl JitValue {
                     let payload_layout = payload_ty.layout(registry).unwrap();
 
                     let payload_ptr = NonNull::new(
-                        ((ptr.as_ptr() as usize) + tag_layout.extend(payload_layout).unwrap().1)
-                            as *mut _,
+                        ptr.as_ptr()
+                            .byte_add(tag_layout.extend(payload_layout).unwrap().1),
                     )
                     .unwrap();
                     let payload =
@@ -692,7 +683,7 @@ impl JitValue {
                         layout = Some(new_layout);
 
                         members.push(Self::from_jit(
-                            NonNull::new(((ptr.as_ptr() as usize) + offset) as *mut ()).unwrap(),
+                            NonNull::new(ptr.as_ptr().byte_add(offset)).unwrap(),
                             member_ty,
                             registry,
                         ));
