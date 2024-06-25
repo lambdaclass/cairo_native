@@ -170,6 +170,58 @@ impl<T: Into<JitValue>, const N: usize> From<[T; N]> for JitValue {
 }
 
 impl JitValue {
+    pub fn matches_type(
+        &self,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        type_info: &CoreTypeConcrete,
+    ) -> Result<bool, Error> {
+        match (self, type_info) {
+            (JitValue::Felt252(_), CoreTypeConcrete::Felt252(_)) => Ok(true),
+            (JitValue::Bytes31(_), CoreTypeConcrete::Bytes31(_)) => Ok(true),
+            (JitValue::Array(values), CoreTypeConcrete::Array(info)) => {
+                let type_info = registry.get_type(&info.ty)?;
+                values.iter().try_fold(true, |acc, v| {
+                    Ok(acc & v.matches_type(registry, &type_info)?)
+                })
+            }
+            (JitValue::Struct { fields, .. }, CoreTypeConcrete::Struct(info)) => {
+                if fields.len() != info.members.len() {
+                    return Ok(false);
+                }
+                for (jit_value, ty) in fields.iter().zip(info.members.iter()) {
+                    let type_info = registry.get_type(ty)?;
+                    if !jit_value.matches_type(registry, &type_info)? {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+            (JitValue::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) => {
+                if *tag >= info.variants.len() {
+                    return Ok(false);
+                }
+                let type_info = registry.get_type(&info.variants[*tag])?;
+                value.matches_type(registry, &type_info)
+            }
+            (JitValue::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(_)) => Ok(true),
+            (JitValue::Uint8(_), CoreTypeConcrete::Uint8(_)) => Ok(true),
+            (JitValue::Uint16(_), CoreTypeConcrete::Uint16(_)) => Ok(true),
+            (JitValue::Uint32(_), CoreTypeConcrete::Uint32(_)) => Ok(true),
+            (JitValue::Uint64(_), CoreTypeConcrete::Uint64(_)) => Ok(true),
+            (JitValue::Uint128(_), CoreTypeConcrete::Uint128(_)) => Ok(true),
+            (JitValue::Sint8(_), CoreTypeConcrete::Sint8(_)) => Ok(true),
+            (JitValue::Sint16(_), CoreTypeConcrete::Sint16(_)) => Ok(true),
+            (JitValue::Sint32(_), CoreTypeConcrete::Sint32(_)) => Ok(true),
+            (JitValue::Sint64(_), CoreTypeConcrete::Sint64(_)) => Ok(true),
+            (JitValue::Sint128(_), CoreTypeConcrete::Sint128(_)) => Ok(true),
+            (JitValue::EcPoint(_, _), CoreTypeConcrete::EcPoint(_)) => Ok(true),
+            (JitValue::EcState(_, _, _, _), CoreTypeConcrete::EcState(_)) => Ok(true),
+            (JitValue::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => Ok(true),
+            (JitValue::Null, CoreTypeConcrete::Nullable(_)) => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
     pub(crate) fn resolve_type<'a>(
         ty: &'a CoreTypeConcrete,
         registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
@@ -800,6 +852,10 @@ impl JitValue {
 mod test {
     use super::*;
     use bumpalo::Bump;
+    use cairo_lang_sierra::extensions::bounded_int::BoundedIntConcreteType;
+    use cairo_lang_sierra::extensions::enm::EnumConcreteType;
+    use cairo_lang_sierra::extensions::structure::StructConcreteType;
+    use cairo_lang_sierra::extensions::types::InfoOnlyConcreteType;
     use cairo_lang_sierra::extensions::types::{InfoAndTypeConcreteType, TypeInfo};
     use cairo_lang_sierra::program::ConcreteTypeLongId;
     use cairo_lang_sierra::program::Program;
@@ -1382,6 +1438,419 @@ mod test {
             }
             _ => panic!("Unexpected error type: {:?}", result),
         }
+    }
+
+    #[test]
+    fn test_matches_type_felt252() {
+        let program = ProgramParser::new().parse("").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert!(JitValue::Felt252(Felt::from(100))
+            .matches_type(
+                &registry,
+                &CoreTypeConcrete::Felt252(InfoOnlyConcreteType {
+                    info: TypeInfo {
+                        long_id: ConcreteTypeLongId {
+                            generic_id: "generic_type_id".into(),
+                            generic_args: vec![],
+                        },
+                        storable: false,
+                        droppable: false,
+                        duplicatable: false,
+                        zero_sized: false,
+                    },
+                })
+            )
+            .unwrap());
+    }
+
+    #[test]
+    fn test_matches_type_bytes31() {
+        let program = ProgramParser::new().parse("").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert!(JitValue::Bytes31([0; 31])
+            .matches_type(
+                &registry,
+                &CoreTypeConcrete::Bytes31(InfoOnlyConcreteType {
+                    info: TypeInfo {
+                        long_id: ConcreteTypeLongId {
+                            generic_id: "generic_type_id".into(),
+                            generic_args: vec![],
+                        },
+                        storable: false,
+                        droppable: false,
+                        duplicatable: false,
+                        zero_sized: false,
+                    },
+                })
+            )
+            .unwrap());
+    }
+
+    #[test]
+    fn test_matches_type_arrays() {
+        let program = ProgramParser::new()
+            .parse("type felt252 = felt252;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // A valid JIT value array of felt252 values
+        let valid_jit_value = JitValue::Array(vec![
+            JitValue::Felt252(Felt::from(2)),
+            JitValue::Felt252(Felt::from(42)),
+            JitValue::Felt252(Felt::MAX),
+            JitValue::Felt252(Felt::from(100)),
+        ]);
+
+        // The type info for the array of felt252 values
+        let type_info = CoreTypeConcrete::Array(InfoAndTypeConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+            ty: "felt252".into(),
+        });
+
+        assert!(valid_jit_value.matches_type(&registry, &type_info).unwrap());
+
+        // An invalid JIT value array of felt252 values
+        let invalid_jit_value = JitValue::Array(vec![
+            JitValue::Felt252(Felt::from(2)),
+            JitValue::Felt252(Felt::from(42)),
+            JitValue::Felt252(Felt::MAX),
+            JitValue::Uint64(10),
+        ]);
+
+        assert!(!invalid_jit_value
+            .matches_type(&registry, &type_info)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_matches_type_struct() {
+        let program = ProgramParser::new()
+            .parse(
+                "type u128 = u128;
+                type i64 = i64;
+                type felt252 = felt252;",
+            )
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // A valid JIT value struct with the correct fields
+        let valid_jit_value = JitValue::Struct {
+            fields: vec![
+                JitValue::Felt252(Felt::from(2)),
+                JitValue::Uint128(127),
+                JitValue::Sint64(10),
+                JitValue::Felt252(Felt::from(100)),
+            ],
+            debug_name: None,
+        };
+
+        // The type info for the struct with the correct fields
+        let type_info = CoreTypeConcrete::Struct(StructConcreteType {
+            members: vec![
+                "felt252".into(),
+                "u128".into(),
+                "i64".into(),
+                "felt252".into(),
+            ],
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        assert!(valid_jit_value.matches_type(&registry, &type_info).unwrap());
+
+        // An invalid JIT value struct with the incorrect fields
+        // Uint64 instead of Felt252 for the last field
+        let invalid_jit_value = JitValue::Struct {
+            fields: vec![
+                JitValue::Felt252(Felt::from(2)),
+                JitValue::Uint128(127),
+                JitValue::Sint64(10),
+                JitValue::Sint64(15),
+            ],
+            debug_name: None,
+        };
+
+        assert!(!invalid_jit_value
+            .matches_type(&registry, &type_info)
+            .unwrap());
+
+        // An invalid JIT value struct with the incorrect length
+        let invalid_len_jit_value = JitValue::Struct {
+            fields: vec![
+                JitValue::Felt252(Felt::from(2)),
+                JitValue::Uint128(127),
+                JitValue::Sint64(10),
+            ],
+            debug_name: None,
+        };
+
+        assert!(!invalid_len_jit_value
+            .matches_type(&registry, &type_info)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_matches_type_enum() {
+        let program = ProgramParser::new().parse("type u8 = u8;").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // A valid JIT value enum with the correct tag and value
+        let valid_jit_value = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Uint8(2)),
+            debug_name: None,
+        };
+
+        let type_info = CoreTypeConcrete::Enum(EnumConcreteType {
+            variants: vec!["u8".into()],
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        assert!(valid_jit_value.matches_type(&registry, &type_info).unwrap());
+
+        // An invalid JIT value enum with the incorrect value
+        let invalid_value_jit_value = JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Uint128(2)),
+            debug_name: None,
+        };
+
+        assert!(!invalid_value_jit_value
+            .matches_type(&registry, &type_info)
+            .unwrap());
+
+        // An invalid JIT value enum with the incorrect tag
+        let invalid_tag_jit_value = JitValue::Enum {
+            tag: 2,
+            value: Box::new(JitValue::Uint8(2)),
+            debug_name: None,
+        };
+
+        assert!(!invalid_tag_jit_value
+            .matches_type(&registry, &type_info)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_matches_type_felt252dict() {
+        let program = ProgramParser::new().parse("").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        let jit_value = JitValue::Felt252Dict {
+            value: HashMap::from([(
+                Felt::ZERO,
+                JitValue::Enum {
+                    tag: 0,
+                    value: Box::new(JitValue::Struct {
+                        fields: Vec::new(),
+                        debug_name: None,
+                    }),
+                    debug_name: None,
+                },
+            )]),
+            debug_name: None,
+        };
+
+        let type_info = CoreTypeConcrete::Felt252Dict(InfoAndTypeConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+            ty: "u8".into(),
+        });
+
+        assert!(jit_value.matches_type(&registry, &type_info).unwrap());
+    }
+
+    #[test]
+    fn test_matches_type_integers() {
+        fn info_type() -> InfoOnlyConcreteType {
+            InfoOnlyConcreteType {
+                info: TypeInfo {
+                    long_id: ConcreteTypeLongId {
+                        generic_id: "generic_type_id".into(),
+                        generic_args: vec![],
+                    },
+                    storable: false,
+                    droppable: false,
+                    duplicatable: false,
+                    zero_sized: false,
+                },
+            }
+        }
+
+        let program = ProgramParser::new().parse("").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Test matching unsigned integer types
+        assert!(JitValue::Uint8(10)
+            .matches_type(&registry, &CoreTypeConcrete::Uint8(info_type()))
+            .unwrap());
+        assert!(JitValue::Uint16(10)
+            .matches_type(&registry, &CoreTypeConcrete::Uint16(info_type()))
+            .unwrap());
+        assert!(JitValue::Uint32(10)
+            .matches_type(&registry, &CoreTypeConcrete::Uint32(info_type()))
+            .unwrap());
+        assert!(JitValue::Uint64(10)
+            .matches_type(&registry, &CoreTypeConcrete::Uint64(info_type()))
+            .unwrap());
+        assert!(JitValue::Uint128(10)
+            .matches_type(&registry, &CoreTypeConcrete::Uint128(info_type()))
+            .unwrap());
+
+        // Test matching signed integer types
+        assert!(JitValue::Sint8(-10)
+            .matches_type(&registry, &CoreTypeConcrete::Sint8(info_type()))
+            .unwrap());
+        assert!(JitValue::Sint16(-10)
+            .matches_type(&registry, &CoreTypeConcrete::Sint16(info_type()))
+            .unwrap());
+        assert!(JitValue::Sint32(-10)
+            .matches_type(&registry, &CoreTypeConcrete::Sint32(info_type()))
+            .unwrap());
+        assert!(JitValue::Sint64(-10)
+            .matches_type(&registry, &CoreTypeConcrete::Sint64(info_type()))
+            .unwrap());
+        assert!(JitValue::Sint128(-10)
+            .matches_type(&registry, &CoreTypeConcrete::Sint128(info_type()))
+            .unwrap());
+    }
+
+    #[test]
+    fn test_matches_type_ec() {
+        fn info_type() -> InfoOnlyConcreteType {
+            InfoOnlyConcreteType {
+                info: TypeInfo {
+                    long_id: ConcreteTypeLongId {
+                        generic_id: "generic_type_id".into(),
+                        generic_args: vec![],
+                    },
+                    storable: false,
+                    droppable: false,
+                    duplicatable: false,
+                    zero_sized: false,
+                },
+            }
+        }
+
+        let program = ProgramParser::new().parse("").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert!(JitValue::EcPoint(Felt::from(1), Felt::from(2))
+            .matches_type(&registry, &CoreTypeConcrete::EcPoint(info_type()))
+            .unwrap());
+        assert!(
+            JitValue::EcState(Felt::from(1), Felt::from(2), Felt::from(3), Felt::from(4))
+                .matches_type(&registry, &CoreTypeConcrete::EcState(info_type()))
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_matches_type_bounded_int() {
+        let program = ProgramParser::new().parse("").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        let jit_value = JitValue::BoundedInt {
+            value: Felt::from(16),
+            range: Range {
+                lower: BigInt::from(10),
+                upper: BigInt::from(510),
+            },
+        };
+
+        let info_type = CoreTypeConcrete::BoundedInt(BoundedIntConcreteType {
+            range: Range {
+                lower: BigInt::from(10),
+                upper: BigInt::from(510),
+            },
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+        });
+
+        assert!(jit_value.matches_type(&registry, &info_type).unwrap());
+    }
+
+    #[test]
+    fn test_matches_type_invalid() {
+        fn info_type() -> InfoOnlyConcreteType {
+            InfoOnlyConcreteType {
+                info: TypeInfo {
+                    long_id: ConcreteTypeLongId {
+                        generic_id: "generic_type_id".into(),
+                        generic_args: vec![],
+                    },
+                    storable: false,
+                    droppable: false,
+                    duplicatable: false,
+                    zero_sized: false,
+                },
+            }
+        }
+
+        let program = ProgramParser::new().parse("").unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert!(!JitValue::Uint8(10)
+            .matches_type(&registry, &CoreTypeConcrete::Uint16(info_type()))
+            .unwrap());
+
+        assert!(!JitValue::Felt252(Felt::MAX)
+            .matches_type(&registry, &CoreTypeConcrete::Uint128(info_type()))
+            .unwrap());
     }
 }
 
