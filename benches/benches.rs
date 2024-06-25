@@ -64,7 +64,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let fibonacci_function = fibonacci_runner
         .find_function("main")
-        .expect("failed to find main function");
+        .expect("failed to find main fibonacci function");
     c.bench_function("VM fib_2M", |b| {
         b.iter(|| {
             fibonacci_runner.run_function_with_starknet_context(
@@ -77,7 +77,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     let factorial_function = factorial_runner
         .find_function("main")
-        .expect("failed to find main function");
+        .expect("failed to find main factorial function");
     c.bench_function("VM factorial_2M", |b| {
         b.iter(|| {
             factorial_runner.run_function_with_starknet_context(
@@ -90,7 +90,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
     let logistic_map_function = logistic_map_runner
         .find_function("main")
-        .expect("failed to find main function");
+        .expect("failed to find main logistic map function");
     c.bench_function("VM logistic_map", |b| {
         b.iter(|| {
             logistic_map_runner.run_function_with_starknet_context(
