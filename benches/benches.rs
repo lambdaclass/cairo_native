@@ -21,9 +21,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut jit_cache = JitProgramCache::new(&context);
 
     let factorial = load_contract("programs/benches/factorial_2M.cairo");
+    let factorial_runner = load_contract_for_vm("programs/benches/factorial_2M.cairo");
     let fibonacci = load_contract("programs/benches/fib_2M.cairo");
     let fibonacci_runner = load_contract_for_vm("programs/benches/fib_2M.cairo");
     let logistic_map = load_contract("programs/benches/logistic_map.cairo");
+    let logistic_map_runner = load_contract_for_vm("programs/benches/logistic_map.cairo");
 
     let aot_factorial = aot_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::None);
     let aot_fibonacci = aot_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::None);
@@ -63,10 +65,36 @@ fn criterion_benchmark(c: &mut Criterion) {
     let fibonacci_function = fibonacci_runner
         .find_function("main")
         .expect("failed to find main function");
-    c.bench_function("VM fib_2M", |b| {
+    c.bench_function("VM fibonacci_2M", |b| {
         b.iter(|| {
             fibonacci_runner.run_function_with_starknet_context(
                 fibonacci_function,
+                &[],
+                Some(usize::MAX),
+                StarknetState::default(),
+            )
+        });
+    });
+    let factorial_function = factorial_runner
+        .find_function("main")
+        .expect("failed to find main function");
+    c.bench_function("VM factorial_2M", |b| {
+        b.iter(|| {
+            factorial_runner.run_function_with_starknet_context(
+                factorial_function,
+                &[],
+                Some(usize::MAX),
+                StarknetState::default(),
+            )
+        });
+    });
+    let logistic_map_function = logistic_map_runner
+        .find_function("main")
+        .expect("failed to find main function");
+    c.bench_function("VM logistic_map", |b| {
+        b.iter(|| {
+            logistic_map_runner.run_function_with_starknet_context(
+                logistic_map_function,
                 &[],
                 Some(usize::MAX),
                 StarknetState::default(),
