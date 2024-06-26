@@ -395,7 +395,7 @@
     ))<span class="question-mark">?</span>;
 
     <span class="comment">// Store constant in box
-    </span>entry.store(context, location, ptr, value, <span class="prelude-val">Some</span>(inner_layout.align()))<span class="question-mark">?</span>;
+    </span>entry.store(context, location, ptr, value)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[ptr], location));
     <span class="prelude-val">Ok</span>(())

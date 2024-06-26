@@ -326,32 +326,6 @@
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Trait that extends the melior Block type to aid in codegen and consistency.
 
 </span><span class="kw">use </span>melior::{
@@ -431,7 +405,6 @@
         location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
         addr: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
         value_type: Type&lt;<span class="lifetime">'ctx</span>&gt;,
-        align: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;, Error&gt;;
 
     <span class="doccomment">/// Allocates the given number of elements of type in memory on the stack, returning a opaque pointer.
@@ -441,7 +414,7 @@
         location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
         elem_type: Type&lt;<span class="lifetime">'ctx</span>&gt;,
         num_elems: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
-        align: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+        align: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;, Error&gt;;
 
     <span class="doccomment">/// Allocates one element of the given type in memory on the stack, returning a opaque pointer.
@@ -450,7 +423,7 @@
         context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
         location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
         elem_type: Type&lt;<span class="lifetime">'ctx</span>&gt;,
-        align: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+        align: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;, Error&gt;;
 
     <span class="doccomment">/// Allocates one integer of the given bit width.
@@ -468,7 +441,6 @@
         location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
         addr: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
         value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
-        align: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
     <span class="doccomment">/// Creates a memcpy operation.
@@ -588,19 +560,8 @@
         location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
         addr: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
         value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
-        align: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>op = ods::llvm::store(context, value, addr, location);
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(align) = align {
-            op.set_alignment(IntegerAttribute::new(
-                IntegerType::new(context, <span class="number">64</span>).into(),
-                align.try_into()<span class="question-mark">?</span>,
-            ));
-        }
-
-        <span class="self">self</span>.append_operation(op.into());
-
+        <span class="self">self</span>.append_operation(ods::llvm::store(context, value, addr, location).into());
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -616,18 +577,8 @@
         location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
         addr: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
         value_type: Type&lt;<span class="lifetime">'ctx</span>&gt;,
-        align: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;, Error&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>op = ods::llvm::load(context, value_type, addr, location);
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(align) = align {
-            op.set_alignment(IntegerAttribute::new(
-                IntegerType::new(context, <span class="number">64</span>).into(),
-                align.try_into()<span class="question-mark">?</span>,
-            ));
-        }
-
-        <span class="self">self</span>.append_op_result(op.into())
+        <span class="self">self</span>.append_op_result(ods::llvm::load(context, value_type, addr, location).into())
     }
 
     <span class="kw">fn </span>memcpy(
@@ -657,7 +608,7 @@
         location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
         elem_type: Type&lt;<span class="lifetime">'ctx</span>&gt;,
         num_elems: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
-        align: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+        align: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>op = ods::llvm::alloca(
             context,
@@ -668,13 +619,10 @@
         );
 
         op.set_elem_type(TypeAttribute::new(elem_type));
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(align) = align {
-            op.set_alignment(IntegerAttribute::new(
-                IntegerType::new(context, <span class="number">64</span>).into(),
-                align.try_into().unwrap(),
-            ));
-        }
+        op.set_alignment(IntegerAttribute::new(
+            IntegerType::new(context, <span class="number">64</span>).into(),
+            align.try_into().unwrap(),
+        ));
 
         <span class="self">self</span>.append_op_result(op.into())
     }
@@ -684,7 +632,7 @@
         context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
         location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
         elem_type: Type&lt;<span class="lifetime">'ctx</span>&gt;,
-        align: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+        align: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;, Error&gt; {
         <span class="kw">let </span>num_elems = <span class="self">self</span>.const_int(context, location, <span class="number">1</span>, <span class="number">64</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.alloca(context, location, elem_type, num_elems, align)
@@ -702,7 +650,7 @@
             location,
             IntegerType::new(context, bits).into(),
             num_elems,
-            <span class="prelude-val">Some</span>(get_integer_layout(bits).align()),
+            get_integer_layout(bits).align(),
         )
     }
 }

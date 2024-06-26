@@ -627,33 +627,6 @@
 <a href="#627" id="627">627</a>
 <a href="#628" id="628">628</a>
 <a href="#629" id="629">629</a>
-<a href="#630" id="630">630</a>
-<a href="#631" id="631">631</a>
-<a href="#632" id="632">632</a>
-<a href="#633" id="633">633</a>
-<a href="#634" id="634">634</a>
-<a href="#635" id="635">635</a>
-<a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a>
-<a href="#638" id="638">638</a>
-<a href="#639" id="639">639</a>
-<a href="#640" id="640">640</a>
-<a href="#641" id="641">641</a>
-<a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
-<a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
-<a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -809,17 +782,16 @@
                     context,
                     location,
                     type_info.build(context, helper, registry, metadata, enum_type)<span class="question-mark">?</span>,
-                    <span class="prelude-val">Some</span>(layout.align()),
+                    layout.align(),
                 )<span class="question-mark">?</span>;
 
                 <span class="comment">// Convert the enum from the concrete variant to the internal representation.
-                </span>entry.store(context, location, stack_ptr, val, <span class="prelude-val">Some</span>(layout.align()))<span class="question-mark">?</span>;
+                </span>entry.store(context, location, stack_ptr, val)<span class="question-mark">?</span>;
                 val = entry.load(
                     context,
                     location,
                     stack_ptr,
                     type_info.build(context, helper, registry, metadata, enum_type)<span class="question-mark">?</span>,
-                    <span class="prelude-val">Some</span>(layout.align()),
                 )<span class="question-mark">?</span>;
             };
 
@@ -939,17 +911,10 @@
                         metadata,
                         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
                     )<span class="question-mark">?</span>,
-                    <span class="prelude-val">Some</span>(layout.align()),
+                    layout.align(),
                 )<span class="question-mark">?</span>;
-                entry.store(
-                    context,
-                    location,
-                    stack_ptr,
-                    entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                    <span class="prelude-val">Some</span>(layout.align()),
-                )<span class="question-mark">?</span>;
-                <span class="kw">let </span>tag_val =
-                    entry.load(context, location, stack_ptr, tag_ty, <span class="prelude-val">Some</span>(layout.align()))<span class="question-mark">?</span>;
+                entry.store(context, location, stack_ptr, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+                <span class="kw">let </span>tag_val = entry.load(context, location, stack_ptr, tag_ty)<span class="question-mark">?</span>;
 
                 (<span class="prelude-val">Some</span>(stack_ptr), tag_val)
             } <span class="kw">else </span>{
@@ -1019,13 +984,7 @@
 
                 <span class="kw">let </span>payload_val = <span class="kw">match </span>stack_ptr {
                     <span class="prelude-val">Some</span>(stack_ptr) =&gt; {
-                        <span class="kw">let </span>val = block.load(
-                            context,
-                            location,
-                            stack_ptr,
-                            enum_ty,
-                            <span class="prelude-val">Some</span>(layout.align()),
-                        )<span class="question-mark">?</span>;
+                        <span class="kw">let </span>val = block.load(context, location, stack_ptr, enum_ty)<span class="question-mark">?</span>;
                         block.extract_value(context, location, val, payload_ty, <span class="number">1</span>)<span class="question-mark">?
                     </span>}
                     <span class="prelude-val">None </span>=&gt; {
@@ -1110,17 +1069,10 @@
                         metadata,
                         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
                     )<span class="question-mark">?</span>,
-                    <span class="prelude-val">Some</span>(layout.align()),
+                    layout.align(),
                 )<span class="question-mark">?</span>;
-                entry.store(
-                    context,
-                    location,
-                    stack_ptr,
-                    entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                    <span class="prelude-val">Some</span>(layout.align()),
-                )<span class="question-mark">?</span>;
-                <span class="kw">let </span>tag_val =
-                    entry.load(context, location, stack_ptr, tag_ty, <span class="prelude-val">Some</span>(layout.align()))<span class="question-mark">?</span>;
+                entry.store(context, location, stack_ptr, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+                <span class="kw">let </span>tag_val = entry.load(context, location, stack_ptr, tag_ty)<span class="question-mark">?</span>;
 
                 (<span class="prelude-val">Some</span>(stack_ptr), tag_val)
             } <span class="kw">else </span>{
@@ -1175,13 +1127,7 @@
 
                 <span class="kw">let </span>payload_val = <span class="kw">match </span>stack_ptr {
                     <span class="prelude-val">Some</span>(stack_ptr) =&gt; {
-                        <span class="kw">let </span>val = block.load(
-                            context,
-                            location,
-                            stack_ptr,
-                            enum_ty,
-                            <span class="prelude-val">Some</span>(layout.align()),
-                        )<span class="question-mark">?</span>;
+                        <span class="kw">let </span>val = block.load(context, location, stack_ptr, enum_ty)<span class="question-mark">?</span>;
                         block.extract_value(context, location, val, payload_ty, <span class="number">1</span>)<span class="question-mark">?
                     </span>}
                     <span class="prelude-val">None </span>=&gt; {

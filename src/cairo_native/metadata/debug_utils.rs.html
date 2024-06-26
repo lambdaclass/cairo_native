@@ -901,7 +901,7 @@
 
 </span><span class="attr">#![cfg(feature = <span class="string">"with-debug-utils"</span>)]
 
-</span><span class="kw">use crate</span>::{block_ext::BlockExt, error::Result};
+</span><span class="kw">use crate</span>::{block_ext::BlockExt, error::Result, utils::get_integer_layout};
 <span class="kw">use </span>melior::{
     dialect::{
         arith, func,
@@ -1012,7 +1012,7 @@
             message.len().try_into().unwrap(),
         );
 
-        <span class="kw">let </span>ptr = block.alloca1(context, location, ty, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>ptr = block.alloca1(context, location, ty, get_integer_layout(<span class="number">8</span>).align())<span class="question-mark">?</span>;
 
         <span class="kw">let </span>msg = block
             .append_operation(

@@ -3100,34 +3100,6 @@
 <a href="#3100" id="3100">3100</a>
 <a href="#3101" id="3101">3101</a>
 <a href="#3102" id="3102">3102</a>
-<a href="#3103" id="3103">3103</a>
-<a href="#3104" id="3104">3104</a>
-<a href="#3105" id="3105">3105</a>
-<a href="#3106" id="3106">3106</a>
-<a href="#3107" id="3107">3107</a>
-<a href="#3108" id="3108">3108</a>
-<a href="#3109" id="3109">3109</a>
-<a href="#3110" id="3110">3110</a>
-<a href="#3111" id="3111">3111</a>
-<a href="#3112" id="3112">3112</a>
-<a href="#3113" id="3113">3113</a>
-<a href="#3114" id="3114">3114</a>
-<a href="#3115" id="3115">3115</a>
-<a href="#3116" id="3116">3116</a>
-<a href="#3117" id="3117">3117</a>
-<a href="#3118" id="3118">3118</a>
-<a href="#3119" id="3119">3119</a>
-<a href="#3120" id="3120">3120</a>
-<a href="#3121" id="3121">3121</a>
-<a href="#3122" id="3122">3122</a>
-<a href="#3123" id="3123">3123</a>
-<a href="#3124" id="3124">3124</a>
-<a href="#3125" id="3125">3125</a>
-<a href="#3126" id="3126">3126</a>
-<a href="#3127" id="3127">3127</a>
-<a href="#3128" id="3128">3128</a>
-<a href="#3129" id="3129">3129</a>
-<a href="#3130" id="3130">3130</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     block_ext::BlockExt,
     error::Result,
@@ -3294,7 +3266,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -3322,7 +3294,7 @@
     <span class="comment">// Allocate `x` argument and write the value.
     </span><span class="kw">let </span>x_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, x_ty, <span class="prelude-val">Some</span>(x_layout.align()))<span class="question-mark">?</span>;
+        .alloca1(context, location, x_ty, x_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
@@ -3334,7 +3306,7 @@
     <span class="comment">// Allocate `y` argument and write the value.
     </span><span class="kw">let </span>y_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, y_ty, <span class="prelude-val">Some</span>(y_layout.align()))<span class="question-mark">?</span>;
+        .alloca1(context, location, y_ty, y_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
@@ -3436,13 +3408,7 @@
             )
             .result(<span class="number">0</span>)<span class="question-mark">?
             </span>.into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[<span class="number">0</span>].<span class="number">0</span>,
-            <span class="prelude-val">Some</span>(variant_tys[<span class="number">0</span>].<span class="number">1</span>.align()),
-        )<span class="question-mark">?
+        entry.load(context, location, ptr, variant_tys[<span class="number">0</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
     <span class="kw">let </span>payload_err = {
         <span class="kw">let </span>ptr = entry
@@ -3588,7 +3554,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -3614,10 +3580,9 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate `p0` argument and write the value.
-    </span><span class="kw">let </span>p0_arg_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, p0_ty, <span class="prelude-val">Some</span>(p0_layout.align()))<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>p0_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p0_ty, p0_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
@@ -3627,10 +3592,9 @@
     ));
 
     <span class="comment">// Allocate `p1` argument and write the value.
-    </span><span class="kw">let </span>p1_arg_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, p1_ty, <span class="prelude-val">Some</span>(p1_layout.align()))<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>p1_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p1_ty, p1_layout.align())<span class="question-mark">?</span>;
 
     entry.append_operation(llvm::store(
         context,
@@ -3888,7 +3852,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -3916,7 +3880,7 @@
     <span class="comment">// Allocate `p` argument and write the value.
     </span><span class="kw">let </span>p_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, p_ty, <span class="prelude-val">Some</span>(p_layout.align()))<span class="question-mark">?</span>;
+        .alloca1(context, location, p_ty, p_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
@@ -3929,7 +3893,7 @@
     </span><span class="kw">let </span>scalar_arg_ptr =
         helper
             .init_block()
-            .alloca1(context, location, scalar_ty, <span class="prelude-val">Some</span>(scalar_layout.align()))<span class="question-mark">?</span>;
+            .alloca1(context, location, scalar_ty, scalar_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
@@ -4186,7 +4150,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -4207,7 +4171,7 @@
     <span class="comment">// Allocate `x` argument and write the value.
     </span><span class="kw">let </span>x_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, x_ty, <span class="prelude-val">Some</span>(x_layout.align()))<span class="question-mark">?</span>;
+        .alloca1(context, location, x_ty, x_layout.align())<span class="question-mark">?</span>;
 
     entry.append_operation(llvm::store(
         context,
@@ -4321,13 +4285,7 @@
             )
             .result(<span class="number">0</span>)<span class="question-mark">?
             </span>.into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[<span class="number">0</span>].<span class="number">0</span>,
-            <span class="prelude-val">Some</span>(variant_tys[<span class="number">0</span>].<span class="number">1</span>.align()),
-        )<span class="question-mark">?
+        entry.load(context, location, ptr, variant_tys[<span class="number">0</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
     <span class="kw">let </span>payload_err = {
         <span class="kw">let </span>ptr = entry
@@ -4502,7 +4460,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -4523,7 +4481,7 @@
     <span class="comment">// Allocate `p` argument and write the value.
     </span><span class="kw">let </span>p_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, p_ty, <span class="prelude-val">Some</span>(p_layout.align()))<span class="question-mark">?</span>;
+        .alloca1(context, location, p_ty, p_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
@@ -4815,7 +4773,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -4843,7 +4801,7 @@
     <span class="comment">// Allocate `x` argument and write the value.
     </span><span class="kw">let </span>x_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, x_ty, <span class="prelude-val">Some</span>(x_layout.align()))<span class="question-mark">?</span>;
+        .alloca1(context, location, x_ty, x_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
@@ -4855,7 +4813,7 @@
     <span class="comment">// Allocate `y` argument and write the value.
     </span><span class="kw">let </span>y_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, y_ty, <span class="prelude-val">Some</span>(y_layout.align()))<span class="question-mark">?</span>;
+        .alloca1(context, location, y_ty, y_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
@@ -4958,13 +4916,7 @@
             )
             .result(<span class="number">0</span>)<span class="question-mark">?
             </span>.into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[<span class="number">0</span>].<span class="number">0</span>,
-            <span class="prelude-val">Some</span>(variant_tys[<span class="number">0</span>].<span class="number">1</span>.align()),
-        )<span class="question-mark">?
+        entry.load(context, location, ptr, variant_tys[<span class="number">0</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
     <span class="kw">let </span>payload_err = {
         <span class="kw">let </span>ptr = entry
@@ -5110,7 +5062,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -5136,10 +5088,9 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate `p0` argument and write the value.
-    </span><span class="kw">let </span>p0_arg_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, p0_ty, <span class="prelude-val">Some</span>(p0_layout.align()))<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>p0_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p0_ty, p0_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
@@ -5149,10 +5100,9 @@
     ));
 
     <span class="comment">// Allocate `p1` argument and write the value.
-    </span><span class="kw">let </span>p1_arg_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, p1_ty, <span class="prelude-val">Some</span>(p1_layout.align()))<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>p1_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p1_ty, p1_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
@@ -5410,7 +5360,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -5439,7 +5389,7 @@
     <span class="comment">// Allocate `p` argument and write the value.
     </span><span class="kw">let </span>p_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, p_ty, <span class="prelude-val">Some</span>(p_layout.align()))<span class="question-mark">?</span>;
+        .alloca1(context, location, p_ty, p_layout.align())<span class="question-mark">?</span>;
 
     entry.append_operation(llvm::store(
         context,
@@ -5453,7 +5403,7 @@
     </span><span class="kw">let </span>scalar_arg_ptr =
         helper
             .init_block()
-            .alloca1(context, location, scalar_ty, <span class="prelude-val">Some</span>(scalar_layout.align()))<span class="question-mark">?</span>;
+            .alloca1(context, location, scalar_ty, scalar_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
@@ -5711,7 +5661,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -5733,7 +5683,7 @@
             ],
             <span class="bool-val">false</span>,
         ),
-        <span class="prelude-val">Some</span>(<span class="number">16</span>),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -5847,13 +5797,7 @@
             )
             .result(<span class="number">0</span>)<span class="question-mark">?
             </span>.into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[<span class="number">0</span>].<span class="number">0</span>,
-            <span class="prelude-val">Some</span>(variant_tys[<span class="number">0</span>].<span class="number">1</span>.align()),
-        )<span class="question-mark">?
+        entry.load(context, location, ptr, variant_tys[<span class="number">0</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
     <span class="kw">let </span>payload_err = {
         <span class="kw">let </span>ptr = entry
@@ -6028,7 +5972,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -6049,7 +5993,7 @@
     <span class="comment">// Allocate `p` argument and write the value.
     </span><span class="kw">let </span>p_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, p_ty, <span class="prelude-val">Some</span>(p_layout.align()))<span class="question-mark">?</span>;
+        .alloca1(context, location, p_ty, p_layout.align())<span class="question-mark">?</span>;
 
     entry.append_operation(llvm::store(
         context,

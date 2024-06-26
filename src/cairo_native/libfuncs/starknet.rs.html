@@ -4213,32 +4213,6 @@
 <a href="#4213" id="4213">4213</a>
 <a href="#4214" id="4214">4214</a>
 <a href="#4215" id="4215">4215</a>
-<a href="#4216" id="4216">4216</a>
-<a href="#4217" id="4217">4217</a>
-<a href="#4218" id="4218">4218</a>
-<a href="#4219" id="4219">4219</a>
-<a href="#4220" id="4220">4220</a>
-<a href="#4221" id="4221">4221</a>
-<a href="#4222" id="4222">4222</a>
-<a href="#4223" id="4223">4223</a>
-<a href="#4224" id="4224">4224</a>
-<a href="#4225" id="4225">4225</a>
-<a href="#4226" id="4226">4226</a>
-<a href="#4227" id="4227">4227</a>
-<a href="#4228" id="4228">4228</a>
-<a href="#4229" id="4229">4229</a>
-<a href="#4230" id="4230">4230</a>
-<a href="#4231" id="4231">4231</a>
-<a href="#4232" id="4232">4232</a>
-<a href="#4233" id="4233">4233</a>
-<a href="#4234" id="4234">4234</a>
-<a href="#4235" id="4235">4235</a>
-<a href="#4236" id="4236">4236</a>
-<a href="#4237" id="4237">4237</a>
-<a href="#4238" id="4238">4238</a>
-<a href="#4239" id="4239">4239</a>
-<a href="#4240" id="4240">4240</a>
-<a href="#4241" id="4241">4241</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Starknet libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -4477,7 +4451,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -4522,9 +4496,12 @@
         )],
         <span class="bool-val">false</span>,
     );
-    <span class="kw">let </span>calldata_arg_ptr = helper
-        .init_block()
-        .alloca1(context, location, calldata_arg_ty, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>calldata_arg_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        calldata_arg_ty,
+        get_integer_layout(<span class="number">64</span>).align(),
+    )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">4</span>)<span class="question-mark">?</span>.into(),
@@ -4957,7 +4934,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -4974,7 +4951,6 @@
         location,
         address_arg_ptr,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
-        <span class="prelude-val">None</span>,
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Extract function pointer.
@@ -5230,7 +5206,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -5247,18 +5223,11 @@
         location,
         address_arg_ptr,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
-        <span class="prelude-val">None</span>,
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate `value` argument and write the value.
     </span><span class="kw">let </span>value_arg_ptr = helper.init_block().alloca_int(context, location, <span class="number">252</span>)<span class="question-mark">?</span>;
-    entry.store(
-        context,
-        location,
-        value_arg_ptr,
-        entry.argument(<span class="number">4</span>)<span class="question-mark">?</span>.into(),
-        <span class="prelude-val">None</span>,
-    )<span class="question-mark">?</span>;
+    entry.store(context, location, value_arg_ptr, entry.argument(<span class="number">4</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -5693,7 +5662,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -5721,15 +5690,9 @@
             )],
             <span class="bool-val">false</span>,
         ),
-        <span class="prelude-val">None</span>,
+        get_integer_layout(<span class="number">64</span>).align(),
     )<span class="question-mark">?</span>;
-    entry.store(
-        context,
-        location,
-        keys_arg_ptr,
-        entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
-        <span class="prelude-val">None</span>,
-    )<span class="question-mark">?</span>;
+    entry.store(context, location, keys_arg_ptr, entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate `data` argument and write the value.
     </span><span class="kw">let </span>data_arg_ptr = helper.init_block().alloca1(
@@ -5749,15 +5712,9 @@
             )],
             <span class="bool-val">false</span>,
         ),
-        <span class="prelude-val">None</span>,
+        get_integer_layout(<span class="number">64</span>).align(),
     )<span class="question-mark">?</span>;
-    entry.store(
-        context,
-        location,
-        data_arg_ptr,
-        entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
-        <span class="prelude-val">None</span>,
-    )<span class="question-mark">?</span>;
+    entry.store(context, location, data_arg_ptr, entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -6007,7 +5964,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -6265,7 +6222,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -6517,7 +6474,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -6812,7 +6769,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -6829,7 +6786,6 @@
         location,
         class_hash_arg_ptr,
         entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
-        <span class="prelude-val">None</span>,
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate `entry_point_selector` argument and write the value.
@@ -6839,7 +6795,6 @@
         location,
         contract_address_salt_arg_ptr,
         entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
-        <span class="prelude-val">None</span>,
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate `calldata` argument and write the value.
@@ -6860,14 +6815,13 @@
             )],
             <span class="bool-val">false</span>,
         ),
-        <span class="prelude-val">None</span>,
+        get_integer_layout(<span class="number">64</span>).align(),
     )<span class="question-mark">?</span>;
     entry.store(
         context,
         location,
         calldata_arg_ptr,
         entry.argument(<span class="number">4</span>)<span class="question-mark">?</span>.into(),
-        <span class="prelude-val">None</span>,
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>fn_ptr = entry
@@ -7154,7 +7108,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -7178,15 +7132,9 @@
             ],
             <span class="bool-val">false</span>,
         ),
-        <span class="prelude-val">None</span>,
+        get_integer_layout(<span class="number">64</span>).align(),
     )<span class="question-mark">?</span>;
-    entry.store(
-        context,
-        location,
-        input_arg_ptr,
-        entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
-        <span class="prelude-val">None</span>,
-    )<span class="question-mark">?</span>;
+    entry.store(context, location, input_arg_ptr, entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
@@ -7429,7 +7377,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -7477,7 +7425,7 @@
             )],
             <span class="bool-val">false</span>,
         ),
-        <span class="prelude-val">None</span>,
+        get_integer_layout(<span class="number">64</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -7740,7 +7688,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -8005,7 +7953,7 @@
         context,
         location,
         IntegerType::new(context, <span class="number">128</span>).into(),
-        <span class="prelude-val">Some</span>(get_integer_layout(<span class="number">128</span>).align()),
+        get_integer_layout(<span class="number">128</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
@@ -8039,7 +7987,7 @@
             ],
             <span class="bool-val">false</span>,
         ),
-        <span class="prelude-val">None</span>,
+        get_integer_layout(<span class="number">64</span>).align(),
     )<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
