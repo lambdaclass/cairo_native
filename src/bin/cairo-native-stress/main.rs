@@ -1,6 +1,17 @@
 //! A stress tester for Cairo Native
 //!
-//! See `StressTestCommand`
+//! See `StressTestCommand` for documentation on the CLI.
+//!
+//! ## Walkthrough
+//!
+//! Iterates through N rounds (specified as an argument), and in each round:
+//! - Generates an unique dummy starknet contract.
+//! - Compiles the program and inserts the compiled program into the cache.
+//! - Executes the program.
+//!
+//! The cache is dropped at the end of the whole execution.
+//!
+//! For documentation on the specific cache used, see `NaiveAotCache`.
 
 use std::alloc::System;
 use std::fmt::{Debug, Display};
@@ -218,13 +229,17 @@ fn modify_starknet_contract(mut program: Program, old_value: u32, new_value: u32
     program
 }
 
-/// A naive implementation of an AOT Program Cache.
+/// A naive implementation of an AOT Program Cache
 ///
-/// Stores `AotNativeExecutor`s by a given key. Each executors has it's corresponding
-/// dynamic shared library loaded.
+/// For each contract:
+/// - Compiles it to a shared library and stores it on disk (`AOT_CACHE_DIR`)
+/// - Loads the shared library into an executor and stores it on a hashmap with the given key.
+///
+/// The shared libraries are unloaded when the executor gets drop, AKA: when the cache gets dropped.
+/// The shared libraries on disk are never deleted
 ///
 /// Possible improvements include:
-/// - Keeping only some executors on memory, while storing the remaining compiled shared libraries on disk.
+/// - Keeping only some executors on memory, while storing the remaining compiled shared libraries only on disk.
 /// - When restarting the program, reutilize already compiled programs from `AOT_CACHE_DIR`
 struct NaiveAotCache<'a, K>
 where
