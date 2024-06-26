@@ -399,7 +399,7 @@ impl JitValue {
                             value_map.insert(
                                 key,
                                 NonNull::new(value_malloc_ptr)
-                                    .expect("malloc shouldn't return null ptrs")
+                                    .expect("allocation failure")
                                     .cast(),
                             );
                         }
