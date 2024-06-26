@@ -9,7 +9,7 @@ use crate::{
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
     values::JitValue,
 };
 use bumpalo::Bump;
@@ -23,6 +23,7 @@ use cairo_lang_sierra::{
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
 use libc::c_void;
+use libffi::{low::CodePtr, middle::Type};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -133,6 +134,107 @@ impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
     }
 }
 
+fn coretype_to_libffitype(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    ty: &CoreTypeConcrete,
+) -> Result<libffi::middle::Type, Error> {
+    Ok(match ty {
+        CoreTypeConcrete::Array(_) => {
+            Type::structure([Type::pointer(), Type::u32(), Type::u32(), Type::u32()])
+        }
+        CoreTypeConcrete::Coupon(_) => todo!(),
+        CoreTypeConcrete::Bitwise(_) => todo!(),
+        CoreTypeConcrete::Box(_) => Type::pointer(),
+        CoreTypeConcrete::Const(_) => todo!(),
+        CoreTypeConcrete::EcOp(_) => todo!(),
+        CoreTypeConcrete::EcPoint(_) => todo!(),
+        CoreTypeConcrete::EcState(_) => todo!(),
+        CoreTypeConcrete::Felt252(_) => {
+            Type::structure([Type::u64(), Type::u64(), Type::u64(), Type::u64()])
+        }
+        CoreTypeConcrete::GasBuiltin(_) => Type::structure([Type::u64(), Type::u64()]),
+        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+        CoreTypeConcrete::Uint8(_) => Type::u8(),
+        CoreTypeConcrete::Uint16(_) => Type::u16(),
+        CoreTypeConcrete::Uint32(_) => Type::u32(),
+        CoreTypeConcrete::Uint64(_) => Type::u64(),
+        CoreTypeConcrete::Uint128(_) => Type::structure([Type::u64(), Type::u64()]),
+        CoreTypeConcrete::Uint128MulGuarantee(_) => Type::structure([]),
+        CoreTypeConcrete::Sint8(_) => Type::i8(),
+        CoreTypeConcrete::Sint16(_) => Type::i16(),
+        CoreTypeConcrete::Sint32(_) => Type::i32(),
+        CoreTypeConcrete::Sint64(_) => Type::i64(),
+        CoreTypeConcrete::Sint128(_) => Type::structure([Type::i64(), Type::i64()]),
+        CoreTypeConcrete::NonZero(info) => {
+            coretype_to_libffitype(registry, registry.get_type(&info.ty)?)?
+        }
+        CoreTypeConcrete::Nullable(_) => Type::pointer(),
+        CoreTypeConcrete::RangeCheck(_) => Type::i64(),
+        CoreTypeConcrete::Uninitialized(info) => {
+            coretype_to_libffitype(registry, registry.get_type(&info.ty)?)?
+        }
+        CoreTypeConcrete::Enum(info) => {
+            let layout = ty.layout(registry)?;
+            let tag_layout = get_integer_layout(tag_bits);
+            let layout = info.variants.iter().fold(tag_layout, |acc, id| {
+                let layout = tag_layout
+                    .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
+                    .unwrap()
+                    .0;
+
+                Layout::from_size_align(
+                    acc.size().max(layout.size()),
+                    acc.align().max(layout.align()),
+                )
+                .unwrap()
+            });
+            let mut data = Vec::new();
+            let mut size = layout.size() * 8;
+            dbg!(size);
+            while size > 0 {
+                if size >= 64 {
+                    data.push(Type::i64());
+                    size -= 64;
+                } else if size >= 32 {
+                    data.push(Type::i64());
+                    size -= 32;
+                } else if size >= 16 {
+                    data.push(Type::i16());
+                    size -= 16;
+                } else if size >= 8 {
+                    data.push(Type::i8());
+                    size -= 8;
+                }
+            }
+            Type::structure(data)
+        },
+        CoreTypeConcrete::Struct(info) => {
+            let mut types = Vec::with_capacity(info.members.len());
+
+            for ty in &info.members {
+                types.push(coretype_to_libffitype(registry, registry.get_type(ty)?)?);
+            }
+
+            Type::structure(types)
+        }
+        CoreTypeConcrete::Felt252Dict(_) => Type::pointer(),
+        CoreTypeConcrete::Felt252DictEntry(_) => Type::structure([
+            Type::structure([Type::u64(), Type::u64(), Type::u64(), Type::u64()]),
+            Type::pointer(),
+            Type::pointer(),
+        ]),
+        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+        CoreTypeConcrete::Pedersen(_) => todo!(),
+        CoreTypeConcrete::Poseidon(_) => todo!(),
+        CoreTypeConcrete::Span(_) => todo!(),
+        CoreTypeConcrete::StarkNet(_) => todo!(),
+        CoreTypeConcrete::SegmentArena(_) => todo!(),
+        CoreTypeConcrete::Snapshot(_) => todo!(),
+        CoreTypeConcrete::Bytes31(_) => todo!(),
+        CoreTypeConcrete::BoundedInt(_) => todo!(),
+    })
+}
+
 /// Internal method.
 ///
 /// Invokes the given function by constructing the function call depending on the arguments given.
@@ -154,6 +256,8 @@ fn invoke_dynamic(
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
 
+    let mut closure = libffi::middle::Builder::new();
+
     // Generate return pointer (if necessary).
     //
     // Generated when either:
@@ -170,8 +274,9 @@ fn invoke_dynamic(
         })
         .peekable();
 
-    let num_return_args = ret_types_iter.clone().count();
-    let mut return_ptr = if num_return_args > 1
+    let ret_count = ret_types_iter.clone().count();
+    let mut ret_types_iter_after = ret_types_iter.clone();
+    let mut return_ptr = if ret_count > 1
         || ret_types_iter
             .peek()
             .is_some_and(|id| registry.get_type(id).unwrap().is_complex(registry))
@@ -194,6 +299,21 @@ fn invoke_dynamic(
     } else {
         None
     };
+    let res_type = if ret_count > 1 {
+        let mut types = Vec::with_capacity(ret_count);
+
+        for ty in ret_types_iter_after {
+            types.push(coretype_to_libffitype(registry, registry.get_type(&ty)?)?);
+        }
+
+        Type::structure(types)
+    } else {
+        coretype_to_libffitype(
+            registry,
+            registry.get_type(&ret_types_iter_after.next().unwrap())?,
+        )?
+    };
+    closure = closure.res(res_type);
 
     // The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
     // so we must always allocate it in case it needs it, regardless of whether it's passed
@@ -211,39 +331,64 @@ fn invoke_dynamic(
         previous_syscall_handler
     });
 
+    // generate closure args
+    for type_id in function_signature.param_types.iter().filter(|id| {
+        let info = registry.get_type(id).unwrap();
+        !info.is_zst(registry)
+    }) {
+        closure = closure.arg(coretype_to_libffitype(registry, registry.get_type(type_id)?)?);
+    }
+
     // Generate argument list.
     let mut iter = args.iter();
+    let mut invoke_args = Vec::new();
     for type_id in function_signature.param_types.iter().filter(|id| {
         let info = registry.get_type(id).unwrap();
         !info.is_zst(registry)
     }) {
         // Process gas requirements and syscall handler.
         match registry.get_type(type_id).unwrap() {
-            CoreTypeConcrete::GasBuiltin(_) => invoke_data.push_aligned(
-                get_integer_layout(128).align(),
-                &[gas as u64, (gas >> 64) as u64],
-            ),
+            CoreTypeConcrete::GasBuiltin(_) => {
+                invoke_args.push(libffi::middle::Arg::new(&gas));
+                invoke_data.push_aligned(
+                    get_integer_layout(128).align(),
+                    &[gas as u64, (gas >> 64) as u64],
+                )
+            }
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
                     .expect("syscall handler is required");
 
+                invoke_args.push(libffi::middle::Arg::new(syscall_handler));
                 invoke_data.push_aligned(
                     get_integer_layout(64).align(),
                     &[syscall_handler as *mut _ as u64],
                 );
             }
-            type_info => invoke_data
-                .push(
-                    type_id,
-                    type_info,
-                    if type_info.is_builtin() {
-                        &JitValue::Uint64(0)
-                    } else {
-                        iter.next().unwrap()
-                    },
-                )
-                .unwrap(),
+            type_info => {
+                invoke_args.push(if type_info.is_builtin() {
+                    libffi::middle::Arg::new(&0u64)
+                } else {
+                    libffi::middle::Arg::new(unsafe {
+                        iter.next()
+                            .unwrap()
+                            .to_jit(&arena, registry, type_id)?
+                            .as_ref()
+                    })
+                });
+                invoke_data
+                    .push(
+                        type_id,
+                        type_info,
+                        if type_info.is_builtin() {
+                            &JitValue::Uint64(0)
+                        } else {
+                            iter.next().unwrap()
+                        },
+                    )
+                    .unwrap()
+            }
         }
     }
 
@@ -252,7 +397,18 @@ fn invoke_dynamic(
     let mut ret_registers = [0; 2];
     #[cfg(target_arch = "aarch64")]
     let mut ret_registers = [0; 4];
+    #[cfg(target_arch = "x86_64")]
+    type RetTy = [u64; 2];
+    #[cfg(target_arch = "aarch64")]
+    type RetTy = [u64; 2];
 
+    let ret_registers = unsafe {
+        closure
+            .into_cif()
+            .call::<RetTy>(CodePtr(function_ptr as *mut _), &invoke_args)
+    };
+
+    /*
     unsafe {
         invoke_trampoline(
             function_ptr,
@@ -261,6 +417,7 @@ fn invoke_dynamic(
             ret_registers.as_mut_ptr(),
         );
     }
+    */
 
     // If the syscall handler was changed, then reset the previous one.
     // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)

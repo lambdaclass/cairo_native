@@ -106,6 +106,7 @@ scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.6.
 sec1 = "0.7.3"
 serde_json = { version = "1.0.117", optional = true }
 stats_alloc = "0.1.10"
+libffi = "3.2.0"
 
 [dev-dependencies]
 cairo-vm = { version = "1.0.0-rc3", features = ["cairo-1-hints"] }
