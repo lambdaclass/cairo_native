@@ -332,20 +332,30 @@ export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
 export TABLEGEN_180_PREFIX=/usr/lib/llvm-18
 ```
 
-Run the deps target to install the other dependencies such as the cairo compiler (for tests, benchmarks).
+Alternatively, if installed from Debian/Ubuntu repository, then you can use `env.sh` to automatically setup the environment variables.
 
 ```bash
-make deps
+source env.sh
 ```
 
 #### MacOS
 
-The makefile `deps` target (which you should have ran before) installs LLVM 18 with brew for you, afterwards you need to execute the `env-macos.sh` script to setup the
-needed environment variables.
+The makefile `deps` target (which you should have ran before) installs LLVM 18 with brew for you, afterwards you need to execute the `env.sh` script to setup the needed environment variables.
 
 ```bash
-source env-macos.sh
+source env.sh
 ```
+
+#### Env Variables
+
+The script `env.sh` automatically sets the necessary variables for MacOS and Ubuntu/Debian.
+If it doesn't fit your specific environment you can copy it to .env/.envrc and adapt it acordingly.
+
+```bash
+source env.sh
+```
+
+The script is compatible with [direnv](https://direnv.net/)
 
 ### Make commands:
 
