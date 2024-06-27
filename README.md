@@ -765,7 +765,7 @@ sierra2mlir program.sierra -o program.mlir
 # compile natively
 "$MLIR_SYS_180_PREFIX"/bin/clang program.ll -Wno-override-module \
     -L "$MLIR_SYS_180_PREFIX"/lib -L"./target/release/" \
-    -lsierra2mlir_utils -lmlir_c_runner_utils \
+    -lcairo_native_runtime -lmlir_c_runner_utils \
     -Wl,-rpath "$MLIR_SYS_180_PREFIX"/lib \
     -Wl,-rpath ./target/release/ \
     -o program
