@@ -816,3 +816,701 @@ extern "C" fn print_felt252(l0: u64, l1: u64, l2: u64, l3: u64) {
         ),
     );
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::context::NativeContext;
+    use crate::utils;
+    use std::path::Path;
+
+    #[test]
+    fn test_breakpoint_marker() {
+        let mut debug_utils = DebugUtils::default();
+        let context = Context::new();
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let res = debug_utils.breakpoint_marker(&context, &module, &block, location);
+
+        assert!(res.is_ok());
+
+        let expected_active_map: HashSet<_> =
+            vec![DebugBinding::BreakpointMarker].into_iter().collect();
+
+        assert_eq!(debug_utils.active_map, expected_active_map);
+    }
+
+    #[test]
+    fn test_debug_print() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+        let message = "random message!";
+
+        let res = debug_utils.debug_print(context, &module, &block, message, location);
+
+        assert!(res.is_ok());
+
+        let expected_active_map: HashSet<_> = vec![DebugBinding::DebugPrint].into_iter().collect();
+
+        assert_eq!(debug_utils.active_map, expected_active_map);
+    }
+
+    #[test]
+    fn test_debug_breakpoint_trap() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let block = Block::new(&[]);
+
+        let res = debug_utils.debug_breakpoint_trap(&block, location);
+
+        assert!(res.is_ok());
+
+        assert!(debug_utils.active_map.is_empty());
+    }
+
+    #[test]
+    fn test_print_pointer() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 42).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let res = debug_utils.print_pointer(context, &module, &block, value, location);
+
+        assert!(res.is_ok());
+
+        let expected_active_map: HashSet<_> =
+            vec![DebugBinding::PrintPointer].into_iter().collect();
+        assert_eq!(debug_utils.active_map, expected_active_map);
+    }
+
+    #[test]
+    fn test_print_i1() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 1).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let res = debug_utils.print_i1(context, &module, &block, value, location);
+
+        assert!(res.is_ok());
+
+        let expected_active_map = [DebugBinding::PrintI1]
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        assert_eq!(debug_utils.active_map, expected_active_map);
+    }
+
+    #[test]
+    fn test_print_felt252() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 256).into(), 42).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let res = debug_utils.print_felt252(context, &module, &block, value, location);
+
+        assert!(res.is_ok());
+
+        let expected_active_map = [DebugBinding::PrintFelt252]
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        assert_eq!(debug_utils.active_map, expected_active_map);
+    }
+
+    #[test]
+    fn test_print_i8() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 8).into(), 42).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let res = debug_utils.print_i8(context, &module, &block, value, location);
+
+        assert!(res.is_ok());
+
+        let expected_active_map = [DebugBinding::PrintI8]
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        assert_eq!(debug_utils.active_map, expected_active_map);
+    }
+
+    #[test]
+    fn test_print_i32() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 42).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let res = debug_utils.print_i32(context, &module, &block, value, location);
+
+        assert!(res.is_ok());
+
+        let expected_active_map = [DebugBinding::PrintI32]
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        assert_eq!(debug_utils.active_map, expected_active_map);
+    }
+
+    #[test]
+    fn test_print_i64() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 42).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let res = debug_utils.print_i64(context, &module, &block, value, location);
+
+        assert!(res.is_ok());
+
+        let expected_active_map = [DebugBinding::PrintI64]
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        assert_eq!(debug_utils.active_map, expected_active_map);
+    }
+
+    #[test]
+    fn test_print_i128() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 128).into(), 42).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let res = debug_utils.print_i128(context, &module, &block, value, location);
+
+        assert!(res.is_ok());
+
+        let expected_active_map = [DebugBinding::PrintI128]
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        assert_eq!(debug_utils.active_map, expected_active_map);
+    }
+
+    #[test]
+    fn test_dump_mem() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let ptr = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 128).into(), 42).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        // Define the length of the memory region to be dumped.
+        let len = 100;
+
+        let res = debug_utils.dump_mem(context, &module, &block, ptr, len, location);
+
+        assert!(res.is_ok());
+
+        let expected_active_map = [DebugBinding::DumpMemRegion]
+            .iter()
+            .cloned()
+            .collect::<HashSet<_>>();
+        assert_eq!(debug_utils.active_map, expected_active_map);
+    }
+
+    #[test]
+    fn test_register_impl_break_point_marker() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+        let _ = debug_utils.breakpoint_marker(context, &module, &block, location);
+
+        let program_path = Path::new("programs/examples/hello.cairo");
+        let sierra_program = utils::cairo_to_sierra(program_path);
+
+        let native_context = NativeContext::new();
+        let native_program = native_context.compile(&sierra_program, None).unwrap();
+
+        let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
+
+        debug_utils.register_impls(&engine);
+
+        assert!(!engine.lookup("__debug__breakpoint_marker").is_null());
+        assert!(engine.lookup("__debug__debug_print_impl").is_null());
+        assert!(engine.lookup("__debug__print_i1").is_null());
+        assert!(engine.lookup("__debug__print_i8").is_null());
+        assert!(engine.lookup("__debug__print_i32").is_null());
+        assert!(engine.lookup("__debug__print_i64").is_null());
+        assert!(engine.lookup("__debug__print_i128").is_null());
+        assert!(engine.lookup("__debug__print_pointer").is_null());
+        assert!(engine.lookup("__debug__print_felt252").is_null());
+        assert!(engine.lookup("__debug__dump_mem").is_null());
+    }
+
+    #[test]
+    fn test_register_impl_debug_print_impl() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let _ = debug_utils.debug_print(context, &module, &block, "Test message", location);
+
+        let program_path = Path::new("programs/examples/hello.cairo");
+        let sierra_program = utils::cairo_to_sierra(program_path);
+        let native_context = NativeContext::new();
+        let native_program = native_context.compile(&sierra_program, None).unwrap();
+
+        let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
+
+        debug_utils.register_impls(&engine);
+
+        assert!(!engine.lookup("__debug__debug_print_impl").is_null());
+        assert!(engine.lookup("__debug__breakpoint_marker").is_null());
+        assert!(engine.lookup("__debug__print_i1").is_null());
+        assert!(engine.lookup("__debug__print_i8").is_null());
+        assert!(engine.lookup("__debug__print_i32").is_null());
+        assert!(engine.lookup("__debug__print_i64").is_null());
+        assert!(engine.lookup("__debug__print_i128").is_null());
+        assert!(engine.lookup("__debug__print_pointer").is_null());
+        assert!(engine.lookup("__debug__print_felt252").is_null());
+        assert!(engine.lookup("__debug__dump_mem").is_null());
+    }
+
+    #[test]
+    fn test_register_impl_print_i1() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 1).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let _ = debug_utils.print_i1(context, &module, &block, value, location);
+
+        let program_path = Path::new("programs/examples/hello.cairo");
+        let sierra_program = utils::cairo_to_sierra(program_path);
+        let native_context = NativeContext::new();
+        let native_program = native_context.compile(&sierra_program, None).unwrap();
+
+        let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
+
+        debug_utils.register_impls(&engine);
+
+        assert!(!engine.lookup("__debug__print_i1").is_null());
+        assert!(engine.lookup("__debug__breakpoint_marker").is_null());
+        assert!(engine.lookup("__debug__debug_print_impl").is_null());
+        assert!(engine.lookup("__debug__print_i8").is_null());
+        assert!(engine.lookup("__debug__print_i32").is_null());
+        assert!(engine.lookup("__debug__print_i64").is_null());
+        assert!(engine.lookup("__debug__print_i128").is_null());
+        assert!(engine.lookup("__debug__print_pointer").is_null());
+        assert!(engine.lookup("__debug__print_felt252").is_null());
+        assert!(engine.lookup("__debug__dump_mem").is_null());
+    }
+
+    #[test]
+    fn test_register_impl_print_i8() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 8).into(), 42).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let _ = debug_utils.print_i8(context, &module, &block, value, location);
+
+        let program_path = Path::new("programs/examples/hello.cairo");
+        let sierra_program = utils::cairo_to_sierra(program_path);
+        let native_context = NativeContext::new();
+        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
+
+        debug_utils.register_impls(&engine);
+
+        assert!(!engine.lookup("__debug__print_i8").is_null());
+        assert!(engine.lookup("__debug__breakpoint_marker").is_null());
+        assert!(engine.lookup("__debug__debug_print_impl").is_null());
+        assert!(engine.lookup("__debug__print_i1").is_null());
+        assert!(engine.lookup("__debug__print_i32").is_null());
+        assert!(engine.lookup("__debug__print_i64").is_null());
+        assert!(engine.lookup("__debug__print_i128").is_null());
+        assert!(engine.lookup("__debug__print_pointer").is_null());
+        assert!(engine.lookup("__debug__print_felt252").is_null());
+        assert!(engine.lookup("__debug__dump_mem").is_null());
+    }
+
+    #[test]
+    fn test_register_impl_print_i32() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 32).into(), 123).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let _ = debug_utils.print_i32(context, &module, &block, value, location);
+        let program_path = Path::new("programs/examples/hello.cairo");
+        let sierra_program = utils::cairo_to_sierra(program_path);
+        let native_context = NativeContext::new();
+        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
+
+        debug_utils.register_impls(&engine);
+
+        assert!(!engine.lookup("__debug__print_i32").is_null());
+        assert!(engine.lookup("__debug__breakpoint_marker").is_null());
+        assert!(engine.lookup("__debug__debug_print_impl").is_null());
+        assert!(engine.lookup("__debug__print_i1").is_null());
+        assert!(engine.lookup("__debug__print_i8").is_null());
+        assert!(engine.lookup("__debug__print_i64").is_null());
+        assert!(engine.lookup("__debug__print_i128").is_null());
+        assert!(engine.lookup("__debug__print_pointer").is_null());
+        assert!(engine.lookup("__debug__print_felt252").is_null());
+        assert!(engine.lookup("__debug__dump_mem").is_null());
+    }
+
+    /// Test to verify the registration of `print_i64` implementation.
+    #[test]
+    fn test_register_impl_print_i64() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 123).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let _ = debug_utils.print_i64(context, &module, &block, value, location);
+
+        let program_path = Path::new("programs/examples/hello.cairo");
+        let sierra_program = utils::cairo_to_sierra(program_path);
+        let native_context = NativeContext::new();
+        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
+
+        debug_utils.register_impls(&engine);
+
+        assert!(!engine.lookup("__debug__print_i64").is_null());
+        assert!(engine.lookup("__debug__breakpoint_marker").is_null());
+        assert!(engine.lookup("__debug__debug_print_impl").is_null());
+        assert!(engine.lookup("__debug__print_i1").is_null());
+        assert!(engine.lookup("__debug__print_i8").is_null());
+        assert!(engine.lookup("__debug__print_i32").is_null());
+        assert!(engine.lookup("__debug__print_i128").is_null());
+        assert!(engine.lookup("__debug__print_pointer").is_null());
+        assert!(engine.lookup("__debug__print_felt252").is_null());
+        assert!(engine.lookup("__debug__dump_mem").is_null());
+    }
+
+    #[test]
+    fn test_register_impl_print_i128() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 128).into(), 123).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let _ = debug_utils.print_i128(context, &module, &block, value, location);
+
+        let program_path = Path::new("programs/examples/hello.cairo");
+
+        let sierra_program = utils::cairo_to_sierra(program_path);
+
+        let native_context = NativeContext::new();
+
+        let native_program = native_context.compile(&sierra_program, None).unwrap();
+
+        let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
+
+        debug_utils.register_impls(&engine);
+
+        assert!(!engine.lookup("__debug__print_i128").is_null());
+        assert!(engine.lookup("__debug__breakpoint_marker").is_null());
+        assert!(engine.lookup("__debug__debug_print_impl").is_null());
+        assert!(engine.lookup("__debug__print_i1").is_null());
+        assert!(engine.lookup("__debug__print_i8").is_null());
+        assert!(engine.lookup("__debug__print_i32").is_null());
+        assert!(engine.lookup("__debug__print_i64").is_null());
+        assert!(engine.lookup("__debug__print_pointer").is_null());
+        assert!(engine.lookup("__debug__print_felt252").is_null());
+        assert!(engine.lookup("__debug__dump_mem").is_null());
+    }
+
+    #[test]
+    fn test_register_impl_print_pointer() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 123).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let _ = debug_utils.print_pointer(context, &module, &block, value, location);
+
+        let program_path = Path::new("programs/examples/hello.cairo");
+        let sierra_program = utils::cairo_to_sierra(program_path);
+        let native_context = NativeContext::new();
+        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
+
+        debug_utils.register_impls(&engine);
+
+        assert!(!engine.lookup("__debug__print_pointer").is_null());
+        assert!(engine.lookup("__debug__breakpoint_marker").is_null());
+        assert!(engine.lookup("__debug__debug_print_impl").is_null());
+        assert!(engine.lookup("__debug__print_i1").is_null());
+        assert!(engine.lookup("__debug__print_i8").is_null());
+        assert!(engine.lookup("__debug__print_i32").is_null());
+        assert!(engine.lookup("__debug__print_i64").is_null());
+        assert!(engine.lookup("__debug__print_i128").is_null());
+        assert!(engine.lookup("__debug__print_felt252").is_null());
+        assert!(engine.lookup("__debug__dump_mem").is_null());
+    }
+
+    #[test]
+    fn test_register_impl_print_felt252() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 123).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let _ = debug_utils.print_felt252(context, &module, &block, value, location);
+
+        let program_path = Path::new("programs/examples/hello.cairo");
+        let sierra_program = utils::cairo_to_sierra(program_path);
+        let native_context = NativeContext::new();
+        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
+
+        debug_utils.register_impls(&engine);
+
+        assert!(!engine.lookup("__debug__print_felt252").is_null());
+        assert!(engine.lookup("__debug__breakpoint_marker").is_null());
+        assert!(engine.lookup("__debug__debug_print_impl").is_null());
+        assert!(engine.lookup("__debug__print_i1").is_null());
+        assert!(engine.lookup("__debug__print_i8").is_null());
+        assert!(engine.lookup("__debug__print_i32").is_null());
+        assert!(engine.lookup("__debug__print_i64").is_null());
+        assert!(engine.lookup("__debug__print_i128").is_null());
+        assert!(engine.lookup("__debug__print_pointer").is_null());
+        assert!(engine.lookup("__debug__dump_mem").is_null());
+    }
+
+    #[test]
+    fn test_register_impl_dump_mem() {
+        let mut debug_utils = DebugUtils::default();
+        let native_context = NativeContext::new();
+        let context = native_context.context();
+        let location = Location::unknown(context);
+        let module = Module::new(location);
+        let block = Block::new(&[]);
+
+        let ptr_value = block
+            .append_operation(arith::constant(
+                context,
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 123).into(),
+                location,
+            ))
+            .result(0)
+            .unwrap()
+            .into();
+
+        let _ = debug_utils.dump_mem(context, &module, &block, ptr_value, 10, location);
+
+        let program_path = Path::new("programs/examples/hello.cairo");
+        let sierra_program = utils::cairo_to_sierra(program_path);
+        let native_context = NativeContext::new();
+        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
+
+        debug_utils.register_impls(&engine);
+
+        assert!(!engine.lookup("__debug__dump_mem").is_null());
+        assert!(engine.lookup("__debug__breakpoint_marker").is_null());
+        assert!(engine.lookup("__debug__debug_print_impl").is_null());
+        assert!(engine.lookup("__debug__print_i1").is_null());
+        assert!(engine.lookup("__debug__print_i8").is_null());
+        assert!(engine.lookup("__debug__print_i32").is_null());
+        assert!(engine.lookup("__debug__print_i64").is_null());
+        assert!(engine.lookup("__debug__print_i128").is_null());
+        assert!(engine.lookup("__debug__print_pointer").is_null());
+        assert!(engine.lookup("__debug__print_felt252").is_null());
+    }
+}
