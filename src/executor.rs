@@ -400,7 +400,7 @@ fn invoke_dynamic(
     #[cfg(target_arch = "x86_64")]
     type RetTy = [u64; 2];
     #[cfg(target_arch = "aarch64")]
-    type RetTy = [u64; 2];
+    type RetTy = [u64; 4];
 
     let ret_registers = unsafe {
         closure
