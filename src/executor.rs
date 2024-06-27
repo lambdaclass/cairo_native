@@ -5,12 +5,7 @@
 
 pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
 use crate::{
-    error::Error,
-    execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
-    starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
-    types::TypeBuilder,
-    utils::get_integer_layout,
-    values::JitValue,
+    error::Error, execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult}, ffi, starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler}, types::TypeBuilder, utils::{get_integer_layout, ProgramRegistryExt}, values::JitValue
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -23,6 +18,10 @@ use cairo_lang_sierra::{
     program_registry::{ProgramRegistry, ProgramRegistryError},
 };
 use libc::c_void;
+use libffi::{
+    low::CodePtr,
+    middle::{Arg, Type},
+};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -133,6 +132,110 @@ impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
     }
 }
 
+fn coretype_to_libffitype(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    ty: &CoreTypeConcrete,
+) -> Result<libffi::middle::Type, Error> {
+    Ok(match ty {
+        CoreTypeConcrete::Array(_) => {
+            Type::structure([Type::pointer(), Type::u32(), Type::u32(), Type::u32()])
+        }
+        CoreTypeConcrete::Coupon(_) => todo!(),
+        CoreTypeConcrete::Bitwise(_) => todo!(),
+        CoreTypeConcrete::Box(_) => Type::pointer(),
+        CoreTypeConcrete::Const(_) => todo!(),
+        CoreTypeConcrete::EcOp(_) => todo!(),
+        CoreTypeConcrete::EcPoint(_) => todo!(),
+        CoreTypeConcrete::EcState(_) => todo!(),
+        CoreTypeConcrete::Felt252(_) => {
+            Type::structure([Type::u64(), Type::u64(), Type::u64(), Type::u64()])
+        }
+        CoreTypeConcrete::GasBuiltin(_) => Type::structure([Type::u64(), Type::u64()]),
+        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+        CoreTypeConcrete::Uint8(_) => Type::u8(),
+        CoreTypeConcrete::Uint16(_) => Type::u16(),
+        CoreTypeConcrete::Uint32(_) => Type::u32(),
+        CoreTypeConcrete::Uint64(_) => Type::u64(),
+        CoreTypeConcrete::Uint128(_) => Type::structure([Type::u64(), Type::u64()]),
+        CoreTypeConcrete::Uint128MulGuarantee(_) => Type::structure([]),
+        CoreTypeConcrete::Sint8(_) => Type::i8(),
+        CoreTypeConcrete::Sint16(_) => Type::i16(),
+        CoreTypeConcrete::Sint32(_) => Type::i32(),
+        CoreTypeConcrete::Sint64(_) => Type::i64(),
+        CoreTypeConcrete::Sint128(_) => Type::structure([Type::i64(), Type::i64()]),
+        CoreTypeConcrete::NonZero(info) => {
+            coretype_to_libffitype(registry, registry.get_type(&info.ty)?)?
+        }
+        CoreTypeConcrete::Nullable(_) => Type::pointer(),
+        CoreTypeConcrete::RangeCheck(_) => Type::i64(),
+        CoreTypeConcrete::Uninitialized(info) => {
+            coretype_to_libffitype(registry, registry.get_type(&info.ty)?)?
+        }
+        CoreTypeConcrete::Enum(info) => {
+            /*
+            let layout = ty.layout(registry)?;
+            let tag_layout = get_integer_layout(tag_bits);
+            let layout = info.variants.iter().fold(tag_layout, |acc, id| {
+                let layout = tag_layout
+                    .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
+                    .unwrap()
+                    .0;
+
+                Layout::from_size_align(
+                    acc.size().max(layout.size()),
+                    acc.align().max(layout.align()),
+                )
+                .unwrap()
+            });
+            let mut data = Vec::new();
+            let mut size = layout.size() * 8;
+            dbg!(size);
+            while size > 0 {
+                if size >= 64 {
+                    data.push(Type::i64());
+                    size -= 64;
+                } else if size >= 32 {
+                    data.push(Type::i64());
+                    size -= 32;
+                } else if size >= 16 {
+                    data.push(Type::i16());
+                    size -= 16;
+                } else if size >= 8 {
+                    data.push(Type::i8());
+                    size -= 8;
+                }
+            }
+            Type::structure(data)
+            */
+            todo!()
+        }
+        CoreTypeConcrete::Struct(info) => {
+            let mut types = Vec::with_capacity(info.members.len());
+
+            for ty in &info.members {
+                types.push(coretype_to_libffitype(registry, registry.get_type(ty)?)?);
+            }
+
+            Type::structure(types)
+        }
+        CoreTypeConcrete::Felt252Dict(_) => Type::pointer(),
+        CoreTypeConcrete::Felt252DictEntry(_) => Type::structure([
+            Type::structure([Type::u64(), Type::u64(), Type::u64(), Type::u64()]),
+            Type::pointer(),
+            Type::pointer(),
+        ]),
+        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+        CoreTypeConcrete::Pedersen(_) => todo!(),
+        CoreTypeConcrete::Poseidon(_) => todo!(),
+        CoreTypeConcrete::Span(_) => todo!(),
+        CoreTypeConcrete::StarkNet(_) => todo!(),
+        CoreTypeConcrete::SegmentArena(_) => todo!(),
+        CoreTypeConcrete::Snapshot(_) => todo!(),
+        CoreTypeConcrete::Bytes31(_) => todo!(),
+        CoreTypeConcrete::BoundedInt(_) => todo!(),
+    })
+}
+
 /// Internal method.
 ///
 /// Invokes the given function by constructing the function call depending on the arguments given.
@@ -154,6 +257,8 @@ fn invoke_dynamic(
     let arena = Bump::new();
     let mut invoke_data = ArgumentMapper::new(&arena, registry);
 
+    let mut closure = libffi::middle::Builder::new();
+
     // Generate return pointer (if necessary).
     //
     // Generated when either:
@@ -161,17 +266,19 @@ fn invoke_dynamic(
     //     - All builtins except GasBuiltin and Starknet are ZST.
     //     - The unit struct is a ZST.
     //   - The return argument is complex.
-    let mut ret_types_iter = function_signature
+    let ret_types: Vec<_> = function_signature
         .ret_types
         .iter()
         .filter(|id| {
             let info = registry.get_type(id).unwrap();
             !(info.is_builtin() && info.is_zst(registry))
         })
-        .peekable();
+        .collect();
 
-    let num_return_args = ret_types_iter.clone().count();
-    let mut return_ptr = if num_return_args > 1
+    let mut ret_types_iter = ret_types.iter().peekable();
+
+    let ret_count = ret_types.len();
+    let mut return_ptr = if ret_count > 1
         || ret_types_iter
             .peek()
             .is_some_and(|id| registry.get_type(id).unwrap().is_complex(registry))
@@ -195,6 +302,13 @@ fn invoke_dynamic(
         None
     };
 
+    let res_type = if return_ptr.is_none() && !ret_types.is_empty() {
+        coretype_to_libffitype(registry, registry.get_type(&ret_types[0])?)?
+    } else {
+        Type::void()
+    };
+    closure = closure.res(res_type);
+
     // The Cairo compiler doesn't specify that the cheatcode syscall needs the syscall handler,
     // so we must always allocate it in case it needs it, regardless of whether it's passed
     // as an argument to the entry point or not.
@@ -211,23 +325,39 @@ fn invoke_dynamic(
         previous_syscall_handler
     });
 
+    // generate closure args
+    for type_id in function_signature.param_types.iter().filter(|id| {
+        let info = registry.get_type(id).unwrap();
+        !info.is_zst(registry)
+    }) {
+        closure = closure.arg(coretype_to_libffitype(
+            registry,
+            registry.get_type(type_id)?,
+        )?);
+    }
+
     // Generate argument list.
     let mut iter = args.iter();
+    let mut invoke_args = Vec::new();
     for type_id in function_signature.param_types.iter().filter(|id| {
         let info = registry.get_type(id).unwrap();
         !info.is_zst(registry)
     }) {
         // Process gas requirements and syscall handler.
         match registry.get_type(type_id).unwrap() {
-            CoreTypeConcrete::GasBuiltin(_) => invoke_data.push_aligned(
-                get_integer_layout(128).align(),
-                &[gas as u64, (gas >> 64) as u64],
-            ),
+            CoreTypeConcrete::GasBuiltin(_) => {
+                invoke_args.push(libffi::middle::Arg::new(&gas));
+                invoke_data.push_aligned(
+                    get_integer_layout(128).align(),
+                    &[gas as u64, (gas >> 64) as u64],
+                )
+            }
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
                     .expect("syscall handler is required");
 
+                invoke_args.push(libffi::middle::Arg::new(syscall_handler));
                 invoke_data.push_aligned(
                     get_integer_layout(64).align(),
                     &[syscall_handler as *mut _ as u64],
@@ -247,20 +377,23 @@ fn invoke_dynamic(
         }
     }
 
+    for arg in invoke_data.invoke_args {
+        invoke_args.push(arg);
+    }
+
+    dbg!(&invoke_args);
+
     // Invoke the trampoline.
     #[cfg(target_arch = "x86_64")]
-    let mut ret_registers = [0; 2];
+    type RetTy = [u64; 2];
     #[cfg(target_arch = "aarch64")]
-    let mut ret_registers = [0; 4];
+    type RetTy = [u64; 4];
 
-    unsafe {
-        invoke_trampoline(
-            function_ptr,
-            invoke_data.invoke_data().as_ptr(),
-            invoke_data.invoke_data().len(),
-            ret_registers.as_mut_ptr(),
-        );
-    }
+    let ret_registers = unsafe {
+        closure
+            .into_cif()
+            .call::<RetTy>(CodePtr(function_ptr as *mut _), &invoke_args)
+    };
 
     // If the syscall handler was changed, then reset the previous one.
     // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)
@@ -366,6 +499,7 @@ pub struct ArgumentMapper<'a> {
     registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
 
     invoke_data: Vec<u64>,
+    invoke_args: Vec<Arg>,
 }
 
 impl<'a> ArgumentMapper<'a> {
@@ -373,6 +507,7 @@ impl<'a> ArgumentMapper<'a> {
         Self {
             arena,
             registry,
+            invoke_args: Vec::new(),
             invoke_data: Vec::new(),
         }
     }
@@ -426,6 +561,7 @@ impl<'a> ArgumentMapper<'a> {
         type_info: &CoreTypeConcrete,
         value: &JitValue,
     ) -> Result<(), Box<ProgramRegistryError>> {
+        dbg!("called");
         match (type_info, value) {
             (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
                 // TODO: Assert that `info.ty` matches all the values' types.
@@ -527,6 +663,14 @@ impl<'a> ArgumentMapper<'a> {
                 ),
                 JitValue::Felt252(value),
             ) => {
+                #[repr(C, align(16))]
+                struct A {
+                    data: [u64; 4],
+                }
+                println!("{:x}", value);
+                self.invoke_args.push(Arg::new(&A {
+                    data: value.to_le_digits(),
+                }));
                 self.push_aligned(get_integer_layout(252).align(), &value.to_le_digits());
             }
             (CoreTypeConcrete::Bytes31(_), JitValue::Bytes31(value)) => {
@@ -557,38 +701,50 @@ impl<'a> ArgumentMapper<'a> {
                     )?;
                 }
             }
-            (CoreTypeConcrete::Uint128(_), JitValue::Uint128(value)) => self.push_aligned(
-                get_integer_layout(128).align(),
-                &[*value as u64, (value >> 64) as u64],
-            ),
+            (CoreTypeConcrete::Uint128(_), JitValue::Uint128(value)) => {
+                self.invoke_args.push(Arg::new(&[*value as u64, (value >> 64) as u64]));
+                self.push_aligned(
+                    get_integer_layout(128).align(),
+                    &[*value as u64, (value >> 64) as u64],
+                )
+            },
             (CoreTypeConcrete::Uint64(_), JitValue::Uint64(value)) => {
+                self.invoke_args.push(Arg::new(value));
                 self.push_aligned(get_integer_layout(64).align(), &[*value]);
             }
             (CoreTypeConcrete::Uint32(_), JitValue::Uint32(value)) => {
+                self.invoke_args.push(Arg::new(value));
                 self.push_aligned(get_integer_layout(32).align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Uint16(_), JitValue::Uint16(value)) => {
+                self.invoke_args.push(Arg::new(value));
                 self.push_aligned(get_integer_layout(16).align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Uint8(_), JitValue::Uint8(value)) => {
+                self.invoke_args.push(Arg::new(value));
                 self.push_aligned(get_integer_layout(8).align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Sint128(_), JitValue::Sint128(value)) => {
+                self.invoke_args.push(Arg::new(&[*value as u64, (value >> 64) as u64]));
                 self.push_aligned(
                     get_integer_layout(128).align(),
                     &[*value as u64, (value >> 64) as u64],
                 );
             }
             (CoreTypeConcrete::Sint64(_), JitValue::Sint64(value)) => {
+                self.invoke_args.push(Arg::new(value));
                 self.push_aligned(get_integer_layout(64).align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Sint32(_), JitValue::Sint32(value)) => {
+                self.invoke_args.push(Arg::new(value));
                 self.push_aligned(get_integer_layout(32).align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Sint16(_), JitValue::Sint16(value)) => {
+                self.invoke_args.push(Arg::new(value));
                 self.push_aligned(get_integer_layout(16).align(), &[*value as u64]);
             }
             (CoreTypeConcrete::Sint8(_), JitValue::Sint8(value)) => {
+                self.invoke_args.push(Arg::new(value));
                 self.push_aligned(get_integer_layout(8).align(), &[*value as u64]);
             }
             (CoreTypeConcrete::NonZero(info), _) => {
@@ -617,6 +773,7 @@ impl<'a> ArgumentMapper<'a> {
             | (CoreTypeConcrete::Poseidon(_), JitValue::Uint64(value))
             | (CoreTypeConcrete::RangeCheck(_), JitValue::Uint64(value))
             | (CoreTypeConcrete::SegmentArena(_), JitValue::Uint64(value)) => {
+                self.invoke_args.push(Arg::new(value));
                 self.push_aligned(get_integer_layout(64).align(), &[*value])
             }
             (_, _) => todo!(),
