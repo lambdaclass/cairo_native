@@ -94,7 +94,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 pub use self::{
-    compiler::compile,
+    compiler::Compiler,
     ffi::{module_to_object, object_to_shared_lib, LLVMCompileError, OptLevel},
 };
 
