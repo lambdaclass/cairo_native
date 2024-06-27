@@ -900,18 +900,10 @@ impl<'c> Compiler<'c> {
         type_ids: &'c [ConcreteTypeId],
     ) -> impl 'c + Iterator<Item = Result<Type<'c>, Error>> {
         type_ids.iter().filter_map(|id| {
-            let type_info = self.get_type(id).ok()?;
-
-            if type_info.is_builtin() && type_info.is_zst(self.registry) {
+            if self.type_is_zst_builtin(id) {
                 None
             } else {
-                Some(type_info.build(
-                    self.context,
-                    self.module,
-                    self.registry,
-                    *self.metadata.borrow_mut(),
-                    id,
-                ))
+                Some(self.build_type(id))
             }
         })
     }
