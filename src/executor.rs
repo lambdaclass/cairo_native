@@ -428,7 +428,11 @@ impl<'a> ArgumentMapper<'a> {
     ) -> Result<(), Box<ProgramRegistryError>> {
         match (type_info, value) {
             (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
-                // TODO: Assert that `info.ty` matches all the values' types.
+                // Check that all values in the array match the type.
+                assert!(
+                    value.matches_type(self.registry, type_info).unwrap(),
+                    "type mismatch in array"
+                );
 
                 let type_info = self.registry.get_type(&info.ty)?;
                 let type_layout = type_info.layout(self.registry).unwrap().pad_to_align();
@@ -869,6 +873,7 @@ fn parse_result(
 #[cfg(test)]
 mod test {
     use super::*;
+    use cairo_lang_sierra::extensions::types::InfoAndTypeConcreteType;
     use cairo_lang_sierra::extensions::types::InfoOnlyConcreteType;
     use cairo_lang_sierra::extensions::types::TypeInfo;
     use cairo_lang_sierra::program::ConcreteTypeLongId;
@@ -1239,5 +1244,100 @@ mod test {
             argument_mapper.invoke_data,
             vec![12, 0, 0, 0, 0, 0, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF]
         );
+    }
+
+    #[test]
+    #[should_panic(expected = "type mismatch in array")]
+    fn test_argument_mapper_push_array_fail() {
+        let program = ProgramParser::new()
+            .parse("type felt252 = felt252;")
+            .unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Array(InfoAndTypeConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+            ty: "felt252".into(),
+        });
+
+        // Pushes an array containing a JitValue::Uint8, which is expected to cause a type mismatch.
+        let _ = argument_mapper.push(
+            &type_id,
+            &type_info,
+            &JitValue::Array(vec![JitValue::Uint8(12)]),
+        );
+    }
+
+    #[test]
+    fn test_argument_mapper_push_array() {
+        let program = ProgramParser::new()
+            .parse("type felt252 = felt252;")
+            .unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+
+        let type_id = ConcreteTypeId {
+            debug_name: None,
+            id: 10,
+        };
+
+        let type_info = CoreTypeConcrete::Array(InfoAndTypeConcreteType {
+            info: TypeInfo {
+                long_id: ConcreteTypeLongId {
+                    generic_id: "generic_type_id".into(),
+                    generic_args: vec![],
+                },
+                storable: false,
+                droppable: false,
+                duplicatable: false,
+                zero_sized: false,
+            },
+            ty: "felt252".into(),
+        });
+
+        // Pushes an array containing three JitValue::Felt252.
+        let _ = argument_mapper.push(
+            &type_id,
+            &type_info,
+            &JitValue::Array(vec![
+                JitValue::Felt252(Felt::from(0)),
+                JitValue::Felt252(Felt::from(1)),
+                JitValue::Felt252(Felt::from(2)),
+            ]),
+        );
+
+        // Retrieves the first value from invoke_data as a pointer to Felt.
+        let ptr = argument_mapper.invoke_data[0] as *const Felt;
+        assert!(!ptr.is_null());
+
+        // Verify the values pointed by the pointer
+        let values_slice = unsafe { std::slice::from_raw_parts(ptr, 3) };
+        assert_eq!(
+            values_slice,
+            &[
+                Felt::from_raw([0, 0, 0, 0]),
+                Felt::from_raw([1, 0, 0, 0]),
+                Felt::from_raw([2, 0, 0, 0]),
+            ]
+        );
+
+        // Asserts that the remaining values in invoke_data are as expected.
+        assert_eq!(argument_mapper.invoke_data[1..], vec![0, 3, 3]);
     }
 }
