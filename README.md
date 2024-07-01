@@ -323,12 +323,12 @@ ninja install
 
 </details>
 
-Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_180_PREFIX` and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
+Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_181_PREFIX` and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
 
 ```bash
 # For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-18
 export MLIR_SYS_180_PREFIX=/usr/lib/llvm-18
-export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
+export LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
 export TABLEGEN_180_PREFIX=/usr/lib/llvm-18
 ```
 
@@ -717,7 +717,7 @@ For more examples, check out the `examples/` directory.
 ### Requirements
 
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.6.3](https://github.com/starkware-libs/cairo)
+- [cairo 2.6.4](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 18 with MLIR
 
@@ -725,7 +725,7 @@ You need to setup some environment variables:
 
 ```bash
 $MLIR_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
-$LLVM_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$LLVM_SYS_181_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 $TABLEGEN_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 ```
 
