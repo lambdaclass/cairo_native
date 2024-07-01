@@ -42,14 +42,15 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
     // Make the runtime library available.
     metadata.insert(RuntimeBindingsMeta::default()).unwrap();
 
-    cairo_native::compile(
+    let compiler = cairo_native::Compiler::new(
         &context,
         &module,
         &program.1,
         &registry,
         &mut metadata,
         None,
-    )?;
+    );
+    compiler.compile()?;
 
     // lower to llvm dialect
     let pass_manager = PassManager::new(&context);
