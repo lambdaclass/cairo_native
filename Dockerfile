@@ -29,7 +29,7 @@ COPY . /cairo_native/
 # Compile cairo_native
 WORKDIR /cairo_native/
 ENV MLIR_SYS_180_PREFIX=/usr/lib/llvm-18
-ENV LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
+ENV LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
 ENV TABLEGEN_180_PREFIX=/usr/lib/llvm-18
 RUN make deps
 RUN make build
