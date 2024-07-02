@@ -95,24 +95,12 @@ fn snapshot_take<'ctx, 'this>(
 
     match inner_snapshot_take {
         Some(inner_snapshot_take) => {
-            let value = entry.load(
-                context,
-                location,
-                src_value,
-                inner_ty,
-                Some(inner_layout.align()),
-            )?;
+            let value = entry.load(context, location, src_value, inner_ty)?;
 
             let (entry, value) =
                 inner_snapshot_take(context, registry, entry, location, helper, metadata, value)?;
 
-            entry.store(
-                context,
-                location,
-                dst_ptr,
-                value,
-                Some(inner_layout.align()),
-            )?;
+            entry.store(context, location, dst_ptr, value)?;
         }
         None => {
             entry.append_operation(

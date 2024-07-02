@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
     steps:
       - uses: actions/checkout@v4

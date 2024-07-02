@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
     steps:
       - uses: actions/checkout@v4
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUSTUP_TOOLCHAIN: nightly-2024-02-01  # udeps needs nightly
     steps:
@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUST_LOG: debug,cairo_native_test=trace
     steps:
@@ -164,7 +164,7 @@ jobs:
       CARGO_TERM_COLOR: always
       LIBRARY_PATH: /opt/homebrew/lib
       MLIR_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
-      LLVM_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
+      LLVM_SYS_181_PREFIX: /opt/homebrew/opt/llvm@18
       TABLEGEN_180_PREFIX: /opt/homebrew/opt/llvm@18
       RUST_LOG: debug,cairo_native_test=trace
     steps:
@@ -177,7 +177,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.6.3"
+          scarb-version: "2.6.4"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -193,7 +193,7 @@ jobs:
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUST_LOG: debug
     steps:
@@ -234,7 +234,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.6.3"
+          scarb-version: "2.6.4"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
