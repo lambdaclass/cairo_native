@@ -16,6 +16,7 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 #[derive(Debug)]
 struct SyscallHandler;
 
+// PLT: this seems like superfluous noise for an example.
 impl StarknetSyscallHandler for SyscallHandler {
     fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
         println!("Called `get_block_hash({block_number})` from MLIR.");
@@ -324,3 +325,4 @@ fn main() {
     println!("Cairo program was compiled and executed successfully.");
     println!("{result:#?}");
 }
+// PLT: ACK

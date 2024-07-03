@@ -32,6 +32,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
     data: *const [u8; 32],
     len: u32,
 ) -> i32 {
+    // PLT: using `ManuallyDrop<File>` avoids closing `target_fd` on error paths.
     let mut target = File::from_raw_fd(target_fd);
 
     for i in 0..len as usize {
@@ -39,6 +40,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
 
         let value = Felt::from_bytes_le(&data);
         if write!(target, "[DEBUG]\t{value:x}",).is_err() {
+            // PLT: this would close the file I think.
             return 1;
         };
 
@@ -63,11 +65,13 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
             )
             .is_err()
             {
+                // PLT: this would close the file I think.
                 return 1;
             }
         }
 
         if writeln!(target).is_err() {
+            // PLT: this would close the file I think.
             return 1;
         };
     }
@@ -90,6 +94,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
+/// PLT: we also need to clarify issues about, e.g., aliasing of pointers, sizes of arrays (which
+/// is not the same as having a value in range for the felt).
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
     dst: *mut u8,
@@ -106,6 +112,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
     let rhs = FieldElement::from_byte_slice_be(rhs).unwrap();
 
     // Compute pedersen hash and copy the result into `dst`.
+    // PLT: we should migrate this to `types-rs`.
     let res = starknet_crypto::pedersen_hash(&lhs, &rhs);
     dst.copy_from_slice(&res.to_bytes_be());
 }
@@ -173,6 +180,7 @@ pub unsafe extern "C" fn cairo_native__dict_free(
     let mut map = Box::from_raw(ptr);
 
     // Free the entries manually.
+    // PLT: what if these hold pointers to the heap themselves?
     for (_, entry) in map.as_mut().0.drain() {
         libc::free(entry.as_ptr().cast());
     }
@@ -207,6 +215,9 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
+/// PLT: this doesn't specify that the dict takes ownership of the pointer, which could lead to
+/// double-frees. It also doesn't specify that the old pointer is relinquished and thus the caller
+/// needs to free it when it's done with it.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_insert(
     ptr: *mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
@@ -234,6 +245,7 @@ pub unsafe extern "C" fn cairo_native__dict_gas_refund(
     ptr: *const (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
 ) -> u64 {
     let dict = &*ptr;
+    // PLT: inserting does not increase the count apparently, so this could overflow.
     (dict.1 - dict.0.len() as u64) * *DICT_GAS_REFUND_PER_ACCESS
 }
 
@@ -251,6 +263,7 @@ pub unsafe extern "C" fn cairo_native__dict_gas_refund(
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
     mut point_ptr: NonNull<[[u8; 32]; 2]>,
 ) -> bool {
+    // PLT: just use from_bytes_le()?
     let x = FieldElement::from_bytes_be(&{
         let mut data = point_ptr.as_ref()[0];
         data.reverse();
@@ -264,6 +277,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
             if point.y >= *HALF_PRIME {
                 point.y = -point.y
             }
+            // PLT: just use to_bytes_le()?
             point_ptr.as_mut()[1].copy_from_slice(&point.y.to_bytes_be());
             point_ptr.as_mut()[1].reverse();
 
@@ -300,6 +314,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
     })
     .unwrap();
 
+    // PLT: why do we discard the point?
     AffinePoint::from_x(x).is_some_and(|point| y == point.y || y == -point.y)
 }
 
@@ -411,6 +426,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
         infinity: false,
     };
 
+    // PLT: I think the spirit of this function is using an optimized addmul operation.
     state += &(&point * &scalar.to_bits_le());
 
     state_ptr.as_mut()[0].copy_from_slice(&state.x.to_bytes_be());
@@ -480,3 +496,5 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
         true
     }
 }
+// PLT: no tests for error-prone code.
+// PLT: ACK

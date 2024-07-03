@@ -294,3 +294,4 @@ fn keccak_test() {
     assert_eq!(result.remaining_gas, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFEEDDB);
     assert_eq!(result.return_values, vec![1.into()]);
 }
+// PLT: ACK

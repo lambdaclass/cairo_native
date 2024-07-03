@@ -732,4 +732,7 @@ mod tests {
         // Assert that the switch operation is valid
         assert!(cf_switch.verify());
     }
+    // PLT: not a lot of tests here. Specifically I'd like to see what happens if we make a
+    // targetless switch, for example. Or one with only one target.
 }
+// PLT: ACK

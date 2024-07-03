@@ -174,6 +174,8 @@ pub fn build_append<'ctx, 'this>(
     //   - If array_end == capacity:
     //     - If array_start == 0: realloc, then append.
     //     - If array_start != 0: memmove, then append.
+    //     PLT: in which scenario would this happen?
+    //     PLT: OK, pop_front causes this.
 
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
@@ -1304,6 +1306,7 @@ mod test {
 
         assert_eq!(
             result,
+            // PLT: I don't really get the return value's type here.
             jit_enum!(
                 0,
                 jit_struct!(jit_struct!(
@@ -1872,3 +1875,4 @@ mod test {
         );
     }
 }
+// PLT: ACK

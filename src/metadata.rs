@@ -134,4 +134,5 @@ mod test {
     }
 }
 
+// PLT: badly named store for singletons?
 // PLT: ACK

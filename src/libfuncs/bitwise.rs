@@ -31,6 +31,7 @@ pub fn build<'ctx, 'this>(
     let lhs = entry.argument(1)?.into();
     let rhs = entry.argument(2)?.into();
 
+    // PLT: is there a single `bitwise` libfunc that always computes all three operations?
     let logical_and = entry.append_op_result(arith::andi(lhs, rhs, location))?;
     let logical_xor = entry.append_op_result(arith::xori(lhs, rhs, location))?;
     let logical_or = entry.append_op_result(arith::ori(lhs, rhs, location))?;
@@ -109,3 +110,4 @@ mod test {
         );
     }
 }
+// PLT: ACK

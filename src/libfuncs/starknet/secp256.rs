@@ -159,6 +159,7 @@ pub fn build_k1_new<'ctx, 'this>(
         .result(0)?
         .into();
 
+    // PLT: gas updates could be made into a simple helper.
     // Allocate space and write the current gas.
     let gas_builtin_ptr = helper.init_block().alloca1(
         context,
@@ -213,6 +214,7 @@ pub fn build_k1_new<'ctx, 'this>(
         LoadStoreOptions::default(),
     ));
 
+    // PLT: BlockExt for call blocks?
     let fn_ptr = entry
         .append_operation(llvm::get_element_ptr(
             context,
@@ -3128,3 +3130,4 @@ pub fn build_r1_get_xy<'ctx, 'this>(
     ));
     Ok(())
 }
+// PLT: ACK

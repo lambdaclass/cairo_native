@@ -26,6 +26,7 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
     };
 
     // Initialize MLIR.
+    // PLT: maybe this should be an `init` function. Possibly don't leak MLIR at this high level.
     context.append_dialect_registry(&{
         let registry = DialectRegistry::new();
         register_all_dialects(&registry);
@@ -52,6 +53,7 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
     )?;
 
     // lower to llvm dialect
+    // PLT: same for the pass manager.
     let pass_manager = PassManager::new(&context);
     pass_manager.enable_verifier(true);
     pass_manager.add_pass(pass::transform::create_canonicalizer());
@@ -71,3 +73,4 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+// PLT: ACK

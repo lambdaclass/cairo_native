@@ -61,3 +61,4 @@ fn compare_inputless_function(function_name: &str) {
 fn test_cases(function_name: &str) {
     compare_inputless_function(function_name)
 }
+// PLT: ACK

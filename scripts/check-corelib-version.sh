@@ -8,3 +8,4 @@ if [ $? -ne 0 ]; then
   echo "corelib version mismatch, please re-run 'make deps'"
   exit 1
 fi
+# PLT: ACK

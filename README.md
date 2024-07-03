@@ -21,6 +21,9 @@ to machine code via MLIR and LLVM.
 
 To get started on how to setup and run cairo-native check the [getting started](#getting-started) section.
 
+<!-- PLT: we may want to migrate these to the repo -->
+<!-- PLT: some of these docs seem out of date, e.g. mention some `src/statements` source file that no longer exists -->
+<!-- PLT: some refer to Twitter threads: those can be volatile and are also behind a login-wall nowadays, maybe save a transcript with attribution -->
 To read more in-depth documentation, visit [this page](https://lambdaclass.notion.site/Documentation-cd2b99eb14344a40837b1740238a918c).
 
 - [Implemented Library Functions](#implemented-library-functions)
@@ -876,3 +879,4 @@ Other tips:
         .print_pointer(context, helper, entry, ptr, location)?;
 }
 ```
+<!-- PLT: ACK -->

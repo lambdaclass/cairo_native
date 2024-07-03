@@ -1,6 +1,8 @@
 use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program};
 use cairo_native::starknet::DummySyscallHandler;
 
+// PLT: empty enums bit us several times, so maybe add tests for those.
+// Same for matching single-variant enums.
 #[test]
 fn enum_init() {
     let program = load_cairo! {
@@ -114,3 +116,4 @@ fn enum_match() {
     )
     .unwrap();
 }
+// PLT: ACK

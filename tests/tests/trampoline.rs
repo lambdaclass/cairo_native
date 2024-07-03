@@ -520,3 +520,4 @@ fn invoke1_enum2_u8_u16() {
     r(MyEnum::B(10));
     r(MyEnum::B(u16::MAX));
 }
+// PLT: ACK

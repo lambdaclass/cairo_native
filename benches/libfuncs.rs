@@ -89,6 +89,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                         black_box(result)
                     })
                 },
+                // PLT: we'd be missing AOT
             );
         }
     }
@@ -96,3 +97,4 @@ pub fn bench_libfuncs(c: &mut Criterion) {
 
 criterion_group!(benches, bench_libfuncs);
 criterion_main!(benches);
+// PLT: ACK

@@ -921,3 +921,6 @@ mod test {
         );
     }
 }
+// PLT: primitive types could maybe be simplified by internally promoting the lesser ones to
+// `u64/i64`.
+// PLT: ACK

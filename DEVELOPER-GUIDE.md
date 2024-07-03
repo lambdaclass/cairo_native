@@ -91,6 +91,7 @@ A type that doesn't have size would be `Layout::new::<()>()`, or if the type is 
 
 When adding a type, we also need to add the **serialization** and **deserialization** functionality, so we can use it with the JIT runner.
 
+<!-- src/values/{typename}.rs no longer seems to exist -->
 You can find this functionality under `src/values.rs` and `src/values/{typename}.rs`. As you can see, the project is quite organized if you have a feel of its layout.
 
 Serialization is done using `Serde`, and each type provides a `deserialize` and `serialize` function. The inner workings of such functions can be a bit complex due to how the JIT runner works. You need to work with pointers and unsafe rust.
@@ -102,6 +103,7 @@ In `values.rs` we should also declare whether the type is complex under `is_comp
 #### Deserializing a type
 When **deserializing** (a.k.a converting the inputs so the JIT runner accepts them), you are passed a bump allocator arena from `Bumpalo`, the general idea is to get the layout and size of the type, allocate it under the arena, get a pointer, and return it. Which will later be passed to the MLIR JIT runner. It is important the pointers passed are allocated by the arena and not Rust itself.
 
+<!-- s/de/the/ -->
 Then we need to hookup de `deserialize` method in `values.rs` `deserialize` method.
 
 #### Serializing a type
@@ -241,3 +243,4 @@ Check out <https://mlir.llvm.org/docs/Canonicalization/> and <https://mlir.llvm.
 ### Translating
 
 In our case, llvm is our target, so we end up translating all dialects down to the LLVM dialect, which then gets converted to LLVM IR.
+<!-- PLT: ACK -->

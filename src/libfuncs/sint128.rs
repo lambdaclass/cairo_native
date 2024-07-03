@@ -740,3 +740,6 @@ mod test {
         );
     }
 }
+// PLT: observation: `BlockExt` could include helpers for some of the arithmetic and comparison
+// operations to save boilerplate.
+// PLT: ACK

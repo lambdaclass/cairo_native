@@ -314,6 +314,7 @@ pub mod test {
         values::JitValue,
     };
 
+    // PLT: most cases have no test here, e.g. generics.
     #[test]
     fn run_const_as_box() {
         let program = load_cairo!(
@@ -335,3 +336,4 @@ pub mod test {
         assert_eq!(result, jit_struct!(JitValue::Sint32(-2)));
     }
 }
+// PLT: ACK

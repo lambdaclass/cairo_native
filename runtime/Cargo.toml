@@ -1,6 +1,7 @@
 [package]
 name = "cairo-native-runtime"
 version = "0.2.0"
+# PLT: this description seems inaccurate for the runtime.
 description = "A compiler to convert Cairo's intermediate representation Sierra code to MLIR."
 edition = "2021"
 license = "Apache-2.0"
@@ -18,3 +19,4 @@ libc = "0.2.155"
 starknet-crypto = "0.6.2"
 starknet-curve = "0.4.2"
 lazy_static = "1.4.0"
+# PLT: ACK

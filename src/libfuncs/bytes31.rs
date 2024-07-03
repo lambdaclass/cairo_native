@@ -133,6 +133,16 @@ pub fn build_from_felt252<'ctx, 'this>(
         &info.branch_signatures()[0].vars[1].ty,
     )?;
 
+    // PLT: this may be an expensive operation. Any of (or a combination of) these could be better:
+    // 1. Use `BigUint::one() << 248 - 1u32`;
+    // 2. Use a `lazy_static!` to compute it only once;
+    // 3. Use a constant array of bytes and parse with `from_bytes_le`.
+    // 4. Just use the literal string that would result from this number in the call to `format`,
+    //    with a comment explaining what this corresponds to.
+    //    E.g.:
+    //    ```
+    //    const MAX_VALUE: &str = "0xffff...ffff";
+    //    ```
     let max_value = BigUint::from(2u32).pow(248) - 1u32;
 
     let const_max = entry.append_op_result(arith::constant(
@@ -208,3 +218,4 @@ mod test {
         );
     }
 }
+// PLT: ACK

@@ -198,6 +198,7 @@ pub fn build_call_contract<'ctx, 'this>(
     let result_ptr = helper
         .init_block()
         .append_operation(
+            // PLT: BlockExt::alloca?
             OperationBuilder::new("llvm.alloca", location)
                 .add_attributes(&[
                     (
@@ -806,6 +807,12 @@ pub fn build_storage_read<'ctx, 'this>(
         .result(0)?
         .into();
 
+    // PLT: this block could be simplified by parameterizing all inside by `variant_tys`, so we
+    // could use a closure that just passes `variant_tys[0]` for `payload_ok` and `variant_tys[1]`
+    // for `payload_err`.
+    // The same seems true for other functions. And, in general, it is likely that this is generic
+    // handling of `enum` types, or at least `Result<_, _>`, so maybe it could be a helper in
+    // `BlockExt`.
     let payload_ok = {
         let ptr = entry
             .append_operation(
@@ -4239,3 +4246,5 @@ mod test {
         );
     }
 }
+// PLT: big file, lots of redundant code.
+// PLT: ACK

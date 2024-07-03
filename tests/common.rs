@@ -83,6 +83,7 @@ pub fn felt(value: &str) -> [u32; 8] {
     u32_digits.try_into().unwrap()
 }
 
+// PLT: s/time/type/
 /// Parse any time that can be a bigint to a felt that can be used in the cairo-native input.
 pub fn feltn(value: impl Into<BigInt>) -> [u32; 8] {
     let value: BigInt = value.into();
@@ -239,6 +240,7 @@ pub fn run_native_program(
     );
 
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
+    // PLT: which ones? Link to the issues?
     let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
     match syscall_handler {
         Some(syscall_handler) => executor
@@ -838,3 +840,4 @@ pub fn any_felt() -> impl Strategy<Value = Felt> {
 pub fn nonzero_felt() -> impl Strategy<Value = Felt> {
     any_felt().prop_filter("is zero", |x| x != &Felt::ZERO)
 }
+// PLT: ACK

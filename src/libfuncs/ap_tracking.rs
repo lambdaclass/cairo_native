@@ -41,6 +41,7 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+// PLT: maybe just inline these.
 /// Generate MLIR operations for the `enable_ap_tracking` libfunc.
 pub fn build_enable<'ctx, 'this>(
     _context: &'ctx Context,
@@ -85,3 +86,4 @@ pub fn build_revoke<'ctx, 'this>(
 
     Ok(())
 }
+// PLT: ACK

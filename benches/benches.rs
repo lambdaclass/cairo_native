@@ -56,6 +56,8 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| aot_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX)));
     });
 
+    // PLT: why is this only built on x86_64? Also, what does this test exactly that the other
+    // benchmarks don't?
     #[cfg(target_arch = "x86_64")]
     {
         use std::mem::MaybeUninit;
@@ -147,3 +149,4 @@ fn load_contract(path: impl AsRef<Path>) -> Program {
 
 criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);
+// PLT: ACK

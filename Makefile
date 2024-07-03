@@ -22,6 +22,8 @@ ifeq ($(wildcard ./cairo2/.),)
 endif
 	./scripts/check-corelib-version.sh $(CAIRO_2_VERSION)
 
+# PLT: make an alias target called `help` for intuitive use.
+# PLT: this should be the first target, as that's what runs if you pass no arguments.
 usage:
 	@echo "Usage:"
 	@echo "    deps:		 Installs the necesarry dependencies."
@@ -38,6 +40,7 @@ usage:
 	@echo "    bench-ci:     Runs the criterion benchmarks for CI."
 	@echo "    install:      Invokes cargo to install cairo-native."
 	@echo "    clean:        Cleans the built artifacts."
+# PLT: missing some targets in the help message, including `usage`.
 
 build: check-llvm runtime
 	cargo build --release --all-features
@@ -143,3 +146,6 @@ runtime:
 
 runtime-ci:
 	cargo b --profile ci --all-features -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .
+# PLT: this is a candidate to using `just` instead, since most targets
+# don't rely on the dependency graph but delegate to other tools instead.
+# PLT: ACK

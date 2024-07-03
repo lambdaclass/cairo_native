@@ -190,3 +190,5 @@ fn parse_output(input: &str) -> Result<CompilerOutput, String> {
         })
     })
 }
+// PLT: use a multicall binary to avoid having many huge binaries.
+// PLT: ACK
