@@ -116,3 +116,4 @@ pub mod starknet_stub;
 pub mod types;
 pub mod utils;
 pub mod values;
+pub mod aquatest;

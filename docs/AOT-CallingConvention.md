@@ -1,6 +1,6 @@
 # AOT calling convention:
 
-## Arguments
+## Arguments
 
   - Written on registers, then the stack.
   - Structs' fields are treated as individual arguments (flattened).

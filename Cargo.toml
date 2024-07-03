@@ -54,6 +54,7 @@ with-serde = ["dep:serde"]
 with-cheatcode = []
 
 [dependencies]
+aquamarine = "0.5.0"
 bumpalo = "3.16.0"
 cairo-lang-compiler = "2.6.4"
 cairo-lang-defs = "2.6.4"
