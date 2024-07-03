@@ -298,3 +298,45 @@ fn snapshot_take<'ctx, 'this>(
 
     Ok((block_finish, dst_value))
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        utils::{
+            felt252_bigint,
+            test::{load_cairo, run_program},
+        },
+        values::JitValue,
+    };
+    use pretty_assertions_sorted::assert_eq;
+
+    #[test]
+    fn test_array_snapshot_deep_clone() {
+        let program = load_cairo! {
+            fn run_test() -> @Array<Array<felt252>> {
+                let mut inputs: Array<Array<felt252>> = ArrayTrait::new();
+                inputs.append(array![1, 2, 3]);
+                inputs.append(array![4, 5, 6]);
+
+                @inputs
+            }
+        };
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            JitValue::Array(vec![
+                JitValue::Array(vec![
+                    JitValue::Felt252(1.into()),
+                    JitValue::Felt252(2.into()),
+                    JitValue::Felt252(3.into()),
+                ]),
+                JitValue::Array(vec![
+                    JitValue::Felt252(4.into()),
+                    JitValue::Felt252(5.into()),
+                    JitValue::Felt252(6.into()),
+                ]),
+            ]),
+        );
+    }
+}
