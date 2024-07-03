@@ -302,10 +302,7 @@ fn snapshot_take<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::{
-            felt252_bigint,
-            test::{load_cairo, run_program},
-        },
+        utils::test::{load_cairo, run_program},
         values::JitValue,
     };
     use pretty_assertions_sorted::assert_eq;
