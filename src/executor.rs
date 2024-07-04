@@ -430,7 +430,7 @@ impl<'a> ArgumentMapper<'a> {
             (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
                 // Check that all values in the array match the type.
                 assert!(
-                    value.matches_type(self.registry, type_info).unwrap(),
+                    value.matches_type(self.registry, type_info),
                     "type mismatch in array"
                 );
 

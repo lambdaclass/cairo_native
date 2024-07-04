@@ -174,52 +174,58 @@ impl JitValue {
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_info: &CoreTypeConcrete,
-    ) -> Result<bool, Error> {
+    ) -> bool {
         match (self, type_info) {
-            (JitValue::Felt252(_), CoreTypeConcrete::Felt252(_)) => Ok(true),
-            (JitValue::Bytes31(_), CoreTypeConcrete::Bytes31(_)) => Ok(true),
             (JitValue::Array(values), CoreTypeConcrete::Array(info)) => {
-                let type_info = registry.get_type(&info.ty)?;
-                values.iter().try_fold(
-                    true,
-                    |acc, v| Ok(acc & v.matches_type(registry, type_info)?),
-                )
+                let type_info = match registry.get_type(&info.ty) {
+                    Ok(t) => t,
+                    Err(_) => return false,
+                };
+                values.iter().all(|v| v.matches_type(registry, type_info))
             }
             (JitValue::Struct { fields, .. }, CoreTypeConcrete::Struct(info)) => {
                 if fields.len() != info.members.len() {
-                    return Ok(false);
+                    return false;
                 }
-                for (jit_value, ty) in fields.iter().zip(info.members.iter()) {
-                    let type_info = registry.get_type(ty)?;
-                    if !jit_value.matches_type(registry, type_info)? {
-                        return Ok(false);
-                    }
-                }
-                Ok(true)
+                fields
+                    .iter()
+                    .zip(info.members.iter())
+                    .all(|(jit_value, ty)| {
+                        let type_info = match registry.get_type(ty) {
+                            Ok(t) => t,
+                            Err(_) => return false,
+                        };
+                        jit_value.matches_type(registry, type_info)
+                    })
             }
             (JitValue::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) => {
                 if *tag >= info.variants.len() {
-                    return Ok(false);
+                    return false;
                 }
-                let type_info = registry.get_type(&info.variants[*tag])?;
+                let type_info = match registry.get_type(&info.variants[*tag]) {
+                    Ok(t) => t,
+                    Err(_) => return false,
+                };
                 value.matches_type(registry, type_info)
             }
-            (JitValue::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(_)) => Ok(true),
-            (JitValue::Uint8(_), CoreTypeConcrete::Uint8(_)) => Ok(true),
-            (JitValue::Uint16(_), CoreTypeConcrete::Uint16(_)) => Ok(true),
-            (JitValue::Uint32(_), CoreTypeConcrete::Uint32(_)) => Ok(true),
-            (JitValue::Uint64(_), CoreTypeConcrete::Uint64(_)) => Ok(true),
-            (JitValue::Uint128(_), CoreTypeConcrete::Uint128(_)) => Ok(true),
-            (JitValue::Sint8(_), CoreTypeConcrete::Sint8(_)) => Ok(true),
-            (JitValue::Sint16(_), CoreTypeConcrete::Sint16(_)) => Ok(true),
-            (JitValue::Sint32(_), CoreTypeConcrete::Sint32(_)) => Ok(true),
-            (JitValue::Sint64(_), CoreTypeConcrete::Sint64(_)) => Ok(true),
-            (JitValue::Sint128(_), CoreTypeConcrete::Sint128(_)) => Ok(true),
-            (JitValue::EcPoint(_, _), CoreTypeConcrete::EcPoint(_)) => Ok(true),
-            (JitValue::EcState(_, _, _, _), CoreTypeConcrete::EcState(_)) => Ok(true),
-            (JitValue::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => Ok(true),
-            (JitValue::Null, CoreTypeConcrete::Nullable(_)) => Ok(true),
-            _ => Ok(false),
+            (JitValue::Felt252(_), CoreTypeConcrete::Felt252(_))
+            | (JitValue::Bytes31(_), CoreTypeConcrete::Bytes31(_))
+            | (JitValue::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(_))
+            | (JitValue::Uint8(_), CoreTypeConcrete::Uint8(_))
+            | (JitValue::Uint16(_), CoreTypeConcrete::Uint16(_))
+            | (JitValue::Uint32(_), CoreTypeConcrete::Uint32(_))
+            | (JitValue::Uint64(_), CoreTypeConcrete::Uint64(_))
+            | (JitValue::Uint128(_), CoreTypeConcrete::Uint128(_))
+            | (JitValue::Sint8(_), CoreTypeConcrete::Sint8(_))
+            | (JitValue::Sint16(_), CoreTypeConcrete::Sint16(_))
+            | (JitValue::Sint32(_), CoreTypeConcrete::Sint32(_))
+            | (JitValue::Sint64(_), CoreTypeConcrete::Sint64(_))
+            | (JitValue::Sint128(_), CoreTypeConcrete::Sint128(_))
+            | (JitValue::EcPoint(_, _), CoreTypeConcrete::EcPoint(_))
+            | (JitValue::EcState(_, _, _, _), CoreTypeConcrete::EcState(_))
+            | (JitValue::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_))
+            | (JitValue::Null, CoreTypeConcrete::Nullable(_)) => true,
+            _ => false,
         }
     }
 
@@ -1447,23 +1453,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        assert!(JitValue::Felt252(Felt::from(100))
-            .matches_type(
-                &registry,
-                &CoreTypeConcrete::Felt252(InfoOnlyConcreteType {
-                    info: TypeInfo {
-                        long_id: ConcreteTypeLongId {
-                            generic_id: "generic_type_id".into(),
-                            generic_args: vec![],
-                        },
-                        storable: false,
-                        droppable: false,
-                        duplicatable: false,
-                        zero_sized: false,
+        assert!(JitValue::Felt252(Felt::from(100)).matches_type(
+            &registry,
+            &CoreTypeConcrete::Felt252(InfoOnlyConcreteType {
+                info: TypeInfo {
+                    long_id: ConcreteTypeLongId {
+                        generic_id: "generic_type_id".into(),
+                        generic_args: vec![],
                     },
-                })
-            )
-            .unwrap());
+                    storable: false,
+                    droppable: false,
+                    duplicatable: false,
+                    zero_sized: false,
+                },
+            })
+        ));
     }
 
     #[test]
@@ -1472,23 +1476,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        assert!(JitValue::Bytes31([0; 31])
-            .matches_type(
-                &registry,
-                &CoreTypeConcrete::Bytes31(InfoOnlyConcreteType {
-                    info: TypeInfo {
-                        long_id: ConcreteTypeLongId {
-                            generic_id: "generic_type_id".into(),
-                            generic_args: vec![],
-                        },
-                        storable: false,
-                        droppable: false,
-                        duplicatable: false,
-                        zero_sized: false,
+        assert!(JitValue::Bytes31([0; 31]).matches_type(
+            &registry,
+            &CoreTypeConcrete::Bytes31(InfoOnlyConcreteType {
+                info: TypeInfo {
+                    long_id: ConcreteTypeLongId {
+                        generic_id: "generic_type_id".into(),
+                        generic_args: vec![],
                     },
-                })
-            )
-            .unwrap());
+                    storable: false,
+                    droppable: false,
+                    duplicatable: false,
+                    zero_sized: false,
+                },
+            })
+        ));
     }
 
     #[test]
@@ -1522,7 +1524,7 @@ mod test {
             ty: "felt252".into(),
         });
 
-        assert!(valid_jit_value.matches_type(&registry, &type_info).unwrap());
+        assert!(valid_jit_value.matches_type(&registry, &type_info));
 
         // An invalid JIT value array of felt252 values
         let invalid_jit_value = JitValue::Array(vec![
@@ -1532,9 +1534,7 @@ mod test {
             JitValue::Uint64(10),
         ]);
 
-        assert!(!invalid_jit_value
-            .matches_type(&registry, &type_info)
-            .unwrap());
+        assert!(!invalid_jit_value.matches_type(&registry, &type_info));
     }
 
     #[test]
@@ -1580,7 +1580,7 @@ mod test {
             },
         });
 
-        assert!(valid_jit_value.matches_type(&registry, &type_info).unwrap());
+        assert!(valid_jit_value.matches_type(&registry, &type_info));
 
         // An invalid JIT value struct with the incorrect fields
         // Uint64 instead of Felt252 for the last field
@@ -1594,9 +1594,7 @@ mod test {
             debug_name: None,
         };
 
-        assert!(!invalid_jit_value
-            .matches_type(&registry, &type_info)
-            .unwrap());
+        assert!(!invalid_jit_value.matches_type(&registry, &type_info));
 
         // An invalid JIT value struct with the incorrect length
         let invalid_len_jit_value = JitValue::Struct {
@@ -1608,9 +1606,7 @@ mod test {
             debug_name: None,
         };
 
-        assert!(!invalid_len_jit_value
-            .matches_type(&registry, &type_info)
-            .unwrap());
+        assert!(!invalid_len_jit_value.matches_type(&registry, &type_info));
     }
 
     #[test]
@@ -1640,7 +1636,7 @@ mod test {
             },
         });
 
-        assert!(valid_jit_value.matches_type(&registry, &type_info).unwrap());
+        assert!(valid_jit_value.matches_type(&registry, &type_info));
 
         // An invalid JIT value enum with the incorrect value
         let invalid_value_jit_value = JitValue::Enum {
@@ -1649,9 +1645,7 @@ mod test {
             debug_name: None,
         };
 
-        assert!(!invalid_value_jit_value
-            .matches_type(&registry, &type_info)
-            .unwrap());
+        assert!(!invalid_value_jit_value.matches_type(&registry, &type_info));
 
         // An invalid JIT value enum with the incorrect tag
         let invalid_tag_jit_value = JitValue::Enum {
@@ -1660,9 +1654,7 @@ mod test {
             debug_name: None,
         };
 
-        assert!(!invalid_tag_jit_value
-            .matches_type(&registry, &type_info)
-            .unwrap());
+        assert!(!invalid_tag_jit_value.matches_type(&registry, &type_info));
     }
 
     #[test]
@@ -1700,7 +1692,7 @@ mod test {
             ty: "u8".into(),
         });
 
-        assert!(jit_value.matches_type(&registry, &type_info).unwrap());
+        assert!(jit_value.matches_type(&registry, &type_info));
     }
 
     #[test]
@@ -1725,38 +1717,34 @@ mod test {
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
         // Test matching unsigned integer types
-        assert!(JitValue::Uint8(10)
-            .matches_type(&registry, &CoreTypeConcrete::Uint8(info_type()))
-            .unwrap());
-        assert!(JitValue::Uint16(10)
-            .matches_type(&registry, &CoreTypeConcrete::Uint16(info_type()))
-            .unwrap());
-        assert!(JitValue::Uint32(10)
-            .matches_type(&registry, &CoreTypeConcrete::Uint32(info_type()))
-            .unwrap());
-        assert!(JitValue::Uint64(10)
-            .matches_type(&registry, &CoreTypeConcrete::Uint64(info_type()))
-            .unwrap());
-        assert!(JitValue::Uint128(10)
-            .matches_type(&registry, &CoreTypeConcrete::Uint128(info_type()))
-            .unwrap());
+        assert!(JitValue::Uint8(10).matches_type(&registry, &CoreTypeConcrete::Uint8(info_type())));
+        assert!(
+            JitValue::Uint16(10).matches_type(&registry, &CoreTypeConcrete::Uint16(info_type()))
+        );
+        assert!(
+            JitValue::Uint32(10).matches_type(&registry, &CoreTypeConcrete::Uint32(info_type()))
+        );
+        assert!(
+            JitValue::Uint64(10).matches_type(&registry, &CoreTypeConcrete::Uint64(info_type()))
+        );
+        assert!(
+            JitValue::Uint128(10).matches_type(&registry, &CoreTypeConcrete::Uint128(info_type()))
+        );
 
         // Test matching signed integer types
-        assert!(JitValue::Sint8(-10)
-            .matches_type(&registry, &CoreTypeConcrete::Sint8(info_type()))
-            .unwrap());
-        assert!(JitValue::Sint16(-10)
-            .matches_type(&registry, &CoreTypeConcrete::Sint16(info_type()))
-            .unwrap());
-        assert!(JitValue::Sint32(-10)
-            .matches_type(&registry, &CoreTypeConcrete::Sint32(info_type()))
-            .unwrap());
-        assert!(JitValue::Sint64(-10)
-            .matches_type(&registry, &CoreTypeConcrete::Sint64(info_type()))
-            .unwrap());
-        assert!(JitValue::Sint128(-10)
-            .matches_type(&registry, &CoreTypeConcrete::Sint128(info_type()))
-            .unwrap());
+        assert!(JitValue::Sint8(-10).matches_type(&registry, &CoreTypeConcrete::Sint8(info_type())));
+        assert!(
+            JitValue::Sint16(-10).matches_type(&registry, &CoreTypeConcrete::Sint16(info_type()))
+        );
+        assert!(
+            JitValue::Sint32(-10).matches_type(&registry, &CoreTypeConcrete::Sint32(info_type()))
+        );
+        assert!(
+            JitValue::Sint64(-10).matches_type(&registry, &CoreTypeConcrete::Sint64(info_type()))
+        );
+        assert!(
+            JitValue::Sint128(-10).matches_type(&registry, &CoreTypeConcrete::Sint128(info_type()))
+        );
     }
 
     #[test]
@@ -1781,12 +1769,10 @@ mod test {
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
         assert!(JitValue::EcPoint(Felt::from(1), Felt::from(2))
-            .matches_type(&registry, &CoreTypeConcrete::EcPoint(info_type()))
-            .unwrap());
+            .matches_type(&registry, &CoreTypeConcrete::EcPoint(info_type())));
         assert!(
             JitValue::EcState(Felt::from(1), Felt::from(2), Felt::from(3), Felt::from(4))
                 .matches_type(&registry, &CoreTypeConcrete::EcState(info_type()))
-                .unwrap()
         );
     }
 
@@ -1821,7 +1807,7 @@ mod test {
             },
         });
 
-        assert!(jit_value.matches_type(&registry, &info_type).unwrap());
+        assert!(jit_value.matches_type(&registry, &info_type));
     }
 
     #[test]
@@ -1845,13 +1831,12 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        assert!(!JitValue::Uint8(10)
-            .matches_type(&registry, &CoreTypeConcrete::Uint16(info_type()))
-            .unwrap());
+        assert!(
+            !JitValue::Uint8(10).matches_type(&registry, &CoreTypeConcrete::Uint16(info_type()))
+        );
 
         assert!(!JitValue::Felt252(Felt::MAX)
-            .matches_type(&registry, &CoreTypeConcrete::Uint128(info_type()))
-            .unwrap());
+            .matches_type(&registry, &CoreTypeConcrete::Uint128(info_type())));
     }
 }
 
