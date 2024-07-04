@@ -97,10 +97,22 @@ fn snapshot_take<'ctx, 'this>(
     let block_not_null = helper.append_block(Block::new(&[]));
     let block_finish = helper.append_block(Block::new(&[(pointer(context, 0), location)]));
 
-    entry.append_operation(ods::cf::cond_br(context, is_null, &[null_ptr], &[], block_finish, block_not_null, location).into());
+    entry.append_operation(
+        ods::cf::cond_br(
+            context,
+            is_null,
+            &[null_ptr],
+            &[],
+            block_finish,
+            block_not_null,
+            location,
+        )
+        .into(),
+    );
 
     {
-        let value_len = block_not_null.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
+        let value_len =
+            block_not_null.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
 
         let dst_ptr = block_not_null.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, value_len, location,
@@ -111,7 +123,13 @@ fn snapshot_take<'ctx, 'this>(
                 let value = block_not_null.load(context, location, src_value, inner_ty)?;
 
                 let (block_not_null, value) = inner_snapshot_take(
-                    context, registry, block_not_null, location, helper, metadata, value,
+                    context,
+                    registry,
+                    block_not_null,
+                    location,
+                    helper,
+                    metadata,
+                    value,
                 )?;
 
                 block_not_null.store(context, location, dst_ptr, value)?;
