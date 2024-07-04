@@ -153,3 +153,44 @@ fn snapshot_take<'ctx, 'this>(
 
     Ok((block_finish, value))
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
+        values::JitValue,
+    };
+    use pretty_assertions_sorted::assert_eq;
+
+    #[test]
+    fn test_nullable_deep_clone() {
+        let program = load_cairo! {
+            use core::array::ArrayTrait;
+            use core::NullableTrait;
+
+            fn run_test() -> @Nullable<Array<felt252>> {
+                let mut x = NullableTrait::new(array![1, 2, 3]);
+                let x_s = @x;
+
+                let mut y = NullableTrait::deref(x);
+                y.append(4);
+
+                x_s
+            }
+
+        };
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            jit_enum!(
+                0,
+                jit_struct!(JitValue::Array(vec![
+                    JitValue::Felt252(1.into()),
+                    JitValue::Felt252(2.into()),
+                    JitValue::Felt252(3.into()),
+                ]))
+            ),
+        );
+    }
+}
