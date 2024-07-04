@@ -22,6 +22,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::dialect::cf;
+use melior::ir::ValueLike;
 use melior::{
     dialect::{
         llvm::{self, r#type::pointer},
@@ -71,6 +72,8 @@ fn snapshot_take<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
+    dbg!(&src_value.r#type());
+
     let inner_snapshot_take = metadata
         .get::<SnapshotClonesMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.ty));
@@ -98,16 +101,15 @@ fn snapshot_take<'ctx, 'this>(
     let block_finish = helper.append_block(Block::new(&[(pointer(context, 0), location)]));
 
     entry.append_operation(
-        ods::cf::cond_br(
+        cf::cond_br(
             context,
             is_null,
-            &[null_ptr],
-            &[],
             block_finish,
             block_not_null,
+            &[null_ptr],
+            &[],
             location,
-        )
-        .into(),
+        ),
     );
 
     {
@@ -117,6 +119,11 @@ fn snapshot_take<'ctx, 'this>(
         let dst_ptr = block_not_null.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, value_len, location,
         ))?;
+        dbg!(&dst_ptr);
+        dbg!(&dst_ptr.r#type());
+        dbg!(&null_ptr.r#type());
+        dbg!(&src_value.r#type());
+        dbg!(&inner_ty);
 
         match inner_snapshot_take {
             Some(inner_snapshot_take) => {
