@@ -199,13 +199,7 @@ fn snapshot_take<'ctx, 'this>(
 
         match elem_snapshot_take {
             Some(elem_snapshot_take) => {
-                let value = block_realloc.load(
-                    context,
-                    location,
-                    src_ptr,
-                    elem_ty,
-                    Some(elem_layout.align()),
-                )?;
+                let value = block_realloc.load(context, location, src_ptr, elem_ty)?;
 
                 let (block_relloc, value) = elem_snapshot_take(
                     context,
@@ -217,7 +211,7 @@ fn snapshot_take<'ctx, 'this>(
                     value,
                 )?;
 
-                block_relloc.store(context, location, dst_ptr, value, Some(elem_layout.align()))?;
+                block_relloc.store(context, location, dst_ptr, value)?;
                 block_relloc.append_operation(cf::br(block_finish, &[dst_ptr], location));
             }
             None => {

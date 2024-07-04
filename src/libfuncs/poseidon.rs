@@ -73,18 +73,15 @@ pub fn build_hades_permutation<'ctx>(
 
     // We must extend to i256 because bswap must be an even number of bytes.
 
-    let op0_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
-    let op1_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
-    let op2_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
+    let op0_ptr = helper
+        .init_block()
+        .alloca1(context, location, i256_ty, layout_i256.align())?;
+    let op1_ptr = helper
+        .init_block()
+        .alloca1(context, location, i256_ty, layout_i256.align())?;
+    let op2_ptr = helper
+        .init_block()
+        .alloca1(context, location, i256_ty, layout_i256.align())?;
 
     let op0_i256 =
         entry.append_op_result(ods::arith::extui(context, i256_ty, op0, location).into())?;
@@ -98,27 +95,9 @@ pub fn build_hades_permutation<'ctx>(
     let op1_be = entry.append_op_result(llvm::intr_bswap(op1_i256, i256_ty, location))?;
     let op2_be = entry.append_op_result(llvm::intr_bswap(op2_i256, i256_ty, location))?;
 
-    entry.store(
-        context,
-        location,
-        op0_ptr,
-        op0_be,
-        Some(layout_i256.align()),
-    )?;
-    entry.store(
-        context,
-        location,
-        op1_ptr,
-        op1_be,
-        Some(layout_i256.align()),
-    )?;
-    entry.store(
-        context,
-        location,
-        op2_ptr,
-        op2_be,
-        Some(layout_i256.align()),
-    )?;
+    entry.store(context, location, op0_ptr, op0_be)?;
+    entry.store(context, location, op1_ptr, op1_be)?;
+    entry.store(context, location, op2_ptr, op2_be)?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -127,27 +106,9 @@ pub fn build_hades_permutation<'ctx>(
     runtime_bindings
         .libfunc_hades_permutation(context, helper, entry, op0_ptr, op1_ptr, op2_ptr, location)?;
 
-    let op0_be = entry.load(
-        context,
-        location,
-        op0_ptr,
-        i256_ty,
-        Some(layout_i256.align()),
-    )?;
-    let op1_be = entry.load(
-        context,
-        location,
-        op1_ptr,
-        i256_ty,
-        Some(layout_i256.align()),
-    )?;
-    let op2_be = entry.load(
-        context,
-        location,
-        op2_ptr,
-        i256_ty,
-        Some(layout_i256.align()),
-    )?;
+    let op0_be = entry.load(context, location, op0_ptr, i256_ty)?;
+    let op1_be = entry.load(context, location, op1_ptr, i256_ty)?;
+    let op2_be = entry.load(context, location, op2_ptr, i256_ty)?;
 
     let op0_i256 = entry.append_op_result(llvm::intr_bswap(op0_be, i256_ty, location))?;
     let op1_i256 = entry.append_op_result(llvm::intr_bswap(op1_be, i256_ty, location))?;
