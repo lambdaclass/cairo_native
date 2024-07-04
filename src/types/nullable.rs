@@ -72,8 +72,6 @@ fn snapshot_take<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    dbg!(&src_value.r#type());
-
     let inner_snapshot_take = metadata
         .get::<SnapshotClonesMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.ty));
@@ -97,20 +95,18 @@ fn snapshot_take<'ctx, 'this>(
         .into(),
     )?;
 
-    let block_not_null = helper.append_block(Block::new(&[]));
+    let mut block_not_null = helper.append_block(Block::new(&[]));
     let block_finish = helper.append_block(Block::new(&[(pointer(context, 0), location)]));
 
-    entry.append_operation(
-        cf::cond_br(
-            context,
-            is_null,
-            block_finish,
-            block_not_null,
-            &[null_ptr],
-            &[],
-            location,
-        ),
-    );
+    entry.append_operation(cf::cond_br(
+        context,
+        is_null,
+        block_finish,
+        block_not_null,
+        &[null_ptr],
+        &[],
+        location,
+    ));
 
     {
         let value_len =
@@ -119,17 +115,12 @@ fn snapshot_take<'ctx, 'this>(
         let dst_ptr = block_not_null.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, value_len, location,
         ))?;
-        dbg!(&dst_ptr);
-        dbg!(&dst_ptr.r#type());
-        dbg!(&null_ptr.r#type());
-        dbg!(&src_value.r#type());
-        dbg!(&inner_ty);
 
         match inner_snapshot_take {
             Some(inner_snapshot_take) => {
                 let value = block_not_null.load(context, location, src_value, inner_ty)?;
 
-                let (block_not_null, value) = inner_snapshot_take(
+                let (next_block, value) = inner_snapshot_take(
                     context,
                     registry,
                     block_not_null,
@@ -138,6 +129,7 @@ fn snapshot_take<'ctx, 'this>(
                     metadata,
                     value,
                 )?;
+                block_not_null = next_block;
 
                 block_not_null.store(context, location, dst_ptr, value)?;
             }
