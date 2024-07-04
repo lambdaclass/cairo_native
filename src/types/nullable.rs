@@ -22,7 +22,6 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::dialect::cf;
-use melior::ir::ValueLike;
 use melior::{
     dialect::{
         llvm::{self, r#type::pointer},
