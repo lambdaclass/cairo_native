@@ -20,16 +20,16 @@ mod MultiCall {
         loop {
             match calls.pop_front() {
                 Option::Some(call) => {
-                    (*call.to).print();
-                    (*call.selector).print();
-                    (*(*call.calldata).at(0)).print();
-                    (*(*call.calldata).at(1)).print();
-                    // (*(call.calldata).at(0)).print();
-                    // (*(call.calldata).at(1)).print();
+                    println!("To {:?}", (*call.to));
+                    println!("Selector {}", (*call.selector));
+                    //println!("Call[0] {:?}", (*(*call.calldata).at(0)));
+                    //println!("Call[0] {:?}", (*(*call.calldata).at(1)));
+                    println!("Call[0] {:?}", (*(call.calldata)[0]));
+                    println!("Call[1] {:?}", (*(call.calldata)[1]));
                 },
                 Option::None => { break; },
             }
         };
-        12
+        12 
     }
 }
