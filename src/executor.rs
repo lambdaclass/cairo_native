@@ -724,7 +724,6 @@ fn parse_result(
                 ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128,
             )),
         },
-        CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
         CoreTypeConcrete::Sint8(_) => match return_ptr {
             Some(return_ptr) => Ok(JitValue::Sint8(unsafe { *return_ptr.cast().as_ref() })),
             None => Ok(JitValue::Sint8(ret_registers[0] as i8)),
@@ -845,6 +844,10 @@ fn parse_result(
             Ok(value)
         },
 
+        CoreTypeConcrete::Snapshot(info) => {
+            parse_result(&info.ty, registry, return_ptr, ret_registers)
+        }
+
         // Builtins are handled before the call to parse_result
         // and should not be reached here.
         CoreTypeConcrete::Bitwise(_)
@@ -855,14 +858,16 @@ fn parse_result(
         | CoreTypeConcrete::RangeCheck(_)
         | CoreTypeConcrete::Pedersen(_)
         | CoreTypeConcrete::Poseidon(_)
-        | CoreTypeConcrete::SegmentArena(_) => unreachable!(),
+        | CoreTypeConcrete::SegmentArena(_)
+        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => unreachable!(),
+
         CoreTypeConcrete::Felt252DictEntry(_)
         | CoreTypeConcrete::Span(_)
-        | CoreTypeConcrete::Snapshot(_)
         | CoreTypeConcrete::BoundedInt(_)
         | CoreTypeConcrete::Uninitialized(_)
         | CoreTypeConcrete::Coupon(_)
-        | CoreTypeConcrete::StarkNet(_) => todo!(),
+        | CoreTypeConcrete::StarkNet(_)
+        | CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
     }
 }
 
