@@ -133,6 +133,67 @@
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Nullable type
 //!
 //! Nullable is represented as a pointer, usually the null value will point to a alloca in the stack.
@@ -156,15 +217,13 @@
     },
     program_registry::ProgramRegistry,
 };
+<span class="kw">use </span>melior::dialect::cf;
 <span class="kw">use </span>melior::{
     dialect::{
         llvm::{<span class="self">self</span>, r#type::pointer},
-        ods, scf,
+        ods,
     },
-    ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Region, Type,
-        Value,
-    },
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
 
@@ -208,7 +267,13 @@
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    <span class="kw">let </span>elem_layout = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?</span>;
+    <span class="kw">let </span>inner_snapshot_take = metadata
+        .get::&lt;SnapshotClonesMeta&gt;()
+        .and_then(|meta| meta.wrap_invoke(<span class="kw-2">&amp;</span>info.ty));
+
+    <span class="kw">let </span>inner_type = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>inner_layout = inner_type.layout(registry)<span class="question-mark">?</span>;
+    <span class="kw">let </span>inner_ty = inner_type.build(context, helper, registry, metadata, info.self_ty())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>null_ptr = entry
         .append_op_result(ods::llvm::mlir_zero(context, pointer(context, <span class="number">0</span>), location).into())<span class="question-mark">?</span>;
@@ -225,47 +290,104 @@
         .into(),
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>value = entry
-        .append_operation(scf::r#if(
-            is_null,
-            <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
-            {
-                <span class="kw">let </span>region = Region::new();
-                <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+    <span class="kw">let </span><span class="kw-2">mut </span>block_not_null = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+    <span class="kw">let </span>block_finish = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[(pointer(context, <span class="number">0</span>), location)]));
 
-                block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[null_ptr], location));
-                region
-            },
-            {
-                <span class="kw">let </span>region = Region::new();
-                <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+    entry.append_operation(cf::cond_br(
+        context,
+        is_null,
+        block_finish,
+        block_not_null,
+        <span class="kw-2">&amp;</span>[null_ptr],
+        <span class="kw-2">&amp;</span>[],
+        location,
+    ));
 
-                <span class="kw">let </span>alloc_len = block.const_int(context, location, elem_layout.size(), <span class="number">64</span>)<span class="question-mark">?</span>;
+    {
+        <span class="kw">let </span>value_len =
+            block_not_null.const_int(context, location, inner_layout.pad_to_align().size(), <span class="number">64</span>)<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>cloned_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
-                    context, null_ptr, alloc_len, location,
-                ))<span class="question-mark">?</span>;
+        <span class="kw">let </span>dst_ptr = block_not_null.append_op_result(ReallocBindingsMeta::realloc(
+            context, null_ptr, value_len, location,
+        ))<span class="question-mark">?</span>;
 
-                block.append_operation(
+        <span class="kw">match </span>inner_snapshot_take {
+            <span class="prelude-val">Some</span>(inner_snapshot_take) =&gt; {
+                <span class="kw">let </span>value = block_not_null.load(context, location, src_value, inner_ty)<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>(next_block, value) = inner_snapshot_take(
+                    context,
+                    registry,
+                    block_not_null,
+                    location,
+                    helper,
+                    metadata,
+                    value,
+                )<span class="question-mark">?</span>;
+                block_not_null = next_block;
+
+                block_not_null.store(context, location, dst_ptr, value)<span class="question-mark">?</span>;
+            }
+            <span class="prelude-val">None </span>=&gt; {
+                block_not_null.append_operation(
                     ods::llvm::intr_memcpy(
                         context,
-                        cloned_ptr,
+                        dst_ptr,
                         src_value,
-                        alloc_len,
+                        value_len,
                         IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
                         location,
                     )
                     .into(),
                 );
+            }
+        }
+        block_not_null.append_operation(cf::br(block_finish, <span class="kw-2">&amp;</span>[dst_ptr], location));
+    }
 
-                block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[cloned_ptr], location));
-                region
-            },
-            location,
-        ))
-        .result(<span class="number">0</span>)<span class="question-mark">?
-        </span>.into();
+    <span class="kw">let </span>value = block_finish.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    <span class="prelude-val">Ok</span>((entry, value))
+    <span class="prelude-val">Ok</span>((block_finish, value))
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>test {
+    <span class="kw">use crate</span>::{
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
+        values::JitValue,
+    };
+    <span class="kw">use </span>pretty_assertions_sorted::assert_eq;
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_nullable_deep_clone() {
+        <span class="kw">let </span>program = <span class="macro">load_cairo!</span> {
+            <span class="kw">use </span>core::array::ArrayTrait;
+            <span class="kw">use </span>core::NullableTrait;
+
+            <span class="kw">fn </span>run_test() -&gt; @Nullable&lt;Array&lt;felt252&gt;&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>x = NullableTrait::new(<span class="macro">array!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+                <span class="kw">let </span>x_s = @x;
+
+                <span class="kw">let </span><span class="kw-2">mut </span>y = NullableTrait::deref(x);
+                y.append(<span class="number">4</span>);
+
+                x_s
+            }
+
+        };
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
+
+        <span class="macro">assert_eq!</span>(
+            result,
+            <span class="macro">jit_enum!</span>(
+                <span class="number">0</span>,
+                <span class="macro">jit_struct!</span>(JitValue::Array(<span class="macro">vec!</span>[
+                    JitValue::Felt252(<span class="number">1</span>.into()),
+                    JitValue::Felt252(<span class="number">2</span>.into()),
+                    JitValue::Felt252(<span class="number">3</span>.into()),
+                ]))
+            ),
+        );
+    }
 }
 </code></pre></div></section></main></body></html>
