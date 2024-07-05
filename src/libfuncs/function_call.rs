@@ -53,16 +53,10 @@ pub fn build<'ctx, 'this>(
                         context,
                         location,
                         elem_ty,
-                        Some(type_info.layout(registry)?.align()),
+                        type_info.layout(registry)?.align(),
                     )?;
 
-                    entry.store(
-                        context,
-                        location,
-                        stack_ptr,
-                        entry.argument(idx)?.into(),
-                        Some(type_info.layout(registry)?.align()),
-                    )?;
+                    entry.store(context, location, stack_ptr, entry.argument(idx)?.into())?;
 
                     stack_ptr
                 } else {
@@ -178,7 +172,7 @@ pub fn build<'ctx, 'this>(
                 context,
                 location,
                 type_info.build(context, helper, registry, metadata, type_id)?,
-                Some(layout.align()),
+                layout.align(),
             )?;
 
             arguments.insert(0, stack_ptr);
@@ -233,7 +227,6 @@ pub fn build<'ctx, 'this>(
                             location,
                             pointer_val,
                             type_info.build(context, helper, registry, metadata, type_id)?,
-                            None,
                         )?);
                     }
                 }

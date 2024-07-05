@@ -18,12 +18,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith,
-        llvm::{self, LoadStoreOptions},
-        ods,
-    },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    dialect::{arith, llvm, ods},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -77,75 +73,31 @@ pub fn build_hades_permutation<'ctx>(
 
     // We must extend to i256 because bswap must be an even number of bytes.
 
-    let op0_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
-    let op1_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
-    let op2_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, i256_ty, Some(layout_i256.align()))?;
+    let op0_ptr = helper
+        .init_block()
+        .alloca1(context, location, i256_ty, layout_i256.align())?;
+    let op1_ptr = helper
+        .init_block()
+        .alloca1(context, location, i256_ty, layout_i256.align())?;
+    let op2_ptr = helper
+        .init_block()
+        .alloca1(context, location, i256_ty, layout_i256.align())?;
 
-    let op0_i256 = entry
-        .append_operation(ods::arith::extui(context, i256_ty, op0, location).into())
-        .result(0)?
-        .into();
-    let op1_i256 = entry
-        .append_operation(ods::arith::extui(context, i256_ty, op1, location).into())
-        .result(0)?
-        .into();
-    let op2_i256 = entry
-        .append_operation(ods::arith::extui(context, i256_ty, op2, location).into())
-        .result(0)?
-        .into();
+    let op0_i256 =
+        entry.append_op_result(ods::arith::extui(context, i256_ty, op0, location).into())?;
 
-    let op0_be = entry
-        .append_operation(llvm::intr_bswap(op0_i256, i256_ty, location))
-        .result(0)?
-        .into();
-    let op1_be = entry
-        .append_operation(llvm::intr_bswap(op1_i256, i256_ty, location))
-        .result(0)?
-        .into();
-    let op2_be = entry
-        .append_operation(llvm::intr_bswap(op2_i256, i256_ty, location))
-        .result(0)?
-        .into();
+    let op1_i256 =
+        entry.append_op_result(ods::arith::extui(context, i256_ty, op1, location).into())?;
+    let op2_i256 =
+        entry.append_op_result(ods::arith::extui(context, i256_ty, op2, location).into())?;
 
-    entry.append_operation(llvm::store(
-        context,
-        op0_be,
-        op0_ptr,
-        location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            layout_i256.align().try_into()?,
-        ))),
-    ));
-    entry.append_operation(llvm::store(
-        context,
-        op1_be,
-        op1_ptr,
-        location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            layout_i256.align().try_into()?,
-        ))),
-    ));
-    entry.append_operation(llvm::store(
-        context,
-        op2_be,
-        op2_ptr,
-        location,
-        LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            layout_i256.align().try_into()?,
-        ))),
-    ));
+    let op0_be = entry.append_op_result(llvm::intr_bswap(op0_i256, i256_ty, location))?;
+    let op1_be = entry.append_op_result(llvm::intr_bswap(op1_i256, i256_ty, location))?;
+    let op2_be = entry.append_op_result(llvm::intr_bswap(op2_i256, i256_ty, location))?;
+
+    entry.store(context, location, op0_ptr, op0_be)?;
+    entry.store(context, location, op1_ptr, op1_be)?;
+    entry.store(context, location, op2_ptr, op2_be)?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -154,71 +106,17 @@ pub fn build_hades_permutation<'ctx>(
     runtime_bindings
         .libfunc_hades_permutation(context, helper, entry, op0_ptr, op1_ptr, op2_ptr, location)?;
 
-    let op0_be = entry
-        .append_operation(llvm::load(
-            context,
-            op0_ptr,
-            i256_ty,
-            location,
-            LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                layout_i256.align().try_into()?,
-            ))),
-        ))
-        .result(0)?
-        .into();
-    let op1_be = entry
-        .append_operation(llvm::load(
-            context,
-            op1_ptr,
-            i256_ty,
-            location,
-            LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                layout_i256.align().try_into()?,
-            ))),
-        ))
-        .result(0)?
-        .into();
-    let op2_be = entry
-        .append_operation(llvm::load(
-            context,
-            op2_ptr,
-            i256_ty,
-            location,
-            LoadStoreOptions::default().align(Some(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                layout_i256.align().try_into()?,
-            ))),
-        ))
-        .result(0)?
-        .into();
+    let op0_be = entry.load(context, location, op0_ptr, i256_ty)?;
+    let op1_be = entry.load(context, location, op1_ptr, i256_ty)?;
+    let op2_be = entry.load(context, location, op2_ptr, i256_ty)?;
 
-    let op0_i256 = entry
-        .append_operation(llvm::intr_bswap(op0_be, i256_ty, location))
-        .result(0)?
-        .into();
-    let op1_i256 = entry
-        .append_operation(llvm::intr_bswap(op1_be, i256_ty, location))
-        .result(0)?
-        .into();
-    let op2_i256 = entry
-        .append_operation(llvm::intr_bswap(op2_be, i256_ty, location))
-        .result(0)?
-        .into();
+    let op0_i256 = entry.append_op_result(llvm::intr_bswap(op0_be, i256_ty, location))?;
+    let op1_i256 = entry.append_op_result(llvm::intr_bswap(op1_be, i256_ty, location))?;
+    let op2_i256 = entry.append_op_result(llvm::intr_bswap(op2_be, i256_ty, location))?;
 
-    let op0 = entry
-        .append_operation(arith::trunci(op0_i256, felt252_ty, location))
-        .result(0)?
-        .into();
-    let op1 = entry
-        .append_operation(arith::trunci(op1_i256, felt252_ty, location))
-        .result(0)?
-        .into();
-    let op2 = entry
-        .append_operation(arith::trunci(op2_i256, felt252_ty, location))
-        .result(0)?
-        .into();
+    let op0 = entry.append_op_result(arith::trunci(op0_i256, felt252_ty, location))?;
+    let op1 = entry.append_op_result(arith::trunci(op1_i256, felt252_ty, location))?;
+    let op2 = entry.append_op_result(arith::trunci(op2_i256, felt252_ty, location))?;
 
     entry.append_operation(helper.br(0, &[poseidon_builtin, op0, op1, op2], location));
 

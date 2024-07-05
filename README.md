@@ -299,10 +299,10 @@ If you decide to build from source, here are some indications:
 # The blob to download is called llvm-project-18.x.x.src.tar.xz
 
 # For example
-wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.4/llvm-project-18.1.4.src.tar.xz
-tar xf llvm-project-18.1.4.src.tar.xz
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.7/llvm-project-18.1.7.src.tar.xz
+tar xf llvm-project-18.1.7.src.tar.xz
 
-cd llvm-project-18.1.4.src.tar
+cd llvm-project-18.1.7.src.tar
 mkdir build
 cd build
 
@@ -323,29 +323,39 @@ ninja install
 
 </details>
 
-Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_180_PREFIX` and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
+Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_181_PREFIX` and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
 
 ```bash
 # For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-18
 export MLIR_SYS_180_PREFIX=/usr/lib/llvm-18
-export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
+export LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
 export TABLEGEN_180_PREFIX=/usr/lib/llvm-18
 ```
 
-Run the deps target to install the other dependencies such as the cairo compiler (for tests, benchmarks).
+Alternatively, if installed from Debian/Ubuntu repository, then you can use `env.sh` to automatically setup the environment variables.
 
 ```bash
-make deps
+source env.sh
 ```
 
 #### MacOS
 
-The makefile `deps` target (which you should have ran before) installs LLVM 18 with brew for you, afterwards you need to execute the `env-macos.sh` script to setup the
-needed environment variables.
+The makefile `deps` target (which you should have ran before) installs LLVM 18 with brew for you, afterwards you need to execute the `env.sh` script to setup the needed environment variables.
 
 ```bash
-source env-macos.sh
+source env.sh
 ```
+
+#### Env Variables
+
+The script `env.sh` automatically sets the necessary variables for MacOS and Ubuntu/Debian.
+If it doesn't fit your specific environment you can copy it to .env/.envrc and adapt it acordingly.
+
+```bash
+source env.sh
+```
+
+The script is compatible with [direnv](https://direnv.net/)
 
 ### Make commands:
 
@@ -707,7 +717,7 @@ For more examples, check out the `examples/` directory.
 ### Requirements
 
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.6.3](https://github.com/starkware-libs/cairo)
+- [cairo 2.6.4](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 18 with MLIR
 
@@ -715,7 +725,7 @@ You need to setup some environment variables:
 
 ```bash
 $MLIR_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
-$LLVM_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$LLVM_SYS_181_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 $TABLEGEN_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 ```
 
@@ -804,6 +814,47 @@ cairo-native-test ./cairo-tests/
 ```
 
 This will run all the tests (functions marked with the `#[test]` attribute).
+
+# cairo-native-stress cli tool
+
+This tool runs a stress test on Cairo Native.
+
+```bash
+$ cairo-native-stress --help
+A stress tester for Cairo Native
+
+It Sierra programs compiles with Cairo Native, caches, and executes them with AOT runner. The compiled dynamic libraries are stored in `AOT_CACHE_DIR` relative to the current working directory.
+
+Usage: cairo-native-stress [OPTIONS] <ROUNDS>
+
+Arguments:
+  <ROUNDS>
+          Amount of rounds to execute
+
+Options:
+  -o, --output <OUTPUT>
+          Output file for JSON formatted logs
+
+  -h, --help
+          Print help (see a summary with '-h')
+```
+
+To quickly run a stress test and save logs as json, run:
+```bash
+make stress-test
+```
+
+This takes a lot of time to finish (it will probably crash first), you can kill the program at any time.
+
+To plot the results, run:
+```bash
+make stress-plot
+```
+
+To clear the cache directory, run:
+```bash
+make stress-clean
+```
 
 # scarb-native-test cli tool
 
