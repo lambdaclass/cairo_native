@@ -149,6 +149,9 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
     op2.copy_from_slice(&state[2].to_bytes_be());
 }
 
+/// Felt252 type used in cairo native runtime
+pub type FeltDict = (HashMap<[u8; 32], (NonNull<std::ffi::c_void>, usize)>, u64);
+
 /// Allocates a new dictionary. Internally a rust hashmap: `HashMap<[u8; 32], NonNull<()>`
 ///
 /// # Safety
@@ -157,7 +160,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
-    Box::into_raw(Box::<(HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>::default()) as _
+    Box::into_raw(Box::<FeltDict>::default()) as _
 }
 
 /// Frees the dictionary.
@@ -168,14 +171,40 @@ pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_free(
-    ptr: *mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
+    ptr: *mut FeltDict,
 ) {
     let mut map = Box::from_raw(ptr);
 
     // Free the entries manually.
     for (_, entry) in map.as_mut().0.drain() {
-        libc::free(entry.as_ptr().cast());
+        libc::free(entry.0.as_ptr().cast());
     }
+}
+
+/// Clones the given dict
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__dict_clone(
+    ptr: *mut FeltDict,
+) -> *mut FeltDict {
+    let dict: &mut FeltDict = &mut *ptr;
+
+    dbg!("called dict clone");
+    dbg!(&dict.0);
+    let mut new_map = Box::<FeltDict>::default();
+
+    for (key, entry) in dict.0.iter() {
+        let new_ptr = libc::malloc(entry.1);
+        libc::memcpy(new_ptr, entry.0.as_ptr(), entry.1);
+        new_map.0.insert(*key, (NonNull::new_unchecked(new_ptr.cast()), entry.1));
+    }
+    dbg!(&new_map);
+
+    Box::into_raw(new_map)
 }
 
 /// Gets the value for a given key, the returned pointer is null if not found.
@@ -187,15 +216,15 @@ pub unsafe extern "C" fn cairo_native__dict_free(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_get(
-    ptr: *mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
+    ptr: *mut FeltDict,
     key: &[u8; 32],
 ) -> *mut std::ffi::c_void {
-    let dict: &mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64) = &mut *ptr;
+    let dict: &mut FeltDict = &mut *ptr;
     let map = &dict.0;
     dict.1 += 1;
 
     if let Some(v) = map.get(key) {
-        v.as_ptr()
+        v.0.as_ptr()
     } else {
         std::ptr::null_mut()
     }
@@ -209,15 +238,16 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_insert(
-    ptr: *mut (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
+    ptr: *mut FeltDict,
     key: &[u8; 32],
     value: NonNull<std::ffi::c_void>,
+    size: usize,
 ) -> *mut std::ffi::c_void {
     let dict = &mut *ptr;
-    let old_ptr = dict.0.insert(*key, value);
+    let old_ptr = dict.0.insert(*key, (value, size));
 
     if let Some(v) = old_ptr {
-        v.as_ptr()
+        v.0.as_ptr()
     } else {
         std::ptr::null_mut()
     }
@@ -231,7 +261,7 @@ pub unsafe extern "C" fn cairo_native__dict_insert(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_gas_refund(
-    ptr: *const (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
+    ptr: *const FeltDict,
 ) -> u64 {
     let dict = &*ptr;
     (dict.1 - dict.0.len() as u64) * *DICT_GAS_REFUND_PER_ACCESS

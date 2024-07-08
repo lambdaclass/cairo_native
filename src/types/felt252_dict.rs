@@ -7,7 +7,13 @@
 //! insert, get elements and increment the access counter.
 
 use super::WithSelf;
-use crate::{error::Result, metadata::MetadataStorage};
+use crate::{
+    error::Result,
+    libfuncs::LibfuncHelper,
+    metadata::{
+        runtime_bindings::RuntimeBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
+    },
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -17,7 +23,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{Module, Type},
+    ir::{Block, Location, Module, Type, Value},
     Context,
 };
 
@@ -28,10 +34,47 @@ pub fn build<'ctx>(
     context: &'ctx Context,
     _module: &Module<'ctx>,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _metadata: &mut MetadataStorage,
-    _info: WithSelf<InfoAndTypeConcreteType>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
+    metadata
+        .get_or_insert_with::<SnapshotClonesMeta>(SnapshotClonesMeta::default)
+        .register(
+            info.self_ty().clone(),
+            snapshot_take,
+            InfoAndTypeConcreteType {
+                info: info.info.clone(),
+                ty: info.ty.clone(),
+            },
+        );
+
     Ok(llvm::r#type::pointer(context, 0))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn snapshot_take<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    _info: WithSelf<InfoAndTypeConcreteType>,
+    src_value: Value<'ctx, 'this>,
+) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
+    // This snapshot take assumes the value types in a felt are always copy and don't need deep cloning.
+    // So far (atleast up to 2.6.4) you cannot make a felt dict of array values, so this holds.
+
+    let runtime_bindings = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .expect("Runtime library not available.");
+
+    let new_ptr = runtime_bindings
+        .dict_clone(context, helper, src_value, entry, location)?
+        .result(0)?
+        .into();
+
+    Ok((entry, new_ptr))
 }
 
 #[cfg(test)]

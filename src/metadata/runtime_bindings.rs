@@ -17,19 +17,20 @@ use std::{collections::HashSet, marker::PhantomData};
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum RuntimeBinding {
-    DebugPrint,
     Pedersen,
     HadesPermutation,
-    EcPointFromXNz,
-    EcPointTryNewNz,
-    EcStateAdd,
-    EcStateAddMul,
     EcStateTryFinalizeNz,
+    EcStateAddMul,
+    EcStateAdd,
+    EcPointTryNewNz,
+    EcPointFromXNz,
     DictNew,
+    DictInsert,
     DictGet,
     DictGasRefund,
-    DictInsert,
     DictFree,
+    DictClone,
+    DebugPrint,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -502,6 +503,46 @@ impl RuntimeBindingsMeta {
         )))
     }
 
+     /// Register if necessary, then invoke the `dict_clone()` function.
+    ///
+    /// Returns a opaque pointer as the result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dict_clone<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        ptr: Value<'c, 'a>,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::DictClone) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__dict_clone"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[llvm::r#type::pointer(context, 0)]).into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_clone"),
+            &[ptr],
+            &[llvm::r#type::pointer(context, 0)],
+            location,
+        )))
+    }
+
     /// Register if necessary, then invoke the `dict_get()` function.
     ///
     /// Gets the value for a given key, the returned pointer is null if not found.
@@ -567,6 +608,7 @@ impl RuntimeBindingsMeta {
         dict_ptr: Value<'c, 'a>,  // ptr to the dict
         key_ptr: Value<'c, 'a>,   // key must be a ptr to Felt
         value_ptr: Value<'c, 'a>, // value must be a opaque non null ptr
+        size: Value<'c, 'a>, // value size in bytes
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where
@@ -583,6 +625,7 @@ impl RuntimeBindingsMeta {
                             llvm::r#type::pointer(context, 0),
                             llvm::r#type::pointer(context, 0),
                             llvm::r#type::pointer(context, 0),
+                            IntegerType::new(context, 64).into(),
                         ],
                         &[llvm::r#type::pointer(context, 0)],
                     )
@@ -600,7 +643,7 @@ impl RuntimeBindingsMeta {
         Ok(block.append_operation(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_insert"),
-            &[dict_ptr, key_ptr, value_ptr],
+            &[dict_ptr, key_ptr, value_ptr, size],
             &[llvm::r#type::pointer(context, 0)],
             location,
         )))

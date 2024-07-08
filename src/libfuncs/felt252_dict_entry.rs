@@ -190,15 +190,17 @@ pub fn build_get<'ctx, 'this>(
 
 pub fn build_finalize<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    _info: &SignatureAndTypeConcreteLibfunc,
+    info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     let key_ty = IntegerType::new(context, 252).into();
     let key_layout = get_integer_layout(252);
+
+    let value_layout = registry.get_type(&info.ty)?.layout(registry)?.pad_to_align();
 
     let entry_value = entry.argument(0)?.into();
     let new_value = entry.argument(1)?.into();
@@ -235,8 +237,10 @@ pub fn build_finalize<'ctx, 'this>(
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
+    let value_size = entry.const_int(context, location, value_layout.size(), 64)?;
+
     runtime_bindings.dict_insert(
-        context, helper, entry, dict_ptr, key_ptr, value_ptr, location,
+        context, helper, entry, dict_ptr, key_ptr, value_ptr, value_size, location,
     )?;
 
     entry.append_operation(helper.br(0, &[dict_ptr], location));
