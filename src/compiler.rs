@@ -301,7 +301,10 @@ fn compile_func(
                 Location::unknown(context),
             )?;
 
-            for (id, value) in &initial_state {
+            let mut params = initial_state.iter().collect_vec();
+            params.sort_by_key(|(id, _)| id.id);
+
+            for (id, value) in params {
                 let cairo_type_id = &function.params[id.id as usize].ty;
                 let cairo_type = registry.get_type(cairo_type_id)?;
 
