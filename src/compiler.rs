@@ -45,10 +45,12 @@
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
+    block_ext::BlockExt,
     debug_info::DebugLocations,
     error::Error,
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
+        debug_utils::DebugUtils,
         gas::{GasCost, GasMetadata},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
@@ -57,6 +59,7 @@ use crate::{
     utils::generate_function_name,
 };
 use bumpalo::Bump;
+use cairo_lang_lowering::StatementStructConstruct;
 use cairo_lang_sierra::{
     edit_state,
     extensions::{
@@ -72,13 +75,17 @@ use melior::{
     dialect::{
         arith::CmpiPredicate,
         cf, func, index,
-        llvm::{self, LoadStoreOptions},
+        llvm::{self, extract_value, get_element_ptr, LoadStoreOptions},
         memref,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        attribute::{
+            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, StringAttribute,
+            TypeAttribute,
+        },
         r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
+        Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, TypeLike, Value,
+        ValueLike,
     },
     Context,
 };
@@ -266,6 +273,98 @@ fn compile_func(
 
         values.into_iter()
     })?;
+
+    #[cfg(feature = "with-debug-utils")]
+    {
+        let debug_utils = metadata.get_mut::<DebugUtils>().unwrap();
+
+        if function.id.id == 183 {
+            debug_utils.debug_print(
+                context,
+                module,
+                &entry_block,
+                "FUNCTION",
+                Location::unknown(context),
+            )?;
+            let id_value = entry_block.deref().const_int(
+                context,
+                Location::unknown(context),
+                function.id.id,
+                64,
+            )?;
+            debug_utils.print_i64(
+                context,
+                module,
+                &entry_block,
+                id_value,
+                Location::unknown(context),
+            )?;
+
+            let a = Value::from(entry_block.argument(1)?);
+
+            let a1 = entry_block.append_op_result(extract_value(
+                context,
+                a,
+                DenseI64ArrayAttribute::new(context, &[0]),
+                IntegerType::new(context, 128).into(),
+                Location::unknown(context),
+            ))?;
+            let a2 = entry_block.append_op_result(extract_value(
+                context,
+                a,
+                DenseI64ArrayAttribute::new(context, &[1]),
+                IntegerType::new(context, 128).into(),
+                Location::unknown(context),
+            ))?;
+
+            debug_utils.print_i128(
+                context,
+                module,
+                &entry_block,
+                a1,
+                Location::unknown(context),
+            )?;
+            debug_utils.print_i128(
+                context,
+                module,
+                &entry_block,
+                a2,
+                Location::unknown(context),
+            )?;
+
+            let b = Value::from(entry_block.argument(2)?);
+
+            let b1 = entry_block.append_op_result(extract_value(
+                context,
+                b,
+                DenseI64ArrayAttribute::new(context, &[0]),
+                IntegerType::new(context, 128).into(),
+                Location::unknown(context),
+            ))?;
+            let b2 = entry_block.append_op_result(extract_value(
+                context,
+                b,
+                DenseI64ArrayAttribute::new(context, &[1]),
+                IntegerType::new(context, 128).into(),
+                Location::unknown(context),
+            ))?;
+
+            debug_utils.print_i128(
+                context,
+                module,
+                &entry_block,
+                b1,
+                Location::unknown(context),
+            )?;
+            debug_utils.print_i128(
+                context,
+                module,
+                &entry_block,
+                b2,
+                Location::unknown(context),
+            )?;
+        }
+    }
 
     tracing::trace!("Implementing the entry block.");
     entry_block.append_operation(cf::br(
