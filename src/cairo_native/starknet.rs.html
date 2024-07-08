@@ -1699,8 +1699,8 @@
 #[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
 #[repr(C, align(<span class="number">16</span>))]
 </span><span class="kw">pub struct </span>U256 {
-    <span class="kw">pub </span>hi: u128,
     <span class="kw">pub </span>lo: u128,
+    <span class="kw">pub </span>hi: u128,
 }
 
 <span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
