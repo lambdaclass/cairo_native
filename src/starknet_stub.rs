@@ -258,8 +258,8 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         // state[0] and state[1] conform the hash_high (u128)
         // state[2] and state[3] conform the hash_low (u128)
         SyscallResult::Ok(U256 {
-            hi: state[2] as u128 | ((state[3] as u128) << 64),
             lo: state[0] as u128 | ((state[1] as u128) << 64),
+            hi: state[2] as u128 | ((state[3] as u128) << 64),
         })
     }
 
