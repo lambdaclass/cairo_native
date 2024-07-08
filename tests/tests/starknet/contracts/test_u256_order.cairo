@@ -8,7 +8,6 @@ mod Keccak {
     use core::clone::Clone;
     use array::{Array, ArrayTrait};
     use core::traits::Into;
-    use core::debug::PrintTrait;
 
     #[storage]
     struct Storage {}

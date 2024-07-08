@@ -36,8 +36,6 @@ fn u256_test() {
         &mut StubSyscallHandler::default(),
     );
 
-    dbg!(result.error_msg.as_ref());
-
     assert!(!result.failure_flag);
     assert_eq!(
         result.return_values,
