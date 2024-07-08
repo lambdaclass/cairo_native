@@ -56,7 +56,7 @@ use crate::{
         MetadataStorage,
     },
     types::TypeBuilder,
-    utils::generate_function_name,
+    utils::{generate_function_name, ProgramRegistryExt},
 };
 use bumpalo::Bump;
 use cairo_lang_lowering::StatementStructConstruct;
@@ -90,6 +90,7 @@ use melior::{
     Context,
 };
 use std::{
+    any::Any,
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
@@ -300,69 +301,31 @@ fn compile_func(
                 Location::unknown(context),
             )?;
 
-            let a = Value::from(entry_block.argument(1)?);
+            for (id, value) in &initial_state {
+                let cairo_type_id = &function.params[id.id as usize].ty;
+                let cairo_type = registry.get_type(cairo_type_id)?;
 
-            let a1 = entry_block.append_op_result(extract_value(
-                context,
-                a,
-                DenseI64ArrayAttribute::new(context, &[0]),
-                IntegerType::new(context, 128).into(),
-                Location::unknown(context),
-            ))?;
-            let a2 = entry_block.append_op_result(extract_value(
-                context,
-                a,
-                DenseI64ArrayAttribute::new(context, &[1]),
-                IntegerType::new(context, 128).into(),
-                Location::unknown(context),
-            ))?;
+                let layout = cairo_type.layout(registry)?;
+                let r#type = value.r#type();
 
-            debug_utils.print_i128(
-                context,
-                module,
-                &entry_block,
-                a1,
-                Location::unknown(context),
-            )?;
-            debug_utils.print_i128(
-                context,
-                module,
-                &entry_block,
-                a2,
-                Location::unknown(context),
-            )?;
+                let ptr = entry_block.alloca1(
+                    context,
+                    Location::unknown(context),
+                    r#type,
+                    layout.align(),
+                )?;
 
-            let b = Value::from(entry_block.argument(2)?);
+                entry_block.store(context, Location::unknown(context), ptr, *value)?;
 
-            let b1 = entry_block.append_op_result(extract_value(
-                context,
-                b,
-                DenseI64ArrayAttribute::new(context, &[0]),
-                IntegerType::new(context, 128).into(),
-                Location::unknown(context),
-            ))?;
-            let b2 = entry_block.append_op_result(extract_value(
-                context,
-                b,
-                DenseI64ArrayAttribute::new(context, &[1]),
-                IntegerType::new(context, 128).into(),
-                Location::unknown(context),
-            ))?;
-
-            debug_utils.print_i128(
-                context,
-                module,
-                &entry_block,
-                b1,
-                Location::unknown(context),
-            )?;
-            debug_utils.print_i128(
-                context,
-                module,
-                &entry_block,
-                b2,
-                Location::unknown(context),
-            )?;
+                debug_utils.dump_mem(
+                    context,
+                    module,
+                    &entry_block,
+                    ptr,
+                    layout.size(),
+                    Location::unknown(context),
+                )?;
+            }
         }
     }
 
