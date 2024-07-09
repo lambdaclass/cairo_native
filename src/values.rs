@@ -387,7 +387,7 @@ impl JitValue {
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
 
-                        let mut value_map = HashMap::<[u8; 32], NonNull<std::ffi::c_void>>::new();
+                        let mut value_map = Box::<FeltDict>::default();
 
                         // next key must be called before next_value
 
@@ -403,15 +403,18 @@ impl JitValue {
                                 elem_layout.size(),
                             );
 
-                            value_map.insert(
+                            value_map.0.insert(
                                 key,
-                                NonNull::new(value_malloc_ptr)
-                                    .expect("allocation failure")
-                                    .cast(),
+                                (
+                                    NonNull::new(value_malloc_ptr)
+                                        .expect("allocation failure")
+                                        .cast(),
+                                    elem_layout.size(),
+                                ),
                             );
                         }
 
-                        NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
+                        NonNull::new_unchecked(Box::into_raw(value_map)).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict",
