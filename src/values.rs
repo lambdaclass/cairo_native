@@ -716,7 +716,6 @@ impl JitValue {
                         let key = Felt::from_bytes_le(key);
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
                         libc::free(val_ptr.as_ptr());
-                        // todo: free val_ptr ?
                     }
 
                     JitValue::Felt252Dict {
