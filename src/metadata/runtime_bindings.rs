@@ -503,7 +503,7 @@ impl RuntimeBindingsMeta {
         )))
     }
 
-     /// Register if necessary, then invoke the `dict_clone()` function.
+    /// Register if necessary, then invoke the `dict_clone()` function.
     ///
     /// Returns a opaque pointer as the result.
     #[allow(clippy::too_many_arguments)]
@@ -523,7 +523,12 @@ impl RuntimeBindingsMeta {
                 context,
                 StringAttribute::new(context, "cairo_native__dict_clone"),
                 TypeAttribute::new(
-                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[llvm::r#type::pointer(context, 0)]).into(),
+                    FunctionType::new(
+                        context,
+                        &[llvm::r#type::pointer(context, 0)],
+                        &[llvm::r#type::pointer(context, 0)],
+                    )
+                    .into(),
                 ),
                 Region::new(),
                 &[(
@@ -608,7 +613,7 @@ impl RuntimeBindingsMeta {
         dict_ptr: Value<'c, 'a>,  // ptr to the dict
         key_ptr: Value<'c, 'a>,   // key must be a ptr to Felt
         value_ptr: Value<'c, 'a>, // value must be a opaque non null ptr
-        size: Value<'c, 'a>, // value size in bytes
+        size: Value<'c, 'a>,      // value size in bytes
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where

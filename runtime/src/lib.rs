@@ -170,9 +170,7 @@ pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_free(
-    ptr: *mut FeltDict,
-) {
+pub unsafe extern "C" fn cairo_native__dict_free(ptr: *mut FeltDict) {
     let mut map = Box::from_raw(ptr);
 
     // Free the entries manually.
@@ -188,21 +186,23 @@ pub unsafe extern "C" fn cairo_native__dict_free(
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_clone(
-    ptr: *mut FeltDict,
-) -> *mut FeltDict {
+pub unsafe extern "C" fn cairo_native__dict_clone(ptr: *mut FeltDict) -> *mut FeltDict {
     let dict: &mut FeltDict = &mut *ptr;
 
-    dbg!("called dict clone");
-    dbg!(&dict.0);
     let mut new_map = Box::<FeltDict>::default();
+    new_map.1 = dict.1;
 
     for (key, entry) in dict.0.iter() {
         let new_ptr = libc::malloc(entry.1);
         libc::memcpy(new_ptr, entry.0.as_ptr(), entry.1);
-        new_map.0.insert(*key, (NonNull::new_unchecked(new_ptr.cast()), entry.1));
+        new_map.0.insert(
+            *key,
+            (
+                NonNull::new(new_ptr).expect("null pointer from malloc"),
+                entry.1,
+            ),
+        );
     }
-    dbg!(&new_map);
 
     Box::into_raw(new_map)
 }
@@ -260,9 +260,7 @@ pub unsafe extern "C" fn cairo_native__dict_insert(
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_gas_refund(
-    ptr: *const FeltDict,
-) -> u64 {
+pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> u64 {
     let dict = &*ptr;
     (dict.1 - dict.0.len() as u64) * *DICT_GAS_REFUND_PER_ACCESS
 }

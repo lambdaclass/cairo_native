@@ -200,7 +200,10 @@ pub fn build_finalize<'ctx, 'this>(
     let key_ty = IntegerType::new(context, 252).into();
     let key_layout = get_integer_layout(252);
 
-    let value_layout = registry.get_type(&info.ty)?.layout(registry)?.pad_to_align();
+    let value_layout = registry
+        .get_type(&info.ty)?
+        .layout(registry)?
+        .pad_to_align();
 
     let entry_value = entry.argument(0)?.into();
     let new_value = entry.argument(1)?.into();

@@ -80,12 +80,32 @@ fn snapshot_take<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{load_cairo, run_program},
+        utils::test::{jit_dict, load_cairo, run_program},
         values::JitValue,
     };
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
     use std::collections::HashMap;
+
+    #[test]
+    fn dict_snapshot_take() {
+        let program = load_cairo! {
+            fn run_test() -> @Felt252Dict<u32> {
+                let mut dict: Felt252Dict<u32> = Default::default();
+                            dict.insert(2, 1_u32);
+
+                @dict
+            }
+        };
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            jit_dict!(
+                2 => 1u32
+            ),
+        );
+    }
 
     /// Ensure that a dictionary of booleans compiles.
     #[test]

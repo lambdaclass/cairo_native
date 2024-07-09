@@ -18,6 +18,7 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use cairo_native_runtime::FeltDict;
 use educe::Educe;
 use num_bigint::{BigInt, Sign, ToBigInt};
 use num_traits::Euclid;
@@ -705,15 +706,17 @@ impl JitValue {
                     let (map, _) = *Box::from_raw(
                         ptr.cast::<NonNull<()>>()
                             .as_ref()
-                            .cast::<(HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>()
+                            .cast::<FeltDict>()
                             .as_ptr(),
                     );
 
                     let mut output_map = HashMap::with_capacity(map.len());
 
-                    for (key, val_ptr) in map.iter() {
+                    for (key, (val_ptr, _val_size)) in map.iter() {
                         let key = Felt::from_bytes_le(key);
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
+                        libc::free(val_ptr.as_ptr());
+                        // todo: free val_ptr ?
                     }
 
                     JitValue::Felt252Dict {
