@@ -6,7 +6,7 @@ mod WithDraw {
     struct Storage {}
 
     #[external(v0)]
-    fn withdraw(self: @ContractState, amount: felt252) -> bool {
+    fn withdraw(self: @ContractState, token: ContractAddress, amount: felt252) -> bool {
         true
     }
 }
