@@ -174,9 +174,9 @@ use test_case::test_case;
 // #[test_case("tests/cases/cairo_vm/contracts/uint512_div_mod.cairo", &[])]
 // #[test_case("tests/cases/cairo_vm/contracts/widemul128.cairo", &[100, 100])]
 // #[test_case("tests/cases/cairo_vm/contracts/field_sqrt.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/random_ec_point.cairo", &[])]
-// #[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[10, 10, 10])]
-#[test_case("tests/cases/cairo_vm/contracts/withdraw.cairo",&[1, 13123460341667945])]
+//#[test_case("tests/cases/cairo_vm/contracts/random_ec_point.cairo", &[])]
+//#[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[10, 10, 10])]
+#[test_case("tests/cases/cairo_vm/contracts/withdraw.cairo",&[1, 1])]
 fn test_contract_cases(program_path: &str, args: &[u128]) {
     let args = args.iter().map(|&arg| arg.into()).collect_vec();
 
@@ -197,7 +197,11 @@ fn test_contract_cases(program_path: &str, args: &[u128]) {
 
     assert!(
         !native_result.failure_flag,
-        "native contract execution failed"
+        "{}",
+        format!(
+            "native contract execution failed: {}",
+            native_result.error_msg.unwrap()
+        )
     );
 
     let native_output = native_result.return_values;
