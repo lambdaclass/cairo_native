@@ -13,14 +13,6 @@
 //!
 //! For documentation on the specific cache used, see `NaiveAotCache`.
 
-use std::alloc::System;
-use std::fmt::{Debug, Display};
-use std::fs::{create_dir_all, read_dir, OpenOptions};
-use std::hash::Hash;
-use std::io;
-use std::path::{Path, PathBuf};
-use std::{collections::HashMap, fs, rc::Rc, time::Instant};
-
 use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_sierra::program::{GenericArg, Program};
 use cairo_lang_sierra::program_registry::ProgramRegistry;
@@ -36,6 +28,14 @@ use clap::Parser;
 use libloading::Library;
 use num_bigint::BigInt;
 use stats_alloc::{Region, StatsAlloc, INSTRUMENTED_SYSTEM};
+use std::alloc::System;
+use std::fmt::{Debug, Display};
+use std::fs::{create_dir_all, read_dir, OpenOptions};
+use std::hash::Hash;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::{collections::HashMap, fs, time::Instant};
 use tracing::{debug, info, info_span, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -246,7 +246,7 @@ where
     K: PartialEq + Eq + Hash + Display,
 {
     context: &'a NativeContext,
-    cache: HashMap<K, Rc<AotNativeExecutor>>,
+    cache: HashMap<K, Arc<AotNativeExecutor>>,
 }
 
 impl<'a, K> NaiveAotCache<'a, K>
@@ -260,7 +260,7 @@ where
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<Rc<AotNativeExecutor>> {
+    pub fn get(&self, key: &K) -> Option<Arc<AotNativeExecutor>> {
         self.cache.get(key).cloned()
     }
 
@@ -272,7 +272,7 @@ where
         key: K,
         program: &Program,
         opt_level: OptLevel,
-    ) -> Rc<AotNativeExecutor> {
+    ) -> Arc<AotNativeExecutor> {
         let native_module = self
             .context
             .compile(program, None)
@@ -303,7 +303,7 @@ where
         };
 
         let executor = AotNativeExecutor::new(shared_library, registry, metadata);
-        let executor = Rc::new(executor);
+        let executor = Arc::new(executor);
 
         self.cache.insert(key, executor.clone());
 
