@@ -28,6 +28,9 @@ pub struct JitNativeExecutor<'m> {
     gas_metadata: GasMetadata,
 }
 
+unsafe impl<'a> Send for JitNativeExecutor<'a> {}
+unsafe impl<'a> Sync for JitNativeExecutor<'a> {}
+
 impl std::fmt::Debug for JitNativeExecutor<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("JitNativeExecutor")

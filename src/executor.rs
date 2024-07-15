@@ -28,7 +28,7 @@ use std::{
     alloc::Layout,
     arch::global_asm,
     ptr::{addr_of_mut, null_mut, NonNull},
-    rc::Rc,
+    sync::Arc,
 };
 
 mod aot;
@@ -56,8 +56,8 @@ extern "C" {
 /// The cairo native executor, either AOT or JIT based.
 #[derive(Debug, Clone)]
 pub enum NativeExecutor<'m> {
-    Aot(Rc<AotNativeExecutor>),
-    Jit(Rc<JitNativeExecutor<'m>>),
+    Aot(Arc<AotNativeExecutor>),
+    Jit(Arc<JitNativeExecutor<'m>>),
 }
 
 impl<'a> NativeExecutor<'a> {
@@ -123,13 +123,13 @@ impl<'a> NativeExecutor<'a> {
 
 impl<'m> From<AotNativeExecutor> for NativeExecutor<'m> {
     fn from(value: AotNativeExecutor) -> Self {
-        Self::Aot(Rc::new(value))
+        Self::Aot(Arc::new(value))
     }
 }
 
 impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
     fn from(value: JitNativeExecutor<'m>) -> Self {
-        Self::Jit(Rc::new(value))
+        Self::Jit(Arc::new(value))
     }
 }
 
