@@ -112,6 +112,7 @@ cairo-vm = { version = "1.0.0-rc3", features = ["cairo-1-hints"] }
 cairo-felt = "0.9.1"
 cairo-lang-runner = "2.6.4"
 cairo-lang-semantic = { version = "2.6.4", features = ["testing"] }
+cairo-lang-starknet-classes = { version = "2.6.4" }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.7.0"
 pretty_assertions_sorted = "1.2.3"

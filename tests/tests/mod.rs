@@ -5,6 +5,7 @@ pub mod cases;
 pub mod compile_library;
 pub mod dict;
 pub mod ec;
+pub mod erc20;
 pub mod felt252;
 pub mod libfuncs;
 pub mod programs;
