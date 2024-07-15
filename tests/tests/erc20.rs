@@ -31,7 +31,7 @@ pub fn test_oz_erc20() {
     let mut handler = StubSyscallHandler::default();
 
     let _result = native_executor
-        .invoke_contract_dynamic(fn_id, &[2.into(), 3.into(), 4.into()], Some(u128::MAX), &mut handler)
+        .invoke_contract_dynamic(fn_id, &[5.into(), 5.into(), 3.into()], Some(u128::MAX), &mut handler)
         .expect("failed to execute the given contract");
     dbg!(_result);
 }
