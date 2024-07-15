@@ -376,15 +376,7 @@
 //!
 //! For documentation on the specific cache used, see `NaiveAotCache`.
 
-</span><span class="kw">use </span>std::alloc::System;
-<span class="kw">use </span>std::fmt::{Debug, Display};
-<span class="kw">use </span>std::fs::{create_dir_all, read_dir, OpenOptions};
-<span class="kw">use </span>std::hash::Hash;
-<span class="kw">use </span>std::io;
-<span class="kw">use </span>std::path::{Path, PathBuf};
-<span class="kw">use </span>std::{collections::HashMap, fs, rc::Rc, time::Instant};
-
-<span class="kw">use </span>cairo_lang_sierra::ids::FunctionId;
+</span><span class="kw">use </span>cairo_lang_sierra::ids::FunctionId;
 <span class="kw">use </span>cairo_lang_sierra::program::{GenericArg, Program};
 <span class="kw">use </span>cairo_lang_sierra::program_registry::ProgramRegistry;
 <span class="kw">use </span>cairo_lang_starknet::compile::compile_path;
@@ -399,6 +391,14 @@
 <span class="kw">use </span>libloading::Library;
 <span class="kw">use </span>num_bigint::BigInt;
 <span class="kw">use </span>stats_alloc::{Region, StatsAlloc, INSTRUMENTED_SYSTEM};
+<span class="kw">use </span>std::alloc::System;
+<span class="kw">use </span>std::fmt::{Debug, Display};
+<span class="kw">use </span>std::fs::{create_dir_all, read_dir, OpenOptions};
+<span class="kw">use </span>std::hash::Hash;
+<span class="kw">use </span>std::io;
+<span class="kw">use </span>std::path::{Path, PathBuf};
+<span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>std::{collections::HashMap, fs, time::Instant};
 <span class="kw">use </span>tracing::{debug, info, info_span, warn};
 <span class="kw">use </span>tracing_subscriber::layer::SubscriberExt;
 <span class="kw">use </span>tracing_subscriber::util::SubscriberInitExt;
@@ -609,7 +609,7 @@ mod Contract {{
     </span>K: PartialEq + Eq + Hash + Display,
 {
     context: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>NativeContext,
-    cache: HashMap&lt;K, Rc&lt;AotNativeExecutor&gt;&gt;,
+    cache: HashMap&lt;K, Arc&lt;AotNativeExecutor&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, K&gt; NaiveAotCache&lt;<span class="lifetime">'a</span>, K&gt;
@@ -623,7 +623,7 @@ mod Contract {{
         }
     }
 
-    <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;Rc&lt;AotNativeExecutor&gt;&gt; {
+    <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;Arc&lt;AotNativeExecutor&gt;&gt; {
         <span class="self">self</span>.cache.get(key).cloned()
     }
 
@@ -635,7 +635,7 @@ mod Contract {{
         key: K,
         program: <span class="kw-2">&amp;</span>Program,
         opt_level: OptLevel,
-    ) -&gt; Rc&lt;AotNativeExecutor&gt; {
+    ) -&gt; Arc&lt;AotNativeExecutor&gt; {
         <span class="kw">let </span>native_module = <span class="self">self
             </span>.context
             .compile(program, <span class="prelude-val">None</span>)
@@ -666,7 +666,7 @@ mod Contract {{
         };
 
         <span class="kw">let </span>executor = AotNativeExecutor::new(shared_library, registry, metadata);
-        <span class="kw">let </span>executor = Rc::new(executor);
+        <span class="kw">let </span>executor = Arc::new(executor);
 
         <span class="self">self</span>.cache.insert(key, executor.clone());
 

@@ -114,7 +114,7 @@
     collections::HashMap,
     fmt::{<span class="self">self</span>, Debug},
     hash::Hash,
-    rc::Rc,
+    sync::Arc,
 };
 
 <span class="doccomment">/// A Cache for programs with the same context.
@@ -126,7 +126,7 @@
     <span class="comment">// Since we already hold a reference to the Context, it doesn't make sense to use thread-safe
     // reference counting. Using a Arc&lt;RwLock&lt;T&gt;&gt; here is useless because NativeExecutor is neither
     // Send nor Sync.
-    </span>cache: HashMap&lt;K, Rc&lt;JitNativeExecutor&lt;<span class="lifetime">'a</span>&gt;&gt;&gt;,
+    </span>cache: HashMap&lt;K, Arc&lt;JitNativeExecutor&lt;<span class="lifetime">'a</span>&gt;&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, K&gt; JitProgramCache&lt;<span class="lifetime">'a</span>, K&gt;
@@ -145,7 +145,7 @@
         <span class="self">self</span>.context
     }
 
-    <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;Rc&lt;JitNativeExecutor&lt;<span class="lifetime">'a</span>&gt;&gt;&gt; {
+    <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;Arc&lt;JitNativeExecutor&lt;<span class="lifetime">'a</span>&gt;&gt;&gt; {
         <span class="self">self</span>.cache.get(key).cloned()
     }
 
@@ -154,11 +154,11 @@
         key: K,
         program: <span class="kw-2">&amp;</span>Program,
         opt_level: OptLevel,
-    ) -&gt; Rc&lt;JitNativeExecutor&lt;<span class="lifetime">'a</span>&gt;&gt; {
+    ) -&gt; Arc&lt;JitNativeExecutor&lt;<span class="lifetime">'a</span>&gt;&gt; {
         <span class="kw">let </span>module = <span class="self">self</span>.context.compile(program, <span class="prelude-val">None</span>).expect(<span class="string">"should compile"</span>);
         <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, opt_level);
 
-        <span class="kw">let </span>executor = Rc::new(executor);
+        <span class="kw">let </span>executor = Arc::new(executor);
         <span class="self">self</span>.cache.insert(key, executor.clone());
 
         executor

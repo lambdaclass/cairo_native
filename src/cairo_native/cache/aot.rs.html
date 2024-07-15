@@ -118,7 +118,7 @@
     collections::HashMap,
     fmt::{<span class="self">self</span>, Debug},
     hash::Hash,
-    rc::Rc,
+    sync::Arc,
 };
 
 <span class="kw">pub struct </span>AotProgramCache&lt;<span class="lifetime">'a</span>, K&gt;
@@ -126,7 +126,7 @@
     </span>K: PartialEq + Eq + Hash,
 {
     context: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>NativeContext,
-    cache: HashMap&lt;K, Rc&lt;AotNativeExecutor&gt;&gt;,
+    cache: HashMap&lt;K, Arc&lt;AotNativeExecutor&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, K&gt; AotProgramCache&lt;<span class="lifetime">'a</span>, K&gt;
@@ -140,7 +140,7 @@
         }
     }
 
-    <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;Rc&lt;AotNativeExecutor&gt;&gt; {
+    <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>K) -&gt; <span class="prelude-ty">Option</span>&lt;Arc&lt;AotNativeExecutor&gt;&gt; {
         <span class="self">self</span>.cache.get(key).cloned()
     }
 
@@ -149,7 +149,7 @@
         key: K,
         program: <span class="kw-2">&amp;</span>Program,
         opt_level: OptLevel,
-    ) -&gt; Rc&lt;AotNativeExecutor&gt; {
+    ) -&gt; Arc&lt;AotNativeExecutor&gt; {
         <span class="kw">let </span>NativeModule {
             module,
             registry,
@@ -175,7 +175,7 @@
             metadata.get::&lt;GasMetadata&gt;().cloned().unwrap(),
         );
 
-        <span class="kw">let </span>executor = Rc::new(executor);
+        <span class="kw">let </span>executor = Arc::new(executor);
         <span class="self">self</span>.cache.insert(key, executor.clone());
 
         executor

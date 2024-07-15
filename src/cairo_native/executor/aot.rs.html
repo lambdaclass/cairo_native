@@ -286,6 +286,9 @@
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -318,6 +321,9 @@
 
     gas_metadata: GasMetadata,
 }
+
+<span class="kw">unsafe impl </span>Send <span class="kw">for </span>AotNativeExecutor {}
+<span class="kw">unsafe impl </span>Sync <span class="kw">for </span>AotNativeExecutor {}
 
 <span class="kw">impl </span>AotNativeExecutor {
     <span class="kw">pub fn </span>new(

@@ -1273,7 +1273,7 @@
     alloc::Layout,
     arch::global_asm,
     ptr::{addr_of_mut, null_mut, NonNull},
-    rc::Rc,
+    sync::Arc,
 };
 
 <span class="kw">mod </span>aot;
@@ -1301,8 +1301,8 @@
 <span class="doccomment">/// The cairo native executor, either AOT or JIT based.
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub enum </span>NativeExecutor&lt;<span class="lifetime">'m</span>&gt; {
-    Aot(Rc&lt;AotNativeExecutor&gt;),
-    Jit(Rc&lt;JitNativeExecutor&lt;<span class="lifetime">'m</span>&gt;&gt;),
+    Aot(Arc&lt;AotNativeExecutor&gt;),
+    Jit(Arc&lt;JitNativeExecutor&lt;<span class="lifetime">'m</span>&gt;&gt;),
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; NativeExecutor&lt;<span class="lifetime">'a</span>&gt; {
@@ -1368,13 +1368,13 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'m</span>&gt; From&lt;AotNativeExecutor&gt; <span class="kw">for </span>NativeExecutor&lt;<span class="lifetime">'m</span>&gt; {
     <span class="kw">fn </span>from(value: AotNativeExecutor) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::Aot(Rc::new(value))
+        <span class="self">Self</span>::Aot(Arc::new(value))
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'m</span>&gt; From&lt;JitNativeExecutor&lt;<span class="lifetime">'m</span>&gt;&gt; <span class="kw">for </span>NativeExecutor&lt;<span class="lifetime">'m</span>&gt; {
     <span class="kw">fn </span>from(value: JitNativeExecutor&lt;<span class="lifetime">'m</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::Jit(Rc::new(value))
+        <span class="self">Self</span>::Jit(Arc::new(value))
     }
 }
 
