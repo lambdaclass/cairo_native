@@ -52,22 +52,22 @@ check: check-llvm
 	cargo fmt --all -- --check
 	cargo clippy --all-targets --all-features -- -D warnings
 
-test: check-llvm needs-cairo2 build-alexandria runtime-ci
+test: check-llvm needs-cairo2 build-alexandria build-erc20 runtime-ci
 	cargo test --profile ci --all-features
 
-test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
+test-cairo: check-llvm needs-cairo2 build-alexandria build-erc20 runtime-ci
 	cargo r --profile ci --bin cairo-native-test -- corelib
 
 proptest: check-llvm needs-cairo2 runtime-ci
 	cargo test --profile ci --all-features proptest
 
-test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
+test-ci: check-llvm needs-cairo2 build-alexandria build-erc20 runtime-ci
 	cargo test --profile ci --all-features
 
 proptest-ci: check-llvm needs-cairo2 runtime-ci
 	cargo test --profile ci --all-features proptest
 
-coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
+coverage: check-llvm needs-cairo2 build-alexandria build-erc20 runtime-ci
 	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
 	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
@@ -146,6 +146,12 @@ install-scarb-macos:
 
 build-alexandria:
 	cd tests/alexandria; scarb build
+
+build-erc20:
+	cd tests/erc20; scarb build
+
+test-erc20: build-erc20
+	cargo test --package cairo-native --test entry --all-features -- tests::erc20::test_oz_erc20 --exact --show-output
 
 runtime:
 	cargo b --release --all-features -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .

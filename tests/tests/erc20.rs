@@ -10,7 +10,7 @@ use cairo_native::{
 pub fn test_oz_erc20() {
     let path = Path::new("tests/erc20/target/dev/native_erc20_Native.contract_class.json");
     let sierra_json = std::fs::read_to_string(path)
-        .expect("failed to read native_erc20.sierra.json, please run make deps");
+        .expect("failed to read native_erc20.sierra.json, please run make build-erc20");
     let contract: ContractClass =
         serde_json::from_str(&sierra_json).expect("failed to deserialize program");
 
@@ -30,11 +30,15 @@ pub fn test_oz_erc20() {
 
     let mut handler = StubSyscallHandler::default();
 
-    let result = native_executor
-        .invoke_contract_dynamic(fn_id, &[], Some(u128::MAX), &mut handler)
+    let _result = native_executor
+        .invoke_contract_dynamic(
+            fn_id,
+            &[
+                10.into(),  // initial supply, u256 ?
+                0x2.into(), // recipient
+            ],
+            Some(u128::MAX),
+            &mut handler,
+        )
         .expect("failed to execute the given contract");
-
-    println!();
-    println!("Cairo program was compiled and executed successfully.");
-    println!("{result:#?}");
 }
