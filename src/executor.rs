@@ -351,9 +351,6 @@ fn invoke_dynamic(
             })
         })?;
 
-    // FIXME: Arena deallocation.
-    std::mem::forget(arena);
-
     Ok(ExecutionResult {
         remaining_gas,
         return_value,
