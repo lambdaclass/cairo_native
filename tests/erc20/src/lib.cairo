@@ -29,7 +29,7 @@ mod Native {
         initial_supply: u256,
         recipient: ContractAddress
     ) {
-        let name = "Native";
+        let name = "MyToken";
         let symbol = "MTK";
 
         self.erc20.initializer(name, symbol);
