@@ -73,8 +73,6 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
                     .unwrap();
                 let abi = unsafe { abi_ptr.cast::<ArrayAbi<()>>().as_ref() };
 
-                eprintln!("{:02x?}", unsafe { abi.ptr.cast::<[u8; 64]>().as_ref() });
-
                 abi.ptr.to_bytes(buffer);
                 abi.since.to_bytes(buffer);
                 abi.until.to_bytes(buffer);

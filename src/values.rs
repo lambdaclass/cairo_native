@@ -30,11 +30,11 @@ use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Debug, Clone, Educe)]
+#[derive(Clone, Educe)]
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-#[educe(Eq, PartialEq)]
+#[educe(Debug, Eq, PartialEq)]
 pub enum JitValue {
-    Felt252(Felt),
+    Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
     Bytes31([u8; 31]),
     /// all elements need to be same type
     Array(Vec<Self>),
@@ -238,7 +238,7 @@ impl JitValue {
                         let len: u32 = data.len().try_into().unwrap();
 
                         for (idx, elem) in data.iter().enumerate() {
-                            let elem = dbg!(elem).to_jit(arena, registry, &info.ty)?;
+                            let elem = elem.to_jit(arena, registry, &info.ty)?;
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::<u8>().as_ptr(),

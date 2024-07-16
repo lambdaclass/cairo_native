@@ -252,8 +252,6 @@ fn invoke_dynamic(
         );
     }
 
-    eprintln!("invoke_data = {invoke_data:02x?}");
-
     // Invoke the trampoline.
     #[cfg(target_arch = "x86_64")]
     let mut ret_registers = [0; 2];
