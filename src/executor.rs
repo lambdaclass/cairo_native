@@ -241,8 +241,15 @@ fn invoke_dynamic(
     // Pad invoke data to the 16 byte boundary avoid segfaults.
     // TODO: Test if the resize must be inserted before or after the data.
     // TODO: If before, how in hell do we ensure alignments?
-    if invoke_data.len() > 64 {
-        invoke_data.resize(64 + (invoke_data.len() - 64).next_multiple_of(16), 0);
+    #[cfg(target_arch = "aarch64")]
+    const REGISTER_BYTES: usize = 64;
+    #[cfg(target_arch = "x86_64")]
+    const REGISTER_BYTES: usize = 48;
+    if invoke_data.len() > REGISTER_BYTES {
+        invoke_data.resize(
+            REGISTER_BYTES + (invoke_data.len() - REGISTER_BYTES).next_multiple_of(16),
+            0,
+        );
     }
 
     eprintln!("invoke_data = {invoke_data:02x?}");
