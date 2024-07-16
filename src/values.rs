@@ -237,12 +237,12 @@ impl JitValue {
                         let ptr: *mut () = libc::malloc(elem_layout.size() * data.len()).cast();
                         let len: u32 = data.len().try_into().unwrap();
 
-                        for elem in data {
-                            let elem = elem.to_jit(arena, registry, &info.ty)?;
+                        for (idx, elem) in data.iter().enumerate() {
+                            let elem = dbg!(elem).to_jit(arena, registry, &info.ty)?;
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::<u8>().as_ptr(),
-                                ptr.byte_add(len as usize * elem_layout.size()).cast::<u8>(),
+                                ptr.byte_add(idx * elem_layout.size()).cast::<u8>(),
                                 elem_layout.size(),
                             );
                         }
