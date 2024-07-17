@@ -340,7 +340,7 @@ impl DebugUtils {
         let k64 = block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(IntegerType::new(context, 64).into(), 64).into(),
+                IntegerAttribute::new(IntegerType::new(context, 252).into(), 64).into(),
                 location,
             ))
             .result(0)?
