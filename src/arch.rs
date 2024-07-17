@@ -19,9 +19,13 @@ mod x86_64;
 
 /// Implemented by all supported argument types.
 pub trait AbiArgument {
+    /// Serialize the argument into the buffer. This method should keep track of arch-dependent
+    /// stuff like register vs stack allocation.
     fn to_bytes(&self, buffer: &mut Vec<u8>);
 }
 
+/// A wrapper that implements `AbiArgument` for `JitValue`s. It contains all the required stuff to
+/// serialize all possible `JitValue`s.
 pub struct JitValueWithInfoWrapper<'a> {
     pub value: &'a JitValue,
     pub type_id: &'a ConcreteTypeId,

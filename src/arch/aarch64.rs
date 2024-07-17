@@ -1,3 +1,12 @@
+//! # Implementations of `AbiArgument` for the `aarch64` architecture.
+//!
+//! The aarch64 architecture uses 8 64-bit registers for arguments. This means that the first 64
+//! bytes of the buffer will go into registers while the rest will be on the stack.
+//!
+//! The values that span multiple registers may be split or moved into the stack completely in some
+//! cases, having to pad a register. In those cases the amount of usable register space is reduced
+//! to only 56 bytes.
+
 #![cfg(target_arch = "aarch64")]
 
 use super::AbiArgument;

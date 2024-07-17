@@ -1,3 +1,12 @@
+//! # Implementations of `AbiArgument` for the `x86_64` architecture.
+//!
+//! The x86_64 architecture uses 6 64-bit registers for arguments. This means that the first 48
+//! bytes of the buffer will go into registers while the rest will be on the stack.
+//!
+//! The values that span multiple registers may be split or moved into the stack completely in some
+//! cases, having to pad a register. In those cases the amount of usable register space is reduced
+//! to only 40 bytes.
+
 #![cfg(target_arch = "x86_64")]
 
 use super::AbiArgument;
