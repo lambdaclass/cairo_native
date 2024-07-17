@@ -1487,11 +1487,11 @@
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-</span><span class="attr">#[derive(Debug, Clone, Educe)]
+</span><span class="attr">#[derive(Clone, Educe)]
 #[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
-#[educe(Eq, PartialEq)]
+#[educe(Debug, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>JitValue {
-    Felt252(Felt),
+    Felt252(<span class="attr">#[educe(Debug(method(std::fmt::Display::fmt)))] </span>Felt),
     Bytes31([u8; <span class="number">31</span>]),
     <span class="doccomment">/// all elements need to be same type
     </span>Array(Vec&lt;<span class="self">Self</span>&gt;),
@@ -1694,12 +1694,12 @@
                         <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() = libc::malloc(elem_layout.size() * data.len()).cast();
                         <span class="kw">let </span>len: u32 = data.len().try_into().unwrap();
 
-                        <span class="kw">for </span>elem <span class="kw">in </span>data {
+                        <span class="kw">for </span>(idx, elem) <span class="kw">in </span>data.iter().enumerate() {
                             <span class="kw">let </span>elem = elem.to_jit(arena, registry, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::&lt;u8&gt;().as_ptr(),
-                                ptr.byte_add(len <span class="kw">as </span>usize * elem_layout.size()).cast::&lt;u8&gt;(),
+                                ptr.byte_add(idx * elem_layout.size()).cast::&lt;u8&gt;(),
                                 elem_layout.size(),
                             );
                         }
