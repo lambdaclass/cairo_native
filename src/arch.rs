@@ -57,20 +57,46 @@ impl<'a> JitValueWithInfoWrapper<'a> {
 impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
     fn to_bytes(&self, buffer: &mut Vec<u8>) {
         match (self.value, self.info) {
-            (value, CoreTypeConcrete::Box(_)) => {
+            (value, CoreTypeConcrete::Box(info)) => {
                 let ptr = value
                     .to_jit(self.arena, self.registry, self.type_id)
                     .unwrap();
-                ptr.as_ptr().to_bytes(buffer);
+
+                let layout = self
+                    .registry
+                    .get_type(&info.ty)
+                    .unwrap()
+                    .layout(self.registry)
+                    .unwrap();
+                let heap_ptr = unsafe {
+                    let heap_ptr = libc::malloc(layout.size());
+                    libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
+                    heap_ptr
+                };
+
+                heap_ptr.to_bytes(buffer);
             }
-            (value, CoreTypeConcrete::Nullable(_)) => {
+            (value, CoreTypeConcrete::Nullable(info)) => {
                 if matches!(value, JitValue::Null) {
                     null::<()>().to_bytes(buffer);
                 } else {
                     let ptr = value
                         .to_jit(self.arena, self.registry, self.type_id)
                         .unwrap();
-                    ptr.as_ptr().to_bytes(buffer);
+
+                    let layout = self
+                        .registry
+                        .get_type(&info.ty)
+                        .unwrap()
+                        .layout(self.registry)
+                        .unwrap();
+                    let heap_ptr = unsafe {
+                        let heap_ptr = libc::malloc(layout.size());
+                        libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
+                        heap_ptr
+                    };
+
+                    heap_ptr.to_bytes(buffer);
                 }
             }
             (value, CoreTypeConcrete::NonZero(info) | CoreTypeConcrete::Snapshot(info)) => {
