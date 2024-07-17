@@ -154,6 +154,8 @@ impl AbiArgument for U256 {
 
 impl AbiArgument for [u8; 31] {
     fn to_bytes(&self, buffer: &mut Vec<u8>) {
+        // The `bytes31` type is treated as a 248-bit integer, therefore it follows the same
+        // splitting rules as them.
         if buffer.len() < 56 {
             buffer.extend_from_slice(self);
             buffer.push(0);
