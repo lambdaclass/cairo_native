@@ -410,6 +410,8 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            CoreTypeConcrete::Circuit(_) 
+            | CoreTypeConcrete::RangeCheck96(_) => todo!(),
         }
     }
 
@@ -494,8 +496,12 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::BoundedInt(_) => todo!(),
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) 
+            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(_)) => todo!(),
             CoreTypeConcrete::Coupon(_) => false,
+
+            CoreTypeConcrete::Circuit(_) 
+            | CoreTypeConcrete::RangeCheck96(_) => todo!()
         }
     }
 
@@ -564,7 +570,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.inner_ty).unwrap();
                 type_info.is_zst(registry)
             }
-            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Span(_) 
+            | CoreTypeConcrete::Circuit(_) 
+            | CoreTypeConcrete::RangeCheck96(_) => todo!(),
         }
     }
 
@@ -653,6 +661,7 @@ impl TypeBuilder for CoreTypeConcrete {
                         .unwrap()
                         .0
                 }
+                StarkNetTypeConcrete::Sha256StateHandle(_) => todo!()
             },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
@@ -671,6 +680,8 @@ impl TypeBuilder for CoreTypeConcrete {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
             CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
+            CoreTypeConcrete::Circuit(_) 
+            | CoreTypeConcrete::RangeCheck96(_) => todo!(),
         }
         .pad_to_align())
     }
@@ -746,6 +757,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .unwrap()
                 .is_memory_allocated(registry),
             CoreTypeConcrete::Coupon(_) => false,
+            CoreTypeConcrete::Circuit(_) | CoreTypeConcrete::RangeCheck96(_) => todo!()
         }
     }
 

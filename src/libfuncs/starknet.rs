@@ -141,6 +141,9 @@ pub fn build<'ctx, 'this>(
         StarkNetConcreteLibfunc::Secp256(selector) => self::secp256::build(
             context, registry, entry, location, helper, metadata, selector,
         ),
+        StarkNetConcreteLibfunc::Sha256ProcessBlock(_) 
+        | StarkNetConcreteLibfunc::Sha256StateHandleInit(_) 
+        | StarkNetConcreteLibfunc::Sha256StateHandleDigest(_) => todo!(),
         #[cfg(feature = "with-cheatcode")]
         StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
             self::testing::build(context, registry, entry, location, helper, metadata, info)

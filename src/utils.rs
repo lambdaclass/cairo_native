@@ -117,7 +117,7 @@ pub fn cairo_to_sierra_with_debug_info<'ctx>(
 ) -> Result<(Program, DebugLocations<'ctx>), crate::error::Error> {
     let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
     let main_crate_ids = setup_project(&mut db, program).unwrap();
-    let program = compile_prepared_db(
+    let sierra_program_with_dbg = compile_prepared_db(
         &mut db,
         main_crate_ids,
         CompilerConfig {
@@ -128,7 +128,7 @@ pub fn cairo_to_sierra_with_debug_info<'ctx>(
     .unwrap();
 
     let debug_locations = {
-        let debug_info = DebugInfo::extract(&db, &program)
+        let debug_info = DebugInfo::extract(&db, &sierra_program_with_dbg.program)
             .map_err(|_| {
                 let mut buffer = String::new();
                 assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
@@ -139,7 +139,7 @@ pub fn cairo_to_sierra_with_debug_info<'ctx>(
         DebugLocations::extract(context, &db, &debug_info)
     };
 
-    Ok((program, debug_locations))
+    Ok((sierra_program_with_dbg.program, debug_locations))
 }
 
 /// Returns the given entry point if present.

@@ -595,6 +595,8 @@ fn parse_result(
         | CoreTypeConcrete::Uninitialized(_)
         | CoreTypeConcrete::Coupon(_)
         | CoreTypeConcrete::StarkNet(_)
-        | CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+        | CoreTypeConcrete::Uint128MulGuarantee(_) 
+        | CoreTypeConcrete::Circuit(_) 
+        | CoreTypeConcrete::RangeCheck96(_) => todo!(),
     }
 }

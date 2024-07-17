@@ -42,7 +42,7 @@ fn find_statement_locations(
     let function_id = db.lookup_intern_sierra_function(function.id.clone());
     let function_impl = db.function_with_body_sierra(function_id.body(db)?.unwrap())?;
 
-    let function_long_id = function_id.lookup(db);
+    let function_long_id = function_id.body(db).unwrap().unwrap().function_id(db).unwrap(); // TODO: make it more declarative
     let flat_lowered =
         db.concrete_function_with_body_postpanic_lowered(function_long_id.body(db)?.unwrap())?;
 

@@ -110,7 +110,7 @@ impl<'c> DebugLocations<'c> {
                     extract_location_from_stable_loc(
                         context,
                         db,
-                        location_id.get(db).stable_location,
+                        location_id. .get(db).stable_location,
                     ),
                 )
             })

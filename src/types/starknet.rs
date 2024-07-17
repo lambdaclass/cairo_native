@@ -90,6 +90,7 @@ pub fn build<'ctx>(
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
+        StarkNetTypeConcrete::Sha256StateHandle(_) => todo!(),
     }
 }
 
