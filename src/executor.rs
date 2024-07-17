@@ -239,8 +239,6 @@ fn invoke_dynamic(
     }
 
     // Pad invoke data to the 16 byte boundary avoid segfaults.
-    // TODO: Test if the resize must be inserted before or after the data.
-    // TODO: If before, how in hell do we ensure alignments?
     #[cfg(target_arch = "aarch64")]
     const REGISTER_BYTES: usize = 64;
     #[cfg(target_arch = "x86_64")]
@@ -339,14 +337,7 @@ fn invoke_dynamic(
             if type_info.is_builtin() {
                 None
             } else {
-                Some(parse_result(
-                    ret_type,
-                    registry,
-                    return_ptr,
-                    ret_registers,
-                    // TODO: Consider returning an Option<JitValue> as return_value instead
-                    // As cairo functions can not have a return value
-                ))
+                Some(parse_result(ret_type, registry, return_ptr, ret_registers))
             }
         })
         .unwrap_or_else(|| {
