@@ -8,7 +8,7 @@ use cairo_lang_compiler::{
 };
 use cairo_lang_filesystem::cfg::{Cfg, CfgSet};
 use cairo_lang_starknet::starknet_plugin_suite;
-use cairo_lang_test_plugin::{compile_test_prepared_db, test_plugin_suite};
+use cairo_lang_test_plugin::{compile_test_prepared_db, test_plugin_suite, TestsCompilationConfig};
 use clap::Parser;
 use colored::Colorize;
 use std::path::{Path, PathBuf};
@@ -87,10 +87,14 @@ fn main() -> anyhow::Result<()> {
 
     let db = db.snapshot();
     let test_crate_ids = main_crate_ids.clone();
+    let test_config = TestsCompilationConfig {
+        starknet: args.starknet,
+        add_statements_functions: true
+    };
 
     let build_test_compilation = compile_test_prepared_db(
         &db,
-        args.starknet,
+        test_config,
         main_crate_ids.clone(),
         test_crate_ids.clone(),
     )?;
@@ -103,9 +107,9 @@ fn main() -> anyhow::Result<()> {
     );
 
     let summary = run_tests(
-        compiled.named_tests,
-        compiled.sierra_program,
-        compiled.function_set_costs,
+        compiled.metadata.named_tests,
+        compiled.sierra_program.program,
+        compiled.metadata.function_set_costs,
         RunArgs {
             run_mode: args.run_mode.clone(),
             opt_level: args.opt_level,

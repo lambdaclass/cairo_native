@@ -43,7 +43,7 @@ pub fn find_function<'a>(
 }
 
 /// Formats the given felts as a panic string.
-pub fn format_for_panic(mut felts: IntoIter<Felt252>) -> String {
+pub fn format_for_panic(mut felts: IntoIter<Felt>) -> String {
     let mut items = Vec::new();
     while let Some(item) = format_next_item(&mut felts) {
         items.push(item.quote_if_string());

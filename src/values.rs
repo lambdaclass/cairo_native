@@ -753,7 +753,7 @@ impl JitValue {
                             Secp256PointTypeConcrete::R1(_) => JitValue::Secp256R1Point { x, y },
                         }
                     }
-                    StarkNetTypeConcrete::Sha256StateHandle(_) => todo!()
+                    StarkNetTypeConcrete::Sha256StateHandle(_) => todo!(),
                 },
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_jit(ptr, &info.ty, registry),
@@ -771,8 +771,8 @@ impl JitValue {
                         range: info.range.clone(),
                     }
                 }
-                CoreTypeConcrete::Coupon(_) 
-                | CoreTypeConcrete::Circuit(_) 
+                CoreTypeConcrete::Coupon(_)
+                | CoreTypeConcrete::Circuit(_)
                 | CoreTypeConcrete::RangeCheck96(_) => todo!(),
             }
         }

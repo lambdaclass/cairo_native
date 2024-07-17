@@ -68,7 +68,7 @@ fn load_program<'c>(
         Some("cairo") if !is_contract => {
             let mut db = RootDatabase::builder().detect_corelib().build()?;
             let main_crate_ids = setup_project(&mut db, path)?;
-            let program = compile_prepared_db(
+            let sierra_program_with_dbg = compile_prepared_db(
                 &mut db,
                 main_crate_ids,
                 CompilerConfig {
@@ -78,7 +78,7 @@ fn load_program<'c>(
             )?;
 
             let debug_locations = if let Some(context) = context {
-                let debug_info = DebugInfo::extract(&db, &program).map_err(|_| {
+                let debug_info = DebugInfo::extract(&db, &sierra_program_with_dbg.program).map_err(|_| {
                     let mut buffer = String::new();
                     assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
                     buffer
@@ -89,7 +89,7 @@ fn load_program<'c>(
                 None
             };
 
-            (program, debug_locations)
+            (sierra_program_with_dbg.program, debug_locations)
         }
         Some("cairo") if is_contract => {
             // mimics cairo_lang_starknet::contract_class::compile_path

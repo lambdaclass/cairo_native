@@ -221,8 +221,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::CouponCall(info) => self::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::Circuit(_)
-            | Self::BoundedInt(_) => todo!()
+            Self::Circuit(_) | Self::BoundedInt(_) => todo!(),
         }
     }
 

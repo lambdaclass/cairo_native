@@ -76,9 +76,9 @@ pub fn build<'ctx, 'this>(
         ArrayConcreteLibfunc::SpanFromTuple(info) => {
             build_span_from_tuple(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::TupleFromSpan(_) 
-        | ArrayConcreteLibfunc::SnapshotMultiPopFront(_) 
-        | ArrayConcreteLibfunc::SnapshotMultiPopBack(_) => todo!()
+        ArrayConcreteLibfunc::TupleFromSpan(_)
+        | ArrayConcreteLibfunc::SnapshotMultiPopFront(_)
+        | ArrayConcreteLibfunc::SnapshotMultiPopBack(_) => todo!(),
     }
 }
 

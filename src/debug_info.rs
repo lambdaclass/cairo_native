@@ -107,11 +107,7 @@ impl<'c> DebugLocations<'c> {
             .map(|(statement_idx, location_id)| {
                 (
                     *statement_idx,
-                    extract_location_from_stable_loc(
-                        context,
-                        db,
-                        location_id. .get(db).stable_location,
-                    ),
+                    extract_location_from_stable_loc(context, db, location_id.all_locations(db)[0]),
                 )
             })
             .collect();
