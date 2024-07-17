@@ -31,12 +31,12 @@ impl AutoBreakpoint {
         &self,
         block: &Block,
         location: Location,
-        metadata: &mut MetadataStorage,
+        metadata: &MetadataStorage,
         event: &BreakpointEvent,
     ) {
         if self.has_event(event) {
             metadata
-                .get_mut::<DebugUtils>()
+                .get::<DebugUtils>()
                 .unwrap()
                 .debug_breakpoint_trap(block, location)
                 .unwrap();
