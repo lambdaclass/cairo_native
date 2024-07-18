@@ -170,6 +170,14 @@ fn invoke_dynamic(
         })
         .peekable();
 
+    for ty in function_signature.ret_types.iter() {
+        let info = registry.get_type(&ty).unwrap();
+        if !info.is_builtin() && !info.is_zst(registry) {
+            dbg!(&ty.id);
+            dbg!(&info.variants().is_some());
+        }
+    }
+
     let num_return_args = ret_types_iter.clone().count();
     let mut return_ptr = if num_return_args > 1
         || ret_types_iter

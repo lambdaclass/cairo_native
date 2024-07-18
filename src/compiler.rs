@@ -47,9 +47,11 @@
 use crate::{
     debug_info::DebugLocations,
     error::Error,
+    ffi::{
+        mlirLLVMDIBasicTypeAttrGet, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet, mlirLLVMDistinctAttrCreate
+    },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
-        auto_breakpoint::AutoBreakpoint,
         gas::{GasCost, GasMetadata},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
@@ -107,7 +109,8 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
+        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
+        Value,
     },
     Context,
 };
@@ -145,17 +148,6 @@ pub fn compile(
     metadata: &mut MetadataStorage,
     debug_info: Option<&DebugLocations>,
 ) -> Result<(), Error> {
-    let mut x = AutoBreakpoint::default();
-    x.add_event(
-        crate::metadata::auto_breakpoint::BreakpointEvent::EnumInit {
-            type_id: ConcreteTypeId {
-                id: 503,
-                debug_name: None,
-            },
-            variant_idx: 1,
-        },
-    );
-    metadata.insert(x);
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
         compile_func(
@@ -273,7 +265,7 @@ fn compile_func(
         Block::new(
             &arg_types
                 .iter()
-                .map(|ty| (*ty, Location::unknown(context)))
+                .map(|ty| (*ty, Location::new(context, "program.sierra", 0, 0)))
                 .collect::<Vec<_>>(),
         ),
     );
@@ -291,7 +283,7 @@ fn compile_func(
                     pre_entry_block
                         .append_operation(llvm::undef(
                             type_info.build(context, module, registry, metadata, &param.ty)?,
-                            Location::unknown(context),
+                            Location::new(context, "program.sierra", 0, 0),
                         ))
                         .result(0)?
                         .into()
@@ -317,7 +309,7 @@ fn compile_func(
         .iter()
         .map(|x| initial_state[x])
         .collect::<Vec<_>>(),
-        Location::unknown(context),
+        Location::new(context, "program.sierra", 0, 0),
     ));
 
     let mut tailrec_storage = Vec::<(Value, BlockRef)>::new();
@@ -362,7 +354,7 @@ fn compile_func(
                     Location::name(
                         context,
                         &format!("landing_block(stmt_idx={})", statement_idx),
-                        Location::unknown(context),
+                        Location::new(context, "program.sierra", 0, 0),
                     ),
                 ));
             }
@@ -412,7 +404,7 @@ fn compile_func(
                             let location = Location::name(
                                 context,
                                 &format!("recursion_counter({})", libfunc_name),
-                                Location::unknown(context),
+                                Location::new(context, "program.sierra", 0, 0),
                             );
                             let op0 = pre_entry_block.insert_operation(
                                 0,
@@ -460,7 +452,7 @@ fn compile_func(
                                 .and_then(|debug_info| {
                                     debug_info.statements.get(&statement_idx).copied()
                                 })
-                                .unwrap_or_else(|| Location::unknown(context)),
+                                .unwrap_or_else(|| Location::new(context, "program.sierra", 0, 0)),
                         ),
                         &helper,
                         metadata,
@@ -504,7 +496,7 @@ fn compile_func(
                     let location = Location::name(
                         context,
                         &format!("return(stmt_idx={})", statement_idx),
-                        Location::unknown(context),
+                        Location::new(context, "program.sierra", 0, 0),
                     );
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
@@ -514,7 +506,7 @@ fn compile_func(
                         let location = Location::name(
                             context,
                             &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
-                            Location::unknown(context),
+                            Location::new(context, "program.sierra", 0, 0),
                         );
                         // Perform tail recursion.
                         for counter_idx in tailrec_state.into_values() {
@@ -677,7 +669,7 @@ fn compile_func(
                         context,
                         value,
                         type_info.build(context, module, registry, metadata, type_id)?,
-                        Location::unknown(context),
+                        Location::new(context, "program.sierra", 0, 0),
                         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
                             IntegerType::new(context, 64).into(),
                             type_info.layout(registry)?.align() as i64,
@@ -693,7 +685,7 @@ fn compile_func(
         pre_entry_block.append_operation(cf::br(
             &entry_block,
             &arg_values,
-            Location::unknown(context),
+            Location::new(context, "program.sierra", 0, 0),
         ));
     }
 
@@ -715,7 +707,68 @@ fn compile_func(
                 Attribute::unit(context),
             ),
         ],
-        Location::unknown(context),
+        Location::fused(
+            &context,
+            &[Location::new(&context, "program.sierra", 0, 0)],
+            {
+                let file_attr = unsafe {
+                    Attribute::from_raw(mlirLLVMDIFileAttrGet(
+                        context.to_raw(),
+                        StringAttribute::new(&context, "program.sierra").to_raw(),
+                        StringAttribute::new(&context, "").to_raw(),
+                    ))
+                };
+                let compile_unit = {
+                    let id = unsafe {
+                        let id = StringAttribute::new(&context, "compile_unit_id").to_raw();
+                        mlirLLVMDistinctAttrCreate(id)
+                    };
+                    unsafe {
+                        Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
+                            context.to_raw(),
+                            id,
+                            0x1c,
+                            file_attr.to_raw(),
+                            StringAttribute::new(&context, "cairo-native").to_raw(),
+                            false,
+                            crate::ffi::DiEmissionKind::Full,
+                        ))
+                    }
+                };
+
+                let x = unsafe {
+                    let id = unsafe {
+                        let id = StringAttribute::new(&context, "fnid").to_raw();
+                        mlirLLVMDistinctAttrCreate(id)
+                    };
+
+                    let basic_ty = mlirLLVMDIBasicTypeAttrGet(
+                        context.to_raw(),
+                        0, StringAttribute::new(context, "mytype").to_raw(),
+                        64, 0x5
+                    );
+
+                    let ty =
+                        mlirLLVMDISubroutineTypeAttrGet(context.to_raw(), 5, 1, (&basic_ty) as *const _);
+
+                    mlirLLVMDISubprogramAttrGet(
+                        context.to_raw(),
+                        id,
+                        compile_unit.to_raw(),
+                        file_attr.to_raw(),
+                        StringAttribute::new(context, &function_name).to_raw(),
+                        StringAttribute::new(context, &function_name).to_raw(),
+                        file_attr.to_raw(),
+                        0,
+                        0,
+                        8,
+                        ty,
+                    )
+                };
+
+                unsafe { Attribute::from_raw(x) }
+            },
+        ),
     ));
 
     tracing::debug!("Done generating function {}.", function.id);
@@ -779,7 +832,7 @@ fn generate_function_structure<'c, 'a>(
                         edit_state::take_args(state.clone(), invocation.args.iter())?;
 
                     for ty in types {
-                        block.add_argument(ty, Location::unknown(context));
+                        block.add_argument(ty, Location::new(context, "program.sierra", 0, 0));
                     }
 
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
@@ -831,7 +884,7 @@ fn generate_function_structure<'c, 'a>(
                     );
 
                     for ty in types {
-                        block.add_argument(ty, Location::unknown(context));
+                        block.add_argument(ty, Location::new(context, "program.sierra", 0, 0));
                     }
 
                     Vec::new()
@@ -849,7 +902,7 @@ fn generate_function_structure<'c, 'a>(
             registry,
             metadata_storage,
         )
-        .map(|ty| Ok((ty?, Location::unknown(context))))
+        .map(|ty| Ok((ty?, Location::new(context, "program.sierra", 0, 0))))
         .collect::<Result<Vec<_>, Error>>()?
     }));
 
@@ -875,7 +928,7 @@ fn generate_function_structure<'c, 'a>(
                                 .map(|(var_id, ty)| (var_id.id, *ty))
                                 .collect::<BTreeMap<_, _>>()
                                 .into_values()
-                                .map(|ty| (ty, Location::unknown(context)))
+                                .map(|ty| (ty, Location::new(context, "program.sierra", 0, 0)))
                                 .collect::<Vec<_>>(),
                         ),
                     ),

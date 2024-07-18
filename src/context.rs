@@ -3,7 +3,9 @@ use std::sync::OnceLock;
 use crate::{
     debug_info::DebugLocations,
     error::Error,
-    ffi::{get_data_layout_rep, get_target_triple},
+    ffi::{
+        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDistinctAttrCreate,
+    },
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -26,11 +28,12 @@ use melior::{
     ir::{
         attribute::StringAttribute,
         operation::{OperationBuilder, OperationPrintingFlags},
-        Block, Identifier, Location, Module, Region,
+        Attribute, AttributeLike, Block, Identifier, Location, Module, Region,
     },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
+use mlir_sys::MlirAttribute;
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -81,7 +84,30 @@ impl NativeContext {
 
         let op = OperationBuilder::new(
             "builtin.module",
-            Location::name(&self.context, "module", Location::unknown(&self.context)),
+            Location::fused(&self.context, &[Location::new(&self.context, "program.sierra", 0, 0)], {
+                let id = unsafe {
+                    let id = StringAttribute::new(&self.context, "compile_unit_id").to_raw();
+                    mlirLLVMDistinctAttrCreate(id)
+                };
+                let file_attr = unsafe {
+                    Attribute::from_raw(mlirLLVMDIFileAttrGet(
+                        self.context.to_raw(),
+                        StringAttribute::new(&self.context, "program.sierra").to_raw(),
+                        StringAttribute::new(&self.context, "").to_raw(),
+                    ))
+                };
+                unsafe {
+                    Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
+                        self.context.to_raw(),
+                        id,
+                        0x1c,
+                        file_attr.to_raw(),
+                        StringAttribute::new(&self.context, "cairo-native").to_raw(),
+                        false,
+                        crate::ffi::DiEmissionKind::Full,
+                    ))
+                }
+            }),
         )
         .add_attributes(&[
             (
@@ -156,6 +182,13 @@ impl NativeContext {
                     )?,
                 )
                 .expect("should work");
+            std::fs::write(
+                "dump-debug-valid.mlir",
+                module.as_operation().to_string_with_flags(
+                    OperationPrintingFlags::new().enable_debug_info(true, false),
+                )?,
+            )
+            .expect("should work");
             }
         }
 

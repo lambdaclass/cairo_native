@@ -22,7 +22,7 @@ use llvm_sys::{
     },
 };
 use melior::ir::{Module, Type, TypeLike};
-use mlir_sys::MlirOperation;
+use mlir_sys::{MlirAttribute, MlirContext, MlirOperation};
 use std::{
     borrow::Cow,
     error::Error,
@@ -36,6 +36,14 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
+#[repr(C)]
+pub enum DiEmissionKind {
+    None,
+    Full,
+    LineTablesOnly,
+    DebugDirectivesOnly,
+}
+
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
 
@@ -45,6 +53,53 @@ extern "C" {
         module_operation_ptr: MlirOperation,
         llvm_context: LLVMContextRef,
     ) -> LLVMModuleRef;
+
+    pub fn mlirLLVMDistinctAttrCreate(attr: MlirAttribute) -> MlirAttribute;
+
+    pub fn mlirLLVMDICompileUnitAttrGet(
+        mlir_context: MlirContext,
+        id: MlirAttribute,
+        source_lang: i64,
+        file: MlirAttribute,
+        producer: MlirAttribute,
+        is_optimized: bool,
+        emission_kind: DiEmissionKind,
+    ) -> MlirAttribute;
+
+    pub fn mlirLLVMDIFileAttrGet(
+        mlir_context: MlirContext,
+        name: MlirAttribute,
+        dir: MlirAttribute,
+    ) -> MlirAttribute;
+
+    pub fn mlirLLVMDISubprogramAttrGet(
+        mlir_context: MlirContext,
+        id: MlirAttribute,
+        compile_unit: MlirAttribute,
+        scope: MlirAttribute,
+        name: MlirAttribute,
+        linkage_name: MlirAttribute,
+        file: MlirAttribute,
+        line: i64,
+        scope_line: i64,
+        subprogram_flags: i64,
+        ty: MlirAttribute,
+    ) -> MlirAttribute;
+
+    pub fn mlirLLVMDISubroutineTypeAttrGet(
+        mlir_context: MlirContext,
+        cconv: i64,
+        ntypes: i64,
+        types: *const MlirAttribute,
+    ) -> MlirAttribute;
+
+    pub fn mlirLLVMDIBasicTypeAttrGet(
+        mlir_context: MlirContext,
+        tag: i64,
+        name: MlirAttribute,
+        size_in_bits: u64,
+        encoding: i64,
+    ) -> MlirAttribute;
 }
 
 /// For any `!llvm.struct<...>` type, return the MLIR type of the field at the requested index.
