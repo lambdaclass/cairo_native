@@ -78,11 +78,12 @@ fn load_program<'c>(
             )?;
 
             let debug_locations = if let Some(context) = context {
-                let debug_info = DebugInfo::extract(&db, &sierra_program_with_dbg.program).map_err(|_| {
-                    let mut buffer = String::new();
-                    assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
-                    buffer
-                })?;
+                let debug_info = DebugInfo::extract(&db, &sierra_program_with_dbg.program)
+                    .map_err(|_| {
+                        let mut buffer = String::new();
+                        assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
+                        buffer
+                    })?;
 
                 Some(DebugLocations::extract(context, &db, &debug_info))
             } else {

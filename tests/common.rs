@@ -123,7 +123,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
         Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
     );
     let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
-    let program = compile_prepared_db(
+    let sierra_program_with_dbg = compile_prepared_db(
         &mut db,
         main_crate_ids.clone(),
         CompilerConfig {
@@ -132,6 +132,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
         },
     )
     .unwrap();
+    let program = sierra_program_with_dbg.program;
 
     let module_name = program_file.path().with_extension("");
     let module_name = module_name.file_name().unwrap().to_str().unwrap();
@@ -159,7 +160,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
         Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
     );
     let main_crate_ids = setup_project(&mut db, program_file).unwrap();
-    let program = compile_prepared_db(
+    let sierra_program_with_dbg = compile_prepared_db(
         &mut db,
         main_crate_ids.clone(),
         CompilerConfig {
@@ -168,6 +169,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
         },
     )
     .unwrap();
+    let program = sierra_program_with_dbg.program;
 
     let module_name = program_file.with_extension("");
     let module_name = module_name.file_name().unwrap().to_str().unwrap();
@@ -357,7 +359,8 @@ pub fn run_vm_contract(
     let entrypoint_args: Vec<&CairoArg> = entrypoint_args.iter().collect();
 
     // Run contract entrypoint
-    let mut hint_processor = Cairo1HintProcessor::new(&contract.hints, RunResources::default());
+    let mut hint_processor =
+        Cairo1HintProcessor::new(&contract.hints, RunResources::default(), true);
     runner
         .run_from_entrypoint(
             entrypoint,
@@ -503,8 +506,8 @@ pub fn compare_outputs(
     fn map_vm_values(
         size_cache: &mut HashMap<ConcreteTypeId, usize>,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        memory: &[Option<Felt252>],
-        mut values: &[Felt252],
+        memory: &[Option<Felt>],
+        mut values: &[Felt],
         ty: &ConcreteTypeId,
     ) -> JitValue {
         match registry.get_type(ty).unwrap() {
@@ -526,7 +529,7 @@ pub fn compare_outputs(
                 )
             }
             CoreTypeConcrete::Felt252(_) => {
-                JitValue::Felt252(Felt::from_bytes_le(&values[0].to_le_bytes()))
+                JitValue::Felt252(Felt::from_bytes_le(&values[0].to_bytes_le()))
             }
             CoreTypeConcrete::Uint128(_) => JitValue::Uint128(values[0].to_u128().unwrap()),
             CoreTypeConcrete::Uint64(_) => JitValue::Uint64(values[0].to_u64().unwrap()),
@@ -613,7 +616,7 @@ pub fn compare_outputs(
                     .step_by(3)
                     .map(|index| {
                         (
-                            Felt::from_bytes_le(&memory[index].clone().unwrap().to_le_bytes()),
+                            Felt::from_bytes_le(&memory[index].clone().unwrap().to_bytes_le()),
                             match &info.info.long_id.generic_args[0] {
                                 cairo_lang_sierra::program::GenericArg::Type(ty) => map_vm_values(
                                     size_cache,
@@ -684,22 +687,22 @@ pub fn compare_outputs(
                 assert_eq!(values.len(), 2);
 
                 JitValue::EcPoint(
-                    Felt::from_bytes_le(&values[0].to_le_bytes()),
-                    Felt::from_bytes_le(&values[1].to_le_bytes()),
+                    Felt::from_bytes_le(&values[0].to_bytes_le()),
+                    Felt::from_bytes_le(&values[1].to_bytes_le()),
                 )
             }
             CoreTypeConcrete::EcState(_) => {
                 assert_eq!(values.len(), 4);
 
                 JitValue::EcState(
-                    Felt::from_bytes_le(&values[0].to_le_bytes()),
-                    Felt::from_bytes_le(&values[1].to_le_bytes()),
-                    Felt::from_bytes_le(&values[2].to_le_bytes()),
-                    Felt::from_bytes_le(&values[3].to_le_bytes()),
+                    Felt::from_bytes_le(&values[0].to_bytes_le()),
+                    Felt::from_bytes_le(&values[1].to_bytes_le()),
+                    Felt::from_bytes_le(&values[2].to_bytes_le()),
+                    Felt::from_bytes_le(&values[3].to_bytes_le()),
                 )
             }
             CoreTypeConcrete::Bytes31(_) => {
-                let mut bytes = values[0].to_le_bytes().to_vec();
+                let mut bytes = values[0].to_bytes_le().to_vec();
                 bytes.pop();
                 JitValue::Bytes31(bytes.try_into().unwrap())
             }
@@ -733,8 +736,8 @@ pub fn compare_outputs(
         vm_result
             .gas_counter
             .clone()
-            .unwrap_or_else(|| Felt252::from(0)),
-        Felt252::from(native_result.remaining_gas.unwrap_or(0)),
+            .unwrap_or_else(|| Felt::from(0)),
+        Felt::from(native_result.remaining_gas.unwrap_or(0)),
     );
 
     let vm_result = match &vm_result.value {
@@ -781,7 +784,7 @@ pub fn compare_outputs(
                     JitValue::Array(
                         values
                             .iter()
-                            .map(|value| Felt::from_bytes_le(&value.to_le_bytes()))
+                            .map(|value| Felt::from_bytes_le(&value.to_bytes_le()))
                             .map(JitValue::Felt252)
                             .collect(),
                     ),
