@@ -572,7 +572,7 @@ mod test {
         static ref U32_WIDEMUL: (String, Program) = load_cairo! {
             use core::num::traits::WideMul;
             fn run_test(lhs: u32, rhs: u32) -> u64 {
-                lhs.wide_mul(rhs)
+                WideMul::wide_mul(lhs,rhs)
             }
         };
     }

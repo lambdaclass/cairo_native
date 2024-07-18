@@ -633,8 +633,8 @@ mod test {
         };
         static ref U128_WIDEMUL: (String, Program) = load_cairo! {
             use core::num::traits::WideMul;
-            fn run_test(lhs: u128, rhs: u128) -> (u128, u128) {
-                lhs.wide_mul(rhs)
+            fn run_test(lhs: u128, rhs: u128) -> u256 {
+                WideMul::wide_mul(lhs,rhs)
             }
         };
         static ref U128_TO_FELT252: (String, Program) = load_cairo! {

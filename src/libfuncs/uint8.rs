@@ -561,7 +561,6 @@ mod test {
         };
         static ref U8_SQRT: (String, Program) = load_cairo! {
             use core::num::traits::Sqrt;
-
             fn run_test(value: u8) -> u8 {
                value.sqrt()
             }
@@ -569,7 +568,7 @@ mod test {
         static ref U8_WIDEMUL: (String, Program) = load_cairo! {
             use core::num::traits::WideMul;
             fn run_test(lhs: u8, rhs: u8) -> u16 {
-                lhs.wide_mul(rhs)
+                WideMul::wide_mul(lhs,rhs)
             }
         };
     }
