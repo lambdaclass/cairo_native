@@ -32,6 +32,7 @@ To read more in-depth documentation, visit [this page](https://lambdaclass.notio
 - [Cairo Test CLI Tool](#cairo-native-test-cli-tool)
 - [Scarb Test CLI Tool](#scarb-native-test-cli-tool)
 - [Scarb Dump CLI Tool](#scarb-native-dump-cli-tool)
+- [Ahead of time compilation remarks](#ahead-of-time-compilation-remarks)
 
 ## ⚠️ Disclaimer
 
@@ -78,6 +79,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `contract_address_const` (StarkNet)
 1. `contract_address_to_felt252` (StarkNet)
 1. `contract_address_try_from_felt252` (StarkNet)
+1. coupon
 1. `deploy_syscall` (StarkNet)
 1. `disable_ap_tracking`
 1. `downcast`
@@ -134,6 +136,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `nullable_forward_snapshot`
 1. `nullable_from_box`
 1. `pedersen`
+1. `pop_log` (StarkNet, testing)
 1. `print`
 1. `rename`
 1. `replace_class_syscall` (StarkNet)
@@ -149,6 +152,18 @@ This is a list of the current progress implementing each **libfunc**.
 1. `secp256r1_mul_syscall` (StarkNet)
 1. `secp256r1_new_syscall` (StarkNet)
 1. `send_message_to_l1_syscall` (StarkNet)
+1. `set_account_contract_address` (StarkNet, testing)
+1. `set_block_number` (StarkNet, testing)
+1. `set_block_timestamp` (StarkNet, testing)
+1. `set_caller_address` (StarkNet, testing)
+1. `set_chain_id` (StarkNet, testing)
+1. `set_contract_address` (StarkNet, testing)
+1. `set_max_fee` (StarkNet, testing)
+1. `set_nonce` (StarkNet, testing)
+1. `set_sequencer_address` (StarkNet, testing)
+1. `set_signature` (StarkNet, testing)
+1. `set_transaction_hash` (StarkNet, testing)
+1. `set_version` (StarkNet, testing)
 1. `snapshot_take` (1)
 1. `span_from_tuple`
 1. `storage_address_from_base_and_offset` (StarkNet)
@@ -228,27 +243,12 @@ This is a list of the current progress implementing each **libfunc**.
 
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
-1. coupon
 </details>
 
 <details>
 <summary>Not yet implemented libfuncs (testing category only, click to open)</summary>
 Testing libfuncs:
-
-1. `pop_log` (StarkNet, testing)
 1. `redeposit_gas`
-1. `set_account_contract_address` (StarkNet, testing)
-1. `set_block_number` (StarkNet, testing)
-1. `set_block_timestamp` (StarkNet, testing)
-1. `set_caller_address` (StarkNet, testing)
-1. `set_chain_id` (StarkNet, testing)
-1. `set_contract_address` (StarkNet, testing)
-1. `set_max_fee` (StarkNet, testing)
-1. `set_nonce` (StarkNet, testing)
-1. `set_sequencer_address` (StarkNet, testing)
-1. `set_signature` (StarkNet, testing)
-1. `set_transaction_hash` (StarkNet, testing)
-1. `set_version` (StarkNet, testing)
 </details>
 
 Footnotes on the libfuncs list:
@@ -925,4 +925,13 @@ Other tips:
         .unwrap()
         .print_pointer(context, helper, entry, ptr, location)?;
 }
+```
+
+# Ahead of time Compilation Remarks
+
+To use the AOT executor, it needs to know where the static runtime library is located, this can be configured using the following
+env var pointing to the absolute path to the library:
+
+```bash
+export CAIRO_NATIVE_RUNTIME_LIBRARY=/absolute/path/to/libcairo_native_runtime.a
 ```

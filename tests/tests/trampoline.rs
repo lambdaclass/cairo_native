@@ -520,3 +520,45 @@ fn invoke1_enum2_u8_u16() {
     r(MyEnum::B(10));
     r(MyEnum::B(u16::MAX));
 }
+
+#[test]
+fn test_deserialize_param_bug() {
+    let (module_name, program, _) = load_cairo! {
+        fn main(
+            b0: u64,            // Pedersen
+            b1: u64,            // RangeCheck
+            b2: u64,            // Bitwise
+            b3: u128,           // GasBuiltin
+            b4: u64,            // System
+            arg0: Span<felt252> // Arguments
+        ) -> (u64, u64, u64, u128, u64, Span<felt252>) {
+            (b0, b1, b2, b3, b4, arg0)
+        }
+    };
+
+    let args = vec![
+        JitValue::Uint64(0),
+        JitValue::Uint64(0),
+        JitValue::Uint64(0),
+        JitValue::Uint128(0),
+        JitValue::Uint64(0),
+        JitValue::Struct {
+            fields: vec![JitValue::Array(vec![
+                JitValue::Felt252(1.into()),
+                JitValue::Felt252(2.into()),
+            ])],
+            debug_name: None,
+        },
+    ];
+    assert_eq!(
+        run_program(&program, &format!("{0}::{0}::main", module_name), &args),
+        ExecutionResult {
+            remaining_gas: None,
+            return_value: JitValue::Struct {
+                fields: args,
+                debug_name: None
+            },
+            builtin_stats: BuiltinStats::default(),
+        },
+    );
+}
