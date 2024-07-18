@@ -178,6 +178,7 @@ fn test_program_cases(program_path: &str) {
 #[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[10, 10, 10])]
 #[test_case("tests/cases/cairo_vm/contracts/multicall.cairo", &[
 // n_calls
+// params: 0: contract_address, 1: selector, rest: calldata
 6,
 // call 1
 12, 17, 3, 2, 1, 2,
