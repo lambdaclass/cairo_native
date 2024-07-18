@@ -9,7 +9,7 @@ use test_case::test_case;
 
 // Test cases for programs without input, it checks the outputs are correct automatically.
 
-// // felt tests
+// felt tests
 #[test_case("tests/cases/felt_ops/add.cairo")]
 #[test_case("tests/cases/felt_ops/sub.cairo")]
 #[test_case("tests/cases/felt_ops/felt_is_zero.cairo")]
