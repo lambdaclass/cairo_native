@@ -633,6 +633,7 @@ mod test {
         };
         static ref U128_WIDEMUL: (String, Program) = load_cairo! {
             use integer::u128_wide_mul;
+            use core::num::traits::WideMul;
             fn run_test(lhs: u128, rhs: u128) -> (u128, u128) {
                 u128_wide_mul(lhs, rhs)
             }
@@ -646,7 +647,7 @@ mod test {
         };
         static ref U128_SQRT: (String, Program) = load_cairo! {
             use core::integer::u128_sqrt;
-
+            use core::num::traits::Sqrt;
             fn run_test(value: u128) -> u64 {
                 u128_sqrt(value)
             }

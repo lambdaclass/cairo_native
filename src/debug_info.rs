@@ -181,6 +181,7 @@ mod test {
     fn program() -> Program {
         // Define a dummy program for testing
         let (_, program) = load_cairo! {
+            core::num::traits::Sqrt;
             fn run_test() -> u128 {
                 let a: u128 = 1;
                 u128_sqrt(a).into()

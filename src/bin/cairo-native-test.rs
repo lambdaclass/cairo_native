@@ -89,7 +89,7 @@ fn main() -> anyhow::Result<()> {
     let test_crate_ids = main_crate_ids.clone();
     let test_config = TestsCompilationConfig {
         starknet: args.starknet,
-        add_statements_functions: true,
+        add_statements_functions: false,
     };
 
     let build_test_compilation = compile_test_prepared_db(

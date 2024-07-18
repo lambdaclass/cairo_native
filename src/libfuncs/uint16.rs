@@ -596,13 +596,14 @@ mod test {
         };
         static ref U16_SQRT: (String, Program) = load_cairo! {
             use core::integer::u16_sqrt;
-
+            use core::num::traits::Sqrt;
             fn run_test(value: u16) -> u8 {
                 u16_sqrt(value)
             }
         };
         static ref U16_WIDEMUL: (String, Program) = load_cairo! {
             use integer::u16_wide_mul;
+            use core::num::traits::WideMul;
             fn run_test(lhs: u16, rhs: u16) -> u32 {
                 u16_wide_mul(lhs, rhs)
             }

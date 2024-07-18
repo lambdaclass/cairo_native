@@ -360,7 +360,7 @@ pub fn run_vm_contract(
 
     // Run contract entrypoint
     let mut hint_processor =
-        Cairo1HintProcessor::new(&contract.hints, RunResources::default(), true);
+        Cairo1HintProcessor::new(&contract.hints, RunResources::default(), false);
     runner
         .run_from_entrypoint(
             entrypoint,
