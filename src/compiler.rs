@@ -48,7 +48,7 @@ use crate::{
     debug_info::DebugLocations,
     error::Error,
     ffi::{
-        mlirLLVMDIBasicTypeAttrGet, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet, mlirLLVMDistinctAttrCreate
+        mlirLLVMDIBasicTypeAttrGet, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet, mlirLLVMDistinctAttrCreate
     },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
@@ -147,6 +147,7 @@ pub fn compile(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     debug_info: Option<&DebugLocations>,
+    di_compile_unit_id: Attribute,
 ) -> Result<(), Error> {
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
@@ -158,6 +159,7 @@ pub fn compile(
             &program.statements,
             metadata,
             debug_info,
+            di_compile_unit_id
         )?;
     }
 
@@ -179,6 +181,7 @@ fn compile_func(
     statements: &[Statement],
     metadata: &mut MetadataStorage,
     debug_info: Option<&DebugLocations>,
+    di_compile_unit_id: Attribute,
 ) -> Result<(), Error> {
     let region = Region::new();
     let blocks_arena = Bump::new();
@@ -708,19 +711,19 @@ fn compile_func(
             ),
         ],
         Location::fused(
-            &context,
-            &[Location::new(&context, "program.sierra", 0, 0)],
+            context,
+            &[Location::new(context, "program.sierra", 0, 0)],
             {
                 let file_attr = unsafe {
                     Attribute::from_raw(mlirLLVMDIFileAttrGet(
                         context.to_raw(),
-                        StringAttribute::new(&context, "program.sierra").to_raw(),
-                        StringAttribute::new(&context, "").to_raw(),
+                        StringAttribute::new(context, "program.sierra").to_raw(),
+                        StringAttribute::new(context, "").to_raw(),
                     ))
                 };
                 let compile_unit = {
                     let id = unsafe {
-                        let id = StringAttribute::new(&context, "compile_unit_id").to_raw();
+                        let id = StringAttribute::new(context, "compile_unit_id").to_raw();
                         mlirLLVMDistinctAttrCreate(id)
                     };
                     unsafe {
@@ -729,38 +732,60 @@ fn compile_func(
                             id,
                             0x1c,
                             file_attr.to_raw(),
-                            StringAttribute::new(&context, "cairo-native").to_raw(),
+                            StringAttribute::new(context, "cairo-native").to_raw(),
                             false,
                             crate::ffi::DiEmissionKind::Full,
                         ))
                     }
                 };
 
+                let di_module = unsafe { mlirLLVMDIModuleAttrGet(
+                    context.to_raw(),
+                    file_attr.to_raw(),
+                    compile_unit.to_raw(),
+                    StringAttribute::new(context, "LLVMDialectModule").to_raw(),
+                    StringAttribute::new(context, "").to_raw(),
+                    StringAttribute::new(context, "").to_raw(),
+                    StringAttribute::new(context, "").to_raw(),
+                    0,
+                    false,
+                ) };
+
+                let scope = unsafe {
+                    mlirLLVMDIModuleAttrGetScope(di_module)
+                };
+
                 let x = unsafe {
-                    let id = unsafe {
-                        let id = StringAttribute::new(&context, "fnid").to_raw();
+                    let id = {
+                        let id = StringAttribute::new(context, "fnid").to_raw();
                         mlirLLVMDistinctAttrCreate(id)
                     };
 
                     let basic_ty = mlirLLVMDIBasicTypeAttrGet(
                         context.to_raw(),
-                        0, StringAttribute::new(context, "mytype").to_raw(),
-                        64, 0x5
+                        0x24,
+                        StringAttribute::new(context, "mytype").to_raw(),
+                        64,
+                        0x5,
                     );
 
-                    let ty =
-                        mlirLLVMDISubroutineTypeAttrGet(context.to_raw(), 5, 1, (&basic_ty) as *const _);
+                    let ty = mlirLLVMDISubroutineTypeAttrGet(
+                        context.to_raw(),
+                        0x0,
+                        1,
+                        [basic_ty].as_ptr(),
+                    );
 
                     mlirLLVMDISubprogramAttrGet(
                         context.to_raw(),
                         id,
-                        compile_unit.to_raw(),
+                        scope,
                         file_attr.to_raw(),
                         StringAttribute::new(context, &function_name).to_raw(),
                         StringAttribute::new(context, &function_name).to_raw(),
                         file_attr.to_raw(),
-                        0,
-                        0,
+                        1,
+                        2,
                         8,
                         ty,
                     )

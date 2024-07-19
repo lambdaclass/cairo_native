@@ -4,7 +4,7 @@ use crate::{
     debug_info::DebugLocations,
     error::Error,
     ffi::{
-        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDistinctAttrCreate,
+        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDistinctAttrCreate
     },
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
@@ -97,7 +97,7 @@ impl NativeContext {
                     ))
                 };
                 unsafe {
-                    Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
+                    let di_unit = mlirLLVMDICompileUnitAttrGet(
                         self.context.to_raw(),
                         id,
                         0x1c,
@@ -105,7 +105,23 @@ impl NativeContext {
                         StringAttribute::new(&self.context, "cairo-native").to_raw(),
                         false,
                         crate::ffi::DiEmissionKind::Full,
-                    ))
+                    );
+
+                    let context = &self.context;
+
+                    let di_module = unsafe { mlirLLVMDIModuleAttrGet(
+                        context.to_raw(),
+                        file_attr.to_raw(),
+                        di_unit,
+                        StringAttribute::new(context, "LLVMDialectModule").to_raw(),
+                        StringAttribute::new(context, "").to_raw(),
+                        StringAttribute::new(context, "").to_raw(),
+                        StringAttribute::new(context, "").to_raw(),
+                        0,
+                        false,
+                    ) };
+
+                    Attribute::from_raw(di_module)
                 }
             }),
         )

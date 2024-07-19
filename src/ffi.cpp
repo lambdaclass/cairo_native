@@ -212,3 +212,21 @@ extern "C" MlirAttribute
 mlirLLVMDISubprogramAttrGetScope(MlirAttribute diSubprogram) {
   return wrap(cast<DISubprogramAttr>(unwrap(diSubprogram)).getScope());
 }
+
+extern "C" MlirAttribute mlirLLVMDIModuleAttrGet(MlirContext ctx, MlirAttribute file,
+                                      MlirAttribute scope, MlirAttribute name,
+                                      MlirAttribute configMacros,
+                                      MlirAttribute includePath,
+                                      MlirAttribute apinotes, unsigned int line,
+                                      bool isDecl) {
+  return wrap(DIModuleAttr::get(
+      unwrap(ctx), cast<DIFileAttr>(unwrap(file)),
+      cast<DIScopeAttr>(unwrap(scope)), cast<StringAttr>(unwrap(name)),
+      cast<StringAttr>(unwrap(configMacros)),
+      cast<StringAttr>(unwrap(includePath)), cast<StringAttr>(unwrap(apinotes)),
+      line, isDecl));
+}
+
+extern "C" MlirAttribute mlirLLVMDIModuleAttrGetScope(MlirAttribute diModule) {
+  return wrap(cast<DIModuleAttr>(unwrap(diModule)).getScope());
+}

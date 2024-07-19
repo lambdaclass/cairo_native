@@ -59,7 +59,7 @@ extern "C" {
     pub fn mlirLLVMDICompileUnitAttrGet(
         mlir_context: MlirContext,
         id: MlirAttribute,
-        source_lang: i64,
+        source_lang: u32,
         file: MlirAttribute,
         producer: MlirAttribute,
         is_optimized: bool,
@@ -80,25 +80,41 @@ extern "C" {
         name: MlirAttribute,
         linkage_name: MlirAttribute,
         file: MlirAttribute,
-        line: i64,
-        scope_line: i64,
-        subprogram_flags: i64,
+        line: u32,
+        scope_line: u32,
+        subprogram_flags: i32,
         ty: MlirAttribute,
     ) -> MlirAttribute;
 
     pub fn mlirLLVMDISubroutineTypeAttrGet(
         mlir_context: MlirContext,
-        cconv: i64,
-        ntypes: i64,
+        cconv: u32,
+        ntypes: usize,
         types: *const MlirAttribute,
     ) -> MlirAttribute;
 
     pub fn mlirLLVMDIBasicTypeAttrGet(
         mlir_context: MlirContext,
-        tag: i64,
+        tag: u32,
         name: MlirAttribute,
         size_in_bits: u64,
-        encoding: i64,
+        encoding: i32,
+    ) -> MlirAttribute;
+
+    pub fn mlirLLVMDIModuleAttrGet(
+        mlir_context: MlirContext,
+        file: MlirAttribute,
+        scope: MlirAttribute,
+        name: MlirAttribute,
+        configMacros: MlirAttribute,
+        includePath: MlirAttribute,
+        apinotes: MlirAttribute,
+        line: u32,
+        is_decl: bool,
+    ) -> MlirAttribute;
+
+    pub fn mlirLLVMDIModuleAttrGetScope(
+        di_module: MlirAttribute,
     ) -> MlirAttribute;
 }
 
