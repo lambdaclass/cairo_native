@@ -556,9 +556,9 @@ pub mod test {
 
     // Helper macros for faster testing.
     macro_rules! jit_struct {
-        ( $($x:expr),* $(,)? ) => {
+        ($($y:expr),* $(,)? ) => {
             crate::values::JitValue::Struct {
-                fields: vec![$($x), *],
+                fields: vec![$($y), *],
                 debug_name: None
             }
         };

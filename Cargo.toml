@@ -108,7 +108,7 @@ serde_json = { version = "1.0.117", optional = true }
 stats_alloc = "0.1.10"
 
 [dev-dependencies]
-cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "9754841a77aed84ad63c847078eed4a9d36258b1", features = ["cairo-1-hints"] } # change once merged
+cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "886beca209ec42723e2562ea7ce8ceb0885dd41a", features = ["cairo-1-hints"] }
 cairo-felt = "0.9.1"
 cairo-lang-runner = "2.7.0-rc.3"
 cairo-lang-semantic = { version = "2.7.0-rc.3", features = ["testing"] }
