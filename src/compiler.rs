@@ -48,7 +48,9 @@ use crate::{
     debug_info::DebugLocations,
     error::Error,
     ffi::{
-        mlirLLVMDIBasicTypeAttrGet, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet, mlirLLVMDistinctAttrCreate
+        mlirLLVMDIBasicTypeAttrGet, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
+        mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet,
+        mlirLLVMDISubroutineTypeAttrGet, mlirLLVMDistinctAttrCreate, MlirLLVMTypeEncoding,
     },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
@@ -69,7 +71,7 @@ use cairo_lang_sierra::{
         bytes31::Bytes31ConcreteLibfunc,
         casts::CastConcreteLibfunc,
         const_type::ConstConcreteLibfunc,
-        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
         coupon::CouponConcreteLibfunc,
         debug::DebugConcreteLibfunc,
         ec::EcConcreteLibfunc,
@@ -109,11 +111,12 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
-        Value,
+        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Operation, Region,
+        Type, Value,
     },
     Context,
 };
+use mlir_sys::MlirAttribute;
 use std::{
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
@@ -159,7 +162,7 @@ pub fn compile(
             &program.statements,
             metadata,
             debug_info,
-            di_compile_unit_id
+            di_compile_unit_id,
         )?;
     }
 
@@ -203,6 +206,8 @@ fn compile_func(
     )
     .collect::<Result<Vec<_>, _>>()?;
 
+    let mut debug_arg_types = Vec::new();
+
     // Replace memory-allocated arguments with pointers.
     for (ty, type_info) in
         arg_types
@@ -218,6 +223,8 @@ fn compile_func(
     {
         if type_info.is_memory_allocated(registry) {
             *ty = llvm::r#type::pointer(context, 0);
+        } else {
+            debug_arg_types.push(coretype_to_debugtype(context, type_info));
         }
     }
 
@@ -693,7 +700,6 @@ fn compile_func(
     }
 
     let function_name = generate_function_name(&function.id);
-    tracing::debug!("Creating the actual function, named `{function_name}`.");
 
     module.body().append_operation(func::func(
         context,
@@ -722,14 +728,10 @@ fn compile_func(
                     ))
                 };
                 let compile_unit = {
-                    let id = unsafe {
-                        let id = StringAttribute::new(context, "compile_unit_id").to_raw();
-                        mlirLLVMDistinctAttrCreate(id)
-                    };
                     unsafe {
                         Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
                             context.to_raw(),
-                            id,
+                            di_compile_unit_id.to_raw(),
                             0x1c,
                             file_attr.to_raw(),
                             StringAttribute::new(context, "cairo-native").to_raw(),
@@ -739,21 +741,21 @@ fn compile_func(
                     }
                 };
 
-                let di_module = unsafe { mlirLLVMDIModuleAttrGet(
-                    context.to_raw(),
-                    file_attr.to_raw(),
-                    compile_unit.to_raw(),
-                    StringAttribute::new(context, "LLVMDialectModule").to_raw(),
-                    StringAttribute::new(context, "").to_raw(),
-                    StringAttribute::new(context, "").to_raw(),
-                    StringAttribute::new(context, "").to_raw(),
-                    0,
-                    false,
-                ) };
-
-                let scope = unsafe {
-                    mlirLLVMDIModuleAttrGetScope(di_module)
+                let di_module = unsafe {
+                    mlirLLVMDIModuleAttrGet(
+                        context.to_raw(),
+                        file_attr.to_raw(),
+                        compile_unit.to_raw(),
+                        StringAttribute::new(context, "LLVMDialectModule").to_raw(),
+                        StringAttribute::new(context, "").to_raw(),
+                        StringAttribute::new(context, "").to_raw(),
+                        StringAttribute::new(context, "").to_raw(),
+                        0,
+                        false,
+                    )
                 };
+
+                let scope = unsafe { mlirLLVMDIModuleAttrGetScope(di_module) };
 
                 let x = unsafe {
                     let id = {
@@ -761,19 +763,11 @@ fn compile_func(
                         mlirLLVMDistinctAttrCreate(id)
                     };
 
-                    let basic_ty = mlirLLVMDIBasicTypeAttrGet(
-                        context.to_raw(),
-                        0x24,
-                        StringAttribute::new(context, "mytype").to_raw(),
-                        64,
-                        0x5,
-                    );
-
                     let ty = mlirLLVMDISubroutineTypeAttrGet(
                         context.to_raw(),
                         0x0,
                         1,
-                        [basic_ty].as_ptr(),
+                        debug_arg_types.as_slice().as_ptr(),
                     );
 
                     mlirLLVMDISubprogramAttrGet(
@@ -1448,5 +1442,112 @@ fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             Bytes31ConcreteLibfunc::ToFelt252(_) => "bytes31_to_felt252",
             Bytes31ConcreteLibfunc::TryFromFelt252(_) => "bytes31_try_from_felt252",
         },
+    }
+}
+
+pub fn coretype_to_debugtype<'c>(context: &'c Context, ty: &CoreTypeConcrete) -> MlirAttribute {
+    let tag = 0x24;
+    unsafe {
+        match ty {
+            CoreTypeConcrete::Array(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Bitwise(_) => todo!(),
+            CoreTypeConcrete::Box(_) => todo!(),
+            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::EcOp(_) => todo!(),
+            CoreTypeConcrete::EcPoint(_) => todo!(),
+            CoreTypeConcrete::EcState(_) => todo!(),
+            CoreTypeConcrete::Felt252(_) => todo!(),
+            CoreTypeConcrete::GasBuiltin(_) => todo!(),
+            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+            CoreTypeConcrete::Uint8(_) => mlirLLVMDIBasicTypeAttrGet(
+                context.to_raw(),
+                tag,
+                StringAttribute::new(context, "u8").to_raw(),
+                8,
+                MlirLLVMTypeEncoding::Unsigned,
+            ),
+            CoreTypeConcrete::Uint16(_) => mlirLLVMDIBasicTypeAttrGet(
+                context.to_raw(),
+                tag,
+                StringAttribute::new(context, "u16").to_raw(),
+                16,
+                MlirLLVMTypeEncoding::Unsigned,
+            ),
+            CoreTypeConcrete::Uint32(_) => mlirLLVMDIBasicTypeAttrGet(
+                context.to_raw(),
+                tag,
+                StringAttribute::new(context, "u32").to_raw(),
+                32,
+                MlirLLVMTypeEncoding::Unsigned,
+            ),
+            CoreTypeConcrete::Uint64(_) => mlirLLVMDIBasicTypeAttrGet(
+                context.to_raw(),
+                tag,
+                StringAttribute::new(context, "u64").to_raw(),
+                64,
+                MlirLLVMTypeEncoding::Unsigned,
+            ),
+            CoreTypeConcrete::Uint128(_) => mlirLLVMDIBasicTypeAttrGet(
+                context.to_raw(),
+                tag,
+                StringAttribute::new(context, "u128").to_raw(),
+                128,
+                MlirLLVMTypeEncoding::Unsigned,
+            ),
+            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+            CoreTypeConcrete::Sint8(_) => mlirLLVMDIBasicTypeAttrGet(
+                context.to_raw(),
+                tag,
+                StringAttribute::new(context, "i8").to_raw(),
+                8,
+                MlirLLVMTypeEncoding::Signed,
+            ),
+            CoreTypeConcrete::Sint16(_) => mlirLLVMDIBasicTypeAttrGet(
+                context.to_raw(),
+                tag,
+                StringAttribute::new(context, "i16").to_raw(),
+                16,
+                MlirLLVMTypeEncoding::Signed,
+            ),
+            CoreTypeConcrete::Sint32(_) => mlirLLVMDIBasicTypeAttrGet(
+                context.to_raw(),
+                tag,
+                StringAttribute::new(context, "i32").to_raw(),
+                32,
+                MlirLLVMTypeEncoding::Signed,
+            ),
+            CoreTypeConcrete::Sint64(_) => mlirLLVMDIBasicTypeAttrGet(
+                context.to_raw(),
+                tag,
+                StringAttribute::new(context, "i64").to_raw(),
+                64,
+                MlirLLVMTypeEncoding::Signed,
+            ),
+            CoreTypeConcrete::Sint128(_) => mlirLLVMDIBasicTypeAttrGet(
+                context.to_raw(),
+                tag,
+                StringAttribute::new(context, "i128").to_raw(),
+                128,
+                MlirLLVMTypeEncoding::Signed,
+            ),
+            CoreTypeConcrete::NonZero(_) => todo!(),
+            CoreTypeConcrete::Nullable(_) => todo!(),
+            CoreTypeConcrete::RangeCheck(_) => todo!(),
+            CoreTypeConcrete::Uninitialized(_) => todo!(),
+            CoreTypeConcrete::Enum(_) => todo!(),
+            CoreTypeConcrete::Struct(_) => todo!(),
+            CoreTypeConcrete::Felt252Dict(_) => todo!(),
+            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+            CoreTypeConcrete::Pedersen(_) => todo!(),
+            CoreTypeConcrete::Poseidon(_) => todo!(),
+            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::StarkNet(_) => todo!(),
+            CoreTypeConcrete::SegmentArena(_) => todo!(),
+            CoreTypeConcrete::Snapshot(_) => todo!(),
+            CoreTypeConcrete::Bytes31(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_) => todo!(),
+        }
     }
 }

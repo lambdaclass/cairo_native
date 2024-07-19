@@ -4,7 +4,7 @@ use crate::{
     debug_info::DebugLocations,
     error::Error,
     ffi::{
-        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDistinctAttrCreate
+        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDistinctAttrCreate, mlirModuleCleanup
     },
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
@@ -12,7 +12,7 @@ use crate::{
         MetadataStorage,
     },
     module::NativeModule,
-    utils::run_pass_manager,
+    utils::{generate_function_name, run_pass_manager},
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -82,13 +82,14 @@ impl NativeContext {
 
         let data_layout_ret = &get_data_layout_rep()?;
 
+        let di_unit_id = unsafe {
+            let id = StringAttribute::new(&self.context, "compile_unit_id").to_raw();
+            mlirLLVMDistinctAttrCreate(id)
+        };
+
         let op = OperationBuilder::new(
             "builtin.module",
             Location::fused(&self.context, &[Location::new(&self.context, "program.sierra", 0, 0)], {
-                let id = unsafe {
-                    let id = StringAttribute::new(&self.context, "compile_unit_id").to_raw();
-                    mlirLLVMDistinctAttrCreate(id)
-                };
                 let file_attr = unsafe {
                     Attribute::from_raw(mlirLLVMDIFileAttrGet(
                         self.context.to_raw(),
@@ -99,8 +100,8 @@ impl NativeContext {
                 unsafe {
                     let di_unit = mlirLLVMDICompileUnitAttrGet(
                         self.context.to_raw(),
-                        id,
-                        0x1c,
+                        di_unit_id,
+                        0x1c, // rust
                         file_attr.to_raw(),
                         StringAttribute::new(&self.context, "cairo-native").to_raw(),
                         false,
@@ -169,6 +170,7 @@ impl NativeContext {
             &registry,
             &mut metadata,
             debug_locations.as_ref(),
+            unsafe { Attribute::from_raw(di_unit_id) }
         )?;
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP_PREPASS") {
@@ -186,6 +188,10 @@ impl NativeContext {
         }
 
         run_pass_manager(&self.context, &mut module)?;
+
+        unsafe {
+            mlirModuleCleanup(module.to_raw());
+        }
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {
@@ -217,39 +223,6 @@ impl NativeContext {
                 StringAttribute::new(&self.context, data_layout_ret).into(),
             );
         }
-
-        Ok(NativeModule::new(module, registry, metadata))
-    }
-
-    /// Compiles a sierra program into MLIR and then lowers to LLVM. Using the given metadata.
-    /// Returns the corresponding NativeModule struct.
-    pub fn compile_with_metadata(
-        &self,
-        program: &Program,
-        metadata_config: MetadataComputationConfig,
-    ) -> Result<NativeModule, Error> {
-        let mut module = Module::new(Location::unknown(&self.context));
-
-        let mut metadata = MetadataStorage::new();
-        // Make the runtime library available.
-        metadata.insert(RuntimeBindingsMeta::default());
-
-        let gas_metadata = GasMetadata::new(program, Some(metadata_config))?;
-        metadata.insert(gas_metadata);
-
-        // Create the Sierra program registry
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
-
-        crate::compile(
-            &self.context,
-            &module,
-            program,
-            &registry,
-            &mut metadata,
-            None,
-        )?;
-
-        run_pass_manager(&self.context, &mut module)?;
 
         Ok(NativeModule::new(module, registry, metadata))
     }

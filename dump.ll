@@ -3,8 +3,14 @@ source_filename = "LLVMDialectModule"
 target datalayout = "e-m:o-i64:64-i128:128-n32:64-S128"
 target triple = "arm64-apple-darwin23.5.0"
 
-define i32 @"program::program::main(f0)"() !dbg !3 {
-  ret i32 2, !dbg !7
+define { i64, i32 } @"program::program::main(f0)"() !dbg !3 {
+  ret { i64, i32 } { i64 2, i32 3 }, !dbg !7
+}
+
+define void @"_mlir_ciface_program::program::main(f0)"(ptr %0) {
+  %2 = call { i64, i32 } @"program::program::main(f0)"(), !dbg !7
+  store { i64, i32 } %2, ptr %0, align 8, !dbg !7
+  ret void, !dbg !7
 }
 
 !llvm.module.flags = !{!0}

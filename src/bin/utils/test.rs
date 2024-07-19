@@ -135,13 +135,9 @@ pub fn run_tests(
 
     // Compile the sierra program into a MLIR module.
     let native_module = native_context
-        .compile_with_metadata(
+        .compile(
             &sierra_program,
-            MetadataComputationConfig {
-                function_set_costs: function_set_costs.clone(),
-                linear_ap_change_solver: true,
-                linear_gas_solver: true,
-            },
+            None,
         )
         .unwrap();
 

@@ -22,7 +22,7 @@ use llvm_sys::{
     },
 };
 use melior::ir::{Module, Type, TypeLike};
-use mlir_sys::{MlirAttribute, MlirContext, MlirOperation};
+use mlir_sys::{MlirAttribute, MlirContext, MlirLocation, MlirModule, MlirOperation};
 use std::{
     borrow::Cow,
     error::Error,
@@ -43,6 +43,30 @@ pub enum DiEmissionKind {
     LineTablesOnly,
     DebugDirectivesOnly,
 }
+
+#[repr(C)]
+pub enum MlirLLVMTypeEncoding {
+    Address = 0x1,
+    Boolean = 0x2,
+    ComplexFloat = 0x31,
+    FloatT = 0x4,
+    Signed = 0x5,
+    SignedChar = 0x6,
+    Unsigned = 0x7,
+    UnsignedChar = 0x08,
+    ImaginaryFloat = 0x09,
+    PackedDecimal = 0x0a,
+    NumericString = 0x0b,
+    Edited = 0x0c,
+    SignedFixed = 0x0d,
+    UnsignedFixed = 0x0e,
+    DecimalFloat = 0x0f,
+    UTF = 0x10,
+    UCS = 0x11,
+    ASCII = 0x12,
+    LoUser = 0x80,
+    HiUser = 0xff,
+  }
 
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
@@ -98,7 +122,7 @@ extern "C" {
         tag: u32,
         name: MlirAttribute,
         size_in_bits: u64,
-        encoding: i32,
+        encoding: MlirLLVMTypeEncoding,
     ) -> MlirAttribute;
 
     pub fn mlirLLVMDIModuleAttrGet(
@@ -116,6 +140,8 @@ extern "C" {
     pub fn mlirLLVMDIModuleAttrGetScope(
         di_module: MlirAttribute,
     ) -> MlirAttribute;
+
+    pub fn mlirModuleCleanup(module: MlirModule);
 }
 
 /// For any `!llvm.struct<...>` type, return the MLIR type of the field at the requested index.

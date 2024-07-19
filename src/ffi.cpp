@@ -4,7 +4,9 @@
 #include <mlir/CAPI/IR.h>
 #include <mlir/CAPI/Support.h>
 #include <mlir/CAPI/Wrap.h>
+#include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/LLVMIR/LLVMTypes.h>
+#include <mlir/IR/Operation.h>
 #include <mlir/IR/Types.h>
 #include <mlir/Target/LLVMIR/ModuleTranslation.h>
 
@@ -162,8 +164,21 @@ mlirLLVMDICompileUnitAttrGet(MlirContext ctx, MlirAttribute id,
       isOptimized, DIEmissionKind(emissionKind)));
 }
 
-extern "C" MlirAttribute
-mlirLLVMDICompileUnitAttrGetScope(MlirContext ctx, MlirAttribute cu) {
+extern "C" void mlirModuleCleanup(MlirModule mod) {
+  auto x = unwrap(mod);
+  for (auto &op : x.getOps().begin()->getBlock()->getOperations()) {
+    if (llvm::CastInfo<LLVMFuncOp, Operation>::isPossible(op)) {
+      LLVMFuncOp x = llvm::CastInfo<LLVMFuncOp, Operation>::doCast(op);
+      if (x.getSymName().starts_with("_mlir_ciface")) {
+        x->setLoc(mlir::UnknownLoc::get(x->getContext()));
+      }
+    }
+  }
+}
+
+extern "C" MlirAttribute mlirLLVMDICompileUnitAttrGetScope(MlirContext ctx,
+                                                           MlirAttribute cu,
+                                                           MlirOperation op) {
   return wrap(cast<DICompileUnitAttr>(unwrap(cu)).getFile());
 }
 
@@ -213,12 +228,10 @@ mlirLLVMDISubprogramAttrGetScope(MlirAttribute diSubprogram) {
   return wrap(cast<DISubprogramAttr>(unwrap(diSubprogram)).getScope());
 }
 
-extern "C" MlirAttribute mlirLLVMDIModuleAttrGet(MlirContext ctx, MlirAttribute file,
-                                      MlirAttribute scope, MlirAttribute name,
-                                      MlirAttribute configMacros,
-                                      MlirAttribute includePath,
-                                      MlirAttribute apinotes, unsigned int line,
-                                      bool isDecl) {
+extern "C" MlirAttribute mlirLLVMDIModuleAttrGet(
+    MlirContext ctx, MlirAttribute file, MlirAttribute scope,
+    MlirAttribute name, MlirAttribute configMacros, MlirAttribute includePath,
+    MlirAttribute apinotes, unsigned int line, bool isDecl) {
   return wrap(DIModuleAttr::get(
       unwrap(ctx), cast<DIFileAttr>(unwrap(file)),
       cast<DIScopeAttr>(unwrap(scope)), cast<StringAttr>(unwrap(name)),
