@@ -69,7 +69,7 @@ fn ec_point_from_x_big() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(x.clone())],
+        &[Arg::Value(x)],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -97,7 +97,7 @@ fn ec_point_from_x_small() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(x.clone())],
+        &[Arg::Value(x)],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();

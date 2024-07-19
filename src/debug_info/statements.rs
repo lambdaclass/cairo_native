@@ -135,18 +135,9 @@ fn locate_statement(variables: &Arena<Variable>, statement: &LoweringStatement) 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cairo_lang_defs::ids::VariantId;
     use cairo_lang_lowering::ids::FunctionId;
     use cairo_lang_lowering::ids::LocationId;
-    use cairo_lang_lowering::objects::{
-        StatementCall, StatementConst, StatementDesnap, StatementEnumConstruct, StatementSnapshot,
-        StatementStructConstruct, StatementStructDestructure, VarUsage,
-    };
-    use cairo_lang_semantic::items::constant::ConstValue;
-    use cairo_lang_semantic::items::enm::ConcreteVariant;
-    use cairo_lang_semantic::items::imp::{ConcreteImplId, ImplId};
-    use cairo_lang_semantic::types::ConcreteEnumId;
-    use cairo_lang_semantic::TypeId;
+    use cairo_lang_lowering::objects::StatementCall;
     use salsa::InternKey;
 
     #[test]

@@ -63,7 +63,6 @@ macro_rules! load_cairo {
     };
 }
 
-use cairo_felt::Felt252;
 #[allow(unused_imports)]
 pub(crate) use load_cairo;
 use num_traits::ToPrimitive;
@@ -616,13 +615,13 @@ pub fn compare_outputs(
                     .step_by(3)
                     .map(|index| {
                         (
-                            Felt::from_bytes_le(&memory[index].clone().unwrap().to_bytes_le()),
+                            Felt::from_bytes_le(&memory[index].unwrap().to_bytes_le()),
                             match &info.info.long_id.generic_args[0] {
                                 cairo_lang_sierra::program::GenericArg::Type(ty) => map_vm_values(
                                     size_cache,
                                     registry,
                                     memory,
-                                    &[memory[index + 2].clone().unwrap()],
+                                    &[memory[index + 2].unwrap()],
                                     ty,
                                 ),
                                 _ => unimplemented!("unsupported dict value type"),
@@ -733,10 +732,7 @@ pub fn compare_outputs(
             .unwrap_or(false)
     });
     assert_eq!(
-        vm_result
-            .gas_counter
-            .clone()
-            .unwrap_or_else(|| Felt::from(0)),
+        vm_result.gas_counter.unwrap_or_else(|| Felt::from(0)),
         Felt::from(native_result.remaining_gas.unwrap_or(0)),
     );
 

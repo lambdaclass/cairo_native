@@ -4,9 +4,7 @@ use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::starknet::DummySyscallHandler;
 use cairo_native::values::JitValue;
-use cairo_vm::Felt252;
 use lazy_static::lazy_static;
-use num_traits::Num;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
 
