@@ -1,6 +1,7 @@
 //! # Const libfuncs
 
 use super::LibfuncHelper;
+use crate::block_ext::BlockExt;
 use crate::{
     error::{Error, Result},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
@@ -24,9 +25,9 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith,
-        llvm::{self, r#type::pointer, LoadStoreOptions},
+        llvm::{self, r#type::pointer},
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Attribute, Block, Location, Value},
+    ir::{Attribute, Block, Location, Value},
     Context,
 };
 use num_bigint::ToBigInt;
@@ -82,42 +83,15 @@ pub fn build_const_as_box<'ctx, 'this>(
     let inner_layout = const_ty.layout(registry)?;
 
     // Create box
-    let value_len = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                inner_layout.pad_to_align().size().try_into()?,
-            )
-            .into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let value_len = entry.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
 
-    let ptr = entry
-        .append_operation(llvm::zero(pointer(context, 0), location))
-        .result(0)?
-        .into();
-    let ptr = entry
-        .append_operation(ReallocBindingsMeta::realloc(
-            context, ptr, value_len, location,
-        ))
-        .result(0)?
-        .into();
+    let ptr = entry.append_op_result(llvm::zero(pointer(context, 0), location))?;
+    let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+        context, ptr, value_len, location,
+    ))?;
 
     // Store constant in box
-
-    entry.append_operation(llvm::store(
-        context,
-        value,
-        ptr,
-        location,
-        LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-            IntegerType::new(context, 64).into(),
-            inner_layout.align() as i64,
-        ))),
-    ));
+    entry.store(context, location, ptr, value)?;
 
     entry.append_operation(helper.br(0, &[ptr], location));
     Ok(())
@@ -242,8 +216,24 @@ pub fn build_const_type_value<'ctx, 'this>(
             _ => Err(Error::ConstDataMismatch),
         },
         CoreTypeConcrete::NonZero(_) => match &info.inner_data[..] {
-            [GenericArg::Type(_inner)] => {
-                todo!()
+            // Copied from the sierra to casm lowering
+            // NonZero is the same type as the inner type in native.
+            [GenericArg::Type(inner)] => {
+                let inner_type = registry.get_type(inner)?;
+                let const_inner_type = match inner_type {
+                    CoreTypeConcrete::Const(inner) => inner,
+                    _ => unreachable!(),
+                };
+
+                build_const_type_value(
+                    context,
+                    registry,
+                    entry,
+                    location,
+                    helper,
+                    metadata,
+                    const_inner_type,
+                )
             }
             _ => Err(Error::ConstDataMismatch),
         },
@@ -262,26 +252,19 @@ pub fn build_const_type_value<'ctx, 'this>(
                             value.clone()
                         };
 
-                        entry
-                            .append_operation(arith::constant(
-                                context,
-                                Attribute::parse(context, &format!("{} : {}", value, inner_ty))
-                                    .unwrap(),
-                                location,
-                            ))
-                            .result(0)?
-                            .into()
-                    }
-                    // any other int type
-                    _ => entry
-                        .append_operation(arith::constant(
+                        entry.append_op_result(arith::constant(
                             context,
                             Attribute::parse(context, &format!("{} : {}", value, inner_ty))
                                 .unwrap(),
                             location,
-                        ))
-                        .result(0)?
-                        .into(),
+                        ))?
+                    }
+                    // any other int type
+                    _ => entry.append_op_result(arith::constant(
+                        context,
+                        Attribute::parse(context, &format!("{} : {}", value, inner_ty)).unwrap(),
+                        location,
+                    ))?,
                 };
 
                 Ok(mlir_value)

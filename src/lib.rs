@@ -98,6 +98,7 @@ pub use self::{
     ffi::{module_to_object, object_to_shared_lib, LLVMCompileError, OptLevel},
 };
 
+mod arch;
 pub(crate) mod block_ext;
 pub mod cache;
 mod compiler;
@@ -111,6 +112,7 @@ pub mod libfuncs;
 pub mod metadata;
 pub mod module;
 pub mod starknet;
+pub mod starknet_stub;
 pub mod types;
 pub mod utils;
 pub mod values;

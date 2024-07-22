@@ -17,11 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.78.0
+      - uses: dtolnay/rust-toolchain@1.79.0
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.78.0
+      - uses: dtolnay/rust-toolchain@1.79.0
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUSTUP_TOOLCHAIN: nightly-2024-02-01  # udeps needs nightly
     steps:
@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUST_LOG: debug,cairo_native_test=trace
     steps:
@@ -137,7 +137,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.78.0
+        uses: dtolnay/rust-toolchain@1.79.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
@@ -164,20 +164,20 @@ jobs:
       CARGO_TERM_COLOR: always
       LIBRARY_PATH: /opt/homebrew/lib
       MLIR_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
-      LLVM_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
+      LLVM_SYS_181_PREFIX: /opt/homebrew/opt/llvm@18
       TABLEGEN_180_PREFIX: /opt/homebrew/opt/llvm@18
       RUST_LOG: debug,cairo_native_test=trace
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.78.0
+        uses: dtolnay/rust-toolchain@1.79.0
         with:
           components: clippy
       - uses: Homebrew/actions/setup-homebrew@master
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.6.3"
+          scarb-version: "2.6.4"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -193,7 +193,7 @@ jobs:
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUST_LOG: debug
     steps:
@@ -218,7 +218,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.78.0
+        uses: dtolnay/rust-toolchain@1.79.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
@@ -234,7 +234,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.6.3"
+          scarb-version: "2.6.4"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.

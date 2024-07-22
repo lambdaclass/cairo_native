@@ -29,6 +29,10 @@ To read more in-depth documentation, visit [this page](https://lambdaclass.notio
 - [Benchmarking](#benchmarking)
 - [API usage example](#api--usage-example)
 - [From MLIR to native binary](#from-mlir-to-native-binary)
+- [Cairo Test CLI Tool](#cairo-native-test-cli-tool)
+- [Scarb Test CLI Tool](#scarb-native-test-cli-tool)
+- [Scarb Dump CLI Tool](#scarb-native-dump-cli-tool)
+- [Ahead of time compilation remarks](#ahead-of-time-compilation-remarks)
 
 ## ⚠️ Disclaimer
 
@@ -75,6 +79,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `contract_address_const` (StarkNet)
 1. `contract_address_to_felt252` (StarkNet)
 1. `contract_address_try_from_felt252` (StarkNet)
+1. coupon
 1. `deploy_syscall` (StarkNet)
 1. `disable_ap_tracking`
 1. `downcast`
@@ -131,6 +136,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `nullable_forward_snapshot`
 1. `nullable_from_box`
 1. `pedersen`
+1. `pop_log` (StarkNet, testing)
 1. `print`
 1. `rename`
 1. `replace_class_syscall` (StarkNet)
@@ -146,6 +152,18 @@ This is a list of the current progress implementing each **libfunc**.
 1. `secp256r1_mul_syscall` (StarkNet)
 1. `secp256r1_new_syscall` (StarkNet)
 1. `send_message_to_l1_syscall` (StarkNet)
+1. `set_account_contract_address` (StarkNet, testing)
+1. `set_block_number` (StarkNet, testing)
+1. `set_block_timestamp` (StarkNet, testing)
+1. `set_caller_address` (StarkNet, testing)
+1. `set_chain_id` (StarkNet, testing)
+1. `set_contract_address` (StarkNet, testing)
+1. `set_max_fee` (StarkNet, testing)
+1. `set_nonce` (StarkNet, testing)
+1. `set_sequencer_address` (StarkNet, testing)
+1. `set_signature` (StarkNet, testing)
+1. `set_transaction_hash` (StarkNet, testing)
+1. `set_version` (StarkNet, testing)
 1. `snapshot_take` (1)
 1. `span_from_tuple`
 1. `storage_address_from_base_and_offset` (StarkNet)
@@ -225,27 +243,12 @@ This is a list of the current progress implementing each **libfunc**.
 
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
-1. coupon
 </details>
 
 <details>
 <summary>Not yet implemented libfuncs (testing category only, click to open)</summary>
 Testing libfuncs:
-
-1. `pop_log` (StarkNet, testing)
 1. `redeposit_gas`
-1. `set_account_contract_address` (StarkNet, testing)
-1. `set_block_number` (StarkNet, testing)
-1. `set_block_timestamp` (StarkNet, testing)
-1. `set_caller_address` (StarkNet, testing)
-1. `set_chain_id` (StarkNet, testing)
-1. `set_contract_address` (StarkNet, testing)
-1. `set_max_fee` (StarkNet, testing)
-1. `set_nonce` (StarkNet, testing)
-1. `set_sequencer_address` (StarkNet, testing)
-1. `set_signature` (StarkNet, testing)
-1. `set_transaction_hash` (StarkNet, testing)
-1. `set_version` (StarkNet, testing)
 </details>
 
 Footnotes on the libfuncs list:
@@ -296,10 +299,10 @@ If you decide to build from source, here are some indications:
 # The blob to download is called llvm-project-18.x.x.src.tar.xz
 
 # For example
-wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.4/llvm-project-18.1.4.src.tar.xz
-tar xf llvm-project-18.1.4.src.tar.xz
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.7/llvm-project-18.1.7.src.tar.xz
+tar xf llvm-project-18.1.7.src.tar.xz
 
-cd llvm-project-18.1.4.src.tar
+cd llvm-project-18.1.7.src.tar
 mkdir build
 cd build
 
@@ -320,29 +323,39 @@ ninja install
 
 </details>
 
-Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_180_PREFIX` and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
+Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_181_PREFIX` and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
 
 ```bash
 # For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-18
 export MLIR_SYS_180_PREFIX=/usr/lib/llvm-18
-export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
+export LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
 export TABLEGEN_180_PREFIX=/usr/lib/llvm-18
 ```
 
-Run the deps target to install the other dependencies such as the cairo compiler (for tests, benchmarks).
+Alternatively, if installed from Debian/Ubuntu repository, then you can use `env.sh` to automatically setup the environment variables.
 
 ```bash
-make deps
+source env.sh
 ```
 
 #### MacOS
 
-The makefile `deps` target (which you should have ran before) installs LLVM 18 with brew for you, afterwards you need to execute the `env-macos.sh` script to setup the
-needed environment variables.
+The makefile `deps` target (which you should have ran before) installs LLVM 18 with brew for you, afterwards you need to execute the `env.sh` script to setup the needed environment variables.
 
 ```bash
-source env-macos.sh
+source env.sh
 ```
+
+#### Env Variables
+
+The script `env.sh` automatically sets the necessary variables for MacOS and Ubuntu/Debian.
+If it doesn't fit your specific environment you can copy it to .env/.envrc and adapt it acordingly.
+
+```bash
+source env.sh
+```
+
+The script is compatible with [direnv](https://direnv.net/)
 
 ### Make commands:
 
@@ -704,15 +717,15 @@ For more examples, check out the `examples/` directory.
 ### Requirements
 
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo >=1.0](https://github.com/starkware-libs/cairo)
+- [cairo 2.6.4](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
-- LLVM 16 with MLIR
+- LLVM 18 with MLIR
 
 You need to setup some environment variables:
 
 ```bash
 $MLIR_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
-$LLVM_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$LLVM_SYS_181_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 $TABLEGEN_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 ```
 
@@ -752,7 +765,7 @@ sierra2mlir program.sierra -o program.mlir
 # compile natively
 "$MLIR_SYS_180_PREFIX"/bin/clang program.ll -Wno-override-module \
     -L "$MLIR_SYS_180_PREFIX"/lib -L"./target/release/" \
-    -lsierra2mlir_utils -lmlir_c_runner_utils \
+    -lcairo_native_runtime -lmlir_c_runner_utils \
     -Wl,-rpath "$MLIR_SYS_180_PREFIX"/lib \
     -Wl,-rpath ./target/release/ \
     -o program
@@ -802,6 +815,47 @@ cairo-native-test ./cairo-tests/
 
 This will run all the tests (functions marked with the `#[test]` attribute).
 
+# cairo-native-stress cli tool
+
+This tool runs a stress test on Cairo Native.
+
+```bash
+$ cairo-native-stress --help
+A stress tester for Cairo Native
+
+It Sierra programs compiles with Cairo Native, caches, and executes them with AOT runner. The compiled dynamic libraries are stored in `AOT_CACHE_DIR` relative to the current working directory.
+
+Usage: cairo-native-stress [OPTIONS] <ROUNDS>
+
+Arguments:
+  <ROUNDS>
+          Amount of rounds to execute
+
+Options:
+  -o, --output <OUTPUT>
+          Output file for JSON formatted logs
+
+  -h, --help
+          Print help (see a summary with '-h')
+```
+
+To quickly run a stress test and save logs as json, run:
+```bash
+make stress-test
+```
+
+This takes a lot of time to finish (it will probably crash first), you can kill the program at any time.
+
+To plot the results, run:
+```bash
+make stress-plot
+```
+
+To clear the cache directory, run:
+```bash
+make stress-clean
+```
+
 # scarb-native-test cli tool
 
 This tool mimics the `scarb test` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
@@ -826,6 +880,14 @@ Options:
   -h, --help                   Print help
   -V, --version                Print version
 ```
+
+# scarb-native-dump cli tool
+
+This tool mimics the `scarb build` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
+You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+
+This tool should be run at the directory where a `Scarb.toml` file is and it will behave like `scarb build`, leaving the MLIR files under
+the `target/` folder besides the generated JSON sierra files.
 
 ## Debugging Tips
 
@@ -863,4 +925,13 @@ Other tips:
         .unwrap()
         .print_pointer(context, helper, entry, ptr, location)?;
 }
+```
+
+# Ahead of time Compilation Remarks
+
+To use the AOT executor, it needs to know where the static runtime library is located, this can be configured using the following
+env var pointing to the absolute path to the library:
+
+```bash
+export CAIRO_NATIVE_RUNTIME_LIBRARY=/absolute/path/to/libcairo_native_runtime.a
 ```

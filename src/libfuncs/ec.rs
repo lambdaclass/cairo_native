@@ -193,13 +193,13 @@ pub fn build_point_from_x<'ctx, 'this>(
         context,
         location,
         ec_point_ty,
-        Some(get_integer_layout(252).align()),
+        get_integer_layout(252).align(),
     )?;
 
     let point = entry.append_op_result(llvm::undef(ec_point_ty, location))?;
     let point = entry.insert_value(context, location, point, entry.argument(1)?.into(), 0)?;
 
-    entry.store(context, location, point_ptr, point, None);
+    entry.store(context, location, point_ptr, point)?;
     let result = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
@@ -207,7 +207,7 @@ pub fn build_point_from_x<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let point = entry.load(context, location, point_ptr, ec_point_ty, None)?;
+    let point = entry.load(context, location, point_ptr, ec_point_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -244,37 +244,24 @@ pub fn build_state_add<'ctx, 'this>(
         context,
         location,
         ec_state_ty,
-        Some(get_integer_layout(252).align()),
+        get_integer_layout(252).align(),
     )?;
     let point_ptr = helper.init_block().alloca1(
         context,
         location,
         ec_state_ty,
-        Some(get_integer_layout(252).align()),
+        get_integer_layout(252).align(),
     )?;
 
-    entry.store(
-        context,
-        location,
-        state_ptr,
-        entry.argument(0)?.into(),
-        None,
-    );
-
-    entry.store(
-        context,
-        location,
-        point_ptr,
-        entry.argument(1)?.into(),
-        None,
-    );
+    entry.store(context, location, state_ptr, entry.argument(0)?.into())?;
+    entry.store(context, location, point_ptr, entry.argument(1)?.into())?;
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
         .libfunc_ec_state_add(context, helper, entry, state_ptr, point_ptr, location)?;
 
-    let state = entry.load(context, location, state_ptr, ec_state_ty, None)?;
+    let state = entry.load(context, location, state_ptr, ec_state_ty)?;
 
     entry.append_operation(helper.br(0, &[state], location));
     Ok(())
@@ -305,42 +292,24 @@ pub fn build_state_add_mul<'ctx, 'this>(
         context,
         location,
         ec_state_ty,
-        Some(get_integer_layout(252).align()),
+        get_integer_layout(252).align(),
     )?;
     let scalar_ptr = helper.init_block().alloca1(
         context,
         location,
         felt252_ty,
-        Some(get_integer_layout(252).align()),
+        get_integer_layout(252).align(),
     )?;
     let point_ptr = helper.init_block().alloca1(
         context,
         location,
         ec_point_ty,
-        Some(get_integer_layout(252).align()),
+        get_integer_layout(252).align(),
     )?;
 
-    entry.store(
-        context,
-        location,
-        state_ptr,
-        entry.argument(1)?.into(),
-        None,
-    );
-    entry.store(
-        context,
-        location,
-        scalar_ptr,
-        entry.argument(2)?.into(),
-        None,
-    );
-    entry.store(
-        context,
-        location,
-        point_ptr,
-        entry.argument(3)?.into(),
-        None,
-    );
+    entry.store(context, location, state_ptr, entry.argument(1)?.into())?;
+    entry.store(context, location, scalar_ptr, entry.argument(2)?.into())?;
+    entry.store(context, location, point_ptr, entry.argument(3)?.into())?;
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -349,7 +318,7 @@ pub fn build_state_add_mul<'ctx, 'this>(
             context, helper, entry, state_ptr, scalar_ptr, point_ptr, location,
         )?;
 
-    let state = entry.load(context, location, state_ptr, ec_state_ty, None)?;
+    let state = entry.load(context, location, state_ptr, ec_state_ty)?;
 
     entry.append_operation(helper.br(0, &[ec_op, state], location));
     Ok(())
@@ -377,22 +346,16 @@ pub fn build_state_finalize<'ctx, 'this>(
         context,
         location,
         ec_point_ty,
-        Some(get_integer_layout(252).align()),
+        get_integer_layout(252).align(),
     )?;
     let state_ptr = helper.init_block().alloca1(
         context,
         location,
         ec_state_ty,
-        Some(get_integer_layout(252).align()),
+        get_integer_layout(252).align(),
     )?;
 
-    entry.store(
-        context,
-        location,
-        state_ptr,
-        entry.argument(0)?.into(),
-        None,
-    );
+    entry.store(context, location, state_ptr, entry.argument(0)?.into())?;
 
     let is_zero = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -401,7 +364,7 @@ pub fn build_state_finalize<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let point = entry.load(context, location, point_ptr, ec_point_ty, None)?;
+    let point = entry.load(context, location, point_ptr, ec_point_ty)?;
 
     entry.append_operation(helper.cond_br(context, is_zero, [0, 1], [&[point], &[]], location));
     Ok(())
@@ -428,10 +391,7 @@ pub fn build_state_init<'ctx, 'this>(
         false,
     );
 
-    let point = entry
-        .append_operation(llvm::undef(ec_state_ty, location))
-        .result(0)?
-        .into();
+    let point = entry.append_op_result(llvm::undef(ec_state_ty, location))?;
 
     let value = BigInt::parse_bytes(
         b"3151312365169595090315724863753927489909436624354740709748557281394568342450",
@@ -482,14 +442,14 @@ pub fn build_try_new<'ctx, 'this>(
         context,
         location,
         ec_point_ty,
-        Some(get_integer_layout(252).align()),
+        get_integer_layout(252).align(),
     )?;
 
     let point = entry.append_op_result(llvm::undef(ec_point_ty, location))?;
     let point = entry.insert_value(context, location, point, entry.argument(0)?.into(), 0)?;
     let point = entry.insert_value(context, location, point, entry.argument(1)?.into(), 1)?;
 
-    entry.store(context, location, point_ptr, point, None);
+    entry.store(context, location, point_ptr, point)?;
 
     let result = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -562,10 +522,7 @@ pub fn build_zero<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let point = entry
-        .append_operation(llvm::undef(ec_point_ty, location))
-        .result(0)?
-        .into();
+    let point = entry.append_op_result(llvm::undef(ec_point_ty, location))?;
 
     let k0 = entry.const_int(context, location, 0, 252)?;
 

@@ -28,6 +28,9 @@ pub struct JitNativeExecutor<'m> {
     gas_metadata: GasMetadata,
 }
 
+unsafe impl<'a> Send for JitNativeExecutor<'a> {}
+unsafe impl<'a> Sync for JitNativeExecutor<'a> {}
+
 impl std::fmt::Debug for JitNativeExecutor<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("JitNativeExecutor")
@@ -73,7 +76,7 @@ impl<'m> JitNativeExecutor<'m> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::Error::InsufficientGasError)?;
+            .map_err(crate::error::Error::GasMetadataError)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -98,7 +101,7 @@ impl<'m> JitNativeExecutor<'m> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::Error::InsufficientGasError)?;
+            .map_err(crate::error::Error::GasMetadataError)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -120,7 +123,7 @@ impl<'m> JitNativeExecutor<'m> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
-            .map_err(|_| crate::error::Error::InsufficientGasError)?;
+            .map_err(crate::error::Error::GasMetadataError)?;
         // TODO: Check signature for contract interface.
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,

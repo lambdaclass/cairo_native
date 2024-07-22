@@ -14,11 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.78.0
+      - uses: dtolnay/rust-toolchain@1.79.0
       - uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11
@@ -31,7 +31,7 @@ jobs:
       - name: Build docs
         run: make doc
       - name: Deploy Documentation
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages

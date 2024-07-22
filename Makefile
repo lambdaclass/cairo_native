@@ -5,7 +5,7 @@
 #
 
 UNAME := $(shell uname)
-CAIRO_2_VERSION=2.6.3
+CAIRO_2_VERSION=2.6.4
 
 check-llvm:
 ifndef MLIR_SYS_180_PREFIX
@@ -56,7 +56,7 @@ test: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo test --profile ci --all-features
 
 test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo r --profile ci --bin cairo-native-test -- cairo-tests/
+	cargo r --profile ci --bin cairo-native-test -- corelib
 
 proptest: check-llvm needs-cairo2 runtime-ci
 	cargo test --profile ci --all-features proptest
@@ -69,7 +69,7 @@ proptest-ci: check-llvm needs-cairo2 runtime-ci
 
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- cairo-tests
+	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
 doc: check-llvm
 	cargo doc --all-features --no-deps --workspace
@@ -82,6 +82,15 @@ bench: build needs-cairo2 runtime
 
 bench-ci: check-llvm needs-cairo2 runtime
 	cargo criterion --all-features
+
+stress-test: check-llvm
+	RUST_LOG=cairo_native_stress=DEBUG cargo run --bin cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
+
+stress-plot:
+	python3 src/bin/cairo-native-stress/plotter.py cairo-native-stress-logs.jsonl
+
+stress-clean:
+	rm -rf .aot-cache
 
 install: check-llvm
 	RUSTFLAGS="-C target-cpu=native" cargo install --all-features --locked --path .
@@ -127,7 +136,7 @@ cairo-%-macos.tar:
 cairo-%.tar:
 	curl -L -o "$@" "https://github.com/starkware-libs/cairo/releases/download/v$*/release-x86_64-unknown-linux-musl.tar.gz"
 
-SCARB_VERSION = 2.6.3
+SCARB_VERSION = 2.6.4
 
 install-scarb:
 	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh -s -- --no-modify-path --version $(SCARB_VERSION)

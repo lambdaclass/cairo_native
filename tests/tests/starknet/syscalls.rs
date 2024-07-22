@@ -1,3 +1,8 @@
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{Arc, Mutex},
+};
+
 use crate::common::{load_cairo_path, run_native_program};
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
@@ -8,11 +13,55 @@ use cairo_native::{
     },
     values::JitValue,
 };
+use itertools::Itertools;
 use lazy_static::lazy_static;
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use starknet_types_core::felt::Felt;
 
-struct SyscallHandler;
+type Log = (Vec<Felt>, Vec<Felt>);
+type L2ToL1Message = (Felt, Vec<Felt>);
+
+#[derive(Debug, Default)]
+struct ContractLogs {
+    events: VecDeque<Log>,
+    l2_to_l1_messages: VecDeque<L2ToL1Message>,
+}
+
+#[derive(Debug, Default)]
+struct TestingState {
+    sequencer_address: Felt,
+    caller_address: Felt,
+    contract_address: Felt,
+    account_contract_address: Felt,
+    transaction_hash: Felt,
+    nonce: Felt,
+    chain_id: Felt,
+    version: Felt,
+    max_fee: u64,
+    block_number: u64,
+    block_timestamp: u64,
+    signature: Vec<Felt>,
+    logs: HashMap<Felt, ContractLogs>,
+}
+
+struct SyscallHandler {
+    /// Arc<Mutex> Is needed to test that the valures are set correct after the execution
+    testing_state: Arc<Mutex<TestingState>>,
+}
+
+impl SyscallHandler {
+    fn new() -> Self {
+        Self {
+            testing_state: Arc::new(Mutex::new(TestingState::default())),
+        }
+    }
+
+    fn with(state: Arc<Mutex<TestingState>>) -> Self {
+        Self {
+            testing_state: state,
+        }
+    }
+}
 
 impl StarknetSyscallHandler for SyscallHandler {
     fn get_block_hash(
@@ -350,6 +399,101 @@ impl StarknetSyscallHandler for SyscallHandler {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
     }
+
+    fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt> {
+        let selector_bytes = selector.to_bytes_be();
+
+        let selector = match std::str::from_utf8(&selector_bytes) {
+            Ok(selector) => selector.trim_start_matches('\0'),
+            Err(_) => return Vec::new(),
+        };
+
+        match selector {
+            "set_sequencer_address" => {
+                self.testing_state.lock().unwrap().sequencer_address = input[0];
+                vec![]
+            }
+            "set_caller_address" => {
+                self.testing_state.lock().unwrap().caller_address = input[0];
+                vec![]
+            }
+            "set_contract_address" => {
+                self.testing_state.lock().unwrap().contract_address = input[0];
+                vec![]
+            }
+            "set_account_contract_address" => {
+                self.testing_state.lock().unwrap().account_contract_address = input[0];
+                vec![]
+            }
+            "set_transaction_hash" => {
+                self.testing_state.lock().unwrap().transaction_hash = input[0];
+                vec![]
+            }
+            "set_nonce" => {
+                self.testing_state.lock().unwrap().nonce = input[0];
+                vec![]
+            }
+            "set_version" => {
+                self.testing_state.lock().unwrap().version = input[0];
+                vec![]
+            }
+            "set_chain_id" => {
+                self.testing_state.lock().unwrap().chain_id = input[0];
+                vec![]
+            }
+            "set_max_fee" => {
+                let max_fee = input[0].to_biguint().try_into().unwrap();
+                self.testing_state.lock().unwrap().max_fee = max_fee;
+                vec![]
+            }
+            "set_block_number" => {
+                let block_number = input[0].to_biguint().try_into().unwrap();
+                self.testing_state.lock().unwrap().block_number = block_number;
+                vec![]
+            }
+            "set_block_timestamp" => {
+                let block_timestamp = input[0].to_biguint().try_into().unwrap();
+                self.testing_state.lock().unwrap().block_timestamp = block_timestamp;
+                vec![]
+            }
+            "set_signature" => {
+                self.testing_state.lock().unwrap().signature = input.to_vec();
+                vec![]
+            }
+            "pop_log" => self
+                .testing_state
+                .lock()
+                .unwrap()
+                .logs
+                .get_mut(&input[0])
+                .and_then(|logs| logs.events.pop_front())
+                .map(|mut log| {
+                    let mut serialized_log = Vec::new();
+                    serialized_log.push(log.0.len().into());
+                    serialized_log.append(&mut log.0);
+                    serialized_log.push(log.1.len().into());
+                    serialized_log.append(&mut log.1);
+                    serialized_log
+                })
+                .unwrap_or_default(),
+            "pop_l2_to_l1_message" => self
+                .testing_state
+                .lock()
+                .unwrap()
+                .logs
+                .get_mut(&input[0])
+                .and_then(|logs| logs.l2_to_l1_messages.pop_front())
+                .map(|mut log| {
+                    let mut serialized_log = Vec::new();
+                    serialized_log.push(log.0);
+                    serialized_log.push(log.1.len().into());
+                    serialized_log.append(&mut log.1);
+                    serialized_log
+                })
+                .unwrap_or_default(),
+            _ => vec![],
+        }
+    }
 }
 
 lazy_static! {
@@ -364,7 +508,7 @@ fn get_block_hash() {
         "get_block_hash",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -389,7 +533,7 @@ fn get_execution_info() {
         "get_execution_info",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -468,7 +612,7 @@ fn get_execution_info_v2() {
         "get_execution_info_v2",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -560,7 +704,7 @@ fn deploy() {
         "deploy",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -592,7 +736,7 @@ fn replace_class() {
         "replace_class",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -615,7 +759,7 @@ fn library_call() {
         "library_call",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -651,7 +795,7 @@ fn call_contract() {
         "call_contract",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -687,7 +831,7 @@ fn storage_read() {
         "storage_read",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -715,7 +859,7 @@ fn storage_write() {
         "storage_write",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -741,7 +885,7 @@ fn emit_event() {
         "emit_event",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -764,7 +908,7 @@ fn send_message_to_l1() {
         "send_message_to_l1",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -787,7 +931,7 @@ fn keccak() {
         "keccak",
         &[],
         Some(u128::MAX),
-        Some(SyscallHandler),
+        Some(SyscallHandler::new()),
     );
 
     assert_eq_sorted!(
@@ -796,12 +940,220 @@ fn keccak() {
             tag: 0,
             value: Box::new(JitValue::Struct {
                 fields: vec![
-                    JitValue::Uint128(330939983442938156232262046592599923289),
                     JitValue::Uint128(288102973244655531496349286021939642254),
+                    JitValue::Uint128(330939983442938156232262046592599923289),
                 ],
                 debug_name: None,
             }),
             debug_name: None,
         },
     );
+}
+
+#[test]
+fn set_sequencer_address() {
+    let address = Felt::THREE;
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "set_sequencer_address",
+        &[JitValue::Felt252(address)],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(vec![])],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
+
+    let actual_address = state.lock().unwrap().sequencer_address;
+    assert_eq!(address, actual_address);
+}
+
+#[test]
+fn set_max_fee() {
+    let max_fee = 3;
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "set_max_fee",
+        &[JitValue::Felt252(Felt::from(max_fee))],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(vec![])],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
+
+    let actual_max_fee = state.lock().unwrap().max_fee;
+    assert_eq!(max_fee, actual_max_fee);
+}
+
+#[test]
+fn set_signature() {
+    let signature = vec![Felt::ONE, Felt::TWO, Felt::THREE];
+
+    let signature_jit = signature
+        .clone()
+        .into_iter()
+        .map(JitValue::Felt252)
+        .collect_vec();
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "set_signature",
+        &[JitValue::Array(signature_jit)],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(vec![])],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
+
+    let actual_signature = state.lock().unwrap().signature.clone();
+    assert_eq_sorted!(signature, actual_signature);
+}
+
+#[test]
+fn pop_log() {
+    let log_index = Felt::ONE;
+    let mut log = (vec![Felt::ONE, Felt::TWO], vec![Felt::THREE]);
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    let logs = ContractLogs {
+        l2_to_l1_messages: VecDeque::new(),
+        events: VecDeque::from(vec![log.clone()]),
+    };
+
+    state.lock().unwrap().logs.insert(log_index, logs);
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "pop_log",
+        &[JitValue::Felt252(log_index)],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    let mut serialized_log = Vec::new();
+    serialized_log.push(log.0.len().into());
+    serialized_log.append(&mut log.0);
+    serialized_log.push(log.1.len().into());
+    serialized_log.append(&mut log.1);
+
+    let serialized_log_jit = serialized_log
+        .into_iter()
+        .map(JitValue::Felt252)
+        .collect_vec();
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(serialized_log_jit)],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
+
+    assert!(state
+        .lock()
+        .unwrap()
+        .logs
+        .get(&log_index)
+        .unwrap()
+        .events
+        .is_empty());
+}
+
+#[test]
+fn pop_log_empty() {
+    let log_index = Felt::ONE;
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "pop_log",
+        &[JitValue::Felt252(log_index)],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(Vec::new())],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
+}
+
+#[test]
+fn pop_l2_to_l1_message() {
+    let log_index = Felt::ONE;
+    let mut message = (Felt::ONE, vec![Felt::TWO, Felt::THREE]);
+
+    let state = Arc::new(Mutex::new(TestingState::default()));
+
+    let logs = ContractLogs {
+        l2_to_l1_messages: VecDeque::from(vec![message.clone()]),
+        events: VecDeque::new(),
+    };
+
+    state.lock().unwrap().logs.insert(log_index, logs);
+
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "pop_l2_to_l1_message",
+        &[JitValue::Felt252(log_index)],
+        Some(u128::MAX),
+        Some(SyscallHandler::with(state.clone())),
+    );
+
+    let mut serialized_message = Vec::new();
+    serialized_message.push(message.0);
+    serialized_message.push(message.1.len().into());
+    serialized_message.append(&mut message.1);
+
+    let serialized_message_jit = serialized_message
+        .into_iter()
+        .map(JitValue::Felt252)
+        .collect_vec();
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Struct {
+            fields: vec![JitValue::Array(serialized_message_jit)],
+            debug_name: Some("core::array::Span::<core::felt252>".to_string())
+        }
+    );
+
+    assert!(state
+        .lock()
+        .unwrap()
+        .logs
+        .get(&log_index)
+        .unwrap()
+        .events
+        .is_empty());
 }

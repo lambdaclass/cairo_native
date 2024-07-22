@@ -164,7 +164,7 @@ pub fn build_k1_new<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -174,15 +174,25 @@ pub fn build_k1_new<'ctx, 'this>(
         LoadStoreOptions::default(),
     ));
 
-    let i128_ty = IntegerType::new(context, 128).into();
+    let (x_ty, x_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[2].ty,
+    )?;
+    let (y_ty, y_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[3].ty,
+    )?;
 
     // Allocate `x` argument and write the value.
-    let x_arg_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(context, &[i128_ty, i128_ty], false),
-        None,
-    )?;
+    let x_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, x_ty, x_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -192,12 +202,9 @@ pub fn build_k1_new<'ctx, 'this>(
     ));
 
     // Allocate `y` argument and write the value.
-    let y_arg_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(context, &[i128_ty, i128_ty], false),
-        None,
-    )?;
+    let y_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, y_ty, y_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -299,13 +306,7 @@ pub fn build_k1_new<'ctx, 'this>(
             )
             .result(0)?
             .into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[0].0,
-            Some(variant_tys[0].1.align()),
-        )?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry
@@ -451,7 +452,7 @@ pub fn build_k1_add<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -461,34 +462,25 @@ pub fn build_k1_add<'ctx, 'this>(
         LoadStoreOptions::default(),
     ));
 
-    // Allocate `p0` argument and write the value.
-    let p0_arg_ptr = helper.init_block().alloca1(
+    let (p0_ty, p0_layout) = registry.build_type_with_layout(
         context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-            ],
-            false,
-        ),
-        None,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[2].ty,
     )?;
+    let (p1_ty, p1_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[3].ty,
+    )?;
+
+    // Allocate `p0` argument and write the value.
+    let p0_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p0_ty, p0_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -498,33 +490,9 @@ pub fn build_k1_add<'ctx, 'this>(
     ));
 
     // Allocate `p1` argument and write the value.
-    let p1_arg_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-            ],
-            false,
-        ),
-        None,
-    )?;
+    let p1_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p1_ty, p1_layout.align())?;
 
     entry.append_operation(llvm::store(
         context,
@@ -782,7 +750,7 @@ pub fn build_k1_mul<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -792,34 +760,25 @@ pub fn build_k1_mul<'ctx, 'this>(
         LoadStoreOptions::default(),
     ));
 
-    // Allocate `p` argument and write the value.
-    let p_arg_ptr = helper.init_block().alloca1(
+    let (p_ty, p_layout) = registry.build_type_with_layout(
         context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-            ],
-            false,
-        ),
-        None,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[2].ty,
     )?;
+    let (scalar_ty, scalar_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[3].ty,
+    )?;
+
+    // Allocate `p` argument and write the value.
+    let p_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p_ty, p_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -829,19 +788,10 @@ pub fn build_k1_mul<'ctx, 'this>(
     ));
 
     // Allocate `scalar` argument and write the value.
-    let scalar_arg_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                IntegerType::new(context, 128).into(),
-                IntegerType::new(context, 128).into(),
-            ],
-            false,
-        ),
-        None,
-    )?;
+    let scalar_arg_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, scalar_ty, scalar_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -1098,7 +1048,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1108,20 +1058,18 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
         LoadStoreOptions::default(),
     ));
 
-    // Allocate `x` argument and write the value.
-    let x_arg_ptr = helper.init_block().alloca1(
+    let (x_ty, x_layout) = registry.build_type_with_layout(
         context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                IntegerType::new(context, 128).into(),
-                IntegerType::new(context, 128).into(),
-            ],
-            false,
-        ),
-        None,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[2].ty,
     )?;
+
+    // Allocate `x` argument and write the value.
+    let x_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, x_ty, x_layout.align())?;
 
     entry.append_operation(llvm::store(
         context,
@@ -1235,13 +1183,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
             )
             .result(0)?
             .into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[0].0,
-            Some(variant_tys[0].1.align()),
-        )?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry
@@ -1416,7 +1358,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1426,34 +1368,18 @@ pub fn build_k1_get_xy<'ctx, 'this>(
         LoadStoreOptions::default(),
     ));
 
-    // Allocate `p` argument and write the value.
-    let p_arg_ptr = helper.init_block().alloca1(
+    let (p_ty, p_layout) = registry.build_type_with_layout(
         context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-            ],
-            false,
-        ),
-        None,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[2].ty,
     )?;
+
+    // Allocate `p` argument and write the value.
+    let p_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p_ty, p_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -1745,7 +1671,7 @@ pub fn build_r1_new<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1755,15 +1681,25 @@ pub fn build_r1_new<'ctx, 'this>(
         LoadStoreOptions::default(),
     ));
 
-    let i128_ty = IntegerType::new(context, 128).into();
+    let (x_ty, x_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[2].ty,
+    )?;
+    let (y_ty, y_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[3].ty,
+    )?;
 
     // Allocate `x` argument and write the value.
-    let x_arg_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(context, &[i128_ty, i128_ty], false),
-        None,
-    )?;
+    let x_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, x_ty, x_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -1773,12 +1709,9 @@ pub fn build_r1_new<'ctx, 'this>(
     ));
 
     // Allocate `y` argument and write the value.
-    let y_arg_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(context, &[i128_ty, i128_ty], false),
-        None,
-    )?;
+    let y_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, y_ty, y_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -1881,13 +1814,7 @@ pub fn build_r1_new<'ctx, 'this>(
             )
             .result(0)?
             .into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[0].0,
-            Some(variant_tys[0].1.align()),
-        )?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry
@@ -2033,7 +1960,7 @@ pub fn build_r1_add<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2043,34 +1970,25 @@ pub fn build_r1_add<'ctx, 'this>(
         LoadStoreOptions::default(),
     ));
 
-    // Allocate `p0` argument and write the value.
-    let p0_arg_ptr = helper.init_block().alloca1(
+    let (p0_ty, p0_layout) = registry.build_type_with_layout(
         context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-            ],
-            false,
-        ),
-        None,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[2].ty,
     )?;
+    let (p1_ty, p1_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[3].ty,
+    )?;
+
+    // Allocate `p0` argument and write the value.
+    let p0_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p0_ty, p0_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -2080,33 +1998,9 @@ pub fn build_r1_add<'ctx, 'this>(
     ));
 
     // Allocate `p1` argument and write the value.
-    let p1_arg_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-            ],
-            false,
-        ),
-        None,
-    )?;
+    let p1_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p1_ty, p1_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -2364,7 +2258,7 @@ pub fn build_r1_mul<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2374,34 +2268,26 @@ pub fn build_r1_mul<'ctx, 'this>(
         LoadStoreOptions::default(),
     ));
 
-    // Allocate `p` argument and write the value.
-    let p_arg_ptr = helper.init_block().alloca1(
+    let (p_ty, p_layout) = registry.build_type_with_layout(
         context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-            ],
-            false,
-        ),
-        None,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[2].ty,
     )?;
+
+    let (scalar_ty, scalar_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[3].ty,
+    )?;
+
+    // Allocate `p` argument and write the value.
+    let p_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p_ty, p_layout.align())?;
 
     entry.append_operation(llvm::store(
         context,
@@ -2412,19 +2298,10 @@ pub fn build_r1_mul<'ctx, 'this>(
     ));
 
     // Allocate `scalar` argument and write the value.
-    let scalar_arg_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                IntegerType::new(context, 128).into(),
-                IntegerType::new(context, 128).into(),
-            ],
-            false,
-        ),
-        None,
-    )?;
+    let scalar_arg_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, scalar_ty, scalar_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -2682,7 +2559,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2704,7 +2581,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
             ],
             false,
         ),
-        None,
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2818,13 +2695,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
             )
             .result(0)?
             .into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[0].0,
-            Some(variant_tys[0].1.align()),
-        )?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry
@@ -2999,7 +2870,7 @@ pub fn build_r1_get_xy<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -3009,34 +2880,18 @@ pub fn build_r1_get_xy<'ctx, 'this>(
         LoadStoreOptions::default(),
     ));
 
-    // Allocate `p` argument and write the value.
-    let p_arg_ptr = helper.init_block().alloca1(
+    let (p_ty, p_layout) = registry.build_type_with_layout(
         context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-                llvm::r#type::r#struct(
-                    context,
-                    &[
-                        IntegerType::new(context, 128).into(),
-                        IntegerType::new(context, 128).into(),
-                    ],
-                    false,
-                ),
-            ],
-            false,
-        ),
-        None,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[2].ty,
     )?;
+
+    // Allocate `p` argument and write the value.
+    let p_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p_ty, p_layout.align())?;
 
     entry.append_operation(llvm::store(
         context,

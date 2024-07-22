@@ -20,13 +20,9 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith, cf,
-        llvm::{self, AllocaOptions, LoadStoreOptions},
-        ods,
-    },
+    dialect::{arith, cf, llvm, ods},
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
         Block, Location, Value,
     },
@@ -70,6 +66,21 @@ pub fn build_init<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &EnumInitConcreteLibfunc,
 ) -> Result<()> {
+    #[cfg(feature = "with-debug-utils")]
+    if let Some(auto_breakpoint) =
+        metadata.get::<crate::metadata::auto_breakpoint::AutoBreakpoint>()
+    {
+        auto_breakpoint.maybe_breakpoint(
+            entry,
+            location,
+            metadata,
+            &crate::metadata::auto_breakpoint::BreakpointEvent::EnumInit {
+                type_id: info.signature.branch_signatures[0].vars[0].ty.clone(),
+                variant_idx: info.index,
+            },
+        )
+    }
+
     let val = build_enum_value(
         context,
         registry,
@@ -143,81 +154,30 @@ pub fn build_enum_value<'ctx, 'this>(
                 .result(0)?
                 .into();
 
-            let val = entry
-                .append_operation(llvm::undef(enum_ty, location))
-                .result(0)?
-                .into();
-            let val = entry
-                .append_operation(llvm::insert_value(
-                    context,
-                    val,
-                    DenseI64ArrayAttribute::new(context, &[0]),
-                    tag_val,
-                    location,
-                ))
-                .result(0)?
-                .into();
+            let val = entry.append_op_result(llvm::undef(enum_ty, location))?;
+            let val = entry.insert_value(context, location, val, tag_val, 0)?;
+
             let mut val = if payload_type_info.is_zst(registry) {
                 val
             } else {
-                entry
-                    .append_operation(llvm::insert_value(
-                        context,
-                        val,
-                        DenseI64ArrayAttribute::new(context, &[1]),
-                        payload_value,
-                        location,
-                    ))
-                    .result(0)?
-                    .into()
+                entry.insert_value(context, location, val, payload_value, 1)?
             };
 
             if type_info.is_memory_allocated(registry) {
-                let k1 = helper
-                    .init_block()
-                    .append_operation(arith::constant(
-                        context,
-                        IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
-                let stack_ptr = helper
-                    .init_block()
-                    .append_operation(llvm::alloca(
-                        context,
-                        k1,
-                        llvm::r#type::pointer(context, 0),
-                        location,
-                        AllocaOptions::new()
-                            .align(Some(IntegerAttribute::new(
-                                IntegerType::new(context, 64).into(),
-                                layout.align() as i64,
-                            )))
-                            .elem_type(Some(TypeAttribute::new(
-                                type_info.build(context, helper, registry, metadata, enum_type)?,
-                            ))),
-                    ))
-                    .result(0)?
-                    .into();
+                let stack_ptr = helper.init_block().alloca1(
+                    context,
+                    location,
+                    type_info.build(context, helper, registry, metadata, enum_type)?,
+                    layout.align(),
+                )?;
 
                 // Convert the enum from the concrete variant to the internal representation.
-                entry.append_operation(llvm::store(
-                    context,
-                    val,
-                    stack_ptr,
-                    location,
-                    LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        layout.align() as i64,
-                    ))),
-                ));
+                entry.store(context, location, stack_ptr, val)?;
                 val = entry.load(
                     context,
                     location,
                     stack_ptr,
                     type_info.build(context, helper, registry, metadata, enum_type)?,
-                    Some(layout.align()),
                 )?;
             };
 
@@ -337,17 +297,10 @@ pub fn build_match<'ctx, 'this>(
                         metadata,
                         &info.param_signatures()[0].ty,
                     )?,
-                    Some(layout.align()),
+                    layout.align(),
                 )?;
-                entry.store(
-                    context,
-                    location,
-                    stack_ptr,
-                    entry.argument(0)?.into(),
-                    Some(layout.align()),
-                );
-                let tag_val =
-                    entry.load(context, location, stack_ptr, tag_ty, Some(layout.align()))?;
+                entry.store(context, location, stack_ptr, entry.argument(0)?.into())?;
+                let tag_val = entry.load(context, location, stack_ptr, tag_ty)?;
 
                 (Some(stack_ptr), tag_val)
             } else {
@@ -417,13 +370,7 @@ pub fn build_match<'ctx, 'this>(
 
                 let payload_val = match stack_ptr {
                     Some(stack_ptr) => {
-                        let val = block.load(
-                            context,
-                            location,
-                            stack_ptr,
-                            enum_ty,
-                            Some(layout.align()),
-                        )?;
+                        let val = block.load(context, location, stack_ptr, enum_ty)?;
                         block.extract_value(context, location, val, payload_ty, 1)?
                     }
                     None => {
@@ -508,30 +455,15 @@ pub fn build_snapshot_match<'ctx, 'this>(
                         metadata,
                         &info.param_signatures()[0].ty,
                     )?,
-                    Some(layout.align()),
+                    layout.align(),
                 )?;
-                entry.store(
-                    context,
-                    location,
-                    stack_ptr,
-                    entry.argument(0)?.into(),
-                    Some(layout.align()),
-                );
-                let tag_val =
-                    entry.load(context, location, stack_ptr, tag_ty, Some(layout.align()))?;
+                entry.store(context, location, stack_ptr, entry.argument(0)?.into())?;
+                let tag_val = entry.load(context, location, stack_ptr, tag_ty)?;
 
                 (Some(stack_ptr), tag_val)
             } else {
-                let tag_val = entry
-                    .append_operation(llvm::extract_value(
-                        context,
-                        entry.argument(0)?.into(),
-                        DenseI64ArrayAttribute::new(context, &[0]),
-                        tag_ty,
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
+                let tag_val =
+                    entry.extract_value(context, location, entry.argument(0)?.into(), tag_ty, 0)?;
 
                 (None, tag_val)
             };
@@ -562,14 +494,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
 
             // Default block.
             {
-                let val = default_block
-                    .append_operation(arith::constant(
-                        context,
-                        IntegerAttribute::new(IntegerType::new(context, 1).into(), 0).into(),
-                        location,
-                    ))
-                    .result(0)?
-                    .into();
+                let val = default_block.const_int(context, location, 0, 1)?;
 
                 default_block.append_operation(cf::assert(
                     context,
@@ -588,13 +513,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
 
                 let payload_val = match stack_ptr {
                     Some(stack_ptr) => {
-                        let val = block.load(
-                            context,
-                            location,
-                            stack_ptr,
-                            enum_ty,
-                            Some(layout.align()),
-                        )?;
+                        let val = block.load(context, location, stack_ptr, enum_ty)?;
                         block.extract_value(context, location, val, payload_ty, 1)?
                     }
                     None => {
@@ -605,10 +524,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
                             entry.argument(0)?.into()
                         } else {
                             assert!(registry.get_type(&variant_ids[i])?.is_zst(registry));
-                            block
-                                .append_operation(llvm::undef(payload_ty, location))
-                                .result(0)?
-                                .into()
+                            block.append_op_result(llvm::undef(payload_ty, location))?
                         }
                     }
                 };

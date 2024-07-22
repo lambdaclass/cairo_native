@@ -89,18 +89,11 @@ pub fn build_get<'ctx, 'this>(
     let dict_ptr = entry.argument(0)?.into();
     let key_value = entry.argument(1)?.into();
 
-    let key_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, key_ty, Some(key_layout.align()))?;
+    let key_ptr = helper
+        .init_block()
+        .alloca1(context, location, key_ty, key_layout.align())?;
 
-    entry.store(
-        context,
-        location,
-        key_ptr,
-        key_value,
-        Some(key_layout.align()),
-    );
+    entry.store(context, location, key_ptr, key_value)?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -169,13 +162,7 @@ pub fn build_get<'ctx, 'this>(
 
     // found block
     {
-        let loaded_val_ptr = block_is_found.load(
-            context,
-            location,
-            result_ptr,
-            value_ty,
-            Some(value_layout.align()),
-        )?;
+        let loaded_val_ptr = block_is_found.load(context, location, result_ptr, value_ty)?;
         block_is_found.append_operation(cf::br(
             block_final,
             &[result_ptr, loaded_val_ptr],
@@ -203,16 +190,13 @@ pub fn build_get<'ctx, 'this>(
 
 pub fn build_finalize<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: &SignatureAndTypeConcreteLibfunc,
+    _info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let value_type = registry.get_type(&info.param_signatures()[1].ty)?;
-    let value_layout = value_type.layout(registry)?;
-
     let key_ty = IntegerType::new(context, 252).into();
     let key_layout = get_integer_layout(252);
 
@@ -237,26 +221,13 @@ pub fn build_finalize<'ctx, 'this>(
         2,
     )?;
 
-    entry.store(
-        context,
-        location,
-        value_ptr,
-        new_value,
-        Some(value_layout.align()),
-    );
+    entry.store(context, location, value_ptr, new_value)?;
 
-    let key_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, key_ty, Some(key_layout.align()))?;
+    let key_ptr = helper
+        .init_block()
+        .alloca1(context, location, key_ty, key_layout.align())?;
 
-    entry.store(
-        context,
-        location,
-        key_ptr,
-        key_value,
-        Some(key_layout.align()),
-    );
+    entry.store(context, location, key_ptr, key_value)?;
 
     // call insert
 
