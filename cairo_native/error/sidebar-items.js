@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Error","SierraAssertError"],"type":["Result"]};
+window.SIDEBAR_ITEMS = {"enum":["CompilerError","Error","SierraAssertError"],"type":["Result"]};
