@@ -193,11 +193,8 @@ mod test {
         .unwrap();
 
         (sirrra_program.program, db)
-
-        //program
     }
 
-    //#[fixture]
     fn debug_info(db: &RootDatabase, program: &Program) -> DebugInfo {
         // Extract debug information from the program
         DebugInfo::extract(db, program).unwrap()
