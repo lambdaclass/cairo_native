@@ -91,7 +91,7 @@ pub fn build_const_as_box<'ctx, 'this>(
     ))?;
 
     // Store constant in box
-    entry.store(context, location, ptr, value, Some(inner_layout.align()))?;
+    entry.store(context, location, ptr, value)?;
 
     entry.append_operation(helper.br(0, &[ptr], location));
     Ok(())

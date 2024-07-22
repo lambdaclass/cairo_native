@@ -66,6 +66,21 @@ pub fn build_init<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &EnumInitConcreteLibfunc,
 ) -> Result<()> {
+    #[cfg(feature = "with-debug-utils")]
+    if let Some(auto_breakpoint) =
+        metadata.get::<crate::metadata::auto_breakpoint::AutoBreakpoint>()
+    {
+        auto_breakpoint.maybe_breakpoint(
+            entry,
+            location,
+            metadata,
+            &crate::metadata::auto_breakpoint::BreakpointEvent::EnumInit {
+                type_id: info.signature.branch_signatures[0].vars[0].ty.clone(),
+                variant_idx: info.index,
+            },
+        )
+    }
+
     let val = build_enum_value(
         context,
         registry,
@@ -153,17 +168,16 @@ pub fn build_enum_value<'ctx, 'this>(
                     context,
                     location,
                     type_info.build(context, helper, registry, metadata, enum_type)?,
-                    Some(layout.align()),
+                    layout.align(),
                 )?;
 
                 // Convert the enum from the concrete variant to the internal representation.
-                entry.store(context, location, stack_ptr, val, Some(layout.align()))?;
+                entry.store(context, location, stack_ptr, val)?;
                 val = entry.load(
                     context,
                     location,
                     stack_ptr,
                     type_info.build(context, helper, registry, metadata, enum_type)?,
-                    Some(layout.align()),
                 )?;
             };
 
@@ -283,17 +297,10 @@ pub fn build_match<'ctx, 'this>(
                         metadata,
                         &info.param_signatures()[0].ty,
                     )?,
-                    Some(layout.align()),
+                    layout.align(),
                 )?;
-                entry.store(
-                    context,
-                    location,
-                    stack_ptr,
-                    entry.argument(0)?.into(),
-                    Some(layout.align()),
-                )?;
-                let tag_val =
-                    entry.load(context, location, stack_ptr, tag_ty, Some(layout.align()))?;
+                entry.store(context, location, stack_ptr, entry.argument(0)?.into())?;
+                let tag_val = entry.load(context, location, stack_ptr, tag_ty)?;
 
                 (Some(stack_ptr), tag_val)
             } else {
@@ -363,13 +370,7 @@ pub fn build_match<'ctx, 'this>(
 
                 let payload_val = match stack_ptr {
                     Some(stack_ptr) => {
-                        let val = block.load(
-                            context,
-                            location,
-                            stack_ptr,
-                            enum_ty,
-                            Some(layout.align()),
-                        )?;
+                        let val = block.load(context, location, stack_ptr, enum_ty)?;
                         block.extract_value(context, location, val, payload_ty, 1)?
                     }
                     None => {
@@ -454,17 +455,10 @@ pub fn build_snapshot_match<'ctx, 'this>(
                         metadata,
                         &info.param_signatures()[0].ty,
                     )?,
-                    Some(layout.align()),
+                    layout.align(),
                 )?;
-                entry.store(
-                    context,
-                    location,
-                    stack_ptr,
-                    entry.argument(0)?.into(),
-                    Some(layout.align()),
-                )?;
-                let tag_val =
-                    entry.load(context, location, stack_ptr, tag_ty, Some(layout.align()))?;
+                entry.store(context, location, stack_ptr, entry.argument(0)?.into())?;
+                let tag_val = entry.load(context, location, stack_ptr, tag_ty)?;
 
                 (Some(stack_ptr), tag_val)
             } else {
@@ -519,13 +513,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
 
                 let payload_val = match stack_ptr {
                     Some(stack_ptr) => {
-                        let val = block.load(
-                            context,
-                            location,
-                            stack_ptr,
-                            enum_ty,
-                            Some(layout.align()),
-                        )?;
+                        let val = block.load(context, location, stack_ptr, enum_ty)?;
                         block.extract_value(context, location, val, payload_ty, 1)?
                     }
                     None => {
