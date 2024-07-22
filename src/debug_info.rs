@@ -155,65 +155,73 @@ fn extract_location_from_stable_loc<'c>(
 
 #[cfg(test)]
 mod test {
+    use std::fs;
+
     use super::*;
-    use crate::{context::NativeContext, utils::test::load_cairo};
-    use cairo_lang_semantic::test_utils::setup_test_function;
-    use cairo_lang_sierra_generator::db::SierraGenGroup;
+    use crate::context::NativeContext;
+    use cairo_lang_compiler::{compile_prepared_db, project::setup_project, CompilerConfig};
     use rstest::*;
 
     #[fixture]
-    fn db() -> RootDatabase {
-        // Build the root database with corelib detection
-        let db = RootDatabase::builder().detect_corelib().build().unwrap();
-
-        // Setup a test function using the `setup_test_function` utility
-        let test_function = setup_test_function(&db, "fn foo(a: felt252) {}", "foo", "").unwrap();
-        let function_id = cairo_lang_lowering::ids::ConcreteFunctionWithBodyId::from_semantic(
-            &db,
-            test_function.concrete_function_id,
-        );
-        let _ = db.function_with_body_sierra(function_id);
-
-        db
-    }
-
-    #[fixture]
-    fn program() -> Program {
+    fn program() -> (Program, RootDatabase) {
         // Define a dummy program for testing
-        let (_, program) = load_cairo! {
+        let program_str = stringify! {
             use core::num::traits::Sqrt;
             fn run_test() -> u128 {
                 let a: u128 = 1;
                 a.sqrt().into()
             }
         };
-        program
+
+        let mut program_file = tempfile::Builder::new()
+            .prefix("test_")
+            .suffix(".cairo")
+            .tempfile()
+            .unwrap();
+        fs::write(&mut program_file, program_str).unwrap();
+
+        let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
+        let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
+        let sirrra_program = compile_prepared_db(
+            &mut db,
+            main_crate_ids,
+            CompilerConfig {
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        (sirrra_program.program, db)
+
+        //program
     }
 
-    #[fixture]
-    fn debug_info(db: RootDatabase, program: Program) -> DebugInfo {
+    //#[fixture]
+    fn debug_info(db: &RootDatabase, program: &Program) -> DebugInfo {
         // Extract debug information from the program
-        DebugInfo::extract(&db, &program).unwrap()
+        DebugInfo::extract(db, program).unwrap()
     }
 
     #[rstest]
-    fn test_extract_debug_info(debug_info: DebugInfo) {
+    fn test_extract_debug_info(program: (Program, RootDatabase)) {
+        let dbg_info = debug_info(&program.1, &program.0);
         // Assert the debug information contains u128
-        assert!(debug_info
+        assert!(dbg_info
             .type_declarations
             .iter()
             .any(|(k, _)| k.debug_name == Some("u128".into())));
 
         // Assert the debug information contains u128_sqrt
-        assert!(debug_info
+        assert!(dbg_info
             .libfunc_declarations
             .iter()
             .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
 
-        assert!(debug_info.statements.is_empty());
+        assert!(!dbg_info.statements.is_empty());
 
         // Assert the debug information contains the run_test function
-        assert!(debug_info.funcs.iter().any(|(k, _)| k
+        assert!(dbg_info.funcs.iter().any(|(k, _)| k
             .debug_name
             .clone()
             .unwrap()
@@ -221,12 +229,15 @@ mod test {
     }
 
     #[rstest]
-    fn test_extract_debug_locations(db: RootDatabase, debug_info: DebugInfo) {
+    fn test_extract_debug_locations(program: (Program, RootDatabase)) {
         // Get the native context
         let native_context = NativeContext::new();
 
+        let dbg_info = debug_info(&program.1, &program.0);
+
         // Extract debug locations from the debug information
-        let debug_locations = DebugLocations::extract(native_context.context(), &db, &debug_info);
+        let debug_locations =
+            DebugLocations::extract(native_context.context(), &program.1, &dbg_info);
 
         // Assert the debug locations contain u128
         assert!(debug_locations
@@ -240,7 +251,7 @@ mod test {
             .iter()
             .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
 
-        assert!(debug_locations.statements.is_empty());
+        assert!(!debug_locations.statements.is_empty());
 
         // Assert the debug locations contain the run_test function
         assert!(debug_locations.funcs.iter().any(|(k, _)| k
