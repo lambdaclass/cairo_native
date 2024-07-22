@@ -779,43 +779,6 @@
 <a href="#779" id="779">779</a>
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
-<a href="#782" id="782">782</a>
-<a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
-<a href="#816" id="816">816</a>
-<a href="#817" id="817">817</a>
-<a href="#818" id="818">818</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Debug utilities
 //!
 //! A collection of utilities to debug values in MLIR in execution.
@@ -939,16 +902,13 @@
 }
 
 <span class="kw">impl </span>DebugUtils {
-    <span class="kw">pub fn </span>breakpoint_marker&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    <span class="kw">pub fn </span>breakpoint_marker(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        context: <span class="kw-2">&amp;</span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+        block: <span class="kw-2">&amp;</span>Block,
+        location: Location,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(DebugBinding::BreakpointMarker) {
             module.body().append_operation(func::func(
                 context,
@@ -975,17 +935,14 @@
     }
 
     <span class="doccomment">/// Prints the given &amp;str.
-    </span><span class="kw">pub fn </span>debug_print&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    </span><span class="kw">pub fn </span>debug_print(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        context: <span class="kw-2">&amp;</span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
+        block: <span class="kw-2">&amp;</span>Block,
         message: <span class="kw-2">&amp;</span>str,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+        location: Location,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(DebugBinding::DebugPrint) {
             module.body().append_operation(func::func(
                 context,
@@ -1054,29 +1011,19 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>debug_breakpoint_trap&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+    <span class="kw">pub fn </span>debug_breakpoint_trap(<span class="kw-2">&amp;</span><span class="self">self</span>, block: <span class="kw-2">&amp;</span>Block, location: Location) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         block.append_operation(OperationBuilder::new(<span class="string">"llvm.intr.debugtrap"</span>, location).build()<span class="question-mark">?</span>);
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>print_pointer&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    <span class="kw">pub fn </span>print_pointer(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        context: <span class="kw-2">&amp;</span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        value: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'_</span>&gt;,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+        block: <span class="kw-2">&amp;</span>Block,
+        value: Value,
+        location: Location,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(DebugBinding::PrintPointer) {
             module.body().append_operation(func::func(
                 context,
@@ -1102,17 +1049,14 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>print_i1&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    <span class="kw">pub fn </span>print_i1(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        context: <span class="kw-2">&amp;</span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        value: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'_</span>&gt;,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+        block: <span class="kw-2">&amp;</span>Block,
+        value: Value,
+        location: Location,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(DebugBinding::PrintI1) {
             module.body().append_operation(func::func(
                 context,
@@ -1140,17 +1084,14 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>print_felt252&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    <span class="kw">pub fn </span>print_felt252(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        context: <span class="kw-2">&amp;</span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        value: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'_</span>&gt;,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+        block: <span class="kw-2">&amp;</span>Block,
+        value: Value,
+        location: Location,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(DebugBinding::PrintFelt252) {
             module.body().append_operation(func::func(
                 context,
@@ -1242,17 +1183,14 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>print_i8&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    <span class="kw">pub fn </span>print_i8(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        context: <span class="kw-2">&amp;</span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        value: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'_</span>&gt;,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+        block: <span class="kw-2">&amp;</span>Block,
+        value: Value,
+        location: Location,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(DebugBinding::PrintI8) {
             module.body().append_operation(func::func(
                 context,
@@ -1280,17 +1218,14 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>print_i32&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    <span class="kw">pub fn </span>print_i32(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        context: <span class="kw-2">&amp;</span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        value: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'_</span>&gt;,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+        block: <span class="kw-2">&amp;</span>Block,
+        value: Value,
+        location: Location,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(DebugBinding::PrintI32) {
             module.body().append_operation(func::func(
                 context,
@@ -1318,17 +1253,14 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>print_i64&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    <span class="kw">pub fn </span>print_i64(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        context: <span class="kw-2">&amp;</span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        value: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'_</span>&gt;,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+        block: <span class="kw-2">&amp;</span>Block,
+        value: Value,
+        location: Location,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(DebugBinding::PrintI64) {
             module.body().append_operation(func::func(
                 context,
@@ -1356,17 +1288,14 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>print_i128&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    <span class="kw">pub fn </span>print_i128(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        context: <span class="kw-2">&amp;</span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        value: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'_</span>&gt;,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+        block: <span class="kw-2">&amp;</span>Block,
+        value: Value,
+        location: Location,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(DebugBinding::PrintI128) {
             module.body().append_operation(func::func(
                 context,
@@ -1428,18 +1357,15 @@
     <span class="doccomment">/// Dump a memory region at runtime.
     ///
     /// Requires the pointer (at runtime) and its length in bytes (at compile-time).
-    </span><span class="kw">pub fn </span>dump_mem&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    </span><span class="kw">pub fn </span>dump_mem(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        context: <span class="kw-2">&amp;</span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'_</span>&gt;,
+        block: <span class="kw-2">&amp;</span>Block,
+        ptr: Value,
         len: usize,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
+        location: Location,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(DebugBinding::DumpMemRegion) {
             module.body().append_operation(func::func(
                 context,

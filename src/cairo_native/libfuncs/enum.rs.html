@@ -627,6 +627,21 @@
 <a href="#627" id="627">627</a>
 <a href="#628" id="628">628</a>
 <a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -695,6 +710,21 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>EnumInitConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="attr">#[cfg(feature = <span class="string">"with-debug-utils"</span>)]
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(auto_breakpoint) =
+        metadata.get::&lt;<span class="kw">crate</span>::metadata::auto_breakpoint::AutoBreakpoint&gt;()
+    {
+        auto_breakpoint.maybe_breakpoint(
+            entry,
+            location,
+            metadata,
+            <span class="kw-2">&amp;</span><span class="kw">crate</span>::metadata::auto_breakpoint::BreakpointEvent::EnumInit {
+                type_id: info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty.clone(),
+                variant_idx: info.index,
+            },
+        )
+    }
+
     <span class="kw">let </span>val = build_enum_value(
         context,
         registry,
