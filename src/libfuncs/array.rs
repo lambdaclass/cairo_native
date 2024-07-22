@@ -892,11 +892,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
 
     let array_len_value = entry.const_int_from_type(context, location, fields.len(), len_ty)?;
-    metadata
-        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-        .unwrap()
-        .print_i32(context, helper, entry, array_len_value, location)
-        .unwrap();
+
     let array_container = entry.append_op_result(llvm::undef(array_ty, location))?;
 
     let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;

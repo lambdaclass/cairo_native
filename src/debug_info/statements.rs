@@ -135,9 +135,22 @@ fn locate_statement(variables: &Arena<Variable>, statement: &LoweringStatement) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cairo_lang_defs::ids::VariantId;
     use cairo_lang_lowering::ids::FunctionId;
     use cairo_lang_lowering::ids::LocationId;
     use cairo_lang_lowering::objects::StatementCall;
+    use cairo_lang_lowering::StatementConst;
+    use cairo_lang_lowering::StatementDesnap;
+    use cairo_lang_lowering::StatementEnumConstruct;
+    use cairo_lang_lowering::StatementSnapshot;
+    use cairo_lang_lowering::StatementStructConstruct;
+    use cairo_lang_lowering::StatementStructDestructure;
+    use cairo_lang_lowering::VarUsage;
+    use cairo_lang_semantic::items::constant::ConstValue;
+    use cairo_lang_semantic::items::imp::ImplId;
+    use cairo_lang_semantic::ConcreteEnumId;
+    use cairo_lang_semantic::ConcreteVariant;
+    use cairo_lang_semantic::TypeId;
     use salsa::InternKey;
 
     #[test]
@@ -158,248 +171,248 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_locate_statement_struct_construct() {
-    //     let mut arena = Arena::<Variable>::new();
+    #[test]
+    fn test_locate_statement_struct_construct() {
+        let mut arena = Arena::<Variable>::new();
 
-    //     let a = arena.alloc(Variable {
-    //         droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             45_u32.into(),
-    //         ))),
-    //         copyable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             40_u32.into(),
-    //         ))),
-    //         destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             30_u32.into(),
-    //         ))),
-    //         panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             20_u32.into(),
-    //         ))),
-    //         ty: TypeId::from_intern_id(10_u32.into()),
-    //         location: LocationId::from_intern_id(15_u32.into()),
-    //     });
+        let a = arena.alloc(Variable {
+            droppable: Ok(ImplId::from_intern_id(
+                45_u32.into(),
+            )),
+            copyable: Ok(ImplId::from_intern_id(
+                40_u32.into(),
+            )),
+            destruct_impl: Ok(ImplId::from_intern_id(
+                30_u32.into(),
+            )),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(
+                20_u32.into(),
+            )),
+            ty: TypeId::from_intern_id(10_u32.into()),
+            location: LocationId::from_intern_id(15_u32.into()),
+        });
 
-    //     let statement = LoweringStatement::StructConstruct(StatementStructConstruct {
-    //         inputs: Default::default(),
-    //         output: a,
-    //     });
+        let statement = LoweringStatement::StructConstruct(StatementStructConstruct {
+            inputs: Default::default(),
+            output: a,
+        });
 
-    //     assert_eq!(
-    //         locate_statement(&arena, &statement),
-    //         LocationId::from_intern_id((15_u32).into())
-    //     );
-    // }
+        assert_eq!(
+            locate_statement(&arena, &statement),
+            LocationId::from_intern_id((15_u32).into())
+        );
+    }
 
-    // #[test]
-    // fn test_locate_statement_struct_destructure() {
-    //     let mut arena = Arena::<Variable>::new();
+    #[test]
+    fn test_locate_statement_struct_destructure() {
+        let mut arena = Arena::<Variable>::new();
 
-    //     let a = arena.alloc(Variable {
-    //         droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             45_u32.into(),
-    //         ))),
-    //         copyable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             40_u32.into(),
-    //         ))),
-    //         destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             30_u32.into(),
-    //         ))),
-    //         panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             20_u32.into(),
-    //         ))),
-    //         ty: TypeId::from_intern_id(10_u32.into()),
-    //         location: LocationId::from_intern_id(15_u32.into()),
-    //     });
+        let a = arena.alloc(Variable {
+            droppable: Ok(ImplId::from_intern_id(
+                45_u32.into(),
+            )),
+            copyable: Ok(ImplId::from_intern_id(
+                40_u32.into(),
+            )),
+            destruct_impl: Ok(ImplId::from_intern_id(
+                30_u32.into(),
+            )),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(
+                20_u32.into(),
+            )),
+            ty: TypeId::from_intern_id(10_u32.into()),
+            location: LocationId::from_intern_id(15_u32.into()),
+        });
 
-    //     let statement = LoweringStatement::StructDestructure(StatementStructDestructure {
-    //         input: VarUsage {
-    //             var_id: a,
-    //             location: LocationId::from_intern_id(23_u32.into()),
-    //         },
-    //         outputs: Default::default(),
-    //     });
+        let statement = LoweringStatement::StructDestructure(StatementStructDestructure {
+            input: VarUsage {
+                var_id: a,
+                location: LocationId::from_intern_id(23_u32.into()),
+            },
+            outputs: Default::default(),
+        });
 
-    //     assert_eq!(
-    //         locate_statement(&arena, &statement),
-    //         LocationId::from_intern_id((23_u32).into())
-    //     );
-    // }
+        assert_eq!(
+            locate_statement(&arena, &statement),
+            LocationId::from_intern_id((23_u32).into())
+        );
+    }
 
-    // #[test]
-    // fn test_locate_statement_enum_construct() {
-    //     let mut arena = Arena::<Variable>::new();
+    #[test]
+    fn test_locate_statement_enum_construct() {
+        let mut arena = Arena::<Variable>::new();
 
-    //     let a = arena.alloc(Variable {
-    //         droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             45_u32.into(),
-    //         ))),
-    //         copyable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             40_u32.into(),
-    //         ))),
-    //         destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             30_u32.into(),
-    //         ))),
-    //         panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             20_u32.into(),
-    //         ))),
-    //         ty: TypeId::from_intern_id(10_u32.into()),
-    //         location: LocationId::from_intern_id(15_u32.into()),
-    //     });
+        let a = arena.alloc(Variable {
+            droppable: Ok(ImplId::from_intern_id(
+                45_u32.into(),
+            )),
+            copyable: Ok(ImplId::from_intern_id(
+                40_u32.into(),
+            )),
+            destruct_impl: Ok(ImplId::from_intern_id(
+                30_u32.into(),
+            )),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(
+                20_u32.into(),
+            )),
+            ty: TypeId::from_intern_id(10_u32.into()),
+            location: LocationId::from_intern_id(15_u32.into()),
+        });
 
-    //     let statement = LoweringStatement::EnumConstruct(StatementEnumConstruct {
-    //         variant: ConcreteVariant {
-    //             concrete_enum_id: ConcreteEnumId::from_intern_id(55_u32.into()),
-    //             id: VariantId::from_intern_id(432_u32.into()),
-    //             ty: TypeId::from_intern_id(54_u32.into()),
-    //             idx: 232,
-    //         },
-    //         input: VarUsage {
-    //             var_id: a,
-    //             location: LocationId::from_intern_id(23_u32.into()),
-    //         },
-    //         output: a,
-    //     });
+        let statement = LoweringStatement::EnumConstruct(StatementEnumConstruct {
+            variant: ConcreteVariant {
+                concrete_enum_id: ConcreteEnumId::from_intern_id(55_u32.into()),
+                id: VariantId::from_intern_id(432_u32.into()),
+                ty: TypeId::from_intern_id(54_u32.into()),
+                idx: 232,
+            },
+            input: VarUsage {
+                var_id: a,
+                location: LocationId::from_intern_id(23_u32.into()),
+            },
+            output: a,
+        });
 
-    //     assert_eq!(
-    //         locate_statement(&arena, &statement),
-    //         LocationId::from_intern_id((15_u32).into())
-    //     );
-    // }
+        assert_eq!(
+            locate_statement(&arena, &statement),
+            LocationId::from_intern_id((15_u32).into())
+        );
+    }
 
-    // #[test]
-    // fn test_locate_statement_snapshot() {
-    //     let mut arena = Arena::<Variable>::new();
+    #[test]
+    fn test_locate_statement_snapshot() {
+        let mut arena = Arena::<Variable>::new();
 
-    //     let a = arena.alloc(Variable {
-    //         droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             45_u32.into(),
-    //         ))),
-    //         copyable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             40_u32.into(),
-    //         ))),
-    //         destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             30_u32.into(),
-    //         ))),
-    //         panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             20_u32.into(),
-    //         ))),
-    //         ty: TypeId::from_intern_id(10_u32.into()),
-    //         location: LocationId::from_intern_id(15_u32.into()),
-    //     });
+        let a = arena.alloc(Variable {
+            droppable: Ok(ImplId::from_intern_id(
+                45_u32.into(),
+            )),
+            copyable: Ok(ImplId::from_intern_id(
+                40_u32.into(),
+            )),
+            destruct_impl: Ok(ImplId::from_intern_id(
+                30_u32.into(),
+            )),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(
+                20_u32.into(),
+            )),
+            ty: TypeId::from_intern_id(10_u32.into()),
+            location: LocationId::from_intern_id(15_u32.into()),
+        });
 
-    //     let b = arena.alloc(Variable {
-    //         droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             4534_u32.into(),
-    //         ))),
-    //         copyable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             4320_u32.into(),
-    //         ))),
-    //         destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             31_u32.into(),
-    //         ))),
-    //         panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             223_u32.into(),
-    //         ))),
-    //         ty: TypeId::from_intern_id(111_u32.into()),
-    //         location: LocationId::from_intern_id(125_u32.into()),
-    //     });
+        let b = arena.alloc(Variable {
+            droppable: Ok(ImplId::from_intern_id(
+                4534_u32.into(),
+            )),
+            copyable: Ok(ImplId::from_intern_id(
+                4320_u32.into(),
+            )),
+            destruct_impl: Ok(ImplId::from_intern_id(
+                31_u32.into(),
+            )),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(
+                223_u32.into(),
+            )),
+            ty: TypeId::from_intern_id(111_u32.into()),
+            location: LocationId::from_intern_id(125_u32.into()),
+        });
 
-    //     let statement = LoweringStatement::Snapshot(StatementSnapshot::new(
-    //         VarUsage {
-    //             var_id: a,
-    //             location: LocationId::from_intern_id(23_u32.into()),
-    //         },
-    //         a,
-    //         b,
-    //     ));
+        let statement = LoweringStatement::Snapshot(StatementSnapshot::new(
+            VarUsage {
+                var_id: a,
+                location: LocationId::from_intern_id(23_u32.into()),
+            },
+            a,
+            b,
+        ));
 
-    //     assert_eq!(
-    //         locate_statement(&arena, &statement),
-    //         LocationId::from_intern_id((125_u32).into())
-    //     );
-    // }
+        assert_eq!(
+            locate_statement(&arena, &statement),
+            LocationId::from_intern_id((125_u32).into())
+        );
+    }
 
-    // #[test]
-    // fn test_locate_statement_desnap() {
-    //     let mut arena = Arena::<Variable>::new();
+    #[test]
+    fn test_locate_statement_desnap() {
+        let mut arena = Arena::<Variable>::new();
 
-    //     let a = arena.alloc(Variable {
-    //         droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             45_u32.into(),
-    //         ))),
-    //         copyable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             40_u32.into(),
-    //         ))),
-    //         destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             30_u32.into(),
-    //         ))),
-    //         panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             20_u32.into(),
-    //         ))),
-    //         ty: TypeId::from_intern_id(10_u32.into()),
-    //         location: LocationId::from_intern_id(15_u32.into()),
-    //     });
+        let a = arena.alloc(Variable {
+            droppable: Ok(ImplId::from_intern_id(
+                45_u32.into(),
+            )),
+            copyable: Ok(ImplId::from_intern_id(
+                40_u32.into(),
+            )),
+            destruct_impl: Ok(ImplId::from_intern_id(
+                30_u32.into(),
+            )),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(
+                20_u32.into(),
+            )),
+            ty: TypeId::from_intern_id(10_u32.into()),
+            location: LocationId::from_intern_id(15_u32.into()),
+        });
 
-    //     let b = arena.alloc(Variable {
-    //         droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             4534_u32.into(),
-    //         ))),
-    //         copyable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             4320_u32.into(),
-    //         ))),
-    //         destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             31_u32.into(),
-    //         ))),
-    //         panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             223_u32.into(),
-    //         ))),
-    //         ty: TypeId::from_intern_id(111_u32.into()),
-    //         location: LocationId::from_intern_id(122_u32.into()),
-    //     });
+        let b = arena.alloc(Variable {
+            droppable: Ok(ImplId::from_intern_id(
+                4534_u32.into(),
+            )),
+            copyable: Ok(ImplId::from_intern_id(
+                4320_u32.into(),
+            )),
+            destruct_impl: Ok(ImplId::from_intern_id(
+                31_u32.into(),
+            )),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(
+                223_u32.into(),
+            )),
+            ty: TypeId::from_intern_id(111_u32.into()),
+            location: LocationId::from_intern_id(122_u32.into()),
+        });
 
-    //     let statement = LoweringStatement::Desnap(StatementDesnap {
-    //         input: VarUsage {
-    //             var_id: a,
-    //             location: LocationId::from_intern_id(23_u32.into()),
-    //         },
-    //         output: b,
-    //     });
+        let statement = LoweringStatement::Desnap(StatementDesnap {
+            input: VarUsage {
+                var_id: a,
+                location: LocationId::from_intern_id(23_u32.into()),
+            },
+            output: b,
+        });
 
-    //     assert_eq!(
-    //         locate_statement(&arena, &statement),
-    //         LocationId::from_intern_id((122_u32).into())
-    //     );
-    // }
+        assert_eq!(
+            locate_statement(&arena, &statement),
+            LocationId::from_intern_id((122_u32).into())
+        );
+    }
 
-    // #[test]
-    // fn test_locate_statement_const() {
-    //     let mut arena = Arena::<Variable>::new();
+    #[test]
+    fn test_locate_statement_const() {
+        let mut arena = Arena::<Variable>::new();
 
-    //     let a = arena.alloc(Variable {
-    //         droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             4534_u32.into(),
-    //         ))),
-    //         copyable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             4320_u32.into(),
-    //         ))),
-    //         destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             31_u32.into(),
-    //         ))),
-    //         panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-    //             223_u32.into(),
-    //         ))),
-    //         ty: TypeId::from_intern_id(111_u32.into()),
-    //         location: LocationId::from_intern_id(1223_u32.into()),
-    //     });
+        let a = arena.alloc(Variable {
+            droppable: Ok(ImplId::from_intern_id(
+                4534_u32.into(),
+            )),
+            copyable: Ok(ImplId::from_intern_id(
+                4320_u32.into(),
+            )),
+            destruct_impl: Ok(ImplId::from_intern_id(
+                31_u32.into(),
+            )),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(
+                223_u32.into(),
+            )),
+            ty: TypeId::from_intern_id(111_u32.into()),
+            location: LocationId::from_intern_id(1223_u32.into()),
+        });
 
-    //     let statement = LoweringStatement::Const(StatementConst {
-    //         value: ConstValue::Missing(cairo_lang_diagnostics::DiagnosticAdded {}),
-    //         output: a,
-    //     });
+        let statement = LoweringStatement::Const(StatementConst {
+            value: ConstValue::Missing(cairo_lang_diagnostics::DiagnosticAdded {}),
+            output: a,
+        });
 
-    //     assert_eq!(
-    //         locate_statement(&arena, &statement),
-    //         LocationId::from_intern_id((1223_u32).into())
-    //     );
-    // }
+        assert_eq!(
+            locate_statement(&arena, &statement),
+            LocationId::from_intern_id((1223_u32).into())
+        );
+    }
 }
