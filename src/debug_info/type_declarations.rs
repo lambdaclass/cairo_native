@@ -18,9 +18,12 @@ pub fn find_type_declaration(
         for module_id in db.crate_modules(crate_id).iter().copied() {
             for extern_type_id in db.module_extern_types_ids(module_id)?.iter() {
                 if extern_type_id.name(db) == type_id {
-                    return Ok(Some(StableLocation::new(
-                        extern_type_id.untyped_stable_ptr(db),
-                    )));
+                    return Ok(Some(extern_type_id.stable_location(db)));
+                }
+            }
+            for alias in db.module_type_aliases_ids(module_id)?.iter() {
+                if alias.name(db) == type_id {
+                    return Ok(Some(alias.stable_location(db)));
                 }
             }
         }

@@ -4,7 +4,9 @@ use crate::{
     debug_info::DebugLocations,
     error::Error,
     ffi::{
-        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDistinctAttrCreate, mlirModuleCleanup
+        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet,
+        mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDistinctAttrCreate,
+        mlirModuleCleanup,
     },
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
@@ -12,7 +14,7 @@ use crate::{
         MetadataStorage,
     },
     module::NativeModule,
-    utils::{generate_function_name, run_pass_manager},
+    utils::run_pass_manager,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -33,7 +35,6 @@ use melior::{
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
-use mlir_sys::MlirAttribute;
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -89,42 +90,46 @@ impl NativeContext {
 
         let op = OperationBuilder::new(
             "builtin.module",
-            Location::fused(&self.context, &[Location::new(&self.context, "program.sierra", 0, 0)], {
-                let file_attr = unsafe {
-                    Attribute::from_raw(mlirLLVMDIFileAttrGet(
-                        self.context.to_raw(),
-                        StringAttribute::new(&self.context, "program.sierra").to_raw(),
-                        StringAttribute::new(&self.context, "").to_raw(),
-                    ))
-                };
-                unsafe {
-                    let di_unit = mlirLLVMDICompileUnitAttrGet(
-                        self.context.to_raw(),
-                        di_unit_id,
-                        0x1c, // rust
-                        file_attr.to_raw(),
-                        StringAttribute::new(&self.context, "cairo-native").to_raw(),
-                        false,
-                        crate::ffi::DiEmissionKind::Full,
-                    );
+            Location::fused(
+                &self.context,
+                &[Location::new(&self.context, "program.sierra", 0, 0)],
+                {
+                    let file_attr = unsafe {
+                        Attribute::from_raw(mlirLLVMDIFileAttrGet(
+                            self.context.to_raw(),
+                            StringAttribute::new(&self.context, "program.sierra").to_raw(),
+                            StringAttribute::new(&self.context, "").to_raw(),
+                        ))
+                    };
+                    unsafe {
+                        let di_unit = mlirLLVMDICompileUnitAttrGet(
+                            self.context.to_raw(),
+                            di_unit_id,
+                            0x1c, // rust
+                            file_attr.to_raw(),
+                            StringAttribute::new(&self.context, "cairo-native").to_raw(),
+                            false,
+                            crate::ffi::DiEmissionKind::Full,
+                        );
 
-                    let context = &self.context;
+                        let context = &self.context;
 
-                    let di_module = unsafe { mlirLLVMDIModuleAttrGet(
-                        context.to_raw(),
-                        file_attr.to_raw(),
-                        di_unit,
-                        StringAttribute::new(context, "LLVMDialectModule").to_raw(),
-                        StringAttribute::new(context, "").to_raw(),
-                        StringAttribute::new(context, "").to_raw(),
-                        StringAttribute::new(context, "").to_raw(),
-                        0,
-                        false,
-                    ) };
+                        let di_module = mlirLLVMDIModuleAttrGet(
+                            context.to_raw(),
+                            file_attr.to_raw(),
+                            di_unit,
+                            StringAttribute::new(context, "LLVMDialectModule").to_raw(),
+                            StringAttribute::new(context, "").to_raw(),
+                            StringAttribute::new(context, "").to_raw(),
+                            StringAttribute::new(context, "").to_raw(),
+                            0,
+                            false,
+                        );
 
-                    Attribute::from_raw(di_module)
-                }
-            }),
+                        Attribute::from_raw(di_module)
+                    }
+                },
+            ),
         )
         .add_attributes(&[
             (
@@ -170,7 +175,7 @@ impl NativeContext {
             &registry,
             &mut metadata,
             debug_locations.as_ref(),
-            unsafe { Attribute::from_raw(di_unit_id) }
+            unsafe { Attribute::from_raw(di_unit_id) },
         )?;
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP_PREPASS") {
@@ -204,13 +209,13 @@ impl NativeContext {
                     )?,
                 )
                 .expect("should work");
-            std::fs::write(
-                "dump-debug-valid.mlir",
-                module.as_operation().to_string_with_flags(
-                    OperationPrintingFlags::new().enable_debug_info(true, false),
-                )?,
-            )
-            .expect("should work");
+                std::fs::write(
+                    "dump-debug-valid.mlir",
+                    module.as_operation().to_string_with_flags(
+                        OperationPrintingFlags::new().enable_debug_info(true, false),
+                    )?,
+                )
+                .expect("should work");
             }
         }
 

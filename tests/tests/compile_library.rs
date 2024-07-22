@@ -1,19 +1,5 @@
 use crate::common::load_cairo;
-use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    program_registry::ProgramRegistry,
-};
-use cairo_native::{
-    context::NativeContext,
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-};
-use melior::{
-    dialect::DialectRegistry,
-    ir::{Location, Module},
-    pass::{self, PassManager},
-    utility::{register_all_dialects, register_all_llvm_translations},
-    Context,
-};
+use cairo_native::context::NativeContext;
 use std::error::Error;
 use tempfile::NamedTempFile;
 

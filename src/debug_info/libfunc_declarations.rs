@@ -18,9 +18,12 @@ pub fn find_libfunc_declaration(
         for module_id in db.crate_modules(crate_id).iter().copied() {
             for extern_libfunc_id in db.module_extern_functions_ids(module_id)?.iter() {
                 if extern_libfunc_id.name(db) == libfunc_id {
-                    return Ok(Some(StableLocation::new(
-                        extern_libfunc_id.untyped_stable_ptr(db),
-                    )));
+                    return Ok(Some(extern_libfunc_id.stable_location(db)));
+                }
+            }
+            for free_libfunc_id in db.module_free_functions_ids(module_id)?.iter() {
+                if free_libfunc_id.name(db) == libfunc_id {
+                    return Ok(Some(free_libfunc_id.stable_location(db)));
                 }
             }
         }

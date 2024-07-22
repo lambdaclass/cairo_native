@@ -142,6 +142,26 @@ pub fn cairo_to_sierra_with_debug_info<'ctx>(
     Ok((program, debug_locations))
 }
 
+pub fn cairo_get_debug_locations<'ctx>(
+    context: &'ctx Context,
+    db: &RootDatabase,
+    program: &Program,
+) -> Result<DebugLocations<'ctx>, crate::error::Error> {
+    let debug_locations = {
+        let debug_info = DebugInfo::extract(db, program)
+            .map_err(|_| {
+                let mut buffer = String::new();
+                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(db));
+                buffer
+            })
+            .unwrap();
+
+        DebugLocations::extract(context, db, &debug_info)
+    };
+
+    Ok(debug_locations)
+}
+
 /// Returns the given entry point if present.
 pub fn find_entry_point<'a>(
     program: &'a Program,

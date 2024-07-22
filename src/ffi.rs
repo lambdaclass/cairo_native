@@ -22,7 +22,7 @@ use llvm_sys::{
     },
 };
 use melior::ir::{Module, Type, TypeLike};
-use mlir_sys::{MlirAttribute, MlirContext, MlirLocation, MlirModule, MlirOperation};
+use mlir_sys::{MlirAttribute, MlirContext, MlirModule, MlirOperation};
 use std::{
     borrow::Cow,
     error::Error,
@@ -37,6 +37,7 @@ use std::{
 use tempfile::NamedTempFile;
 
 #[repr(C)]
+#[allow(unused)]
 pub enum DiEmissionKind {
     None,
     Full,
@@ -45,6 +46,7 @@ pub enum DiEmissionKind {
 }
 
 #[repr(C)]
+#[allow(unused)]
 pub enum MlirLLVMTypeEncoding {
     Address = 0x1,
     Boolean = 0x2,
@@ -61,12 +63,12 @@ pub enum MlirLLVMTypeEncoding {
     SignedFixed = 0x0d,
     UnsignedFixed = 0x0e,
     DecimalFloat = 0x0f,
-    UTF = 0x10,
-    UCS = 0x11,
-    ASCII = 0x12,
+    Utf = 0x10,
+    Ucs = 0x11,
+    Ascii = 0x12,
     LoUser = 0x80,
     HiUser = 0xff,
-  }
+}
 
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
@@ -137,9 +139,7 @@ extern "C" {
         is_decl: bool,
     ) -> MlirAttribute;
 
-    pub fn mlirLLVMDIModuleAttrGetScope(
-        di_module: MlirAttribute,
-    ) -> MlirAttribute;
+    pub fn mlirLLVMDIModuleAttrGetScope(di_module: MlirAttribute) -> MlirAttribute;
 
     pub fn mlirModuleCleanup(module: MlirModule);
 }

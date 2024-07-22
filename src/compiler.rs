@@ -111,12 +111,11 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Operation, Region,
-        Type, Value,
+        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
+        Value,
     },
     Context,
 };
-use mlir_sys::MlirAttribute;
 use std::{
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
@@ -176,6 +175,7 @@ pub fn compile(
 /// and name. Check out [compile](self::compile) for a description of the other arguments.
 ///
 /// The [module docs](self) contain more information about the compilation process.
+#[allow(clippy::too_many_arguments)]
 fn compile_func(
     context: &Context,
     module: &Module,
@@ -186,6 +186,12 @@ fn compile_func(
     debug_info: Option<&DebugLocations>,
     di_compile_unit_id: Attribute,
 ) -> Result<(), Error> {
+    let fn_location = if let Some(debug_info) = debug_info {
+        debug_info.get_func_loc(&function.id, context)
+    } else {
+        Location::unknown(context)
+    };
+
     let region = Region::new();
     let blocks_arena = Bump::new();
 
@@ -207,9 +213,10 @@ fn compile_func(
     .collect::<Result<Vec<_>, _>>()?;
 
     let mut debug_arg_types = Vec::new();
+    let mut arg_locations = Vec::new();
 
     // Replace memory-allocated arguments with pointers.
-    for (ty, type_info) in
+    for (ty, (type_info, type_id)) in
         arg_types
             .iter_mut()
             .zip(function.signature.param_types.iter().filter_map(|type_id| {
@@ -217,14 +224,23 @@ fn compile_func(
                 if type_info.is_builtin() && type_info.is_zst(registry) {
                     None
                 } else {
-                    Some(type_info)
+                    Some((type_info, type_id))
                 }
             }))
     {
+        if let Some(debug_info) = debug_info {
+            arg_locations.push(debug_info.get_type_loc(type_id, context));
+        } else {
+            arg_locations.push(Location::unknown(context));
+        }
+
         if type_info.is_memory_allocated(registry) {
             *ty = llvm::r#type::pointer(context, 0);
+            debug_arg_types.push(
+                create_di_basic_type(context, "ptr", 64, MlirLLVMTypeEncoding::Address).to_raw(),
+            );
         } else {
-            debug_arg_types.push(coretype_to_debugtype(context, type_info));
+            debug_arg_types.push(coretype_to_debugtype(context, type_info).to_raw());
         }
     }
 
@@ -257,6 +273,8 @@ fn compile_func(
 
         return_types.remove(0);
         arg_types.insert(0, llvm::r#type::pointer(context, 0));
+        debug_arg_types
+            .push(create_di_basic_type(context, "ptr", 64, MlirLLVMTypeEncoding::Address).to_raw());
 
         Some(true)
     } else {
@@ -265,7 +283,7 @@ fn compile_func(
 
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
-        context, module, &region, registry, function, statements, metadata,
+        context, module, &region, registry, function, statements, metadata, debug_info,
     )?;
 
     tracing::debug!("Generating the function implementation.");
@@ -275,7 +293,15 @@ fn compile_func(
         Block::new(
             &arg_types
                 .iter()
-                .map(|ty| (*ty, Location::new(context, "program.sierra", 0, 0)))
+                .enumerate()
+                .map(|(idx, ty)| {
+                    (
+                        *ty,
+                        *arg_locations
+                            .get(idx)
+                            .unwrap_or(&Location::unknown(context)),
+                    )
+                })
                 .collect::<Vec<_>>(),
         ),
     );
@@ -286,6 +312,11 @@ fn compile_func(
         let mut count = 0;
         for param in &function.params {
             let type_info = registry.get_type(&param.ty)?;
+            let location = if let Some(debug_info) = debug_info {
+                debug_info.get_type_loc(&param.ty, context)
+            } else {
+                Location::unknown(context)
+            };
 
             values.push((
                 &param.id,
@@ -293,7 +324,7 @@ fn compile_func(
                     pre_entry_block
                         .append_operation(llvm::undef(
                             type_info.build(context, module, registry, metadata, &param.ty)?,
-                            Location::new(context, "program.sierra", 0, 0),
+                            location,
                         ))
                         .result(0)?
                         .into()
@@ -319,7 +350,13 @@ fn compile_func(
         .iter()
         .map(|x| initial_state[x])
         .collect::<Vec<_>>(),
-        Location::new(context, "program.sierra", 0, 0),
+        {
+            if let Some(debug_info) = debug_info {
+                debug_info.get_statement_loc(&function.entry_point, context)
+            } else {
+                Location::unknown(context)
+            }
+        },
     ));
 
     let mut tailrec_storage = Vec::<(Value, BlockRef)>::new();
@@ -364,7 +401,7 @@ fn compile_func(
                     Location::name(
                         context,
                         &format!("landing_block(stmt_idx={})", statement_idx),
-                        Location::new(context, "program.sierra", 0, 0),
+                        fn_location,
                     ),
                 ));
             }
@@ -414,7 +451,11 @@ fn compile_func(
                             let location = Location::name(
                                 context,
                                 &format!("recursion_counter({})", libfunc_name),
-                                Location::new(context, "program.sierra", 0, 0),
+                                if let Some(debug_info) = debug_info {
+                                    debug_info.get_statement_loc(&statement_idx, context)
+                                } else {
+                                    Location::unknown(context)
+                                },
                             );
                             let op0 = pre_entry_block.insert_operation(
                                 0,
@@ -462,7 +503,7 @@ fn compile_func(
                                 .and_then(|debug_info| {
                                     debug_info.statements.get(&statement_idx).copied()
                                 })
-                                .unwrap_or_else(|| Location::new(context, "program.sierra", 0, 0)),
+                                .unwrap_or(fn_location),
                         ),
                         &helper,
                         metadata,
@@ -506,7 +547,11 @@ fn compile_func(
                     let location = Location::name(
                         context,
                         &format!("return(stmt_idx={})", statement_idx),
-                        Location::new(context, "program.sierra", 0, 0),
+                        if let Some(debug_info) = debug_info {
+                            debug_info.get_statement_loc(&statement_idx, context)
+                        } else {
+                            Location::unknown(context)
+                        },
                     );
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
@@ -516,7 +561,11 @@ fn compile_func(
                         let location = Location::name(
                             context,
                             &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
-                            Location::new(context, "program.sierra", 0, 0),
+                            if let Some(debug_info) = debug_info {
+                                debug_info.get_statement_loc(&statement_idx, context)
+                            } else {
+                                Location::unknown(context)
+                            },
                         );
                         // Perform tail recursion.
                         for counter_idx in tailrec_state.into_values() {
@@ -679,7 +728,7 @@ fn compile_func(
                         context,
                         value,
                         type_info.build(context, module, registry, metadata, type_id)?,
-                        Location::new(context, "program.sierra", 0, 0),
+                        fn_location,
                         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
                             IntegerType::new(context, 64).into(),
                             type_info.layout(registry)?.align() as i64,
@@ -692,11 +741,7 @@ fn compile_func(
             arg_values.push(value);
         }
 
-        pre_entry_block.append_operation(cf::br(
-            &entry_block,
-            &arg_values,
-            Location::new(context, "program.sierra", 0, 0),
-        ));
+        pre_entry_block.append_operation(cf::br(&entry_block, &arg_values, fn_location));
     }
 
     let function_name = generate_function_name(&function.id);
@@ -766,7 +811,7 @@ fn compile_func(
                     let ty = mlirLLVMDISubroutineTypeAttrGet(
                         context.to_raw(),
                         0x0,
-                        1,
+                        debug_arg_types.len(),
                         debug_arg_types.as_slice().as_ptr(),
                     );
 
@@ -778,8 +823,8 @@ fn compile_func(
                         StringAttribute::new(context, &function_name).to_raw(),
                         StringAttribute::new(context, &function_name).to_raw(),
                         file_attr.to_raw(),
-                        1,
-                        2,
+                        0,
+                        0,
                         8,
                         ty,
                     )
@@ -794,6 +839,7 @@ fn compile_func(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn generate_function_structure<'c, 'a>(
     context: &'c Context,
     module: &'a Module<'c>,
@@ -802,6 +848,7 @@ fn generate_function_structure<'c, 'a>(
     function: &Function,
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
+    debug_info: Option<&DebugLocations<'c>>,
 ) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Error> {
     let initial_state = edit_state::put_results::<Type>(
         HashMap::new(),
@@ -850,8 +897,14 @@ fn generate_function_structure<'c, 'a>(
                     let (state, types) =
                         edit_state::take_args(state.clone(), invocation.args.iter())?;
 
+                    let location = if let Some(debug_info) = debug_info {
+                        debug_info.get_statement_loc(&statement_idx, context)
+                    } else {
+                        Location::unknown(context)
+                    };
+
                     for ty in types {
-                        block.add_argument(ty, Location::new(context, "program.sierra", 0, 0));
+                        block.add_argument(ty, location);
                     }
 
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
@@ -902,8 +955,14 @@ fn generate_function_structure<'c, 'a>(
                         "State must be empty after a return statement."
                     );
 
+                    let location = if let Some(debug_info) = debug_info {
+                        debug_info.get_statement_loc(&statement_idx, context)
+                    } else {
+                        Location::unknown(context)
+                    };
+
                     for ty in types {
-                        block.add_argument(ty, Location::new(context, "program.sierra", 0, 0));
+                        block.add_argument(ty, location);
                     }
 
                     Vec::new()
@@ -921,7 +980,7 @@ fn generate_function_structure<'c, 'a>(
             registry,
             metadata_storage,
         )
-        .map(|ty| Ok((ty?, Location::new(context, "program.sierra", 0, 0))))
+        .map(|ty| Ok((ty?, Location::unknown(context))))
         .collect::<Result<Vec<_>, Error>>()?
     }));
 
@@ -947,7 +1006,15 @@ fn generate_function_structure<'c, 'a>(
                                 .map(|(var_id, ty)| (var_id.id, *ty))
                                 .collect::<BTreeMap<_, _>>()
                                 .into_values()
-                                .map(|ty| (ty, Location::new(context, "program.sierra", 0, 0)))
+                                .map(|ty| {
+                                    (ty, {
+                                        if let Some(debug_info) = debug_info {
+                                            debug_info.get_statement_loc(&statement_idx, context)
+                                        } else {
+                                            Location::unknown(context)
+                                        }
+                                    })
+                                })
                                 .collect::<Vec<_>>(),
                         ),
                     ),
@@ -1445,109 +1512,106 @@ fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
     }
 }
 
-pub fn coretype_to_debugtype<'c>(context: &'c Context, ty: &CoreTypeConcrete) -> MlirAttribute {
-    let tag = 0x24;
-    unsafe {
-        match ty {
-            CoreTypeConcrete::Array(_) => todo!(),
-            CoreTypeConcrete::Coupon(_) => todo!(),
-            CoreTypeConcrete::Bitwise(_) => todo!(),
-            CoreTypeConcrete::Box(_) => todo!(),
-            CoreTypeConcrete::Const(_) => todo!(),
-            CoreTypeConcrete::EcOp(_) => todo!(),
-            CoreTypeConcrete::EcPoint(_) => todo!(),
-            CoreTypeConcrete::EcState(_) => todo!(),
-            CoreTypeConcrete::Felt252(_) => todo!(),
-            CoreTypeConcrete::GasBuiltin(_) => todo!(),
-            CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-            CoreTypeConcrete::Uint8(_) => mlirLLVMDIBasicTypeAttrGet(
-                context.to_raw(),
-                tag,
-                StringAttribute::new(context, "u8").to_raw(),
-                8,
-                MlirLLVMTypeEncoding::Unsigned,
-            ),
-            CoreTypeConcrete::Uint16(_) => mlirLLVMDIBasicTypeAttrGet(
-                context.to_raw(),
-                tag,
-                StringAttribute::new(context, "u16").to_raw(),
-                16,
-                MlirLLVMTypeEncoding::Unsigned,
-            ),
-            CoreTypeConcrete::Uint32(_) => mlirLLVMDIBasicTypeAttrGet(
-                context.to_raw(),
-                tag,
-                StringAttribute::new(context, "u32").to_raw(),
-                32,
-                MlirLLVMTypeEncoding::Unsigned,
-            ),
-            CoreTypeConcrete::Uint64(_) => mlirLLVMDIBasicTypeAttrGet(
-                context.to_raw(),
-                tag,
-                StringAttribute::new(context, "u64").to_raw(),
-                64,
-                MlirLLVMTypeEncoding::Unsigned,
-            ),
-            CoreTypeConcrete::Uint128(_) => mlirLLVMDIBasicTypeAttrGet(
-                context.to_raw(),
-                tag,
-                StringAttribute::new(context, "u128").to_raw(),
-                128,
-                MlirLLVMTypeEncoding::Unsigned,
-            ),
-            CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-            CoreTypeConcrete::Sint8(_) => mlirLLVMDIBasicTypeAttrGet(
-                context.to_raw(),
-                tag,
-                StringAttribute::new(context, "i8").to_raw(),
-                8,
-                MlirLLVMTypeEncoding::Signed,
-            ),
-            CoreTypeConcrete::Sint16(_) => mlirLLVMDIBasicTypeAttrGet(
-                context.to_raw(),
-                tag,
-                StringAttribute::new(context, "i16").to_raw(),
-                16,
-                MlirLLVMTypeEncoding::Signed,
-            ),
-            CoreTypeConcrete::Sint32(_) => mlirLLVMDIBasicTypeAttrGet(
-                context.to_raw(),
-                tag,
-                StringAttribute::new(context, "i32").to_raw(),
-                32,
-                MlirLLVMTypeEncoding::Signed,
-            ),
-            CoreTypeConcrete::Sint64(_) => mlirLLVMDIBasicTypeAttrGet(
-                context.to_raw(),
-                tag,
-                StringAttribute::new(context, "i64").to_raw(),
-                64,
-                MlirLLVMTypeEncoding::Signed,
-            ),
-            CoreTypeConcrete::Sint128(_) => mlirLLVMDIBasicTypeAttrGet(
-                context.to_raw(),
-                tag,
-                StringAttribute::new(context, "i128").to_raw(),
-                128,
-                MlirLLVMTypeEncoding::Signed,
-            ),
-            CoreTypeConcrete::NonZero(_) => todo!(),
-            CoreTypeConcrete::Nullable(_) => todo!(),
-            CoreTypeConcrete::RangeCheck(_) => todo!(),
-            CoreTypeConcrete::Uninitialized(_) => todo!(),
-            CoreTypeConcrete::Enum(_) => todo!(),
-            CoreTypeConcrete::Struct(_) => todo!(),
-            CoreTypeConcrete::Felt252Dict(_) => todo!(),
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-            CoreTypeConcrete::Pedersen(_) => todo!(),
-            CoreTypeConcrete::Poseidon(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(_) => todo!(),
-            CoreTypeConcrete::SegmentArena(_) => todo!(),
-            CoreTypeConcrete::Snapshot(_) => todo!(),
-            CoreTypeConcrete::Bytes31(_) => todo!(),
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+pub fn coretype_to_debugtype<'c>(context: &'c Context, ty: &CoreTypeConcrete) -> Attribute<'c> {
+    match ty {
+        CoreTypeConcrete::Array(_) => todo!(),
+        CoreTypeConcrete::Coupon(_) => todo!(),
+        CoreTypeConcrete::Bitwise(_) => todo!(),
+        CoreTypeConcrete::Box(_) => todo!(),
+        CoreTypeConcrete::Const(_) => todo!(),
+        CoreTypeConcrete::EcOp(_) => todo!(),
+        CoreTypeConcrete::EcPoint(_) => todo!(),
+        CoreTypeConcrete::EcState(_) => todo!(),
+        CoreTypeConcrete::Felt252(_) => todo!(),
+        CoreTypeConcrete::GasBuiltin(_) => todo!(),
+        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+        CoreTypeConcrete::Uint8(_) => {
+            create_di_basic_type(context, "u8", 8, MlirLLVMTypeEncoding::Unsigned)
         }
+        CoreTypeConcrete::Uint16(_) => {
+            create_di_basic_type(context, "u16", 16, MlirLLVMTypeEncoding::Unsigned)
+        }
+        CoreTypeConcrete::Uint32(_) => {
+            create_di_basic_type(context, "u32", 32, MlirLLVMTypeEncoding::Unsigned)
+        }
+        CoreTypeConcrete::Uint64(_) => {
+            create_di_basic_type(context, "u64", 64, MlirLLVMTypeEncoding::Unsigned)
+        }
+        CoreTypeConcrete::Uint128(_) => {
+            create_di_basic_type(context, "u128", 128, MlirLLVMTypeEncoding::Unsigned)
+        }
+        CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+        CoreTypeConcrete::Sint8(_) => {
+            create_di_basic_type(context, "s8", 8, MlirLLVMTypeEncoding::Signed)
+        }
+        CoreTypeConcrete::Sint16(_) => {
+            create_di_basic_type(context, "s16", 16, MlirLLVMTypeEncoding::Signed)
+        }
+        CoreTypeConcrete::Sint32(_) => {
+            create_di_basic_type(context, "s32", 32, MlirLLVMTypeEncoding::Signed)
+        }
+        CoreTypeConcrete::Sint64(_) => {
+            create_di_basic_type(context, "s64", 64, MlirLLVMTypeEncoding::Signed)
+        }
+        CoreTypeConcrete::Sint128(_) => {
+            create_di_basic_type(context, "s128", 128, MlirLLVMTypeEncoding::Signed)
+        }
+        CoreTypeConcrete::NonZero(_) => todo!(),
+        CoreTypeConcrete::Nullable(x) => create_di_basic_type(
+            context,
+            x.ty.debug_name
+                .as_ref()
+                .map(|x| x.as_str())
+                .unwrap_or("Nullable"),
+            64,
+            MlirLLVMTypeEncoding::Unsigned,
+        ),
+        CoreTypeConcrete::RangeCheck(_) => {
+            create_di_basic_type(context, "RangeCheck", 64, MlirLLVMTypeEncoding::Unsigned)
+        }
+        CoreTypeConcrete::Uninitialized(_) => todo!(),
+        CoreTypeConcrete::Enum(_) => todo!(),
+        CoreTypeConcrete::Struct(_) => todo!(),
+        CoreTypeConcrete::Felt252Dict(_) => todo!(),
+        CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+        CoreTypeConcrete::Pedersen(_) => {
+            create_di_basic_type(context, "Pedersen", 64, MlirLLVMTypeEncoding::Unsigned)
+        }
+        CoreTypeConcrete::Poseidon(_) => {
+            create_di_basic_type(context, "Poseidon", 64, MlirLLVMTypeEncoding::Unsigned)
+        }
+        CoreTypeConcrete::Span(_) => todo!(),
+        CoreTypeConcrete::StarkNet(_) => todo!(),
+        CoreTypeConcrete::SegmentArena(_) => todo!(),
+        CoreTypeConcrete::Snapshot(_) => todo!(),
+        CoreTypeConcrete::Bytes31(_) => {
+            create_di_basic_type(context, "Bytes31", 248, MlirLLVMTypeEncoding::Unsigned)
+        }
+        CoreTypeConcrete::BoundedInt(x) => create_di_basic_type(
+            context,
+            &format!("BoundedInt<{}, {}>", x.range.lower, x.range.upper),
+            252,
+            MlirLLVMTypeEncoding::Unsigned,
+        ),
+    }
+}
+
+/// Creates a LLVM debug basic type.
+pub fn create_di_basic_type<'c>(
+    context: &'c Context,
+    name: &str,
+    size_in_bits: u64,
+    encoding: MlirLLVMTypeEncoding,
+) -> Attribute<'c> {
+    let tag = 0x24; // type tag
+    unsafe {
+        Attribute::from_raw(mlirLLVMDIBasicTypeAttrGet(
+            context.to_raw(),
+            tag,
+            StringAttribute::new(context, name).to_raw(),
+            size_in_bits,
+            encoding,
+        ))
     }
 }

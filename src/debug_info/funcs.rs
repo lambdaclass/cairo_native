@@ -15,7 +15,5 @@ pub fn find_func(
         .base_semantic_function(db)
         .function_with_body_id(db);
 
-    Ok(StableLocation::new(
-        function_with_body_id.untyped_stable_ptr(db),
-    ))
+    Ok(function_with_body_id.stable_location(db))
 }

@@ -7,7 +7,6 @@ use self::{
 use cairo_lang_compiler::db::RootDatabase;
 use cairo_lang_defs::diagnostic_utils::StableLocation;
 use cairo_lang_diagnostics::DiagnosticAdded;
-use cairo_lang_filesystem::{db::FilesGroup, ids::FileLongId};
 use cairo_lang_lowering::ids::LocationId;
 use cairo_lang_sierra::{
     ids::{ConcreteLibfuncId, ConcreteTypeId, FunctionId},
@@ -78,6 +77,38 @@ pub struct DebugLocations<'c> {
 }
 
 impl<'c> DebugLocations<'c> {
+    pub fn get_func_loc(&self, id: &FunctionId, context: &'c Context) -> Location<'c> {
+        if let Some(location) = self.funcs.get(id) {
+            *location
+        } else {
+            Location::unknown(context)
+        }
+    }
+
+    pub fn get_libfunc_loc(&self, id: &ConcreteLibfuncId, context: &'c Context) -> Location<'c> {
+        if let Some(location) = self.libfunc_declarations.get(id) {
+            *location
+        } else {
+            Location::unknown(context)
+        }
+    }
+
+    pub fn get_type_loc(&self, id: &ConcreteTypeId, context: &'c Context) -> Location<'c> {
+        if let Some(location) = self.type_declarations.get(id) {
+            *location
+        } else {
+            Location::unknown(context)
+        }
+    }
+
+    pub fn get_statement_loc(&self, id: &StatementIdx, context: &'c Context) -> Location<'c> {
+        if let Some(location) = self.statements.get(id) {
+            *location
+        } else {
+            Location::unknown(context)
+        }
+    }
+
     pub fn extract(context: &'c Context, db: &RootDatabase, debug_info: &DebugInfo) -> Self {
         let type_declarations = debug_info
             .type_declarations
@@ -143,10 +174,7 @@ fn extract_location_from_stable_loc<'c>(
 ) -> Location<'c> {
     let diagnostic_location = stable_loc.diagnostic_location(db);
 
-    let path = match db.lookup_intern_file(diagnostic_location.file_id) {
-        FileLongId::OnDisk(path) => path,
-        FileLongId::Virtual(_) => return Location::unknown(context),
-    };
+    let path = diagnostic_location.file_id.full_path(db);
 
     let pos = diagnostic_location
         .span
@@ -154,7 +182,7 @@ fn extract_location_from_stable_loc<'c>(
         .position_in_file(db, diagnostic_location.file_id)
         .unwrap();
 
-    Location::new(context, &path.to_string_lossy(), pos.line, pos.col)
+    Location::new(context, &path, pos.line + 1, pos.col + 1)
 }
 
 #[cfg(test)]
