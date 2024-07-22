@@ -34,6 +34,8 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
+use melior::dialect::scf;
+use melior::ir::Region;
 use melior::{
     dialect::{
         arith, cf,
@@ -46,6 +48,7 @@ use melior::{
     },
     Context,
 };
+use std::cell::Cell;
 
 /// Build the MLIR type.
 ///
@@ -199,26 +202,73 @@ fn snapshot_take<'ctx, 'this>(
 
         match elem_snapshot_take {
             Some(elem_snapshot_take) => {
-                let value = block_realloc.load(
-                    context,
-                    location,
-                    src_ptr,
-                    elem_ty,
-                    Some(elem_layout.align()),
-                )?;
+                let k0 = block_realloc.const_int(context, location, 0, 64)?;
+                block_realloc.append_operation(scf::r#for(
+                    k0,
+                    dst_len_bytes,
+                    elem_stride,
+                    {
+                        let region = Region::new();
+                        let block = region.append_block(Block::new(&[(
+                            IntegerType::new(context, 64).into(),
+                            location,
+                        )]));
 
-                let (block_relloc, value) = elem_snapshot_take(
-                    context,
-                    registry,
-                    block_realloc,
-                    location,
-                    helper,
-                    metadata,
-                    value,
-                )?;
+                        let i = block.argument(0)?.into();
+                        block.append_operation(scf::execute_region(
+                            &[],
+                            {
+                                let region = Region::new();
+                                let block = region.append_block(Block::new(&[]));
 
-                block_relloc.store(context, location, dst_ptr, value, Some(elem_layout.align()))?;
-                block_relloc.append_operation(cf::br(block_finish, &[dst_ptr], location));
+                                let src_ptr =
+                                    block.append_op_result(llvm::get_element_ptr_dynamic(
+                                        context,
+                                        src_ptr,
+                                        &[i],
+                                        IntegerType::new(context, 8).into(),
+                                        llvm::r#type::pointer(context, 0),
+                                        location,
+                                    ))?;
+                                let dst_ptr =
+                                    block.append_op_result(llvm::get_element_ptr_dynamic(
+                                        context,
+                                        dst_ptr,
+                                        &[i],
+                                        IntegerType::new(context, 8).into(),
+                                        llvm::r#type::pointer(context, 0),
+                                        location,
+                                    ))?;
+
+                                let helper = LibfuncHelper {
+                                    module: helper.module,
+                                    init_block: helper.init_block,
+                                    region: &region,
+                                    blocks_arena: helper.blocks_arena,
+                                    last_block: Cell::new(&block),
+                                    branches: Vec::new(),
+                                    results: Vec::new(),
+                                };
+
+                                let value = block.load(context, location, src_ptr, elem_ty)?;
+                                let (block, value) = elem_snapshot_take(
+                                    context, registry, &block, location, &helper, metadata, value,
+                                )?;
+                                block.store(context, location, dst_ptr, value)?;
+
+                                block.append_operation(scf::r#yield(&[], location));
+                                region
+                            },
+                            location,
+                        ));
+
+                        block.append_operation(scf::r#yield(&[], location));
+                        region
+                    },
+                    location,
+                ));
+
+                block_realloc.append_operation(cf::br(block_finish, &[dst_ptr], location));
             }
             None => {
                 block_realloc.append_operation(
@@ -247,4 +297,43 @@ fn snapshot_take<'ctx, 'this>(
     let dst_value = block_finish.insert_value(context, location, dst_value, array_len, 3)?;
 
     Ok((block_finish, dst_value))
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        utils::test::{load_cairo, run_program},
+        values::JitValue,
+    };
+    use pretty_assertions_sorted::assert_eq;
+
+    #[test]
+    fn test_array_snapshot_deep_clone() {
+        let program = load_cairo! {
+            fn run_test() -> @Array<Array<felt252>> {
+                let mut inputs: Array<Array<felt252>> = ArrayTrait::new();
+                inputs.append(array![1, 2, 3]);
+                inputs.append(array![4, 5, 6]);
+
+                @inputs
+            }
+        };
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            JitValue::Array(vec![
+                JitValue::Array(vec![
+                    JitValue::Felt252(1.into()),
+                    JitValue::Felt252(2.into()),
+                    JitValue::Felt252(3.into()),
+                ]),
+                JitValue::Array(vec![
+                    JitValue::Felt252(4.into()),
+                    JitValue::Felt252(5.into()),
+                    JitValue::Felt252(6.into()),
+                ]),
+            ]),
+        );
+    }
 }

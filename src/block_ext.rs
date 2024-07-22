@@ -77,7 +77,6 @@ pub trait BlockExt<'ctx> {
         location: Location<'ctx>,
         addr: Value<'ctx, '_>,
         value_type: Type<'ctx>,
-        align: Option<usize>,
     ) -> Result<Value<'ctx, '_>, Error>;
 
     /// Allocates the given number of elements of type in memory on the stack, returning a opaque pointer.
@@ -87,7 +86,7 @@ pub trait BlockExt<'ctx> {
         location: Location<'ctx>,
         elem_type: Type<'ctx>,
         num_elems: Value<'ctx, '_>,
-        align: Option<usize>,
+        align: usize,
     ) -> Result<Value<'ctx, '_>, Error>;
 
     /// Allocates one element of the given type in memory on the stack, returning a opaque pointer.
@@ -96,7 +95,7 @@ pub trait BlockExt<'ctx> {
         context: &'ctx Context,
         location: Location<'ctx>,
         elem_type: Type<'ctx>,
-        align: Option<usize>,
+        align: usize,
     ) -> Result<Value<'ctx, '_>, Error>;
 
     /// Allocates one integer of the given bit width.
@@ -114,7 +113,6 @@ pub trait BlockExt<'ctx> {
         location: Location<'ctx>,
         addr: Value<'ctx, '_>,
         value: Value<'ctx, '_>,
-        align: Option<usize>,
     ) -> Result<(), Error>;
 
     /// Creates a memcpy operation.
@@ -234,19 +232,8 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         location: Location<'ctx>,
         addr: Value<'ctx, '_>,
         value: Value<'ctx, '_>,
-        align: Option<usize>,
     ) -> Result<(), Error> {
-        let mut op = ods::llvm::store(context, value, addr, location);
-
-        if let Some(align) = align {
-            op.set_alignment(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                align.try_into()?,
-            ));
-        }
-
-        self.append_operation(op.into());
-
+        self.append_operation(ods::llvm::store(context, value, addr, location).into());
         Ok(())
     }
 
@@ -262,18 +249,8 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         location: Location<'ctx>,
         addr: Value<'ctx, '_>,
         value_type: Type<'ctx>,
-        align: Option<usize>,
     ) -> Result<Value<'ctx, '_>, Error> {
-        let mut op = ods::llvm::load(context, value_type, addr, location);
-
-        if let Some(align) = align {
-            op.set_alignment(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                align.try_into()?,
-            ));
-        }
-
-        self.append_op_result(op.into())
+        self.append_op_result(ods::llvm::load(context, value_type, addr, location).into())
     }
 
     fn memcpy(
@@ -303,7 +280,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         location: Location<'ctx>,
         elem_type: Type<'ctx>,
         num_elems: Value<'ctx, '_>,
-        align: Option<usize>,
+        align: usize,
     ) -> Result<Value<'ctx, '_>, Error> {
         let mut op = ods::llvm::alloca(
             context,
@@ -314,13 +291,10 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         );
 
         op.set_elem_type(TypeAttribute::new(elem_type));
-
-        if let Some(align) = align {
-            op.set_alignment(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                align.try_into().unwrap(),
-            ));
-        }
+        op.set_alignment(IntegerAttribute::new(
+            IntegerType::new(context, 64).into(),
+            align.try_into().unwrap(),
+        ));
 
         self.append_op_result(op.into())
     }
@@ -330,7 +304,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         context: &'ctx Context,
         location: Location<'ctx>,
         elem_type: Type<'ctx>,
-        align: Option<usize>,
+        align: usize,
     ) -> Result<Value<'ctx, '_>, Error> {
         let num_elems = self.const_int(context, location, 1, 64)?;
         self.alloca(context, location, elem_type, num_elems, align)
@@ -348,7 +322,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
             location,
             IntegerType::new(context, bits).into(),
             num_elems,
-            Some(get_integer_layout(bits).align()),
+            get_integer_layout(bits).align(),
         )
     }
 }

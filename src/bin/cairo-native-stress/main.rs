@@ -1,14 +1,17 @@
 //! A stress tester for Cairo Native
 //!
-//! See `StressTestCommand`
-
-use std::alloc::System;
-use std::fmt::{Debug, Display};
-use std::fs::{create_dir_all, read_dir, OpenOptions};
-use std::hash::Hash;
-use std::io;
-use std::path::{Path, PathBuf};
-use std::{collections::HashMap, fs, rc::Rc, time::Instant};
+//! See `StressTestCommand` for documentation on the CLI.
+//!
+//! ## Walkthrough
+//!
+//! Iterates through N rounds (specified as an argument), and in each round:
+//! - Generates an unique dummy starknet contract.
+//! - Compiles the program and inserts the compiled program into the cache.
+//! - Executes the program.
+//!
+//! The cache is dropped at the end of the whole execution.
+//!
+//! For documentation on the specific cache used, see `NaiveAotCache`.
 
 use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_sierra::program::{GenericArg, Program};
@@ -25,6 +28,14 @@ use clap::Parser;
 use libloading::Library;
 use num_bigint::BigInt;
 use stats_alloc::{Region, StatsAlloc, INSTRUMENTED_SYSTEM};
+use std::alloc::System;
+use std::fmt::{Debug, Display};
+use std::fs::{create_dir_all, read_dir, OpenOptions};
+use std::hash::Hash;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::{collections::HashMap, fs, time::Instant};
 use tracing::{debug, info, info_span, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -218,20 +229,24 @@ fn modify_starknet_contract(mut program: Program, old_value: u32, new_value: u32
     program
 }
 
-/// A naive implementation of an AOT Program Cache.
+/// A naive implementation of an AOT Program Cache
 ///
-/// Stores `AotNativeExecutor`s by a given key. Each executors has it's corresponding
-/// dynamic shared library loaded.
+/// For each contract:
+/// - Compiles it to a shared library and stores it on disk (`AOT_CACHE_DIR`)
+/// - Loads the shared library into an executor and stores it on a hashmap with the given key.
+///
+/// The shared libraries are unloaded when the executor gets drop, AKA: when the cache gets dropped.
+/// The shared libraries on disk are never deleted
 ///
 /// Possible improvements include:
-/// - Keeping only some executors on memory, while storing the remaining compiled shared libraries on disk.
+/// - Keeping only some executors on memory, while storing the remaining compiled shared libraries only on disk.
 /// - When restarting the program, reutilize already compiled programs from `AOT_CACHE_DIR`
 struct NaiveAotCache<'a, K>
 where
     K: PartialEq + Eq + Hash + Display,
 {
     context: &'a NativeContext,
-    cache: HashMap<K, Rc<AotNativeExecutor>>,
+    cache: HashMap<K, Arc<AotNativeExecutor>>,
 }
 
 impl<'a, K> NaiveAotCache<'a, K>
@@ -245,7 +260,7 @@ where
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<Rc<AotNativeExecutor>> {
+    pub fn get(&self, key: &K) -> Option<Arc<AotNativeExecutor>> {
         self.cache.get(key).cloned()
     }
 
@@ -257,7 +272,7 @@ where
         key: K,
         program: &Program,
         opt_level: OptLevel,
-    ) -> Rc<AotNativeExecutor> {
+    ) -> Arc<AotNativeExecutor> {
         let native_module = self
             .context
             .compile(program, None)
@@ -288,7 +303,7 @@ where
         };
 
         let executor = AotNativeExecutor::new(shared_library, registry, metadata);
-        let executor = Rc::new(executor);
+        let executor = Arc::new(executor);
 
         self.cache.insert(key, executor.clone());
 

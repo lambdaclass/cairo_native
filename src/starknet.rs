@@ -23,8 +23,8 @@ pub struct Felt252Abi(pub [u8; 32]);
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(C, align(16))]
 pub struct U256 {
-    pub hi: u128,
     pub lo: u128,
+    pub hi: u128,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
