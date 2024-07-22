@@ -652,6 +652,14 @@ mod test {
         };
     }
 
+    fn u256(value: BigUint) -> JitValue {
+        assert!(value.bits() <= 256);
+        jit_struct!(
+            JitValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
+            JitValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
+        )
+    }
+
     #[test]
     fn u128_byte_reverse() {
         run_program_assert_output(
@@ -968,31 +976,31 @@ mod test {
             program,
             "run_test",
             &[0u128.into(), 0u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u128.into(), 1u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 0u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 1u128.into()],
-            jit_struct!(0u128.into(), 1u128.into()),
+            u256(1u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[u128::MAX.into(), u128::MAX.into()],
-            jit_struct!((u128::MAX - 1).into(), 1u128.into()),
+            u256(BigUint::from(u128::MAX) * BigUint::from(u128::MAX)),
         );
     }
 }
