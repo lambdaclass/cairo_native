@@ -103,6 +103,7 @@ pub(crate) mod block_ext;
 pub mod cache;
 mod compiler;
 pub mod context;
+pub mod debug;
 pub mod debug_info;
 pub mod error;
 pub mod execution_result;
