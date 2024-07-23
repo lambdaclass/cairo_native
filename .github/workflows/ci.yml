@@ -177,7 +177,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.6.4"
+          scarb-version: "2.7.0-rc.3"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -234,7 +234,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.6.4"
+          scarb-version: "2.7.0-rc.3"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
