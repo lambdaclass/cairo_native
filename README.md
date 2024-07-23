@@ -893,7 +893,7 @@ the `target/` folder besides the generated JSON sierra files.
 
 ### Useful environment variables
 
-These 2 env vars will dump the generated MLIR code from any compilation on the current working directory as:
+These 3 env vars will dump the generated MLIR code from any compilation on the current working directory as:
 
 - `dump.mlir`: The MLIR code after passes without locations.
 - `dump-debug.mlir`: The MLIR code after passes with locations.
@@ -905,6 +905,7 @@ Do note that the MLIR with locations is in pretty form and thus not suitable to 
 ```bash
 export NATIVE_DEBUG_DUMP_PREPASS=1
 export NATIVE_DEBUG_DUMP=1
+export NATIVE_DEBUG_DUMP_LLVMIR=1 # dumps the LLVM IR to stdout
 ```
 
 Enable logging to see the compilation process:

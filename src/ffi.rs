@@ -7,7 +7,7 @@ use crate::error::Error as CompileError;
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
-        LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart,
+        LLVMDisposeModule, LLVMDumpModule, LLVMGetBufferSize, LLVMGetBufferStart,
     },
     prelude::{LLVMContextRef, LLVMMemoryBufferRef, LLVMModuleRef},
     target::{
@@ -338,6 +338,12 @@ pub fn module_to_object(
 
         let mut null = null_mut();
         let mut error_buffer = addr_of_mut!(null);
+
+        if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP_LLVMIR") {
+            if x == "1" || x == "true" {
+                LLVMDumpModule(llvm_module);
+            }
+        }
 
         let target_triple = LLVMGetDefaultTargetTriple();
         let target_cpu = LLVMGetHostCPUName();

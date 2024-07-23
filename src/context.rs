@@ -183,7 +183,14 @@ impl NativeContext {
                 std::fs::write("dump-prepass.mlir", module.as_operation().to_string())
                     .expect("should work");
                 std::fs::write(
-                    "dump-prepass-debug.mlir",
+                    "dump-prepass-debug-valid.mlir",
+                    module.as_operation().to_string_with_flags(
+                        OperationPrintingFlags::new().enable_debug_info(true, false),
+                    )?,
+                )
+                .expect("should work");
+                std::fs::write(
+                    "dump-prepass-debug-pretty.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, true),
                     )?,
@@ -203,30 +210,20 @@ impl NativeContext {
                 std::fs::write("dump.mlir", module.as_operation().to_string())
                     .expect("should work");
                 std::fs::write(
-                    "dump-debug.mlir",
+                    "dump-debug-pretty.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, true),
                     )?,
                 )
                 .expect("should work");
                 std::fs::write(
-                    "dump-debug-valid.mlir",
+                    "dump-debug.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
                 )
                 .expect("should work");
             }
-        }
-
-        // The func to llvm pass has a bug where it sets the data layout string to ""
-        // This works around it by setting it again.
-        {
-            let mut op = module.as_operation_mut();
-            op.set_attribute(
-                "llvm.data_layout",
-                StringAttribute::new(&self.context, data_layout_ret).into(),
-            );
         }
 
         Ok(NativeModule::new(module, registry, metadata))

@@ -71,12 +71,19 @@ fn main() -> anyhow::Result<()> {
     )
     .context("Failed to write output.")?;
 
-    if let Some(output_library) = &args.output_library {
-        let object_data = module_to_object(native_module.module(), args.opt_level.into())
-            .context("Failed to convert module to object.")?;
-        object_to_shared_lib(&object_data, output_library)
-            .context("Failed to write shared library.")?;
-    }
+    let output_lib = args.output_library.unwrap_or_else(|| {
+        PathBuf::from({
+            if cfg!(target_os = "macos") {
+                "out.dylib"
+            } else {
+                "out.so"
+            }
+        })
+    });
+
+    let object_data = module_to_object(native_module.module(), args.opt_level.into())
+        .context("Failed to convert module to object.")?;
+    object_to_shared_lib(&object_data, &output_lib).context("Failed to write shared library.")?;
 
     Ok(())
 }
