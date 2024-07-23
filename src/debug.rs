@@ -401,7 +401,97 @@ pub fn coretype_to_debugtype<'c>(
     debug_name: Option<&str>,
 ) -> Result<Attribute<'c>, Error> {
     Ok(match ty {
-        CoreTypeConcrete::Array(_) => todo!(),
+        CoreTypeConcrete::Array(inner) => {
+            let inner_ty = registry.get_type(&inner.ty)?;
+            let inner_debugty = coretype_to_debugtype(
+                context,
+                registry,
+                inner_ty,
+                inner.ty.debug_name.as_ref().map(|x| x.as_str()),
+            )?;
+
+            let mut types = Vec::new();
+            let layout = ty.layout(registry)?;
+
+            let mut acc_layout = Layout::new::<()>();
+            let mut offset;
+
+            (acc_layout, offset) = acc_layout.extend(Layout::new::<*const ()>()).unwrap();
+
+            let ptr_ty = create_derived_debug_type(
+                context,
+                "ptr",
+                inner_debugty,
+                64,
+                64,
+                0,
+                MlirLLVMDWTag::DW_TAG_pointer_type,
+            );
+            let ptr_member_ty = create_derived_debug_type(
+                context,
+                "data",
+                ptr_ty,
+                64,
+                64,
+                offset as u64,
+                MlirLLVMDWTag::DW_TAG_member,
+            );
+            types.push(ptr_member_ty.to_raw());
+
+            let u32_attr = create_di_basic_type(
+                context,
+                "u32",
+                32,
+                MlirLLVMTypeEncoding::Unsigned,
+                MlirLLVMDWTag::DW_TAG_base_type,
+            );
+
+            let layout_u32 = get_integer_layout(32);
+
+            (acc_layout, offset) = acc_layout.extend(layout_u32).unwrap();
+            let derived_attr = create_derived_debug_type(
+                context,
+                "start",
+                u32_attr,
+                (layout_u32.size() * 8) as u64,
+                (layout_u32.align() * 8) as u64,
+                (offset * 8) as u64,
+                MlirLLVMDWTag::DW_TAG_member,
+            );
+            types.push(derived_attr.to_raw());
+            (acc_layout, offset) = acc_layout.extend(layout_u32).unwrap();
+            let derived_attr = create_derived_debug_type(
+                context,
+                "end",
+                u32_attr,
+                (layout_u32.size() * 8) as u64,
+                (layout_u32.align() * 8) as u64,
+                (offset * 8) as u64,
+                MlirLLVMDWTag::DW_TAG_member,
+            );
+            types.push(derived_attr.to_raw());
+            (_, offset) = acc_layout.extend(layout_u32).unwrap();
+            let derived_attr = create_derived_debug_type(
+                context,
+                "capacity",
+                u32_attr,
+                (layout_u32.size() * 8) as u64,
+                (layout_u32.align() * 8) as u64,
+                (offset * 8) as u64,
+                MlirLLVMDWTag::DW_TAG_member,
+            );
+            types.push(derived_attr.to_raw());
+
+            create_composite_debug_type(
+                context,
+                debug_name.unwrap_or("Array"),
+                unsafe { Attribute::from_raw(mlirLLVMDINullTypeAttrGet(context.to_raw())) },
+                (layout.size() * 8) as u64,
+                (layout.align() * 8) as u64,
+                MlirLLVMDWTag::DW_TAG_structure_type,
+                &types,
+            )
+        }
         CoreTypeConcrete::Coupon(_) => todo!(),
         CoreTypeConcrete::Bitwise(_) => todo!(),
         CoreTypeConcrete::Box(inner) => {
@@ -413,17 +503,15 @@ pub fn coretype_to_debugtype<'c>(
                 inner.ty.debug_name.as_ref().map(|x| x.as_str()),
             )?;
 
-            unsafe {
-                Attribute::from_raw(mlirLLVMDIDerivedTypeAttrGet(
-                    context.to_raw(),
-                    MlirLLVMDWTag::DW_TAG_pointer_type,
-                    StringAttribute::new(context, debug_name.unwrap_or("Box")).to_raw(),
-                    inner_debugty.to_raw(),
-                    64,
-                    64,
-                    0,
-                ))
-            }
+            create_derived_debug_type(
+                context,
+                debug_name.unwrap_or("Box"),
+                inner_debugty,
+                64,
+                64,
+                0,
+                MlirLLVMDWTag::DW_TAG_pointer_type,
+            )
         }
         CoreTypeConcrete::Const(inner) => {
             let inner_ty = registry.get_type(&inner.inner_ty)?;
