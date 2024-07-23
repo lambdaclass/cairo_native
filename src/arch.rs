@@ -69,7 +69,11 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
             }
 
             (JitValue::Array(_), CoreTypeConcrete::Array(_)) => {
-                // TODO: Assert that `info.ty` matches all the values' types.
+                // Check that all values in the array match the type.
+                assert!(
+                    self.value.matches_type(self.registry, self.info),
+                    "type mismatch in array"
+                );
 
                 let abi_ptr = self
                     .value
@@ -175,5 +179,51 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
                 self.type_id
             ),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cairo_lang_sierra::extensions::types::InfoAndTypeConcreteType;
+    use cairo_lang_sierra::extensions::types::TypeInfo;
+    use cairo_lang_sierra::program::ConcreteTypeLongId;
+    use cairo_lang_sierra::ProgramParser;
+
+    #[test]
+    #[should_panic(expected = "type mismatch in array")]
+    fn test_abi_argument_to_bytes_wrong_array_types() {
+        let program = ProgramParser::new()
+            .parse("type felt252 = felt252;")
+            .unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let bump = Bump::new();
+
+        let jit_value_with_info_wrapper = JitValueWithInfoWrapper {
+            value: &JitValue::Array(vec![JitValue::Uint8(12)]),
+            type_id: &ConcreteTypeId {
+                debug_name: None,
+                id: 10,
+            },
+            info: &CoreTypeConcrete::Array(InfoAndTypeConcreteType {
+                info: TypeInfo {
+                    long_id: ConcreteTypeLongId {
+                        generic_id: "generic_type_id".into(),
+                        generic_args: vec![],
+                    },
+                    storable: false,
+                    droppable: false,
+                    duplicatable: false,
+                    zero_sized: false,
+                },
+                ty: "felt252".into(),
+            }),
+            arena: &bump,
+            registry: &registry,
+        };
+
+        let mut buffer = vec![];
+
+        jit_value_with_info_wrapper.to_bytes(&mut buffer);
     }
 }
