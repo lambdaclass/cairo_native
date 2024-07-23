@@ -48,9 +48,11 @@ use crate::{
     debug_info::DebugLocations,
     error::Error,
     ffi::{
-        mlirLLVMDIBasicTypeAttrGet, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
-        mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet,
-        mlirLLVMDISubroutineTypeAttrGet, mlirLLVMDistinctAttrCreate, MlirLLVMTypeEncoding,
+        mlirLLVMDIBasicTypeAttrGet, mlirLLVMDICompileUnitAttrGet, mlirLLVMDICompositeTypeAttrGet,
+        mlirLLVMDIDerivedTypeAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
+        mlirLLVMDIModuleAttrGetScope, mlirLLVMDINullTypeAttrGet, mlirLLVMDISubprogramAttrGet,
+        mlirLLVMDISubroutineTypeAttrGet, mlirLLVMDistinctAttrCreate, MlirLLVMDWTag,
+        MlirLLVMTypeEncoding,
     },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
@@ -116,7 +118,9 @@ use melior::{
     },
     Context,
 };
+use mlir_sys::MlirAttribute;
 use std::{
+    alloc::Layout,
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
@@ -237,10 +241,25 @@ fn compile_func(
         if type_info.is_memory_allocated(registry) {
             *ty = llvm::r#type::pointer(context, 0);
             debug_arg_types.push(
-                create_di_basic_type(context, "ptr", 64, MlirLLVMTypeEncoding::Address).to_raw(),
+                create_di_basic_type(
+                    context,
+                    "ptr",
+                    64,
+                    MlirLLVMTypeEncoding::Address,
+                    MlirLLVMDWTag::PointerType,
+                )
+                .to_raw(),
             );
         } else {
-            debug_arg_types.push(coretype_to_debugtype(context, type_info).to_raw());
+            debug_arg_types.push(
+                coretype_to_debugtype(
+                    context,
+                    registry,
+                    type_info,
+                    type_id.debug_name.as_ref().map(|x| x.as_str()),
+                )?
+                .to_raw(),
+            );
         }
     }
 
@@ -273,8 +292,16 @@ fn compile_func(
 
         return_types.remove(0);
         arg_types.insert(0, llvm::r#type::pointer(context, 0));
-        debug_arg_types
-            .push(create_di_basic_type(context, "ptr", 64, MlirLLVMTypeEncoding::Address).to_raw());
+        debug_arg_types.push(
+            create_di_basic_type(
+                context,
+                "ptr",
+                64,
+                MlirLLVMTypeEncoding::Address,
+                MlirLLVMDWTag::PointerType,
+            )
+            .to_raw(),
+        );
 
         Some(true)
     } else {
@@ -1512,89 +1539,213 @@ fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
     }
 }
 
-pub fn coretype_to_debugtype<'c>(context: &'c Context, ty: &CoreTypeConcrete) -> Attribute<'c> {
-    match ty {
+pub fn coretype_to_debugtype<'c>(
+    context: &'c Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    ty: &CoreTypeConcrete,
+    debug_name: Option<&str>,
+) -> Result<Attribute<'c>, Error> {
+    Ok(match ty {
         CoreTypeConcrete::Array(_) => todo!(),
         CoreTypeConcrete::Coupon(_) => todo!(),
         CoreTypeConcrete::Bitwise(_) => todo!(),
-        CoreTypeConcrete::Box(_) => todo!(),
+        CoreTypeConcrete::Box(inner) => {
+            let inner_ty = registry.get_type(&inner.ty)?;
+            let inner_debugty = coretype_to_debugtype(
+                context,
+                registry,
+                inner_ty,
+                inner.ty.debug_name.as_ref().map(|x| x.as_str()),
+            )?;
+
+            unsafe {
+                Attribute::from_raw(mlirLLVMDIDerivedTypeAttrGet(
+                    context.to_raw(),
+                    MlirLLVMDWTag::PointerType,
+                    StringAttribute::new(context, debug_name.unwrap_or("Box")).to_raw(),
+                    inner_debugty.to_raw(),
+                    64,
+                    64,
+                    0,
+                ))
+            }
+        }
         CoreTypeConcrete::Const(_) => todo!(),
         CoreTypeConcrete::EcOp(_) => todo!(),
         CoreTypeConcrete::EcPoint(_) => todo!(),
         CoreTypeConcrete::EcState(_) => todo!(),
-        CoreTypeConcrete::Felt252(_) => todo!(),
+        CoreTypeConcrete::Felt252(_) => create_di_basic_type(
+            context,
+            "felt252",
+            252,
+            MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
+        ),
         CoreTypeConcrete::GasBuiltin(_) => todo!(),
         CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-        CoreTypeConcrete::Uint8(_) => {
-            create_di_basic_type(context, "u8", 8, MlirLLVMTypeEncoding::Unsigned)
-        }
-        CoreTypeConcrete::Uint16(_) => {
-            create_di_basic_type(context, "u16", 16, MlirLLVMTypeEncoding::Unsigned)
-        }
-        CoreTypeConcrete::Uint32(_) => {
-            create_di_basic_type(context, "u32", 32, MlirLLVMTypeEncoding::Unsigned)
-        }
-        CoreTypeConcrete::Uint64(_) => {
-            create_di_basic_type(context, "u64", 64, MlirLLVMTypeEncoding::Unsigned)
-        }
-        CoreTypeConcrete::Uint128(_) => {
-            create_di_basic_type(context, "u128", 128, MlirLLVMTypeEncoding::Unsigned)
-        }
+        CoreTypeConcrete::Uint8(_) => create_di_basic_type(
+            context,
+            "u8",
+            8,
+            MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
+        ),
+        CoreTypeConcrete::Uint16(_) => create_di_basic_type(
+            context,
+            "u16",
+            16,
+            MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
+        ),
+        CoreTypeConcrete::Uint32(_) => create_di_basic_type(
+            context,
+            "u32",
+            32,
+            MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
+        ),
+        CoreTypeConcrete::Uint64(_) => create_di_basic_type(
+            context,
+            "u64",
+            64,
+            MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
+        ),
+        CoreTypeConcrete::Uint128(_) => create_di_basic_type(
+            context,
+            "u128",
+            128,
+            MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
+        ),
         CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-        CoreTypeConcrete::Sint8(_) => {
-            create_di_basic_type(context, "s8", 8, MlirLLVMTypeEncoding::Signed)
-        }
-        CoreTypeConcrete::Sint16(_) => {
-            create_di_basic_type(context, "s16", 16, MlirLLVMTypeEncoding::Signed)
-        }
-        CoreTypeConcrete::Sint32(_) => {
-            create_di_basic_type(context, "s32", 32, MlirLLVMTypeEncoding::Signed)
-        }
-        CoreTypeConcrete::Sint64(_) => {
-            create_di_basic_type(context, "s64", 64, MlirLLVMTypeEncoding::Signed)
-        }
-        CoreTypeConcrete::Sint128(_) => {
-            create_di_basic_type(context, "s128", 128, MlirLLVMTypeEncoding::Signed)
-        }
+        CoreTypeConcrete::Sint8(_) => create_di_basic_type(
+            context,
+            "s8",
+            8,
+            MlirLLVMTypeEncoding::Signed,
+            MlirLLVMDWTag::BaseType,
+        ),
+        CoreTypeConcrete::Sint16(_) => create_di_basic_type(
+            context,
+            "s16",
+            16,
+            MlirLLVMTypeEncoding::Signed,
+            MlirLLVMDWTag::BaseType,
+        ),
+        CoreTypeConcrete::Sint32(_) => create_di_basic_type(
+            context,
+            "s32",
+            32,
+            MlirLLVMTypeEncoding::Signed,
+            MlirLLVMDWTag::BaseType,
+        ),
+        CoreTypeConcrete::Sint64(_) => create_di_basic_type(
+            context,
+            "s64",
+            64,
+            MlirLLVMTypeEncoding::Signed,
+            MlirLLVMDWTag::BaseType,
+        ),
+        CoreTypeConcrete::Sint128(_) => create_di_basic_type(
+            context,
+            "s128",
+            128,
+            MlirLLVMTypeEncoding::Signed,
+            MlirLLVMDWTag::BaseType,
+        ),
         CoreTypeConcrete::NonZero(_) => todo!(),
         CoreTypeConcrete::Nullable(x) => create_di_basic_type(
             context,
-            x.ty.debug_name
-                .as_ref()
-                .map(|x| x.as_str())
-                .unwrap_or("Nullable"),
+            debug_name.unwrap_or("Nullable"),
             64,
             MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
         ),
-        CoreTypeConcrete::RangeCheck(_) => {
-            create_di_basic_type(context, "RangeCheck", 64, MlirLLVMTypeEncoding::Unsigned)
-        }
+        CoreTypeConcrete::RangeCheck(_) => create_di_basic_type(
+            context,
+            debug_name.unwrap_or("RangeCheck"),
+            64,
+            MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
+        ),
         CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(_) => todo!(),
-        CoreTypeConcrete::Struct(_) => todo!(),
+        CoreTypeConcrete::Struct(x) => {
+            let mut types = Vec::new();
+            let layout = ty.layout(registry)?;
+
+            let mut acc_layout = Layout::new::<()>();
+
+            for (i, field_ty_id) in x.members.iter().enumerate() {
+                let field_ty = registry.get_type(field_ty_id)?;
+                let layout_inner = field_ty.layout(registry)?;
+                let (cur_layout, offset) = acc_layout.extend(layout_inner).unwrap();
+                acc_layout = cur_layout;
+                let debug_attr = coretype_to_debugtype(
+                    context,
+                    registry,
+                    field_ty,
+                    field_ty_id.debug_name.as_ref().map(|x| x.as_str()),
+                )?;
+                let derived_attr = create_derived_debug_type(
+                    context,
+                    &format!("field_{}", i),
+                    debug_attr,
+                    (layout_inner.size() * 8) as u64,
+                    (layout_inner.align() * 8) as u64,
+                    (offset * 8) as u64,
+                    MlirLLVMDWTag::Member,
+                );
+                types.push(derived_attr.to_raw());
+            }
+
+            create_composite_debug_type(
+                context,
+                debug_name.unwrap_or("Struct"),
+                unsafe { Attribute::from_raw(mlirLLVMDINullTypeAttrGet(context.to_raw())) },
+                (layout.size() * 8) as u64,
+                (layout.align() * 8) as u64,
+                MlirLLVMDWTag::StructureType,
+                &types,
+            )
+        }
         CoreTypeConcrete::Felt252Dict(_) => todo!(),
         CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
         CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-        CoreTypeConcrete::Pedersen(_) => {
-            create_di_basic_type(context, "Pedersen", 64, MlirLLVMTypeEncoding::Unsigned)
-        }
-        CoreTypeConcrete::Poseidon(_) => {
-            create_di_basic_type(context, "Poseidon", 64, MlirLLVMTypeEncoding::Unsigned)
-        }
+        CoreTypeConcrete::Pedersen(_) => create_di_basic_type(
+            context,
+            "Pedersen",
+            64,
+            MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
+        ),
+        CoreTypeConcrete::Poseidon(_) => create_di_basic_type(
+            context,
+            "Poseidon",
+            64,
+            MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
+        ),
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::StarkNet(_) => todo!(),
         CoreTypeConcrete::SegmentArena(_) => todo!(),
         CoreTypeConcrete::Snapshot(_) => todo!(),
-        CoreTypeConcrete::Bytes31(_) => {
-            create_di_basic_type(context, "Bytes31", 248, MlirLLVMTypeEncoding::Unsigned)
-        }
+        CoreTypeConcrete::Bytes31(_) => create_di_basic_type(
+            context,
+            "Bytes31",
+            248,
+            MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
+        ),
         CoreTypeConcrete::BoundedInt(x) => create_di_basic_type(
             context,
             &format!("BoundedInt<{}, {}>", x.range.lower, x.range.upper),
             252,
             MlirLLVMTypeEncoding::Unsigned,
+            MlirLLVMDWTag::BaseType,
         ),
-    }
+    })
 }
 
 /// Creates a LLVM debug basic type.
@@ -1603,15 +1754,72 @@ pub fn create_di_basic_type<'c>(
     name: &str,
     size_in_bits: u64,
     encoding: MlirLLVMTypeEncoding,
+    tag: MlirLLVMDWTag,
 ) -> Attribute<'c> {
-    let tag = 0x24; // type tag
     unsafe {
         Attribute::from_raw(mlirLLVMDIBasicTypeAttrGet(
             context.to_raw(),
-            tag,
+            tag as u32,
             StringAttribute::new(context, name).to_raw(),
             size_in_bits,
             encoding,
+        ))
+    }
+}
+
+pub fn create_derived_debug_type<'c>(
+    context: &'c Context,
+    name: &str,
+    base_type: Attribute<'c>,
+    size_in_bits: u64,
+    align_in_bits: u64,
+    offset_in_bits: u64,
+    tag: MlirLLVMDWTag,
+) -> Attribute<'c> {
+    unsafe {
+        Attribute::from_raw(mlirLLVMDIDerivedTypeAttrGet(
+            context.to_raw(),
+            tag,
+            StringAttribute::new(context, name).to_raw(),
+            base_type.to_raw(),
+            size_in_bits,
+            align_in_bits,
+            offset_in_bits,
+        ))
+    }
+}
+
+pub fn create_composite_debug_type<'c>(
+    context: &'c Context,
+    name: &str,
+    base_type: Attribute<'c>,
+    size_in_bits: u64,
+    align_in_bits: u64,
+    tag: MlirLLVMDWTag,
+    elements: &[MlirAttribute],
+) -> Attribute<'c> {
+    let file_attr = unsafe {
+        mlirLLVMDIFileAttrGet(
+            context.to_raw(),
+            StringAttribute::new(context, "<unknown>").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+        )
+    };
+
+    unsafe {
+        Attribute::from_raw(mlirLLVMDICompositeTypeAttrGet(
+            context.to_raw(),
+            tag,
+            StringAttribute::new(context, name).to_raw(),
+            file_attr,
+            0,
+            file_attr,
+            base_type.to_raw(),
+            3, // public
+            size_in_bits,
+            align_in_bits,
+            elements.len(),
+            elements.as_ptr(),
         ))
     }
 }

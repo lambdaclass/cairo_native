@@ -243,3 +243,31 @@ extern "C" MlirAttribute mlirLLVMDIModuleAttrGet(
 extern "C" MlirAttribute mlirLLVMDIModuleAttrGetScope(MlirAttribute diModule) {
   return wrap(cast<DIModuleAttr>(unwrap(diModule)).getScope());
 }
+
+extern "C" MlirAttribute mlirLLVMDICompositeTypeAttrGet(
+    MlirContext ctx, unsigned int tag, MlirAttribute name, MlirAttribute file,
+    uint32_t line, MlirAttribute scope, MlirAttribute baseType, int64_t flags,
+    uint64_t sizeInBits, uint64_t alignInBits, intptr_t nElements,
+    MlirAttribute const *elements) {
+  SmallVector<Attribute> elementsStorage;
+  elementsStorage.reserve(nElements);
+
+  return wrap(DICompositeTypeAttr::get(
+      unwrap(ctx), tag, cast<StringAttr>(unwrap(name)),
+      cast<DIFileAttr>(unwrap(file)), line, cast<DIScopeAttr>(unwrap(scope)),
+      cast<DITypeAttr>(unwrap(baseType)), DIFlags(flags), sizeInBits,
+      alignInBits,
+      llvm::map_to_vector(unwrapList(nElements, elements, elementsStorage),
+                          [](Attribute a) { return cast<DINodeAttr>(a); })));
+}
+
+extern "C" MlirAttribute
+mlirLLVMDIDerivedTypeAttrGet(MlirContext ctx, unsigned int tag,
+                             MlirAttribute name, MlirAttribute baseType,
+                             uint64_t sizeInBits, uint32_t alignInBits,
+                             uint64_t offsetInBits) {
+  return wrap(DIDerivedTypeAttr::get(unwrap(ctx), tag,
+                                     cast<StringAttr>(unwrap(name)),
+                                     cast<DITypeAttr>(unwrap(baseType)),
+                                     sizeInBits, alignInBits, offsetInBits));
+}

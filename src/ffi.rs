@@ -70,6 +70,19 @@ pub enum MlirLLVMTypeEncoding {
     HiUser = 0xff,
 }
 
+#[repr(C)]
+#[allow(unused)]
+pub enum MlirLLVMDWTag {
+    Null = 0x0,
+    ReferenceType = 0x10,
+    Member = 0x0d,
+    PointerType = 0x0f,
+    StructureType = 0x13,
+    Variant = 0x19,
+    BaseType = 0x24,
+    EnumerationType = 0x04,
+}
+
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
 
@@ -142,6 +155,33 @@ extern "C" {
     pub fn mlirLLVMDIModuleAttrGetScope(di_module: MlirAttribute) -> MlirAttribute;
 
     pub fn mlirModuleCleanup(module: MlirModule);
+
+    pub fn mlirLLVMDIDerivedTypeAttrGet(
+        mlir_context: MlirContext,
+        tag: MlirLLVMDWTag,
+        name: MlirAttribute,
+        base_type: MlirAttribute,
+        size_in_bits: u64,
+        align_in_bits: u64,
+        offset_in_bits: u64,
+    ) -> MlirAttribute;
+
+    pub fn mlirLLVMDICompositeTypeAttrGet(
+        mlir_context: MlirContext,
+        tag: MlirLLVMDWTag,
+        name: MlirAttribute,
+        file: MlirAttribute,
+        line: u32,
+        scope: MlirAttribute,
+        base_type: MlirAttribute,
+        flags: u64,
+        size_in_bits: u64,
+        align_in_bits: u64,
+        n_elements: usize,
+        elements: *const MlirAttribute,
+    ) -> MlirAttribute;
+
+    pub fn mlirLLVMDINullTypeAttrGet(mlir_context: MlirContext) -> MlirAttribute;
 }
 
 /// For any `!llvm.struct<...>` type, return the MLIR type of the field at the requested index.
