@@ -763,12 +763,12 @@ fn generate_function_structure<'c, 'a>(
                                 ),
                             )?;
 
-                            let (_, pred_count) =
+                            let (prev_state, pred_count) =
                                 match predecessors.entry(statement_idx.next(&branch.target)) {
                                     Entry::Occupied(entry) => entry.into_mut(),
                                     Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
                                 };
-                            //assert_eq!(prev_state, &state, "Branch target states do not match.");
+                            assert!(prev_state.eq_unordered(&state), "Branch target states do not match.");
                             *pred_count += 1;
 
                             Ok(state)
