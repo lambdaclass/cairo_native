@@ -181,7 +181,7 @@ jobs:
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
-        run: /Users/runner/.cargo/bin/cargo build --profile=ci --package=cairo-native-runtime
+        run: cargo build --profile=ci --package=cairo-native-runtime
       - name: Run tests
         run: make test-ci
       - name: test-cairo
