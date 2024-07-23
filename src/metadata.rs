@@ -14,6 +14,7 @@ use std::{
     collections::{hash_map::Entry, HashMap},
 };
 
+pub mod auto_breakpoint;
 pub mod debug_utils;
 pub mod enum_snapshot_variants;
 pub mod gas;

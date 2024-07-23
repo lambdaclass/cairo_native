@@ -317,11 +317,11 @@ fn secp256k1_new() {
         "secp256k1_new",
         &[
             JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+                fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
                 debug_name: None,
             },
             JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -382,12 +382,12 @@ fn secp256k1_new() {
             (U256 { hi: 0, lo: 0 }, U256 { hi: 0, lo: 0 }),
             (
                 U256 {
-                    hi: u128::MAX,
-                    lo: 0
+                    lo: 0,
+                    hi: u128::MAX
                 },
                 U256 {
-                    hi: 0,
-                    lo: u128::MAX
+                    lo: u128::MAX,
+                    hi: 0
                 }
             ),
             (
@@ -417,22 +417,22 @@ fn secp256k1_add() {
                 },
                 Secp256k1Point {
                     x: U256 {
-                        hi: u128::MAX,
-                        lo: 0,
+                        lo: u128::MAX,
+                        hi: 0,
                     },
                     y: U256 {
-                        hi: 0,
-                        lo: u128::MAX,
+                        lo: 0,
+                        hi: u128::MAX,
                     },
                 },
                 Secp256k1Point {
                     x: U256 {
-                        hi: u128::MAX,
                         lo: u128::MAX,
+                        hi: u128::MAX,
                     },
                     y: U256 {
-                        hi: u128::MAX,
                         lo: u128::MAX,
+                        hi: u128::MAX,
                     },
                 },
             ]),
@@ -473,12 +473,12 @@ fn secp256k1_add() {
         "secp256k1_add",
         &[
             JitValue::Secp256K1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
-            },
-            JitValue::Secp256K1Point {
                 x: (0, u128::MAX),
                 y: (u128::MAX, 0),
+            },
+            JitValue::Secp256K1Point {
+                x: (u128::MAX, 0),
+                y: (0, u128::MAX),
             },
         ],
         Some(u128::MAX),
@@ -562,22 +562,22 @@ fn secp256k1_add() {
             (
                 Secp256k1Point {
                     x: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
+                        lo: u128::MAX,
+                        hi: u128::MAX
                     },
                     y: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
+                        lo: u128::MAX,
+                        hi: u128::MAX
                     },
                 },
                 Secp256k1Point {
                     x: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
+                        lo: u128::MAX,
+                        hi: u128::MAX
                     },
                     y: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
+                        lo: u128::MAX,
+                        hi: u128::MAX
                     },
                 },
             ),
@@ -670,8 +670,8 @@ fn secp256k1_mul() {
         JitValue::Enum {
             tag: 0,
             value: Box::new(JitValue::Secp256K1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
+                x: (0, u128::MAX),
+                y: (u128::MAX, 0),
             }),
             debug_name: None,
         },
@@ -682,11 +682,11 @@ fn secp256k1_mul() {
         "secp256k1_mul",
         &[
             JitValue::Secp256K1Point {
-                x: (0, u128::MAX),
-                y: (u128::MAX, 0),
+                x: (u128::MAX, 0),
+                y: (0, u128::MAX),
             },
             JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -718,17 +718,17 @@ fn secp256k1_mul() {
             (
                 Secp256k1Point {
                     x: U256 {
-                        hi: u128::MAX,
-                        lo: 0
+                        lo: u128::MAX,
+                        hi: 0
                     },
                     y: U256 {
-                        hi: 0,
-                        lo: u128::MAX,
+                        lo: 0,
+                        hi: u128::MAX,
                     },
                 },
                 U256 {
-                    hi: u128::MAX,
-                    lo: 0,
+                    lo: u128::MAX,
+                    hi: 0,
                 },
             ),
             (
@@ -887,8 +887,8 @@ fn secp256k1_get_point_from_x() {
             value: Box::new(JitValue::Enum {
                 tag: 0,
                 value: Box::new(JitValue::Secp256K1Point {
-                    x: (0, u128::MAX),
-                    y: (u128::MAX, 0),
+                    x: (u128::MAX, 0),
+                    y: (0, u128::MAX),
                 }),
                 debug_name: None,
             }),
@@ -923,8 +923,8 @@ fn secp256k1_get_point_from_x() {
             value: Box::new(JitValue::Enum {
                 tag: 0,
                 value: Box::new(JitValue::Secp256K1Point {
-                    x: (u128::MAX, 0),
-                    y: (0, u128::MAX),
+                    x: (0, u128::MAX),
+                    y: (u128::MAX, 0),
                 }),
                 debug_name: None,
             }),
@@ -938,15 +938,15 @@ fn secp256k1_get_point_from_x() {
             (U256 { hi: 0, lo: 0 }, false),
             (
                 U256 {
-                    hi: 0,
-                    lo: u128::MAX,
+                    lo: 0,
+                    hi: u128::MAX,
                 },
                 true,
             ),
             (
                 U256 {
-                    hi: u128::MAX,
-                    lo: 0,
+                    lo: u128::MAX,
+                    hi: 0,
                 },
                 false,
             ),
@@ -1052,11 +1052,11 @@ fn secp256k1_get_xy() {
             value: Box::new(JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
                         debug_name: None,
                     },
                     JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
                         debug_name: None,
                     },
                 ],
@@ -1083,11 +1083,11 @@ fn secp256k1_get_xy() {
             value: Box::new(JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
                         debug_name: None,
                     },
                     JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
                         debug_name: None,
                     },
                 ],
@@ -1137,22 +1137,22 @@ fn secp256k1_get_xy() {
             },
             Secp256k1Point {
                 x: U256 {
-                    hi: 0,
-                    lo: u128::MAX,
+                    lo: 0,
+                    hi: u128::MAX,
                 },
                 y: U256 {
-                    hi: u128::MAX,
-                    lo: 0,
+                    lo: u128::MAX,
+                    hi: 0,
                 },
             },
             Secp256k1Point {
                 x: U256 {
-                    hi: u128::MAX,
-                    lo: 0,
+                    lo: u128::MAX,
+                    hi: 0,
                 },
                 y: U256 {
-                    hi: 0,
-                    lo: u128::MAX,
+                    lo: 0,
+                    hi: u128::MAX,
                 },
             },
             Secp256k1Point {
@@ -1233,11 +1233,11 @@ fn secp256r1_new() {
         "secp256r1_new",
         &[
             JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+                fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
                 debug_name: None,
             },
             JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -1308,8 +1308,8 @@ fn secp256r1_new() {
             ),
             (
                 U256 {
-                    hi: u128::MAX,
-                    lo: u128::MAX
+                    lo: u128::MAX,
+                    hi: u128::MAX
                 },
                 U256 {
                     hi: u128::MAX,
@@ -1405,8 +1405,8 @@ fn secp256r1_add() {
         JitValue::Enum {
             tag: 0,
             value: Box::new(JitValue::Secp256R1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
+                x: (0, u128::MAX),
+                y: (u128::MAX, 0),
             }),
             debug_name: None,
         },
@@ -1456,22 +1456,22 @@ fn secp256r1_add() {
             (
                 Secp256r1Point {
                     x: U256 {
-                        hi: u128::MAX,
-                        lo: 0
+                        lo: u128::MAX,
+                        hi: 0
                     },
                     y: U256 {
-                        hi: 0,
-                        lo: u128::MAX
+                        lo: 0,
+                        hi: u128::MAX
                     },
                 },
                 Secp256r1Point {
                     x: U256 {
-                        hi: 0,
-                        lo: u128::MAX
+                        lo: 0,
+                        hi: u128::MAX
                     },
                     y: U256 {
-                        hi: u128::MAX,
-                        lo: 0
+                        lo: u128::MAX,
+                        hi: 0
                     },
                 },
             ),
@@ -1586,8 +1586,8 @@ fn secp256r1_mul() {
         JitValue::Enum {
             tag: 0,
             value: Box::new(JitValue::Secp256R1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
+                x: (0, u128::MAX),
+                y: (u128::MAX, 0),
             }),
             debug_name: None,
         },
@@ -1634,33 +1634,33 @@ fn secp256r1_mul() {
             (
                 Secp256r1Point {
                     x: U256 {
-                        hi: u128::MAX,
-                        lo: 0
+                        lo: u128::MAX,
+                        hi: 0
                     },
                     y: U256 {
-                        hi: 0,
-                        lo: u128::MAX,
+                        lo: 0,
+                        hi: u128::MAX,
                     },
                 },
                 U256 {
-                    hi: u128::MAX,
-                    lo: 0,
+                    lo: u128::MAX,
+                    hi: 0,
                 },
             ),
             (
                 Secp256r1Point {
                     x: U256 {
-                        hi: 0,
-                        lo: u128::MAX,
+                        lo: 0,
+                        hi: u128::MAX,
                     },
                     y: U256 {
-                        hi: u128::MAX,
-                        lo: 0,
+                        lo: u128::MAX,
+                        hi: 0,
                     },
                 },
                 U256 {
-                    hi: 0,
-                    lo: u128::MAX,
+                    lo: 0,
+                    hi: u128::MAX,
                 },
             ),
         ],
@@ -1803,8 +1803,8 @@ fn secp256r1_get_point_from_x() {
             value: Box::new(JitValue::Enum {
                 tag: 0,
                 value: Box::new(JitValue::Secp256R1Point {
-                    x: (0, u128::MAX),
-                    y: (u128::MAX, 0),
+                    x: (u128::MAX, 0),
+                    y: (0, u128::MAX),
                 }),
                 debug_name: None,
             }),
@@ -1839,8 +1839,8 @@ fn secp256r1_get_point_from_x() {
             value: Box::new(JitValue::Enum {
                 tag: 0,
                 value: Box::new(JitValue::Secp256R1Point {
-                    x: (u128::MAX, 0),
-                    y: (0, u128::MAX),
+                    x: (0, u128::MAX),
+                    y: (u128::MAX, 0),
                 }),
                 debug_name: None,
             }),
@@ -1854,15 +1854,15 @@ fn secp256r1_get_point_from_x() {
             (U256 { hi: 0, lo: 0 }, false),
             (
                 U256 {
-                    hi: 0,
-                    lo: u128::MAX,
+                    lo: 0,
+                    hi: u128::MAX,
                 },
                 true,
             ),
             (
                 U256 {
-                    hi: u128::MAX,
-                    lo: 0,
+                    lo: u128::MAX,
+                    hi: 0,
                 },
                 false,
             ),
@@ -1968,11 +1968,11 @@ fn secp256r1_get_xy() {
             value: Box::new(JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
                         debug_name: None,
                     },
                     JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
                         debug_name: None,
                     },
                 ],
@@ -1999,11 +1999,11 @@ fn secp256r1_get_xy() {
             value: Box::new(JitValue::Struct {
                 fields: vec![
                     JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
                         debug_name: None,
                     },
                     JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
                         debug_name: None,
                     },
                 ],
@@ -2053,22 +2053,22 @@ fn secp256r1_get_xy() {
             },
             Secp256r1Point {
                 x: U256 {
-                    hi: 0,
-                    lo: u128::MAX,
+                    lo: 0,
+                    hi: u128::MAX,
                 },
                 y: U256 {
-                    hi: u128::MAX,
-                    lo: 0,
+                    lo: u128::MAX,
+                    hi: 0,
                 },
             },
             Secp256r1Point {
                 x: U256 {
-                    hi: u128::MAX,
-                    lo: 0,
+                    lo: u128::MAX,
+                    hi: 0,
                 },
                 y: U256 {
-                    hi: 0,
-                    lo: u128::MAX,
+                    lo: 0,
+                    hi: u128::MAX,
                 },
             },
             Secp256r1Point {

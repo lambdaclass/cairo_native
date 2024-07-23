@@ -31,6 +31,9 @@ pub struct AotNativeExecutor {
     gas_metadata: GasMetadata,
 }
 
+unsafe impl Send for AotNativeExecutor {}
+unsafe impl Sync for AotNativeExecutor {}
+
 impl AotNativeExecutor {
     pub fn new(
         library: Library,
