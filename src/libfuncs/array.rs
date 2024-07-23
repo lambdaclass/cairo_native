@@ -6,8 +6,12 @@
 use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
+    debug::coretype_to_debugtype,
     error::Result,
-    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    ffi::{mlirLLVMDIFileAttrGet, mlirLLVMDILocalVariableAttrGet},
+    metadata::{
+        debug_info::FunctionDebugInfo, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+    },
     types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
@@ -28,9 +32,9 @@ use melior::{
         ods,
     },
     ir::{
-        attribute::{DenseI32ArrayAttribute, IntegerAttribute},
+        attribute::{DenseI32ArrayAttribute, IntegerAttribute, StringAttribute},
         r#type::IntegerType,
-        Block, Location, Value, ValueLike,
+        Attribute, AttributeLike, Block, Location, Value, ValueLike,
     },
     Context,
 };
@@ -89,13 +93,14 @@ pub fn build_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let array_ty = registry.build_type(
+    let (array_ty, layout) = registry.build_type_with_layout(
         context,
         helper,
         registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
+    let debug_meta = metadata.get::<FunctionDebugInfo>().unwrap();
 
     let ptr = entry
         .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
@@ -106,6 +111,43 @@ pub fn build_new<'ctx, 'this>(
     let value = entry.insert_value(context, location, value, k0, 1)?;
     let value = entry.insert_value(context, location, value, k0, 2)?;
     let value = entry.insert_value(context, location, value, k0, 3)?;
+
+    let spill = helper
+        .init_block()
+        .alloca1(context, location, array_ty, layout.align())?;
+    entry.store(context, location, spill, value)?;
+
+    let debug_ty = coretype_to_debugtype(
+        context,
+        registry,
+        registry.get_type(&info.branch_signatures()[0].vars[0].ty)?,
+        info.branch_signatures()[0].vars[0]
+            .ty
+            .debug_name
+            .as_ref()
+            .map(|x| x.as_str()),
+    )?;
+    entry.append_operation(
+        ods::llvm::intr_dbg_declare(
+            context,
+            spill,
+            unsafe {
+                Attribute::from_raw(mlirLLVMDILocalVariableAttrGet(
+                    context.to_raw(),
+                    debug_meta.scope,
+                    StringAttribute::new(context, "array_new").to_raw(),
+                    debug_meta.file,
+                    0,
+                    0,
+                    layout.align() as u32,
+                    debug_ty.to_raw(),
+                ))
+            },
+            location,
+        )
+        .into(),
+    );
+    entry.append_operation(ods::llvm::intr_debugtrap(context, location).into());
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())

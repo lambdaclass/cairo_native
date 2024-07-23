@@ -219,6 +219,16 @@ extern "C" {
     ) -> MlirAttribute;
 
     pub fn mlirLLVMDIModuleAttrGetScope(di_module: MlirAttribute) -> MlirAttribute;
+    pub fn mlirLLVMDISubprogramAttrGetScope(di_subprogram: MlirAttribute) -> MlirAttribute;
+    pub fn mlirLLVMDILexicalBlockAttrGetScope(di_lexical_block: MlirAttribute) -> MlirAttribute;
+
+    pub fn mlirLLVMDILexicalBlockAttrGet(
+        mlir_context: MlirContext,
+        scope: MlirAttribute,
+        file: MlirAttribute,
+        line: u32,
+        column: u32,
+    ) -> MlirAttribute;
 
     pub fn mlirModuleCleanup(module: MlirModule);
 
@@ -248,6 +258,17 @@ extern "C" {
     ) -> MlirAttribute;
 
     pub fn mlirLLVMDINullTypeAttrGet(mlir_context: MlirContext) -> MlirAttribute;
+
+    pub fn mlirLLVMDILocalVariableAttrGet(
+        mlir_context: MlirContext,
+        scope: MlirAttribute,
+        name: MlirAttribute,
+        file: MlirAttribute,
+        line: u32,
+        arg: u32,
+        align_bits: u32,
+        di_type: MlirAttribute,
+    ) -> MlirAttribute;
 }
 
 /// For any `!llvm.struct<...>` type, return the MLIR type of the field at the requested index.

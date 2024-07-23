@@ -197,6 +197,10 @@ extern "C" MlirAttribute mlirLLVMDILexicalBlockAttrGet(MlirContext ctx,
                               cast<DIFileAttr>(unwrap(file)), line, column));
 }
 
+extern "C" MlirAttribute mlirLLVMDILexicalBlockAttrGetScope(MlirAttribute block) {
+  return wrap(cast<DILexicalBlockAttr>(unwrap(block)).getScope());
+}
+
 extern "C" MlirAttribute
 mlirLLVMDISubroutineTypeAttrGet(MlirContext ctx, unsigned int callingConvention,
                                 intptr_t nTypes, MlirAttribute const *types) {
@@ -270,4 +274,16 @@ mlirLLVMDIDerivedTypeAttrGet(MlirContext ctx, unsigned int tag,
                                      cast<StringAttr>(unwrap(name)),
                                      cast<DITypeAttr>(unwrap(baseType)),
                                      sizeInBits, alignInBits, offsetInBits));
+}
+
+extern "C" MlirAttribute
+mlirLLVMDILocalVariableAttrGet(MlirContext ctx, MlirAttribute scope,
+                               MlirAttribute name, MlirAttribute diFile,
+                               unsigned int line, unsigned int arg,
+                               unsigned int alignInBits, MlirAttribute diType) {
+
+  return wrap(DILocalVariableAttr::get(
+      unwrap(ctx), cast<DIScopeAttr>(unwrap(scope)),
+      cast<StringAttr>(unwrap(name)), cast<DIFileAttr>(unwrap(diFile)), line,
+      arg, alignInBits, cast<DITypeAttr>(unwrap(diType))));
 }

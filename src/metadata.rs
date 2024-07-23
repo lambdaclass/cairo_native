@@ -15,6 +15,7 @@ use std::{
 };
 
 pub mod auto_breakpoint;
+pub mod debug_info;
 pub mod debug_utils;
 pub mod enum_snapshot_variants;
 pub mod gas;

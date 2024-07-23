@@ -49,12 +49,15 @@ use crate::{
     debug_info::DebugLocations,
     error::Error,
     ffi::{
-        mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
-        mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet,
-        mlirLLVMDistinctAttrCreate, MlirLLVMDWTag, MlirLLVMTypeEncoding,
+        mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDILexicalBlockAttrGet,
+        mlirLLVMDILexicalBlockAttrGetScope, mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope,
+        mlirLLVMDISubprogramAttrGet, mlirLLVMDISubprogramAttrGetScope,
+        mlirLLVMDISubroutineTypeAttrGet, mlirLLVMDistinctAttrCreate, MlirLLVMDWTag,
+        MlirLLVMTypeEncoding,
     },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
+        debug_info::FunctionDebugInfo,
         gas::{GasCost, GasMetadata},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
@@ -164,6 +167,43 @@ fn compile_func(
     } else {
         Location::unknown(context)
     };
+
+    let file_attr = unsafe {
+        Attribute::from_raw(mlirLLVMDIFileAttrGet(
+            context.to_raw(),
+            StringAttribute::new(context, "program.sierra").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+        ))
+    };
+    let compile_unit = {
+        unsafe {
+            Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
+                context.to_raw(),
+                di_compile_unit_id.to_raw(),
+                0x1c,
+                file_attr.to_raw(),
+                StringAttribute::new(context, "cairo-native").to_raw(),
+                false,
+                crate::ffi::DiEmissionKind::Full,
+            ))
+        }
+    };
+
+    let di_module = unsafe {
+        mlirLLVMDIModuleAttrGet(
+            context.to_raw(),
+            file_attr.to_raw(),
+            compile_unit.to_raw(),
+            StringAttribute::new(context, "LLVMDialectModule").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+            0,
+            false,
+        )
+    };
+
+    let module_scope = unsafe { mlirLLVMDIModuleAttrGetScope(di_module) };
 
     let region = Region::new();
     let blocks_arena = Bump::new();
@@ -276,6 +316,55 @@ fn compile_func(
     } else {
         None
     };
+
+    let function_name = generate_function_name(&function.id);
+
+    let di_subprogram = {
+        let x = unsafe {
+            let id = {
+                let id = StringAttribute::new(context, "fnid").to_raw();
+                mlirLLVMDistinctAttrCreate(id)
+            };
+
+            let ty = mlirLLVMDISubroutineTypeAttrGet(
+                context.to_raw(),
+                0x0,
+                debug_arg_types.len(),
+                debug_arg_types.as_slice().as_ptr(),
+            );
+
+            mlirLLVMDISubprogramAttrGet(
+                context.to_raw(),
+                id,
+                module_scope,
+                file_attr.to_raw(),
+                StringAttribute::new(context, &function_name).to_raw(),
+                StringAttribute::new(context, &function_name).to_raw(),
+                file_attr.to_raw(),
+                0,
+                0,
+                8,
+                ty,
+            )
+        };
+
+        unsafe { Attribute::from_raw(x) }
+    };
+    let subprogram_scope = unsafe { mlirLLVMDISubprogramAttrGetScope(di_subprogram.to_raw()) };
+
+    let di_lexical_block = unsafe {
+        // todo: fix line col
+        mlirLLVMDILexicalBlockAttrGet(context.to_raw(), subprogram_scope, file_attr.to_raw(), 0, 0)
+    };
+
+    let di_lexical_block_scope = unsafe { mlirLLVMDILexicalBlockAttrGetScope(di_lexical_block) };
+
+    metadata.remove::<FunctionDebugInfo>();
+    metadata.insert(FunctionDebugInfo {
+        scope: di_lexical_block_scope,
+        file: file_attr.to_raw(),
+        subprogram: di_subprogram.to_raw(),
+    });
 
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
@@ -740,8 +829,6 @@ fn compile_func(
         pre_entry_block.append_operation(cf::br(&entry_block, &arg_values, fn_location));
     }
 
-    let function_name = generate_function_name(&function.id);
-
     module.body().append_operation(func::func(
         context,
         StringAttribute::new(context, &function_name),
@@ -760,74 +847,7 @@ fn compile_func(
         Location::fused(
             context,
             &[Location::new(context, "program.sierra", 0, 0)],
-            {
-                let file_attr = unsafe {
-                    Attribute::from_raw(mlirLLVMDIFileAttrGet(
-                        context.to_raw(),
-                        StringAttribute::new(context, "program.sierra").to_raw(),
-                        StringAttribute::new(context, "").to_raw(),
-                    ))
-                };
-                let compile_unit = {
-                    unsafe {
-                        Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
-                            context.to_raw(),
-                            di_compile_unit_id.to_raw(),
-                            0x1c,
-                            file_attr.to_raw(),
-                            StringAttribute::new(context, "cairo-native").to_raw(),
-                            false,
-                            crate::ffi::DiEmissionKind::Full,
-                        ))
-                    }
-                };
-
-                let di_module = unsafe {
-                    mlirLLVMDIModuleAttrGet(
-                        context.to_raw(),
-                        file_attr.to_raw(),
-                        compile_unit.to_raw(),
-                        StringAttribute::new(context, "LLVMDialectModule").to_raw(),
-                        StringAttribute::new(context, "").to_raw(),
-                        StringAttribute::new(context, "").to_raw(),
-                        StringAttribute::new(context, "").to_raw(),
-                        0,
-                        false,
-                    )
-                };
-
-                let scope = unsafe { mlirLLVMDIModuleAttrGetScope(di_module) };
-
-                let x = unsafe {
-                    let id = {
-                        let id = StringAttribute::new(context, "fnid").to_raw();
-                        mlirLLVMDistinctAttrCreate(id)
-                    };
-
-                    let ty = mlirLLVMDISubroutineTypeAttrGet(
-                        context.to_raw(),
-                        0x0,
-                        debug_arg_types.len(),
-                        debug_arg_types.as_slice().as_ptr(),
-                    );
-
-                    mlirLLVMDISubprogramAttrGet(
-                        context.to_raw(),
-                        id,
-                        scope,
-                        file_attr.to_raw(),
-                        StringAttribute::new(context, &function_name).to_raw(),
-                        StringAttribute::new(context, &function_name).to_raw(),
-                        file_attr.to_raw(),
-                        0,
-                        0,
-                        8,
-                        ty,
-                    )
-                };
-
-                unsafe { Attribute::from_raw(x) }
-            },
+            di_subprogram,
         ),
     ));
 
