@@ -106,7 +106,7 @@ serde_json = { version = "1.0.117", optional = true }
 stats_alloc = "0.1.10"
 
 [dev-dependencies]
-cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "886beca209ec42723e2562ea7ce8ceb0885dd41a", features = ["cairo-1-hints"] }
+cairo-vm = { version = "1.0.0-rc6", features = ["cairo-1-hints"] }
 cairo-lang-runner = "2.7.0-rc.3"
 cairo-lang-semantic = { version = "2.7.0-rc.3", features = ["testing"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
