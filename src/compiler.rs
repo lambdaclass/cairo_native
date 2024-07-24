@@ -350,18 +350,17 @@ fn compile_func(
 
         unsafe { Attribute::from_raw(x) }
     };
-    let subprogram_scope = unsafe { mlirLLVMDISubprogramAttrGetScope(di_subprogram.to_raw()) };
 
     let di_lexical_block = unsafe {
         // todo: fix line col
-        mlirLLVMDILexicalBlockAttrGet(context.to_raw(), subprogram_scope, file_attr.to_raw(), 0, 0)
+        mlirLLVMDILexicalBlockAttrGet(context.to_raw(), di_subprogram.to_raw(), file_attr.to_raw(), 0, 0)
     };
 
-    let di_lexical_block_scope = unsafe { mlirLLVMDILexicalBlockAttrGetScope(di_lexical_block) };
+    // let di_lexical_block_scope = unsafe { mlirLLVMDILexicalBlockAttrGetScope(di_lexical_block) };
 
     metadata.remove::<FunctionDebugInfo>();
     metadata.insert(FunctionDebugInfo {
-        scope: di_lexical_block_scope,
+        scope: di_lexical_block,
         file: file_attr.to_raw(),
         subprogram: di_subprogram.to_raw(),
     });

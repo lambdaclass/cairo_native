@@ -8,7 +8,7 @@ use crate::{
     block_ext::BlockExt,
     debug::coretype_to_debugtype,
     error::Result,
-    ffi::{mlirLLVMDIFileAttrGet, mlirLLVMDILocalVariableAttrGet},
+    ffi::{mlirLLVMDILocalVariableAttrGet},
     metadata::{
         debug_info::FunctionDebugInfo, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
