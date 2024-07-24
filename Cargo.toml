@@ -45,7 +45,6 @@ build-cli = [
   "dep:cairo-lang-test-plugin",
   "dep:cairo-lang-runner",
   "dep:colored",
-  #"dep:cairo-felt",
 ]
 scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
 with-debug-utils = []
