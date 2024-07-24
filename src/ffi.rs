@@ -198,14 +198,6 @@ extern "C" {
         types: *const MlirAttribute,
     ) -> MlirAttribute;
 
-    pub fn mlirLLVMDIBasicTypeAttrGet(
-        mlir_context: MlirContext,
-        tag: u32,
-        name: MlirAttribute,
-        size_in_bits: u64,
-        encoding: MlirLLVMTypeEncoding,
-    ) -> MlirAttribute;
-
     pub fn mlirLLVMDIModuleAttrGet(
         mlir_context: MlirContext,
         file: MlirAttribute,
@@ -221,33 +213,6 @@ extern "C" {
     pub fn mlirLLVMDIModuleAttrGetScope(di_module: MlirAttribute) -> MlirAttribute;
 
     pub fn mlirModuleCleanup(module: MlirModule);
-
-    pub fn mlirLLVMDIDerivedTypeAttrGet(
-        mlir_context: MlirContext,
-        tag: MlirLLVMDWTag,
-        name: MlirAttribute,
-        base_type: MlirAttribute,
-        size_in_bits: u64,
-        align_in_bits: u64,
-        offset_in_bits: u64,
-    ) -> MlirAttribute;
-
-    pub fn mlirLLVMDICompositeTypeAttrGet(
-        mlir_context: MlirContext,
-        tag: MlirLLVMDWTag,
-        name: MlirAttribute,
-        file: MlirAttribute,
-        line: u32,
-        scope: MlirAttribute,
-        base_type: MlirAttribute,
-        flags: u64,
-        size_in_bits: u64,
-        align_in_bits: u64,
-        n_elements: usize,
-        elements: *const MlirAttribute,
-    ) -> MlirAttribute;
-
-    pub fn mlirLLVMDINullTypeAttrGet(mlir_context: MlirContext) -> MlirAttribute;
 }
 
 /// For any `!llvm.struct<...>` type, return the MLIR type of the field at the requested index.

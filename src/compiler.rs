@@ -45,12 +45,12 @@
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
-    debug::{create_di_basic_type, libfunc_to_name},
+    debug::libfunc_to_name,
     error::Error,
     ffi::{
         mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
         mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet,
-        mlirLLVMDistinctAttrCreate, MlirLLVMDWTag, MlirLLVMTypeEncoding,
+        mlirLLVMDistinctAttrCreate,
     },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
