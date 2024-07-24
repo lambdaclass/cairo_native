@@ -17,7 +17,6 @@ use cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
-    utils::cairo_get_debug_locations,
 };
 use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};

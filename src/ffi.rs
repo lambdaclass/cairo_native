@@ -425,6 +425,13 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
 
     let file_path = file.display().to_string();
     let output_path = output_filename.display().to_string();
+    if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
+        if x == "1" || x == "true" {
+            // forget so the temp file is not deleted and the debugger can load it.
+            // its still in a temp file directory so eventually the OS will delete it, but just not instantly.
+            std::mem::forget(file);
+        }
+    }
 
     let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]

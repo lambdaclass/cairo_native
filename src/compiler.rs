@@ -132,6 +132,9 @@ pub fn compile(
     let num_types = program.type_declarations.len() + 1;
     let n_libfuncs = program.libfunc_declarations.len() + 1;
     let sierra_stmt_start_offset = num_types + n_libfuncs + 1;
+    dbg!("there are libfuncs", n_libfuncs);
+    dbg!("num_types", num_types);
+    dbg!("sierra_stmt_start_offset", sierra_stmt_start_offset);
 
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
