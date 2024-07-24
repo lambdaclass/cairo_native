@@ -7,7 +7,7 @@ use crate::error::Error as CompileError;
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
-        LLVMDisposeModule, LLVMDumpModule, LLVMGetBufferSize, LLVMGetBufferStart,
+        LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart,
     },
     prelude::{LLVMContextRef, LLVMMemoryBufferRef, LLVMModuleRef},
     target::{
@@ -219,8 +219,6 @@ extern "C" {
     ) -> MlirAttribute;
 
     pub fn mlirLLVMDIModuleAttrGetScope(di_module: MlirAttribute) -> MlirAttribute;
-    pub fn mlirLLVMDISubprogramAttrGetScope(di_subprogram: MlirAttribute) -> MlirAttribute;
-    pub fn mlirLLVMDILexicalBlockAttrGetScope(di_lexical_block: MlirAttribute) -> MlirAttribute;
 
     pub fn mlirLLVMDILexicalBlockAttrGet(
         mlir_context: MlirContext,
@@ -258,17 +256,6 @@ extern "C" {
     ) -> MlirAttribute;
 
     pub fn mlirLLVMDINullTypeAttrGet(mlir_context: MlirContext) -> MlirAttribute;
-
-    pub fn mlirLLVMDILocalVariableAttrGet(
-        mlir_context: MlirContext,
-        scope: MlirAttribute,
-        name: MlirAttribute,
-        file: MlirAttribute,
-        line: u32,
-        arg: u32,
-        align_bits: u32,
-        di_type: MlirAttribute,
-    ) -> MlirAttribute;
 }
 
 /// For any `!llvm.struct<...>` type, return the MLIR type of the field at the requested index.
@@ -359,12 +346,6 @@ pub fn module_to_object(
 
         let mut null = null_mut();
         let mut error_buffer = addr_of_mut!(null);
-
-        if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP_LLVMIR") {
-            if x == "1" || x == "true" {
-                LLVMDumpModule(llvm_module);
-            }
-        }
 
         let target_triple = LLVMGetDefaultTargetTriple();
         let target_cpu = LLVMGetHostCPUName();

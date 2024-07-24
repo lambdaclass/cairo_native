@@ -1,7 +1,6 @@
 use std::sync::OnceLock;
 
 use crate::{
-    debug_info::DebugLocations,
     error::Error,
     ffi::{
         get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet,
@@ -63,11 +62,7 @@ impl NativeContext {
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
-    pub fn compile(
-        &self,
-        program: &Program,
-        debug_locations: Option<DebugLocations>,
-    ) -> Result<NativeModule, Error> {
+    pub fn compile(&self, program: &Program) -> Result<NativeModule, Error> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
@@ -174,11 +169,10 @@ impl NativeContext {
             program,
             &registry,
             &mut metadata,
-            debug_locations.as_ref(),
             unsafe { Attribute::from_raw(di_unit_id) },
         )?;
 
-        if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP_PREPASS") {
+        if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {
                 std::fs::write("dump-prepass.mlir", module.as_operation().to_string())
                     .expect("should work");

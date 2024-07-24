@@ -37,14 +37,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load the program.
     let context = NativeContext::new();
     // TODO: Reconnect debug information.
-    let (program, debug_info) = load_program(
+    let (program, _) = load_program(
         Path::new(&args.input),
         Some(context.context()),
         args.starknet,
     )?;
 
     // Compile the program.
-    let module = context.compile(&program, debug_info)?;
+    let module = context.compile(&program)?;
 
     // Write the output.
     let output_str = module

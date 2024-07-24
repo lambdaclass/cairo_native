@@ -672,7 +672,7 @@ pub mod test {
         let context = NativeContext::new();
 
         let module = context
-            .compile(program, None)
+            .compile(program)
             .expect("Could not compile test program to MLIR.");
 
         // FIXME: There are some bugs with non-zero LLVM optimization levels.

@@ -105,7 +105,7 @@ impl<'c> DebugLocations<'c> {
         if let Some(location) = self.statements.get(id) {
             *location
         } else {
-            Location::unknown(context)
+            Location::new(context, "program.sierra", id.0, 0)
         }
     }
 

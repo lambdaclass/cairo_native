@@ -46,12 +46,10 @@
 
 use crate::{
     debug::{coretype_to_debugtype, create_di_basic_type, libfunc_to_name},
-    debug_info::DebugLocations,
     error::Error,
     ffi::{
         mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDILexicalBlockAttrGet,
-        mlirLLVMDILexicalBlockAttrGetScope, mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope,
-        mlirLLVMDISubprogramAttrGet, mlirLLVMDISubprogramAttrGetScope,
+        mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet,
         mlirLLVMDISubroutineTypeAttrGet, mlirLLVMDistinctAttrCreate, MlirLLVMDWTag,
         MlirLLVMTypeEncoding,
     },
@@ -124,9 +122,17 @@ pub fn compile(
     program: &Program,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
-    debug_info: Option<&DebugLocations>,
     di_compile_unit_id: Attribute,
 ) -> Result<(), Error> {
+    if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
+        if x == "1" || x == "true" {
+            std::fs::write("program.sierra", program.to_string()).expect("failed to dump sierra");
+        }
+    }
+    let num_types = program.type_declarations.len() + 1;
+    let n_libfuncs = program.libfunc_declarations.len() + 1;
+    let sierra_stmt_start_offset = num_types + n_libfuncs + 1;
+
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
         compile_func(
@@ -136,8 +142,8 @@ pub fn compile(
             function,
             &program.statements,
             metadata,
-            debug_info,
             di_compile_unit_id,
+            sierra_stmt_start_offset,
         )?;
     }
 
@@ -159,14 +165,15 @@ fn compile_func(
     function: &Function,
     statements: &[Statement],
     metadata: &mut MetadataStorage,
-    debug_info: Option<&DebugLocations>,
     di_compile_unit_id: Attribute,
+    sierra_stmt_start_offset: usize,
 ) -> Result<(), Error> {
-    let fn_location = if let Some(debug_info) = debug_info {
-        debug_info.get_func_loc(&function.id, context)
-    } else {
-        Location::unknown(context)
-    };
+    let fn_location = Location::new(
+        context,
+        "program.sierra",
+        sierra_stmt_start_offset + function.entry_point.0,
+        0,
+    );
 
     let file_attr = unsafe {
         Attribute::from_raw(mlirLLVMDIFileAttrGet(
@@ -226,7 +233,6 @@ fn compile_func(
     .collect::<Result<Vec<_>, _>>()?;
 
     let mut debug_arg_types = Vec::new();
-    let mut arg_locations = Vec::new();
 
     // Replace memory-allocated arguments with pointers.
     for (ty, (type_info, type_id)) in
@@ -241,12 +247,6 @@ fn compile_func(
                 }
             }))
     {
-        if let Some(debug_info) = debug_info {
-            arg_locations.push(debug_info.get_type_loc(type_id, context));
-        } else {
-            arg_locations.push(Location::unknown(context));
-        }
-
         if type_info.is_memory_allocated(registry) {
             *ty = llvm::r#type::pointer(context, 0);
             debug_arg_types.push(
@@ -341,7 +341,7 @@ fn compile_func(
                 StringAttribute::new(context, &function_name).to_raw(),
                 StringAttribute::new(context, &function_name).to_raw(),
                 file_attr.to_raw(),
-                0,
+                function.entry_point.0 as u32,
                 0,
                 8,
                 ty,
@@ -353,7 +353,13 @@ fn compile_func(
 
     let di_lexical_block = unsafe {
         // todo: fix line col
-        mlirLLVMDILexicalBlockAttrGet(context.to_raw(), di_subprogram.to_raw(), file_attr.to_raw(), 0, 0)
+        mlirLLVMDILexicalBlockAttrGet(
+            context.to_raw(),
+            di_subprogram.to_raw(),
+            file_attr.to_raw(),
+            0,
+            0,
+        )
     };
 
     // let di_lexical_block_scope = unsafe { mlirLLVMDILexicalBlockAttrGetScope(di_lexical_block) };
@@ -367,7 +373,14 @@ fn compile_func(
 
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
-        context, module, &region, registry, function, statements, metadata, debug_info,
+        context,
+        module,
+        &region,
+        registry,
+        function,
+        statements,
+        metadata,
+        sierra_stmt_start_offset,
     )?;
 
     tracing::debug!("Generating the function implementation.");
@@ -377,13 +390,15 @@ fn compile_func(
         Block::new(
             &arg_types
                 .iter()
-                .enumerate()
-                .map(|(idx, ty)| {
+                .map(|ty| {
                     (
                         *ty,
-                        *arg_locations
-                            .get(idx)
-                            .unwrap_or(&Location::unknown(context)),
+                        Location::new(
+                            context,
+                            "program.sierra",
+                            sierra_stmt_start_offset + function.entry_point.0,
+                            0,
+                        ),
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -396,11 +411,12 @@ fn compile_func(
         let mut count = 0;
         for param in &function.params {
             let type_info = registry.get_type(&param.ty)?;
-            let location = if let Some(debug_info) = debug_info {
-                debug_info.get_type_loc(&param.ty, context)
-            } else {
-                Location::unknown(context)
-            };
+            let location = Location::new(
+                context,
+                "program.sierra",
+                sierra_stmt_start_offset + function.entry_point.0,
+                0,
+            );
 
             values.push((
                 &param.id,
@@ -435,11 +451,12 @@ fn compile_func(
         .map(|x| initial_state[x])
         .collect::<Vec<_>>(),
         {
-            if let Some(debug_info) = debug_info {
-                debug_info.get_statement_loc(&function.entry_point, context)
-            } else {
-                Location::unknown(context)
-            }
+            Location::new(
+                context,
+                "program.sierra",
+                sierra_stmt_start_offset + function.entry_point.0,
+                0,
+            )
         },
     ));
 
@@ -535,11 +552,12 @@ fn compile_func(
                             let location = Location::name(
                                 context,
                                 &format!("recursion_counter({})", libfunc_name),
-                                if let Some(debug_info) = debug_info {
-                                    debug_info.get_statement_loc(&statement_idx, context)
-                                } else {
-                                    Location::unknown(context)
-                                },
+                                Location::new(
+                                    context,
+                                    "program.sierra",
+                                    sierra_stmt_start_offset + statement_idx.0,
+                                    0,
+                                ),
                             );
                             let op0 = pre_entry_block.insert_operation(
                                 0,
@@ -580,15 +598,7 @@ fn compile_func(
                         context,
                         registry,
                         block,
-                        Location::name(
-                            context,
-                            &libfunc_name,
-                            debug_info
-                                .and_then(|debug_info| {
-                                    debug_info.statements.get(&statement_idx).copied()
-                                })
-                                .unwrap_or(fn_location),
-                        ),
+                        Location::name(context, &libfunc_name, fn_location),
                         &helper,
                         metadata,
                     )?;
@@ -631,11 +641,12 @@ fn compile_func(
                     let location = Location::name(
                         context,
                         &format!("return(stmt_idx={})", statement_idx),
-                        if let Some(debug_info) = debug_info {
-                            debug_info.get_statement_loc(&statement_idx, context)
-                        } else {
-                            Location::unknown(context)
-                        },
+                        Location::new(
+                            context,
+                            "program.sierra",
+                            sierra_stmt_start_offset + statement_idx.0,
+                            0,
+                        ),
                     );
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
@@ -645,11 +656,12 @@ fn compile_func(
                         let location = Location::name(
                             context,
                             &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
-                            if let Some(debug_info) = debug_info {
-                                debug_info.get_statement_loc(&statement_idx, context)
-                            } else {
-                                Location::unknown(context)
-                            },
+                            Location::new(
+                                context,
+                                "program.sierra",
+                                sierra_stmt_start_offset + statement_idx.0,
+                                0,
+                            ),
                         );
                         // Perform tail recursion.
                         for counter_idx in tailrec_state.into_values() {
@@ -845,7 +857,12 @@ fn compile_func(
         ],
         Location::fused(
             context,
-            &[Location::new(context, "program.sierra", 0, 0)],
+            &[Location::new(
+                context,
+                "program.sierra",
+                sierra_stmt_start_offset + function.entry_point.0,
+                0,
+            )],
             di_subprogram,
         ),
     ));
@@ -863,7 +880,7 @@ fn generate_function_structure<'c, 'a>(
     function: &Function,
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
-    debug_info: Option<&DebugLocations<'c>>,
+    sierra_stmt_start_offset: usize,
 ) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Error> {
     let initial_state = edit_state::put_results::<Type>(
         HashMap::new(),
@@ -912,11 +929,12 @@ fn generate_function_structure<'c, 'a>(
                     let (state, types) =
                         edit_state::take_args(state.clone(), invocation.args.iter())?;
 
-                    let location = if let Some(debug_info) = debug_info {
-                        debug_info.get_statement_loc(&statement_idx, context)
-                    } else {
-                        Location::unknown(context)
-                    };
+                    let location = Location::new(
+                        context,
+                        "program.sierra",
+                        sierra_stmt_start_offset + statement_idx.0,
+                        0,
+                    );
 
                     for ty in types {
                         block.add_argument(ty, location);
@@ -970,11 +988,12 @@ fn generate_function_structure<'c, 'a>(
                         "State must be empty after a return statement."
                     );
 
-                    let location = if let Some(debug_info) = debug_info {
-                        debug_info.get_statement_loc(&statement_idx, context)
-                    } else {
-                        Location::unknown(context)
-                    };
+                    let location = Location::new(
+                        context,
+                        "program.sierra",
+                        sierra_stmt_start_offset + statement_idx.0,
+                        0,
+                    );
 
                     for ty in types {
                         block.add_argument(ty, location);
@@ -995,7 +1014,17 @@ fn generate_function_structure<'c, 'a>(
             registry,
             metadata_storage,
         )
-        .map(|ty| Ok((ty?, Location::unknown(context))))
+        .map(|ty| {
+            Ok((
+                ty?,
+                Location::new(
+                    context,
+                    "program.sierra",
+                    sierra_stmt_start_offset + function.entry_point.0,
+                    0,
+                ),
+            ))
+        })
         .collect::<Result<Vec<_>, Error>>()?
     }));
 
@@ -1022,13 +1051,15 @@ fn generate_function_structure<'c, 'a>(
                                 .collect::<BTreeMap<_, _>>()
                                 .into_values()
                                 .map(|ty| {
-                                    (ty, {
-                                        if let Some(debug_info) = debug_info {
-                                            debug_info.get_statement_loc(&statement_idx, context)
-                                        } else {
-                                            Location::unknown(context)
-                                        }
-                                    })
+                                    (
+                                        ty,
+                                        Location::new(
+                                            context,
+                                            "program.sierra",
+                                            sierra_stmt_start_offset + statement_idx.0,
+                                            0,
+                                        ),
+                                    )
                                 })
                                 .collect::<Vec<_>>(),
                         ),

@@ -1,8 +1,7 @@
 use anyhow::Context;
 use cairo_lang_compiler::project::check_compiler_path;
 use cairo_native::{
-    context::NativeContext, module_to_object, object_to_shared_lib,
-    utils::cairo_to_sierra_with_debug_info,
+    context::NativeContext, module_to_object, object_to_shared_lib, utils::cairo_to_sierra,
 };
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
@@ -53,13 +52,10 @@ fn main() -> anyhow::Result<()> {
     check_compiler_path(args.single_file, &args.path)?;
 
     let native_context = NativeContext::new();
-    let (sierra_program, debug_locations) =
-        cairo_to_sierra_with_debug_info(native_context.context(), &args.path)?;
+    let sierra_program = cairo_to_sierra(&args.path);
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context
-        .compile(&sierra_program, Some(debug_locations))
-        .unwrap();
+    let native_module = native_context.compile(&sierra_program).unwrap();
 
     let output_mlir = args
         .output_mlir

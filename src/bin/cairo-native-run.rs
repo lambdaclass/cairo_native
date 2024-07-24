@@ -95,12 +95,8 @@ fn main() -> anyhow::Result<()> {
 
     let native_context = NativeContext::new();
 
-    let debug_locations = cairo_get_debug_locations(native_context.context(), db, &sierra_program)?;
-
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context
-        .compile(&sierra_program, Some(debug_locations))
-        .unwrap();
+    let native_module = native_context.compile(&sierra_program).unwrap();
 
     let native_executor: NativeExecutor = match args.run_mode {
         RunMode::Aot => {
