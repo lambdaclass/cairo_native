@@ -183,9 +183,9 @@ jobs:
       - name: Build cairo-native-runtime library.
         run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && cargo build --profile=ci --package=cairo-native-runtime
       - name: Run tests
-        run: make test-ci
+        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && make test-ci
       - name: test-cairo
-        run: make test-cairo
+        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && make test-cairo
 
   coverage:
     name: coverage
