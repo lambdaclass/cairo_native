@@ -768,7 +768,10 @@ fn generate_function_structure<'c, 'a>(
                                     Entry::Occupied(entry) => entry.into_mut(),
                                     Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
                                 };
-                            assert!(prev_state.eq_unordered(&state), "Branch target states do not match.");
+                            assert!(
+                                prev_state.eq_unordered(&state),
+                                "Branch target states do not match."
+                            );
                             *pred_count += 1;
 
                             Ok(state)
