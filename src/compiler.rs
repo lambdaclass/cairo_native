@@ -45,7 +45,7 @@
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
-    debug::{coretype_to_debugtype, create_di_basic_type, libfunc_to_name},
+    debug::{create_di_basic_type, libfunc_to_name},
     error::Error,
     ffi::{
         mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
@@ -202,10 +202,8 @@ fn compile_func(
     )
     .collect::<Result<Vec<_>, _>>()?;
 
-    let mut debug_arg_types = Vec::new();
-
     // Replace memory-allocated arguments with pointers.
-    for (ty, (type_info, type_id)) in
+    for (ty, type_info) in
         arg_types
             .iter_mut()
             .zip(function.signature.param_types.iter().filter_map(|type_id| {
@@ -213,32 +211,12 @@ fn compile_func(
                 if type_info.is_builtin() && type_info.is_zst(registry) {
                     None
                 } else {
-                    Some((type_info, type_id))
+                    Some(type_info)
                 }
             }))
     {
         if type_info.is_memory_allocated(registry) {
             *ty = llvm::r#type::pointer(context, 0);
-            debug_arg_types.push(
-                create_di_basic_type(
-                    context,
-                    "ptr",
-                    64,
-                    MlirLLVMTypeEncoding::Address,
-                    MlirLLVMDWTag::DW_TAG_pointer_type,
-                )
-                .to_raw(),
-            );
-        } else {
-            debug_arg_types.push(
-                coretype_to_debugtype(
-                    context,
-                    registry,
-                    type_info,
-                    type_id.debug_name.as_ref().map(|x| x.as_str()),
-                )?
-                .to_raw(),
-            );
         }
     }
 
@@ -271,16 +249,6 @@ fn compile_func(
 
         return_types.remove(0);
         arg_types.insert(0, llvm::r#type::pointer(context, 0));
-        debug_arg_types.push(
-            create_di_basic_type(
-                context,
-                "ptr",
-                64,
-                MlirLLVMTypeEncoding::Address,
-                MlirLLVMDWTag::DW_TAG_pointer_type,
-            )
-            .to_raw(),
-        );
 
         Some(true)
     } else {
@@ -289,18 +257,16 @@ fn compile_func(
 
     let function_name = generate_function_name(&function.id);
 
-    // Various DWARF debug attributes for this function.
-    // The unsafe is because this is a method not yet found in upstream LLVM nor melior, so
-    // we are using our own bindings to the C++ API.
-    let file_attr = unsafe {
-        Attribute::from_raw(mlirLLVMDIFileAttrGet(
+    let di_subprogram = unsafe {
+        // Various DWARF debug attributes for this function.
+        // The unsafe is because this is a method not yet found in upstream LLVM nor melior, so
+        // we are using our own bindings to the C++ API.
+        let file_attr = Attribute::from_raw(mlirLLVMDIFileAttrGet(
             context.to_raw(),
             StringAttribute::new(context, "program.sierra").to_raw(),
             StringAttribute::new(context, "").to_raw(),
-        ))
-    };
-    let compile_unit = {
-        unsafe {
+        ));
+        let compile_unit = {
             Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
                 context.to_raw(),
                 di_compile_unit_id.to_raw(),
@@ -310,11 +276,9 @@ fn compile_func(
                 false,
                 crate::ffi::DiEmissionKind::Full,
             ))
-        }
-    };
+        };
 
-    let di_module = unsafe {
-        mlirLLVMDIModuleAttrGet(
+        let di_module = mlirLLVMDIModuleAttrGet(
             context.to_raw(),
             file_attr.to_raw(),
             compile_unit.to_raw(),
@@ -324,23 +288,21 @@ fn compile_func(
             StringAttribute::new(context, "").to_raw(),
             0,
             false,
-        )
-    };
+        );
 
-    let module_scope = unsafe { mlirLLVMDIModuleAttrGetScope(di_module) };
+        let module_scope = mlirLLVMDIModuleAttrGetScope(di_module);
 
-    let di_subprogram = {
-        let x = unsafe {
-            let id = {
-                let id = StringAttribute::new(context, "fnid").to_raw();
-                mlirLLVMDistinctAttrCreate(id)
-            };
+        Attribute::from_raw({
+            let id = mlirLLVMDistinctAttrCreate(
+                StringAttribute::new(context, &format!("fn_{}", function.id.id)).to_raw(),
+            );
 
+            // Don't add argument types since its not useful, we only use the debugger for source locations.
             let ty = mlirLLVMDISubroutineTypeAttrGet(
                 context.to_raw(),
                 0x0, // call conv: C
-                debug_arg_types.len(),
-                debug_arg_types.as_slice().as_ptr(),
+                0,
+                std::ptr::null(),
             );
 
             mlirLLVMDISubprogramAttrGet(
@@ -356,9 +318,7 @@ fn compile_func(
                 0x8, // dwarf subprogram flag: definition
                 ty,
             )
-        };
-
-        unsafe { Attribute::from_raw(x) }
+        })
     };
 
     tracing::debug!("Generating function structure (region with blocks).");

@@ -1,6 +1,5 @@
 use cairo_lang_compiler::{
-    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-    project::setup_project, CompilerConfig,
+    compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_defs::plugin::NamedPlugin;
 use cairo_lang_semantic::plugin::PluginSuite;
@@ -9,12 +8,9 @@ use cairo_lang_starknet::{
     compile::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
     plugin::StarkNetPlugin,
 };
-use cairo_native::{
-    context::NativeContext,
-    debug_info::{DebugInfo, DebugLocations},
-};
+use cairo_native::context::NativeContext;
 use clap::Parser;
-use melior::{ir::operation::OperationPrintingFlags, Context};
+use melior::ir::operation::OperationPrintingFlags;
 use std::{
     ffi::OsStr,
     fs,
@@ -36,12 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load the program.
     let context = NativeContext::new();
-    // TODO: Reconnect debug information.
-    let (program, _) = load_program(
-        Path::new(&args.input),
-        Some(context.context()),
-        args.starknet,
-    )?;
+    let program = load_program(Path::new(&args.input), args.starknet)?;
 
     // Compile the program.
     let module = context.compile(&program)?;
@@ -59,37 +50,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn load_program<'c>(
-    path: &Path,
-    context: Option<&'c Context>,
-    is_contract: bool,
-) -> Result<(Program, Option<DebugLocations<'c>>), Box<dyn std::error::Error>> {
+fn load_program(path: &Path, is_contract: bool) -> Result<Program, Box<dyn std::error::Error>> {
     Ok(match path.extension().and_then(OsStr::to_str) {
         Some("cairo") if !is_contract => {
             let mut db = RootDatabase::builder().detect_corelib().build()?;
             let main_crate_ids = setup_project(&mut db, path)?;
-            let program = compile_prepared_db(
+
+            compile_prepared_db(
                 &mut db,
                 main_crate_ids,
                 CompilerConfig {
                     replace_ids: true,
                     ..Default::default()
                 },
-            )?;
-
-            let debug_locations = if let Some(context) = context {
-                let debug_info = DebugInfo::extract(&db, &program).map_err(|_| {
-                    let mut buffer = String::new();
-                    assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
-                    buffer
-                })?;
-
-                Some(DebugLocations::extract(context, &db, &debug_info))
-            } else {
-                None
-            };
-
-            (program, debug_locations)
+            )?
         }
         Some("cairo") if is_contract => {
             // mimics cairo_lang_starknet::contract_class::compile_path
@@ -114,31 +88,16 @@ fn load_program<'c>(
                 },
             )?;
 
-            let program = contract.extract_sierra_program()?;
-
-            let debug_locations = if let Some(context) = context {
-                let debug_info = DebugInfo::extract(&db, &program).map_err(|_| {
-                    let mut buffer = String::new();
-                    assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
-                    buffer
-                })?;
-
-                Some(DebugLocations::extract(context, &db, &debug_info))
-            } else {
-                None
-            };
-
-            (program, debug_locations)
+            contract.extract_sierra_program()?
         }
         Some("sierra") => {
             let program_src = fs::read_to_string(path)?;
 
             let program_parser = ProgramParser::new();
-            let program = program_parser
-                .parse(&program_src)
-                .map_err(|e| e.map_token(|t| t.to_string()))?;
 
-            (program, None)
+            program_parser
+                .parse(&program_src)
+                .map_err(|e| e.map_token(|t| t.to_string()))?
         }
         _ => unreachable!(),
     })
