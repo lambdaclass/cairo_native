@@ -48,14 +48,12 @@ use crate::{
     debug::{coretype_to_debugtype, create_di_basic_type, libfunc_to_name},
     error::Error,
     ffi::{
-        mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDILexicalBlockAttrGet,
-        mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet,
-        mlirLLVMDISubroutineTypeAttrGet, mlirLLVMDistinctAttrCreate, MlirLLVMDWTag,
-        MlirLLVMTypeEncoding,
+        mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
+        mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet,
+        mlirLLVMDistinctAttrCreate, MlirLLVMDWTag, MlirLLVMTypeEncoding,
     },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
-        debug_info::FunctionDebugInfo,
         gas::{GasCost, GasMetadata},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
@@ -129,12 +127,18 @@ pub fn compile(
             std::fs::write("program.sierra", program.to_string()).expect("failed to dump sierra");
         }
     }
+
+    /*
+       A Sierra file is structured consistently,
+       it first has the types, followed by a empty line,
+       then the libfuncs, then the statements start.
+
+       This is how to calculate the offset to correctly show it on the debugger.
+    */
+
     let num_types = program.type_declarations.len() + 1;
     let n_libfuncs = program.libfunc_declarations.len() + 1;
     let sierra_stmt_start_offset = num_types + n_libfuncs + 1;
-    dbg!("there are libfuncs", n_libfuncs);
-    dbg!("num_types", num_types);
-    dbg!("sierra_stmt_start_offset", sierra_stmt_start_offset);
 
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
@@ -177,43 +181,6 @@ fn compile_func(
         sierra_stmt_start_offset + function.entry_point.0,
         0,
     );
-
-    let file_attr = unsafe {
-        Attribute::from_raw(mlirLLVMDIFileAttrGet(
-            context.to_raw(),
-            StringAttribute::new(context, "program.sierra").to_raw(),
-            StringAttribute::new(context, "").to_raw(),
-        ))
-    };
-    let compile_unit = {
-        unsafe {
-            Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
-                context.to_raw(),
-                di_compile_unit_id.to_raw(),
-                0x1c,
-                file_attr.to_raw(),
-                StringAttribute::new(context, "cairo-native").to_raw(),
-                false,
-                crate::ffi::DiEmissionKind::Full,
-            ))
-        }
-    };
-
-    let di_module = unsafe {
-        mlirLLVMDIModuleAttrGet(
-            context.to_raw(),
-            file_attr.to_raw(),
-            compile_unit.to_raw(),
-            StringAttribute::new(context, "LLVMDialectModule").to_raw(),
-            StringAttribute::new(context, "").to_raw(),
-            StringAttribute::new(context, "").to_raw(),
-            StringAttribute::new(context, "").to_raw(),
-            0,
-            false,
-        )
-    };
-
-    let module_scope = unsafe { mlirLLVMDIModuleAttrGetScope(di_module) };
 
     let region = Region::new();
     let blocks_arena = Bump::new();
@@ -322,6 +289,46 @@ fn compile_func(
 
     let function_name = generate_function_name(&function.id);
 
+    // Various DWARF debug attributes for this function.
+    // The unsafe is because this is a method not yet found in upstream LLVM nor melior, so
+    // we are using our own bindings to the C++ API.
+    let file_attr = unsafe {
+        Attribute::from_raw(mlirLLVMDIFileAttrGet(
+            context.to_raw(),
+            StringAttribute::new(context, "program.sierra").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+        ))
+    };
+    let compile_unit = {
+        unsafe {
+            Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
+                context.to_raw(),
+                di_compile_unit_id.to_raw(),
+                0x0002, // lang C (there is no language sierra in DWARF)
+                file_attr.to_raw(),
+                StringAttribute::new(context, "cairo-native").to_raw(),
+                false,
+                crate::ffi::DiEmissionKind::Full,
+            ))
+        }
+    };
+
+    let di_module = unsafe {
+        mlirLLVMDIModuleAttrGet(
+            context.to_raw(),
+            file_attr.to_raw(),
+            compile_unit.to_raw(),
+            StringAttribute::new(context, "LLVMDialectModule").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+            0,
+            false,
+        )
+    };
+
+    let module_scope = unsafe { mlirLLVMDIModuleAttrGetScope(di_module) };
+
     let di_subprogram = {
         let x = unsafe {
             let id = {
@@ -331,7 +338,7 @@ fn compile_func(
 
             let ty = mlirLLVMDISubroutineTypeAttrGet(
                 context.to_raw(),
-                0x0,
+                0x0, // call conv: C
                 debug_arg_types.len(),
                 debug_arg_types.as_slice().as_ptr(),
             );
@@ -345,34 +352,14 @@ fn compile_func(
                 StringAttribute::new(context, &function_name).to_raw(),
                 file_attr.to_raw(),
                 function.entry_point.0 as u32,
-                0,
-                8,
+                function.entry_point.0 as u32,
+                0x8, // dwarf subprogram flag: definition
                 ty,
             )
         };
 
         unsafe { Attribute::from_raw(x) }
     };
-
-    let di_lexical_block = unsafe {
-        // todo: fix line col
-        mlirLLVMDILexicalBlockAttrGet(
-            context.to_raw(),
-            di_subprogram.to_raw(),
-            file_attr.to_raw(),
-            0,
-            0,
-        )
-    };
-
-    // let di_lexical_block_scope = unsafe { mlirLLVMDILexicalBlockAttrGetScope(di_lexical_block) };
-
-    metadata.remove::<FunctionDebugInfo>();
-    metadata.insert(FunctionDebugInfo {
-        scope: di_lexical_block,
-        file: file_attr.to_raw(),
-        subprogram: di_subprogram.to_raw(),
-    });
 
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(

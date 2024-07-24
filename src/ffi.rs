@@ -220,14 +220,6 @@ extern "C" {
 
     pub fn mlirLLVMDIModuleAttrGetScope(di_module: MlirAttribute) -> MlirAttribute;
 
-    pub fn mlirLLVMDILexicalBlockAttrGet(
-        mlir_context: MlirContext,
-        scope: MlirAttribute,
-        file: MlirAttribute,
-        line: u32,
-        column: u32,
-    ) -> MlirAttribute;
-
     pub fn mlirModuleCleanup(module: MlirModule);
 
     pub fn mlirLLVMDIDerivedTypeAttrGet(
