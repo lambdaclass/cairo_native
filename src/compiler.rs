@@ -264,7 +264,7 @@ fn compile_func(
         let file_attr = Attribute::from_raw(mlirLLVMDIFileAttrGet(
             context.to_raw(),
             StringAttribute::new(context, "program.sierra").to_raw(),
-            StringAttribute::new(context, "").to_raw(),
+            StringAttribute::new(context, ".").to_raw(),
         ));
         let compile_unit = {
             Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
@@ -313,8 +313,8 @@ fn compile_func(
                 StringAttribute::new(context, &function_name).to_raw(),
                 StringAttribute::new(context, &function_name).to_raw(),
                 file_attr.to_raw(),
-                function.entry_point.0 as u32,
-                function.entry_point.0 as u32,
+                (sierra_stmt_start_offset + function.entry_point.0) as u32,
+                (sierra_stmt_start_offset + function.entry_point.0) as u32,
                 0x8, // dwarf subprogram flag: definition
                 ty,
             )
@@ -464,6 +464,13 @@ fn compile_func(
                         invocation.libfunc_id
                     );
 
+                    let location = Location::new(
+                        context,
+                        "program.sierra",
+                        sierra_stmt_start_offset + statement_idx.0,
+                        0,
+                    );
+
                     let libfunc_name = if invocation.libfunc_id.debug_name.is_some() {
                         format!("{}(stmt_idx={})", invocation.libfunc_id, statement_idx)
                     } else {
@@ -502,12 +509,7 @@ fn compile_func(
                             let location = Location::name(
                                 context,
                                 &format!("recursion_counter({})", libfunc_name),
-                                Location::new(
-                                    context,
-                                    "program.sierra",
-                                    sierra_stmt_start_offset + statement_idx.0,
-                                    0,
-                                ),
+                                location,
                             );
                             let op0 = pre_entry_block.insert_operation(
                                 0,
@@ -544,11 +546,25 @@ fn compile_func(
                         }
                     }
 
+                    #[cfg(feature = "with-debug-utils")]
+                    {
+                        // If this env var exists and is a valid statement, insert a debug trap before the libfunc call.
+                        // Only on when using with-debug-utils feature.
+                        if let Ok(x) = std::env::var("NATIVE_DEBUG_TRAP_AT_STMT") {
+                            if x.eq_ignore_ascii_case(&statement_idx.0.to_string()) {
+                                block.append_operation(
+                                    melior::dialect::ods::llvm::intr_debugtrap(context, location)
+                                        .into(),
+                                );
+                            }
+                        }
+                    }
+
                     concrete_libfunc.build(
                         context,
                         registry,
                         block,
-                        Location::name(context, &libfunc_name, fn_location),
+                        Location::name(context, &libfunc_name, location),
                         &helper,
                         metadata,
                     )?;

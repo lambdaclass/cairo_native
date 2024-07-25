@@ -907,6 +907,14 @@ Do note that the MLIR with locations is in pretty form and thus not suitable to 
 export NATIVE_DEBUG_DUMP=1
 ```
 
+Add a debugger breakpoint trap at the given sierra statement:
+
+```bash
+export NATIVE_DEBUG_TRAP_AT_STMT=10
+```
+
+Note: The debugger will only show source locations when using AOT.
+
 Enable logging to see the compilation process:
 
 ```bash
