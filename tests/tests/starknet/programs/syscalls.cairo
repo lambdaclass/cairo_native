@@ -112,3 +112,7 @@ fn pop_log(log: felt252) -> Span<felt252> {
 fn pop_l2_to_l1_message(message: felt252) -> Span<felt252> {
     return cheatcode::<'pop_l2_to_l1_message'>(array![message].span());
 }
+
+fn sdsadas(message: felt252) -> Span<felt252> {
+    sha256_state_handle_init();
+}
