@@ -909,6 +909,8 @@ export NATIVE_DEBUG_DUMP=1
 
 Add a debugger breakpoint trap at the given sierra statement:
 
+The trap instruction may not end up exactly where the statement is.
+
 ```bash
 export NATIVE_DEBUG_TRAP_AT_STMT=10
 ```
