@@ -106,7 +106,6 @@ pub fn build_new<'ctx, 'this>(
     let value = entry.insert_value(context, location, value, k0, 1)?;
     let value = entry.insert_value(context, location, value, k0, 2)?;
     let value = entry.insert_value(context, location, value, k0, 3)?;
-    entry.append_operation(ods::llvm::intr_debugtrap(context, location).into());
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())
