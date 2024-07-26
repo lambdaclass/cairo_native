@@ -192,6 +192,6 @@ pub fn build_sha256_state_handle<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    // A pointer to [u32; 16]
+    // A ptr to a heap (realloc) allocated [u32; 8]
     Ok(llvm::r#type::pointer(context, 0))
 }

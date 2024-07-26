@@ -660,7 +660,7 @@ impl TypeBuilder for CoreTypeConcrete {
                         .unwrap()
                         .0
                 }
-                StarkNetTypeConcrete::Sha256StateHandle(_) => todo!(),
+                StarkNetTypeConcrete::Sha256StateHandle(_) => Layout::new::<*mut ()>(),
             },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,

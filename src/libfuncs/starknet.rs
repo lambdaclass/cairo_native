@@ -5,9 +5,9 @@ use crate::{
     block_ext::BlockExt,
     error::Result,
     ffi::get_struct_field_type_at,
-    metadata::MetadataStorage,
+    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    types::felt252::PRIME,
+    types::{felt252::PRIME, TypeBuilder},
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -23,7 +23,8 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm::{self, LoadStoreOptions},
+        llvm::{self, r#type::pointer, LoadStoreOptions},
+        ods,
     },
     ir::{
         attribute::{
@@ -3962,17 +3963,16 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
 /// extern fn sha256_state_handle_init(state: Box<[u32; 8]>) -> Sha256StateHandle nopanic;
 /// ```
 pub fn build_sha256_state_handle_init<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let value = entry.argument(0)?.into();
     entry.append_operation(helper.br(0, &[value], location));
-
     Ok(())
 }
 
@@ -3983,7 +3983,7 @@ pub fn build_sha256_state_handle_init<'ctx, 'this>(
 /// extern fn sha256_state_handle_digest(state: Sha256StateHandle) -> Box<[u32; 8]> nopanic;
 /// ```
 pub fn build_sha256_state_handle_digest<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -3993,7 +3993,6 @@ pub fn build_sha256_state_handle_digest<'ctx, 'this>(
 ) -> Result<()> {
     let value = entry.argument(0)?.into();
     entry.append_operation(helper.br(0, &[value], location));
-
     Ok(())
 }
 
@@ -4101,7 +4100,7 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
             entry.argument(1)?.into(),
             DenseI32ArrayAttribute::new(
                 context,
-                &[StarknetSyscallHandlerCallbacks::<()>::LIBRARY_CALL.try_into()?],
+                &[StarknetSyscallHandlerCallbacks::<()>::SHA256_PROCESS_BLOCK.try_into()?],
             ),
             llvm::r#type::pointer(context, 0),
             llvm::r#type::pointer(context, 0),

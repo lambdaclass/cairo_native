@@ -443,9 +443,9 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 
     fn sha256_process_block(
         &mut self,
-        prev_state: &[u32; 8],
-        current_block: &[u32; 16],
-        remaining_gas: &mut u128,
+        _prev_state: &[u32; 8],
+        _current_block: &[u32; 16],
+        _remaining_gas: &mut u128,
     ) -> SyscallResult<[u32; 8]> {
         unimplemented!()
     }
@@ -1683,7 +1683,17 @@ pub(crate) mod handler {
                 Ok(x) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
-                        payload: ManuallyDrop::new(Box::new(x).as_mut_ptr().cast()),
+                        payload: ManuallyDrop::new({
+                            unsafe {
+                                let data = libc::malloc(std::mem::size_of_val(&x)).cast();
+                                std::ptr::copy_nonoverlapping::<u32>(
+                                    x.as_ptr().cast(),
+                                    data,
+                                    x.len(),
+                                );
+                                data.cast()
+                            }
+                        }),
                     }),
                 },
                 Err(e) => Self::wrap_error(&e),

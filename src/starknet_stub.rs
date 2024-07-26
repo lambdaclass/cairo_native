@@ -9,9 +9,12 @@ use crate::starknet::{
     BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
     StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
 };
-use k256::elliptic_curve::{
-    generic_array::GenericArray,
-    sec1::{FromEncodedPoint, ToEncodedPoint},
+use k256::{
+    elliptic_curve::{
+        generic_array::GenericArray,
+        sec1::{FromEncodedPoint, ToEncodedPoint},
+    },
+    sha2::{digest::KeyInit, Digest, Sha256},
 };
 use sec1::point::Coordinates;
 use starknet_types_core::felt::Felt;
@@ -826,9 +829,15 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         current_block: &[u32; 16],
         _remaining_gas: &mut u128,
     ) -> SyscallResult<[u32; 8]> {
-        dbg!(prev_state);
-        dbg!(current_block);
-        Ok(*prev_state)
+        // reference impl
+        // https://github.com/starkware-libs/cairo/blob/ba3f82b4a09972b6a24bf791e344cabce579bf69/crates/cairo-lang-runner/src/casm_run/mod.rs#L1292
+        let mut state = *prev_state;
+        let data_as_bytes = sha2::digest::generic_array::GenericArray::from_exact_iter(
+            current_block.iter().flat_map(|x| x.to_be_bytes()),
+        )
+        .unwrap();
+        sha2::compress256(&mut state, &[data_as_bytes]);
+        Ok(state)
     }
 }
 
