@@ -1183,12 +1183,22 @@ fn sha256_process() {
         result.return_value,
         JitValue::Enum {
             tag: 0,
-            value: Box::new(JitValue::Felt252(
-                Felt::from_dec_str(
-                    "1158579293198495875788224011889333769139150068959598053296510642728083832673",
-                )
-                .unwrap()
-            )),
+            value: Box::new(JitValue::Struct {
+                fields: vec![JitValue::Struct {
+                    fields: vec![
+                        1779033703_u32.into(),
+                        3144134277_u32.into(),
+                        1013904242_u32.into(),
+                        2773480762_u32.into(),
+                        1359893119_u32.into(),
+                        2600822924_u32.into(),
+                        528734635_u32.into(),
+                        1541459225_u32.into(),
+                    ],
+                    debug_name: None
+                }],
+                debug_name: None
+            }),
             debug_name: None,
         },
     );

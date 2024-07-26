@@ -5,9 +5,9 @@ use crate::{
     block_ext::BlockExt,
     error::Result,
     ffi::get_struct_field_type_at,
-    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    types::{felt252::PRIME, TypeBuilder},
+    types::felt252::PRIME,
     utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -23,8 +23,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm::{self, r#type::pointer, LoadStoreOptions},
-        ods,
+        llvm::{self, LoadStoreOptions},
     },
     ir::{
         attribute::{
