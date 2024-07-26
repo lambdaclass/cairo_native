@@ -501,8 +501,6 @@ impl StarknetSyscallHandler for SyscallHandler {
         current_block: &[u32; 16],
         _remaining_gas: &mut u128,
     ) -> SyscallResult<[u32; 8]> {
-        dbg!(prev_state);
-        dbg!(current_block);
         Ok(*prev_state)
     }
 }
