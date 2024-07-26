@@ -3963,13 +3963,13 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
 /// extern fn sha256_state_handle_init(state: Box<[u32; 8]>) -> Sha256StateHandle nopanic;
 /// ```
 pub fn build_sha256_state_handle_init<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let value = entry.argument(0)?.into();
     entry.append_operation(helper.br(0, &[value], location));
@@ -3983,7 +3983,7 @@ pub fn build_sha256_state_handle_init<'ctx, 'this>(
 /// extern fn sha256_state_handle_digest(state: Sha256StateHandle) -> Box<[u32; 8]> nopanic;
 /// ```
 pub fn build_sha256_state_handle_digest<'ctx, 'this>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,

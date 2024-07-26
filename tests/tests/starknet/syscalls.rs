@@ -1168,3 +1168,28 @@ fn pop_l2_to_l1_message() {
         .events
         .is_empty());
 }
+
+#[test]
+fn sha256_process() {
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "sha256_process",
+        &[],
+        Some(u128::MAX),
+        Some(SyscallHandler::new()),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Felt252(
+                Felt::from_dec_str(
+                    "1158579293198495875788224011889333769139150068959598053296510642728083832673",
+                )
+                .unwrap()
+            )),
+            debug_name: None,
+        },
+    );
+}

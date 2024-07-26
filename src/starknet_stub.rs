@@ -9,12 +9,9 @@ use crate::starknet::{
     BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
     StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
 };
-use k256::{
-    elliptic_curve::{
-        generic_array::GenericArray,
-        sec1::{FromEncodedPoint, ToEncodedPoint},
-    },
-    sha2::{digest::KeyInit, Digest, Sha256},
+use k256::elliptic_curve::{
+    generic_array::GenericArray,
+    sec1::{FromEncodedPoint, ToEncodedPoint},
 };
 use sec1::point::Coordinates;
 use starknet_types_core::felt::Felt;
