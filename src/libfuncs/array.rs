@@ -14,7 +14,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         array::ArrayConcreteLibfunc,
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
         ConcreteLibfunc,
     },
@@ -25,12 +25,12 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
         llvm::{self, r#type::pointer},
-        ods,
+        ods, scf,
     },
     ir::{
         attribute::{DenseI32ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
-        Block, Location, Value, ValueLike,
+        Block, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -76,8 +76,10 @@ pub fn build<'ctx, 'this>(
         ArrayConcreteLibfunc::SpanFromTuple(info) => {
             build_span_from_tuple(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::TupleFromSpan(_)
-        | ArrayConcreteLibfunc::SnapshotMultiPopFront(_)
+        ArrayConcreteLibfunc::TupleFromSpan(info) => {
+            build_tuple_from_span(context, registry, entry, location, helper, metadata, info)
+        }
+        ArrayConcreteLibfunc::SnapshotMultiPopFront(_)
         | ArrayConcreteLibfunc::SnapshotMultiPopBack(_) => todo!(),
     }
 }
@@ -964,6 +966,189 @@ fn assert_nonnull<'ctx, 'this>(
     Ok(())
 }
 
+pub fn build_tuple_from_span<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()> {
+    // (Snapshot<Array<felt252>>) -> Box<Tuple<felt252, felt252, felt252>>
+
+    // if arg0.end - arg0.start != tuple_len {
+    //     return err;
+    // }
+    //
+    // if arg0.start == 0 && arg0.capacity == tuple_len {}
+    //     return Ok(array.ptr);
+    // }
+    //
+    // // TODO: malloc and clone.
+
+    let elem_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
+    let elem_layout = elem_ty.layout(registry)?;
+    let elem_stride = elem_layout.pad_to_align().size();
+
+    let tuple_info = match registry.get_type(&info.ty)? {
+        CoreTypeConcrete::Struct(info) => info,
+        _ => panic!("type must be a struct"),
+    };
+
+    let u32_ty = IntegerType::new(context, 32).into();
+
+    let array_value = entry.argument(0)?.into();
+    let array_since = entry.extract_value(context, location, array_value, u32_ty, 1)?;
+    let array_until = entry.extract_value(context, location, array_value, u32_ty, 2)?;
+
+    let array_len = entry.append_op_result(arith::subi(array_until, array_since, location))?;
+    let tuple_len = entry.const_int(context, location, tuple_info.members.len(), 32)?;
+    let array_len_matches = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        array_len,
+        tuple_len,
+        location,
+    ))?;
+
+    let block_ok = helper.append_block(Block::new(&[]));
+    let block_err = helper.append_block(Block::new(&[]));
+    entry.append_operation(cf::cond_br(
+        context,
+        array_len_matches,
+        block_ok,
+        block_err,
+        &[],
+        &[],
+        location,
+    ));
+
+    let k0 = block_ok.const_int(context, location, 0, 32)?;
+    let array_since_is_zero = block_ok.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        array_since,
+        k0,
+        location,
+    ))?;
+    let array_cap = block_ok.extract_value(context, location, array_value, u32_ty, 3)?;
+    let array_cap_matches = block_ok.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        array_cap,
+        tuple_len,
+        location,
+    ))?;
+
+    let is_pointer_passthrough = block_ok.append_op_result(arith::andi(
+        array_since_is_zero,
+        array_cap_matches,
+        location,
+    ))?;
+    let box_ptr = block_ok.append_op_result(scf::r#if(
+        is_pointer_passthrough,
+        &[llvm::r#type::pointer(context, 0)],
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            let array_ptr = block.extract_value(
+                context,
+                location,
+                array_value,
+                llvm::r#type::pointer(context, 0),
+                0,
+            )?;
+            block.append_operation(scf::r#yield(&[array_ptr], location));
+
+            region
+        },
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            // TODO: Allocate box data.
+            // TODO: Copy the data (no need to clone, we're moving data).
+
+            let tuple_len = block.const_int(context, location, tuple_info.members.len(), 64)?;
+            let elem_stride = block.const_int(context, location, elem_stride, 64)?;
+            let tuple_len_bytes =
+                block.append_op_result(arith::muli(tuple_len, elem_stride, location))?;
+
+            let null_ptr =
+                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+            let tuple_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                context,
+                null_ptr,
+                tuple_len_bytes,
+                location,
+            ))?;
+
+            // let tuple_ptr_is_not_null = block.append_op_result(arith::cmpi(
+            //     context,
+            //     CmpiPredicate::Ne,
+            //     tuple_ptr,
+            //     null_ptr,
+            //     location,
+            // ))?;
+            // block.append_operation(cf::assert(
+            //     context,
+            //     tuple_ptr_is_not_null,
+            //     "realloc returned null",
+            //     location,
+            // ));
+
+            let array_since = block.append_op_result(arith::extui(
+                array_since,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))?;
+            let array_since_offset =
+                block.append_op_result(arith::muli(elem_stride, array_since, location))?;
+
+            let array_ptr = block.extract_value(
+                context,
+                location,
+                array_value,
+                llvm::r#type::pointer(context, 0),
+                0,
+            )?;
+            let src_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
+                context,
+                array_ptr,
+                &[array_since_offset],
+                IntegerType::new(context, 8).into(),
+                llvm::r#type::pointer(context, 0),
+                location,
+            ))?;
+            block.append_operation(
+                ods::llvm::intr_memcpy_inline(
+                    context,
+                    tuple_ptr,
+                    src_ptr,
+                    IntegerAttribute::new(
+                        IntegerType::new(context, 64).into(),
+                        (tuple_info.members.len() * elem_layout.pad_to_align().size()) as i64,
+                    ),
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                    location,
+                )
+                .into(),
+            );
+            block.append_operation(scf::r#yield(&[tuple_ptr], location));
+
+            region
+        },
+        location,
+    ))?;
+
+    block_ok.append_operation(helper.br(0, &[box_ptr], location));
+    block_err.append_operation(helper.br(1, &[], location));
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::{
@@ -1664,6 +1849,34 @@ mod test {
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
             JitValue::Array(vec![1u64.into(), 2u64.into()]),
+        );
+    }
+
+    #[test]
+    fn tuple_from_span() {
+        let program = load_cairo! {
+            use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
+
+            fn run_test(x: Array<felt252>) -> [felt252; 3] {
+                (*tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x).unwrap()).unbox()
+            }
+        };
+
+        assert_eq!(
+            run_program(
+                &program,
+                "run_test",
+                &[JitValue::Array(vec![
+                    JitValue::Felt252(1.into()),
+                    JitValue::Felt252(2.into()),
+                    JitValue::Felt252(3.into()),
+                ])],
+            )
+            .return_value,
+            JitValue::Struct {
+                fields: vec![],
+                debug_name: None,
+            },
         );
     }
 }
