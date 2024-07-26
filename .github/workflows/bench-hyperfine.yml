@@ -44,7 +44,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
-      - uses: dtolnay/rust-toolchain@1.79.0
+      - uses: dtolnay/rust-toolchain@1.80.0
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
