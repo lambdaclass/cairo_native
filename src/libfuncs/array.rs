@@ -745,13 +745,22 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
         metadata,
         &info.param_signatures()[1].ty,
     )?;
-    let popped_size = registry.get_type(&info.popped_ty)?.layout(registry)?.size();
+
+    let popped_cty = registry.get_type(&info.popped_ty)?;
+    let popped_size = popped_cty.layout(registry)?.size();
     let popped_size_value = entry.const_int(context, location, popped_size, 64)?;
 
+    let popped_ctys = popped_cty
+        .fields()
+        .expect("popped type should be a tuple (ergo, has fields)");
+    let popped_amount = popped_ctys.len();
+    let popped_amount_value = entry.const_int(context, location, popped_amount, 32)?;
+
     let array_ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
-    let array_len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+    let array_start_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+
     let array_ptr = entry.extract_value(context, location, array, array_ptr_ty, 0)?;
-    let array_start = entry.extract_value(context, location, array, array_len_ty, 1)?;
+    let array_start = entry.extract_value(context, location, array, array_start_ty, 1)?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let invalid_block = helper.append_block(Block::new(&[]));
@@ -760,16 +769,14 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
 
     {
         let popped_ptr = {
-            let popped_offset = valid_block.append_op_result(arith::extui(
-                array_start,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
+            let single_popped_ty =
+                registry.build_type(context, helper, registry, metadata, &popped_ctys[0])?;
+
             valid_block.append_op_result(llvm::get_element_ptr_dynamic(
                 context,
                 array_ptr,
-                &[popped_offset],
-                IntegerType::new(context, 8).into(),
+                &[array_start],
+                single_popped_ty,
                 llvm::r#type::pointer(context, 0),
                 location,
             ))?
@@ -788,6 +795,16 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
         };
 
         valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
+
+        let array = {
+            let new_array_start = valid_block.append_op_result(arith::addi(
+                array_start,
+                popped_amount_value,
+                location,
+            ))?;
+
+            valid_block.insert_value(context, location, array, new_array_start, 1)?
+        };
 
         valid_block.append_operation(helper.br(0, &[range_check, array, return_ptr], location));
     }
@@ -1992,9 +2009,6 @@ mod test {
                     jit_struct!(
                         // Span of original array
                         jit_struct!(JitValue::Array(vec![
-                            JitValue::Felt252(1.into()),
-                            JitValue::Felt252(2.into()),
-                            JitValue::Felt252(3.into()),
                             JitValue::Felt252(4.into()),
                             JitValue::Felt252(5.into()),
                             JitValue::Felt252(6.into()),
