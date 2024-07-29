@@ -729,8 +729,13 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
     _location: Location<'ctx>,
     _helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
-    _info: &ConcreteMultiPopLibfunc,
+    info: &ConcreteMultiPopLibfunc,
 ) -> Result<()> {
+    use itertools::Itertools;
+    dbg!(&info.popped_ty);
+    dbg!(&info.param_signatures().iter().map(|p| &p.ty).collect_vec());
+    dbg!(&info.branch_signatures());
+
     Ok(())
 }
 
@@ -1903,5 +1908,21 @@ mod test {
                 debug_name: None
             }
         );
+    }
+
+    #[test]
+    fn snapshot_multi_pop_front() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> @Box<[u32; 2]> {
+                let mut numbers = array![1, 2, 3, 4].span();
+
+                numbers.multi_pop_front::<2>().unwrap()
+            }
+        );
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(result, jit_struct!());
     }
 }
