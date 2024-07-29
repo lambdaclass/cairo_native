@@ -1873,10 +1873,21 @@ mod test {
                 ])],
             )
             .return_value,
-            JitValue::Struct {
-                fields: vec![],
-                debug_name: None,
-            },
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Struct {
+                    fields: vec![JitValue::Struct {
+                        fields: vec![
+                            JitValue::Felt252(1.into()),
+                            JitValue::Felt252(2.into()),
+                            JitValue::Felt252(3.into()),
+                        ],
+                        debug_name: None
+                    }],
+                    debug_name: None
+                }),
+                debug_name: None
+            }
         );
     }
 }
