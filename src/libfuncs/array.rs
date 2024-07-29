@@ -13,7 +13,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        array::ArrayConcreteLibfunc,
+        array::{ArrayConcreteLibfunc, ConcreteMultiPopLibfunc},
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
         ConcreteLibfunc,
@@ -79,8 +79,10 @@ pub fn build<'ctx, 'this>(
         ArrayConcreteLibfunc::TupleFromSpan(info) => {
             build_tuple_from_span(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::SnapshotMultiPopFront(_)
-        | ArrayConcreteLibfunc::SnapshotMultiPopBack(_) => todo!(),
+        ArrayConcreteLibfunc::SnapshotMultiPopFront(info) => build_snapshot_multi_pop_front(
+            context, registry, entry, location, helper, metadata, info,
+        ),
+        ArrayConcreteLibfunc::SnapshotMultiPopBack(_) => todo!(),
     }
 }
 
@@ -717,6 +719,18 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
     }
 
     empty_block.append_operation(helper.br(1, &[value], location));
+    Ok(())
+}
+
+pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &ConcreteMultiPopLibfunc,
+) -> Result<()> {
     Ok(())
 }
 
