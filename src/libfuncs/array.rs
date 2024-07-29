@@ -972,7 +972,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     // (Snapshot<Array<felt252>>) -> Box<Tuple<felt252, felt252, felt252>>
