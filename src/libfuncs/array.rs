@@ -723,18 +723,76 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
 }
 
 pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     info: &ConcreteMultiPopLibfunc,
 ) -> Result<()> {
-    use itertools::Itertools;
-    dbg!(&info.popped_ty);
-    dbg!(&info.param_signatures().iter().map(|p| &p.ty).collect_vec());
-    dbg!(&info.branch_signatures());
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
+    let range_check = entry.argument(0)?.into();
+    let array = entry.argument(1)?.into();
+
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[1].ty,
+    )?;
+    let popped_size = registry.get_type(&info.popped_ty)?.layout(registry)?.size();
+    let popped_size_value = entry.const_int(context, location, popped_size, 64)?;
+
+    let array_ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let array_len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+    let array_ptr = entry.extract_value(context, location, array, array_ptr_ty, 0)?;
+    let array_start = entry.extract_value(context, location, array, array_len_ty, 1)?;
+
+    let valid_block = helper.append_block(Block::new(&[]));
+    let invalid_block = helper.append_block(Block::new(&[]));
+
+    entry.append_operation(cf::br(valid_block, &[], location));
+
+    {
+        let popped_ptr = {
+            let popped_offset = valid_block.append_op_result(arith::extui(
+                array_start,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))?;
+            valid_block.append_op_result(llvm::get_element_ptr_dynamic(
+                context,
+                array_ptr,
+                &[popped_offset],
+                IntegerType::new(context, 8).into(),
+                llvm::r#type::pointer(context, 0),
+                location,
+            ))?
+        };
+
+        let return_ptr = {
+            let return_ptr = valid_block.append_op_result(
+                ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+            )?;
+            valid_block.append_op_result(ReallocBindingsMeta::realloc(
+                context,
+                return_ptr,
+                popped_size_value,
+                location,
+            ))?
+        };
+
+        valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
+
+        valid_block.append_operation(helper.br(0, &[range_check, array, return_ptr], location));
+    }
+
+    invalid_block.append_operation(helper.br(1, &[range_check, array], location));
 
     Ok(())
 }
@@ -1915,14 +1973,41 @@ mod test {
         let program = load_cairo!(
             use array::ArrayTrait;
 
-            fn run_test() -> @Box<[u32; 2]> {
-                let mut numbers = array![1, 2, 3, 4].span();
+            fn run_test() -> (Span<felt252>, @Box<[felt252; 3]>) {
+                let mut numbers = array![1, 2, 3, 4, 5, 6].span();
+                let popped = numbers.multi_pop_front::<3>().unwrap();
 
-                numbers.multi_pop_front::<2>().unwrap()
+                (numbers, popped)
             }
         );
         let result = run_program(&program, "run_test", &[]).return_value;
 
-        assert_eq!(result, jit_struct!());
+        assert_eq!(
+            result,
+            // Panic result
+            jit_enum!(
+                0,
+                jit_struct!(
+                    // Tuple
+                    jit_struct!(
+                        // Span of original array
+                        jit_struct!(JitValue::Array(vec![
+                            JitValue::Felt252(1.into()),
+                            JitValue::Felt252(2.into()),
+                            JitValue::Felt252(3.into()),
+                            JitValue::Felt252(4.into()),
+                            JitValue::Felt252(5.into()),
+                            JitValue::Felt252(6.into()),
+                        ])),
+                        // Box of fixed array
+                        jit_struct!(
+                            JitValue::Felt252(1.into()),
+                            JitValue::Felt252(2.into()),
+                            JitValue::Felt252(3.into())
+                        ),
+                    )
+                )
+            )
+        );
     }
 }
