@@ -1206,10 +1206,14 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     // (Snapshot<Array<felt252>>) -> Box<Tuple<felt252, felt252, felt252>>
+
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
 
     // if arg0.end - arg0.start != tuple_len {
     //     return err;
