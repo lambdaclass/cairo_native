@@ -2124,6 +2124,30 @@ mod test {
     }
 
     #[test]
+    fn tuple_from_span_failed() {
+        let program = load_cairo! {
+            use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
+
+            fn run_test(x: Array<felt252>) -> Option<@Box<[core::felt252; 3]>> {
+                tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x)
+            }
+        };
+
+        assert_eq!(
+            run_program(
+                &program,
+                "run_test",
+                &[JitValue::Array(vec![
+                    JitValue::Felt252(1.into()),
+                    JitValue::Felt252(2.into()),
+                ])],
+            )
+            .return_value,
+            jit_enum!(1, jit_struct!())
+        );
+    }
+
+    #[test]
     fn snapshot_multi_pop_front() {
         let program = load_cairo!(
             use array::ArrayTrait;
