@@ -2268,4 +2268,42 @@ mod test {
             )
         );
     }
+
+    #[test]
+    fn snapshot_multi_pop_back_front() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> (Span<felt252>, @Box<[felt252; 2]>, @Box<[felt252; 2]>) {
+                let mut numbers = array![1, 2, 3, 4, 5, 6].span();
+                let popped_front = numbers.multi_pop_front::<2>().unwrap();
+                let popped_back = numbers.multi_pop_back::<2>().unwrap();
+
+                (numbers, popped_front, popped_back)
+            }
+        );
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            // Panic result
+            jit_enum!(
+                0,
+                jit_struct!(
+                    // Tuple
+                    jit_struct!(
+                        // Span of original array
+                        jit_struct!(JitValue::Array(vec![
+                            JitValue::Felt252(3.into()),
+                            JitValue::Felt252(4.into()),
+                        ])),
+                        // Box of fixed array
+                        jit_struct!(JitValue::Felt252(1.into()), JitValue::Felt252(2.into()),),
+                        // Box of fixed array
+                        jit_struct!(JitValue::Felt252(5.into()), JitValue::Felt252(6.into())),
+                    )
+                )
+            )
+        );
+    }
 }
