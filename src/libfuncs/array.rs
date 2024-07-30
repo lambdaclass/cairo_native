@@ -754,18 +754,37 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
         .fields()
         .expect("popped type should be a tuple (ergo, has fields)");
     let popped_amount = popped_ctys.len();
-    let popped_amount_value = entry.const_int(context, location, popped_amount, 32)?;
 
     let array_ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let array_start_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+    let array_end_ty = crate::ffi::get_struct_field_type_at(&array_ty, 2);
 
     let array_ptr = entry.extract_value(context, location, array, array_ptr_ty, 0)?;
     let array_start = entry.extract_value(context, location, array, array_start_ty, 1)?;
+    let array_end = entry.extract_value(context, location, array, array_end_ty, 2)?;
+
+    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
+    let popped_amount_value = entry.const_int(context, location, popped_amount, 32)?;
+    let is_valid = entry.append_op_result(arith::cmpi(
+        &context,
+        CmpiPredicate::Uge,
+        array_len,
+        popped_amount_value,
+        location,
+    ))?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let invalid_block = helper.append_block(Block::new(&[]));
 
-    entry.append_operation(cf::br(valid_block, &[], location));
+    entry.append_operation(cf::cond_br(
+        context,
+        is_valid,
+        valid_block,
+        invalid_block,
+        &[],
+        &[],
+        location,
+    ));
 
     {
         let popped_ptr = {
@@ -2048,14 +2067,11 @@ mod test {
             jit_enum!(
                 0,
                 jit_struct!(
-                    // Tuple
-                    jit_struct!(
-                        // Span of original array
-                        jit_struct!(JitValue::Array(vec![
-                            JitValue::Felt252(1.into()),
-                            JitValue::Felt252(2.into()),
-                        ])),
-                    )
+                    // Span of original array
+                    jit_struct!(JitValue::Array(vec![
+                        JitValue::Felt252(1.into()),
+                        JitValue::Felt252(2.into()),
+                    ]),)
                 )
             )
         );
