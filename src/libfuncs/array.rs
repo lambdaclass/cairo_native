@@ -16,7 +16,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         array::{ArrayConcreteLibfunc, ConcreteMultiPopLibfunc},
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
         ConcreteLibfunc,
     },
@@ -1233,42 +1233,48 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    // (Snapshot<Array<felt252>>) -> Box<Tuple<felt252, felt252, felt252>>
+    // Libfunc Signature:
+    //
+    // (Snapshot<Array<felt252>>) -> Box<Tuple<felt252, ...>>
 
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    // if arg0.end - arg0.start != tuple_len {
-    //     return err;
-    // }
-    //
-    // if arg0.start == 0 && arg0.capacity == tuple_len {}
-    //     return Ok(array.ptr);
-    // }
+    // Get type information
 
-    let elem_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
-    let elem_layout = elem_ty.layout(registry)?;
+    let elem_core_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
+    let elem_layout = elem_core_ty.layout(registry)?;
     let elem_stride = elem_layout.pad_to_align().size();
-
-    let tuple_info = match registry.get_type(&info.ty)? {
-        CoreTypeConcrete::Struct(info) => info,
-        _ => panic!("type must be a struct"),
-    };
+    let tuple_len = registry
+        .get_type(&info.ty)?
+        .fields()
+        .expect("should be a struct (ergo, has fields)")
+        .len();
 
     let u32_ty = IntegerType::new(context, 32).into();
 
-    let array_value = entry.argument(0)?.into();
-    let array_since = entry.extract_value(context, location, array_value, u32_ty, 1)?;
-    let array_until = entry.extract_value(context, location, array_value, u32_ty, 2)?;
+    // Get array information
 
-    let array_len = entry.append_op_result(arith::subi(array_until, array_since, location))?;
-    let tuple_len = entry.const_int(context, location, tuple_info.members.len(), 32)?;
+    let array_value = entry.argument(0)?.into();
+    let array_ptr = entry.extract_value(context, location, array_value, pointer(context, 0), 0)?;
+    let array_start = entry.extract_value(context, location, array_value, u32_ty, 1)?;
+    let array_end = entry.extract_value(context, location, array_value, u32_ty, 2)?;
+    let array_capacity = entry.extract_value(context, location, array_value, u32_ty, 3)?;
+
+    // Check if conversion is valid
+    //
+    // if array.end - array.start != tuple_len {
+    //     return err;
+    // }
+
+    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
+    let tuple_len_value = entry.const_int(context, location, tuple_len, 32)?;
     let array_len_matches = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Eq,
         array_len,
-        tuple_len,
+        tuple_len_value,
         location,
     ))?;
 
@@ -1284,28 +1290,33 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         location,
     ));
 
-    let k0 = block_ok.const_int(context, location, 0, 32)?;
-    let array_since_is_zero = block_ok.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        array_since,
-        k0,
-        location,
-    ))?;
-    let array_cap = block_ok.extract_value(context, location, array_value, u32_ty, 3)?;
-    let array_cap_matches = block_ok.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        array_cap,
-        tuple_len,
-        location,
-    ))?;
+    // Check if pointer can be passed through, that is
+    // if array.start == 0 && array.capacity == tuple_len
 
-    let is_pointer_passthrough = block_ok.append_op_result(arith::andi(
-        array_since_is_zero,
-        array_cap_matches,
-        location,
-    ))?;
+    let is_pointer_passthrough = {
+        let k0 = block_ok.const_int(context, location, 0, 32)?;
+        let array_since_is_zero = block_ok.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Eq,
+            array_start,
+            k0,
+            location,
+        ))?;
+        let array_cap_matches = block_ok.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Eq,
+            array_capacity,
+            tuple_len_value,
+            location,
+        ))?;
+
+        block_ok.append_op_result(arith::andi(
+            array_since_is_zero,
+            array_cap_matches,
+            location,
+        ))?
+    };
+
     let box_ptr = block_ok.append_op_result(scf::r#if(
         is_pointer_passthrough,
         &[llvm::r#type::pointer(context, 0)],
@@ -1313,13 +1324,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let array_ptr = block.extract_value(
-                context,
-                location,
-                array_value,
-                llvm::r#type::pointer(context, 0),
-                0,
-            )?;
+            // If can be passed through, just return the array ptr
+
             block.append_operation(scf::r#yield(&[array_ptr], location));
 
             region
@@ -1328,65 +1334,55 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let tuple_len = block.const_int(context, location, tuple_info.members.len(), 64)?;
-            let elem_stride = block.const_int(context, location, elem_stride, 64)?;
-            let tuple_len_bytes =
-                block.append_op_result(arith::muli(tuple_len, elem_stride, location))?;
+            // Otherwise, alloc memory for the returned tuple and clone it
 
-            let null_ptr =
-                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
-            let tuple_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
-                context,
-                null_ptr,
-                tuple_len_bytes,
+            let tuple_len_value = block.const_int(context, location, tuple_len, 64)?;
+            let elem_stride_value = block.const_int(context, location, elem_stride, 64)?;
+            let tuple_len_bytes = block.append_op_result(arith::muli(
+                tuple_len_value,
+                elem_stride_value,
                 location,
             ))?;
 
-            assert_nonnull(
-                context,
-                block.deref(),
-                location,
-                tuple_ptr,
-                "realloc returned null",
-            )?;
+            let tuple_ptr = {
+                let null_ptr = block
+                    .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+                let tuple_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                    context,
+                    null_ptr,
+                    tuple_len_bytes,
+                    location,
+                ))?;
 
-            let array_since = block.append_op_result(arith::extui(
-                array_since,
+                assert_nonnull(
+                    context,
+                    block.deref(),
+                    location,
+                    tuple_ptr,
+                    "realloc returned null",
+                )?;
+
+                tuple_ptr
+            };
+
+            let array_start = block.append_op_result(arith::extui(
+                array_start,
                 IntegerType::new(context, 64).into(),
                 location,
             ))?;
-            let array_since_offset =
-                block.append_op_result(arith::muli(elem_stride, array_since, location))?;
+            let array_start_offset =
+                block.append_op_result(arith::muli(elem_stride_value, array_start, location))?;
 
-            let array_ptr = block.extract_value(
-                context,
-                location,
-                array_value,
-                llvm::r#type::pointer(context, 0),
-                0,
-            )?;
             let src_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
                 context,
                 array_ptr,
-                &[array_since_offset],
+                &[array_start_offset],
                 IntegerType::new(context, 8).into(),
                 llvm::r#type::pointer(context, 0),
                 location,
             ))?;
-            block.append_operation(
-                ods::llvm::intr_memcpy_inline(
-                    context,
-                    tuple_ptr,
-                    src_ptr,
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        (tuple_info.members.len() * elem_layout.pad_to_align().size()) as i64,
-                    ),
-                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                    location,
-                )
-                .into(),
-            );
+            block.memcpy(context, location, src_ptr, tuple_ptr, tuple_len_bytes);
+
             block.append_operation(scf::r#yield(&[tuple_ptr], location));
 
             region
