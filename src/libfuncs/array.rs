@@ -2034,9 +2034,7 @@ mod test {
                 let mut numbers = array![1, 2].span();
 
                 // should fail (return none)
-                if numbers.multi_pop_front::<3>().is_some() {
-                    panic!();
-                }
+                assert!(numbers.multi_pop_front::<3>().is_none());
 
                 numbers
             }
