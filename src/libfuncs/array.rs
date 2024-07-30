@@ -3,6 +3,8 @@
 // TODO: A future possible improvement would be to put the array behind a double pointer and a
 //   reference counter, to avoid unnecessary clones.
 
+use std::ops::Deref;
+
 use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
@@ -1216,8 +1218,6 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     // if arg0.start == 0 && arg0.capacity == tuple_len {}
     //     return Ok(array.ptr);
     // }
-    //
-    // // TODO: malloc and clone.
 
     let elem_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let elem_layout = elem_ty.layout(registry)?;
@@ -1300,9 +1300,6 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            // TODO: Allocate box data.
-            // TODO: Copy the data (no need to clone, we're moving data).
-
             let tuple_len = block.const_int(context, location, tuple_info.members.len(), 64)?;
             let elem_stride = block.const_int(context, location, elem_stride, 64)?;
             let tuple_len_bytes =
@@ -1317,19 +1314,13 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 location,
             ))?;
 
-            // let tuple_ptr_is_not_null = block.append_op_result(arith::cmpi(
-            //     context,
-            //     CmpiPredicate::Ne,
-            //     tuple_ptr,
-            //     null_ptr,
-            //     location,
-            // ))?;
-            // block.append_operation(cf::assert(
-            //     context,
-            //     tuple_ptr_is_not_null,
-            //     "realloc returned null",
-            //     location,
-            // ));
+            assert_nonnull(
+                context,
+                block.deref(),
+                location,
+                tuple_ptr,
+                "realloc returned null",
+            )?;
 
             let array_since = block.append_op_result(arith::extui(
                 array_since,
