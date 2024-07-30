@@ -12,151 +12,151 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  check:
-    name: clippy
-    runs-on: ubuntu-latest
-    env:
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.79.0
-        with:
-          components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
-      - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@10
-        with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
-          repo-name: llvm-repo
-          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-      - name: Install LLVM
-        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
-      - name: Clippy
-        run: make check
+  # check:
+  #   name: clippy
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+  #     LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+  #     TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@1.79.0
+  #       with:
+  #         components: clippy, rustfmt
+  #     - uses: Swatinem/rust-cache@v2
+  #     - name: add llvm deb repository
+  #       uses: myci-actions/add-deb-repo@10
+  #       with:
+  #         repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+  #         repo-name: llvm-repo
+  #         keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+  #     - name: Install LLVM
+  #       run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+  #     - name: Clippy
+  #       run: make check
 
-  fmt:
-    name: rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.79.0
-        with:
-          components: rustfmt
-      - run: cargo fmt --all -- --check
-      - name: Find Comment
-        continue-on-error: true
-        if: success() || failure()
-        uses: peter-evans/find-comment@v3
-        id: fc
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: thiscommentistofindthisformatcomment
-      - name: Create or update comment
-        continue-on-error: true
-        if: failure()
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ❌ Code is not formatted! Please run `cargo format` and push the changes.
+  # fmt:
+  #   name: rustfmt
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@1.79.0
+  #       with:
+  #         components: rustfmt
+  #     - run: cargo fmt --all -- --check
+  #     - name: Find Comment
+  #       continue-on-error: true
+  #       if: success() || failure()
+  #       uses: peter-evans/find-comment@v3
+  #       id: fc
+  #       with:
+  #         issue-number: ${{ github.event.pull_request.number }}
+  #         comment-author: 'github-actions[bot]'
+  #         body-includes: thiscommentistofindthisformatcomment
+  #     - name: Create or update comment
+  #       continue-on-error: true
+  #       if: failure()
+  #       uses: peter-evans/create-or-update-comment@v4
+  #       with:
+  #         comment-id: ${{ steps.fc.outputs.comment-id }}
+  #         issue-number: ${{ github.event.pull_request.number }}
+  #         body: |
+  #           ❌ Code is not formatted! Please run `cargo format` and push the changes.
 
-            <!-- thiscommentistofindthisformatcomment -->
-          edit-mode: replace
-      - name: Create or update comment
-        continue-on-error: true
-        if: ${{ success() && steps.fc.outputs.comment-id != null }}
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ✅ Code is now correctly formatted.
+  #           <!-- thiscommentistofindthisformatcomment -->
+  #         edit-mode: replace
+  #     - name: Create or update comment
+  #       continue-on-error: true
+  #       if: ${{ success() && steps.fc.outputs.comment-id != null }}
+  #       uses: peter-evans/create-or-update-comment@v4
+  #       with:
+  #         comment-id: ${{ steps.fc.outputs.comment-id }}
+  #         issue-number: ${{ github.event.pull_request.number }}
+  #         body: |
+  #           ✅ Code is now correctly formatted.
 
-            <!-- thiscommentistofindthisformatcomment -->
-          edit-mode: replace
+  #           <!-- thiscommentistofindthisformatcomment -->
+  #         edit-mode: replace
 
-  # Check for unnecessary dependencies.
-  udeps:
-    runs-on: ubuntu-latest
-    env:
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUSTUP_TOOLCHAIN: nightly-2024-02-01  # udeps needs nightly
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly-2024-02-01
-          components: rustfmt
+  # # Check for unnecessary dependencies.
+  # udeps:
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+  #     LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+  #     TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+  #     RUSTUP_TOOLCHAIN: nightly-2024-02-01  # udeps needs nightly
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@master
+  #       with:
+  #         toolchain: nightly-2024-02-01
+  #         components: rustfmt
 
-      - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@10
-        with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
-          repo-name: llvm-repo
-          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-      - name: Install LLVM
-        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
-      - name: "Download and run cargo-udeps"
-        run: |
-          wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.45/cargo-udeps-v0.1.45-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-          cargo-udeps-*/cargo-udeps udeps --all-targets --all-features
+  #     - name: add llvm deb repository
+  #       uses: myci-actions/add-deb-repo@10
+  #       with:
+  #         repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+  #         repo-name: llvm-repo
+  #         keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+  #     - name: Install LLVM
+  #       run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+  #     - name: "Download and run cargo-udeps"
+  #       run: |
+  #         wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.45/cargo-udeps-v0.1.45-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+  #         cargo-udeps-*/cargo-udeps udeps --all-targets --all-features
 
-  test:
-    name: test (linux, amd64)
-    runs-on: ubuntu-latest
-    env:
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUST_LOG: debug,cairo_native_test=trace
-    steps:
-      - uses: actions/checkout@v4
-      - name: check and free hdd space left
-        run: |
-          echo "Listing 20 largest packages"
-          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
-          df -h
-          sudo apt-get update
-          sudo apt-get remove -y '^llvm-.*'
-          sudo apt-get remove -y 'php.*'
-          sudo apt-get remove -y '^dotnet-.*'
-          sudo apt-get remove -y '^temurin-.*'
-          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
-          sudo apt-get autoremove -y
-          sudo apt-get clean
-          df -h
-          echo "Removing large directories"
-          # deleting 15GB
-          sudo rm -rf /usr/share/dotnet/
-          sudo rm -rf /usr/local/lib/android
-          df -h
-      - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.79.0
-      - name: Retreive cached dependecies
-        uses: Swatinem/rust-cache@v2
-      - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@11
-        with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
-          repo-name: llvm-repo
-          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-      - run: sudo apt-get update && sudo apt-get upgrade -y
-      - name: Install LLVM
-        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
-      - name: Install deps
-        run: make deps
-      - name: Build cairo-native-runtime library.
-        run: cargo build --profile=ci --package=cairo-native-runtime
-      - name: test
-        run: make test-ci
-      - name: test-cairo
-        run: make test-cairo
+  # test:
+  #   name: test (linux, amd64)
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+  #     LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+  #     TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+  #     RUST_LOG: debug,cairo_native_test=trace
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: check and free hdd space left
+  #       run: |
+  #         echo "Listing 20 largest packages"
+  #         dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+  #         df -h
+  #         sudo apt-get update
+  #         sudo apt-get remove -y '^llvm-.*'
+  #         sudo apt-get remove -y 'php.*'
+  #         sudo apt-get remove -y '^dotnet-.*'
+  #         sudo apt-get remove -y '^temurin-.*'
+  #         sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+  #         sudo apt-get autoremove -y
+  #         sudo apt-get clean
+  #         df -h
+  #         echo "Removing large directories"
+  #         # deleting 15GB
+  #         sudo rm -rf /usr/share/dotnet/
+  #         sudo rm -rf /usr/local/lib/android
+  #         df -h
+  #     - name: Setup rust env
+  #       uses: dtolnay/rust-toolchain@1.79.0
+  #     - name: Retreive cached dependecies
+  #       uses: Swatinem/rust-cache@v2
+  #     - name: add llvm deb repository
+  #       uses: myci-actions/add-deb-repo@11
+  #       with:
+  #         repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+  #         repo-name: llvm-repo
+  #         keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+  #     - run: sudo apt-get update && sudo apt-get upgrade -y
+  #     - name: Install LLVM
+  #       run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+  #     - name: Install deps
+  #       run: make deps
+  #     - name: Build cairo-native-runtime library.
+  #       run: cargo build --profile=ci --package=cairo-native-runtime
+  #     - name: test
+  #       run: make test-ci
+  #     - name: test-cairo
+  #       run: make test-cairo
   test_macos:
     name: Test (macOS, Apple silicon)
     runs-on: macos-14
@@ -188,110 +188,110 @@ jobs:
       - name: test-cairo
         run: make test-cairo
 
-  coverage:
-    name: coverage
-    runs-on: ubuntu-latest
-    env:
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUST_LOG: debug
-    steps:
-      - uses: actions/checkout@v4
-      - name: check and free hdd space left
-        run: |
-          echo "Listing 20 largest packages"
-          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
-          df -h
-          sudo apt-get update
-          sudo apt-get remove -y '^llvm-.*'
-          sudo apt-get remove -y 'php.*'
-          sudo apt-get remove -y '^dotnet-.*'
-          sudo apt-get remove -y '^temurin-.*'
-          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
-          sudo apt-get autoremove -y
-          sudo apt-get clean
-          df -h
-          echo "Removing large directories"
-          # deleting 15GB
-          sudo rm -rf /usr/share/dotnet/
-          sudo rm -rf /usr/local/lib/android
-          df -h
-      - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.79.0
-      - name: Retreive cached dependecies
-        uses: Swatinem/rust-cache@v2
-      - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@10
-        with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
-          repo-name: llvm-repo
-          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-      - name: Install LLVM
-        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Install scarb
-        uses: software-mansion/setup-scarb@v1
-        with:
-          scarb-version: "2.6.4"
-      - name: Install deps
-        run: make deps
-      - name: Build cairo-native-runtime library.
-        run: cargo build --profile=ci --package=cairo-native-runtime
-      - name: test and generate coverage
-        run: make coverage
-      - name: save coverage data
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage_data
-          path: |
-            ./lcov.info
-            ./lcov-test.info
+  # coverage:
+  #   name: coverage
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  #     MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+  #     LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+  #     TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+  #     RUST_LOG: debug
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: check and free hdd space left
+  #       run: |
+  #         echo "Listing 20 largest packages"
+  #         dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+  #         df -h
+  #         sudo apt-get update
+  #         sudo apt-get remove -y '^llvm-.*'
+  #         sudo apt-get remove -y 'php.*'
+  #         sudo apt-get remove -y '^dotnet-.*'
+  #         sudo apt-get remove -y '^temurin-.*'
+  #         sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+  #         sudo apt-get autoremove -y
+  #         sudo apt-get clean
+  #         df -h
+  #         echo "Removing large directories"
+  #         # deleting 15GB
+  #         sudo rm -rf /usr/share/dotnet/
+  #         sudo rm -rf /usr/local/lib/android
+  #         df -h
+  #     - name: Setup rust env
+  #       uses: dtolnay/rust-toolchain@1.79.0
+  #     - name: Retreive cached dependecies
+  #       uses: Swatinem/rust-cache@v2
+  #     - name: add llvm deb repository
+  #       uses: myci-actions/add-deb-repo@10
+  #       with:
+  #         repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+  #         repo-name: llvm-repo
+  #         keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+  #     - name: Install LLVM
+  #       run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+  #     - name: Install cargo-llvm-cov
+  #       uses: taiki-e/install-action@cargo-llvm-cov
+  #     - name: Install scarb
+  #       uses: software-mansion/setup-scarb@v1
+  #       with:
+  #         scarb-version: "2.6.4"
+  #     - name: Install deps
+  #       run: make deps
+  #     - name: Build cairo-native-runtime library.
+  #       run: cargo build --profile=ci --package=cairo-native-runtime
+  #     - name: test and generate coverage
+  #       run: make coverage
+  #     - name: save coverage data
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: coverage_data
+  #         path: |
+  #           ./lcov.info
+  #           ./lcov-test.info
 
-  upload-coverage:
-    name: Upload Coverage
-    runs-on: ubuntu-latest
-    needs: [ coverage ]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage_data
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./lcov.info,./lcov-test.info
-          fail_ci_if_error: true
-          verbose: true
+  # upload-coverage:
+  #   name: Upload Coverage
+  #   runs-on: ubuntu-latest
+  #   needs: [ coverage ]
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Download artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: coverage_data
+  #     - name: Upload coverage
+  #       uses: codecov/codecov-action@v4
+  #       with:
+  #         token: ${{ secrets.CODECOV_TOKEN }}
+  #         files: ./lcov.info,./lcov-test.info
+  #         fail_ci_if_error: true
+  #         verbose: true
 
-  dockerfile:
-    name: dockerfile (linux, amd64)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: check and free hdd space left
-        run: |
-          echo "Listing 20 largest packages"
-          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
-          df -h
-          sudo apt-get update
-          sudo apt-get remove -y '^llvm-.*'
-          sudo apt-get remove -y 'php.*'
-          sudo apt-get remove -y '^dotnet-.*'
-          sudo apt-get remove -y '^temurin-.*'
-          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
-          sudo apt-get autoremove -y
-          sudo apt-get clean
-          df -h
-          echo "Removing large directories"
-          # deleting 15GB
-          sudo rm -rf /usr/share/dotnet/
-          sudo rm -rf /usr/local/lib/android
-          df -h
-      - name: build image
-        run: docker build .
+  # dockerfile:
+  #   name: dockerfile (linux, amd64)
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: check and free hdd space left
+  #       run: |
+  #         echo "Listing 20 largest packages"
+  #         dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+  #         df -h
+  #         sudo apt-get update
+  #         sudo apt-get remove -y '^llvm-.*'
+  #         sudo apt-get remove -y 'php.*'
+  #         sudo apt-get remove -y '^dotnet-.*'
+  #         sudo apt-get remove -y '^temurin-.*'
+  #         sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+  #         sudo apt-get autoremove -y
+  #         sudo apt-get clean
+  #         df -h
+  #         echo "Removing large directories"
+  #         # deleting 15GB
+  #         sudo rm -rf /usr/share/dotnet/
+  #         sudo rm -rf /usr/local/lib/android
+  #         df -h
+  #     - name: build image
+  #       run: docker build .

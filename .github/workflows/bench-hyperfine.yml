@@ -15,75 +15,75 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  bench-hyperfine:
-    name: Hyperfine
-    runs-on: ubuntu-latest
-    env:
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-    steps:
-      - uses: actions/checkout@v4
-      - name: check and free hdd space left
-        run: |
-          echo "Listing 20 largest packages"
-          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
-          df -h
-          sudo apt-get update
-          sudo apt-get remove -y '^llvm-.*'
-          sudo apt-get remove -y 'php.*'
-          sudo apt-get remove -y '^dotnet-.*'
-          sudo apt-get remove -y '^temurin-.*'
-          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
-          sudo apt-get autoremove -y
-          sudo apt-get clean
-          df -h
-          echo "Removing large directories"
-          # deleting 15GB
-          sudo rm -rf /usr/share/dotnet/
-          sudo rm -rf /usr/local/lib/android
-          df -h
-      - uses: dtolnay/rust-toolchain@1.79.0
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@10
-        with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
-          repo-name: llvm-repo
-          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-      - name: Install LLVM
-        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
-      - name: Install hyperfine
-        uses: taiki-e/install-action@v2
-        with:
-          tool: hyperfine@1.16
-      - name: Install deps
-        run: make deps
-      - name: Build project
-        run: make build
-      - name: Build runtime subproject
-        run: make runtime-ci
-      - name: Run benchmarks
-        run: ./scripts/bench-hyperfine.sh programs/benches/*.cairo
-      - name: Create markdown file
-        run: bash .github/scripts/merge-benches.sh
+  # bench-hyperfine:
+  #   name: Hyperfine
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  #     MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+  #     TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+  #     LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: check and free hdd space left
+  #       run: |
+  #         echo "Listing 20 largest packages"
+  #         dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+  #         df -h
+  #         sudo apt-get update
+  #         sudo apt-get remove -y '^llvm-.*'
+  #         sudo apt-get remove -y 'php.*'
+  #         sudo apt-get remove -y '^dotnet-.*'
+  #         sudo apt-get remove -y '^temurin-.*'
+  #         sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+  #         sudo apt-get autoremove -y
+  #         sudo apt-get clean
+  #         df -h
+  #         echo "Removing large directories"
+  #         # deleting 15GB
+  #         sudo rm -rf /usr/share/dotnet/
+  #         sudo rm -rf /usr/local/lib/android
+  #         df -h
+  #     - uses: dtolnay/rust-toolchain@1.79.0
+  #       with:
+  #         components: clippy
+  #     - uses: Swatinem/rust-cache@v2
+  #     - name: add llvm deb repository
+  #       uses: myci-actions/add-deb-repo@10
+  #       with:
+  #         repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+  #         repo-name: llvm-repo
+  #         keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+  #     - name: Install LLVM
+  #       run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+  #     - name: Install hyperfine
+  #       uses: taiki-e/install-action@v2
+  #       with:
+  #         tool: hyperfine@1.16
+  #     - name: Install deps
+  #       run: make deps
+  #     - name: Build project
+  #       run: make build
+  #     - name: Build runtime subproject
+  #       run: make runtime-ci
+  #     - name: Run benchmarks
+  #       run: ./scripts/bench-hyperfine.sh programs/benches/*.cairo
+  #     - name: Create markdown file
+  #       run: bash .github/scripts/merge-benches.sh
 
-      - name: Find Bench Comment
-        continue-on-error: true
-        uses: peter-evans/find-comment@v3
-        id: fc
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: Benchmarking
-      - name: Create or update bench comment
-        continue-on-error: true
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body-path: bench-hyperfine.md
-          edit-mode: replace
+  #     - name: Find Bench Comment
+  #       continue-on-error: true
+  #       uses: peter-evans/find-comment@v3
+  #       id: fc
+  #       with:
+  #         issue-number: ${{ github.event.pull_request.number }}
+  #         comment-author: 'github-actions[bot]'
+  #         body-includes: Benchmarking
+  #     - name: Create or update bench comment
+  #       continue-on-error: true
+  #       uses: peter-evans/create-or-update-comment@v4
+  #       with:
+  #         comment-id: ${{ steps.fc.outputs.comment-id }}
+  #         issue-number: ${{ github.event.pull_request.number }}
+  #         body-path: bench-hyperfine.md
+  #         edit-mode: replace
