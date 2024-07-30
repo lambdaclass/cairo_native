@@ -740,7 +740,8 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
     }
 
     let range_check = entry.argument(0)?.into();
-    let array = entry.argument(1)?.into();
+
+    // Get type information
 
     let array_ty = registry.build_type(
         context,
@@ -757,23 +758,31 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
     let popped_ctys = popped_cty
         .fields()
         .expect("popped type should be a tuple (ergo, has fields)");
-    let popped_amount = popped_ctys.len();
+    let popped_len = popped_ctys.len();
 
     let array_ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let array_start_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
     let array_end_ty = crate::ffi::get_struct_field_type_at(&array_ty, 2);
 
+    // Get array information
+
+    let array = entry.argument(1)?.into();
     let array_ptr = entry.extract_value(context, location, array, array_ptr_ty, 0)?;
     let array_start = entry.extract_value(context, location, array, array_start_ty, 1)?;
     let array_end = entry.extract_value(context, location, array, array_end_ty, 2)?;
 
+    // Check if operation is valid:
+    // if array.end - array.start < popped_len {
+    //     return
+    // }
+
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
-    let popped_amount_value = entry.const_int(context, location, popped_amount, 32)?;
+    let popped_len_value = entry.const_int(context, location, popped_len, 32)?;
     let is_valid = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
         array_len,
-        popped_amount_value,
+        popped_len_value,
         location,
     ))?;
 
@@ -791,6 +800,8 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
     ));
 
     {
+        // Get pointer to first element to pop
+
         let popped_ptr = {
             let single_popped_ty =
                 registry.build_type(context, helper, registry, metadata, &popped_ctys[0])?;
@@ -805,13 +816,15 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
             ))?
         };
 
+        // Allocate memory for return array
+
         let return_ptr = {
-            let return_ptr = valid_block.append_op_result(
+            let null_ptr = valid_block.append_op_result(
                 ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
             )?;
             valid_block.append_op_result(ReallocBindingsMeta::realloc(
                 context,
-                return_ptr,
+                null_ptr,
                 popped_size_value,
                 location,
             ))?
@@ -819,10 +832,12 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
 
         valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
 
+        // Update array start (removing popped elements)
+
         let array = {
             let new_array_start = valid_block.append_op_result(arith::addi(
                 array_start,
-                popped_amount_value,
+                popped_len_value,
                 location,
             ))?;
 
@@ -851,7 +866,8 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
     }
 
     let range_check = entry.argument(0)?.into();
-    let array = entry.argument(1)?.into();
+
+    // Get type information
 
     let array_ty = registry.build_type(
         context,
@@ -868,23 +884,31 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
     let popped_ctys = popped_cty
         .fields()
         .expect("popped type should be a tuple (ergo, has fields)");
-    let popped_amount = popped_ctys.len();
+    let popped_len = popped_ctys.len();
 
     let array_ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let array_start_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
     let array_end_ty = crate::ffi::get_struct_field_type_at(&array_ty, 2);
 
+    // Get array information
+
+    let array = entry.argument(1)?.into();
     let array_ptr = entry.extract_value(context, location, array, array_ptr_ty, 0)?;
     let array_start = entry.extract_value(context, location, array, array_start_ty, 1)?;
     let array_end = entry.extract_value(context, location, array, array_end_ty, 2)?;
 
+    // Check if operation is valid:
+    // if array.end - array.start < popped_len {
+    //     return
+    // }
+
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
-    let popped_amount_value = entry.const_int(context, location, popped_amount, 32)?;
+    let popped_len_value = entry.const_int(context, location, popped_len, 32)?;
     let is_valid = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
         array_len,
-        popped_amount_value,
+        popped_len_value,
         location,
     ))?;
 
@@ -902,15 +926,14 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
     ));
 
     {
+        // Get pointer to first element to pop
+
         let popped_ptr = {
             let single_popped_ty =
                 registry.build_type(context, helper, registry, metadata, &popped_ctys[0])?;
 
-            let popped_start = valid_block.append_op_result(arith::subi(
-                array_end,
-                popped_amount_value,
-                location,
-            ))?;
+            let popped_start =
+                valid_block.append_op_result(arith::subi(array_end, popped_len_value, location))?;
 
             valid_block.append_op_result(llvm::get_element_ptr_dynamic(
                 context,
@@ -922,13 +945,15 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
             ))?
         };
 
+        // Allocate memory for return array
+
         let return_ptr = {
-            let return_ptr = valid_block.append_op_result(
+            let null_ptr = valid_block.append_op_result(
                 ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
             )?;
             valid_block.append_op_result(ReallocBindingsMeta::realloc(
                 context,
-                return_ptr,
+                null_ptr,
                 popped_size_value,
                 location,
             ))?
@@ -936,12 +961,11 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
 
         valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
 
+        // Update array end (removing popped elements)
+
         let array = {
-            let new_array_end = valid_block.append_op_result(arith::subi(
-                array_end,
-                popped_amount_value,
-                location,
-            ))?;
+            let new_array_end =
+                valid_block.append_op_result(arith::subi(array_end, popped_len_value, location))?;
 
             valid_block.insert_value(context, location, array, new_array_end, 2)?
         };
