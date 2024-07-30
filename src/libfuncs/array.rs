@@ -768,7 +768,7 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
     let popped_amount_value = entry.const_int(context, location, popped_amount, 32)?;
     let is_valid = entry.append_op_result(arith::cmpi(
-        &context,
+        context,
         CmpiPredicate::Uge,
         array_len,
         popped_amount_value,
@@ -879,7 +879,7 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
     let popped_amount_value = entry.const_int(context, location, popped_amount, 32)?;
     let is_valid = entry.append_op_result(arith::cmpi(
-        &context,
+        context,
         CmpiPredicate::Uge,
         array_len,
         popped_amount_value,
