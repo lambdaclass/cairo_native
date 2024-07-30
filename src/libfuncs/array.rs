@@ -904,10 +904,16 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
             let single_popped_ty =
                 registry.build_type(context, helper, registry, metadata, &popped_ctys[0])?;
 
+            let popped_start = valid_block.append_op_result(arith::subi(
+                array_end,
+                popped_amount_value,
+                location,
+            ))?;
+
             valid_block.append_op_result(llvm::get_element_ptr_dynamic(
                 context,
                 array_ptr,
-                &[array_start],
+                &[popped_start],
                 single_popped_ty,
                 llvm::r#type::pointer(context, 0),
                 location,
