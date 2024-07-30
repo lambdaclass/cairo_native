@@ -2229,4 +2229,37 @@ mod test {
             )
         );
     }
+
+    #[test]
+    fn snapshot_failed_multi_pop_back() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Span<felt252> {
+                let mut numbers = array![1, 2].span();
+
+                // should fail (return none)
+                assert!(numbers.multi_pop_back::<3>().is_none());
+
+                numbers
+            }
+        );
+
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            // Panic result
+            jit_enum!(
+                0,
+                jit_struct!(
+                    // Span of original array
+                    jit_struct!(JitValue::Array(vec![
+                        JitValue::Felt252(1.into()),
+                        JitValue::Felt252(2.into()),
+                    ]),)
+                )
+            )
+        );
+    }
 }
