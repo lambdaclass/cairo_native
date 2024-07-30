@@ -929,13 +929,13 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
         valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
 
         let array = {
-            let new_array_start = valid_block.append_op_result(arith::addi(
-                array_start,
+            let new_array_end = valid_block.append_op_result(arith::subi(
+                array_end,
                 popped_amount_value,
                 location,
             ))?;
 
-            valid_block.insert_value(context, location, array, new_array_start, 1)?
+            valid_block.insert_value(context, location, array, new_array_end, 2)?
         };
 
         valid_block.append_operation(helper.br(0, &[range_check, array, return_ptr], location));
