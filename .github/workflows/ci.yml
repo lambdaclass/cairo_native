@@ -12,29 +12,29 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  # check:
-  #   name: clippy
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-  #     LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-  #     TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: dtolnay/rust-toolchain@1.79.0
-  #       with:
-  #         components: clippy, rustfmt
-  #     - uses: Swatinem/rust-cache@v2
-  #     - name: add llvm deb repository
-  #       uses: myci-actions/add-deb-repo@10
-  #       with:
-  #         repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
-  #         repo-name: llvm-repo
-  #         keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-  #     - name: Install LLVM
-  #       run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
-  #     - name: Clippy
-  #       run: make check
+  check:
+    name: clippy
+    runs-on: ubuntu-latest
+    env:
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.79.0
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: add llvm deb repository
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+          repo-name: llvm-repo
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - name: Install LLVM
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+      - name: Clippy
+        run: make check
 
   # fmt:
   #   name: rustfmt
