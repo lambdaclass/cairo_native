@@ -167,13 +167,14 @@ jobs:
       LLVM_SYS_181_PREFIX: /opt/homebrew/opt/llvm@18
       TABLEGEN_180_PREFIX: /opt/homebrew/opt/llvm@18
       RUST_LOG: debug,cairo_native_test=trace
-      PATH: "/Users/runner/.cargo/bin:$PATH"
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
         uses: dtolnay/rust-toolchain@1.79.0
         with:
           components: clippy
+      - name: Rust `$PATH` workaround.
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - uses: Homebrew/actions/setup-homebrew@master
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
