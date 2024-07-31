@@ -3957,7 +3957,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
 
 ///
 /// From the corelib
-/// ```no_run
+/// ```text, no_run
 /// // Initializes a new SHA-256 state handle.
 /// extern fn sha256_state_handle_init(state: Box<[u32; 8]>) -> Sha256StateHandle nopanic;
 /// ```
@@ -3977,7 +3977,7 @@ pub fn build_sha256_state_handle_init<'ctx, 'this>(
 
 ///
 /// From the corelib
-/// ```no_run
+/// ```text, no_run
 /// // Initializes a new SHA-256 state handle.
 /// extern fn sha256_state_handle_digest(state: Sha256StateHandle) -> Box<[u32; 8]> nopanic;
 /// ```
