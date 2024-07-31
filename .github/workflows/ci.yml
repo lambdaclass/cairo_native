@@ -167,7 +167,7 @@ jobs:
       LLVM_SYS_181_PREFIX: /opt/homebrew/opt/llvm@18
       TABLEGEN_180_PREFIX: /opt/homebrew/opt/llvm@18
       RUST_LOG: debug,cairo_native_test=trace
-      PATH: "/Users/runner/.cargo/bin:${{ env.PATH }}"
+      PATH: "/Users/runner/.cargo/bin:$PATH"
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
