@@ -47,10 +47,11 @@ build-cli = [
   "dep:colored",
 ]
 scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
+with-cheatcode = []
 with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
 with-serde = ["dep:serde"]
-with-cheatcode = []
+with-trace-dump = ["dep:sierra-emu", "dep:serde_json"]
 
 [dependencies]
 bumpalo = "3.16.0"
@@ -72,6 +73,7 @@ melior = { version = "0.18.4", features = ["ods-dialects"] }
 mlir-sys = "0.2.2"
 num-bigint = "0.4.4"
 num-traits = "0.2"
+sierra-emu = { git = "https://github.com/azteca1998/sierra-emu", optional = true }
 starknet-types-core = { version = "=0.1.2", default-features = false, features = [
   "std", "serde", "num-traits"
 ] }
@@ -102,7 +104,7 @@ p256 = "0.13.2"
 scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.7.0-rc.3", optional = true }
 scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.7.0-rc.3", optional = true }
 sec1 = "0.7.3"
-serde_json = { version = "1.0.117", optional = true }
+serde_json = { version = "1.0.121", optional = true }
 stats_alloc = "0.1.10"
 
 [dev-dependencies]
