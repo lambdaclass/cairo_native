@@ -179,6 +179,15 @@ pub unsafe extern "C" fn cairo_native__dict_free(ptr: *mut FeltDict) {
     }
 }
 
+/// Needed for the correct alignment,
+/// since the key [u8; 32] in rust has 8 byte alignment but its a felt,
+/// so in reality it has 16.
+#[repr(C, align(16))]
+pub struct DictValuesArrayAbi {
+    pub key: [u8; 32],
+    pub value: std::ptr::NonNull<libc::c_void>,
+}
+
 /// Returns a array over the values of the dict, used for deep cloning.
 ///
 /// # Safety
@@ -189,10 +198,19 @@ pub unsafe extern "C" fn cairo_native__dict_free(ptr: *mut FeltDict) {
 pub unsafe extern "C" fn cairo_native__dict_values(
     ptr: *mut FeltDict,
     len: *mut u64,
-) -> *mut ([u8; 32], std::ptr::NonNull<libc::c_void>) {
+) -> *mut DictValuesArrayAbi {
     let dict: &mut FeltDict = &mut *ptr;
 
-    let values: Vec<_> = dict.0.clone().into_iter().collect();
+    let values: Vec<_> = dict
+        .0
+        .clone()
+        .into_iter()
+        // make it ffi safe for use within MLIR.
+        .map(|x| DictValuesArrayAbi {
+            key: x.0,
+            value: x.1,
+        })
+        .collect();
     *len = values.len() as u64;
     values.leak::<'static>().as_mut_ptr()
 }

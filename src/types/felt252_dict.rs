@@ -33,7 +33,7 @@ use melior::{
     },
     ir::{
         attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Region, Type,
-        Value, ValueLike,
+        Value,
     },
     Context,
 };
@@ -178,8 +178,9 @@ fn snapshot_take<'ctx, 'this>(
 
                     match elem_snapshot_take {
                         Some(elem_snapshot_take) => {
+                            let value = block.load(context, location, value_ptr, elem_ty)?;
                             let (block, cloned_value) = elem_snapshot_take(
-                                context, registry, &block, location, &helper, metadata, value_ptr,
+                                context, registry, &block, location, &helper, metadata, value,
                             )?;
 
                             let cloned_value_ptr =
@@ -299,9 +300,35 @@ mod test {
         assert_eq!(
             result,
             jit_dict!(
-                2 => 1u32
+                2 => JitValue::Array(vec![3u32.into(), 4u32.into()])
             ),
         );
+    }
+
+    #[test]
+    fn dict_snapshot_take_compare() {
+        let program = load_cairo! {
+            fn run_test() -> @Felt252Dict<Nullable<Array<u32>>> {
+                let mut dict: Felt252Dict<Nullable<Array<u32>>> = Default::default();
+                dict.insert(2, NullableTrait::new(array![3, 4]));
+
+                @dict
+            }
+
+        };
+        let program2 = load_cairo! {
+            fn run_test() -> Felt252Dict<Nullable<Array<u32>>> {
+                let mut dict: Felt252Dict<Nullable<Array<u32>>> = Default::default();
+                dict.insert(2, NullableTrait::new(array![3, 4]));
+
+                dict
+            }
+
+        };
+        let result1 = run_program(&program, "run_test", &[]).return_value;
+        let result2 = run_program(&program2, "run_test", &[]).return_value;
+
+        assert_eq!(result1, result2);
     }
 
     /// Ensure that a dictionary of booleans compiles.
