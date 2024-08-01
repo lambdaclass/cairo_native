@@ -3,6 +3,7 @@
 //! A Rusty interface to provide parameters to JIT calls.
 
 use crate::{
+    error::CompilerError,
     error::Error,
     types::{felt252::PRIME, TypeBuilder},
     utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
@@ -204,22 +205,27 @@ impl JitValue {
                 } => {
                     let value = value.to_bigint();
 
-                    if lower < upper {
-                        return Err(Error::Error("BoundedInt range is invalid".to_string()));
+                    if lower >= upper {
+                        // If lower bound is greater than or equal to upper bound
+                        // Should not happen with correct range definition
+                        return Err(CompilerError::BoundedIntOutOfRange {
+                            value: Box::new(value),
+                            range: Box::new((lower.clone(), upper.clone())),
+                        }
+                        .into());
                     }
 
                     let prime = &PRIME.to_bigint().unwrap();
                     let lower = lower.rem_euclid(prime);
                     let upper = upper.rem_euclid(prime);
 
-                    if lower <= upper {
-                        if !(lower <= value && value < upper) {
-                            return Err(Error::Error(
-                                "BoundedInt value is out of range".to_string(),
-                            ));
+                    // Check if value is within the valid range
+                    if !(lower <= value && value < upper) {
+                        return Err(CompilerError::BoundedIntOutOfRange {
+                            value: Box::new(value),
+                            range: Box::new((lower, upper)),
                         }
-                    } else if !(upper > value && value >= lower) {
-                        return Err(Error::Error("BoundedInt value is out of range".to_string()));
+                        .into());
                     }
 
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
@@ -1250,6 +1256,154 @@ mod test {
 
         // Assertion to verify that the value returned by to_jit is not NULL
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_to_jit_bounded_int_valid() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+            type BoundedInt = BoundedInt<10, 510>;",
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Valid case
+        assert_eq!(
+            unsafe {
+                *JitValue::BoundedInt {
+                    value: Felt::from(16),
+                    range: Range {
+                        lower: BigInt::from(10),
+                        upper: BigInt::from(510),
+                    },
+                }
+                .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id)
+                .unwrap()
+                .cast::<[u32; 8]>()
+                .as_ptr()
+            },
+            [16, 0, 0, 0, 0, 0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn test_to_jit_bounded_int_lower_bound_greater_than_upper() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+            type BoundedInt = BoundedInt<10, 510>;", // Note: lower > upper
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Error case: lower bound greater than upper bound
+        let result = JitValue::BoundedInt {
+            value: Felt::from(16),
+            range: Range {
+                lower: BigInt::from(510),
+                upper: BigInt::from(10),
+            },
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+
+        assert!(matches!(
+            result,
+            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange { .. }))
+        ));
+    }
+
+    #[test]
+    fn test_to_jit_bounded_int_value_less_than_lower_bound() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+            type BoundedInt = BoundedInt<10, 510>;",
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Error case: value less than lower bound
+        let result = JitValue::BoundedInt {
+            value: Felt::from(9),
+            range: Range {
+                lower: BigInt::from(10),
+                upper: BigInt::from(510),
+            },
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+
+        assert!(matches!(
+            result,
+            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange { .. }))
+        ));
+    }
+
+    #[test]
+    fn test_to_jit_bounded_int_value_greater_than_or_equal_to_upper_bound() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+            type BoundedInt = BoundedInt<10, 510>;",
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Error case: value greater than or equal to upper bound
+        let result = JitValue::BoundedInt {
+            value: Felt::from(512),
+            range: Range {
+                lower: BigInt::from(10),
+                upper: BigInt::from(510),
+            },
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+
+        assert!(matches!(
+            result,
+            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange { .. }))
+        ));
+    }
+
+    #[test]
+    fn test_to_jit_bounded_int_equal_bounds_and_value() {
+        // Parse the program
+        let program = ProgramParser::new()
+            .parse(
+                "type felt252 = felt252;
+            type BoundedInt = BoundedInt<10, 10>;", // Note: lower = upper
+            )
+            .unwrap();
+
+        // Create the registry for the program
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        // Error case: value equals lower and upper bound (upper bound is exclusive)
+        let result = JitValue::BoundedInt {
+            value: Felt::from(10),
+            range: Range {
+                lower: BigInt::from(10),
+                upper: BigInt::from(10),
+            },
+        }
+        .to_jit(&Bump::new(), &registry, &program.type_declarations[1].id);
+
+        assert!(matches!(
+            result,
+            Err(Error::Compiler(CompilerError::BoundedIntOutOfRange { .. }))
+        ));
     }
 
     #[test]
