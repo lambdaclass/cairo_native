@@ -29,7 +29,7 @@ enum RuntimeBinding {
     DictGet,
     DictGasRefund,
     DictFree,
-    DictClone,
+    DictValues,
     DebugPrint,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
@@ -507,26 +507,30 @@ impl RuntimeBindingsMeta {
     ///
     /// Returns a opaque pointer as the result.
     #[allow(clippy::too_many_arguments)]
-    pub fn dict_clone<'c, 'a>(
+    pub fn dict_values<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
         ptr: Value<'c, 'a>,
+        len_ptr: Value<'c, 'a>,
         block: &'a Block<'c>,
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::DictClone) {
+        if self.active_map.insert(RuntimeBinding::DictValues) {
             module.body().append_operation(func::func(
                 context,
-                StringAttribute::new(context, "cairo_native__dict_clone"),
+                StringAttribute::new(context, "cairo_native__dict_values"),
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
-                        &[llvm::r#type::pointer(context, 0)],
-                        &[llvm::r#type::pointer(context, 0)],
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                        ], // ptr to dict, out ptr to length
+                        &[llvm::r#type::pointer(context, 0)], // ptr to array of struct (key, value_ptr)
                     )
                     .into(),
                 ),
@@ -541,8 +545,8 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(func::call(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__dict_clone"),
-            &[ptr],
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_values"),
+            &[ptr, len_ptr],
             &[llvm::r#type::pointer(context, 0)],
             location,
         )))
@@ -613,7 +617,6 @@ impl RuntimeBindingsMeta {
         dict_ptr: Value<'c, 'a>,  // ptr to the dict
         key_ptr: Value<'c, 'a>,   // key must be a ptr to Felt
         value_ptr: Value<'c, 'a>, // value must be a opaque non null ptr
-        size: Value<'c, 'a>,      // value size in bytes
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where
@@ -630,7 +633,6 @@ impl RuntimeBindingsMeta {
                             llvm::r#type::pointer(context, 0),
                             llvm::r#type::pointer(context, 0),
                             llvm::r#type::pointer(context, 0),
-                            IntegerType::new(context, 64).into(),
                         ],
                         &[llvm::r#type::pointer(context, 0)],
                     )
@@ -648,7 +650,7 @@ impl RuntimeBindingsMeta {
         Ok(block.append_operation(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_insert"),
-            &[dict_ptr, key_ptr, value_ptr, size],
+            &[dict_ptr, key_ptr, value_ptr],
             &[llvm::r#type::pointer(context, 0)],
             location,
         )))

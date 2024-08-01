@@ -320,9 +320,12 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
         );
 
         engine.register_symbol(
-            "cairo_native__dict_clone",
-            cairo_native_runtime::cairo_native__dict_clone
-                as *const fn(*mut FeltDict) -> *mut FeltDict as *mut (),
+            "cairo_native__dict_values",
+            cairo_native_runtime::cairo_native__dict_values
+                as *const fn(
+                    *mut FeltDict,
+                    *mut u64,
+                ) -> *mut ([u8; 32], std::ptr::NonNull<libc::c_void>) as *mut (),
         );
 
         engine.register_symbol(

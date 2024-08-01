@@ -6,13 +6,18 @@
 //! used to count accesses to the dictionary. The type is interacted through the runtime functions to
 //! insert, get elements and increment the access counter.
 
+use std::cell::Cell;
+
 use super::WithSelf;
 use crate::{
+    block_ext::BlockExt,
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
-        runtime_bindings::RuntimeBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
+        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
+        snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
+    types::TypeBuilder,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -22,8 +27,14 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
-    ir::{Block, Location, Module, Type, Value},
+    dialect::{
+        llvm::{self, r#type::pointer},
+        ods, scf,
+    },
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Region, Type,
+        Value, ValueLike,
+    },
     Context,
 };
 
@@ -54,27 +65,192 @@ pub fn build<'ctx>(
 #[allow(clippy::too_many_arguments)]
 fn snapshot_take<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    _info: WithSelf<InfoAndTypeConcreteType>,
+    info: WithSelf<InfoAndTypeConcreteType>,
     src_value: Value<'ctx, 'this>,
 ) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
-    // This snapshot take assumes the value types in a felt are always copy and don't need deep cloning.
-    // So far (atleast up to 2.6.4) you cannot make a felt dict of array values, so this holds.
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
+    let elem_snapshot_take = metadata
+        .get::<SnapshotClonesMeta>()
+        .and_then(|meta| meta.wrap_invoke(&info.ty));
+
+    let elem_ty = registry.get_type(&info.ty)?;
+    let elem_layout = elem_ty.layout(registry)?;
+    let elem_ty = elem_ty.build(context, helper, registry, metadata, &info.ty)?;
+
+    let location = Location::name(context, "dict_snapshot_clone", location);
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
-    let new_ptr = runtime_bindings
-        .dict_clone(context, helper, src_value, entry, location)?
+    let len_ptr = helper.init_block().alloca_int(context, location, 64)?;
+    let u64_ty = IntegerType::new(context, 64).into();
+
+    let entry_values_type = llvm::r#type::r#struct(
+        context,
+        &[IntegerType::new(context, 252).into(), pointer(context, 0)], // key, value ptr
+        false,
+    );
+
+    // ptr to array of entry_values_type
+    let entries_ptr = runtime_bindings
+        .dict_values(context, helper, src_value, len_ptr, entry, location)?
         .result(0)?
         .into();
 
-    Ok((entry, new_ptr))
+    let array_len = entry.load(context, location, len_ptr, u64_ty)?;
+
+    let k0 = entry.const_int(context, location, 0, 64)?;
+    let k1 = entry.const_int(context, location, 1, 64)?;
+    let elem_stride_bytes =
+        entry.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
+    let nullptr = entry.append_op_result(llvm::zero(pointer(context, 0), location))?;
+
+    let cloned_dict_ptr = runtime_bindings
+        .dict_alloc_new(context, helper, entry, location)?
+        .result(0)?
+        .into();
+
+    entry.append_operation(scf::r#for(
+        k0,
+        array_len,
+        k1,
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[(
+                IntegerType::new(context, 64).into(),
+                location,
+            )]));
+
+            let i = block.argument(0)?.into();
+            block.append_operation(scf::execute_region(
+                &[],
+                {
+                    let region = Region::new();
+                    let block = region.append_block(Block::new(&[]));
+
+                    let entry_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
+                        context,
+                        entries_ptr,
+                        &[i],
+                        entry_values_type,
+                        llvm::r#type::pointer(context, 0),
+                        location,
+                    ))?;
+
+                    let helper = LibfuncHelper {
+                        module: helper.module,
+                        init_block: helper.init_block,
+                        region: &region,
+                        blocks_arena: helper.blocks_arena,
+                        last_block: Cell::new(&block),
+                        branches: Vec::new(),
+                        results: Vec::new(),
+                    };
+
+                    let entry_value =
+                        block.load(context, location, entry_ptr, entry_values_type)?;
+
+                    let key = block.extract_value(
+                        context,
+                        location,
+                        entry_value,
+                        IntegerType::new(context, 252).into(),
+                        0,
+                    )?;
+                    let key_ptr = helper.init_block().alloca_int(context, location, 252)?;
+                    block.store(context, location, key_ptr, key)?;
+                    let value_ptr = block.extract_value(
+                        context,
+                        location,
+                        entry_value,
+                        pointer(context, 0),
+                        1,
+                    )?;
+
+                    match elem_snapshot_take {
+                        Some(elem_snapshot_take) => {
+                            let (block, cloned_value) = elem_snapshot_take(
+                                context, registry, &block, location, &helper, metadata, value_ptr,
+                            )?;
+
+                            let cloned_value_ptr =
+                                block.append_op_result(ReallocBindingsMeta::realloc(
+                                    context,
+                                    nullptr,
+                                    elem_stride_bytes,
+                                    location,
+                                ))?;
+
+                            block.store(context, location, cloned_value_ptr, cloned_value)?;
+
+                            // needed due to mut borrow
+                            let runtime_bindings = metadata
+                                .get_mut::<RuntimeBindingsMeta>()
+                                .expect("Runtime library not available.");
+                            runtime_bindings.dict_insert(
+                                context,
+                                &helper,
+                                block,
+                                cloned_dict_ptr,
+                                key_ptr,
+                                cloned_value_ptr,
+                                location,
+                            )?;
+                            block.append_operation(scf::r#yield(&[], location));
+                        }
+                        None => {
+                            let cloned_value_ptr =
+                                block.append_op_result(ReallocBindingsMeta::realloc(
+                                    context,
+                                    nullptr,
+                                    elem_stride_bytes,
+                                    location,
+                                ))?;
+                            block.append_operation(
+                                ods::llvm::intr_memcpy(
+                                    context,
+                                    cloned_value_ptr,
+                                    value_ptr,
+                                    elem_stride_bytes,
+                                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                                    location,
+                                )
+                                .into(),
+                            );
+                            runtime_bindings.dict_insert(
+                                context,
+                                &helper,
+                                &block,
+                                cloned_dict_ptr,
+                                key_ptr,
+                                cloned_value_ptr,
+                                location,
+                            )?;
+                            block.append_operation(scf::r#yield(&[], location));
+                        }
+                    }
+
+                    region
+                },
+                location,
+            ));
+
+            block.append_operation(scf::r#yield(&[], location));
+            region
+        },
+        location,
+    ));
+
+    Ok((entry, cloned_dict_ptr))
 }
 
 #[cfg(test)]
@@ -96,6 +272,27 @@ mod test {
 
                 @dict
             }
+        };
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            jit_dict!(
+                2 => 1u32
+            ),
+        );
+    }
+
+    #[test]
+    fn dict_snapshot_take_complex() {
+        let program = load_cairo! {
+            fn run_test() -> @Felt252Dict<Nullable<Array<u32>>> {
+                let mut dict: Felt252Dict<Nullable<Array<u32>>> = Default::default();
+                dict.insert(2, NullableTrait::new(array![3, 4]));
+
+                @dict
+            }
+
         };
         let result = run_program(&program, "run_test", &[]).return_value;
 

@@ -405,12 +405,9 @@ impl JitValue {
 
                             value_map.0.insert(
                                 key,
-                                (
-                                    NonNull::new(value_malloc_ptr)
-                                        .expect("allocation failure")
-                                        .cast(),
-                                    elem_layout.size(),
-                                ),
+                                NonNull::new(value_malloc_ptr)
+                                    .expect("allocation failure")
+                                    .cast(),
                             );
                         }
 
@@ -715,7 +712,7 @@ impl JitValue {
 
                     let mut output_map = HashMap::with_capacity(map.len());
 
-                    for (key, (val_ptr, _val_size)) in map.iter() {
+                    for (key, val_ptr) in map.iter() {
                         let key = Felt::from_bytes_le(key);
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
                         libc::free(val_ptr.as_ptr());
