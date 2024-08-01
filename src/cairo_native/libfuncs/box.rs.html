@@ -337,6 +337,10 @@
 <a href="#337" id="337">337</a>
 <a href="#338" id="338">338</a>
 <a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Box libfuncs
 //!
 //! A heap allocated value, which is internally a pointer that can't be null.
@@ -460,6 +464,10 @@
     <span class="kw">let </span>inner_type = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>inner_ty = inner_type.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>inner_layout = inner_type.layout(registry)<span class="question-mark">?</span>;
+
+    <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
 
     <span class="comment">// Load the boxed value from memory.
     </span><span class="kw">let </span>value = entry

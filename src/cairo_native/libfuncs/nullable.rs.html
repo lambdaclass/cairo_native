@@ -280,7 +280,6 @@
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Nullable libfuncs
 //!
 //! Like a Box but it can be null.
@@ -410,7 +409,6 @@
     ));
 
     block_is_null.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[], location));
-
     block_is_not_null.append_operation(helper.br(<span class="number">1</span>, <span class="kw-2">&amp;</span>[arg], location));
 
     <span class="prelude-val">Ok</span>(())
