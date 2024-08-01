@@ -234,6 +234,12 @@ pub fn create_engine(
         .unwrap()
         .register_impls(&engine);
 
+    #[cfg(feature = "with-trace-dump")]
+    _metadata
+        .get::<crate::metadata::trace_dump::TraceDump>()
+        .unwrap()
+        .register_impls(&engine);
+
     engine
 }
 

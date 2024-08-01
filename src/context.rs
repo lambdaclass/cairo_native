@@ -117,6 +117,9 @@ impl NativeContext {
         // already some metadata of the same type.
         metadata.insert(gas_metadata);
 
+        #[cfg(feature = "with-trace-dump")]
+        metadata.insert(crate::metadata::trace_dump::TraceDump::default());
+
         // Create the Sierra program registry
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 

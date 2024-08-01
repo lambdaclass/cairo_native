@@ -20,7 +20,10 @@ use cairo_native::{
     metadata::gas::{GasMetadata, MetadataComputationConfig},
 };
 use clap::{Parser, ValueEnum};
-use std::path::{Path, PathBuf};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
 
@@ -52,6 +55,11 @@ struct Args {
     /// Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3.
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
+
+    /// Program trace output JSON.
+    #[cfg(feature = "with-trace-dump")]
+    #[arg(long)]
+    trace_output: Option<PathBuf>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -112,6 +120,12 @@ fn main() -> anyhow::Result<()> {
         .compile(&sierra_program, Some(debug_locations))
         .unwrap();
 
+    #[cfg(feature = "with-trace-dump")]
+    let program_trace = native_module
+        .get_metadata::<cairo_native::metadata::trace_dump::TraceDump>()
+        .unwrap()
+        .internal_state();
+
     let native_executor: NativeExecutor = match args.run_mode {
         RunMode::Aot => {
             AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
@@ -134,9 +148,13 @@ fn main() -> anyhow::Result<()> {
         .invoke_dynamic(&func.id, &[], Some(initial_gas))
         .with_context(|| "Failed to run the function.")?;
 
-    let run_result = result_to_runresult(&result)?;
+    #[cfg(feature = "with-trace-dump")]
+    if let Some(trace_output) = args.trace_output {
+        let program_trace = program_trace.extract();
+        serde_json::to_writer_pretty(File::create(trace_output)?, &program_trace)?;
+    }
 
-    match run_result {
+    match result_to_runresult(&result)? {
         cairo_lang_runner::RunResultValue::Success(values) => {
             println!("Run completed successfully, returning {values:?}")
         }
