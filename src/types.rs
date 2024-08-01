@@ -874,11 +874,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 }
 
                 let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
-
                 let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
 
                 let array_val = entry.argument(0)?.into();
-
                 let ptr = entry.extract_value(context, location, array_val, ptr_ty, 0)?;
 
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));

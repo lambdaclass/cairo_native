@@ -127,7 +127,6 @@ fn build_match_nullable<'ctx, 'this>(
     ));
 
     block_is_null.append_operation(helper.br(0, &[], location));
-
     block_is_not_null.append_operation(helper.br(1, &[arg], location));
 
     Ok(())
