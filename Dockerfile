@@ -17,7 +17,6 @@ RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
 RUN apt update -y && apt install -y \
     libmlir-18-dev \
     libpolly-18-dev \
-    llvm-18 \
     llvm-18-dev \
     mlir-18-tools
 
