@@ -17,19 +17,20 @@ use std::{collections::HashSet, marker::PhantomData};
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum RuntimeBinding {
-    DebugPrint,
     Pedersen,
     HadesPermutation,
-    EcPointFromXNz,
-    EcPointTryNewNz,
-    EcStateAdd,
-    EcStateAddMul,
     EcStateTryFinalizeNz,
+    EcStateAddMul,
+    EcStateAdd,
+    EcPointTryNewNz,
+    EcPointFromXNz,
     DictNew,
+    DictInsert,
     DictGet,
     DictGasRefund,
-    DictInsert,
     DictFree,
+    DictValues,
+    DebugPrint,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -498,6 +499,55 @@ impl RuntimeBindingsMeta {
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_free"),
             &[ptr],
             &[],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `dict_clone()` function.
+    ///
+    /// Returns a opaque pointer as the result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dict_values<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        ptr: Value<'c, 'a>,
+        len_ptr: Value<'c, 'a>,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::DictValues) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__dict_values"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                        ], // ptr to dict, out ptr to length
+                        &[llvm::r#type::pointer(context, 0)], // ptr to array of struct (key, value_ptr)
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_values"),
+            &[ptr, len_ptr],
+            &[llvm::r#type::pointer(context, 0)],
             location,
         )))
     }

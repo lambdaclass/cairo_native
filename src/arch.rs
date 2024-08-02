@@ -12,7 +12,7 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use std::ptr::NonNull;
+use std::ptr::{null, NonNull};
 
 mod aarch64;
 mod x86_64;
@@ -57,14 +57,49 @@ impl<'a> JitValueWithInfoWrapper<'a> {
 impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
     fn to_bytes(&self, buffer: &mut Vec<u8>) {
         match (self.value, self.info) {
-            (
-                value,
-                CoreTypeConcrete::Box(info)
-                | CoreTypeConcrete::NonZero(info)
-                | CoreTypeConcrete::Nullable(info)
-                | CoreTypeConcrete::Snapshot(info),
-            ) => {
-                // TODO: Allocate and use to_jit().
+            (value, CoreTypeConcrete::Box(info)) => {
+                let ptr = value
+                    .to_jit(self.arena, self.registry, self.type_id)
+                    .unwrap();
+
+                let layout = self
+                    .registry
+                    .get_type(&info.ty)
+                    .unwrap()
+                    .layout(self.registry)
+                    .unwrap();
+                let heap_ptr = unsafe {
+                    let heap_ptr = libc::malloc(layout.size());
+                    libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
+                    heap_ptr
+                };
+
+                heap_ptr.to_bytes(buffer);
+            }
+            (value, CoreTypeConcrete::Nullable(info)) => {
+                if matches!(value, JitValue::Null) {
+                    null::<()>().to_bytes(buffer);
+                } else {
+                    let ptr = value
+                        .to_jit(self.arena, self.registry, self.type_id)
+                        .unwrap();
+
+                    let layout = self
+                        .registry
+                        .get_type(&info.ty)
+                        .unwrap()
+                        .layout(self.registry)
+                        .unwrap();
+                    let heap_ptr = unsafe {
+                        let heap_ptr = libc::malloc(layout.size());
+                        libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
+                        heap_ptr
+                    };
+
+                    heap_ptr.to_bytes(buffer);
+                }
+            }
+            (value, CoreTypeConcrete::NonZero(info) | CoreTypeConcrete::Snapshot(info)) => {
                 self.map(value, &info.ty).to_bytes(buffer)
             }
 
