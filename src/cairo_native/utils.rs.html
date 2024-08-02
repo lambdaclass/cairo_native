@@ -1066,6 +1066,17 @@
 <a href="#1066" id="1066">1066</a>
 <a href="#1067" id="1067">1067</a>
 <a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1321,6 +1332,8 @@
 
 <span class="attr">#[cfg(feature = <span class="string">"with-runtime"</span>)]
 </span><span class="kw">pub fn </span>register_runtime_symbols(engine: <span class="kw-2">&amp;</span>ExecutionEngine) {
+    <span class="kw">use </span>cairo_native_runtime::FeltDict;
+
     <span class="kw">unsafe </span>{
         engine.register_symbol(
             <span class="string">"cairo_native__libfunc__debug__print"</span>,
@@ -1375,20 +1388,29 @@
 
         engine.register_symbol(
             <span class="string">"cairo_native__alloc_dict"</span>,
-            cairo_native_runtime::cairo_native__alloc_dict <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>() -&gt; <span class="kw-2">*mut </span>std::ffi::c_void
+            cairo_native_runtime::cairo_native__alloc_dict <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>() -&gt; <span class="kw-2">*mut </span>FeltDict
                 <span class="kw">as </span><span class="kw-2">*mut </span>(),
         );
 
         engine.register_symbol(
             <span class="string">"cairo_native__dict_free"</span>,
-            cairo_native_runtime::cairo_native__dict_free <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>std::ffi::c_void) -&gt; ()
+            cairo_native_runtime::cairo_native__dict_free <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>FeltDict) -&gt; ()
                 <span class="kw">as </span><span class="kw-2">*mut </span>(),
+        );
+
+        engine.register_symbol(
+            <span class="string">"cairo_native__dict_values"</span>,
+            cairo_native_runtime::cairo_native__dict_values
+                <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(
+                    <span class="kw-2">*mut </span>FeltDict,
+                    <span class="kw-2">*mut </span>u64,
+                ) -&gt; <span class="kw-2">*mut </span>([u8; <span class="number">32</span>], std::ptr::NonNull&lt;libc::c_void&gt;) <span class="kw">as </span><span class="kw-2">*mut </span>(),
         );
 
         engine.register_symbol(
             <span class="string">"cairo_native__dict_get"</span>,
             cairo_native_runtime::cairo_native__dict_get
-                <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>std::ffi::c_void, <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>]) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void
+                <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>FeltDict, <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>]) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void
                 <span class="kw">as </span><span class="kw-2">*mut </span>(),
         );
 
@@ -1396,16 +1418,16 @@
             <span class="string">"cairo_native__dict_insert"</span>,
             cairo_native_runtime::cairo_native__dict_insert
                 <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(
-                    <span class="kw-2">*mut </span>std::ffi::c_void,
+                    <span class="kw-2">*mut </span>FeltDict,
                     <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
                     NonNull&lt;std::ffi::c_void&gt;,
+                    usize,
                 ) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void <span class="kw">as </span><span class="kw-2">*mut </span>(),
         );
 
         engine.register_symbol(
             <span class="string">"cairo_native__dict_gas_refund"</span>,
-            cairo_native_runtime::cairo_native__dict_gas_refund
-                <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*const </span>std::ffi::c_void, NonNull&lt;std::ffi::c_void&gt;) -&gt; u64
+            cairo_native_runtime::cairo_native__dict_gas_refund <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*const </span>FeltDict) -&gt; u64
                 <span class="kw">as </span><span class="kw-2">*mut </span>(),
         );
 

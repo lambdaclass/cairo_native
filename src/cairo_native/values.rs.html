@@ -1609,6 +1609,8 @@
 <a href="#1609" id="1609">1609</a>
 <a href="#1610" id="1610">1610</a>
 <a href="#1611" id="1611">1611</a>
+<a href="#1612" id="1612">1612</a>
+<a href="#1613" id="1613">1613</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -1629,6 +1631,7 @@
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+<span class="kw">use </span>cairo_native_runtime::FeltDict;
 <span class="kw">use </span>educe::Educe;
 <span class="kw">use </span>num_bigint::{BigInt, Sign, ToBigInt};
 <span class="kw">use </span>num_traits::Euclid;
@@ -1997,7 +2000,7 @@
                         <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty).unwrap();
                         <span class="kw">let </span>elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
 
-                        <span class="kw">let </span><span class="kw-2">mut </span>value_map = HashMap::&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;::new();
+                        <span class="kw">let </span><span class="kw-2">mut </span>value_map = Box::&lt;FeltDict&gt;::default();
 
                         <span class="comment">// next key must be called before next_value
 
@@ -2013,7 +2016,7 @@
                                 elem_layout.size(),
                             );
 
-                            value_map.insert(
+                            value_map.<span class="number">0</span>.insert(
                                 key,
                                 NonNull::new(value_malloc_ptr)
                                     .expect(<span class="string">"allocation failure"</span>)
@@ -2021,7 +2024,7 @@
                             );
                         }
 
-                        NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
+                        NonNull::new_unchecked(Box::into_raw(value_map)).cast()
                     } <span class="kw">else </span>{
                         <span class="prelude-val">Err</span>(Error::UnexpectedValue(<span class="macro">format!</span>(
                             <span class="string">"expected value of type {:?} but got a felt dict"</span>,
@@ -2316,7 +2319,7 @@
                     <span class="kw">let </span>(map, <span class="kw">_</span>) = <span class="kw-2">*</span>Box::from_raw(
                         ptr.cast::&lt;NonNull&lt;()&gt;&gt;()
                             .as_ref()
-                            .cast::&lt;(HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;, u64)&gt;()
+                            .cast::&lt;FeltDict&gt;()
                             .as_ptr(),
                     );
 
@@ -2325,6 +2328,7 @@
                     <span class="kw">for </span>(key, val_ptr) <span class="kw">in </span>map.iter() {
                         <span class="kw">let </span>key = Felt::from_bytes_le(key);
                         output_map.insert(key, <span class="self">Self</span>::from_jit(val_ptr.cast(), <span class="kw-2">&amp;</span>info.ty, registry));
+                        libc::free(val_ptr.as_ptr());
                     }
 
                     JitValue::Felt252Dict {
