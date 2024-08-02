@@ -1094,9 +1094,13 @@ mod trace_dump {
                 CoreTypeConcrete::EcState(_) => todo!(),
                 CoreTypeConcrete::GasBuiltin(_) => todo!(),
                 CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-                CoreTypeConcrete::Uint8(_) => todo!(),
+                CoreTypeConcrete::Uint8(_) => trace_meta
+                    .build_state_u8(context, module, block, var_id, ptr_value, location)
+                    .unwrap(),
                 CoreTypeConcrete::Uint16(_) => todo!(),
-                CoreTypeConcrete::Uint32(_) => todo!(),
+                CoreTypeConcrete::Uint32(_) => trace_meta
+                    .build_state_u32(context, module, block, var_id, ptr_value, location)
+                    .unwrap(),
                 CoreTypeConcrete::Uint64(_) => todo!(),
                 CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
                 CoreTypeConcrete::Sint8(_) => todo!(),

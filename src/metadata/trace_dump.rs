@@ -37,6 +37,8 @@ impl<'a> InternalState<'a> {
 enum TraceBinding {
     StateFelt,
     StateU128,
+    StateU32,
+    StateU8,
 
     Push,
 }
@@ -170,6 +172,124 @@ impl<'a> TraceDump<'a> {
         Ok(())
     }
 
+    pub fn build_state_u32(
+        &mut self,
+        context: &Context,
+        module: &Module,
+        block: &Block,
+        var_id: &VarId,
+        value_ptr: Value,
+        location: Location,
+    ) -> Result<()> {
+        if self.bindings.insert(TraceBinding::StateU32) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "__trace__state_u32"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            IntegerType::new(context, 64).into(),
+                            llvm::r#type::pointer(context, 0),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        let state = {
+            let state = block.const_int(
+                context,
+                location,
+                Arc::downgrade(&self.trace).into_raw() as i64,
+                64,
+            )?;
+            block.append_op_result(
+                ods::llvm::inttoptr(context, llvm::r#type::pointer(context, 0), state, location)
+                    .into(),
+            )?
+        };
+        let var_id = block.const_int(context, location, var_id.id, 64).unwrap();
+
+        block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "__trace__state_u32"),
+            &[state, var_id, value_ptr],
+            &[],
+            location,
+        ));
+
+        Ok(())
+    }
+
+    pub fn build_state_u8(
+        &mut self,
+        context: &Context,
+        module: &Module,
+        block: &Block,
+        var_id: &VarId,
+        value_ptr: Value,
+        location: Location,
+    ) -> Result<()> {
+        if self.bindings.insert(TraceBinding::StateU8) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "__trace__state_u8"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            IntegerType::new(context, 64).into(),
+                            llvm::r#type::pointer(context, 0),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        let state = {
+            let state = block.const_int(
+                context,
+                location,
+                Arc::downgrade(&self.trace).into_raw() as i64,
+                64,
+            )?;
+            block.append_op_result(
+                ods::llvm::inttoptr(context, llvm::r#type::pointer(context, 0), state, location)
+                    .into(),
+            )?
+        };
+        let var_id = block.const_int(context, location, var_id.id, 64).unwrap();
+
+        block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "__trace__state_u8"),
+            &[state, var_id, value_ptr],
+            &[],
+            location,
+        ));
+
+        Ok(())
+    }
+
     pub fn build_push(
         &mut self,
         context: &Context,
@@ -244,6 +364,18 @@ impl<'a> TraceDump<'a> {
             }
         }
 
+        if self.bindings.contains(&TraceBinding::StateU32) {
+            unsafe {
+                engine.register_symbol("__trace__state_u32", trace_state_u32 as *mut ());
+            }
+        }
+
+        if self.bindings.contains(&TraceBinding::StateU8) {
+            unsafe {
+                engine.register_symbol("__trace__state_u8", trace_state_u8 as *mut ());
+            }
+        }
+
         if !self.bindings.is_empty() {
             unsafe {
                 engine.register_symbol(
@@ -274,6 +406,25 @@ extern "C" fn trace_state_u128(state: *const InternalState, var_id: u64, value: 
             VarId::new(var_id),
             sierra_emu::Value::U128(u128::from_le_bytes(*value)),
         );
+    }
+}
+
+extern "C" fn trace_state_u32(state: *const InternalState, var_id: u64, value: &[u8; 4]) {
+    let state = unsafe { Weak::from_raw(state) };
+    if let Some(state) = state.upgrade() {
+        let mut state = state.state.borrow_mut();
+        state.insert(
+            VarId::new(var_id),
+            sierra_emu::Value::U32(u32::from_le_bytes(*value)),
+        );
+    }
+}
+
+extern "C" fn trace_state_u8(state: *const InternalState, var_id: u64, value: &u8) {
+    let state = unsafe { Weak::from_raw(state) };
+    if let Some(state) = state.upgrade() {
+        let mut state = state.state.borrow_mut();
+        state.insert(VarId::new(var_id), sierra_emu::Value::U8(*value));
     }
 }
 
