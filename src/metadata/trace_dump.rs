@@ -22,12 +22,12 @@ use std::{
 };
 
 #[derive(Default)]
-pub struct InternalState {
-    trace: RefCell<ProgramTrace>,
-    state: RefCell<OrderedHashMap<VarId, sierra_emu::Value>>,
+pub struct InternalState<'a> {
+    trace: RefCell<ProgramTrace<'a>>,
+    state: RefCell<OrderedHashMap<VarId, sierra_emu::Value<'a>>>,
 }
 
-impl InternalState {
+impl<'a> InternalState<'a> {
     pub fn extract(&self) -> ProgramTrace {
         self.trace.borrow().clone()
     }
@@ -36,18 +36,19 @@ impl InternalState {
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum TraceBinding {
     StateFelt,
+    StateU128,
 
     Push,
 }
 
 #[derive(Default)]
-pub struct TraceDump {
-    trace: Arc<InternalState>,
+pub struct TraceDump<'a> {
+    trace: Arc<InternalState<'a>>,
     bindings: HashSet<TraceBinding>,
 }
 
-impl TraceDump {
-    pub fn internal_state(&self) -> Arc<InternalState> {
+impl<'a> TraceDump<'a> {
+    pub fn internal_state(&self) -> Arc<InternalState<'a>> {
         self.trace.clone()
     }
 
@@ -102,6 +103,65 @@ impl TraceDump {
         block.append_operation(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "__trace__state_felt252"),
+            &[state, var_id, value_ptr],
+            &[],
+            location,
+        ));
+
+        Ok(())
+    }
+
+    pub fn build_state_u128(
+        &mut self,
+        context: &Context,
+        module: &Module,
+        block: &Block,
+        var_id: &VarId,
+        value_ptr: Value,
+        location: Location,
+    ) -> Result<()> {
+        if self.bindings.insert(TraceBinding::StateU128) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "__trace__state_u128"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            IntegerType::new(context, 64).into(),
+                            llvm::r#type::pointer(context, 0),
+                        ],
+                        &[],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        let state = {
+            let state = block.const_int(
+                context,
+                location,
+                Arc::downgrade(&self.trace).into_raw() as i64,
+                64,
+            )?;
+            block.append_op_result(
+                ods::llvm::inttoptr(context, llvm::r#type::pointer(context, 0), state, location)
+                    .into(),
+            )?
+        };
+        let var_id = block.const_int(context, location, var_id.id, 64).unwrap();
+
+        block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "__trace__state_u128"),
             &[state, var_id, value_ptr],
             &[],
             location,
@@ -178,6 +238,12 @@ impl TraceDump {
             }
         }
 
+        if self.bindings.contains(&TraceBinding::StateU128) {
+            unsafe {
+                engine.register_symbol("__trace__state_u128", trace_state_u128 as *mut ());
+            }
+        }
+
         if !self.bindings.is_empty() {
             unsafe {
                 engine.register_symbol(
@@ -196,6 +262,17 @@ extern "C" fn trace_state_felt252(state: *const InternalState, var_id: u64, valu
         state.insert(
             VarId::new(var_id),
             sierra_emu::Value::Felt(Felt::from_bytes_le(value)),
+        );
+    }
+}
+
+extern "C" fn trace_state_u128(state: *const InternalState, var_id: u64, value: &[u8; 16]) {
+    let state = unsafe { Weak::from_raw(state) };
+    if let Some(state) = state.upgrade() {
+        let mut state = state.state.borrow_mut();
+        state.insert(
+            VarId::new(var_id),
+            sierra_emu::Value::U128(u128::from_le_bytes(*value)),
         );
     }
 }
