@@ -18,6 +18,7 @@ use cairo_native::{
     debug_info::{DebugInfo, DebugLocations},
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
+    starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
@@ -130,8 +131,10 @@ fn main() -> anyhow::Result<()> {
         .get_initial_available_gas(&func.id, args.available_gas.map(|x| x.try_into().unwrap()))
         .with_context(|| "not enough gas to run")?;
 
+    let mut syscall_handler = StubSyscallHandler::default();
+
     let result = native_executor
-        .invoke_dynamic(&func.id, &[], Some(initial_gas))
+        .invoke_dynamic_with_syscall_handler(&func.id, &[], Some(initial_gas), &mut syscall_handler)
         .with_context(|| "Failed to run the function.")?;
 
     let run_result = result_to_runresult(&result)?;

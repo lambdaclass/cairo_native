@@ -975,6 +975,7 @@ dependencies = [
  "sec1",
  "serde",
  "serde_json",
+ "sha2",
  "starknet-types-core",
  "stats_alloc",
  "tempfile",

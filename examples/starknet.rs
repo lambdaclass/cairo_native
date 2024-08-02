@@ -396,6 +396,15 @@ impl StarknetSyscallHandler for SyscallHandler {
             _ => vec![],
         }
     }
+
+    fn sha256_process_block(
+        &mut self,
+        _prev_state: &[u32; 8],
+        _current_block: &[u32; 16],
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<[u32; 8]> {
+        unimplemented!()
+    }
 }
 
 fn main() {
