@@ -1043,7 +1043,7 @@ mod trace_dump {
 
     use crate::{block_ext::BlockExt, metadata::trace_dump::TraceDump, types::TypeBuilder};
     use cairo_lang_sierra::{
-        extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        extensions::core::{CoreLibfunc, CoreType},
         ids::{ConcreteTypeId, VarId},
         program::StatementIdx,
         program_registry::ProgramRegistry,
@@ -1076,61 +1076,9 @@ mod trace_dump {
                 .unwrap();
             block.store(context, location, ptr_value, *value).unwrap();
 
-            match type_info {
-                CoreTypeConcrete::Felt252(_) => trace_meta
-                    .build_state_felt252(context, module, block, var_id, ptr_value, location)
-                    .unwrap(),
-                CoreTypeConcrete::Uint128(_) => trace_meta
-                    .build_state_u128(context, module, block, var_id, ptr_value, location)
-                    .unwrap(),
-                CoreTypeConcrete::Array(info) => trace_meta
-                    .build_state_array(
-                        context, module, block, var_id, ptr_value, &info.ty, location,
-                    )
-                    .unwrap(),
-                CoreTypeConcrete::Coupon(_) => todo!(),
-                CoreTypeConcrete::Bitwise(_) => todo!(),
-                CoreTypeConcrete::Box(_) => todo!(),
-                CoreTypeConcrete::Circuit(_) => todo!(),
-                CoreTypeConcrete::Const(_) => todo!(),
-                CoreTypeConcrete::EcOp(_) => todo!(),
-                CoreTypeConcrete::EcPoint(_) => todo!(),
-                CoreTypeConcrete::EcState(_) => todo!(),
-                CoreTypeConcrete::GasBuiltin(_) => todo!(),
-                CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-                CoreTypeConcrete::Uint8(_) => trace_meta
-                    .build_state_u8(context, module, block, var_id, ptr_value, location)
-                    .unwrap(),
-                CoreTypeConcrete::Uint16(_) => todo!(),
-                CoreTypeConcrete::Uint32(_) => trace_meta
-                    .build_state_u32(context, module, block, var_id, ptr_value, location)
-                    .unwrap(),
-                CoreTypeConcrete::Uint64(_) => todo!(),
-                CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-                CoreTypeConcrete::Sint8(_) => todo!(),
-                CoreTypeConcrete::Sint16(_) => todo!(),
-                CoreTypeConcrete::Sint32(_) => todo!(),
-                CoreTypeConcrete::Sint64(_) => todo!(),
-                CoreTypeConcrete::Sint128(_) => todo!(),
-                CoreTypeConcrete::NonZero(_) => todo!(),
-                CoreTypeConcrete::Nullable(_) => todo!(),
-                CoreTypeConcrete::RangeCheck(_) => todo!(),
-                CoreTypeConcrete::RangeCheck96(_) => todo!(),
-                CoreTypeConcrete::Uninitialized(_) => todo!(),
-                CoreTypeConcrete::Enum(_) => todo!(),
-                CoreTypeConcrete::Struct(_) => todo!(),
-                CoreTypeConcrete::Felt252Dict(_) => todo!(),
-                CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
-                CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
-                CoreTypeConcrete::Pedersen(_) => todo!(),
-                CoreTypeConcrete::Poseidon(_) => todo!(),
-                CoreTypeConcrete::Span(_) => todo!(),
-                CoreTypeConcrete::StarkNet(_) => todo!(),
-                CoreTypeConcrete::SegmentArena(_) => todo!(),
-                CoreTypeConcrete::Snapshot(_) => todo!(),
-                CoreTypeConcrete::Bytes31(_) => todo!(),
-                CoreTypeConcrete::BoundedInt(_) => todo!(),
-            }
+            trace_meta
+                .build_state(context, module, block, var_id, type_id, ptr_value, location)
+                .unwrap()
         }
 
         trace_meta
