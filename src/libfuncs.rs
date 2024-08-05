@@ -21,6 +21,7 @@ pub mod ap_tracking;
 pub mod array;
 pub mod bitwise;
 pub mod r#bool;
+pub mod bounded;
 pub mod r#box;
 pub mod branch_align;
 pub mod bytes31;
