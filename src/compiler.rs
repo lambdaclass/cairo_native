@@ -1083,7 +1083,11 @@ mod trace_dump {
                 CoreTypeConcrete::Uint128(_) => trace_meta
                     .build_state_u128(context, module, block, var_id, ptr_value, location)
                     .unwrap(),
-                CoreTypeConcrete::Array(_) => todo!(),
+                CoreTypeConcrete::Array(info) => trace_meta
+                    .build_state_array(
+                        context, module, block, var_id, ptr_value, &info.ty, location,
+                    )
+                    .unwrap(),
                 CoreTypeConcrete::Coupon(_) => todo!(),
                 CoreTypeConcrete::Bitwise(_) => todo!(),
                 CoreTypeConcrete::Box(_) => todo!(),

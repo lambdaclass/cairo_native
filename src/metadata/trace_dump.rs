@@ -1,7 +1,12 @@
 #![cfg(feature = "with-trace-dump")]
 
-use crate::{block_ext::BlockExt, error::Result};
-use cairo_lang_sierra::{ids::VarId, program::StatementIdx};
+use crate::{block_ext::BlockExt, error::Result, starknet::ArrayAbi};
+use cairo_lang_sierra::{
+    extensions::core::{CoreLibfunc, CoreType},
+    ids::{ConcreteTypeId, VarId},
+    program::StatementIdx,
+    program_registry::ProgramRegistry,
+};
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use melior::{
     dialect::{func, llvm, ods},
@@ -21,13 +26,21 @@ use std::{
     sync::{Arc, Weak},
 };
 
-#[derive(Default)]
 pub struct InternalState<'a> {
     trace: RefCell<ProgramTrace<'a>>,
     state: RefCell<OrderedHashMap<VarId, sierra_emu::Value<'a>>>,
+    registry: ProgramRegistry<CoreType, CoreLibfunc>,
 }
 
 impl<'a> InternalState<'a> {
+    pub fn new(registry: ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
+        Self {
+            trace: RefCell::default(),
+            state: RefCell::default(),
+            registry,
+        }
+    }
+
     pub fn extract(&self) -> ProgramTrace {
         self.trace.borrow().clone()
     }
@@ -43,13 +56,18 @@ enum TraceBinding {
     Push,
 }
 
-#[derive(Default)]
 pub struct TraceDump<'a> {
     trace: Arc<InternalState<'a>>,
     bindings: HashSet<TraceBinding>,
 }
 
 impl<'a> TraceDump<'a> {
+    pub fn new(registry: ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
+        Self {
+            trace: Arc::new(InternalState::new(registry)),
+            bindings: HashSet::default(),
+        }
+    }
     pub fn internal_state(&self) -> Arc<InternalState<'a>> {
         self.trace.clone()
     }
