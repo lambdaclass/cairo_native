@@ -410,7 +410,8 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Circuit(_) | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+            CoreTypeConcrete::Circuit(_) => todo!(),
+            CoreTypeConcrete::RangeCheck96(_) => todo!(),
         }
     }
 
