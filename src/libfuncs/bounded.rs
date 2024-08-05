@@ -1,23 +1,18 @@
 //! # Bounded int libfuncs
 
 use super::LibfuncHelper;
-use crate::{
-    block_ext::BlockExt, error::Result, metadata::MetadataStorage, types::TypeBuilder,
-    utils::ProgramRegistryExt,
-};
+use crate::{block_ext::BlockExt, error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
-        boolean::BoolConcreteLibfunc,
         bounded_int::{BoundedIntConcreteLibfunc, BoundedIntDivRemConcreteLibfunc},
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
-    ir::{r#type::IntegerType, Block, Location, Value},
+    dialect::arith::{self, CmpiPredicate},
+    ir::{Block, Location, Value, ValueLike},
     Context,
 };
 
@@ -45,21 +40,25 @@ pub fn build<'ctx, 'this>(
             build_bounded_int_divrem(context, registry, entry, location, helper, info)
         }
         BoundedIntConcreteLibfunc::Constrain(_) => todo!(),
-        BoundedIntConcreteLibfunc::IsZero(_) => todo!(),
-        BoundedIntConcreteLibfunc::WrapNonZero(_) => todo!(),
+        BoundedIntConcreteLibfunc::IsZero(info) => {
+            build_bounded_int_is_zero(context, registry, entry, location, helper, info)
+        }
+        BoundedIntConcreteLibfunc::WrapNonZero(info) => {
+            build_bounded_int_wrap_non_zero(context, registry, entry, location, helper, info)
+        }
     }
 }
 
 /// Generate MLIR operations for the `bounded_int_add` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_bounded_int_add<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // They have felt-width already, and the libfunc is non branching, so it cant fail.
     let lhs = entry.argument(0)?.into();
@@ -75,13 +74,13 @@ fn build_bounded_int_add<'ctx, 'this>(
 /// Generate MLIR operations for the `bounded_int_add` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_bounded_int_sub<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // They have felt-width already, and the libfunc is non branching, so it cant fail.
     let lhs = entry.argument(0)?.into();
@@ -97,13 +96,13 @@ fn build_bounded_int_sub<'ctx, 'this>(
 /// Generate MLIR operations for the `bounded_int_add` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_bounded_int_mul<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // They have felt-width already, and the libfunc is non branching, so it cant fail.
     let lhs = entry.argument(0)?.into();
@@ -136,5 +135,47 @@ pub fn build_bounded_int_divrem<'ctx, 'this>(
     let result_rem = entry.append_op_result(arith::remui(lhs, rhs, location))?;
 
     entry.append_operation(helper.br(0, &[range_check, result_div, result_rem], location));
+    Ok(())
+}
+
+/// Generate MLIR operations for the `u64_is_zero` libfunc.
+pub fn build_bounded_int_is_zero<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let arg0: Value = entry.argument(0)?.into();
+
+    let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
+
+    let condition = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        arg0,
+        const_0,
+        location,
+    ))?;
+
+    entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
+
+    Ok(())
+}
+
+/// Generate MLIR operations for the `bounded_int_wrap_non_zero` libfunc.
+pub fn build_bounded_int_wrap_non_zero<'ctx, 'this>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let arg0: Value = entry.argument(0)?.into();
+
+    entry.append_operation(helper.br(0, &[arg0], location));
+
     Ok(())
 }
