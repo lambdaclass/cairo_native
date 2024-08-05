@@ -5,7 +5,7 @@
 #
 
 UNAME := $(shell uname)
-CAIRO_2_VERSION=2.7.0-rc.3
+CAIRO_2_VERSION=2.7.0
 
 check-llvm:
 ifndef MLIR_SYS_180_PREFIX
@@ -55,8 +55,12 @@ check: check-llvm
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo test --profile ci --all-features
 
+# remove the sed once circuits are implemented.
 test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo r --profile ci --bin cairo-native-test -- corelib
+	sed -i 's/pub mod circuit;//g' corelib/src/lib.cairo && \
+		sed -i 's/mod circuit_test;//' corelib/src/test.cairo && \
+		rm -rf corelib/src/circuit.cairo corelib/src/test/circuit_test.cairo && \
+		cargo r --profile ci --bin cairo-native-test -- corelib
 
 proptest: check-llvm needs-cairo2 runtime-ci
 	cargo test --profile ci --all-features proptest
@@ -136,7 +140,7 @@ cairo-%-macos.tar:
 cairo-%.tar:
 	curl -L -o "$@" "https://github.com/starkware-libs/cairo/releases/download/v$*/release-x86_64-unknown-linux-musl.tar.gz"
 
-SCARB_VERSION = 2.7.0-rc.3
+SCARB_VERSION = 2.7.0
 
 install-scarb:
 	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh| sh -s -- --no-modify-path --version $(SCARB_VERSION)

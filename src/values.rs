@@ -18,6 +18,7 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use cairo_native_runtime::FeltDict;
 use educe::Educe;
 use num_bigint::{BigInt, Sign, ToBigInt};
 use num_traits::Euclid;
@@ -386,7 +387,7 @@ impl JitValue {
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
 
-                        let mut value_map = HashMap::<[u8; 32], NonNull<std::ffi::c_void>>::new();
+                        let mut value_map = Box::<FeltDict>::default();
 
                         // next key must be called before next_value
 
@@ -402,7 +403,7 @@ impl JitValue {
                                 elem_layout.size(),
                             );
 
-                            value_map.insert(
+                            value_map.0.insert(
                                 key,
                                 NonNull::new(value_malloc_ptr)
                                     .expect("allocation failure")
@@ -410,7 +411,7 @@ impl JitValue {
                             );
                         }
 
-                        NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
+                        NonNull::new_unchecked(Box::into_raw(value_map)).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict",
@@ -705,7 +706,7 @@ impl JitValue {
                     let (map, _) = *Box::from_raw(
                         ptr.cast::<NonNull<()>>()
                             .as_ref()
-                            .cast::<(HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>()
+                            .cast::<FeltDict>()
                             .as_ptr(),
                     );
 
@@ -714,6 +715,7 @@ impl JitValue {
                     for (key, val_ptr) in map.iter() {
                         let key = Felt::from_bytes_le(key);
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
+                        libc::free(val_ptr.as_ptr());
                     }
 
                     JitValue::Felt252Dict {
