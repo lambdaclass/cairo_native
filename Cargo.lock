@@ -990,7 +990,6 @@ dependencies = [
 name = "cairo-native-runtime"
 version = "0.2.0"
 dependencies = [
- "cairo-lang-runner",
  "cairo-lang-sierra-gas",
  "lazy_static",
  "libc",
