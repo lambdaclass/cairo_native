@@ -223,7 +223,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 context, registry, entry, location, helper, metadata, info,
             ),
             Self::Circuit(_) => todo!(),
-            Self::BoundedInt(_) => todo!(),
+            Self::BoundedInt(info) => {
+                self::bounded::build(context, registry, entry, location, helper, metadata, info)
+            }
         }
     }
 

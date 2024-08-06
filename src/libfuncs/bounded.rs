@@ -4,9 +4,13 @@ use super::LibfuncHelper;
 use crate::{block_ext::BlockExt, error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
-        bounded_int::{BoundedIntConcreteLibfunc, BoundedIntDivRemConcreteLibfunc},
+        bounded_int::{
+            BoundedIntConcreteLibfunc, BoundedIntConstrainConcreteLibfunc,
+            BoundedIntDivRemConcreteLibfunc,
+        },
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc, ConcreteType,
     },
     program_registry::ProgramRegistry,
 };
@@ -39,7 +43,9 @@ pub fn build<'ctx, 'this>(
         BoundedIntConcreteLibfunc::DivRem(info) => {
             build_bounded_int_divrem(context, registry, entry, location, helper, info)
         }
-        BoundedIntConcreteLibfunc::Constrain(_) => todo!(),
+        BoundedIntConcreteLibfunc::Constrain(info) => {
+            build_bounded_int_constrain(context, registry, entry, location, helper, info)
+        }
         BoundedIntConcreteLibfunc::IsZero(info) => {
             build_bounded_int_is_zero(context, registry, entry, location, helper, info)
         }
@@ -176,6 +182,46 @@ pub fn build_bounded_int_wrap_non_zero<'ctx, 'this>(
     let arg0: Value = entry.argument(0)?.into();
 
     entry.append_operation(helper.br(0, &[arg0], location));
+
+    Ok(())
+}
+
+/// Generate MLIR operations for the `bounded_int_constrain` libfunc.
+pub fn build_bounded_int_constrain<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    info: &BoundedIntConstrainConcreteLibfunc,
+) -> Result<()> {
+    let range_check: Value = entry.argument(0)?.into();
+    let value: Value = entry.argument(1)?.into();
+
+    let const_boundary = entry.const_int(context, location, info.boundary.clone(), 252)?;
+
+    let condition = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Ult,
+        value,
+        const_boundary,
+        location,
+    ))?;
+
+    let p = registry.get_type(&info.param_signatures()[1].ty)?;
+    let x = registry.get_type(&info.output_types()[0][1])?;
+    let y = registry.get_type(&info.output_types()[0][1])?;
+    dbg!(&p.info().long_id.to_string());
+    dbg!(&x.info().long_id.to_string());
+    dbg!(&y.info().long_id.to_string());
+
+    entry.append_operation(helper.cond_br(
+        context,
+        condition,
+        [0, 1],
+        [&[range_check, value], &[range_check, value]],
+        location,
+    ));
 
     Ok(())
 }
