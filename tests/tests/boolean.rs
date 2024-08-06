@@ -1,10 +1,10 @@
 use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS};
-use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::{starknet::DummySyscallHandler, values::JitValue};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
+use starknet_types_core::felt::Felt;
 
 lazy_static! {
     static ref FELT252_TO_BOOL: (String, Program, SierraCasmRunner) = load_cairo! {
@@ -115,7 +115,7 @@ fn felt252_to_bool_bug() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(DeprecatedFelt::from(a))],
+        &[Arg::Value(Felt::from(a))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -139,7 +139,7 @@ fn felt252_to_bool_bug() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(DeprecatedFelt::from(a))],
+        &[Arg::Value(Felt::from(a))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -165,7 +165,7 @@ proptest! {
     fn bool_to_felt252_proptest(a: bool) {
         let program = &BOOL_TO_FELT252;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(DeprecatedFelt::from(a)),
+            Arg::Value(Felt::from(a)),
         ], Some(DEFAULT_GAS as usize)).unwrap();
         let result_native = run_native_program(
             program,
@@ -188,7 +188,7 @@ proptest! {
     fn bool_not_proptest(a: bool) {
         let program = &BOOL_NOT;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(DeprecatedFelt::from(a)),
+            Arg::Value(Felt::from(a)),
         ], Some(DEFAULT_GAS as usize)).unwrap();
         let result_native = run_native_program(
             program,
@@ -211,8 +211,8 @@ proptest! {
     fn bool_and_proptest(a: bool, b: bool) {
         let program = &BOOL_AND;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(DeprecatedFelt::from(a)),
-            Arg::Value(DeprecatedFelt::from(b))
+            Arg::Value(Felt::from(a)),
+            Arg::Value(Felt::from(b))
         ], Some(DEFAULT_GAS as usize)).unwrap();
         let result_native = run_native_program(
             program,
@@ -235,8 +235,8 @@ proptest! {
     fn bool_or_proptest(a: bool, b: bool) {
         let program = &BOOL_OR;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(DeprecatedFelt::from(a)),
-            Arg::Value(DeprecatedFelt::from(b))
+            Arg::Value(Felt::from(a)),
+            Arg::Value(Felt::from(b))
         ], Some(DEFAULT_GAS as usize)).unwrap();
         let result_native = run_native_program(
             program,
@@ -259,8 +259,8 @@ proptest! {
     fn bool_xor_proptest(a: bool, b: bool) {
         let program = &BOOL_XOR;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(DeprecatedFelt::from(a)),
-            Arg::Value(DeprecatedFelt::from(b))
+            Arg::Value(Felt::from(a)),
+            Arg::Value(Felt::from(b))
         ], Some(DEFAULT_GAS as usize)).unwrap();
         let result_native = run_native_program(
             program,

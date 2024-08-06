@@ -3,6 +3,8 @@
 // TODO: A future possible improvement would be to put the array behind a double pointer and a
 //   reference counter, to avoid unnecessary clones.
 
+use std::ops::Deref;
+
 use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
@@ -13,7 +15,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        array::ArrayConcreteLibfunc,
+        array::{ArrayConcreteLibfunc, ConcreteMultiPopLibfunc},
         core::{CoreLibfunc, CoreType},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
         ConcreteLibfunc,
@@ -25,12 +27,12 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
         llvm::{self, r#type::pointer},
-        ods,
+        ods, scf,
     },
     ir::{
         attribute::{DenseI32ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
-        Block, Location, Value, ValueLike,
+        Block, Location, Region, Value, ValueLike,
     },
     Context,
 };
@@ -76,6 +78,15 @@ pub fn build<'ctx, 'this>(
         ArrayConcreteLibfunc::SpanFromTuple(info) => {
             build_span_from_tuple(context, registry, entry, location, helper, metadata, info)
         }
+        ArrayConcreteLibfunc::TupleFromSpan(info) => {
+            build_tuple_from_span(context, registry, entry, location, helper, metadata, info)
+        }
+        ArrayConcreteLibfunc::SnapshotMultiPopFront(info) => build_snapshot_multi_pop_front(
+            context, registry, entry, location, helper, metadata, info,
+        ),
+        ArrayConcreteLibfunc::SnapshotMultiPopBack(info) => build_snapshot_multi_pop_back(
+            context, registry, entry, location, helper, metadata, info,
+        ),
     }
 }
 
@@ -715,6 +726,258 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
     Ok(())
 }
 
+pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &ConcreteMultiPopLibfunc,
+) -> Result<()> {
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
+    let range_check = entry.argument(0)?.into();
+
+    // Get type information
+
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[1].ty,
+    )?;
+
+    let popped_cty = registry.get_type(&info.popped_ty)?;
+    let popped_size = popped_cty.layout(registry)?.size();
+    let popped_size_value = entry.const_int(context, location, popped_size, 64)?;
+
+    let popped_ctys = popped_cty
+        .fields()
+        .expect("popped type should be a tuple (ergo, has fields)");
+    let popped_len = popped_ctys.len();
+
+    let array_ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let array_start_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+    let array_end_ty = crate::ffi::get_struct_field_type_at(&array_ty, 2);
+
+    // Get array information
+
+    let array = entry.argument(1)?.into();
+    let array_ptr = entry.extract_value(context, location, array, array_ptr_ty, 0)?;
+    let array_start = entry.extract_value(context, location, array, array_start_ty, 1)?;
+    let array_end = entry.extract_value(context, location, array, array_end_ty, 2)?;
+
+    // Check if operation is valid:
+    // if array.end - array.start < popped_len {
+    //     return
+    // }
+
+    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
+    let popped_len_value = entry.const_int(context, location, popped_len, 32)?;
+    let is_valid = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Uge,
+        array_len,
+        popped_len_value,
+        location,
+    ))?;
+
+    let valid_block = helper.append_block(Block::new(&[]));
+    let invalid_block = helper.append_block(Block::new(&[]));
+
+    entry.append_operation(cf::cond_br(
+        context,
+        is_valid,
+        valid_block,
+        invalid_block,
+        &[],
+        &[],
+        location,
+    ));
+
+    {
+        // Get pointer to first element to pop
+
+        let popped_ptr = {
+            let single_popped_ty =
+                registry.build_type(context, helper, registry, metadata, &popped_ctys[0])?;
+
+            valid_block.append_op_result(llvm::get_element_ptr_dynamic(
+                context,
+                array_ptr,
+                &[array_start],
+                single_popped_ty,
+                llvm::r#type::pointer(context, 0),
+                location,
+            ))?
+        };
+
+        // Allocate memory for return array
+
+        let return_ptr = {
+            let null_ptr = valid_block.append_op_result(
+                ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+            )?;
+            valid_block.append_op_result(ReallocBindingsMeta::realloc(
+                context,
+                null_ptr,
+                popped_size_value,
+                location,
+            ))?
+        };
+
+        valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
+
+        // Update array start (removing popped elements)
+
+        let array = {
+            let new_array_start = valid_block.append_op_result(arith::addi(
+                array_start,
+                popped_len_value,
+                location,
+            ))?;
+
+            valid_block.insert_value(context, location, array, new_array_start, 1)?
+        };
+
+        valid_block.append_operation(helper.br(0, &[range_check, array, return_ptr], location));
+    }
+
+    invalid_block.append_operation(helper.br(1, &[range_check, array], location));
+
+    Ok(())
+}
+
+pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &ConcreteMultiPopLibfunc,
+) -> Result<()> {
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
+    let range_check = entry.argument(0)?.into();
+
+    // Get type information
+
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[1].ty,
+    )?;
+
+    let popped_cty = registry.get_type(&info.popped_ty)?;
+    let popped_size = popped_cty.layout(registry)?.size();
+    let popped_size_value = entry.const_int(context, location, popped_size, 64)?;
+
+    let popped_ctys = popped_cty
+        .fields()
+        .expect("popped type should be a tuple (ergo, has fields)");
+    let popped_len = popped_ctys.len();
+
+    let array_ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let array_start_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+    let array_end_ty = crate::ffi::get_struct_field_type_at(&array_ty, 2);
+
+    // Get array information
+
+    let array = entry.argument(1)?.into();
+    let array_ptr = entry.extract_value(context, location, array, array_ptr_ty, 0)?;
+    let array_start = entry.extract_value(context, location, array, array_start_ty, 1)?;
+    let array_end = entry.extract_value(context, location, array, array_end_ty, 2)?;
+
+    // Check if operation is valid:
+    // if array.end - array.start < popped_len {
+    //     return
+    // }
+
+    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
+    let popped_len_value = entry.const_int(context, location, popped_len, 32)?;
+    let is_valid = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Uge,
+        array_len,
+        popped_len_value,
+        location,
+    ))?;
+
+    let valid_block = helper.append_block(Block::new(&[]));
+    let invalid_block = helper.append_block(Block::new(&[]));
+
+    entry.append_operation(cf::cond_br(
+        context,
+        is_valid,
+        valid_block,
+        invalid_block,
+        &[],
+        &[],
+        location,
+    ));
+
+    {
+        // Get pointer to first element to pop
+
+        let popped_ptr = {
+            let single_popped_ty =
+                registry.build_type(context, helper, registry, metadata, &popped_ctys[0])?;
+
+            let popped_start =
+                valid_block.append_op_result(arith::subi(array_end, popped_len_value, location))?;
+
+            valid_block.append_op_result(llvm::get_element_ptr_dynamic(
+                context,
+                array_ptr,
+                &[popped_start],
+                single_popped_ty,
+                llvm::r#type::pointer(context, 0),
+                location,
+            ))?
+        };
+
+        // Allocate memory for return array
+
+        let return_ptr = {
+            let null_ptr = valid_block.append_op_result(
+                ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+            )?;
+            valid_block.append_op_result(ReallocBindingsMeta::realloc(
+                context,
+                null_ptr,
+                popped_size_value,
+                location,
+            ))?
+        };
+
+        valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
+
+        // Update array end (removing popped elements)
+
+        let array = {
+            let new_array_end =
+                valid_block.append_op_result(arith::subi(array_end, popped_len_value, location))?;
+
+            valid_block.insert_value(context, location, array, new_array_end, 2)?
+        };
+
+        valid_block.append_operation(helper.br(0, &[range_check, array, return_ptr], location));
+    }
+
+    invalid_block.append_operation(helper.br(1, &[range_check, array], location));
+
+    Ok(())
+}
+
 /// Generate MLIR operations for the `array_slice` libfunc.
 pub fn build_slice<'ctx, 'this>(
     context: &'ctx Context,
@@ -958,6 +1221,178 @@ fn assert_nonnull<'ctx, 'this>(
     )?;
 
     entry.append_operation(cf::assert(context, ptr_is_not_null, msg, location));
+    Ok(())
+}
+
+pub fn build_tuple_from_span<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()> {
+    // Libfunc Signature:
+    //
+    // (Snapshot<Array<felt252>>) -> Box<Tuple<felt252, ...>>
+
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
+    // Get type information
+
+    let elem_core_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
+    let elem_layout = elem_core_ty.layout(registry)?;
+    let elem_stride = elem_layout.pad_to_align().size();
+    let tuple_len = registry
+        .get_type(&info.ty)?
+        .fields()
+        .expect("should be a struct (ergo, has fields)")
+        .len();
+
+    let u32_ty = IntegerType::new(context, 32).into();
+
+    // Get array information
+
+    let array_value = entry.argument(0)?.into();
+    let array_ptr = entry.extract_value(context, location, array_value, pointer(context, 0), 0)?;
+    let array_start = entry.extract_value(context, location, array_value, u32_ty, 1)?;
+    let array_end = entry.extract_value(context, location, array_value, u32_ty, 2)?;
+    let array_capacity = entry.extract_value(context, location, array_value, u32_ty, 3)?;
+
+    // Check if conversion is valid
+    //
+    // if array.end - array.start != tuple_len {
+    //     return err;
+    // }
+
+    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
+    let tuple_len_value = entry.const_int(context, location, tuple_len, 32)?;
+    let array_len_matches = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        array_len,
+        tuple_len_value,
+        location,
+    ))?;
+
+    let block_ok = helper.append_block(Block::new(&[]));
+    let block_err = helper.append_block(Block::new(&[]));
+    entry.append_operation(cf::cond_br(
+        context,
+        array_len_matches,
+        block_ok,
+        block_err,
+        &[],
+        &[],
+        location,
+    ));
+
+    // Check if pointer can be passed through, that is
+    // if array.start == 0 && array.capacity == tuple_len
+
+    let is_pointer_passthrough = {
+        let k0 = block_ok.const_int(context, location, 0, 32)?;
+        let array_since_is_zero = block_ok.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Eq,
+            array_start,
+            k0,
+            location,
+        ))?;
+        let array_cap_matches = block_ok.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Eq,
+            array_capacity,
+            tuple_len_value,
+            location,
+        ))?;
+
+        block_ok.append_op_result(arith::andi(
+            array_since_is_zero,
+            array_cap_matches,
+            location,
+        ))?
+    };
+
+    let box_ptr = block_ok.append_op_result(scf::r#if(
+        is_pointer_passthrough,
+        &[llvm::r#type::pointer(context, 0)],
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            // If can be passed through, just return the array ptr
+
+            block.append_operation(scf::r#yield(&[array_ptr], location));
+
+            region
+        },
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            // Otherwise, alloc memory for the returned tuple and clone it
+
+            let tuple_len_value = block.const_int(context, location, tuple_len, 64)?;
+            let elem_stride_value = block.const_int(context, location, elem_stride, 64)?;
+            let tuple_len_bytes = block.append_op_result(arith::muli(
+                tuple_len_value,
+                elem_stride_value,
+                location,
+            ))?;
+
+            let tuple_ptr = {
+                let null_ptr = block
+                    .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+                let tuple_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                    context,
+                    null_ptr,
+                    tuple_len_bytes,
+                    location,
+                ))?;
+
+                assert_nonnull(
+                    context,
+                    block.deref(),
+                    location,
+                    tuple_ptr,
+                    "realloc returned null",
+                )?;
+
+                tuple_ptr
+            };
+
+            let array_start = block.append_op_result(arith::extui(
+                array_start,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))?;
+            let array_start_offset =
+                block.append_op_result(arith::muli(elem_stride_value, array_start, location))?;
+
+            let src_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
+                context,
+                array_ptr,
+                &[array_start_offset],
+                IntegerType::new(context, 8).into(),
+                llvm::r#type::pointer(context, 0),
+                location,
+            ))?;
+            block.memcpy(context, location, src_ptr, tuple_ptr, tuple_len_bytes);
+
+            block.append_operation(scf::r#yield(&[tuple_ptr], location));
+
+            region
+        },
+        location,
+    ))?;
+
+    block_ok.append_operation(helper.br(0, &[box_ptr], location));
+    block_err.append_operation(helper.br(1, &[], location));
+
     Ok(())
 }
 
@@ -1661,6 +2096,253 @@ mod test {
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
             JitValue::Array(vec![1u64.into(), 2u64.into()]),
+        );
+    }
+
+    #[test]
+    fn tuple_from_span() {
+        let program = load_cairo! {
+            use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
+
+            fn run_test(x: Array<felt252>) -> [felt252; 3] {
+                (*tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x).unwrap()).unbox()
+            }
+        };
+
+        assert_eq!(
+            run_program(
+                &program,
+                "run_test",
+                &[JitValue::Array(vec![
+                    JitValue::Felt252(1.into()),
+                    JitValue::Felt252(2.into()),
+                    JitValue::Felt252(3.into()),
+                ])],
+            )
+            .return_value,
+            JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Struct {
+                    fields: vec![JitValue::Struct {
+                        fields: vec![
+                            JitValue::Felt252(1.into()),
+                            JitValue::Felt252(2.into()),
+                            JitValue::Felt252(3.into()),
+                        ],
+                        debug_name: None
+                    }],
+                    debug_name: None
+                }),
+                debug_name: None
+            }
+        );
+    }
+
+    #[test]
+    fn tuple_from_span_failed() {
+        let program = load_cairo! {
+            use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
+
+            fn run_test(x: Array<felt252>) -> Option<@Box<[core::felt252; 3]>> {
+                tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x)
+            }
+        };
+
+        assert_eq!(
+            run_program(
+                &program,
+                "run_test",
+                &[JitValue::Array(vec![
+                    JitValue::Felt252(1.into()),
+                    JitValue::Felt252(2.into()),
+                ])],
+            )
+            .return_value,
+            jit_enum!(1, jit_struct!())
+        );
+    }
+
+    #[test]
+    fn snapshot_multi_pop_front() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> (Span<felt252>, @Box<[felt252; 3]>) {
+                let mut numbers = array![1, 2, 3, 4, 5, 6].span();
+                let popped = numbers.multi_pop_front::<3>().unwrap();
+
+                (numbers, popped)
+            }
+        );
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            // Panic result
+            jit_enum!(
+                0,
+                jit_struct!(
+                    // Tuple
+                    jit_struct!(
+                        // Span of original array
+                        jit_struct!(JitValue::Array(vec![
+                            JitValue::Felt252(4.into()),
+                            JitValue::Felt252(5.into()),
+                            JitValue::Felt252(6.into()),
+                        ])),
+                        // Box of fixed array
+                        jit_struct!(
+                            JitValue::Felt252(1.into()),
+                            JitValue::Felt252(2.into()),
+                            JitValue::Felt252(3.into())
+                        ),
+                    )
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn snapshot_failed_multi_pop_front() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Span<felt252> {
+                let mut numbers = array![1, 2].span();
+
+                // should fail (return none)
+                assert!(numbers.multi_pop_front::<3>().is_none());
+
+                numbers
+            }
+        );
+
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            // Panic result
+            jit_enum!(
+                0,
+                jit_struct!(
+                    // Span of original array
+                    jit_struct!(JitValue::Array(vec![
+                        JitValue::Felt252(1.into()),
+                        JitValue::Felt252(2.into()),
+                    ]),)
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn snapshot_multi_pop_back() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> (Span<felt252>, @Box<[felt252; 3]>) {
+                let mut numbers = array![1, 2, 3, 4, 5, 6].span();
+                let popped = numbers.multi_pop_back::<3>().unwrap();
+
+                (numbers, popped)
+            }
+        );
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            // Panic result
+            jit_enum!(
+                0,
+                jit_struct!(
+                    // Tuple
+                    jit_struct!(
+                        // Span of original array
+                        jit_struct!(JitValue::Array(vec![
+                            JitValue::Felt252(1.into()),
+                            JitValue::Felt252(2.into()),
+                            JitValue::Felt252(3.into()),
+                        ])),
+                        // Box of fixed array
+                        jit_struct!(
+                            JitValue::Felt252(4.into()),
+                            JitValue::Felt252(5.into()),
+                            JitValue::Felt252(6.into())
+                        ),
+                    )
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn snapshot_failed_multi_pop_back() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> Span<felt252> {
+                let mut numbers = array![1, 2].span();
+
+                // should fail (return none)
+                assert!(numbers.multi_pop_back::<3>().is_none());
+
+                numbers
+            }
+        );
+
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            // Panic result
+            jit_enum!(
+                0,
+                jit_struct!(
+                    // Span of original array
+                    jit_struct!(JitValue::Array(vec![
+                        JitValue::Felt252(1.into()),
+                        JitValue::Felt252(2.into()),
+                    ]),)
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn snapshot_multi_pop_back_front() {
+        let program = load_cairo!(
+            use array::ArrayTrait;
+
+            fn run_test() -> (Span<felt252>, @Box<[felt252; 2]>, @Box<[felt252; 2]>) {
+                let mut numbers = array![1, 2, 3, 4, 5, 6].span();
+                let popped_front = numbers.multi_pop_front::<2>().unwrap();
+                let popped_back = numbers.multi_pop_back::<2>().unwrap();
+
+                (numbers, popped_front, popped_back)
+            }
+        );
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            // Panic result
+            jit_enum!(
+                0,
+                jit_struct!(
+                    // Tuple
+                    jit_struct!(
+                        // Span of original array
+                        jit_struct!(JitValue::Array(vec![
+                            JitValue::Felt252(3.into()),
+                            JitValue::Felt252(4.into()),
+                        ])),
+                        // Box of fixed array
+                        jit_struct!(JitValue::Felt252(1.into()), JitValue::Felt252(2.into()),),
+                        // Box of fixed array
+                        jit_struct!(JitValue::Felt252(5.into()), JitValue::Felt252(6.into())),
+                    )
+                )
+            )
         );
     }
 }

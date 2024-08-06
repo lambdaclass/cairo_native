@@ -8,6 +8,9 @@ use core::starknet::{
 };
 use core::starknet::syscalls::get_execution_info_syscall;
 use core::starknet::syscalls::get_execution_info_v2_syscall;
+use core::sha256::{sha256_state_handle_init, sha256_state_handle_digest, SHA256_INITIAL_STATE};
+use core::box::BoxTrait;
+use core::starknet::SyscallResultTrait;
 
 fn get_block_hash() -> SyscallResult<felt252> {
     get_block_hash_syscall(0)
@@ -111,4 +114,13 @@ fn pop_log(log: felt252) -> Span<felt252> {
 
 fn pop_l2_to_l1_message(message: felt252) -> Span<felt252> {
     return cheatcode::<'pop_l2_to_l1_message'>(array![message].span());
+}
+
+fn sha256_process() -> [u32; 8] {
+    let mut state = sha256_state_handle_init(BoxTrait::new(SHA256_INITIAL_STATE));
+    let chunk = BoxTrait::new([0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xd, 0xe, 0xf, 0x10, 0x11]);
+
+    state = starknet::syscalls::sha256_process_block_syscall(state, chunk).unwrap_syscall();
+
+    sha256_state_handle_digest(state).unbox()
 }

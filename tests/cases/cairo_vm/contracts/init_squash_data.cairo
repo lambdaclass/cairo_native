@@ -5,7 +5,7 @@ mod TestDict {
 
     use dict::Felt252DictTrait;
     use nullable::NullableTrait;
-    use traits::Index;
+    use core::ops::index::Index;
 
     #[external(v0)]
     fn test_dict_init(self: @ContractState, test_value: felt252) -> felt252 {

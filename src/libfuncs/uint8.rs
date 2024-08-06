@@ -560,16 +560,15 @@ mod test {
             }
         };
         static ref U8_SQRT: (String, Program) = load_cairo! {
-            use core::integer::u8_sqrt;
-
+            use core::num::traits::Sqrt;
             fn run_test(value: u8) -> u8 {
-                u8_sqrt(value)
+               value.sqrt()
             }
         };
         static ref U8_WIDEMUL: (String, Program) = load_cairo! {
-            use integer::u8_wide_mul;
+            use core::num::traits::WideMul;
             fn run_test(lhs: u8, rhs: u8) -> u16 {
-                u8_wide_mul(lhs, rhs)
+                WideMul::wide_mul(lhs,rhs)
             }
         };
     }

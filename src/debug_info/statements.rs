@@ -42,7 +42,7 @@ fn find_statement_locations(
     let function_id = db.lookup_intern_sierra_function(function.id.clone());
     let function_impl = db.function_with_body_sierra(function_id.body(db)?.unwrap())?;
 
-    let function_long_id = function_id.lookup(db);
+    let function_long_id = db.lookup_intern_lowering_function(function_id);
     let flat_lowered =
         db.concrete_function_with_body_postpanic_lowered(function_long_id.body(db)?.unwrap())?;
 
@@ -138,14 +138,18 @@ mod tests {
     use cairo_lang_defs::ids::VariantId;
     use cairo_lang_lowering::ids::FunctionId;
     use cairo_lang_lowering::ids::LocationId;
-    use cairo_lang_lowering::objects::{
-        StatementCall, StatementConst, StatementDesnap, StatementEnumConstruct, StatementSnapshot,
-        StatementStructConstruct, StatementStructDestructure, VarUsage,
-    };
+    use cairo_lang_lowering::objects::StatementCall;
+    use cairo_lang_lowering::StatementConst;
+    use cairo_lang_lowering::StatementDesnap;
+    use cairo_lang_lowering::StatementEnumConstruct;
+    use cairo_lang_lowering::StatementSnapshot;
+    use cairo_lang_lowering::StatementStructConstruct;
+    use cairo_lang_lowering::StatementStructDestructure;
+    use cairo_lang_lowering::VarUsage;
     use cairo_lang_semantic::items::constant::ConstValue;
-    use cairo_lang_semantic::items::enm::ConcreteVariant;
-    use cairo_lang_semantic::items::imp::{ConcreteImplId, ImplId};
-    use cairo_lang_semantic::types::ConcreteEnumId;
+    use cairo_lang_semantic::items::imp::ImplId;
+    use cairo_lang_semantic::ConcreteEnumId;
+    use cairo_lang_semantic::ConcreteVariant;
     use cairo_lang_semantic::TypeId;
     use salsa::InternKey;
 
@@ -172,18 +176,10 @@ mod tests {
         let mut arena = Arena::<Variable>::new();
 
         let a = arena.alloc(Variable {
-            droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                45_u32.into(),
-            ))),
-            duplicatable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                40_u32.into(),
-            ))),
-            destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                30_u32.into(),
-            ))),
-            panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                20_u32.into(),
-            ))),
+            droppable: Ok(ImplId::from_intern_id(45_u32.into())),
+            copyable: Ok(ImplId::from_intern_id(40_u32.into())),
+            destruct_impl: Ok(ImplId::from_intern_id(30_u32.into())),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(20_u32.into())),
             ty: TypeId::from_intern_id(10_u32.into()),
             location: LocationId::from_intern_id(15_u32.into()),
         });
@@ -204,18 +200,10 @@ mod tests {
         let mut arena = Arena::<Variable>::new();
 
         let a = arena.alloc(Variable {
-            droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                45_u32.into(),
-            ))),
-            duplicatable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                40_u32.into(),
-            ))),
-            destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                30_u32.into(),
-            ))),
-            panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                20_u32.into(),
-            ))),
+            droppable: Ok(ImplId::from_intern_id(45_u32.into())),
+            copyable: Ok(ImplId::from_intern_id(40_u32.into())),
+            destruct_impl: Ok(ImplId::from_intern_id(30_u32.into())),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(20_u32.into())),
             ty: TypeId::from_intern_id(10_u32.into()),
             location: LocationId::from_intern_id(15_u32.into()),
         });
@@ -239,18 +227,10 @@ mod tests {
         let mut arena = Arena::<Variable>::new();
 
         let a = arena.alloc(Variable {
-            droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                45_u32.into(),
-            ))),
-            duplicatable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                40_u32.into(),
-            ))),
-            destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                30_u32.into(),
-            ))),
-            panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                20_u32.into(),
-            ))),
+            droppable: Ok(ImplId::from_intern_id(45_u32.into())),
+            copyable: Ok(ImplId::from_intern_id(40_u32.into())),
+            destruct_impl: Ok(ImplId::from_intern_id(30_u32.into())),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(20_u32.into())),
             ty: TypeId::from_intern_id(10_u32.into()),
             location: LocationId::from_intern_id(15_u32.into()),
         });
@@ -280,35 +260,19 @@ mod tests {
         let mut arena = Arena::<Variable>::new();
 
         let a = arena.alloc(Variable {
-            droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                45_u32.into(),
-            ))),
-            duplicatable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                40_u32.into(),
-            ))),
-            destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                30_u32.into(),
-            ))),
-            panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                20_u32.into(),
-            ))),
+            droppable: Ok(ImplId::from_intern_id(45_u32.into())),
+            copyable: Ok(ImplId::from_intern_id(40_u32.into())),
+            destruct_impl: Ok(ImplId::from_intern_id(30_u32.into())),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(20_u32.into())),
             ty: TypeId::from_intern_id(10_u32.into()),
             location: LocationId::from_intern_id(15_u32.into()),
         });
 
         let b = arena.alloc(Variable {
-            droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                4534_u32.into(),
-            ))),
-            duplicatable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                4320_u32.into(),
-            ))),
-            destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                31_u32.into(),
-            ))),
-            panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                223_u32.into(),
-            ))),
+            droppable: Ok(ImplId::from_intern_id(4534_u32.into())),
+            copyable: Ok(ImplId::from_intern_id(4320_u32.into())),
+            destruct_impl: Ok(ImplId::from_intern_id(31_u32.into())),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(223_u32.into())),
             ty: TypeId::from_intern_id(111_u32.into()),
             location: LocationId::from_intern_id(125_u32.into()),
         });
@@ -333,35 +297,19 @@ mod tests {
         let mut arena = Arena::<Variable>::new();
 
         let a = arena.alloc(Variable {
-            droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                45_u32.into(),
-            ))),
-            duplicatable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                40_u32.into(),
-            ))),
-            destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                30_u32.into(),
-            ))),
-            panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                20_u32.into(),
-            ))),
+            droppable: Ok(ImplId::from_intern_id(45_u32.into())),
+            copyable: Ok(ImplId::from_intern_id(40_u32.into())),
+            destruct_impl: Ok(ImplId::from_intern_id(30_u32.into())),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(20_u32.into())),
             ty: TypeId::from_intern_id(10_u32.into()),
             location: LocationId::from_intern_id(15_u32.into()),
         });
 
         let b = arena.alloc(Variable {
-            droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                4534_u32.into(),
-            ))),
-            duplicatable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                4320_u32.into(),
-            ))),
-            destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                31_u32.into(),
-            ))),
-            panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                223_u32.into(),
-            ))),
+            droppable: Ok(ImplId::from_intern_id(4534_u32.into())),
+            copyable: Ok(ImplId::from_intern_id(4320_u32.into())),
+            destruct_impl: Ok(ImplId::from_intern_id(31_u32.into())),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(223_u32.into())),
             ty: TypeId::from_intern_id(111_u32.into()),
             location: LocationId::from_intern_id(122_u32.into()),
         });
@@ -385,18 +333,10 @@ mod tests {
         let mut arena = Arena::<Variable>::new();
 
         let a = arena.alloc(Variable {
-            droppable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                4534_u32.into(),
-            ))),
-            duplicatable: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                4320_u32.into(),
-            ))),
-            destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                31_u32.into(),
-            ))),
-            panic_destruct_impl: Ok(ImplId::Concrete(ConcreteImplId::from_intern_id(
-                223_u32.into(),
-            ))),
+            droppable: Ok(ImplId::from_intern_id(4534_u32.into())),
+            copyable: Ok(ImplId::from_intern_id(4320_u32.into())),
+            destruct_impl: Ok(ImplId::from_intern_id(31_u32.into())),
+            panic_destruct_impl: Ok(ImplId::from_intern_id(223_u32.into())),
             ty: TypeId::from_intern_id(111_u32.into()),
             location: LocationId::from_intern_id(1223_u32.into()),
         });
