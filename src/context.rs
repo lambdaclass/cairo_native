@@ -120,14 +120,15 @@ impl NativeContext {
         // Create the Sierra program registry
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 
-        crate::compile(
+        let compiler = crate::Compiler::new(
             &self.context,
             &module,
             program,
             &registry,
             &mut metadata,
             debug_locations.as_ref(),
-        )?;
+        );
+        compiler.compile()?;
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP_PREPASS") {
             if x == "1" || x == "true" {
@@ -191,14 +192,15 @@ impl NativeContext {
         // Create the Sierra program registry
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 
-        crate::compile(
+        let compiler = crate::Compiler::new(
             &self.context,
             &module,
             program,
             &registry,
             &mut metadata,
             None,
-        )?;
+        );
+        compiler.compile()?;
 
         run_pass_manager(&self.context, &mut module)?;
 
