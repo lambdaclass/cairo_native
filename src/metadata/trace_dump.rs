@@ -1,6 +1,11 @@
 #![cfg(feature = "with-trace-dump")]
 
-use crate::{block_ext::BlockExt, error::Result, starknet::ArrayAbi, types::TypeBuilder};
+use crate::{
+    block_ext::BlockExt,
+    error::Result,
+    starknet::{ArrayAbi, Felt252Abi},
+    types::TypeBuilder,
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -321,23 +326,27 @@ fn value_from_pointer(
                     .unwrap()
             };
 
-            let mut new_dict = HashMap::new();
-
-            for (key, value_ptr) in dict {
-                let felt = Felt::from_bytes_le(key);
-                let value = value_from_pointer(state, inner_type_id, value_ptr.cast().as_ptr());
-
-                new_dict.insert(felt, value);
-            }
+            let dict = build_dict(state, dict, inner_type_id);
 
             sierra_emu::Value::FeltDict {
                 ty: inner_type_id.clone(),
-                data: Rc::new(RefCell::new(new_dict)),
+                data: Rc::new(RefCell::new(dict)),
             }
         }
-        CoreTypeConcrete::Felt252DictEntry(_) => {
-            let _bytes = unsafe { value_ptr.cast::<[u8; 16]>().as_ref().unwrap() };
-            sierra_emu::Value::Unit
+        CoreTypeConcrete::Felt252DictEntry(InfoAndTypeConcreteType {
+            ty: inner_type_id, ..
+        }) => {
+            let entry = unsafe { value_ptr.cast::<DictEntryAbi<()>>().as_ref().unwrap() };
+            let key = Felt::from_bytes_le(&entry.key.0);
+            let (dict, _) = unsafe { entry.dict_ptr.as_ref().unwrap() };
+
+            let dict = build_dict(state, dict, inner_type_id);
+
+            sierra_emu::Value::FeltDictEntry {
+                ty: inner_type_id.clone(),
+                data: Rc::new(RefCell::new(dict)),
+                key,
+            }
         }
 
         CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
@@ -363,4 +372,28 @@ extern "C" fn trace_push(state: *const InternalState, statement_idx: usize) {
             .borrow_mut()
             .push(StateDump::new(StatementIdx(statement_idx), items));
     }
+}
+
+fn build_dict(
+    state: &InternalState,
+    dict: &HashMap<[u8; 32], NonNull<libc::c_void>>,
+    inner_type_id: &ConcreteTypeId,
+) -> HashMap<Felt, sierra_emu::Value> {
+    let mut new_dict = HashMap::new();
+
+    for (key, value_ptr) in dict {
+        let felt = Felt::from_bytes_le(key);
+        let value = value_from_pointer(state, inner_type_id, value_ptr.cast().as_ptr());
+
+        new_dict.insert(felt, value);
+    }
+    new_dict
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct DictEntryAbi<T> {
+    pub key: Felt252Abi,
+    pub value_ptr: *const T,
+    pub dict_ptr: *const (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64),
 }
