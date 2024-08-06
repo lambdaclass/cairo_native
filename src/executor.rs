@@ -185,7 +185,7 @@ fn invoke_dynamic(
         });
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
-        return_ptr.as_ptr().to_bytes(&mut invoke_data);
+        return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
 
         Some(return_ptr)
     } else {
@@ -216,16 +216,16 @@ fn invoke_dynamic(
     }) {
         // Process gas requirements and syscall handler.
         match registry.get_type(type_id).unwrap() {
-            CoreTypeConcrete::GasBuiltin(_) => gas.to_bytes(&mut invoke_data),
+            CoreTypeConcrete::GasBuiltin(_) => gas.to_bytes(&mut invoke_data)?,
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
                     .expect("syscall handler is required");
 
                 (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
-                    .to_bytes(&mut invoke_data);
+                    .to_bytes(&mut invoke_data)?;
             }
-            type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data),
+            type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
             type_info => JitValueWithInfoWrapper {
                 value: iter.next().unwrap(),
                 type_id,
@@ -234,7 +234,7 @@ fn invoke_dynamic(
                 arena: &arena,
                 registry,
             }
-            .to_bytes(&mut invoke_data),
+            .to_bytes(&mut invoke_data)?,
         }
     }
 
