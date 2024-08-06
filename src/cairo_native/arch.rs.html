@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/arch.rs`."><title>arch.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../cairo_native/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/arch.rs`."><title>arch.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.0 (051478957 2024-07-21)" data-channel="1.80.0" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -194,25 +194,8 @@
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    error,
     starknet::{ArrayAbi, U256},
     types::TypeBuilder,
     values::JitValue,
@@ -235,7 +218,7 @@
 </span><span class="kw">pub trait </span>AbiArgument {
     <span class="doccomment">/// Serialize the argument into the buffer. This method should keep track of arch-dependent
     /// stuff like register vs stack allocation.
-    </span><span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;);
+    </span><span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), error::Error&gt;;
 }
 
 <span class="doccomment">/// A wrapper that implements `AbiArgument` for `JitValue`s. It contains all the required stuff to
@@ -254,111 +237,91 @@
         <span class="kw-2">&amp;</span><span class="lifetime">'b </span><span class="self">self</span>,
         value: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>JitValue,
         type_id: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>ConcreteTypeId,
-    ) -&gt; JitValueWithInfoWrapper&lt;<span class="lifetime">'b</span>&gt;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;JitValueWithInfoWrapper&lt;<span class="lifetime">'b</span>&gt;, error::Error&gt;
     <span class="kw">where
         </span><span class="lifetime">'b</span>: <span class="lifetime">'a</span>,
     {
-        <span class="self">Self </span>{
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             value,
             type_id,
-            info: <span class="self">self</span>.registry.get_type(type_id).unwrap(),
+            info: <span class="self">self</span>.registry.get_type(type_id)<span class="question-mark">?</span>,
             arena: <span class="self">self</span>.arena,
             registry: <span class="self">self</span>.registry,
-        }
+        })
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; AbiArgument <span class="kw">for </span>JitValueWithInfoWrapper&lt;<span class="lifetime">'a</span>&gt; {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), error::Error&gt; {
         <span class="kw">match </span>(<span class="self">self</span>.value, <span class="self">self</span>.info) {
             (value, CoreTypeConcrete::Box(info)) =&gt; {
-                <span class="kw">let </span>ptr = value
-                    .to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)
-                    .unwrap();
+                <span class="kw">let </span>ptr = value.to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>layout = <span class="self">self
-                    </span>.registry
-                    .get_type(<span class="kw-2">&amp;</span>info.ty)
-                    .unwrap()
-                    .layout(<span class="self">self</span>.registry)
-                    .unwrap();
+                <span class="kw">let </span>layout = <span class="self">self</span>.registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(<span class="self">self</span>.registry)<span class="question-mark">?</span>;
                 <span class="kw">let </span>heap_ptr = <span class="kw">unsafe </span>{
                     <span class="kw">let </span>heap_ptr = libc::malloc(layout.size());
                     libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
                     heap_ptr
                 };
 
-                heap_ptr.to_bytes(buffer);
+                heap_ptr.to_bytes(buffer)<span class="question-mark">?</span>;
             }
             (value, CoreTypeConcrete::Nullable(info)) =&gt; {
                 <span class="kw">if </span><span class="macro">matches!</span>(value, JitValue::Null) {
-                    null::&lt;()&gt;().to_bytes(buffer);
+                    null::&lt;()&gt;().to_bytes(buffer)<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>ptr = value
-                        .to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)
-                        .unwrap();
+                    <span class="kw">let </span>ptr = value.to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
 
-                    <span class="kw">let </span>layout = <span class="self">self
-                        </span>.registry
-                        .get_type(<span class="kw-2">&amp;</span>info.ty)
-                        .unwrap()
-                        .layout(<span class="self">self</span>.registry)
-                        .unwrap();
+                    <span class="kw">let </span>layout = <span class="self">self</span>.registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(<span class="self">self</span>.registry)<span class="question-mark">?</span>;
                     <span class="kw">let </span>heap_ptr = <span class="kw">unsafe </span>{
                         <span class="kw">let </span>heap_ptr = libc::malloc(layout.size());
                         libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
                         heap_ptr
                     };
 
-                    heap_ptr.to_bytes(buffer);
+                    heap_ptr.to_bytes(buffer)<span class="question-mark">?</span>;
                 }
             }
             (value, CoreTypeConcrete::NonZero(info) | CoreTypeConcrete::Snapshot(info)) =&gt; {
-                <span class="self">self</span>.map(value, <span class="kw-2">&amp;</span>info.ty).to_bytes(buffer)
-            }
+                <span class="self">self</span>.map(value, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.to_bytes(buffer)<span class="question-mark">?
+            </span>}
 
             (JitValue::Array(<span class="kw">_</span>), CoreTypeConcrete::Array(<span class="kw">_</span>)) =&gt; {
                 <span class="comment">// TODO: Assert that `info.ty` matches all the values' types.
 
-                </span><span class="kw">let </span>abi_ptr = <span class="self">self
-                    </span>.value
-                    .to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)
-                    .unwrap();
+                </span><span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
                 <span class="kw">let </span>abi = <span class="kw">unsafe </span>{ abi_ptr.cast::&lt;ArrayAbi&lt;()&gt;&gt;().as_ref() };
 
-                abi.ptr.to_bytes(buffer);
-                abi.since.to_bytes(buffer);
-                abi.until.to_bytes(buffer);
-                abi.capacity.to_bytes(buffer);
+                abi.ptr.to_bytes(buffer)<span class="question-mark">?</span>;
+                abi.since.to_bytes(buffer)<span class="question-mark">?</span>;
+                abi.until.to_bytes(buffer)<span class="question-mark">?</span>;
+                abi.capacity.to_bytes(buffer)<span class="question-mark">?</span>;
             }
             (JitValue::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(<span class="kw">_</span>)) =&gt; <span class="macro">todo!</span>(),
-            (JitValue::Bytes31(value), CoreTypeConcrete::Bytes31(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
+            (JitValue::Bytes31(value), CoreTypeConcrete::Bytes31(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
             (JitValue::EcPoint(x, y), CoreTypeConcrete::EcPoint(<span class="kw">_</span>)) =&gt; {
-                x.to_bytes(buffer);
-                y.to_bytes(buffer);
+                x.to_bytes(buffer)<span class="question-mark">?</span>;
+                y.to_bytes(buffer)<span class="question-mark">?</span>;
             }
             (JitValue::EcState(x, y, x0, y0), CoreTypeConcrete::EcState(<span class="kw">_</span>)) =&gt; {
-                x.to_bytes(buffer);
-                y.to_bytes(buffer);
-                x0.to_bytes(buffer);
-                y0.to_bytes(buffer);
+                x.to_bytes(buffer)<span class="question-mark">?</span>;
+                y.to_bytes(buffer)<span class="question-mark">?</span>;
+                x0.to_bytes(buffer)<span class="question-mark">?</span>;
+                y0.to_bytes(buffer)<span class="question-mark">?</span>;
             }
             (JitValue::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.info.is_memory_allocated(<span class="self">self</span>.registry) {
-                    <span class="kw">let </span>abi_ptr = <span class="self">self
-                        </span>.value
-                        .to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)
-                        .unwrap();
+                    <span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>abi_ptr = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>abi_ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ref() };
-                    abi_ptr.as_ptr().to_bytes(buffer);
+                    abi_ptr.as_ptr().to_bytes(buffer)<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
                     <span class="kw">match </span>(info.variants.len().next_power_of_two().trailing_zeros() + <span class="number">7</span>) / <span class="number">8 </span>{
                         <span class="number">0 </span>=&gt; {}
-                        <span class="kw">_ </span>=&gt; (<span class="kw-2">*</span>tag <span class="kw">as </span>u64).to_bytes(buffer),
+                        <span class="kw">_ </span>=&gt; (<span class="kw-2">*</span>tag <span class="kw">as </span>u64).to_bytes(buffer)<span class="question-mark">?</span>,
                     }
 
-                    <span class="self">self</span>.map(value, <span class="kw-2">&amp;</span>info.variants[<span class="kw-2">*</span>tag]).to_bytes(buffer);
+                    <span class="self">self</span>.map(value, <span class="kw-2">&amp;</span>info.variants[<span class="kw-2">*</span>tag])<span class="question-mark">?</span>.to_bytes(buffer)<span class="question-mark">?</span>;
                 }
             }
             (
@@ -370,7 +333,7 @@
                     | StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>)
                     | StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>),
                 ),
-            ) =&gt; value.to_bytes(buffer),
+            ) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
             (JitValue::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>)) =&gt; {
                 <span class="attr">#[cfg(not(feature = <span class="string">"with-runtime"</span>))]
                 </span><span class="macro">unimplemented!</span>(<span class="string">"enable the `with-runtime` feature to use felt252 dicts"</span>);
@@ -378,11 +341,10 @@
                 <span class="comment">// TODO: Assert that `info.ty` matches all the values' types.
 
                 </span><span class="self">self</span>.value
-                    .to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)
-                    .unwrap()
-                    .as_ptr()
-                    .to_bytes(buffer)
-            }
+                    .to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?
+                    </span>.as_ptr()
+                    .to_bytes(buffer)<span class="question-mark">?
+            </span>}
             (
                 JitValue::Secp256K1Point { x, y },
                 CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
@@ -398,32 +360,34 @@
                 <span class="kw">let </span>x = U256 { lo: x.<span class="number">0</span>, hi: x.<span class="number">1 </span>};
                 <span class="kw">let </span>y = U256 { lo: y.<span class="number">0</span>, hi: y.<span class="number">1 </span>};
 
-                x.to_bytes(buffer);
-                y.to_bytes(buffer);
+                x.to_bytes(buffer)<span class="question-mark">?</span>;
+                y.to_bytes(buffer)<span class="question-mark">?</span>;
             }
-            (JitValue::Sint128(value), CoreTypeConcrete::Sint128(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
-            (JitValue::Sint16(value), CoreTypeConcrete::Sint16(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
-            (JitValue::Sint32(value), CoreTypeConcrete::Sint32(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
-            (JitValue::Sint64(value), CoreTypeConcrete::Sint64(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
-            (JitValue::Sint8(value), CoreTypeConcrete::Sint8(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
+            (JitValue::Sint128(value), CoreTypeConcrete::Sint128(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (JitValue::Sint16(value), CoreTypeConcrete::Sint16(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (JitValue::Sint32(value), CoreTypeConcrete::Sint32(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (JitValue::Sint64(value), CoreTypeConcrete::Sint64(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (JitValue::Sint8(value), CoreTypeConcrete::Sint8(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
             (JitValue::Struct { fields, .. }, CoreTypeConcrete::Struct(info)) =&gt; {
                 fields
                     .iter()
                     .zip(<span class="kw-2">&amp;</span>info.members)
                     .map(|(value, type_id)| <span class="self">self</span>.map(value, type_id))
-                    .for_each(|wrapper| wrapper.to_bytes(buffer));
+                    .try_for_each(|wrapper| wrapper<span class="question-mark">?</span>.to_bytes(buffer))<span class="question-mark">?</span>;
             }
-            (JitValue::Uint128(value), CoreTypeConcrete::Uint128(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
-            (JitValue::Uint16(value), CoreTypeConcrete::Uint16(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
-            (JitValue::Uint32(value), CoreTypeConcrete::Uint32(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
-            (JitValue::Uint64(value), CoreTypeConcrete::Uint64(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
-            (JitValue::Uint8(value), CoreTypeConcrete::Uint8(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer),
+            (JitValue::Uint128(value), CoreTypeConcrete::Uint128(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (JitValue::Uint16(value), CoreTypeConcrete::Uint16(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (JitValue::Uint32(value), CoreTypeConcrete::Uint32(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (JitValue::Uint64(value), CoreTypeConcrete::Uint64(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (JitValue::Uint8(value), CoreTypeConcrete::Uint8(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
             <span class="kw">_ </span>=&gt; <span class="macro">todo!</span>(
                 <span class="string">"abi argument unimplemented for ({:?}, {:?})"</span>,
                 <span class="self">self</span>.value,
                 <span class="self">self</span>.type_id
             ),
         }
+
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div></section></main></body></html>

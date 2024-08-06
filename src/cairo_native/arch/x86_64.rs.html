@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/arch/x86_64.rs`."><title>x86_64.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../cairo_native/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/arch/x86_64.rs`."><title>x86_64.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.0 (051478957 2024-07-21)" data-channel="1.80.0" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -238,6 +238,23 @@
 <a href="#238" id="238">238</a>
 <a href="#239" id="239">239</a>
 <a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Implementations of `AbiArgument` for the `x86_64` architecture.
 //!
 //! The x86_64 architecture uses 6 64-bit registers for arguments. This means that the first 48
@@ -250,7 +267,7 @@
 </span><span class="attr">#![cfg(target_arch = <span class="string">"x86_64"</span>)]
 
 </span><span class="kw">use </span><span class="kw">super</span>::AbiArgument;
-<span class="kw">use crate</span>::{starknet::U256, utils::get_integer_layout};
+<span class="kw">use crate</span>::{error::Error, starknet::U256, utils::get_integer_layout};
 <span class="kw">use </span>num_traits::ToBytes;
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 
@@ -259,128 +276,139 @@
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>u8 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">48 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>u64).to_ne_bytes());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">8</span>).align());
             buffer.push(<span class="kw-2">*</span><span class="self">self</span>);
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>i8 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">48 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>u64).to_ne_bytes());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">8</span>).align());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>u16 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">48 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>u64).to_ne_bytes());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">16</span>).align());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>i16 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">48 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>u64).to_ne_bytes());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">16</span>).align());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>u32 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">48 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>u64).to_ne_bytes());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">32</span>).align());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>i32 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">48 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>u64).to_ne_bytes());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">32</span>).align());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>u64 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">48 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">64</span>).align());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>i64 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">48 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">64</span>).align());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>u128 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">40 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">128</span>).align());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>i128 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">40 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">128</span>).align());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>Felt {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">40 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_bytes_le());
         } <span class="kw">else </span>{
             align_to(buffer, get_integer_layout(<span class="number">252</span>).align());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_bytes_le());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>U256 {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span>buffer.len() &lt; <span class="number">40 </span>{
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.lo.to_le_bytes());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.hi.to_le_bytes());
@@ -389,11 +417,12 @@
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.lo.to_le_bytes());
             buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.hi.to_le_bytes());
         }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>[u8; <span class="number">31</span>] {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="comment">// The `bytes31` type is treated as a 248-bit integer, therefore it follows the same
         // splitting rules as them.
         </span><span class="kw">if </span>buffer.len() &lt; <span class="number">40 </span>{
@@ -404,17 +433,19 @@
             buffer.extend_from_slice(<span class="self">self</span>);
             buffer.push(<span class="number">0</span>);
         }
+
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl</span>&lt;T&gt; AbiArgument <span class="kw">for </span><span class="kw-2">*const </span>T {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         &lt;u64 <span class="kw">as </span>AbiArgument&gt;::to_bytes(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>u64), buffer)
     }
 }
 
 <span class="kw">impl</span>&lt;T&gt; AbiArgument <span class="kw">for </span><span class="kw-2">*mut </span>T {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) {
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         &lt;u64 <span class="kw">as </span>AbiArgument&gt;::to_bytes(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>u64), buffer)
     }
 }
@@ -426,7 +457,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u128_stack_split() {
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = <span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">40</span>];
-        u128::MAX.to_bytes(<span class="kw-2">&amp;mut </span>buffer);
+        u128::MAX.to_bytes(<span class="kw-2">&amp;mut </span>buffer).unwrap();
         <span class="macro">assert_eq!</span>(
             buffer,
             [<span class="number">0</span>; <span class="number">48</span>].into_iter().chain([<span class="number">0xFF</span>; <span class="number">16</span>]).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
@@ -439,7 +470,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>buffer = <span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">24</span>];
         Felt::from_hex(<span class="string">"0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"</span>)
             .unwrap()
-            .to_bytes(<span class="kw-2">&amp;mut </span>buffer);
+            .to_bytes(<span class="kw-2">&amp;mut </span>buffer)
+            .unwrap();
         <span class="macro">assert_eq!</span>(
             buffer,
             [<span class="number">0</span>; <span class="number">24</span>]
@@ -453,7 +485,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>buffer = <span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">32</span>];
         Felt::from_hex(<span class="string">"0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"</span>)
             .unwrap()
-            .to_bytes(<span class="kw-2">&amp;mut </span>buffer);
+            .to_bytes(<span class="kw-2">&amp;mut </span>buffer)
+            .unwrap();
         <span class="macro">assert_eq!</span>(
             buffer,
             [<span class="number">0</span>; <span class="number">32</span>]
@@ -467,7 +500,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>buffer = <span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">40</span>];
         Felt::from_hex(<span class="string">"0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"</span>)
             .unwrap()
-            .to_bytes(<span class="kw-2">&amp;mut </span>buffer);
+            .to_bytes(<span class="kw-2">&amp;mut </span>buffer)
+            .unwrap();
         <span class="macro">assert_eq!</span>(
             buffer,
             [<span class="number">0</span>; <span class="number">48</span>]
