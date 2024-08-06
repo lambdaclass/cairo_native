@@ -34,7 +34,7 @@ use std::{
     mem::swap,
     ptr::NonNull,
     rc::Rc,
-    sync::{Arc, Weak},
+    sync::Weak,
 };
 
 pub struct InternalState {
@@ -63,22 +63,25 @@ enum TraceBinding {
     Push,
 }
 
+type Type = Rc<InternalState>;
+
 pub struct TraceDump {
-    trace: Arc<InternalState>,
+    trace: Type,
     bindings: HashSet<TraceBinding>,
 }
 
 impl TraceDump {
     pub fn new(registry: ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
         Self {
-            trace: Arc::new(InternalState::new(registry)),
+            trace: Rc::new(InternalState::new(registry)),
             bindings: HashSet::default(),
         }
     }
-    pub fn internal_state(&self) -> Arc<InternalState> {
+    pub fn internal_state(&self) -> Rc<InternalState> {
         self.trace.clone()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn build_state(
         &mut self,
         context: &Context,
@@ -123,7 +126,7 @@ impl TraceDump {
             let state = block.const_int(
                 context,
                 location,
-                Arc::downgrade(&self.trace).into_raw() as i64,
+                Rc::downgrade(&self.trace).into_raw() as i64,
                 64,
             )?;
             block.append_op_result(
@@ -181,7 +184,7 @@ impl TraceDump {
             let state = block.const_int(
                 context,
                 location,
-                Arc::downgrade(&self.trace).into_raw() as i64,
+                Rc::downgrade(&self.trace).into_raw() as i64,
                 64,
             )?;
             block.append_op_result(
