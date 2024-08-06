@@ -25,8 +25,10 @@ use starknet_types_core::felt::Felt;
 use std::{
     borrow::Borrow,
     cell::RefCell,
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     mem::swap,
+    ptr::NonNull,
+    rc::Rc,
     sync::{Arc, Weak},
 };
 
@@ -310,14 +312,40 @@ fn value_from_pointer(
         CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Enum(_) => todo!(),
         CoreTypeConcrete::Struct(_) => todo!(),
-        CoreTypeConcrete::Felt252Dict(_) => todo!(),
-        CoreTypeConcrete::Felt252DictEntry(_) => todo!(),
+        CoreTypeConcrete::Felt252Dict(InfoAndTypeConcreteType {
+            ty: inner_type_id, ..
+        }) => {
+            let (dict, _) = unsafe {
+                (*value_ptr.cast::<*const (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>())
+                    .as_ref()
+                    .unwrap()
+            };
+
+            let mut new_dict = HashMap::new();
+
+            for (key, value_ptr) in dict {
+                let felt = Felt::from_bytes_le(key);
+                let value = value_from_pointer(state, inner_type_id, value_ptr.cast().as_ptr());
+
+                new_dict.insert(felt, value);
+            }
+
+            sierra_emu::Value::FeltDict {
+                ty: inner_type_id.clone(),
+                data: Rc::new(RefCell::new(new_dict)),
+            }
+        }
+        CoreTypeConcrete::Felt252DictEntry(_) => {
+            let _bytes = unsafe { value_ptr.cast::<[u8; 16]>().as_ref().unwrap() };
+            sierra_emu::Value::Unit
+        }
+
         CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
         CoreTypeConcrete::Pedersen(_) => todo!(),
         CoreTypeConcrete::Poseidon(_) => todo!(),
         CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::StarkNet(_) => todo!(),
-        CoreTypeConcrete::SegmentArena(_) => todo!(),
+        CoreTypeConcrete::SegmentArena(_) => sierra_emu::Value::Unit,
         CoreTypeConcrete::Snapshot(_) => todo!(),
         CoreTypeConcrete::Bytes31(_) => todo!(),
         CoreTypeConcrete::BoundedInt(_) => todo!(),
