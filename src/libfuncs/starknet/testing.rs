@@ -1,3 +1,12 @@
+#![cfg(feature = "with-cheatcode")]
+
+use crate::{
+    block_ext::BlockExt,
+    error::Result,
+    libfuncs::LibfuncHelper,
+    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    utils::{get_integer_layout, ProgramRegistryExt},
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -14,14 +23,6 @@ use melior::{
         Block, Location,
     },
     Context,
-};
-
-use crate::{
-    block_ext::BlockExt,
-    error::Result,
-    libfuncs::LibfuncHelper,
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, ProgramRegistryExt},
 };
 
 pub fn build<'ctx, 'this>(
