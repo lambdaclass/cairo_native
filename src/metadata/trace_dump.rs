@@ -413,6 +413,14 @@ fn value_from_pointer(
         CoreTypeConcrete::Snapshot(InfoAndTypeConcreteType {
             ty: inner_type_id, ..
         }) => value_from_pointer(state, inner_type_id, value_ptr),
+        CoreTypeConcrete::Box(InfoAndTypeConcreteType {
+            ty: inner_type_id, ..
+        }) => {
+            let inner_ptr =
+                unsafe { NonNull::new(*value_ptr.as_ptr().cast::<*mut c_void>()).unwrap() };
+
+            value_from_pointer(state, inner_type_id, inner_ptr)
+        }
         CoreTypeConcrete::GasBuiltin(_) => todo!(),
         CoreTypeConcrete::BuiltinCosts(_) => todo!(),
         CoreTypeConcrete::NonZero(_) => todo!(),
@@ -426,7 +434,6 @@ fn value_from_pointer(
         CoreTypeConcrete::BoundedInt(_) => todo!(),
         CoreTypeConcrete::Coupon(_) => todo!(),
         CoreTypeConcrete::Bitwise(_) => todo!(),
-        CoreTypeConcrete::Box(_) => todo!(),
         CoreTypeConcrete::Circuit(_) => todo!(),
         CoreTypeConcrete::Const(_) => todo!(),
         CoreTypeConcrete::EcOp(_) => todo!(),
