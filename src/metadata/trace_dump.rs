@@ -310,6 +310,10 @@ fn value_from_pointer(
         CoreTypeConcrete::Enum(_) => todo!(),
         CoreTypeConcrete::Felt252Dict(InfoAndTypeConcreteType {
             ty: inner_type_id, ..
+        })
+        | CoreTypeConcrete::SquashedFelt252Dict(InfoAndTypeConcreteType {
+            ty: inner_type_id,
+            ..
         }) => {
             let (dict, _) = unsafe {
                 (*value_ptr.cast::<*const (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>())
@@ -339,8 +343,6 @@ fn value_from_pointer(
                 key,
             }
         }
-
-        CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
         CoreTypeConcrete::Snapshot(InfoAndTypeConcreteType {
             ty: inner_type_id, ..
         }) => value_from_pointer(state, inner_type_id, value_ptr),
