@@ -9,6 +9,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        structure::StructConcreteType,
         types::InfoAndTypeConcreteType,
     },
     ids::{ConcreteTypeId, VarId},
@@ -28,6 +29,7 @@ use melior::{
 use sierra_emu::{ProgramTrace, StateDump};
 use starknet_types_core::felt::Felt;
 use std::{
+    alloc::Layout,
     borrow::Borrow,
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -306,7 +308,25 @@ fn value_from_pointer(
                 data,
             }
         }
-        CoreTypeConcrete::Struct(_) => todo!(),
+        CoreTypeConcrete::Struct(StructConcreteType { members, .. }) => {
+            let mut layout = Layout::new::<()>();
+
+            let mut data = Vec::with_capacity(members.len());
+
+            for member_ty in members {
+                let member = state.registry.get_type(member_ty).unwrap();
+                let member_layout = member.layout(&state.registry).unwrap();
+
+                let (new_layout, offset) = layout.extend(member_layout).unwrap();
+                layout = new_layout;
+
+                let current_ptr = unsafe { value_ptr.byte_add(offset) };
+
+                data.push(value_from_pointer(state, member_ty, current_ptr))
+            }
+
+            sierra_emu::Value::Struct(data)
+        }
         CoreTypeConcrete::Enum(_) => todo!(),
         CoreTypeConcrete::Felt252Dict(InfoAndTypeConcreteType {
             ty: inner_type_id, ..
