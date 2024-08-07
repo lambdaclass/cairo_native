@@ -352,11 +352,9 @@ fn value_from_pointer(
         CoreTypeConcrete::Nullable(_) => todo!(),
         CoreTypeConcrete::RangeCheck(_) => todo!(),
         CoreTypeConcrete::RangeCheck96(_) => todo!(),
-        CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Pedersen(_) => todo!(),
         CoreTypeConcrete::Poseidon(_) => todo!(),
         CoreTypeConcrete::StarkNet(_) => todo!(),
-        CoreTypeConcrete::SegmentArena(_) => sierra_emu::Value::Unit,
         CoreTypeConcrete::Bytes31(_) => todo!(),
         CoreTypeConcrete::BoundedInt(_) => todo!(),
         CoreTypeConcrete::Coupon(_) => todo!(),
@@ -367,6 +365,10 @@ fn value_from_pointer(
         CoreTypeConcrete::EcOp(_) => todo!(),
         CoreTypeConcrete::EcPoint(_) => todo!(),
         CoreTypeConcrete::EcState(_) => todo!(),
+        CoreTypeConcrete::Uninitialized(InfoAndTypeConcreteType { ty, .. }) => {
+            sierra_emu::Value::Uninitialized { ty: ty.clone() }
+        }
+        CoreTypeConcrete::SegmentArena(_) => sierra_emu::Value::Unit,
     }
 }
 
