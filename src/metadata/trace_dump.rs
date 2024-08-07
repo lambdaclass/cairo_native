@@ -283,7 +283,7 @@ fn value_from_pointer(
         | CoreTypeConcrete::Span(InfoAndTypeConcreteType {
             ty: inner_type_id, ..
         }) => {
-            let inner_size = state
+            let member_stride = state
                 .registry
                 .get_type(inner_type_id)
                 .unwrap()
@@ -295,11 +295,11 @@ fn value_from_pointer(
             let array = unsafe { value_ptr.cast::<ArrayAbi<()>>().as_ref().unwrap() };
 
             let length = (array.until - array.since) as usize;
-            let start_ptr = unsafe { array.ptr.byte_add(array.since as usize * inner_size) };
+            let start_ptr = unsafe { array.ptr.byte_add(array.since as usize * member_stride) };
             let mut data = Vec::with_capacity(length);
 
             for i in 0..length {
-                let current_ptr = unsafe { start_ptr.byte_add(i * inner_size) };
+                let current_ptr = unsafe { start_ptr.byte_add(i * member_stride) };
                 data.push(value_from_pointer(state, inner_type_id, current_ptr))
             }
 
