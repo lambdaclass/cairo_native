@@ -19,6 +19,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+use libc::c_void;
 use melior::{
     dialect::{func, llvm, ods},
     ir::{
@@ -231,9 +232,12 @@ extern "C" fn trace_state(
     state: *const InternalState,
     var_id: u64,
     value_type_id: u64,
-    value_ptr: *const (),
+    value_ptr: *mut c_void,
 ) {
     let Some(state) = unsafe { Weak::from_raw(state) }.upgrade() else {
+        return;
+    };
+    let Some(value_ptr) = NonNull::new(value_ptr) else {
         return;
     };
 
@@ -250,27 +254,27 @@ extern "C" fn trace_state(
 fn value_from_pointer(
     state: &InternalState,
     value_type_id: &ConcreteTypeId,
-    value_ptr: *const (),
+    value_ptr: NonNull<c_void>,
 ) -> sierra_emu::Value {
     let value_type = state.registry.get_type(value_type_id).unwrap();
 
     match value_type {
         CoreTypeConcrete::Felt252(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 32]>().as_ref().unwrap() };
+            let bytes = unsafe { value_ptr.cast::<[u8; 32]>().as_ref() };
             sierra_emu::Value::Felt(Felt::from_bytes_le(bytes))
         }
         CoreTypeConcrete::Uint8(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 1]>().as_ref().unwrap() };
+            let bytes = unsafe { value_ptr.cast::<[u8; 1]>().as_ref() };
             sierra_emu::Value::U8(u8::from_le_bytes(*bytes))
         }
         CoreTypeConcrete::Uint16(_) => todo!(),
         CoreTypeConcrete::Uint32(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 4]>().as_ref().unwrap() };
+            let bytes = unsafe { value_ptr.cast::<[u8; 4]>().as_ref() };
             sierra_emu::Value::U32(u32::from_le_bytes(*bytes))
         }
         CoreTypeConcrete::Uint64(_) => todo!(),
         CoreTypeConcrete::Uint128(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 16]>().as_ref().unwrap() };
+            let bytes = unsafe { value_ptr.cast::<[u8; 16]>().as_ref() };
             sierra_emu::Value::U128(u128::from_le_bytes(*bytes))
         }
         CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
@@ -294,14 +298,15 @@ fn value_from_pointer(
                 .pad_to_align()
                 .size();
 
-            let array = unsafe { value_ptr.cast::<ArrayAbi<()>>().as_ref().unwrap() };
+            let array = unsafe { value_ptr.cast::<ArrayAbi<c_void>>().as_ref() };
 
             let length = (array.until - array.since) as usize;
             let start_ptr = unsafe { array.ptr.byte_add(array.since as usize * member_stride) };
             let mut data = Vec::with_capacity(length);
 
             for i in 0..length {
-                let current_ptr = unsafe { start_ptr.byte_add(i * member_stride) };
+                let current_ptr =
+                    unsafe { NonNull::new(start_ptr.byte_add(i * member_stride)).unwrap() };
                 data.push(value_from_pointer(state, inner_type_id, current_ptr))
             }
 
@@ -322,7 +327,8 @@ fn value_from_pointer(
                 let (new_layout, offset) = layout.extend(member_layout).unwrap();
                 layout = new_layout;
 
-                let current_ptr = unsafe { value_ptr.byte_add(offset) };
+                let current_ptr =
+                    unsafe { NonNull::new(value_ptr.as_ptr().byte_add(offset)).unwrap() };
 
                 data.push(value_from_pointer(state, member_ty, current_ptr))
             }
@@ -341,10 +347,10 @@ fn value_from_pointer(
                 0 => unreachable!("an enum without variants is not a valid type."),
                 1 => 0,
                 _ => match tag_layout.size() {
-                    1 => *unsafe { value_ptr.cast::<u8>().as_ref().unwrap() } as usize,
-                    2 => *unsafe { value_ptr.cast::<u16>().as_ref().unwrap() } as usize,
-                    4 => *unsafe { value_ptr.cast::<u32>().as_ref().unwrap() } as usize,
-                    8 => *unsafe { value_ptr.cast::<u64>().as_ref().unwrap() } as usize,
+                    1 => unsafe { *value_ptr.cast::<u8>().as_ref() as usize },
+                    2 => unsafe { *value_ptr.cast::<u16>().as_ref() as usize },
+                    4 => unsafe { *value_ptr.cast::<u32>().as_ref() as usize },
+                    8 => unsafe { *value_ptr.cast::<u64>().as_ref() as usize },
                     _ => unreachable!(),
                 },
             };
@@ -357,7 +363,8 @@ fn value_from_pointer(
                 .layout(&state.registry)
                 .unwrap();
             let (_, payload_offset) = tag_layout.extend(payload_layout).unwrap();
-            let payload_ptr = unsafe { value_ptr.byte_add(payload_offset) };
+            let payload_ptr =
+                unsafe { NonNull::new(value_ptr.as_ptr().byte_add(payload_offset)).unwrap() };
             let payload = value_from_pointer(state, payload_type_id, payload_ptr);
 
             sierra_emu::Value::Enum {
@@ -374,9 +381,11 @@ fn value_from_pointer(
             ..
         }) => {
             let (dict, _) = unsafe {
-                (*value_ptr.cast::<*const (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>())
-                    .as_ref()
-                    .unwrap()
+                (*value_ptr
+                    .as_ptr()
+                    .cast::<*const (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>())
+                .as_ref()
+                .unwrap()
             };
 
             let dict = build_dict(state, dict, inner_type_id);
@@ -389,7 +398,7 @@ fn value_from_pointer(
         CoreTypeConcrete::Felt252DictEntry(InfoAndTypeConcreteType {
             ty: inner_type_id, ..
         }) => {
-            let entry = unsafe { value_ptr.cast::<DictEntryAbi<()>>().as_ref().unwrap() };
+            let entry = unsafe { value_ptr.cast::<DictEntryAbi<()>>().as_ref() };
             let key = Felt::from_bytes_le(&entry.key.0);
             let (dict, _) = unsafe { entry.dict_ptr.as_ref().unwrap() };
 
@@ -452,7 +461,7 @@ fn build_dict(
 
     for (key, value_ptr) in dict {
         let felt = Felt::from_bytes_le(key);
-        let value = value_from_pointer(state, inner_type_id, value_ptr.cast().as_ptr());
+        let value = value_from_pointer(state, inner_type_id, value_ptr.cast());
 
         new_dict.insert(felt, value);
     }
