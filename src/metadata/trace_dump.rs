@@ -251,6 +251,30 @@ fn value_from_pointer(
     let value_type = state.registry.get_type(value_type_id).unwrap();
 
     match value_type {
+        CoreTypeConcrete::Felt252(_) => {
+            let bytes = unsafe { value_ptr.cast::<[u8; 32]>().as_ref().unwrap() };
+            sierra_emu::Value::Felt(Felt::from_bytes_le(bytes))
+        }
+        CoreTypeConcrete::Uint8(_) => {
+            let bytes = unsafe { value_ptr.cast::<[u8; 1]>().as_ref().unwrap() };
+            sierra_emu::Value::U8(u8::from_le_bytes(*bytes))
+        }
+        CoreTypeConcrete::Uint16(_) => todo!(),
+        CoreTypeConcrete::Uint32(_) => {
+            let bytes = unsafe { value_ptr.cast::<[u8; 4]>().as_ref().unwrap() };
+            sierra_emu::Value::U32(u32::from_le_bytes(*bytes))
+        }
+        CoreTypeConcrete::Uint64(_) => todo!(),
+        CoreTypeConcrete::Uint128(_) => {
+            let bytes = unsafe { value_ptr.cast::<[u8; 16]>().as_ref().unwrap() };
+            sierra_emu::Value::U128(u128::from_le_bytes(*bytes))
+        }
+        CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+        CoreTypeConcrete::Sint8(_) => todo!(),
+        CoreTypeConcrete::Sint16(_) => todo!(),
+        CoreTypeConcrete::Sint32(_) => todo!(),
+        CoreTypeConcrete::Sint64(_) => todo!(),
+        CoreTypeConcrete::Sint128(_) => todo!(),
         CoreTypeConcrete::Array(InfoAndTypeConcreteType {
             ty: inner_type_id, ..
         })
@@ -282,47 +306,8 @@ fn value_from_pointer(
                 data,
             }
         }
-        CoreTypeConcrete::Coupon(_) => todo!(),
-        CoreTypeConcrete::Bitwise(_) => todo!(),
-        CoreTypeConcrete::Box(_) => todo!(),
-        CoreTypeConcrete::Circuit(_) => todo!(),
-        CoreTypeConcrete::Const(_) => todo!(),
-        CoreTypeConcrete::EcOp(_) => todo!(),
-        CoreTypeConcrete::EcPoint(_) => todo!(),
-        CoreTypeConcrete::EcState(_) => todo!(),
-        CoreTypeConcrete::Felt252(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 32]>().as_ref().unwrap() };
-            sierra_emu::Value::Felt(Felt::from_bytes_le(bytes))
-        }
-        CoreTypeConcrete::GasBuiltin(_) => todo!(),
-        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-        CoreTypeConcrete::Uint8(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 1]>().as_ref().unwrap() };
-            sierra_emu::Value::U8(u8::from_le_bytes(*bytes))
-        }
-        CoreTypeConcrete::Uint16(_) => todo!(),
-        CoreTypeConcrete::Uint32(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 4]>().as_ref().unwrap() };
-            sierra_emu::Value::U32(u32::from_le_bytes(*bytes))
-        }
-        CoreTypeConcrete::Uint64(_) => todo!(),
-        CoreTypeConcrete::Uint128(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 16]>().as_ref().unwrap() };
-            sierra_emu::Value::U128(u128::from_le_bytes(*bytes))
-        }
-        CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-        CoreTypeConcrete::Sint8(_) => todo!(),
-        CoreTypeConcrete::Sint16(_) => todo!(),
-        CoreTypeConcrete::Sint32(_) => todo!(),
-        CoreTypeConcrete::Sint64(_) => todo!(),
-        CoreTypeConcrete::Sint128(_) => todo!(),
-        CoreTypeConcrete::NonZero(_) => todo!(),
-        CoreTypeConcrete::Nullable(_) => todo!(),
-        CoreTypeConcrete::RangeCheck(_) => todo!(),
-        CoreTypeConcrete::RangeCheck96(_) => todo!(),
-        CoreTypeConcrete::Uninitialized(_) => todo!(),
-        CoreTypeConcrete::Enum(_) => todo!(),
         CoreTypeConcrete::Struct(_) => todo!(),
+        CoreTypeConcrete::Enum(_) => todo!(),
         CoreTypeConcrete::Felt252Dict(InfoAndTypeConcreteType {
             ty: inner_type_id, ..
         }) => {
@@ -356,15 +341,30 @@ fn value_from_pointer(
         }
 
         CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
+        CoreTypeConcrete::Snapshot(InfoAndTypeConcreteType {
+            ty: inner_type_id, ..
+        }) => value_from_pointer(state, inner_type_id, value_ptr),
+        CoreTypeConcrete::GasBuiltin(_) => todo!(),
+        CoreTypeConcrete::BuiltinCosts(_) => todo!(),
+        CoreTypeConcrete::NonZero(_) => todo!(),
+        CoreTypeConcrete::Nullable(_) => todo!(),
+        CoreTypeConcrete::RangeCheck(_) => todo!(),
+        CoreTypeConcrete::RangeCheck96(_) => todo!(),
+        CoreTypeConcrete::Uninitialized(_) => todo!(),
         CoreTypeConcrete::Pedersen(_) => todo!(),
         CoreTypeConcrete::Poseidon(_) => todo!(),
         CoreTypeConcrete::StarkNet(_) => todo!(),
         CoreTypeConcrete::SegmentArena(_) => sierra_emu::Value::Unit,
-        CoreTypeConcrete::Snapshot(InfoAndTypeConcreteType {
-            ty: inner_type_id, ..
-        }) => value_from_pointer(state, inner_type_id, value_ptr),
         CoreTypeConcrete::Bytes31(_) => todo!(),
         CoreTypeConcrete::BoundedInt(_) => todo!(),
+        CoreTypeConcrete::Coupon(_) => todo!(),
+        CoreTypeConcrete::Bitwise(_) => todo!(),
+        CoreTypeConcrete::Box(_) => todo!(),
+        CoreTypeConcrete::Circuit(_) => todo!(),
+        CoreTypeConcrete::Const(_) => todo!(),
+        CoreTypeConcrete::EcOp(_) => todo!(),
+        CoreTypeConcrete::EcPoint(_) => todo!(),
+        CoreTypeConcrete::EcState(_) => todo!(),
     }
 }
 
