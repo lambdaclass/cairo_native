@@ -185,9 +185,27 @@ mod test {
     fn program() -> Program {
         // Define a dummy program for testing
         let (_, program) = load_cairo! {
-            fn run_test() -> u128 {
-                let a: u128 = 1;
-                u128_sqrt(a).into()
+            use array::Array;
+            use array::ArrayTrait;
+            use array::SpanTrait;
+            use option::OptionTrait;
+            use box::BoxTrait;
+
+            fn run_test() -> u32 {
+                let mut data: Array<u32> = ArrayTrait::new();
+                data.append(1_u32);
+                data.append(2_u32);
+                data.append(3_u32);
+                data.append(4_u32);
+                let sp = data.span();
+                let slice = sp.slice(1, 2);
+                data.append(5_u32);
+                data.append(5_u32);
+                data.append(5_u32);
+                data.append(5_u32);
+                data.append(5_u32);
+                data.append(5_u32);
+                *slice.get(1).unwrap().unbox()
             }
         };
         program
@@ -201,19 +219,23 @@ mod test {
 
     #[rstest]
     fn test_extract_debug_info(debug_info: DebugInfo) {
-        // Assert the debug information contains u128
+        // Assert the debug information contains a type declaration for Array<u32>
         assert!(debug_info
             .type_declarations
             .iter()
-            .any(|(k, _)| k.debug_name == Some("u128".into())));
+            .any(|(k, _)| k.debug_name == Some("Array<u32>".into())));
 
-        // Assert the debug information contains u128_sqrt
+        // Assert the debug information contains a function declaration for array_append<u32>
         assert!(debug_info
             .libfunc_declarations
             .iter()
-            .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
+            .any(|(k, _)| k.debug_name == Some("array_append<u32>".into())));
 
-        assert!(debug_info.statements.is_empty());
+        // Assert the debug information contains a statement at index 0
+        assert!(debug_info.statements.contains_key(&StatementIdx(0)));
+
+        // Assert the debug information contains exactly one statement
+        assert_eq!(debug_info.statements.len(), 1);
 
         // Assert the debug information contains the run_test function
         assert!(debug_info.funcs.iter().any(|(k, _)| k
@@ -231,19 +253,23 @@ mod test {
         // Extract debug locations from the debug information
         let debug_locations = DebugLocations::extract(native_context.context(), &db, &debug_info);
 
-        // Assert the debug locations contain u128
+        // Assert the debug locations contain a type declaration for Array<u32>
         assert!(debug_locations
             .type_declarations
             .iter()
-            .any(|(k, _)| k.debug_name == Some("u128".into())));
+            .any(|(k, _)| k.debug_name == Some("Array<u32>".into())));
 
-        // Assert the debug locations contain u128_sqrt
+        // Assert the debug locations contain a function declaration for array_append<u32>
         assert!(debug_locations
             .libfunc_declarations
             .iter()
-            .any(|(k, _)| k.debug_name == Some("u128_sqrt".into())));
+            .any(|(k, _)| k.debug_name == Some("array_append<u32>".into())));
 
-        assert!(debug_locations.statements.is_empty());
+        // Assert the debug information contains a statement at index 0
+        assert!(debug_info.statements.contains_key(&StatementIdx(0)));
+
+        // Assert the debug information contains exactly one statement
+        assert_eq!(debug_info.statements.len(), 1);
 
         // Assert the debug locations contain the run_test function
         assert!(debug_locations.funcs.iter().any(|(k, _)| k
