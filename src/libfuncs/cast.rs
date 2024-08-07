@@ -82,10 +82,10 @@ pub fn build_downcast<'ctx, 'this>(
     );
 
     let src_is_signed = src_type
-        .is_integer_signed()
+        .is_integer_signed(registry)
         .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
     let dst_is_signed = dst_type
-        .is_integer_signed()
+        .is_integer_signed(registry)
         .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
     let any_is_signed = src_is_signed | dst_is_signed;
     let src_is_felt = matches!(
@@ -299,7 +299,7 @@ pub fn build_upcast<'ctx, 'this>(
     assert!(src_width <= dst_width);
 
     let is_signed = src_ty
-        .is_integer_signed()
+        .is_integer_signed(registry)
         .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
 
     let is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));

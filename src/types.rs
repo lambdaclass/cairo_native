@@ -108,7 +108,7 @@ pub trait TypeBuilder {
     fn integer_width(&self) -> Option<usize>;
 
     /// If the type is an integer type, return if its signed.
-    fn is_integer_signed(&self) -> Option<bool>;
+    fn is_integer_signed(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<bool>;
 
     /// If the type is a enum type, return all possible variants.
     ///
@@ -782,7 +782,7 @@ impl TypeBuilder for CoreTypeConcrete {
         }
     }
 
-    fn is_integer_signed(&self) -> Option<bool> {
+    fn is_integer_signed(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<bool> {
         match self {
             Self::Uint8(_) => Some(false),
             Self::Uint16(_) => Some(false),
@@ -795,6 +795,10 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Sint32(_) => Some(true),
             Self::Sint64(_) => Some(true),
             Self::Sint128(_) => Some(true),
+            Self::NonZero(inner) => {
+                let inner = registry.get_type(&inner.ty).ok()?;
+                inner.is_integer_signed(registry)
+            }
 
             CoreTypeConcrete::BoundedInt(info) => {
                 Some(info.range.lower.is_negative() || info.range.upper.is_negative())
