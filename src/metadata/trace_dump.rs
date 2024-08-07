@@ -5,10 +5,12 @@ use crate::{
     error::Result,
     starknet::{ArrayAbi, Felt252Abi},
     types::TypeBuilder,
+    utils::next_multiple_of_usize,
 };
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        enm::EnumConcreteType,
         structure::StructConcreteType,
         types::InfoAndTypeConcreteType,
     },
@@ -327,7 +329,43 @@ fn value_from_pointer(
 
             sierra_emu::Value::Struct(data)
         }
-        CoreTypeConcrete::Enum(_) => todo!(),
+        CoreTypeConcrete::Enum(EnumConcreteType { variants, .. }) => {
+            let tag_layout = crate::utils::get_integer_layout(match variants.len() {
+                0 => unreachable!("an enum without variants is not a valid type."),
+                1 => 0,
+                num_variants => (next_multiple_of_usize(num_variants.next_power_of_two(), 8) >> 3)
+                    .try_into()
+                    .unwrap(),
+            });
+            let tag_value = match variants.len() {
+                0 => unreachable!("an enum without variants is not a valid type."),
+                1 => 0,
+                _ => match tag_layout.size() {
+                    1 => *unsafe { value_ptr.cast::<u8>().as_ref().unwrap() } as usize,
+                    2 => *unsafe { value_ptr.cast::<u16>().as_ref().unwrap() } as usize,
+                    4 => *unsafe { value_ptr.cast::<u32>().as_ref().unwrap() } as usize,
+                    8 => *unsafe { value_ptr.cast::<u64>().as_ref().unwrap() } as usize,
+                    _ => unreachable!(),
+                },
+            };
+
+            let payload_type_id = &variants[tag_value];
+            let payload_layout = state
+                .registry
+                .get_type(payload_type_id)
+                .unwrap()
+                .layout(&state.registry)
+                .unwrap();
+            let (_, payload_offset) = tag_layout.extend(payload_layout).unwrap();
+            let payload_ptr = unsafe { value_ptr.byte_add(payload_offset) };
+            let payload = value_from_pointer(state, payload_type_id, payload_ptr);
+
+            sierra_emu::Value::Enum {
+                self_ty: value_type_id.clone(),
+                index: tag_value,
+                payload: Box::new(payload),
+            }
+        }
         CoreTypeConcrete::Felt252Dict(InfoAndTypeConcreteType {
             ty: inner_type_id, ..
         })
