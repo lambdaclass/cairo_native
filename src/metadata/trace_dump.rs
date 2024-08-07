@@ -253,6 +253,9 @@ fn value_from_pointer(
     match value_type {
         CoreTypeConcrete::Array(InfoAndTypeConcreteType {
             ty: inner_type_id, ..
+        })
+        | CoreTypeConcrete::Span(InfoAndTypeConcreteType {
+            ty: inner_type_id, ..
         }) => {
             let inner_size = state
                 .registry
@@ -355,10 +358,11 @@ fn value_from_pointer(
         CoreTypeConcrete::SquashedFelt252Dict(_) => todo!(),
         CoreTypeConcrete::Pedersen(_) => todo!(),
         CoreTypeConcrete::Poseidon(_) => todo!(),
-        CoreTypeConcrete::Span(_) => todo!(),
         CoreTypeConcrete::StarkNet(_) => todo!(),
         CoreTypeConcrete::SegmentArena(_) => sierra_emu::Value::Unit,
-        CoreTypeConcrete::Snapshot(_) => todo!(),
+        CoreTypeConcrete::Snapshot(InfoAndTypeConcreteType {
+            ty: inner_type_id, ..
+        }) => value_from_pointer(state, inner_type_id, value_ptr),
         CoreTypeConcrete::Bytes31(_) => todo!(),
         CoreTypeConcrete::BoundedInt(_) => todo!(),
     }
