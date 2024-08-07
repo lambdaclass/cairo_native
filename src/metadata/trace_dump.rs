@@ -333,7 +333,7 @@ fn value_from_pointer(
 
             sierra_emu::Value::FeltDict {
                 ty: inner_type_id.clone(),
-                data: Rc::new(RefCell::new(dict)),
+                data: dict,
             }
         }
         CoreTypeConcrete::Felt252DictEntry(InfoAndTypeConcreteType {
@@ -347,7 +347,7 @@ fn value_from_pointer(
 
             sierra_emu::Value::FeltDictEntry {
                 ty: inner_type_id.clone(),
-                data: Rc::new(RefCell::new(dict)),
+                data: dict,
                 key,
             }
         }
