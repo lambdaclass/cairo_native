@@ -182,14 +182,14 @@ impl NativeContext {
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
                 )
-                .expect("should work");
+                .expect("failed to write dump-prepass-debug-valid.mlir");
                 std::fs::write(
                     "dump-prepass-debug-pretty.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, true),
                     )?,
                 )
-                .expect("should work");
+                .expect("failed to writedump-prepass-debug-pretty.mlir");
             }
         }
 
@@ -209,14 +209,14 @@ impl NativeContext {
                         OperationPrintingFlags::new().enable_debug_info(true, true),
                     )?,
                 )
-                .expect("should work");
+                .expect("failed to write dump-debug-pretty.mlir");
                 std::fs::write(
                     "dump-debug.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
                 )
-                .expect("should work");
+                .expect("failed to write dump-debug.mlir");
             }
         }
 

@@ -206,7 +206,7 @@ pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Er
     let pass_manager = PassManager::new(context);
     pass_manager.enable_verifier(true);
     pass_manager.add_pass(pass::transform::create_canonicalizer());
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
+    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
     pass_manager.add_pass(pass::conversion::create_to_llvm());
     pass_manager.run(module)
 }

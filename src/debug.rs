@@ -196,7 +196,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             Uint128Concrete::ToFelt252(_) => "u128_to_felt252",
             Uint128Concrete::IsZero(_) => "u128_is_zero",
             Uint128Concrete::Bitwise(_) => "u128_bitwise",
-            Uint128Concrete::ByteReverse(_) => "u128_bytereverse",
+            Uint128Concrete::ByteReverse(_) => "u128_byte_reverse",
         },
         CoreConcreteLibfunc::Uint256(value) => match value {
             Uint256Concrete::IsZero(_) => "u256_is_zero",
@@ -327,9 +327,9 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             StarkNetConcreteLibfunc::StorageBaseAddressFromFelt252(_) => {
                 "storage_base_address_from_felt252"
             }
-            StarkNetConcreteLibfunc::StorageAddressFromBase(_) => "storage_address_from_bas",
+            StarkNetConcreteLibfunc::StorageAddressFromBase(_) => "storage_address_from_base",
             StarkNetConcreteLibfunc::StorageAddressFromBaseAndOffset(_) => {
-                "storage_address_from_Base_and_offset"
+                "storage_address_from_base_and_offset"
             }
             StarkNetConcreteLibfunc::StorageAddressToFelt252(_) => "storage_address_to_felt252",
             StarkNetConcreteLibfunc::StorageAddressTryFromFelt252(_) => {

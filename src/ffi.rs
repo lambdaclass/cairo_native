@@ -386,6 +386,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
         if x == "1" || x == "true" {
             // forget so the temp file is not deleted and the debugger can load it.
             // its still in a temp file directory so eventually the OS will delete it, but just not instantly.
+            // todo: maybe remove it when exiting, for example using atexit.
             std::mem::forget(file);
         }
     }
