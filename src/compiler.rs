@@ -45,8 +45,13 @@
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
-    debug_info::DebugLocations,
+    debug::libfunc_to_name,
     error::Error,
+    ffi::{
+        mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
+        mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet,
+        mlirLLVMDistinctAttrCreate,
+    },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
@@ -78,7 +83,8 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, Block, BlockRef, Identifier, Location, Module, Region, Type, Value,
+        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
+        Value,
     },
     Context,
 };
@@ -114,8 +120,26 @@ pub fn compile(
     program: &Program,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
-    debug_info: Option<&DebugLocations>,
+    di_compile_unit_id: Attribute,
 ) -> Result<(), Error> {
+    if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
+        if x == "1" || x == "true" {
+            std::fs::write("program.sierra", program.to_string()).expect("failed to dump sierra");
+        }
+    }
+
+    /*
+       A Sierra file is structured consistently,
+       it first has the types, followed by a empty line,
+       then the libfuncs, then the statements start.
+
+       This is how to calculate the offset to correctly show it on the debugger.
+    */
+
+    let num_types = program.type_declarations.len() + 1;
+    let n_libfuncs = program.libfunc_declarations.len() + 1;
+    let sierra_stmt_start_offset = num_types + n_libfuncs + 1;
+
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
         compile_func(
@@ -125,7 +149,8 @@ pub fn compile(
             function,
             &program.statements,
             metadata,
-            debug_info,
+            di_compile_unit_id,
+            sierra_stmt_start_offset,
         )?;
     }
 
@@ -139,6 +164,7 @@ pub fn compile(
 /// and name. Check out [compile](self::compile) for a description of the other arguments.
 ///
 /// The [module docs](self) contain more information about the compilation process.
+#[allow(clippy::too_many_arguments)]
 fn compile_func(
     context: &Context,
     module: &Module,
@@ -146,8 +172,16 @@ fn compile_func(
     function: &Function,
     statements: &[Statement],
     metadata: &mut MetadataStorage,
-    debug_info: Option<&DebugLocations>,
+    di_compile_unit_id: Attribute,
+    sierra_stmt_start_offset: usize,
 ) -> Result<(), Error> {
+    let fn_location = Location::new(
+        context,
+        "program.sierra",
+        sierra_stmt_start_offset + function.entry_point.0,
+        0,
+    );
+
     let region = Region::new();
     let blocks_arena = Bump::new();
 
@@ -221,9 +255,82 @@ fn compile_func(
         None
     };
 
+    let function_name = generate_function_name(&function.id);
+
+    let di_subprogram = unsafe {
+        // Various DWARF debug attributes for this function.
+        // The unsafe is because this is a method not yet found in upstream LLVM nor melior, so
+        // we are using our own bindings to the C++ API.
+        let file_attr = Attribute::from_raw(mlirLLVMDIFileAttrGet(
+            context.to_raw(),
+            StringAttribute::new(context, "program.sierra").to_raw(),
+            StringAttribute::new(context, ".").to_raw(),
+        ));
+        let compile_unit = {
+            Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
+                context.to_raw(),
+                di_compile_unit_id.to_raw(),
+                0x0002, // lang C (there is no language sierra in DWARF)
+                file_attr.to_raw(),
+                StringAttribute::new(context, "cairo-native").to_raw(),
+                false,
+                crate::ffi::DiEmissionKind::Full,
+            ))
+        };
+
+        let di_module = mlirLLVMDIModuleAttrGet(
+            context.to_raw(),
+            file_attr.to_raw(),
+            compile_unit.to_raw(),
+            StringAttribute::new(context, "LLVMDialectModule").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+            StringAttribute::new(context, "").to_raw(),
+            0,
+            false,
+        );
+
+        let module_scope = mlirLLVMDIModuleAttrGetScope(di_module);
+
+        Attribute::from_raw({
+            let id = mlirLLVMDistinctAttrCreate(
+                StringAttribute::new(context, &format!("fn_{}", function.id.id)).to_raw(),
+            );
+
+            // Don't add argument types since its not useful, we only use the debugger for source locations.
+            let ty = mlirLLVMDISubroutineTypeAttrGet(
+                context.to_raw(),
+                0x0, // call conv: C
+                0,
+                std::ptr::null(),
+            );
+
+            mlirLLVMDISubprogramAttrGet(
+                context.to_raw(),
+                id,
+                module_scope,
+                file_attr.to_raw(),
+                StringAttribute::new(context, &function_name).to_raw(),
+                StringAttribute::new(context, &function_name).to_raw(),
+                file_attr.to_raw(),
+                (sierra_stmt_start_offset + function.entry_point.0) as u32,
+                (sierra_stmt_start_offset + function.entry_point.0) as u32,
+                0x8, // dwarf subprogram flag: definition
+                ty,
+            )
+        })
+    };
+
     tracing::debug!("Generating function structure (region with blocks).");
     let (entry_block, blocks) = generate_function_structure(
-        context, module, &region, registry, function, statements, metadata,
+        context,
+        module,
+        &region,
+        registry,
+        function,
+        statements,
+        metadata,
+        sierra_stmt_start_offset,
     )?;
 
     tracing::debug!("Generating the function implementation.");
@@ -233,7 +340,17 @@ fn compile_func(
         Block::new(
             &arg_types
                 .iter()
-                .map(|ty| (*ty, Location::unknown(context)))
+                .map(|ty| {
+                    (
+                        *ty,
+                        Location::new(
+                            context,
+                            "program.sierra",
+                            sierra_stmt_start_offset + function.entry_point.0,
+                            0,
+                        ),
+                    )
+                })
                 .collect::<Vec<_>>(),
         ),
     );
@@ -244,6 +361,12 @@ fn compile_func(
         let mut count = 0;
         for param in &function.params {
             let type_info = registry.get_type(&param.ty)?;
+            let location = Location::new(
+                context,
+                "program.sierra",
+                sierra_stmt_start_offset + function.entry_point.0,
+                0,
+            );
 
             values.push((
                 &param.id,
@@ -251,7 +374,7 @@ fn compile_func(
                     pre_entry_block
                         .append_operation(llvm::undef(
                             type_info.build(context, module, registry, metadata, &param.ty)?,
-                            Location::unknown(context),
+                            location,
                         ))
                         .result(0)?
                         .into()
@@ -277,7 +400,14 @@ fn compile_func(
         .iter()
         .map(|x| initial_state[x])
         .collect::<Vec<_>>(),
-        Location::unknown(context),
+        {
+            Location::new(
+                context,
+                "program.sierra",
+                sierra_stmt_start_offset + function.entry_point.0,
+                0,
+            )
+        },
     ));
 
     let mut tailrec_storage = Vec::<(Value, BlockRef)>::new();
@@ -322,7 +452,7 @@ fn compile_func(
                     Location::name(
                         context,
                         &format!("landing_block(stmt_idx={})", statement_idx),
-                        Location::unknown(context),
+                        fn_location,
                     ),
                 ));
             }
@@ -333,8 +463,34 @@ fn compile_func(
                         "Implementing the invocation statement at {statement_idx}: {}.",
                         invocation.libfunc_id
                     );
-                    let libfunc_name =
-                        format!("{}(stmt_idx={})", invocation.libfunc_id, statement_idx);
+
+                    let location = Location::new(
+                        context,
+                        "program.sierra",
+                        sierra_stmt_start_offset + statement_idx.0,
+                        0,
+                    );
+
+                    #[cfg(feature = "with-debug-utils")]
+                    {
+                        // If this env var exists and is a valid statement, insert a debug trap before the libfunc call.
+                        // Only on when using with-debug-utils feature.
+                        if let Ok(x) = std::env::var("NATIVE_DEBUG_TRAP_AT_STMT") {
+                            if x.eq_ignore_ascii_case(&statement_idx.0.to_string()) {
+                                block.append_operation(
+                                    melior::dialect::ods::llvm::intr_debugtrap(context, location)
+                                        .into(),
+                                );
+                            }
+                        }
+                    }
+
+                    let libfunc_name = if invocation.libfunc_id.debug_name.is_some() {
+                        format!("{}(stmt_idx={})", invocation.libfunc_id, statement_idx)
+                    } else {
+                        let libf = registry.get_libfunc(&invocation.libfunc_id)?;
+                        format!("{}(stmt_idx={})", libfunc_to_name(libf), statement_idx)
+                    };
 
                     let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
@@ -367,7 +523,7 @@ fn compile_func(
                             let location = Location::name(
                                 context,
                                 &format!("recursion_counter({})", libfunc_name),
-                                Location::unknown(context),
+                                location,
                             );
                             let op0 = pre_entry_block.insert_operation(
                                 0,
@@ -408,15 +564,7 @@ fn compile_func(
                         context,
                         registry,
                         block,
-                        Location::name(
-                            context,
-                            &libfunc_name,
-                            debug_info
-                                .and_then(|debug_info| {
-                                    debug_info.statements.get(&statement_idx).copied()
-                                })
-                                .unwrap_or_else(|| Location::unknown(context)),
-                        ),
+                        Location::name(context, &libfunc_name, location),
                         &helper,
                         metadata,
                     )?;
@@ -459,7 +607,12 @@ fn compile_func(
                     let location = Location::name(
                         context,
                         &format!("return(stmt_idx={})", statement_idx),
-                        Location::unknown(context),
+                        Location::new(
+                            context,
+                            "program.sierra",
+                            sierra_stmt_start_offset + statement_idx.0,
+                            0,
+                        ),
                     );
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
@@ -469,7 +622,12 @@ fn compile_func(
                         let location = Location::name(
                             context,
                             &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
-                            Location::unknown(context),
+                            Location::new(
+                                context,
+                                "program.sierra",
+                                sierra_stmt_start_offset + statement_idx.0,
+                                0,
+                            ),
                         );
                         // Perform tail recursion.
                         for counter_idx in tailrec_state.into_values() {
@@ -632,7 +790,7 @@ fn compile_func(
                         context,
                         value,
                         type_info.build(context, module, registry, metadata, type_id)?,
-                        Location::unknown(context),
+                        fn_location,
                         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
                             IntegerType::new(context, 64).into(),
                             type_info.layout(registry)?.align() as i64,
@@ -645,15 +803,8 @@ fn compile_func(
             arg_values.push(value);
         }
 
-        pre_entry_block.append_operation(cf::br(
-            &entry_block,
-            &arg_values,
-            Location::unknown(context),
-        ));
+        pre_entry_block.append_operation(cf::br(&entry_block, &arg_values, fn_location));
     }
-
-    let function_name = generate_function_name(&function.id);
-    tracing::debug!("Creating the actual function, named `{function_name}`.");
 
     module.body().append_operation(func::func(
         context,
@@ -670,13 +821,23 @@ fn compile_func(
                 Attribute::unit(context),
             ),
         ],
-        Location::unknown(context),
+        Location::fused(
+            context,
+            &[Location::new(
+                context,
+                "program.sierra",
+                sierra_stmt_start_offset + function.entry_point.0,
+                0,
+            )],
+            di_subprogram,
+        ),
     ));
 
     tracing::debug!("Done generating function {}.", function.id);
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn generate_function_structure<'c, 'a>(
     context: &'c Context,
     module: &'a Module<'c>,
@@ -685,6 +846,7 @@ fn generate_function_structure<'c, 'a>(
     function: &Function,
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
+    sierra_stmt_start_offset: usize,
 ) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Error> {
     let initial_state = edit_state::put_results::<Type>(
         HashMap::new(),
@@ -733,8 +895,15 @@ fn generate_function_structure<'c, 'a>(
                     let (state, types) =
                         edit_state::take_args(state.clone(), invocation.args.iter())?;
 
+                    let location = Location::new(
+                        context,
+                        "program.sierra",
+                        sierra_stmt_start_offset + statement_idx.0,
+                        0,
+                    );
+
                     for ty in types {
-                        block.add_argument(ty, Location::unknown(context));
+                        block.add_argument(ty, location);
                     }
 
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
@@ -785,8 +954,15 @@ fn generate_function_structure<'c, 'a>(
                         "State must be empty after a return statement."
                     );
 
+                    let location = Location::new(
+                        context,
+                        "program.sierra",
+                        sierra_stmt_start_offset + statement_idx.0,
+                        0,
+                    );
+
                     for ty in types {
-                        block.add_argument(ty, Location::unknown(context));
+                        block.add_argument(ty, location);
                     }
 
                     Vec::new()
@@ -804,7 +980,17 @@ fn generate_function_structure<'c, 'a>(
             registry,
             metadata_storage,
         )
-        .map(|ty| Ok((ty?, Location::unknown(context))))
+        .map(|ty| {
+            Ok((
+                ty?,
+                Location::new(
+                    context,
+                    "program.sierra",
+                    sierra_stmt_start_offset + function.entry_point.0,
+                    0,
+                ),
+            ))
+        })
         .collect::<Result<Vec<_>, Error>>()?
     }));
 
@@ -830,7 +1016,17 @@ fn generate_function_structure<'c, 'a>(
                                 .map(|(var_id, ty)| (var_id.id, *ty))
                                 .collect::<BTreeMap<_, _>>()
                                 .into_values()
-                                .map(|ty| (ty, Location::unknown(context)))
+                                .map(|ty| {
+                                    (
+                                        ty,
+                                        Location::new(
+                                            context,
+                                            "program.sierra",
+                                            sierra_stmt_start_offset + statement_idx.0,
+                                            0,
+                                        ),
+                                    )
+                                })
                                 .collect::<Vec<_>>(),
                         ),
                     ),
