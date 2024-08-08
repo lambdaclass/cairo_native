@@ -420,9 +420,6 @@ pub fn build_bounded_int_constrain<'ctx, 'this>(
         location,
     ))?;
 
-    let x = registry.get_type(&info.output_types()[0][1])?;
-    let y = registry.get_type(&info.output_types()[0][1])?;
-
     entry.append_operation(helper.cond_br(
         context,
         condition,
