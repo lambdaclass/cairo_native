@@ -117,6 +117,7 @@ pub fn compile(
     metadata: &mut MetadataStorage,
     debug_info: Option<&DebugLocations>,
 ) -> Result<(), Error> {
+    std::fs::write("program.sierra", program.to_string());
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
         compile_func(

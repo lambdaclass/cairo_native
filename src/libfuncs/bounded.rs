@@ -267,6 +267,7 @@ pub fn build_bounded_int_divrem<'ctx, 'this>(
         metadata,
         &info.output_types()[0][1],
     )?;
+    dbg!(&dst_ty);
 
     if lhs_type.integer_width() < dst_type.integer_width() {
         if lhs_is_signed {
@@ -284,8 +285,16 @@ pub fn build_bounded_int_divrem<'ctx, 'this>(
         }
     }
 
-    let result_div = entry.append_op_result(arith::divui(lhs, rhs, location))?;
-    let result_rem = entry.append_op_result(arith::remui(lhs, rhs, location))?;
+    let result_div = if lhs_is_signed || rhs_is_signed {
+        entry.append_op_result(arith::divsi(lhs, rhs, location))?
+    } else {
+        entry.append_op_result(arith::divui(lhs, rhs, location))?
+    };
+    let result_rem = if lhs_is_signed || rhs_is_signed {
+        entry.append_op_result(arith::remsi(lhs, rhs, location))?
+    } else {
+        entry.append_op_result(arith::divui(lhs, rhs, location))?
+    };
 
     entry.append_operation(helper.br(0, &[range_check, result_div, result_rem], location));
     Ok(())

@@ -301,7 +301,8 @@ pub fn build_upcast<'ctx, 'this>(
         .is_integer_signed(registry)
         .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
 
-    let is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
+    let dst_is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
+    let dst_is_bounded = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
     let src_is_bounded = matches!(src_ty, CoreTypeConcrete::BoundedInt(_));
 
     if !src_is_bounded {
@@ -312,11 +313,11 @@ pub fn build_upcast<'ctx, 'this>(
 
     let result = if src_width == dst_width {
         block.argument(0)?.into()
-    } else if src_is_bounded {
+    } else if src_is_bounded && !dst_is_felt && !dst_is_bounded {
         // bounded int is always a felt252 in width so it needs to be truncated
         block.append_op_result(arith::trunci(block.argument(0)?.into(), dst_type, location))?
-    } else if is_signed || is_felt {
-        if is_felt {
+    } else if is_signed || dst_is_felt {
+        if dst_is_felt {
             let result = block.append_op_result(arith::extsi(
                 block.argument(0)?.into(),
                 IntegerType::new(context, dst_width.try_into()?).into(),
