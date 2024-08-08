@@ -1043,7 +1043,7 @@ mod trace_dump {
 
     use crate::{block_ext::BlockExt, metadata::trace_dump::TraceDump, types::TypeBuilder};
     use cairo_lang_sierra::{
-        extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        extensions::core::{CoreLibfunc, CoreType},
         ids::{ConcreteTypeId, VarId},
         program::StatementIdx,
         program_registry::ProgramRegistry,
@@ -1076,12 +1076,9 @@ mod trace_dump {
                 .unwrap();
             block.store(context, location, ptr_value, *value).unwrap();
 
-            match type_info {
-                CoreTypeConcrete::Felt252(_) => trace_meta
-                    .build_state_felt252(context, module, block, var_id, ptr_value, location)
-                    .unwrap(),
-                _ => todo!(),
-            }
+            trace_meta
+                .build_state(context, module, block, var_id, type_id, ptr_value, location)
+                .unwrap()
         }
 
         trace_meta
