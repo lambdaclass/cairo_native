@@ -395,6 +395,7 @@ fn parse_result(
             Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
         }
         CoreTypeConcrete::Felt252(_)
+        | CoreTypeConcrete::BoundedInt(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
             | StarkNetTypeConcrete::ContractAddress(_)

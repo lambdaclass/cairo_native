@@ -493,7 +493,7 @@ impl TypeBuilder for CoreTypeConcrete {
             },
             CoreTypeConcrete::Struct(_) => true,
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_) => false,
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_))
@@ -671,11 +671,8 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
-            CoreTypeConcrete::BoundedInt(info) => get_integer_layout(
-                (info.range.lower.bits().max(info.range.upper.bits()) + 1)
-                    .try_into()
-                    .expect("should always fit u32"),
-            ),
+            CoreTypeConcrete::BoundedInt(_) => get_integer_layout(252),
+
             CoreTypeConcrete::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
