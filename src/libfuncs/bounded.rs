@@ -16,7 +16,7 @@ use cairo_lang_sierra::{
         },
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc, ConcreteType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
