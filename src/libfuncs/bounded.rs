@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
     error::{Error, Result, SierraAssertError},
-    metadata::MetadataStorage,
+    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
     types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
@@ -22,9 +22,10 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
-    ir::{Block, Location, Value, ValueLike},
+    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
+use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -94,26 +95,48 @@ fn build_bounded_int_add<'ctx, 'this>(
         &info.output_types()[0][0],
     )?;
 
+    let prime = metadata.get::<PrimeModuloMeta<Felt>>().unwrap().prime();
+    let prime = entry.const_int_from_type(
+        context,
+        location,
+        prime.clone(),
+        IntegerType::new(context, 252).into(),
+    )?;
+
     if lhs_type.integer_width() < dst_type.integer_width() {
-        if lhs_is_signed {
-            lhs = entry.append_op_result(arith::extsi(lhs, dst_ty, location))?;
+        lhs = if lhs_is_signed {
+            let lhs = entry.append_op_result(arith::extsi(lhs, dst_ty, location))?;
+            entry.append_op_result(arith::addi(prime, lhs, location))?
         } else {
-            lhs = entry.append_op_result(arith::extui(lhs, dst_ty, location))?;
-        }
+            entry.append_op_result(arith::extui(lhs, dst_ty, location))?
+        };
     }
-
     if rhs_type.integer_width() < dst_type.integer_width() {
-        if rhs_is_signed {
-            rhs = entry.append_op_result(arith::extsi(rhs, dst_ty, location))?;
+        rhs = if rhs_is_signed {
+            let rhs = entry.append_op_result(arith::extsi(rhs, dst_ty, location))?;
+            entry.append_op_result(arith::addi(prime, rhs, location))?
         } else {
-            rhs = entry.append_op_result(arith::extui(rhs, dst_ty, location))?;
-        }
+            entry.append_op_result(arith::extui(rhs, dst_ty, location))?
+        };
     }
 
-    let value = entry.append_op_result(arith::addi(lhs, rhs, location))?;
+    let result = entry.append_op_result(arith::addi(lhs, rhs, location))?;
+    let is_out_of_range = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Uge,
+        result,
+        prime,
+        location,
+    ))?;
+    let result_in_range = entry.append_op_result(arith::subi(result, prime, location))?;
+    let result = entry.append_op_result(arith::select(
+        is_out_of_range,
+        result_in_range,
+        result,
+        location,
+    ))?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-
+    entry.append_operation(helper.br(0, &[result], location));
     Ok(())
 }
 
@@ -128,7 +151,6 @@ fn build_bounded_int_sub<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    // They have felt-width already, and the libfunc is non branching, so it cant fail.
     let mut lhs = entry.argument(0)?.into();
     let mut rhs = entry.argument(1)?.into();
 
@@ -151,26 +173,49 @@ fn build_bounded_int_sub<'ctx, 'this>(
         &info.output_types()[0][0],
     )?;
 
+    let prime = metadata.get::<PrimeModuloMeta<Felt>>().unwrap().prime();
+    let prime = entry.const_int_from_type(
+        context,
+        location,
+        prime.clone(),
+        IntegerType::new(context, 252).into(),
+    )?;
+
     if lhs_type.integer_width() < dst_type.integer_width() {
-        if lhs_is_signed {
-            lhs = entry.append_op_result(arith::extsi(lhs, dst_ty, location))?;
+        lhs = if lhs_is_signed {
+            let lhs = entry.append_op_result(arith::extsi(lhs, dst_ty, location))?;
+            entry.append_op_result(arith::addi(prime, lhs, location))?
         } else {
-            lhs = entry.append_op_result(arith::extui(lhs, dst_ty, location))?;
-        }
+            entry.append_op_result(arith::extui(lhs, dst_ty, location))?
+        };
     }
 
     if rhs_type.integer_width() < dst_type.integer_width() {
-        if rhs_is_signed {
-            rhs = entry.append_op_result(arith::extsi(rhs, dst_ty, location))?;
+        rhs = if rhs_is_signed {
+            let rhs = entry.append_op_result(arith::extsi(rhs, dst_ty, location))?;
+            entry.append_op_result(arith::addi(prime, rhs, location))?
         } else {
-            rhs = entry.append_op_result(arith::extui(rhs, dst_ty, location))?;
-        }
+            entry.append_op_result(arith::extui(rhs, dst_ty, location))?
+        };
     }
 
-    let value = entry.append_op_result(arith::subi(lhs, rhs, location))?;
+    let result = entry.append_op_result(arith::subi(lhs, rhs, location))?;
+    let is_out_of_range = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Uge,
+        result,
+        prime,
+        location,
+    ))?;
+    let result_in_range = entry.append_op_result(arith::addi(result, prime, location))?;
+    let result = entry.append_op_result(arith::select(
+        is_out_of_range,
+        result_in_range,
+        result,
+        location,
+    ))?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-
+    entry.append_operation(helper.br(0, &[result], location));
     Ok(())
 }
 
@@ -185,9 +230,8 @@ fn build_bounded_int_mul<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    // They have felt-width already, and the libfunc is non branching, so it cant fail.
-    let mut lhs = entry.argument(0)?.into();
-    let mut rhs = entry.argument(1)?.into();
+    let lhs = entry.argument(0)?.into();
+    let rhs = entry.argument(1)?.into();
 
     let lhs_type = registry.get_type(&info.param_signatures()[0].ty)?;
     let rhs_type = registry.get_type(&info.param_signatures()[1].ty)?;
@@ -208,26 +252,41 @@ fn build_bounded_int_mul<'ctx, 'this>(
         &info.output_types()[0][0],
     )?;
 
-    if lhs_type.integer_width() < dst_type.integer_width() {
-        if lhs_is_signed {
-            lhs = entry.append_op_result(arith::extsi(lhs, dst_ty, location))?;
-        } else {
-            lhs = entry.append_op_result(arith::extui(lhs, dst_ty, location))?;
-        }
-    }
+    let prime = metadata.get::<PrimeModuloMeta<Felt>>().unwrap().prime();
+    let prime = entry.const_int_from_type(
+        context,
+        location,
+        prime.clone(),
+        IntegerType::new(context, 512).into(),
+    )?;
 
-    if rhs_type.integer_width() < dst_type.integer_width() {
-        if rhs_is_signed {
-            rhs = entry.append_op_result(arith::extsi(rhs, dst_ty, location))?;
-        } else {
-            rhs = entry.append_op_result(arith::extui(rhs, dst_ty, location))?;
-        }
-    }
+    let lhs = if lhs_is_signed {
+        let lhs = entry.append_op_result(arith::extsi(
+            lhs,
+            IntegerType::new(context, 512).into(),
+            location,
+        ))?;
+        entry.append_op_result(arith::addi(prime, lhs, location))?
+    } else {
+        entry.append_op_result(arith::extui(lhs, dst_ty, location))?
+    };
 
-    let value = entry.append_op_result(arith::muli(lhs, rhs, location))?;
+    let rhs = if rhs_is_signed {
+        let rhs = entry.append_op_result(arith::extsi(
+            rhs,
+            IntegerType::new(context, 512).into(),
+            location,
+        ))?;
+        entry.append_op_result(arith::addi(prime, rhs, location))?
+    } else {
+        entry.append_op_result(arith::extui(rhs, dst_ty, location))?
+    };
 
-    entry.append_operation(helper.br(0, &[value], location));
+    let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
+    let result = entry.append_op_result(arith::remui(result, prime, location))?;
+    let result = entry.append_op_result(arith::trunci(result, dst_ty, location))?;
 
+    entry.append_operation(helper.br(0, &[result], location));
     Ok(())
 }
 

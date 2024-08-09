@@ -594,7 +594,6 @@ fn parse_result(
 
         CoreTypeConcrete::Felt252DictEntry(_)
         | CoreTypeConcrete::Span(_)
-        | CoreTypeConcrete::BoundedInt(_)
         | CoreTypeConcrete::Uninitialized(_)
         | CoreTypeConcrete::Coupon(_)
         | CoreTypeConcrete::StarkNet(_)
