@@ -3371,6 +3371,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 [[package]]
 name = "sierra-emu"
 version = "0.1.0"
+source = "git+https://github.com/azteca1998/sierra-emu#5a2fb2ad9bd413878c5ed7092c3252d1bcc4ade5"
 dependencies = [
  "cairo-lang-sierra",
  "cairo-lang-utils",
