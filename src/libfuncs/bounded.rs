@@ -14,7 +14,7 @@ use cairo_lang_sierra::{
             BoundedIntConcreteLibfunc, BoundedIntConstrainConcreteLibfunc,
             BoundedIntDivRemConcreteLibfunc,
         },
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc,
     },
@@ -485,38 +485,48 @@ pub fn build_bounded_int_constrain<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &BoundedIntConstrainConcreteLibfunc,
 ) -> Result<()> {
-    let range_check: Value = entry.argument(0)?.into();
-    let mut value: Value = entry.argument(1)?.into();
+    let range_check = entry.argument(0)?.into();
+    let value = entry.argument(1)?.into();
 
-    let value_type = registry.get_type(&info.param_signatures()[1].ty)?;
+    let src_ty = registry.get_type(&info.param_signatures()[1].ty)?;
+    let boundary = entry.const_int(context, location, info.boundary.clone(), 252)?;
 
-    let const_boundary = entry.const_int(context, location, info.boundary.clone(), 252)?;
+    let (is_lower, value) = match src_ty {
+        CoreTypeConcrete::Felt252(_) => todo!(),
+        _ => match src_ty.is_integer_signed(registry) {
+            Some(true) => {
+                let value =
+                    entry.append_op_result(arith::extsi(value, boundary.r#type(), location))?;
+                let is_lower = entry.append_op_result(arith::cmpi(
+                    context,
+                    CmpiPredicate::Slt,
+                    value,
+                    boundary,
+                    location,
+                ))?;
 
-    let is_signed = value_type
-        .is_integer_signed(registry)
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
+                (is_lower, value)
+            }
+            Some(false) => {
+                let value =
+                    entry.append_op_result(arith::extui(value, boundary.r#type(), location))?;
+                let is_lower = entry.append_op_result(arith::cmpi(
+                    context,
+                    CmpiPredicate::Ult,
+                    value,
+                    boundary,
+                    location,
+                ))?;
 
-    if value_type.integer_width() < Some(252) {
-        if is_signed {
-            value =
-                entry.append_op_result(arith::extsi(value, const_boundary.r#type(), location))?;
-        } else {
-            value =
-                entry.append_op_result(arith::extui(value, const_boundary.r#type(), location))?;
-        }
-    }
-
-    let condition = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ult,
-        value,
-        const_boundary,
-        location,
-    ))?;
+                (is_lower, value)
+            }
+            None => return Err(Error::SierraAssert(SierraAssertError::Cast)),
+        },
+    };
 
     entry.append_operation(helper.cond_br(
         context,
-        condition,
+        is_lower,
         [0, 1],
         [&[range_check, value], &[range_check, value]],
         location,
