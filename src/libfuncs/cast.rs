@@ -82,10 +82,10 @@ pub fn build_downcast<'ctx, 'this>(
     );
 
     let src_is_signed = src_type
-        .is_integer_signed()
+        .is_integer_signed(registry)
         .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
     let dst_is_signed = dst_type
-        .is_integer_signed()
+        .is_integer_signed(registry)
         .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
     let any_is_signed = src_is_signed | dst_is_signed;
     let src_is_felt = matches!(
@@ -296,20 +296,28 @@ pub fn build_upcast<'ctx, 'this>(
     let dst_width = dst_ty
         .integer_width()
         .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
-    assert!(src_width <= dst_width);
 
     let is_signed = src_ty
-        .is_integer_signed()
+        .is_integer_signed(registry)
         .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
 
-    let is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
+    let dst_is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
+    let dst_is_bounded = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
+    let src_is_bounded = matches!(src_ty, CoreTypeConcrete::BoundedInt(_));
+
+    if !src_is_bounded {
+        assert!(src_width <= dst_width);
+    }
 
     let block = entry;
 
     let result = if src_width == dst_width {
         block.argument(0)?.into()
-    } else if is_signed || is_felt {
-        if is_felt {
+    } else if src_is_bounded && !dst_is_felt && !dst_is_bounded {
+        // bounded int is always a felt252 in width so it needs to be truncated
+        block.append_op_result(arith::trunci(block.argument(0)?.into(), dst_type, location))?
+    } else if is_signed || dst_is_felt {
+        if dst_is_felt {
             let result = block.append_op_result(arith::extsi(
                 block.argument(0)?.into(),
                 IntegerType::new(context, dst_width.try_into()?).into(),

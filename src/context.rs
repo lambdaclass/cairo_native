@@ -136,7 +136,7 @@ impl NativeContext {
                 std::fs::write(
                     "dump-prepass-debug.mlir",
                     module.as_operation().to_string_with_flags(
-                        OperationPrintingFlags::new().enable_debug_info(true, true),
+                        OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
                 )
                 .expect("should work");
@@ -152,7 +152,7 @@ impl NativeContext {
                 std::fs::write(
                     "dump-debug.mlir",
                     module.as_operation().to_string_with_flags(
-                        OperationPrintingFlags::new().enable_debug_info(true, true),
+                        OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
                 )
                 .expect("should work");
@@ -200,7 +200,35 @@ impl NativeContext {
             None,
         )?;
 
+        if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP_PREPASS") {
+            if x == "1" || x == "true" {
+                std::fs::write("dump-prepass.mlir", module.as_operation().to_string())
+                    .expect("should work");
+                std::fs::write(
+                    "dump-prepass-debug.mlir",
+                    module.as_operation().to_string_with_flags(
+                        OperationPrintingFlags::new().enable_debug_info(true, false),
+                    )?,
+                )
+                .expect("should work");
+            }
+        }
+
         run_pass_manager(&self.context, &mut module)?;
+
+        if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
+            if x == "1" || x == "true" {
+                std::fs::write("dump.mlir", module.as_operation().to_string())
+                    .expect("should work");
+                std::fs::write(
+                    "dump-debug.mlir",
+                    module.as_operation().to_string_with_flags(
+                        OperationPrintingFlags::new().enable_debug_info(true, false),
+                    )?,
+                )
+                .expect("should work");
+            }
+        }
 
         Ok(NativeModule::new(module, registry, metadata))
     }

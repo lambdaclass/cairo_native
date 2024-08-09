@@ -108,7 +108,7 @@ pub trait TypeBuilder {
     fn integer_width(&self) -> Option<usize>;
 
     /// If the type is an integer type, return if its signed.
-    fn is_integer_signed(&self) -> Option<bool>;
+    fn is_integer_signed(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<bool>;
 
     /// If the type is a enum type, return all possible variants.
     ///
@@ -493,7 +493,7 @@ impl TypeBuilder for CoreTypeConcrete {
             },
             CoreTypeConcrete::Struct(_) => true,
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_) => false,
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_))
@@ -671,11 +671,8 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
-            CoreTypeConcrete::BoundedInt(info) => get_integer_layout(
-                (info.range.lower.bits().max(info.range.upper.bits()) + 1)
-                    .try_into()
-                    .expect("should always fit u32"),
-            ),
+            CoreTypeConcrete::BoundedInt(_) => get_integer_layout(252),
+
             CoreTypeConcrete::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
@@ -782,7 +779,7 @@ impl TypeBuilder for CoreTypeConcrete {
         }
     }
 
-    fn is_integer_signed(&self) -> Option<bool> {
+    fn is_integer_signed(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<bool> {
         match self {
             Self::Uint8(_) => Some(false),
             Self::Uint16(_) => Some(false),
@@ -795,6 +792,10 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Sint32(_) => Some(true),
             Self::Sint64(_) => Some(true),
             Self::Sint128(_) => Some(true),
+            Self::NonZero(inner) => {
+                let inner = registry.get_type(&inner.ty).ok()?;
+                inner.is_integer_signed(registry)
+            }
 
             CoreTypeConcrete::BoundedInt(info) => {
                 Some(info.range.lower.is_negative() || info.range.upper.is_negative())

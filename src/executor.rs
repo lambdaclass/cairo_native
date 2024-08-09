@@ -17,6 +17,7 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
+        ConcreteType,
     },
     ids::{ConcreteTypeId, FunctionId},
     program::FunctionSignature,
@@ -363,6 +364,7 @@ fn parse_result(
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> Result<JitValue, Error> {
     let type_info = registry.get_type(type_id).unwrap();
+    let debug_name = type_info.info().long_id.to_string();
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
@@ -393,6 +395,7 @@ fn parse_result(
             Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
         }
         CoreTypeConcrete::Felt252(_)
+        | CoreTypeConcrete::BoundedInt(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
             | StarkNetTypeConcrete::ContractAddress(_)
@@ -551,14 +554,14 @@ fn parse_result(
             Ok(JitValue::Enum {
                 tag,
                 value,
-                debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+                debug_name: Some(debug_name),
             })
         }
         CoreTypeConcrete::Struct(info) => {
             if info.members.is_empty() {
                 Ok(JitValue::Struct {
                     fields: Vec::new(),
-                    debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+                    debug_name: Some(debug_name),
                 })
             } else {
                 Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
@@ -591,7 +594,6 @@ fn parse_result(
 
         CoreTypeConcrete::Felt252DictEntry(_)
         | CoreTypeConcrete::Span(_)
-        | CoreTypeConcrete::BoundedInt(_)
         | CoreTypeConcrete::Uninitialized(_)
         | CoreTypeConcrete::Coupon(_)
         | CoreTypeConcrete::StarkNet(_)
