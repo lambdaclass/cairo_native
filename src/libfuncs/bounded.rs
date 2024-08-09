@@ -25,6 +25,8 @@ use melior::{
     ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
+use num_bigint::BigUint;
+use num_traits::One;
 use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -103,6 +105,8 @@ fn build_bounded_int_add<'ctx, 'this>(
         IntegerType::new(context, 252).into(),
     )?;
 
+    // TODO: I think just converting the result to felt should yield the same result with less
+    //   conversions.
     if lhs_type.integer_width() < dst_type.integer_width() {
         lhs = if lhs_is_signed {
             let lhs = entry.append_op_result(arith::extsi(lhs, dst_ty, location))?;
@@ -181,6 +185,8 @@ fn build_bounded_int_sub<'ctx, 'this>(
         IntegerType::new(context, 252).into(),
     )?;
 
+    // TODO: I think just converting the result to felt should yield the same result with less
+    //   conversions.
     if lhs_type.integer_width() < dst_type.integer_width() {
         lhs = if lhs_is_signed {
             let lhs = entry.append_op_result(arith::extsi(lhs, dst_ty, location))?;
@@ -189,7 +195,6 @@ fn build_bounded_int_sub<'ctx, 'this>(
             entry.append_op_result(arith::extui(lhs, dst_ty, location))?
         };
     }
-
     if rhs_type.integer_width() < dst_type.integer_width() {
         rhs = if rhs_is_signed {
             let rhs = entry.append_op_result(arith::extsi(rhs, dst_ty, location))?;
@@ -243,7 +248,6 @@ fn build_bounded_int_mul<'ctx, 'this>(
         .is_integer_signed(registry)
         .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
 
-    let dst_type = registry.get_type(&info.output_types()[0][0])?;
     let dst_ty = registry.build_type(
         context,
         helper,
@@ -260,6 +264,8 @@ fn build_bounded_int_mul<'ctx, 'this>(
         IntegerType::new(context, 512).into(),
     )?;
 
+    // TODO: I think just converting the result to felt should yield the same result with less
+    //   conversions.
     let lhs = if lhs_is_signed {
         let lhs = entry.append_op_result(arith::extsi(
             lhs,
@@ -268,9 +274,12 @@ fn build_bounded_int_mul<'ctx, 'this>(
         ))?;
         entry.append_op_result(arith::addi(prime, lhs, location))?
     } else {
-        entry.append_op_result(arith::extui(lhs, dst_ty, location))?
+        entry.append_op_result(arith::extui(
+            lhs,
+            IntegerType::new(context, 512).into(),
+            location,
+        ))?
     };
-
     let rhs = if rhs_is_signed {
         let rhs = entry.append_op_result(arith::extsi(
             rhs,
@@ -279,7 +288,11 @@ fn build_bounded_int_mul<'ctx, 'this>(
         ))?;
         entry.append_op_result(arith::addi(prime, rhs, location))?
     } else {
-        entry.append_op_result(arith::extui(rhs, dst_ty, location))?
+        entry.append_op_result(arith::extui(
+            rhs,
+            IntegerType::new(context, 512).into(),
+            location,
+        ))?
     };
 
     let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
@@ -326,34 +339,47 @@ pub fn build_bounded_int_divrem<'ctx, 'this>(
         metadata,
         &info.output_types()[0][1],
     )?;
-    dbg!(&dst_ty);
 
     if lhs_type.integer_width() < dst_type.integer_width() {
-        if lhs_is_signed {
-            lhs = entry.append_op_result(arith::extsi(lhs, dst_ty, location))?;
+        lhs = if lhs_is_signed {
+            entry.append_op_result(arith::extsi(lhs, dst_ty, location))?
         } else {
-            lhs = entry.append_op_result(arith::extui(lhs, dst_ty, location))?;
-        }
+            entry.append_op_result(arith::extui(lhs, dst_ty, location))?
+        };
     }
-
     if rhs_type.integer_width() < dst_type.integer_width() {
-        if rhs_is_signed {
-            rhs = entry.append_op_result(arith::extsi(rhs, dst_ty, location))?;
+        rhs = if rhs_is_signed {
+            entry.append_op_result(arith::extsi(rhs, dst_ty, location))?
         } else {
-            rhs = entry.append_op_result(arith::extui(rhs, dst_ty, location))?;
-        }
+            entry.append_op_result(arith::extui(rhs, dst_ty, location))?
+        };
     }
 
-    let result_div = if lhs_is_signed || rhs_is_signed {
-        entry.append_op_result(arith::divsi(lhs, rhs, location))?
-    } else {
-        entry.append_op_result(arith::divui(lhs, rhs, location))?
-    };
-    let result_rem = if lhs_is_signed || rhs_is_signed {
-        entry.append_op_result(arith::remsi(lhs, rhs, location))?
-    } else {
-        entry.append_op_result(arith::divui(lhs, rhs, location))?
-    };
+    let result_div = entry.append_op_result(arith::divsi(lhs, rhs, location))?;
+    let result_rem = entry.append_op_result(arith::remsi(lhs, rhs, location))?;
+
+    let prime = metadata.get::<PrimeModuloMeta<Felt>>().unwrap().prime();
+    let prime = entry.const_int_from_type(
+        context,
+        location,
+        prime.clone() - BigUint::one(),
+        IntegerType::new(context, 252).into(),
+    )?;
+    let k0 = entry.const_int_from_type(context, location, 0, dst_ty)?;
+    let result_div_is_negative = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Slt,
+        result_div,
+        k0,
+        location,
+    ))?;
+    let result_div_negative = entry.append_op_result(arith::addi(prime, result_div, location))?;
+    let result_div = entry.append_op_result(arith::select(
+        result_div_is_negative,
+        result_div_negative,
+        result_div,
+        location,
+    ))?;
 
     entry.append_operation(helper.br(0, &[range_check, result_div, result_rem], location));
     Ok(())

@@ -198,7 +198,6 @@ pub fn build_downcast<'ctx, 'this>(
             })?;
 
         let mut int_max_value: BigInt = info_range.upper - 1;
-
         let mut int_min_value = info_range.lower;
 
         if dst_is_felt {
