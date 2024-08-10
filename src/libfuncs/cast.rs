@@ -232,7 +232,7 @@ pub fn build_upcast<'ctx, 'this>(
                     src_range.lower.clone(),
                     dst_value.r#type(),
                 )?;
-                entry.append_op_result(arith::subi(dst_value, dst_offset, location))?
+                entry.append_op_result(arith::addi(dst_value, dst_offset, location))?
             } else {
                 dst_value
             }

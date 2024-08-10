@@ -370,7 +370,7 @@ fn build_mul<'ctx, 'this>(
     let res_value = entry.append_op_result(arith::muli(lhs_value, rhs_value, location))?;
 
     // Offset and truncate the result to the output type.
-    let res_offset = &dst_range.lower - &compute_range.lower;
+    let res_offset = (&dst_range.lower).max(&compute_range.lower).clone();
     let res_value = if res_offset != BigInt::ZERO {
         let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
         entry.append_op_result(arith::subi(res_value, res_offset, location))?
@@ -493,8 +493,8 @@ fn build_divrem<'ctx, 'this>(
     let rem_value = entry.append_op_result(arith::remui(lhs_value, rhs_value, location))?;
 
     // Offset and truncate the result to the output type.
-    let div_offset = &div_range.lower - &compute_range.lower;
-    let rem_offset = &rem_range.lower - &compute_range.lower;
+    let div_offset = (&div_range.lower).max(&compute_range.lower).clone();
+    let rem_offset = (&rem_range.lower).max(&compute_range.lower).clone();
 
     let div_value = if div_offset != BigInt::ZERO {
         let div_offset = entry.const_int_from_type(context, location, div_offset, compute_ty)?;
