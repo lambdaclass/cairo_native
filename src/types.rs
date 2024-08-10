@@ -108,6 +108,9 @@ pub trait TypeBuilder {
 
     /// If the type is an integer, return its value range.
     fn integer_range(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<Range>;
+    /// Return whether the type is a `BoundedInt<>`, either directly or indirectly (ex. through
+    /// `NonZero<BoundedInt<>>`).
+    fn is_bounded_int(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
 
     /// If the type is a enum type, return all possible variants.
     ///
@@ -805,6 +808,18 @@ impl TypeBuilder for CoreTypeConcrete {
 
             _ => return None,
         })
+    }
+
+    fn is_bounded_int(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
+        match self {
+            CoreTypeConcrete::BoundedInt(_) => true,
+            CoreTypeConcrete::NonZero(info) => registry
+                .get_type(&info.ty)
+                .unwrap()
+                .is_bounded_int(registry),
+
+            _ => false,
+        }
     }
 
     fn variants(&self) -> Option<&[ConcreteTypeId]> {

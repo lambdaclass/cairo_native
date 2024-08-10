@@ -103,7 +103,7 @@ pub fn build_downcast<'ctx, 'this>(
                 )?;
                 Some(entry.append_op_result(arith::cmpi(
                     context,
-                    if dst_range.lower.sign() != Sign::Minus {
+                    if src_range.lower.sign() != Sign::Minus {
                         CmpiPredicate::Uge
                     } else {
                         CmpiPredicate::Sge
@@ -124,7 +124,7 @@ pub fn build_downcast<'ctx, 'this>(
                 )?;
                 Some(entry.append_op_result(arith::cmpi(
                     context,
-                    if dst_range.lower.sign() != Sign::Minus {
+                    if src_range.lower.sign() != Sign::Minus {
                         CmpiPredicate::Ult
                     } else {
                         CmpiPredicate::Slt

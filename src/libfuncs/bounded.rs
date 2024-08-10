@@ -11,7 +11,7 @@ use cairo_lang_sierra::{
             BoundedIntConcreteLibfunc, BoundedIntConstrainConcreteLibfunc,
             BoundedIntDivRemConcreteLibfunc,
         },
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
         utils::Range,
         ConcreteLibfunc,
@@ -83,14 +83,10 @@ fn build_add<'ctx, 'this>(
 
     let lhs_range = lhs_ty.integer_range(registry).unwrap();
     let rhs_range = rhs_ty.integer_range(registry).unwrap();
-    let dst_range = match registry.get_type(&info.signature.branch_signatures[0].vars[0].ty)? {
-        CoreTypeConcrete::BoundedInt(info) => &info.range,
-        CoreTypeConcrete::NonZero(info) => match registry.get_type(&info.ty)? {
-            CoreTypeConcrete::BoundedInt(info) => &info.range,
-            _ => unreachable!(),
-        },
-        _ => unreachable!(),
-    };
+    let dst_range = registry
+        .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
+        .integer_range(registry)
+        .unwrap();
 
     // Calculate the computation range.
     let compute_range = Range {
@@ -107,9 +103,7 @@ fn build_add<'ctx, 'this>(
 
     // Zero-extend operands into the computation range.
     let lhs_value = if compute_range.size() > lhs_range.size() {
-        if lhs_range.lower.sign() != Sign::Minus
-            || matches!(lhs_ty, CoreTypeConcrete::BoundedInt(_))
-        {
+        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
@@ -118,9 +112,7 @@ fn build_add<'ctx, 'this>(
         lhs_value
     };
     let rhs_value = if compute_range.size() > rhs_range.size() {
-        if rhs_range.lower.sign() != Sign::Minus
-            || matches!(rhs_ty, CoreTypeConcrete::BoundedInt(_))
-        {
+        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
@@ -130,7 +122,7 @@ fn build_add<'ctx, 'this>(
     };
 
     // Offset the operands so that they are compatible.
-    let lhs_offset = if matches!(lhs_ty, CoreTypeConcrete::BoundedInt(_)) {
+    let lhs_offset = if lhs_ty.is_bounded_int(registry) {
         &lhs_range.lower - &compute_range.lower
     } else {
         lhs_range.lower.clone()
@@ -142,7 +134,7 @@ fn build_add<'ctx, 'this>(
         lhs_value
     };
 
-    let rhs_offset = if matches!(rhs_ty, CoreTypeConcrete::BoundedInt(_)) {
+    let rhs_offset = if rhs_ty.is_bounded_int(registry) {
         &rhs_range.lower - &compute_range.lower
     } else {
         rhs_range.lower.clone()
@@ -200,14 +192,10 @@ fn build_sub<'ctx, 'this>(
 
     let lhs_range = lhs_ty.integer_range(registry).unwrap();
     let rhs_range = rhs_ty.integer_range(registry).unwrap();
-    let dst_range = match registry.get_type(&info.signature.branch_signatures[0].vars[0].ty)? {
-        CoreTypeConcrete::BoundedInt(info) => &info.range,
-        CoreTypeConcrete::NonZero(info) => match registry.get_type(&info.ty)? {
-            CoreTypeConcrete::BoundedInt(info) => &info.range,
-            _ => unreachable!(),
-        },
-        _ => unreachable!(),
-    };
+    let dst_range = registry
+        .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
+        .integer_range(registry)
+        .unwrap();
 
     // Calculate the computation range.
     let compute_range = Range {
@@ -224,9 +212,7 @@ fn build_sub<'ctx, 'this>(
 
     // Zero-extend operands into the computation range.
     let lhs_value = if compute_range.size() > lhs_range.size() {
-        if lhs_range.lower.sign() != Sign::Minus
-            || matches!(lhs_ty, CoreTypeConcrete::BoundedInt(_))
-        {
+        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
@@ -235,9 +221,7 @@ fn build_sub<'ctx, 'this>(
         lhs_value
     };
     let rhs_value = if compute_range.size() > rhs_range.size() {
-        if rhs_range.lower.sign() != Sign::Minus
-            || matches!(rhs_ty, CoreTypeConcrete::BoundedInt(_))
-        {
+        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
@@ -247,7 +231,7 @@ fn build_sub<'ctx, 'this>(
     };
 
     // Offset the operands so that they are compatible.
-    let lhs_offset = if matches!(lhs_ty, CoreTypeConcrete::BoundedInt(_)) {
+    let lhs_offset = if lhs_ty.is_bounded_int(registry) {
         &lhs_range.lower - &compute_range.lower
     } else {
         lhs_range.lower.clone()
@@ -259,7 +243,7 @@ fn build_sub<'ctx, 'this>(
         lhs_value
     };
 
-    let rhs_offset = if matches!(rhs_ty, CoreTypeConcrete::BoundedInt(_)) {
+    let rhs_offset = if rhs_ty.is_bounded_int(registry) {
         &rhs_range.lower - &compute_range.lower
     } else {
         rhs_range.lower.clone()
@@ -275,7 +259,7 @@ fn build_sub<'ctx, 'this>(
     let res_value = entry.append_op_result(arith::subi(lhs_value, rhs_value, location))?;
 
     // Offset and truncate the result to the output type.
-    let res_offset = compute_range.lower.clone();
+    let res_offset = &dst_range.lower - &compute_range.lower;
     let res_value = if res_offset != BigInt::ZERO {
         let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
         entry.append_op_result(arith::subi(res_value, res_offset, location))?
@@ -317,14 +301,10 @@ fn build_mul<'ctx, 'this>(
 
     let lhs_range = lhs_ty.integer_range(registry).unwrap();
     let rhs_range = rhs_ty.integer_range(registry).unwrap();
-    let dst_range = match registry.get_type(&info.signature.branch_signatures[0].vars[0].ty)? {
-        CoreTypeConcrete::BoundedInt(info) => &info.range,
-        CoreTypeConcrete::NonZero(info) => match registry.get_type(&info.ty)? {
-            CoreTypeConcrete::BoundedInt(info) => &info.range,
-            _ => unreachable!(),
-        },
-        _ => unreachable!(),
-    };
+    let dst_range = registry
+        .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
+        .integer_range(registry)
+        .unwrap();
 
     // Calculate the computation range.
     let compute_range = Range {
@@ -349,9 +329,7 @@ fn build_mul<'ctx, 'this>(
         + (compute_range.lower.sign() == Sign::Minus) as u32
         > lhs_range.bit_width()
     {
-        if lhs_range.lower.sign() != Sign::Minus
-            || matches!(lhs_ty, CoreTypeConcrete::BoundedInt(_))
-        {
+        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
@@ -363,9 +341,7 @@ fn build_mul<'ctx, 'this>(
         + (compute_range.lower.sign() == Sign::Minus) as u32
         > rhs_range.bit_width()
     {
-        if rhs_range.lower.sign() != Sign::Minus
-            || matches!(rhs_ty, CoreTypeConcrete::BoundedInt(_))
-        {
+        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
@@ -375,18 +351,14 @@ fn build_mul<'ctx, 'this>(
     };
 
     // Offset the operands so that they are compatible with the operation.
-    let lhs_value = if matches!(lhs_ty, CoreTypeConcrete::BoundedInt(_))
-        && lhs_range.lower != BigInt::ZERO
-    {
+    let lhs_value = if lhs_ty.is_bounded_int(registry) && lhs_range.lower != BigInt::ZERO {
         let lhs_offset =
             entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))?
     } else {
         lhs_value
     };
-    let rhs_value = if matches!(rhs_ty, CoreTypeConcrete::BoundedInt(_))
-        && rhs_range.lower != BigInt::ZERO
-    {
+    let rhs_value = if rhs_ty.is_bounded_int(registry) && rhs_range.lower != BigInt::ZERO {
         let rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))?
@@ -398,7 +370,7 @@ fn build_mul<'ctx, 'this>(
     let res_value = entry.append_op_result(arith::muli(lhs_value, rhs_value, location))?;
 
     // Offset and truncate the result to the output type.
-    let res_offset = compute_range.lower.clone();
+    let res_offset = &dst_range.lower - &compute_range.lower;
     let res_value = if res_offset != BigInt::ZERO {
         let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
         entry.append_op_result(arith::subi(res_value, res_offset, location))?
@@ -445,22 +417,14 @@ fn build_divrem<'ctx, 'this>(
 
     let lhs_range = lhs_ty.integer_range(registry).unwrap();
     let rhs_range = rhs_ty.integer_range(registry).unwrap();
-    let div_range = match registry.get_type(&info.branch_signatures()[0].vars[1].ty)? {
-        CoreTypeConcrete::BoundedInt(info) => &info.range,
-        CoreTypeConcrete::NonZero(info) => match registry.get_type(&info.ty)? {
-            CoreTypeConcrete::BoundedInt(info) => &info.range,
-            _ => unreachable!(),
-        },
-        _ => unreachable!(),
-    };
-    let rem_range = match registry.get_type(&info.branch_signatures()[0].vars[2].ty)? {
-        CoreTypeConcrete::BoundedInt(info) => &info.range,
-        CoreTypeConcrete::NonZero(info) => match registry.get_type(&info.ty)? {
-            CoreTypeConcrete::BoundedInt(info) => &info.range,
-            _ => unreachable!(),
-        },
-        _ => unreachable!(),
-    };
+    let div_range = registry
+        .get_type(&info.branch_signatures()[0].vars[1].ty)?
+        .integer_range(registry)
+        .unwrap();
+    let rem_range = registry
+        .get_type(&info.branch_signatures()[0].vars[2].ty)?
+        .integer_range(registry)
+        .unwrap();
 
     // Calculate the computation range.
     let compute_range = Range {
@@ -487,9 +451,7 @@ fn build_divrem<'ctx, 'this>(
         + (compute_range.lower.sign() == Sign::Minus) as u32
         > lhs_range.bit_width()
     {
-        if lhs_range.lower.sign() != Sign::Minus
-            || matches!(lhs_ty, CoreTypeConcrete::BoundedInt(_))
-        {
+        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
@@ -501,9 +463,7 @@ fn build_divrem<'ctx, 'this>(
         + (compute_range.lower.sign() == Sign::Minus) as u32
         > rhs_range.bit_width()
     {
-        if rhs_range.lower.sign() != Sign::Minus
-            || matches!(rhs_ty, CoreTypeConcrete::BoundedInt(_))
-        {
+        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
@@ -513,57 +473,20 @@ fn build_divrem<'ctx, 'this>(
     };
 
     // Offset the operands so that they are compatible with the operation.
-    let lhs_value = if matches!(lhs_ty, CoreTypeConcrete::BoundedInt(_))
-        && lhs_range.lower != BigInt::ZERO
-    {
+    let lhs_value = if lhs_ty.is_bounded_int(registry) && lhs_range.lower != BigInt::ZERO {
         let lhs_offset =
             entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))?
     } else {
         lhs_value
     };
-    let rhs_value = if matches!(rhs_ty, CoreTypeConcrete::BoundedInt(_))
-        && rhs_range.lower != BigInt::ZERO
-    {
+    let rhs_value = if rhs_ty.is_bounded_int(registry) && rhs_range.lower != BigInt::ZERO {
         let rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))?
     } else {
         rhs_value
     };
-
-    _metadata
-        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-        .unwrap()
-        .breakpoint_marker(context, helper, entry, location)?;
-    _metadata
-        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-        .unwrap()
-        .print_i64(
-            context,
-            helper,
-            entry,
-            entry.append_op_result(arith::extui(
-                lhs_value,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?,
-            location,
-        )?;
-    _metadata
-        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-        .unwrap()
-        .print_i64(
-            context,
-            helper,
-            entry,
-            entry.append_op_result(arith::extui(
-                rhs_value,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?,
-            location,
-        )?;
 
     // Compute the operation.
     let div_value = entry.append_op_result(arith::divui(lhs_value, rhs_value, location))?;
@@ -630,22 +553,14 @@ fn build_constrain<'ctx, 'this>(
     let src_ty = registry.get_type(&info.param_signatures()[1].ty)?;
     let src_range = src_ty.integer_range(registry).unwrap();
 
-    let lower_range = match registry.get_type(&info.branch_signatures()[0].vars[1].ty)? {
-        CoreTypeConcrete::BoundedInt(info) => &info.range,
-        CoreTypeConcrete::NonZero(info) => match registry.get_type(&info.ty)? {
-            CoreTypeConcrete::BoundedInt(info) => &info.range,
-            _ => unreachable!(),
-        },
-        _ => unreachable!(),
-    };
-    let upper_range = match registry.get_type(&info.branch_signatures()[1].vars[1].ty)? {
-        CoreTypeConcrete::BoundedInt(info) => &info.range,
-        CoreTypeConcrete::NonZero(info) => match registry.get_type(&info.ty)? {
-            CoreTypeConcrete::BoundedInt(info) => &info.range,
-            _ => unreachable!(),
-        },
-        _ => unreachable!(),
-    };
+    let lower_range = registry
+        .get_type(&info.branch_signatures()[0].vars[1].ty)?
+        .integer_range(registry)
+        .unwrap();
+    let upper_range = registry
+        .get_type(&info.branch_signatures()[1].vars[1].ty)?
+        .integer_range(registry)
+        .unwrap();
 
     let boundary =
         entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?;
