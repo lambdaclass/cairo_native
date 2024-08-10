@@ -969,8 +969,8 @@ mod test {
         assert_eq!(
             JitValue::resolve_type(&ty, &registry).integer_range(&registry),
             Some(Range {
-                lower: u128::MIN.into(),
-                upper: u128::MAX.into()
+                lower: BigInt::from(u128::MIN),
+                upper: BigInt::from(u128::MAX) + BigInt::one(),
             })
         );
     }

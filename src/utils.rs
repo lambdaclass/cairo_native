@@ -540,10 +540,13 @@ pub trait RangeExt {
 
 impl RangeExt for Range {
     fn bit_width(&self) -> u32 {
-        usize::try_from(self.size())
-            .unwrap()
-            .next_power_of_two()
-            .trailing_zeros()
+        let size = self.size().to_biguint().unwrap();
+        u32::try_from(if size.count_ones() == 1 {
+            size.trailing_zeros().expect("range has no valid values")
+        } else {
+            size.bits()
+        })
+        .expect("bit_width overflow")
     }
 }
 

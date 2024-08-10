@@ -795,7 +795,10 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Sint128(_) => range_of::<i128>(),
 
             Self::BoundedInt(info) => info.range.clone(),
-            Self::Bytes31(_) => todo!(),
+            Self::Bytes31(_) => Range {
+                lower: BigInt::ZERO,
+                upper: BigInt::one() << 248,
+            },
             Self::Const(info) => {
                 return registry
                     .get_type(&info.inner_ty)

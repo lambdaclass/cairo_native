@@ -273,7 +273,8 @@ pub fn build_const_type_value<'ctx, 'this>(
         | CoreTypeConcrete::Sint16(_)
         | CoreTypeConcrete::Sint32(_)
         | CoreTypeConcrete::Sint64(_)
-        | CoreTypeConcrete::Sint128(_) => match &info.inner_data.as_slice() {
+        | CoreTypeConcrete::Sint128(_)
+        | CoreTypeConcrete::Bytes31(_) => match &info.inner_data.as_slice() {
             [GenericArg::Value(value)] => {
                 entry.const_int_from_type(context, location, value.clone(), inner_ty)
             }

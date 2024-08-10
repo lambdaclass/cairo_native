@@ -7,7 +7,6 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        bounded_int::BoundedIntConcreteType,
         casts::{CastConcreteLibfunc, DowncastConcreteLibfunc},
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -55,121 +54,122 @@ pub fn build_downcast<'ctx, 'this>(
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
     let src_value: Value = entry.argument(1)?.into();
 
+    if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
+        let k0 = entry.const_int(context, location, 0, 1)?;
+        entry.append_operation(helper.cond_br(
+            context,
+            k0,
+            [0, 1],
+            [&[range_check, src_value], &[range_check]],
+            location,
+        ));
+        return Ok(());
+    }
+
     let src_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
 
-    match (src_ty, dst_ty) {
-        (
-            CoreTypeConcrete::BoundedInt(BoundedIntConcreteType {
-                range: src_range, ..
-            }),
-            CoreTypeConcrete::Sint8(_)
-            | CoreTypeConcrete::Sint16(_)
-            | CoreTypeConcrete::Sint32(_)
-            | CoreTypeConcrete::Sint64(_)
-            | CoreTypeConcrete::Sint128(_)
-            | CoreTypeConcrete::Uint8(_)
-            | CoreTypeConcrete::Uint16(_)
-            | CoreTypeConcrete::Uint32(_)
-            | CoreTypeConcrete::Uint64(_)
-            | CoreTypeConcrete::Uint128(_),
-        ) => {
-            let dst_range = dst_ty.integer_range(registry).unwrap();
-            assert!(
-                dst_range.lower > src_range.lower || dst_range.upper < src_range.upper,
-                "invalid downcast `{}` into `{}`: target range contains the source range",
-                info.signature.param_signatures[1].ty,
-                info.signature.branch_signatures[0].vars[1].ty
-            );
+    assert!(
+        !matches!(src_ty, CoreTypeConcrete::Felt252(_)),
+        "felt252 casts not implemented"
+    );
+    assert!(
+        !matches!(dst_ty, CoreTypeConcrete::Felt252(_)),
+        "felt252 casts not implemented"
+    );
 
-            let dst_value = if src_range.lower != BigInt::ZERO {
-                let dst_offset = entry.const_int_from_type(
-                    context,
-                    location,
-                    src_range.lower.clone(),
-                    src_value.r#type(),
-                )?;
-                entry.append_op_result(arith::subi(src_value, dst_offset, location))?
-            } else {
-                src_value
-            };
+    let src_range = src_ty.integer_range(registry).unwrap();
+    let dst_range = dst_ty.integer_range(registry).unwrap();
+    assert!(
+        dst_range.lower > src_range.lower || dst_range.upper < src_range.upper,
+        "invalid downcast `{}` into `{}`: target range contains the source range",
+        info.signature.param_signatures[1].ty,
+        info.signature.branch_signatures[0].vars[1].ty
+    );
 
-            let lower_check = if dst_range.lower > src_range.lower {
-                let dst_lower = entry.const_int_from_type(
-                    context,
-                    location,
-                    dst_range.lower.clone(),
-                    dst_value.r#type(),
-                )?;
-                Some(entry.append_op_result(arith::cmpi(
-                    context,
-                    if src_range.lower.sign() != Sign::Minus {
-                        CmpiPredicate::Uge
-                    } else {
-                        CmpiPredicate::Sge
-                    },
-                    dst_value,
-                    dst_lower,
-                    location,
-                ))?)
-            } else {
-                None
-            };
-            let upper_check = if dst_range.upper < src_range.upper {
-                let dst_upper = entry.const_int_from_type(
-                    context,
-                    location,
-                    dst_range.upper.clone(),
-                    dst_value.r#type(),
-                )?;
-                Some(entry.append_op_result(arith::cmpi(
-                    context,
-                    if src_range.lower.sign() != Sign::Minus {
-                        CmpiPredicate::Ult
-                    } else {
-                        CmpiPredicate::Slt
-                    },
-                    dst_value,
-                    dst_upper,
-                    location,
-                ))?)
-            } else {
-                None
-            };
+    // TODO: Handle when `dst_ty` is a bounded int.
+    assert!(!matches!(dst_ty, CoreTypeConcrete::BoundedInt(_)));
 
-            let is_in_bounds = match (lower_check, upper_check) {
-                (Some(lower_check), Some(upper_check)) => {
-                    entry.append_op_result(arith::andi(lower_check, upper_check, location))?
-                }
-                (Some(lower_check), None) => lower_check,
-                (None, Some(upper_check)) => upper_check,
-                (None, None) => unreachable!(),
-            };
+    let dst_value = if src_ty.is_bounded_int(registry) && src_range.lower != BigInt::ZERO {
+        let dst_offset = entry.const_int_from_type(
+            context,
+            location,
+            src_range.lower.clone(),
+            src_value.r#type(),
+        )?;
+        entry.append_op_result(arith::subi(src_value, dst_offset, location))?
+    } else {
+        src_value
+    };
 
-            let dst_value = if dst_range.bit_width() < src_range.bit_width() {
-                entry.append_op_result(arith::trunci(
-                    dst_value,
-                    IntegerType::new(context, dst_range.bit_width()).into(),
-                    location,
-                ))?
+    let lower_check = if dst_range.lower > src_range.lower {
+        let dst_lower = entry.const_int_from_type(
+            context,
+            location,
+            dst_range.lower.clone(),
+            dst_value.r#type(),
+        )?;
+        Some(entry.append_op_result(arith::cmpi(
+            context,
+            if src_range.lower.sign() != Sign::Minus {
+                CmpiPredicate::Uge
             } else {
-                dst_value
-            };
-            entry.append_operation(helper.cond_br(
-                context,
-                is_in_bounds,
-                [0, 1],
-                [&[range_check, dst_value], &[range_check]],
-                location,
-            ));
+                CmpiPredicate::Sge
+            },
+            dst_value,
+            dst_lower,
+            location,
+        ))?)
+    } else {
+        None
+    };
+    let upper_check = if dst_range.upper < src_range.upper {
+        let dst_upper = entry.const_int_from_type(
+            context,
+            location,
+            dst_range.upper.clone(),
+            dst_value.r#type(),
+        )?;
+        Some(entry.append_op_result(arith::cmpi(
+            context,
+            if src_range.lower.sign() != Sign::Minus {
+                CmpiPredicate::Ult
+            } else {
+                CmpiPredicate::Slt
+            },
+            dst_value,
+            dst_upper,
+            location,
+        ))?)
+    } else {
+        None
+    };
+
+    let is_in_bounds = match (lower_check, upper_check) {
+        (Some(lower_check), Some(upper_check)) => {
+            entry.append_op_result(arith::andi(lower_check, upper_check, location))?
         }
+        (Some(lower_check), None) => lower_check,
+        (None, Some(upper_check)) => upper_check,
+        (None, None) => unreachable!(),
+    };
 
-        _ => todo!(
-            "unhandled downcast from {} to {}",
-            info.signature.param_signatures[1].ty,
-            info.signature.branch_signatures[0].vars[1].ty
-        ),
-    }
+    let dst_value = if dst_range.bit_width() < src_range.bit_width() {
+        entry.append_op_result(arith::trunci(
+            dst_value,
+            IntegerType::new(context, dst_range.bit_width()).into(),
+            location,
+        ))?
+    } else {
+        dst_value
+    };
+    entry.append_operation(helper.cond_br(
+        context,
+        is_in_bounds,
+        [0, 1],
+        [&[range_check, dst_value], &[range_check]],
+        location,
+    ));
 
     Ok(())
 }
@@ -186,63 +186,55 @@ pub fn build_upcast<'ctx, 'this>(
 ) -> Result<()> {
     let src_value = entry.argument(0)?.into();
 
+    if info.signature.param_signatures[0].ty == info.signature.branch_signatures[0].vars[0].ty {
+        entry.append_operation(helper.br(0, &[src_value], location));
+        return Ok(());
+    }
+
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[0].ty)?;
 
-    let dst_value = match (src_ty, dst_ty) {
-        // (CoreTypeConcrete::BoundedInt(_), CoreTypeConcrete::BoundedInt(_)) => todo!(),
-        // (CoreTypeConcrete::BoundedInt(_), CoreTypeConcrete::Felt252(_)) => todo!(),
-        (
-            CoreTypeConcrete::BoundedInt(BoundedIntConcreteType {
-                range: src_range, ..
-            }),
-            CoreTypeConcrete::Sint8(_)
-            | CoreTypeConcrete::Sint16(_)
-            | CoreTypeConcrete::Sint32(_)
-            | CoreTypeConcrete::Sint64(_)
-            | CoreTypeConcrete::Sint128(_)
-            | CoreTypeConcrete::Uint8(_)
-            | CoreTypeConcrete::Uint16(_)
-            | CoreTypeConcrete::Uint32(_)
-            | CoreTypeConcrete::Uint64(_)
-            | CoreTypeConcrete::Uint128(_),
-        ) => {
-            let dst_range = dst_ty.integer_range(registry).unwrap();
-            assert!(
-                dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper,
-                "invalid upcast `{}` into `{}`: target range doesn't contain the source range",
-                info.signature.param_signatures[0].ty,
-                info.signature.branch_signatures[0].vars[0].ty
-            );
+    assert!(
+        !matches!(src_ty, CoreTypeConcrete::Felt252(_)),
+        "felt252 casts not implemented"
+    );
+    assert!(
+        !matches!(dst_ty, CoreTypeConcrete::Felt252(_)),
+        "felt252 casts not implemented"
+    );
 
-            let dst_value = if dst_range.bit_width() > src_range.bit_width() {
-                entry.append_op_result(arith::extui(
-                    src_value,
-                    IntegerType::new(context, dst_range.bit_width()).into(),
-                    location,
-                ))?
-            } else {
-                src_value
-            };
+    let src_range = src_ty.integer_range(registry).unwrap();
+    let dst_range = dst_ty.integer_range(registry).unwrap();
+    assert!(
+        dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper,
+        "invalid upcast `{}` into `{}`: target range doesn't contain the source range",
+        info.signature.param_signatures[0].ty,
+        info.signature.branch_signatures[0].vars[0].ty
+    );
 
-            if src_range.lower != BigInt::ZERO {
-                let dst_offset = entry.const_int_from_type(
-                    context,
-                    location,
-                    src_range.lower.clone(),
-                    dst_value.r#type(),
-                )?;
-                entry.append_op_result(arith::addi(dst_value, dst_offset, location))?
-            } else {
-                dst_value
-            }
-        }
+    let dst_value = if dst_range.bit_width() > src_range.bit_width() {
+        entry.append_op_result(arith::extui(
+            src_value,
+            IntegerType::new(context, dst_range.bit_width()).into(),
+            location,
+        ))?
+    } else {
+        src_value
+    };
 
-        _ => todo!(
-            "unhandled upcast from {} to {}",
-            info.signature.param_signatures[0].ty,
-            info.signature.branch_signatures[0].vars[0].ty
-        ),
+    // TODO: Handle when `dst_ty` is a bounded int.
+    assert!(!matches!(dst_ty, CoreTypeConcrete::BoundedInt(_)));
+
+    let dst_value = if src_ty.is_bounded_int(registry) && src_range.lower != BigInt::ZERO {
+        let dst_offset = entry.const_int_from_type(
+            context,
+            location,
+            src_range.lower.clone(),
+            dst_value.r#type(),
+        )?;
+        entry.append_op_result(arith::addi(dst_value, dst_offset, location))?
+    } else {
+        dst_value
     };
 
     entry.append_operation(helper.br(0, &[dst_value], location));
