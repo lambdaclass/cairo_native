@@ -552,7 +552,7 @@ impl RangeExt for Range {
         //   - Negative: (x.magnitude() - BigUint::one()).bits() + 1
         //   - Zero: 0
 
-        if self.lower.sign() == Sign::Minus {
+        let width = if self.lower.sign() == Sign::Minus {
             let lower_width = (self.lower.magnitude() - BigUint::one()).bits() + 1;
             let upper_width = {
                 let upper = &self.upper - &BigInt::one();
@@ -566,11 +566,15 @@ impl RangeExt for Range {
             lower_width.max(upper_width) as u32
         } else {
             (&self.upper - &BigInt::one()).bits() as u32
-        }
+        };
+
+        // FIXME: Workaround for segfault in canonicalization (including LLVM 19).
+        width.max(1)
     }
 
     fn offset_bit_width(&self) -> u32 {
-        (self.size() - BigInt::one()).bits() as u32
+        // FIXME: Workaround for segfault in canonicalization (including LLVM 19).
+        ((self.size() - BigInt::one()).bits() as u32).max(1)
     }
 }
 
