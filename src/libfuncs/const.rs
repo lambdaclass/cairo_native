@@ -247,7 +247,10 @@ pub fn build_const_type_value<'ctx, 'this>(
                 context,
                 location,
                 value,
-                inner_type.integer_range(registry).unwrap().bit_width(),
+                inner_type
+                    .integer_range(registry)
+                    .unwrap()
+                    .offset_bit_width(),
             )
         }
         CoreTypeConcrete::Felt252(_) => {

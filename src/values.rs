@@ -773,12 +773,12 @@ impl JitValue {
                 CoreTypeConcrete::BoundedInt(info) => {
                     let mut data = BigUint::from_bytes_le(slice::from_raw_parts(
                         ptr.cast::<u8>().as_ptr(),
-                        (info.range.bit_width().next_multiple_of(8) >> 3) as usize,
+                        (info.range.offset_bit_width().next_multiple_of(8) >> 3) as usize,
                     ))
                     .to_bigint()
                     .unwrap();
 
-                    data &= (BigInt::one() << info.range.bit_width()) - BigInt::one();
+                    data &= (BigInt::one() << info.range.offset_bit_width()) - BigInt::one();
                     data += &info.range.lower;
 
                     Self::BoundedInt {

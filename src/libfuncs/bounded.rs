@@ -88,6 +88,17 @@ fn build_add<'ctx, 'this>(
         .integer_range(registry)
         .unwrap();
 
+    let lhs_width = if lhs_ty.is_bounded_int(registry) {
+        lhs_range.offset_bit_width()
+    } else {
+        lhs_range.zero_based_bit_width()
+    };
+    let rhs_width = if rhs_ty.is_bounded_int(registry) {
+        rhs_range.offset_bit_width()
+    } else {
+        rhs_range.zero_based_bit_width()
+    };
+
     // Calculate the computation range.
     let compute_range = Range {
         lower: (&lhs_range.lower)
@@ -99,10 +110,12 @@ fn build_add<'ctx, 'this>(
             .max(&dst_range.upper)
             .clone(),
     };
-    let compute_ty = IntegerType::new(context, compute_range.bit_width()).into();
+    let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    let lhs_value = if compute_range.size() > lhs_range.size() {
+    assert!(compute_range.offset_bit_width() >= lhs_width);
+    assert!(compute_range.offset_bit_width() >= rhs_width);
+    let lhs_value = if compute_range.offset_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
@@ -111,7 +124,7 @@ fn build_add<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if compute_range.size() > rhs_range.size() {
+    let rhs_value = if compute_range.offset_bit_width() > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
@@ -158,10 +171,10 @@ fn build_add<'ctx, 'this>(
         res_value
     };
 
-    let res_value = if dst_range.size() < compute_range.size() {
+    let res_value = if dst_range.offset_bit_width() < compute_range.offset_bit_width() {
         entry.append_op_result(arith::trunci(
             res_value,
-            IntegerType::new(context, dst_range.bit_width()).into(),
+            IntegerType::new(context, dst_range.offset_bit_width()).into(),
             location,
         ))?
     } else {
@@ -197,6 +210,17 @@ fn build_sub<'ctx, 'this>(
         .integer_range(registry)
         .unwrap();
 
+    let lhs_width = if lhs_ty.is_bounded_int(registry) {
+        lhs_range.offset_bit_width()
+    } else {
+        lhs_range.zero_based_bit_width()
+    };
+    let rhs_width = if rhs_ty.is_bounded_int(registry) {
+        rhs_range.offset_bit_width()
+    } else {
+        rhs_range.zero_based_bit_width()
+    };
+
     // Calculate the computation range.
     let compute_range = Range {
         lower: (&lhs_range.lower)
@@ -208,10 +232,12 @@ fn build_sub<'ctx, 'this>(
             .max(&dst_range.upper)
             .clone(),
     };
-    let compute_ty = IntegerType::new(context, compute_range.bit_width()).into();
+    let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    let lhs_value = if compute_range.size() > lhs_range.size() {
+    assert!(compute_range.offset_bit_width() >= lhs_width);
+    assert!(compute_range.offset_bit_width() >= rhs_width);
+    let lhs_value = if compute_range.offset_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
@@ -220,7 +246,7 @@ fn build_sub<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if compute_range.size() > rhs_range.size() {
+    let rhs_value = if compute_range.offset_bit_width() > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
@@ -267,10 +293,10 @@ fn build_sub<'ctx, 'this>(
         res_value
     };
 
-    let res_value = if dst_range.bit_width() < compute_range.bit_width() {
+    let res_value = if dst_range.offset_bit_width() < compute_range.offset_bit_width() {
         entry.append_op_result(arith::trunci(
             res_value,
-            IntegerType::new(context, dst_range.bit_width()).into(),
+            IntegerType::new(context, dst_range.offset_bit_width()).into(),
             location,
         ))?
     } else {
@@ -306,6 +332,17 @@ fn build_mul<'ctx, 'this>(
         .integer_range(registry)
         .unwrap();
 
+    let lhs_width = if lhs_ty.is_bounded_int(registry) {
+        lhs_range.offset_bit_width()
+    } else {
+        lhs_range.zero_based_bit_width()
+    };
+    let rhs_width = if rhs_ty.is_bounded_int(registry) {
+        rhs_range.offset_bit_width()
+    } else {
+        rhs_range.zero_based_bit_width()
+    };
+
     // Calculate the computation range.
     let compute_range = Range {
         lower: (&lhs_range.lower)
@@ -318,17 +355,12 @@ fn build_mul<'ctx, 'this>(
             .max(&dst_range.upper)
             .clone(),
     };
-    let compute_ty = IntegerType::new(
-        context,
-        compute_range.bit_width() + (compute_range.lower.sign() == Sign::Minus) as u32,
-    )
-    .into();
+    let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    let lhs_value = if compute_range.bit_width()
-        + (compute_range.lower.sign() == Sign::Minus) as u32
-        > lhs_range.bit_width()
-    {
+    assert!(compute_range.zero_based_bit_width() >= lhs_width);
+    assert!(compute_range.zero_based_bit_width() >= rhs_width);
+    let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
@@ -337,10 +369,7 @@ fn build_mul<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if compute_range.bit_width()
-        + (compute_range.lower.sign() == Sign::Minus) as u32
-        > rhs_range.bit_width()
-    {
+    let rhs_value = if compute_range.zero_based_bit_width() > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
@@ -378,12 +407,10 @@ fn build_mul<'ctx, 'this>(
         res_value
     };
 
-    let res_value = if dst_range.bit_width()
-        < compute_range.bit_width() + (compute_range.lower.sign() == Sign::Minus) as u32
-    {
+    let res_value = if dst_range.offset_bit_width() < compute_range.zero_based_bit_width() {
         entry.append_op_result(arith::trunci(
             res_value,
-            IntegerType::new(context, dst_range.bit_width()).into(),
+            IntegerType::new(context, dst_range.offset_bit_width()).into(),
             location,
         ))?
     } else {
@@ -426,6 +453,17 @@ fn build_divrem<'ctx, 'this>(
         .integer_range(registry)
         .unwrap();
 
+    let lhs_width = if lhs_ty.is_bounded_int(registry) {
+        lhs_range.offset_bit_width()
+    } else {
+        lhs_range.zero_based_bit_width()
+    };
+    let rhs_width = if rhs_ty.is_bounded_int(registry) {
+        rhs_range.offset_bit_width()
+    } else {
+        rhs_range.zero_based_bit_width()
+    };
+
     // Calculate the computation range.
     let compute_range = Range {
         lower: (&lhs_range.lower)
@@ -440,17 +478,12 @@ fn build_divrem<'ctx, 'this>(
             .max(&rem_range.upper)
             .clone(),
     };
-    let compute_ty = IntegerType::new(
-        context,
-        compute_range.bit_width() + (compute_range.lower.sign() == Sign::Minus) as u32,
-    )
-    .into();
+    let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    let lhs_value = if compute_range.bit_width()
-        + (compute_range.lower.sign() == Sign::Minus) as u32
-        > lhs_range.bit_width()
-    {
+    assert!(compute_range.zero_based_bit_width() >= lhs_width);
+    assert!(compute_range.zero_based_bit_width() >= rhs_width);
+    let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
@@ -459,10 +492,7 @@ fn build_divrem<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if compute_range.bit_width()
-        + (compute_range.lower.sign() == Sign::Minus) as u32
-        > rhs_range.bit_width()
-    {
+    let rhs_value = if compute_range.zero_based_bit_width() > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
@@ -509,23 +539,19 @@ fn build_divrem<'ctx, 'this>(
         rem_value
     };
 
-    let div_value = if div_range.bit_width()
-        < compute_range.bit_width() + (compute_range.lower.sign() == Sign::Minus) as u32
-    {
+    let div_value = if div_range.offset_bit_width() < compute_range.zero_based_bit_width() {
         entry.append_op_result(arith::trunci(
             div_value,
-            IntegerType::new(context, div_range.bit_width()).into(),
+            IntegerType::new(context, div_range.offset_bit_width()).into(),
             location,
         ))?
     } else {
         div_value
     };
-    let rem_value = if rem_range.bit_width()
-        < compute_range.bit_width() + (compute_range.lower.sign() == Sign::Minus) as u32
-    {
+    let rem_value = if rem_range.offset_bit_width() < compute_range.zero_based_bit_width() {
         entry.append_op_result(arith::trunci(
             rem_value,
-            IntegerType::new(context, rem_range.bit_width()).into(),
+            IntegerType::new(context, rem_range.offset_bit_width()).into(),
             location,
         ))?
     } else {
@@ -552,6 +578,12 @@ fn build_constrain<'ctx, 'this>(
 
     let src_ty = registry.get_type(&info.param_signatures()[1].ty)?;
     let src_range = src_ty.integer_range(registry).unwrap();
+
+    let src_width = if src_ty.is_bounded_int(registry) {
+        src_range.offset_bit_width()
+    } else {
+        src_range.zero_based_bit_width()
+    };
 
     let lower_range = registry
         .get_type(&info.branch_signatures()[0].vars[1].ty)?
@@ -602,10 +634,10 @@ fn build_constrain<'ctx, 'this>(
             src_value
         };
 
-        let res_value = if src_range.bit_width() > lower_range.bit_width() {
+        let res_value = if src_width > lower_range.offset_bit_width() {
             lower_block.append_op_result(arith::trunci(
                 res_value,
-                IntegerType::new(context, lower_range.bit_width()).into(),
+                IntegerType::new(context, lower_range.offset_bit_width()).into(),
                 location,
             ))?
         } else {
@@ -629,10 +661,10 @@ fn build_constrain<'ctx, 'this>(
             src_value
         };
 
-        let res_value = if src_range.bit_width() > upper_range.bit_width() {
+        let res_value = if src_width > upper_range.offset_bit_width() {
             upper_block.append_op_result(arith::trunci(
                 res_value,
-                IntegerType::new(context, upper_range.bit_width()).into(),
+                IntegerType::new(context, upper_range.offset_bit_width()).into(),
                 location,
             ))?
         } else {
@@ -660,7 +692,7 @@ fn build_is_zero<'ctx, 'this>(
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let src_range = src_ty.integer_range(registry).unwrap();
 
-    if src_range.lower <= BigInt::ZERO && BigInt::ZERO <= src_range.upper {
+    if src_range.lower <= BigInt::ZERO && BigInt::ZERO < src_range.upper {
         let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
         let src_is_zero = entry.append_op_result(arith::cmpi(
             context,
@@ -678,6 +710,7 @@ fn build_is_zero<'ctx, 'this>(
             location,
         ));
     } else {
+        // TODO: I think this would fail since we're not connecting branch [0].
         entry.append_operation(helper.br(1, &[src_value], location));
     }
 
@@ -700,7 +733,7 @@ fn build_wrap_non_zero<'ctx, 'this>(
         .get_type(&info.signature.param_signatures[0].ty)?
         .integer_range(registry)
         .unwrap();
-    assert!(src_range.lower > BigInt::ZERO || BigInt::ZERO > src_range.upper);
+    assert!(src_range.lower > BigInt::ZERO || BigInt::ZERO >= src_range.upper);
 
     entry.append_operation(helper.br(0, &[src_value], location));
     Ok(())

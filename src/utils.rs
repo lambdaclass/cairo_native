@@ -25,6 +25,7 @@ use melior::{
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
+use num_traits::One;
 use std::{
     alloc::Layout,
     borrow::Cow,
@@ -535,18 +536,41 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
 }
 
 pub trait RangeExt {
-    fn bit_width(&self) -> u32;
+    /// Width in bits when the offset is zero (aka. the natural representation).
+    fn zero_based_bit_width(&self) -> u32;
+    /// Width in bits when the offset is not necessarily zero (aka. the compact representation).
+    fn offset_bit_width(&self) -> u32;
 }
 
 impl RangeExt for Range {
-    fn bit_width(&self) -> u32 {
-        let size = self.size().to_biguint().unwrap();
-        u32::try_from(if size.count_ones() == 1 {
-            size.trailing_zeros().expect("range has no valid values")
+    fn zero_based_bit_width(&self) -> u32 {
+        // Formula for unsigned integers:
+        //     x.bits()
+        //
+        // Formula for signed values:
+        //   - Positive: (x.magnitude() + BigUint::one()).bits()
+        //   - Negative: (x.magnitude() - BigUint::one()).bits() + 1
+        //   - Zero: 0
+
+        if self.lower.sign() == Sign::Minus {
+            let lower_width = (self.lower.magnitude() - BigUint::one()).bits() + 1;
+            let upper_width = {
+                let upper = &self.upper - &BigInt::one();
+                match upper.sign() {
+                    Sign::Minus => (upper.magnitude() - BigUint::one()).bits() + 1,
+                    Sign::NoSign => 0,
+                    Sign::Plus => (upper.magnitude() + BigUint::one()).bits(),
+                }
+            };
+
+            lower_width.max(upper_width) as u32
         } else {
-            size.bits()
-        })
-        .expect("bit_width overflow")
+            (&self.upper - &BigInt::one()).bits() as u32
+        }
+    }
+
+    fn offset_bit_width(&self) -> u32 {
+        (self.size() - BigInt::one()).bits() as u32
     }
 }
 
