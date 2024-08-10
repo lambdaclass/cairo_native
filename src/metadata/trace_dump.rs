@@ -5,7 +5,7 @@ use crate::{
     error::Result,
     starknet::{ArrayAbi, Felt252Abi},
     types::TypeBuilder,
-    utils::next_multiple_of_usize,
+    utils::{next_multiple_of_usize, RangeExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -29,6 +29,8 @@ use melior::{
     },
     Context, ExecutionEngine,
 };
+use num_bigint::{BigInt, BigUint, ToBigInt};
+use num_traits::One;
 use sierra_emu::{ProgramTrace, StateDump, Value};
 use starknet_types_core::felt::Felt;
 use std::{
@@ -39,6 +41,7 @@ use std::{
     mem::swap,
     ptr::NonNull,
     rc::Rc,
+    slice,
     sync::Weak,
 };
 
@@ -423,10 +426,21 @@ fn value_from_pointer(
         CoreTypeConcrete::StarkNet(_) => todo!(),
         CoreTypeConcrete::Bytes31(_) => todo!(),
         CoreTypeConcrete::BoundedInt(info) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 32]>().as_ref() };
+            let mut data = BigUint::from_bytes_le(unsafe {
+                slice::from_raw_parts(
+                    value_ptr.cast::<u8>().as_ptr(),
+                    (info.range.bit_width().next_multiple_of(8) >> 3) as usize,
+                )
+            })
+            .to_bigint()
+            .unwrap();
+
+            data &= (BigInt::one() << info.range.bit_width()) - BigInt::one();
+            data += &info.range.lower;
+
             Value::BoundedInt {
+                value: data.into(),
                 range: info.range.lower.clone()..info.range.upper.clone(),
-                value: Felt::from_bytes_le(bytes).to_bigint(),
             }
         }
         CoreTypeConcrete::Coupon(_) => todo!(),
