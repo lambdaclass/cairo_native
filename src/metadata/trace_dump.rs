@@ -439,7 +439,7 @@ fn value_from_pointer(
             data += &info.range.lower;
 
             Value::BoundedInt {
-                value: data.into(),
+                value: data,
                 range: info.range.lower.clone()..info.range.upper.clone(),
             }
         }
