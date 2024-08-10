@@ -2,7 +2,10 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt, error::Result, metadata::MetadataStorage, types::TypeBuilder,
+    block_ext::BlockExt,
+    error::Result,
+    metadata::MetadataStorage,
+    types::{felt252::HALF_PRIME, TypeBuilder},
     utils::RangeExt,
 };
 use cairo_lang_sierra::{
@@ -10,6 +13,7 @@ use cairo_lang_sierra::{
         casts::{CastConcreteLibfunc, DowncastConcreteLibfunc},
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
+        utils::Range,
     },
     program_registry::ProgramRegistry,
 };
@@ -19,6 +23,7 @@ use melior::{
     Context,
 };
 use num_bigint::{BigInt, Sign};
+use num_traits::One;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -69,26 +74,28 @@ pub fn build_downcast<'ctx, 'this>(
     let src_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
 
-    assert!(
-        !matches!(src_ty, CoreTypeConcrete::Felt252(_)),
-        "felt252 casts not implemented"
-    );
-    assert!(
-        !matches!(dst_ty, CoreTypeConcrete::Felt252(_)),
-        "felt252 casts not implemented"
-    );
-
     let src_range = src_ty.integer_range(registry).unwrap();
     let dst_range = dst_ty.integer_range(registry).unwrap();
     assert!(
-        dst_range.lower > src_range.lower || dst_range.upper < src_range.upper,
+        if matches!(src_ty, CoreTypeConcrete::Felt252(_)) {
+            let alt_range = Range {
+                lower: -HALF_PRIME.clone(),
+                upper: HALF_PRIME.clone() + BigInt::one(),
+            };
+
+            (dst_range.lower > src_range.lower || dst_range.upper < src_range.upper)
+                || (dst_range.lower > alt_range.lower || dst_range.upper < alt_range.upper)
+        } else {
+            dst_range.lower > src_range.lower || dst_range.upper < src_range.upper
+        },
         "invalid downcast `{}` into `{}`: target range contains the source range",
         info.signature.param_signatures[1].ty,
         info.signature.branch_signatures[0].vars[1].ty
     );
 
-    // TODO: Handle when `dst_ty` is a bounded int.
-    assert!(!matches!(dst_ty, CoreTypeConcrete::BoundedInt(_)));
+    let is_signed = (matches!(src_ty, CoreTypeConcrete::Felt252(_))
+        && dst_range.lower.sign() == Sign::Minus)
+        || src_range.lower.sign() == Sign::Minus;
 
     let dst_value = if src_ty.is_bounded_int(registry) && src_range.lower != BigInt::ZERO {
         let dst_offset = entry.const_int_from_type(
@@ -111,7 +118,7 @@ pub fn build_downcast<'ctx, 'this>(
         )?;
         Some(entry.append_op_result(arith::cmpi(
             context,
-            if src_range.lower.sign() != Sign::Minus {
+            if !is_signed {
                 CmpiPredicate::Uge
             } else {
                 CmpiPredicate::Sge
@@ -132,7 +139,7 @@ pub fn build_downcast<'ctx, 'this>(
         )?;
         Some(entry.append_op_result(arith::cmpi(
             context,
-            if src_range.lower.sign() != Sign::Minus {
+            if !is_signed {
                 CmpiPredicate::Ult
             } else {
                 CmpiPredicate::Slt
@@ -152,6 +159,18 @@ pub fn build_downcast<'ctx, 'this>(
         (Some(lower_check), None) => lower_check,
         (None, Some(upper_check)) => upper_check,
         (None, None) => unreachable!(),
+    };
+
+    let dst_value = if dst_ty.is_bounded_int(registry) && dst_range.lower != BigInt::ZERO {
+        let dst_offset = entry.const_int_from_type(
+            context,
+            location,
+            dst_range.lower.clone(),
+            dst_value.r#type(),
+        )?;
+        entry.append_op_result(arith::addi(dst_value, dst_offset, location))?
+    } else {
+        dst_value
     };
 
     let dst_value = if dst_range.bit_width() < src_range.bit_width() {
@@ -194,42 +213,60 @@ pub fn build_upcast<'ctx, 'this>(
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[0].ty)?;
 
-    assert!(
-        !matches!(src_ty, CoreTypeConcrete::Felt252(_)),
-        "felt252 casts not implemented"
-    );
-    assert!(
-        !matches!(dst_ty, CoreTypeConcrete::Felt252(_)),
-        "felt252 casts not implemented"
-    );
-
     let src_range = src_ty.integer_range(registry).unwrap();
     let dst_range = dst_ty.integer_range(registry).unwrap();
     assert!(
-        dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper,
-        "invalid upcast `{}` into `{}`: target range doesn't contain the source range",
+        if matches!(dst_ty, CoreTypeConcrete::Felt252(_)) {
+            let alt_range = Range {
+                lower: -HALF_PRIME.clone(),
+                upper: HALF_PRIME.clone() + BigInt::one(),
+            };
+
+            (dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper)
+                || (alt_range.lower <= src_range.lower && alt_range.upper >= src_range.upper)
+        } else {
+            dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper
+        },
+        "invalid upcast `{:?}` into `{:?}`: target range doesn't contain the source range",
         info.signature.param_signatures[0].ty,
         info.signature.branch_signatures[0].vars[0].ty
     );
 
+    // If the source can be negative, the target type must also contain negatives when upcasting.
+    assert!(
+        src_range.lower.sign() != Sign::Minus
+            || matches!(dst_ty, CoreTypeConcrete::Felt252(_))
+            || dst_range.lower.sign() == Sign::Minus
+    );
+    let is_signed = src_range.lower.sign() == Sign::Minus;
+
     let dst_value = if dst_range.bit_width() > src_range.bit_width() {
-        entry.append_op_result(arith::extui(
-            src_value,
-            IntegerType::new(context, dst_range.bit_width()).into(),
-            location,
-        ))?
+        if is_signed {
+            entry.append_op_result(arith::extsi(
+                src_value,
+                IntegerType::new(context, dst_range.bit_width()).into(),
+                location,
+            ))?
+        } else {
+            entry.append_op_result(arith::extui(
+                src_value,
+                IntegerType::new(context, dst_range.bit_width()).into(),
+                location,
+            ))?
+        }
     } else {
         src_value
     };
-
-    // TODO: Handle when `dst_ty` is a bounded int.
-    assert!(!matches!(dst_ty, CoreTypeConcrete::BoundedInt(_)));
 
     let dst_value = if src_ty.is_bounded_int(registry) && src_range.lower != BigInt::ZERO {
         let dst_offset = entry.const_int_from_type(
             context,
             location,
-            src_range.lower.clone(),
+            if dst_ty.is_bounded_int(registry) {
+                &src_range.lower - &dst_range.lower
+            } else {
+                src_range.lower.clone()
+            },
             dst_value.r#type(),
         )?;
         entry.append_op_result(arith::addi(dst_value, dst_offset, location))?
