@@ -2,15 +2,16 @@
 
 use super::LibfuncHelper;
 use crate::block_ext::BlockExt;
+use crate::types::felt252::PRIME;
+use crate::utils::RangeExt;
 use crate::{
     error::{Error, Result},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
-    metadata::{
-        prime_modulo::PrimeModuloMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
-    },
+    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
+use cairo_lang_sierra::extensions::bounded_int::BoundedIntConcreteType;
 use cairo_lang_sierra::{
     extensions::{
         const_type::{
@@ -23,15 +24,11 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith,
-        llvm::{self, r#type::pointer},
-    },
-    ir::{Attribute, Block, Location, Value},
+    dialect::llvm::{self, r#type::pointer},
+    ir::{Block, Location, Value},
     Context,
 };
-use num_bigint::ToBigInt;
-use starknet_types_core::felt::Felt;
+use num_bigint::Sign;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -237,40 +234,52 @@ pub fn build_const_type_value<'ctx, 'this>(
             }
             _ => Err(Error::ConstDataMismatch),
         },
-        inner_type => match &info.inner_data[..] {
+        CoreTypeConcrete::BoundedInt(BoundedIntConcreteType { range, .. }) => {
+            let value = match &info.inner_data.as_slice() {
+                [GenericArg::Value(value)] => value.clone(),
+                _ => return Err(Error::ConstDataMismatch),
+            };
+
+            // Offset the value so that 0 matches with lower.
+            let value = &value - &range.lower;
+
+            entry.const_int(
+                context,
+                location,
+                value,
+                inner_type.integer_range(registry).unwrap().bit_width(),
+            )
+        }
+        CoreTypeConcrete::Felt252(_) => {
+            let value = match &info.inner_data.as_slice() {
+                [GenericArg::Value(value)] => value.clone(),
+                _ => return Err(Error::ConstDataMismatch),
+            };
+
+            let (sign, value) = value.into_parts();
+            let value = match sign {
+                Sign::Minus => PRIME.clone() - value,
+                _ => value,
+            };
+
+            entry.const_int_from_type(context, location, value.clone(), inner_ty)
+        }
+        CoreTypeConcrete::Uint8(_)
+        | CoreTypeConcrete::Uint16(_)
+        | CoreTypeConcrete::Uint32(_)
+        | CoreTypeConcrete::Uint64(_)
+        | CoreTypeConcrete::Uint128(_)
+        | CoreTypeConcrete::Sint8(_)
+        | CoreTypeConcrete::Sint16(_)
+        | CoreTypeConcrete::Sint32(_)
+        | CoreTypeConcrete::Sint64(_)
+        | CoreTypeConcrete::Sint128(_) => match &info.inner_data.as_slice() {
             [GenericArg::Value(value)] => {
-                let mlir_value: Value = match inner_type {
-                    CoreTypeConcrete::Felt252(_) => {
-                        let value = if value.sign() == num_bigint::Sign::Minus {
-                            let prime = metadata
-                                .get::<PrimeModuloMeta<Felt>>()
-                                .ok_or(Error::MissingMetadata)?
-                                .prime();
-
-                            value + prime.to_bigint().expect("Prime to BigInt shouldn't fail")
-                        } else {
-                            value.clone()
-                        };
-
-                        entry.append_op_result(arith::constant(
-                            context,
-                            Attribute::parse(context, &format!("{} : {}", value, inner_ty))
-                                .unwrap(),
-                            location,
-                        ))?
-                    }
-                    // any other int type
-                    _ => entry.append_op_result(arith::constant(
-                        context,
-                        Attribute::parse(context, &format!("{} : {}", value, inner_ty)).unwrap(),
-                        location,
-                    ))?,
-                };
-
-                Ok(mlir_value)
+                entry.const_int_from_type(context, location, value.clone(), inner_ty)
             }
             _ => Err(Error::ConstDataMismatch),
         },
+        _ => todo!("const for type {}", info.inner_ty),
     }
 }
 

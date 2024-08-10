@@ -1,34 +1,25 @@
 //! # Casting libfuncs
 
-use std::ops::Shr;
-
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
-    error::{Error, Result, SierraAssertError},
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    types::TypeBuilder,
+    block_ext::BlockExt, error::Result, metadata::MetadataStorage, types::TypeBuilder,
+    utils::RangeExt,
 };
 use cairo_lang_sierra::{
     extensions::{
+        bounded_int::BoundedIntConcreteType,
         casts::{CastConcreteLibfunc, DowncastConcreteLibfunc},
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith::{self, CmpiPredicate},
-        cf,
-    },
-    ir::{r#type::IntegerType, Block, Location},
+    dialect::arith::{self, CmpiPredicate},
+    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
-use num_bigint::{BigInt, ToBigInt};
-use num_traits::Euclid;
-use starknet_types_core::felt::Felt;
+use num_bigint::{BigInt, Sign};
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -57,201 +48,128 @@ pub fn build_downcast<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: &DowncastConcreteLibfunc,
 ) -> Result<()> {
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let src_value: Value = entry.argument(1)?.into();
 
-    let src_type = registry.get_type(&info.from_ty)?;
-    let dst_type = registry.get_type(&info.to_ty)?;
-    let src_width = src_type
-        .integer_width()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
-    let dst_width = dst_type
-        .integer_width()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
+    let src_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
+    let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
 
-    let src_ty = src_type.build(context, helper, registry, metadata, &info.from_ty)?;
-    let dst_ty = dst_type.build(context, helper, registry, metadata, &info.to_ty)?;
+    match (src_ty, dst_ty) {
+        (
+            CoreTypeConcrete::BoundedInt(BoundedIntConcreteType {
+                range: src_range, ..
+            }),
+            CoreTypeConcrete::Sint8(_)
+            | CoreTypeConcrete::Sint16(_)
+            | CoreTypeConcrete::Sint32(_)
+            | CoreTypeConcrete::Sint64(_)
+            | CoreTypeConcrete::Sint128(_)
+            | CoreTypeConcrete::Uint8(_)
+            | CoreTypeConcrete::Uint16(_)
+            | CoreTypeConcrete::Uint32(_)
+            | CoreTypeConcrete::Uint64(_)
+            | CoreTypeConcrete::Uint128(_),
+        ) => {
+            let dst_range = dst_ty.integer_range(registry).unwrap();
+            assert!(
+                dst_range.lower > src_range.lower || dst_range.upper < src_range.upper,
+                "invalid downcast `{}` into `{}`: target range contains the source range",
+                info.signature.param_signatures[1].ty,
+                info.signature.branch_signatures[0].vars[1].ty
+            );
 
-    let location = Location::name(
-        context,
-        &format!("downcast<{:?}, {:?}>", src_ty, dst_ty),
-        location,
-    );
-
-    let src_is_signed = src_type
-        .is_integer_signed(registry)
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
-    let dst_is_signed = dst_type
-        .is_integer_signed(registry)
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
-    let any_is_signed = src_is_signed | dst_is_signed;
-    let src_is_felt = matches!(
-        src_type,
-        CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::BoundedInt(_)
-    );
-    let dst_is_felt = matches!(
-        dst_type,
-        CoreTypeConcrete::Felt252(_) | CoreTypeConcrete::BoundedInt(_)
-    );
-    let src_value: melior::ir::Value = entry.argument(1)?.into();
-
-    let mut block = entry;
-
-    let (is_in_range, result) = if info.from_ty == info.to_ty {
-        // can't cast to the same type
-        let k0 = block.const_int(context, location, 0, 1)?;
-        (k0, src_value)
-    } else {
-        // make unsigned felt into signed felt
-        // felt > half prime = negative
-        let felt_to_int = src_is_felt && !dst_is_felt;
-        let src_value = if felt_to_int {
-            let attr_halfprime_i252 = metadata
-                .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(Error::MissingMetadata)?
-                .prime()
-                .shr(1);
-
-            let half_prime =
-                block.const_int_from_type(context, location, attr_halfprime_i252, src_ty)?;
-
-            let is_felt_neg = block.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Ugt,
-                src_value,
-                half_prime,
-                location,
-            ))?;
-            let is_neg_block = helper.append_block(Block::new(&[]));
-            let is_not_neg_block = helper.append_block(Block::new(&[]));
-            let final_block = helper.append_block(Block::new(&[(src_ty, location)]));
-
-            block.append_operation(cf::cond_br(
-                context,
-                is_felt_neg,
-                is_neg_block,
-                is_not_neg_block,
-                &[],
-                &[],
-                location,
-            ));
-
-            {
-                let value = metadata
-                    .get::<PrimeModuloMeta<Felt>>()
-                    .ok_or(Error::MissingMetadata)?
-                    .prime();
-                let prime = is_neg_block.const_int_from_type(
+            let dst_value = if src_range.lower != BigInt::ZERO {
+                let dst_offset = entry.const_int_from_type(
                     context,
                     location,
-                    value.to_bigint().unwrap(),
-                    src_ty,
+                    src_range.lower.clone(),
+                    src_value.r#type(),
                 )?;
+                entry.append_op_result(arith::subi(src_value, dst_offset, location))?
+            } else {
+                src_value
+            };
 
-                let mut src_value_is_neg =
-                    is_neg_block.append_op_result(arith::subi(prime, src_value, location))?;
-
-                let kneg1 = is_neg_block.const_int_from_type(context, location, -1, src_ty)?;
-
-                src_value_is_neg = is_neg_block.append_op_result(arith::muli(
-                    src_value_is_neg,
-                    kneg1,
+            let lower_check = if dst_range.lower > src_range.lower {
+                let dst_lower = entry.const_int_from_type(
+                    context,
                     location,
-                ))?;
+                    dst_range.lower.clone(),
+                    dst_value.r#type(),
+                )?;
+                Some(entry.append_op_result(arith::cmpi(
+                    context,
+                    if dst_range.lower.sign() != Sign::Minus {
+                        CmpiPredicate::Uge
+                    } else {
+                        CmpiPredicate::Sge
+                    },
+                    dst_value,
+                    dst_lower,
+                    location,
+                ))?)
+            } else {
+                None
+            };
+            let upper_check = if dst_range.upper < src_range.upper {
+                let dst_upper = entry.const_int_from_type(
+                    context,
+                    location,
+                    dst_range.upper.clone(),
+                    dst_value.r#type(),
+                )?;
+                Some(entry.append_op_result(arith::cmpi(
+                    context,
+                    if dst_range.lower.sign() != Sign::Minus {
+                        CmpiPredicate::Ult
+                    } else {
+                        CmpiPredicate::Slt
+                    },
+                    dst_value,
+                    dst_upper,
+                    location,
+                ))?)
+            } else {
+                None
+            };
 
-                is_neg_block.append_operation(cf::br(final_block, &[src_value_is_neg], location));
-            }
+            let is_in_bounds = match (lower_check, upper_check) {
+                (Some(lower_check), Some(upper_check)) => {
+                    entry.append_op_result(arith::andi(lower_check, upper_check, location))?
+                }
+                (Some(lower_check), None) => lower_check,
+                (None, Some(upper_check)) => upper_check,
+                (None, None) => unreachable!(),
+            };
 
-            is_not_neg_block.append_operation(cf::br(final_block, &[src_value], location));
-
-            block = final_block;
-
-            block.argument(0)?.into()
-        } else {
-            src_value
-        };
-
-        let result = if src_width > dst_width {
-            block.append_op_result(arith::trunci(src_value, dst_ty, location))?
-        } else if src_is_signed {
-            block.append_op_result(arith::extsi(src_value, dst_ty, location))?
-        } else {
-            block.append_op_result(arith::extui(src_value, dst_ty, location))?
-        };
-
-        let (compare_value, compare_ty) = if src_width > dst_width {
-            (src_value, src_ty)
-        } else {
-            (result, dst_ty)
-        };
-
-        let info_range = info
-            .to_range
-            .intersection(&info.from_range)
-            .ok_or_else(|| {
-                Error::SierraAssert(SierraAssertError::Range {
-                    ranges: Box::new((info.from_range.clone(), info.to_range.clone())),
-                })
-            })?;
-
-        let mut int_max_value: BigInt = info_range.upper - 1;
-        let mut int_min_value = info_range.lower;
-
-        if dst_is_felt {
-            let prime = &metadata
-                .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(Error::MissingMetadata)?
-                .prime()
-                .to_bigint()
-                .expect("biguint should be casted to bigint");
-
-            int_min_value = int_min_value.rem_euclid(prime);
-            int_max_value = int_max_value.rem_euclid(prime);
+            let dst_value = if dst_range.bit_width() < src_range.bit_width() {
+                entry.append_op_result(arith::trunci(
+                    dst_value,
+                    IntegerType::new(context, dst_range.bit_width()).into(),
+                    location,
+                ))?
+            } else {
+                dst_value
+            };
+            entry.append_operation(helper.cond_br(
+                context,
+                is_in_bounds,
+                [0, 1],
+                [&[range_check, dst_value], &[range_check]],
+                location,
+            ));
         }
 
-        let max_value = block.const_int_from_type(context, location, int_max_value, compare_ty)?;
-        let min_value = block.const_int_from_type(context, location, int_min_value, compare_ty)?;
-
-        let is_in_range_upper = block.append_op_result(arith::cmpi(
-            context,
-            if any_is_signed {
-                CmpiPredicate::Sle
-            } else {
-                CmpiPredicate::Ule
-            },
-            compare_value,
-            max_value,
-            location,
-        ))?;
-
-        let is_in_range_lower = block.append_op_result(arith::cmpi(
-            context,
-            if any_is_signed {
-                CmpiPredicate::Sge
-            } else {
-                CmpiPredicate::Uge
-            },
-            compare_value,
-            min_value,
-            location,
-        ))?;
-
-        let is_in_range =
-            block.append_op_result(arith::andi(is_in_range_upper, is_in_range_lower, location))?;
-
-        (is_in_range, result)
-    };
-
-    block.append_operation(helper.cond_br(
-        context,
-        is_in_range,
-        [0, 1],
-        [&[range_check, result], &[range_check]],
-        location,
-    ));
+        _ => todo!(
+            "unhandled downcast from {} to {}",
+            info.signature.param_signatures[1].ty,
+            info.signature.branch_signatures[0].vars[1].ty
+        ),
+    }
 
     Ok(())
 }
@@ -263,139 +181,71 @@ pub fn build_upcast<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
-    let dst_ty = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    let src_type = src_ty.build(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[0].ty,
-    )?;
-    let dst_type = dst_ty.build(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.branch_signatures()[0].vars[0].ty,
-    )?;
+    let src_value = entry.argument(0)?.into();
 
-    let location = Location::name(
-        context,
-        &format!("upcast<{:?}, {:?}>", src_type, dst_type),
-        location,
-    );
+    let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
+    let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[0].ty)?;
 
-    let src_width = src_ty
-        .integer_width()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
-    let dst_width = dst_ty
-        .integer_width()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
+    let dst_value = match (src_ty, dst_ty) {
+        // (CoreTypeConcrete::BoundedInt(_), CoreTypeConcrete::BoundedInt(_)) => todo!(),
+        // (CoreTypeConcrete::BoundedInt(_), CoreTypeConcrete::Felt252(_)) => todo!(),
+        (
+            CoreTypeConcrete::BoundedInt(BoundedIntConcreteType {
+                range: src_range, ..
+            }),
+            CoreTypeConcrete::Sint8(_)
+            | CoreTypeConcrete::Sint16(_)
+            | CoreTypeConcrete::Sint32(_)
+            | CoreTypeConcrete::Sint64(_)
+            | CoreTypeConcrete::Sint128(_)
+            | CoreTypeConcrete::Uint8(_)
+            | CoreTypeConcrete::Uint16(_)
+            | CoreTypeConcrete::Uint32(_)
+            | CoreTypeConcrete::Uint64(_)
+            | CoreTypeConcrete::Uint128(_),
+        ) => {
+            let dst_range = dst_ty.integer_range(registry).unwrap();
+            assert!(
+                dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper,
+                "invalid upcast `{}` into `{}`: target range doesn't contain the source range",
+                info.signature.param_signatures[0].ty,
+                info.signature.branch_signatures[0].vars[0].ty
+            );
 
-    let is_signed = src_ty
-        .is_integer_signed(registry)
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))?;
-
-    let dst_is_felt = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
-    let dst_is_bounded = matches!(dst_ty, CoreTypeConcrete::Felt252(_));
-    let src_is_bounded = matches!(src_ty, CoreTypeConcrete::BoundedInt(_));
-
-    if !src_is_bounded {
-        assert!(src_width <= dst_width);
-    }
-
-    let block = entry;
-
-    let result = if src_width == dst_width {
-        block.argument(0)?.into()
-    } else if src_is_bounded && !dst_is_felt && !dst_is_bounded {
-        // bounded int is always a felt252 in width so it needs to be truncated
-        block.append_op_result(arith::trunci(block.argument(0)?.into(), dst_type, location))?
-    } else if is_signed || dst_is_felt {
-        if dst_is_felt {
-            let result = block.append_op_result(arith::extsi(
-                block.argument(0)?.into(),
-                IntegerType::new(context, dst_width.try_into()?).into(),
-                location,
-            ))?;
-
-            let kzero = block.const_int_from_type(context, location, 0, dst_type)?;
-
-            let is_neg = block.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Slt,
-                result,
-                kzero,
-                location,
-            ))?;
-
-            let is_neg_block = helper.append_block(Block::new(&[]));
-            let is_not_neg_block = helper.append_block(Block::new(&[]));
-            let final_block = helper.append_block(Block::new(&[(dst_type, location)]));
-
-            block.append_operation(cf::cond_br(
-                context,
-                is_neg,
-                is_neg_block,
-                is_not_neg_block,
-                &[],
-                &[],
-                location,
-            ));
-
-            {
-                let result = is_not_neg_block.append_op_result(arith::extui(
-                    entry.argument(0)?.into(),
-                    IntegerType::new(context, dst_width.try_into()?).into(),
+            let dst_value = if dst_range.bit_width() > src_range.bit_width() {
+                entry.append_op_result(arith::extui(
+                    src_value,
+                    IntegerType::new(context, dst_range.bit_width()).into(),
                     location,
-                ))?;
+                ))?
+            } else {
+                src_value
+            };
 
-                is_not_neg_block.append_operation(cf::br(final_block, &[result], location));
-            }
-
-            {
-                let mut result = is_neg_block.append_op_result(arith::extsi(
-                    entry.argument(0)?.into(),
-                    IntegerType::new(context, dst_width.try_into()?).into(),
+            if src_range.lower != BigInt::ZERO {
+                let dst_offset = entry.const_int_from_type(
+                    context,
                     location,
-                ))?;
-
-                let value = metadata
-                    .get::<PrimeModuloMeta<Felt>>()
-                    .ok_or(Error::MissingMetadata)?
-                    .prime()
-                    .to_bigint()
-                    .unwrap();
-
-                let prime = is_neg_block.const_int_from_type(context, location, value, dst_type)?;
-
-                result = is_neg_block.append_op_result(arith::addi(result, prime, location))?;
-                is_neg_block.append_operation(cf::br(final_block, &[result], location));
+                    src_range.lower.clone(),
+                    dst_value.r#type(),
+                )?;
+                entry.append_op_result(arith::subi(dst_value, dst_offset, location))?
+            } else {
+                dst_value
             }
-
-            let result = final_block.argument(0)?.into();
-            final_block.append_operation(helper.br(0, &[result], location));
-            return Ok(());
-        } else {
-            block.append_op_result(arith::extsi(
-                entry.argument(0)?.into(),
-                IntegerType::new(context, dst_width.try_into()?).into(),
-                location,
-            ))?
         }
-    } else {
-        block.append_op_result(arith::extui(
-            block.argument(0)?.into(),
-            IntegerType::new(context, dst_width.try_into()?).into(),
-            location,
-        ))?
+
+        _ => todo!(
+            "unhandled upcast from {} to {}",
+            info.signature.param_signatures[0].ty,
+            info.signature.branch_signatures[0].vars[0].ty
+        ),
     };
 
-    block.append_operation(helper.br(0, &[result], location));
+    entry.append_operation(helper.br(0, &[dst_value], location));
     Ok(())
 }
 

@@ -10,6 +10,7 @@ use crate::{
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
+    utils::RangeExt,
     values::JitValue,
 };
 use bumpalo::Bump;
@@ -24,6 +25,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
+use num_bigint::BigInt;
+use num_traits::One;
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -395,7 +398,6 @@ fn parse_result(
             Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
         }
         CoreTypeConcrete::Felt252(_)
-        | CoreTypeConcrete::BoundedInt(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
             | StarkNetTypeConcrete::ContractAddress(_)
@@ -431,6 +433,24 @@ fn parse_result(
                 Ok(JitValue::Bytes31(unsafe {
                     *std::mem::transmute::<&[u64; 4], &[u8; 31]>(&ret_registers)
                 }))
+            }
+        },
+        CoreTypeConcrete::BoundedInt(info) => match return_ptr {
+            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)),
+            None => {
+                let mut data = if info.range.bit_width() <= 64 {
+                    BigInt::from(ret_registers[0])
+                } else {
+                    BigInt::from(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
+                };
+
+                data &= (BigInt::one() << info.range.bit_width()) - BigInt::one();
+                data += &info.range.lower;
+
+                Ok(JitValue::BoundedInt {
+                    value: data.into(),
+                    range: info.range.clone(),
+                })
             }
         },
         CoreTypeConcrete::Uint8(_) => match return_ptr {

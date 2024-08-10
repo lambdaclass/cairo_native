@@ -3,6 +3,7 @@
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
 use crate::block_ext::BlockExt;
+use crate::utils::RangeExt;
 use crate::{
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
@@ -12,6 +13,7 @@ use crate::{
     },
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
+use cairo_lang_sierra::extensions::utils::Range;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -21,6 +23,7 @@ use cairo_lang_sierra::{
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
+use felt252::PRIME;
 use melior::{
     dialect::{
         llvm::{self, r#type::pointer},
@@ -29,7 +32,8 @@ use melior::{
     ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
-use num_traits::Signed;
+use num_bigint::{BigInt, ToBigInt};
+use num_traits::{Bounded, One};
 use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
 pub mod array;
@@ -102,13 +106,8 @@ pub trait TypeBuilder {
     /// a function invocation argument or return value.
     fn is_memory_allocated(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
 
-    /// If the type is an integer type, return its width in bits.
-    ///
-    /// TODO: How is it used?
-    fn integer_width(&self) -> Option<usize>;
-
-    /// If the type is an integer type, return if its signed.
-    fn is_integer_signed(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<bool>;
+    /// If the type is an integer, return its value range.
+    fn integer_range(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<Range>;
 
     /// If the type is a enum type, return all possible variants.
     ///
@@ -493,7 +492,15 @@ impl TypeBuilder for CoreTypeConcrete {
             },
             CoreTypeConcrete::Struct(_) => true,
 
-            CoreTypeConcrete::BoundedInt(_) => false,
+            CoreTypeConcrete::BoundedInt(_info) => {
+                #[cfg(target_arch = "x86_64")]
+                let value = _info.range.bit_width() > 128;
+
+                #[cfg(target_arch = "aarch64")]
+                let value = false;
+
+                value
+            },
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_))
@@ -671,7 +678,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
-            CoreTypeConcrete::BoundedInt(_) => get_integer_layout(252),
+            CoreTypeConcrete::BoundedInt(info) => get_integer_layout(info.range.bit_width()),
 
             CoreTypeConcrete::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
@@ -757,54 +764,47 @@ impl TypeBuilder for CoreTypeConcrete {
         }
     }
 
-    fn integer_width(&self) -> Option<usize> {
-        match self {
-            Self::Uint8(_) => Some(8),
-            Self::Uint16(_) => Some(16),
-            Self::Uint32(_) => Some(32),
-            Self::Uint64(_) => Some(64),
-            Self::Uint128(_) => Some(128),
-            Self::Felt252(_) => Some(252),
-            Self::Sint8(_) => Some(8),
-            Self::Sint16(_) => Some(16),
-            Self::Sint32(_) => Some(32),
-            Self::Sint64(_) => Some(64),
-            Self::Sint128(_) => Some(128),
-
-            CoreTypeConcrete::BoundedInt(_) => Some(252),
-            CoreTypeConcrete::Bytes31(_) => Some(248),
-            CoreTypeConcrete::Const(_) => todo!(),
-
-            _ => None,
+    fn integer_range(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<Range> {
+        fn range_of<T>() -> Range
+        where
+            T: Bounded + Into<BigInt>,
+        {
+            Range {
+                lower: T::min_value().into(),
+                upper: T::max_value().into() + BigInt::one(),
+            }
         }
-    }
 
-    fn is_integer_signed(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<bool> {
-        match self {
-            Self::Uint8(_) => Some(false),
-            Self::Uint16(_) => Some(false),
-            Self::Uint32(_) => Some(false),
-            Self::Uint64(_) => Some(false),
-            Self::Uint128(_) => Some(false),
-            Self::Felt252(_) => Some(true),
-            Self::Sint8(_) => Some(true),
-            Self::Sint16(_) => Some(true),
-            Self::Sint32(_) => Some(true),
-            Self::Sint64(_) => Some(true),
-            Self::Sint128(_) => Some(true),
-            Self::NonZero(inner) => {
-                let inner = registry.get_type(&inner.ty).ok()?;
-                inner.is_integer_signed(registry)
+        Some(match self {
+            Self::Uint8(_) => range_of::<u8>(),
+            Self::Uint16(_) => range_of::<u16>(),
+            Self::Uint32(_) => range_of::<u32>(),
+            Self::Uint64(_) => range_of::<u64>(),
+            Self::Uint128(_) => range_of::<u128>(),
+            Self::Felt252(_) => Range {
+                lower: BigInt::ZERO,
+                upper: PRIME.to_bigint().unwrap(),
+            },
+            Self::Sint8(_) => range_of::<i8>(),
+            Self::Sint16(_) => range_of::<i16>(),
+            Self::Sint32(_) => range_of::<i32>(),
+            Self::Sint64(_) => range_of::<i64>(),
+            Self::Sint128(_) => range_of::<i128>(),
+
+            Self::BoundedInt(info) => info.range.clone(),
+            Self::Bytes31(_) => todo!(),
+            Self::Const(info) => {
+                return registry
+                    .get_type(&info.inner_ty)
+                    .unwrap()
+                    .integer_range(registry)
+            }
+            Self::NonZero(info) => {
+                return registry.get_type(&info.ty).unwrap().integer_range(registry)
             }
 
-            CoreTypeConcrete::BoundedInt(info) => {
-                Some(info.range.lower.is_negative() || info.range.upper.is_negative())
-            }
-            CoreTypeConcrete::Bytes31(_) => Some(false),
-            CoreTypeConcrete::Const(_) => todo!(),
-
-            _ => None,
-        }
+            _ => return None,
+        })
     }
 
     fn variants(&self) -> Option<&[ConcreteTypeId]> {

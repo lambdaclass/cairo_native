@@ -11,7 +11,10 @@ use cairo_lang_compiler::{
     project::setup_project, CompilerConfig,
 };
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        utils::Range,
+    },
     ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
@@ -528,6 +531,19 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
             concrete_type.build(context, module, registry, metadata, id)?,
             concrete_type.layout(registry)?,
         ))
+    }
+}
+
+pub trait RangeExt {
+    fn bit_width(&self) -> u32;
+}
+
+impl RangeExt for Range {
+    fn bit_width(&self) -> u32 {
+        usize::try_from(self.size())
+            .unwrap()
+            .next_power_of_two()
+            .trailing_zeros()
     }
 }
 
