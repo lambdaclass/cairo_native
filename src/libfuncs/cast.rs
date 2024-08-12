@@ -82,9 +82,16 @@ pub fn build_downcast<'ctx, 'this>(
     let src_range = if matches!(src_ty, CoreTypeConcrete::Felt252(_))
         && dst_range.lower.sign() == Sign::Minus
     {
-        Range {
-            lower: -HALF_PRIME.clone(),
-            upper: HALF_PRIME.clone() + BigInt::one(),
+        if dst_range.upper.sign() != Sign::Plus {
+            Range {
+                lower: BigInt::from_biguint(Sign::Minus, PRIME.clone()) + 1,
+                upper: BigInt::one(),
+            }
+        } else {
+            Range {
+                lower: -HALF_PRIME.clone(),
+                upper: HALF_PRIME.clone() + BigInt::one(),
+            }
         }
     } else {
         src_ty.integer_range(registry).unwrap()
@@ -99,7 +106,10 @@ pub fn build_downcast<'ctx, 'this>(
     let src_width = if src_ty.is_bounded_int(registry) {
         src_range.offset_bit_width()
     } else {
-        src_range.zero_based_bit_width()
+        src_ty
+            .integer_range(registry)
+            .unwrap()
+            .zero_based_bit_width()
     };
     let dst_width = if dst_ty.is_bounded_int(registry) {
         dst_range.offset_bit_width()
@@ -114,7 +124,10 @@ pub fn build_downcast<'ctx, 'this>(
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
     let src_value = if compute_width > src_width {
-        if is_signed && !src_ty.is_bounded_int(registry) {
+        if is_signed
+            && !src_ty.is_bounded_int(registry)
+            && !matches!(src_ty, CoreTypeConcrete::Felt252(_))
+        {
             entry.append_op_result(arith::extsi(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
@@ -133,21 +146,31 @@ pub fn build_downcast<'ctx, 'this>(
 
     // TODO: Support NonZero<felt252>.
     let src_value = if is_signed && matches!(src_ty, CoreTypeConcrete::Felt252(_)) {
-        let k_half_prime =
-            entry.const_int_from_type(context, location, HALF_PRIME.clone(), src_value.r#type())?;
-        let is_negative = entry.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Ugt,
-            src_value,
-            k_half_prime,
-            location,
-        ))?;
+        if src_range.upper.is_one() {
+            let adj_offset =
+                entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
+            entry.append_op_result(arith::subi(src_value, adj_offset, location))?
+        } else {
+            let adj_offset = entry.const_int_from_type(
+                context,
+                location,
+                HALF_PRIME.clone(),
+                src_value.r#type(),
+            )?;
+            let is_negative = entry.append_op_result(arith::cmpi(
+                context,
+                CmpiPredicate::Ugt,
+                src_value,
+                adj_offset,
+                location,
+            ))?;
 
-        let k_prime =
-            entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
-        let adj_value = entry.append_op_result(arith::subi(src_value, k_prime, location))?;
+            let k_prime =
+                entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
+            let adj_value = entry.append_op_result(arith::subi(src_value, k_prime, location))?;
 
-        entry.append_op_result(arith::select(is_negative, adj_value, src_value, location))?
+            entry.append_op_result(arith::select(is_negative, adj_value, src_value, location))?
+        }
     } else if src_ty.is_bounded_int(registry) && src_range.lower != BigInt::ZERO {
         let dst_offset = entry.const_int_from_type(
             context,
