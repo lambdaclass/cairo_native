@@ -285,7 +285,7 @@ fn build_sub<'ctx, 'this>(
     let res_value = entry.append_op_result(arith::subi(lhs_value, rhs_value, location))?;
 
     // Offset and truncate the result to the output type.
-    let res_offset = &dst_range.lower - &compute_range.lower;
+    let res_offset = dst_range.lower.clone();
     let res_value = if res_offset != BigInt::ZERO {
         let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
         entry.append_op_result(arith::subi(res_value, res_offset, location))?
