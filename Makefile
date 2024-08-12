@@ -8,10 +8,11 @@ SCARB_VERSION=2.6.4
 .PHONY: usage
 usage: check-llvm needs-cairo2
 	@echo "Usage:"
-	@echo "    deps:         Installs the necesarry dependencies."
-	@echo "    build:        Builds the cairo-native library and binaries."
+	@echo "    deps:         Installs the necesary dependencies."
+	@echo "    build:        Builds the cairo-native library and binaries in release mode."
 	@echo "    build-native: Builds cairo-native with the target-cpu=native rust flag."
 	@echo "    build-dev:    Builds cairo-native under a development-optimized profile."
+	@echo "    runtime:      Builds the runtime library required for AOT compilation."
 	@echo "    check:        Checks format and lints."
 	@echo "    test:         Runs all tests."
 	@echo "    proptest:     Runs property tests."
@@ -20,7 +21,7 @@ usage: check-llvm needs-cairo2
 	@echo "    doc-open:     Builds and opens documentation in browser."
 	@echo "    bench:        Runs the hyperfine benchmark script."
 	@echo "    bench-ci:     Runs the criterion benchmarks for CI."
-	@echo "    install:      Invokes cargo to install cairo-native."
+	@echo "    install:      Invokes cargo to install cairo-native tools."
 	@echo "    clean:        Cleans the built artifacts."
 	@echo "    stress-test   Runs a command which runs stress tests."
 	@echo "    stress-plot   Plots the results of the stress test command."
