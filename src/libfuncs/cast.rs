@@ -14,7 +14,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         casts::{CastConcreteLibfunc, DowncastConcreteLibfunc},
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
         utils::Range,
     },
@@ -78,10 +78,7 @@ pub fn build_downcast<'ctx, 'this>(
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
 
     let dst_range = dst_ty.integer_range(registry).unwrap();
-    // TODO: Support NonZero<Felt252>.
-    let src_range = if matches!(src_ty, CoreTypeConcrete::Felt252(_))
-        && dst_range.lower.sign() == Sign::Minus
-    {
+    let src_range = if src_ty.is_felt252(registry) && dst_range.lower.sign() == Sign::Minus {
         if dst_range.upper.sign() != Sign::Plus {
             Range {
                 lower: BigInt::from_biguint(Sign::Minus, PRIME.clone()) + 1,
@@ -124,10 +121,7 @@ pub fn build_downcast<'ctx, 'this>(
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
     let src_value = if compute_width > src_width {
-        if is_signed
-            && !src_ty.is_bounded_int(registry)
-            && !matches!(src_ty, CoreTypeConcrete::Felt252(_))
-        {
+        if is_signed && !src_ty.is_bounded_int(registry) && !src_ty.is_felt252(registry) {
             entry.append_op_result(arith::extsi(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
@@ -144,8 +138,7 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
-    // TODO: Support NonZero<felt252>.
-    let src_value = if is_signed && matches!(src_ty, CoreTypeConcrete::Felt252(_)) {
+    let src_value = if is_signed && src_ty.is_felt252(registry) {
         if src_range.upper.is_one() {
             let adj_offset =
                 entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
@@ -290,8 +283,7 @@ pub fn build_upcast<'ctx, 'this>(
     let src_range = src_ty.integer_range(registry).unwrap();
     let dst_range = dst_ty.integer_range(registry).unwrap();
     assert!(
-        // TODO: Support NonZero<felt252>.
-        if matches!(dst_ty, CoreTypeConcrete::Felt252(_)) {
+        if dst_ty.is_felt252(registry) {
             let alt_range = Range {
                 lower: -HALF_PRIME.clone(),
                 upper: HALF_PRIME.clone() + BigInt::one(),
@@ -320,9 +312,8 @@ pub fn build_upcast<'ctx, 'this>(
 
     // If the source can be negative, the target type must also contain negatives when upcasting.
     assert!(
-        // TODO: Support NonZero<felt252>.
         src_range.lower.sign() != Sign::Minus
-            || matches!(dst_ty, CoreTypeConcrete::Felt252(_))
+            || dst_ty.is_felt252(registry)
             || dst_range.lower.sign() == Sign::Minus
     );
     let is_signed = src_range.lower.sign() == Sign::Minus;
@@ -361,10 +352,7 @@ pub fn build_upcast<'ctx, 'this>(
         dst_value
     };
 
-    // TODO: Support NonZero<felt252>.
-    let dst_value = if matches!(dst_ty, CoreTypeConcrete::Felt252(_))
-        && src_range.lower.sign() == Sign::Minus
-    {
+    let dst_value = if dst_ty.is_felt252(registry) && src_range.lower.sign() == Sign::Minus {
         let k0 = entry.const_int(context, location, 0, 252)?;
         let is_negative = entry.append_op_result(arith::cmpi(
             context,

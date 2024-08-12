@@ -692,28 +692,27 @@ fn build_is_zero<'ctx, 'this>(
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let src_range = src_ty.integer_range(registry).unwrap();
 
-    if src_range.lower <= BigInt::ZERO && BigInt::ZERO < src_range.upper {
-        let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
-        let src_is_zero = entry.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Eq,
-            src_value,
-            k0,
-            location,
-        ))?;
+    assert!(
+        src_range.lower <= BigInt::ZERO && BigInt::ZERO < src_range.upper,
+        "value can never be zero"
+    );
 
-        entry.append_operation(helper.cond_br(
-            context,
-            src_is_zero,
-            [0, 1],
-            [&[], &[src_value]],
-            location,
-        ));
-    } else {
-        // TODO: I think this would fail since we're not connecting branch [0].
-        entry.append_operation(helper.br(1, &[src_value], location));
-    }
+    let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
+    let src_is_zero = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        src_value,
+        k0,
+        location,
+    ))?;
 
+    entry.append_operation(helper.cond_br(
+        context,
+        src_is_zero,
+        [0, 1],
+        [&[], &[src_value]],
+        location,
+    ));
     Ok(())
 }
 

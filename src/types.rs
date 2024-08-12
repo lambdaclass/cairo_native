@@ -108,9 +108,13 @@ pub trait TypeBuilder {
 
     /// If the type is an integer, return its value range.
     fn integer_range(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<Range>;
+
     /// Return whether the type is a `BoundedInt<>`, either directly or indirectly (ex. through
     /// `NonZero<BoundedInt<>>`).
     fn is_bounded_int(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
+    /// Return whether the type is a `felt252`, either directly or indirectly (ex. through
+    /// `NonZero<BoundedInt<>>`).
+    fn is_felt252(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
 
     /// If the type is a enum type, return all possible variants.
     ///
@@ -820,6 +824,17 @@ impl TypeBuilder for CoreTypeConcrete {
                 .get_type(&info.ty)
                 .unwrap()
                 .is_bounded_int(registry),
+
+            _ => false,
+        }
+    }
+
+    fn is_felt252(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
+        match self {
+            CoreTypeConcrete::Felt252(_) => true,
+            CoreTypeConcrete::NonZero(info) => {
+                registry.get_type(&info.ty).unwrap().is_felt252(registry)
+            }
 
             _ => false,
         }
