@@ -77,21 +77,20 @@ pub fn build_downcast<'ctx, 'this>(
     let src_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
 
-    let src_range = src_ty.integer_range(registry).unwrap();
     let dst_range = dst_ty.integer_range(registry).unwrap();
+    // TODO: Support NonZero<Felt252>.
+    let src_range = if matches!(src_ty, CoreTypeConcrete::Felt252(_))
+        && dst_range.lower.sign() == Sign::Minus
+    {
+        Range {
+            lower: -HALF_PRIME.clone(),
+            upper: HALF_PRIME.clone() + BigInt::one(),
+        }
+    } else {
+        src_ty.integer_range(registry).unwrap()
+    };
     assert!(
-        // TODO: Support NonZero<Felt252>.
-        if matches!(src_ty, CoreTypeConcrete::Felt252(_)) {
-            let alt_range = Range {
-                lower: -HALF_PRIME.clone(),
-                upper: HALF_PRIME.clone() + BigInt::one(),
-            };
-
-            (dst_range.lower > src_range.lower || dst_range.upper < src_range.upper)
-                || (dst_range.lower > alt_range.lower || dst_range.upper < alt_range.upper)
-        } else {
-            dst_range.lower > src_range.lower || dst_range.upper < src_range.upper
-        },
+        dst_range.lower > src_range.lower || dst_range.upper < src_range.upper,
         "invalid downcast `{}` into `{}`: target range contains the source range",
         info.signature.param_signatures[1].ty,
         info.signature.branch_signatures[0].vars[1].ty
@@ -112,13 +111,10 @@ pub fn build_downcast<'ctx, 'this>(
         .zero_based_bit_width()
         .max(dst_range.zero_based_bit_width());
 
-    // TODO: Support NonZero<felt252>.
-    let is_signed = (matches!(src_ty, CoreTypeConcrete::Felt252(_))
-        && dst_range.lower.sign() == Sign::Minus)
-        || src_range.lower.sign() == Sign::Minus;
+    let is_signed = src_range.lower.sign() == Sign::Minus;
 
     let src_value = if compute_width > src_width {
-        if is_signed {
+        if is_signed && !src_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extsi(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
@@ -135,7 +131,24 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
-    let src_value = if src_ty.is_bounded_int(registry) && src_range.lower != BigInt::ZERO {
+    // TODO: Support NonZero<felt252>.
+    let src_value = if is_signed && matches!(src_ty, CoreTypeConcrete::Felt252(_)) {
+        let k_half_prime =
+            entry.const_int_from_type(context, location, HALF_PRIME.clone(), src_value.r#type())?;
+        let is_negative = entry.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Ugt,
+            src_value,
+            k_half_prime,
+            location,
+        ))?;
+
+        let k_prime =
+            entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
+        let adj_value = entry.append_op_result(arith::subi(src_value, k_prime, location))?;
+
+        entry.append_op_result(arith::select(is_negative, adj_value, src_value, location))?
+    } else if src_ty.is_bounded_int(registry) && src_range.lower != BigInt::ZERO {
         let dst_offset = entry.const_int_from_type(
             context,
             location,
@@ -206,7 +219,7 @@ pub fn build_downcast<'ctx, 'this>(
             dst_range.lower.clone(),
             src_value.r#type(),
         )?;
-        entry.append_op_result(arith::addi(src_value, dst_offset, location))?
+        entry.append_op_result(arith::subi(src_value, dst_offset, location))?
     } else {
         src_value
     };
