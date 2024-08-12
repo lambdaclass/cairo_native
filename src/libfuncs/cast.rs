@@ -5,7 +5,10 @@ use crate::{
     block_ext::BlockExt,
     error::Result,
     metadata::MetadataStorage,
-    types::{felt252::HALF_PRIME, TypeBuilder},
+    types::{
+        felt252::{HALF_PRIME, PRIME},
+        TypeBuilder,
+    },
     utils::RangeExt,
 };
 use cairo_lang_sierra::{
@@ -289,7 +292,7 @@ pub fn build_upcast<'ctx, 'this>(
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
     let dst_value = if dst_width > src_width {
-        if is_signed {
+        if is_signed && !src_ty.is_bounded_int(registry) {
             entry.append_op_result(arith::extsi(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
@@ -318,6 +321,27 @@ pub fn build_upcast<'ctx, 'this>(
             dst_value.r#type(),
         )?;
         entry.append_op_result(arith::addi(dst_value, dst_offset, location))?
+    } else {
+        dst_value
+    };
+
+    // TODO: Support NonZero<felt252>.
+    let dst_value = if matches!(dst_ty, CoreTypeConcrete::Felt252(_))
+        && src_range.lower.sign() == Sign::Minus
+    {
+        let k0 = entry.const_int(context, location, 0, 252)?;
+        let is_negative = entry.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Slt,
+            dst_value,
+            k0,
+            location,
+        ))?;
+
+        let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
+        let adj_value = entry.append_op_result(arith::addi(dst_value, k_prime, location))?;
+
+        entry.append_op_result(arith::select(is_negative, adj_value, dst_value, location))?
     } else {
         dst_value
     };
