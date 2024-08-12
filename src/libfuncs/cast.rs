@@ -178,7 +178,7 @@ pub fn build_downcast<'ctx, 'this>(
             src_range.lower.clone(),
             src_value.r#type(),
         )?;
-        entry.append_op_result(arith::subi(src_value, dst_offset, location))?
+        entry.append_op_result(arith::addi(src_value, dst_offset, location))?
     } else {
         src_value
     };
