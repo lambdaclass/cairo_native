@@ -416,8 +416,8 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Circuit(_) => todo!(),
-            CoreTypeConcrete::RangeCheck96(_) => todo!(),
+            CoreTypeConcrete::Circuit(_) => Ok(IntegerType::new(context, 64).into()),
+            CoreTypeConcrete::RangeCheck96(_) => Ok(IntegerType::new(context, 64).into()),
         }
     }
 
@@ -767,7 +767,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .unwrap()
                 .is_memory_allocated(registry),
             CoreTypeConcrete::Coupon(_) => false,
-            CoreTypeConcrete::Circuit(_) | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+            CoreTypeConcrete::Circuit(_) | CoreTypeConcrete::RangeCheck96(_) => false,
         }
     }
 
