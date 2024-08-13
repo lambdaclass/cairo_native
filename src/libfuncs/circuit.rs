@@ -13,7 +13,6 @@ use cairo_lang_sierra::{
 };
 use itertools::Itertools;
 use melior::{
-    dialect::ods::llvm,
     ir::{Block, Location},
     Context,
 };
@@ -38,14 +37,16 @@ pub fn build<'ctx, 'this>(
         CircuitConcreteLibfunc::GetOutput(_) => todo!(),
         CircuitConcreteLibfunc::TryIntoCircuitModulus(_) => todo!(),
         CircuitConcreteLibfunc::FailureGuaranteeVerify(_) => todo!(),
-        CircuitConcreteLibfunc::IntoU96Guarantee(_) => todo!(),
+        CircuitConcreteLibfunc::IntoU96Guarantee(info) => {
+            build_into_u96_guarantee(context, registry, entry, location, helper, metadata, info)
+        }
         CircuitConcreteLibfunc::U96GuaranteeVerify(_) => todo!(),
         CircuitConcreteLibfunc::U96LimbsLessThanGuaranteeVerify(_) => todo!(),
         CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(_) => todo!(),
     }
 }
 
-/// Generate MLIR operations for the `bounded_int_add` libfunc.
+/// Generate MLIR operations for the `init_circuit_data` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_init_circuit_data<'ctx, 'this>(
     context: &'ctx Context,
@@ -84,5 +85,34 @@ fn build_init_circuit_data<'ctx, 'this>(
 
     entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), dummy], location));
 
+    Ok(())
+}
+
+/// Generate MLIR operations for the `into_u96_guarantee` libfunc.
+#[allow(clippy::too_many_arguments)]
+fn build_into_u96_guarantee<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()> {
+    let info_type = info.ty.debug_name.clone();
+    dbg!(&info_type);
+
+    let params = info
+        .param_signatures()
+        .iter()
+        .map(|p| p.ty.debug_name.clone())
+        .collect_vec();
+    dbg!(params);
+
+    let branches = info.branch_signatures();
+    dbg!(branches);
+
+    let dummy = entry.const_int(context, location, 1, 64)?;
+    entry.append_operation(helper.br(0, &[dummy], location));
     Ok(())
 }
