@@ -26,6 +26,7 @@ pub mod r#box;
 pub mod branch_align;
 pub mod bytes31;
 pub mod cast;
+pub mod circuit;
 pub mod r#const;
 pub mod coupon;
 pub mod debug;
@@ -222,7 +223,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::CouponCall(info) => self::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::Circuit(_) => todo!(),
+            Self::Circuit(info) => {
+                self::circuit::build(context, registry, entry, location, helper, metadata, info)
+            }
             Self::BoundedInt(info) => {
                 self::bounded_int::build(context, registry, entry, location, helper, metadata, info)
             }
