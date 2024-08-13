@@ -81,7 +81,7 @@ impl<'m> JitNativeExecutor<'m> {
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.extract_signature(function_id),
+            self.extract_signature(function_id).unwrap(),
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
@@ -106,7 +106,7 @@ impl<'m> JitNativeExecutor<'m> {
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.extract_signature(function_id),
+            self.extract_signature(function_id).unwrap(),
             args,
             available_gas,
             Some(syscall_handler),
@@ -128,7 +128,7 @@ impl<'m> JitNativeExecutor<'m> {
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.extract_signature(function_id),
+            self.extract_signature(function_id).unwrap(),
             &[JitValue::Struct {
                 fields: vec![JitValue::Array(
                     args.iter().cloned().map(JitValue::Felt252).collect(),
@@ -149,11 +149,10 @@ impl<'m> JitNativeExecutor<'m> {
         self.engine.lookup(&function_name) as *mut c_void
     }
 
-    fn extract_signature(&self, function_id: &FunctionId) -> &FunctionSignature {
-        &self
-            .program_registry()
+    fn extract_signature(&self, function_id: &FunctionId) -> Option<&FunctionSignature> {
+        self.program_registry()
             .get_function(function_id)
-            .unwrap()
-            .signature
+            .ok()
+            .map(|func| &func.signature)
     }
 }

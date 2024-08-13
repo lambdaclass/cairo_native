@@ -31,10 +31,13 @@ fn criterion_benchmark(c: &mut Criterion) {
     let jit_logistic_map =
         jit_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::None);
 
-    let factorial_function_id = find_function_id(&factorial, "factorial_2M::factorial_2M::main");
-    let fibonacci_function_id = find_function_id(&fibonacci, "fib_2M::fib_2M::main");
+    let factorial_function_id = find_function_id(&factorial, "factorial_2M::factorial_2M::main")
+        .expect("factorial entry point not found");
+    let fibonacci_function_id =
+        find_function_id(&fibonacci, "fib_2M::fib_2M::main").expect("fib entry point not found");
     let logistic_map_function_id =
-        find_function_id(&logistic_map, "logistic_map::logistic_map::main");
+        find_function_id(&logistic_map, "logistic_map::logistic_map::main")
+            .expect("logistic_map entry point not found");
 
     c.bench_function("Cached JIT factorial_2M", |b| {
         b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));

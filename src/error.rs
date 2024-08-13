@@ -59,6 +59,12 @@ pub enum Error {
 
     #[error("cairo const data mismatch")]
     ConstDataMismatch,
+
+    #[error("expected an integer-like type")]
+    IntegerLikeTypeExpected,
+
+    #[error("integer conversion failed")]
+    IntegerConversion,
 }
 
 impl Error {

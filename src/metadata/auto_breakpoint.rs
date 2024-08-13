@@ -1,6 +1,7 @@
 #![cfg(feature = "with-debug-utils")]
 
 use super::{debug_utils::DebugUtils, MetadataStorage};
+use crate::error::Error;
 use cairo_lang_sierra::ids::ConcreteTypeId;
 use melior::ir::{Block, Location};
 use std::collections::HashSet;
@@ -33,13 +34,14 @@ impl AutoBreakpoint {
         location: Location,
         metadata: &MetadataStorage,
         event: &BreakpointEvent,
-    ) {
+    ) -> Result<(), Error> {
         if self.has_event(event) {
             metadata
                 .get::<DebugUtils>()
                 .unwrap()
-                .debug_breakpoint_trap(block, location)
-                .unwrap();
+                .debug_breakpoint_trap(block, location)?;
         }
+
+        Ok(())
     }
 }

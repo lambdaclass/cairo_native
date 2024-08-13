@@ -175,14 +175,14 @@ fn compile_func(
             .iter_mut()
             .zip(function.signature.param_types.iter().filter_map(|type_id| {
                 let type_info = registry.get_type(type_id).unwrap();
-                if type_info.is_builtin() && type_info.is_zst(registry) {
+                if type_info.is_builtin() && type_info.is_zst(registry).unwrap() {
                     None
                 } else {
                     Some(type_info)
                 }
             }))
     {
-        if type_info.is_memory_allocated(registry) {
+        if type_info.is_memory_allocated(registry)? {
             *ty = llvm::r#type::pointer(context, 0);
         }
     }
@@ -195,7 +195,7 @@ fn compile_func(
         .iter()
         .filter_map(|type_id| {
             let type_info = registry.get_type(type_id).unwrap();
-            if type_info.is_builtin() && type_info.is_zst(registry) {
+            if type_info.is_builtin() && type_info.is_zst(registry).unwrap() {
                 None
             } else {
                 Some((type_id, type_info))
@@ -210,7 +210,7 @@ fn compile_func(
         Some(false)
     } else if return_type_infos
         .first()
-        .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
+        .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry).unwrap())
     {
         assert_eq!(return_types.len(), 1);
 
@@ -248,7 +248,7 @@ fn compile_func(
 
             values.push((
                 &param.id,
-                if type_info.is_builtin() && type_info.is_zst(registry) {
+                if type_info.is_builtin() && type_info.is_zst(registry)? {
                     pre_entry_block
                         .append_operation(llvm::undef(
                             type_info.build(context, module, registry, metadata, &param.ty)?,
@@ -527,8 +527,8 @@ fn compile_func(
                                     .zip(&values)
                                     .filter_map(|(type_id, value)| {
                                         let type_info = registry.get_type(type_id).unwrap();
-                                        if type_info.is_zst(registry)
-                                            || type_info.is_memory_allocated(registry)
+                                        if type_info.is_zst(registry).unwrap()
+                                            || type_info.is_memory_allocated(registry).unwrap()
                                         {
                                             None
                                         } else {
@@ -543,7 +543,7 @@ fn compile_func(
                                     .zip(&values)
                                     .filter_map(|(type_id, value)| {
                                         let type_info = registry.get_type(type_id).unwrap();
-                                        if type_info.is_zst(registry) {
+                                        if type_info.is_zst(registry).unwrap() {
                                             None
                                         } else {
                                             Some(*value)
@@ -570,7 +570,7 @@ fn compile_func(
                     // Remove ZST builtins from the return values.
                     for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
                         let type_info = registry.get_type(type_id)?;
-                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                        if type_info.is_builtin() && type_info.is_zst(registry)? {
                             values.remove(idx);
                         }
                     }
@@ -612,7 +612,7 @@ fn compile_func(
                 registry
                     .get_type(type_id)
                     .map(|type_info| {
-                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                        if type_info.is_builtin() && type_info.is_zst(registry).unwrap() {
                             None
                         } else {
                             Some((type_id, type_info))
@@ -627,7 +627,7 @@ fn compile_func(
             let mut value = pre_entry_block
                 .argument((has_return_ptr == Some(true)) as usize + i)?
                 .into();
-            if type_info.is_memory_allocated(registry) {
+            if type_info.is_memory_allocated(registry).unwrap() {
                 value = pre_entry_block
                     .append_operation(llvm::load(
                         context,
@@ -881,7 +881,7 @@ fn extract_types<'c: 'a, 'a>(
             Err(e) => return Some(Err(e.into())),
         };
 
-        if type_info.is_builtin() && type_info.is_zst(registry) {
+        if type_info.is_builtin() && type_info.is_zst(registry).unwrap() {
             None
         } else {
             Some(type_info.build(context, module, registry, metadata_storage, id))

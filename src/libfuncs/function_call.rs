@@ -45,9 +45,9 @@ pub fn build<'ctx, 'this>(
     for (idx, type_id) in info.function.signature.param_types.iter().enumerate() {
         let type_info = registry.get_type(type_id)?;
 
-        if !(type_info.is_builtin() && type_info.is_zst(registry)) {
+        if !(type_info.is_builtin() && type_info.is_zst(registry)?) {
             arguments.push(
-                if tailrec_meta.is_none() && type_info.is_memory_allocated(registry) {
+                if tailrec_meta.is_none() && type_info.is_memory_allocated(registry)? {
                     let elem_ty = type_info.build(context, helper, registry, metadata, type_id)?;
                     let stack_ptr = helper.init_block().alloca1(
                         context,
@@ -99,16 +99,14 @@ pub fn build<'ctx, 'this>(
                 .ret_types
                 .iter()
                 .map(|ty| {
-                    (
+                    Ok((
                         registry
-                            .get_type(ty)
-                            .unwrap()
-                            .build(context, helper, registry, metadata, ty)
-                            .unwrap(),
+                            .get_type(ty)?
+                            .build(context, helper, registry, metadata, ty)?,
                         location,
-                    )
+                    ))
                 })
-                .collect::<Vec<_>>(),
+                .collect::<Result<Vec<_>>>()?,
         ));
         tailrec_meta.set_return_target(cont_block);
 
@@ -117,7 +115,7 @@ pub fn build<'ctx, 'this>(
         for var_info in &info.signature.branch_signatures[0].vars {
             let type_info = registry.get_type(&var_info.ty)?;
 
-            if type_info.is_builtin() && type_info.is_zst(registry) {
+            if type_info.is_builtin() && type_info.is_zst(registry)? {
                 results.push(cont_block.append_op_result(llvm::undef(
                     type_info.build(context, helper, registry, metadata, &var_info.ty)?,
                     location,
@@ -139,14 +137,18 @@ pub fn build<'ctx, 'this>(
             .ret_types
             .iter()
             .filter_map(|type_id| {
-                let type_info = registry.get_type(type_id).unwrap();
-                if type_info.is_builtin() && type_info.is_zst(registry) {
-                    None
-                } else {
-                    Some((type_id, type_info))
-                }
+                let type_info = match registry.get_type(type_id) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e.into())),
+                };
+                let is_zst = match type_info.is_zst(registry) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e)),
+                };
+
+                (type_info.is_builtin() && is_zst).then_some(Ok((type_id, type_info)))
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
         // A function has a return pointer if either:
         //   - There are multiple return values.
         //   - The return value is memory allocated.
@@ -163,7 +165,9 @@ pub fn build<'ctx, 'this>(
             Some(false)
         } else if return_types
             .first()
-            .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
+            .map(|(_, type_info)| type_info.is_memory_allocated(registry))
+            .transpose()?
+            == Some(true)
         {
             let (type_id, type_info) = return_types[0];
             let layout = type_info.layout(registry)?;
@@ -204,7 +208,7 @@ pub fn build<'ctx, 'this>(
                 for (idx, type_id) in info.function.signature.ret_types.iter().enumerate() {
                     let type_info = registry.get_type(type_id)?;
 
-                    if type_info.is_builtin() && type_info.is_zst(registry) {
+                    if type_info.is_builtin() && type_info.is_zst(registry)? {
                         results.push(entry.argument(idx)?.into());
                     } else {
                         let val = arguments[0];
@@ -239,7 +243,7 @@ pub fn build<'ctx, 'this>(
                 for (idx, type_id) in info.function.signature.ret_types.iter().enumerate() {
                     let type_info = registry.get_type(type_id)?;
 
-                    if type_info.is_builtin() && type_info.is_zst(registry) {
+                    if type_info.is_builtin() && type_info.is_zst(registry)? {
                         results.push(entry.argument(idx)?.into());
                     } else {
                         let val = function_call_result.result(count)?.into();
@@ -255,9 +259,9 @@ pub fn build<'ctx, 'this>(
                 let mut count = 0;
                 for (idx, type_id) in info.function.signature.ret_types.iter().enumerate() {
                     let type_info = registry.get_type(type_id)?;
-                    assert!(!type_info.is_memory_allocated(registry));
+                    assert!(!type_info.is_memory_allocated(registry)?);
 
-                    if type_info.is_builtin() && type_info.is_zst(registry) {
+                    if type_info.is_builtin() && type_info.is_zst(registry)? {
                         results.push(entry.argument(idx)?.into());
                     } else {
                         let value = function_call_result.result(count)?.into();
