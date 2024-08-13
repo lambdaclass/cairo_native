@@ -19,11 +19,18 @@ to machine code via MLIR and LLVM.
 
 </div>
 
-For in-depth documentation, see the [developer documentation][].
-
 - [Getting Started](#getting-started)
 - [Included Tools](#included-tools)
+  - [cairo-native-compile](#cairo-native-compile)
+  - [cairo-native-dump](#cairo-native-dump)
+  - [cairo-native-run](#cairo-native-run)
+  - [cairo-native-test](#cairo-native-test)
+  - [cairo-native-stress](#cairo-native-stress)
+  - [scarb-native-dump](#scarb-native-dump)
+  - [scarb-native-test](#scarb-native-test)
 - [Benchmarking](#benchmarking)
+
+For in-depth documentation, see the [developer documentation][].
 
 ## ⚠️ Disclaimer
 🚧 Cairo Native is still being built therefore API breaking changes might happen often so use it at your own risk. 🚧
@@ -113,7 +120,7 @@ The makefile `deps` target (which you should have ran before) installs LLVM 18 w
 source env.sh
 ```
 
-### Make commands:
+### Make targets:
 Running `make` by itself will check whether the required LLVM installation and corelib is found, and then list available targets.
 
 ```bash
@@ -345,40 +352,5 @@ This script runs hyperfine commands to compare the execution time of programs in
 Each program is compiled and executed via the execution engine with the `cairo-native-run` command and via the cairo-vm with the `cairo-run` command provided by the `cairo` codebase.
 The `cairo-run` command should be available in the `$PATH` and ideally compiled with `cargo build --release`.
 If you want the benchmarks to run using a specific build, or the `cairo-run` commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run `cairo-run` with a full path can be specified with the `$CAIRO_RUN` environment variable.
-
-## From MLIR to native binary
-
-```bash
-# to mlir with llvm dialect
-sierra2mlir program.sierra -o program.mlir
-
-# translate all dialects to the llvm dialect
-"$MLIR_SYS_180_PREFIX/bin/mlir-opt" \
-        --canonicalize \
-        --convert-scf-to-cf \
-        --canonicalize \
-        --cse \
-        --expand-strided-metadata \
-        --finalize-memref-to-llvm \
-        --convert-func-to-llvm \
-        --convert-index-to-llvm \
-        --reconcile-unrealized-casts \
-        "program.mlir" \
-        -o "program-llvm.mlir"
-
-# translate mlir to llvm-ir
-"$MLIR_SYS_180_PREFIX"/bin/mlir-translate --mlir-to-llvmir program-llvm.mlir -o program.ll
-
-# compile natively
-"$MLIR_SYS_180_PREFIX"/bin/clang program.ll -Wno-override-module \
-    -L "$MLIR_SYS_180_PREFIX"/lib -L"./target/release/" \
-    -lcairo_native_runtime -lmlir_c_runner_utils \
-    -Wl,-rpath "$MLIR_SYS_180_PREFIX"/lib \
-    -Wl,-rpath ./target/release/ \
-    -o program
-
-./program
-```
-
 
 [developer documentation]: https://lambdaclass.github.io/cairo_native/cairo_native/docs/index.html
