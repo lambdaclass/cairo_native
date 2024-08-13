@@ -19,10 +19,14 @@ to machine code via MLIR and LLVM.
 
 </div>
 
-For in-depth documentation, see the [DeveloperDocumentation][].
+For in-depth documentation, see the [developer documentation][].
+
+- [Getting Started](#getting-started)
+- [Included Tools](#included-tools)
+- [Benchmarking](#benchmarking)
 
 ## ⚠️ Disclaimer
-🚧 `cairo-native` is still being built therefore API breaking changes might happen often so use it at your own risk. 🚧
+🚧 Cairo Native is still being built therefore API breaking changes might happen often so use it at your own risk. 🚧
 
 For versions under `1.0` `cargo` doesn't comply with [semver](https://semver.org/), so we advise to pin the version the version you use. This can be done by adding `cairo-native = "0.1.0"` to your Cargo.toml
 
@@ -112,7 +116,7 @@ source env.sh
 ### Make commands:
 Running `make` by itself will check whether the required LLVM installation and corelib is found, and then list available targets.
 
-```
+```bash
 % make
 LLVM is correctly set at /opt/homebrew/opt/llvm.
 ./scripts/check-corelib-version.sh 2.6.4
@@ -137,18 +141,19 @@ Usage:
     stress-clean  Clean the cache of AOT compiled code of the stress test command.
 ```
 
-## Tooling Command Line Interface
-
+## Included Tools
 Aside from the compilation and execution engine library, Cairo Native includes a few command-line tools to aid development.
 These are:
 - `cairo-native-compile`
 - `cairo-native-dump`
 - `cairo-native-run`
-- `cairo-native-stress`
 - `cairo-native-test`
+- `cairo-native-stress`
+- `scarb-native-dump`
+- `scarb-native-test`
 
 ### `cairo-native-compile`
-```
+```bash
 Compiles a Cairo project outputting the generated MLIR and the shared library.
 Exits with 1 if the compilation or run fails, otherwise 0.
 
@@ -169,7 +174,7 @@ Options:
 ```
 
 ###  `cairo-native-dump`
-```
+```bash
 Usage: cairo-native-dump [OPTIONS] <INPUT>
 
 Arguments:
@@ -186,7 +191,7 @@ This tool allows to run programs using the JIT engine, like the `cairo-run` tool
 
 Example: `echo '1' | cairo-native-run 'program.cairo' 'program::program::main' --inputs - --outputs -`
 
-```
+```bash
 Exits with 1 if the compilation or run fails, otherwise 0.
 
 Usage: cairo-native-run [OPTIONS] <PATH>
@@ -204,28 +209,12 @@ Options:
   -V, --version                        Print version
 ```
 
-### `cairo-native-stress`
-```
-A stress tester for Cairo Native
-
-It compiles Sierra programs with Cairo Native, caches, and executes them with AOT runner. The compiled dynamic libraries are stored in `AOT_CACHE_DIR` relative to the current working directory.
-
-Usage: cairo-native-stress [OPTIONS] <ROUNDS>
-
-Arguments:
-  <ROUNDS>
-          Amount of rounds to execute
-
-Options:
-  -o, --output <OUTPUT>
-          Output file for JSON formatted logs
-
-  -h, --help
-          Print help (see a summary with '-h')
-```
-
 ### `cairo-native-test`
-```
+This tool mimics the `cairo-test` [tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner) and is identical to it, the only feature it doesn't have is the profiler.
+
+You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+
+```bash
 Compiles a Cairo project and runs all the functions marked as `#[test]`.
 Exits with 1 if the compilation or run fails, otherwise 0.
 
@@ -247,4 +236,149 @@ Options:
   -V, --version                Print version
 ```
 
-[DeveloperDocumentation]: https://lambdaclass.github.io/cairo_native/cairo_native/docs/index.html
+For single files, you can use the `-s, --single-file` option.
+
+For a project, it needs to have a `cairo_project.toml` specifying the
+`crate_roots`. You can find an example under the `cairo-tests/` folder, which
+is a cairo project that works with this tool.
+
+```bash
+cairo-native-test -s myfile.cairo
+
+cairo-native-test ./cairo-tests/
+```
+
+This will run all the tests (functions marked with the `#[test]` attribute).
+
+### `cairo-native-stress`
+This tool runs a stress test on Cairo Native.
+
+```bash
+A stress tester for Cairo Native
+
+It compiles Sierra programs with Cairo Native, caches, and executes them with AOT runner. The compiled dynamic libraries are stored in `AOT_CACHE_DIR` relative to the current working directory.
+
+Usage: cairo-native-stress [OPTIONS] <ROUNDS>
+
+Arguments:
+  <ROUNDS>
+          Amount of rounds to execute
+
+Options:
+  -o, --output <OUTPUT>
+          Output file for JSON formatted logs
+
+  -h, --help
+          Print help (see a summary with '-h')
+```
+
+To quickly run a stress test and save logs as json, run:
+```bash
+make stress-test
+```
+
+This takes a lot of time to finish (it will probably crash first), you can kill the program at any time.
+
+To plot the results, run:
+```bash
+make stress-plot
+```
+
+To clear the cache directory, run:
+```bash
+make stress-clean
+```
+
+### `scarb-native-dump`
+This tool mimics the `scarb build` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
+You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+
+This tool should be run at the directory where a `Scarb.toml` file is and it will
+behave like `scarb build`, leaving the MLIR files under the `target/` folder
+besides the generated JSON sierra files.
+
+### `scarb-native-test`
+This tool mimics the `scarb test` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
+You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+
+```bash
+Compiles all packages from a Scarb project matching `packages_filter` and
+runs all functions marked with `#[test]`. Exits with 1 if the compilation
+or run fails, otherwise 0.
+
+Usage: scarb-native-test [OPTIONS]
+
+Options:
+  -p, --package <SPEC>         Packages to run this command on, can be a concrete package name (`foobar`) or a prefix glob (`foo*`) [env: SCARB_PACKAGES_FILTER=] [default: *]
+  -w, --workspace              Run for all packages in the workspace
+  -f, --filter <FILTER>        Run only tests whose name contain FILTER [default: ]
+      --include-ignored        Run ignored and not ignored tests
+      --ignored                Run only ignored tests
+      --run-mode <RUN_MODE>    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
+  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                   Print help
+  -V, --version                Print version
+```
+
+## Benchmarking
+
+### Requirements
+- [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
+- [cairo 2.6.4](https://github.com/starkware-libs/cairo)
+- Cairo Corelibs
+- LLVM 18 with MLIR
+
+You need to setup some environment variables:
+
+```bash
+$MLIR_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$LLVM_SYS_181_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$TABLEGEN_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+```
+
+```bash
+make bench
+```
+
+The `bench` target will run the `./scripts/bench-hyperfine.sh` script.
+This script runs hyperfine commands to compare the execution time of programs in the `./programs/benches/` folder.
+Each program is compiled and executed via the execution engine with the `cairo-native-run` command and via the cairo-vm with the `cairo-run` command provided by the `cairo` codebase.
+The `cairo-run` command should be available in the `$PATH` and ideally compiled with `cargo build --release`.
+If you want the benchmarks to run using a specific build, or the `cairo-run` commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run `cairo-run` with a full path can be specified with the `$CAIRO_RUN` environment variable.
+
+## From MLIR to native binary
+
+```bash
+# to mlir with llvm dialect
+sierra2mlir program.sierra -o program.mlir
+
+# translate all dialects to the llvm dialect
+"$MLIR_SYS_180_PREFIX/bin/mlir-opt" \
+        --canonicalize \
+        --convert-scf-to-cf \
+        --canonicalize \
+        --cse \
+        --expand-strided-metadata \
+        --finalize-memref-to-llvm \
+        --convert-func-to-llvm \
+        --convert-index-to-llvm \
+        --reconcile-unrealized-casts \
+        "program.mlir" \
+        -o "program-llvm.mlir"
+
+# translate mlir to llvm-ir
+"$MLIR_SYS_180_PREFIX"/bin/mlir-translate --mlir-to-llvmir program-llvm.mlir -o program.ll
+
+# compile natively
+"$MLIR_SYS_180_PREFIX"/bin/clang program.ll -Wno-override-module \
+    -L "$MLIR_SYS_180_PREFIX"/lib -L"./target/release/" \
+    -lcairo_native_runtime -lmlir_c_runner_utils \
+    -Wl,-rpath "$MLIR_SYS_180_PREFIX"/lib \
+    -Wl,-rpath ./target/release/ \
+    -o program
+
+./program
+```
+
+
+[developer documentation]: https://lambdaclass.github.io/cairo_native/cairo_native/docs/index.html

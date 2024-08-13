@@ -1,7 +1,12 @@
-//! [DeveloperDocumentation]: docs
-#![doc = include_str!("../README.md")]
-// #![warn(missing_docs)]
 #![allow(clippy::missing_safety_doc)]
+#![allow(rustdoc::bare_urls)]
+// The following line contains a markdown reference link.
+// This is necessary to override the link destination in the README.md file, so
+// that when the README.md is rendered standalone (e.g. on Github) is points to
+// the online version, and when rendered by rustdoc the destination is the
+// rendered page of the docs module.
+//! [developer documentation]: docs
+#![doc = include_str!("../README.md")]
 
 pub use self::{
     compiler::compile,
