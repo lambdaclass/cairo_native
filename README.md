@@ -921,7 +921,7 @@ export NATIVE_DEBUG_TRAP_AT_STMT=10
 The trap instruction may not end up exactly where the statement is.
 
 If we want to manually set the breakpoint (for example, when executing a particular libfunc), then we can use the `DebugUtils` metadata in the code.
-```cairo
+```rust
 #[cfg(feature = "with-debug-utils")]
 {
     metadata.get_mut::<DebugUtils>()
