@@ -42,6 +42,7 @@ pub mod bounded_int;
 pub mod r#box;
 pub mod builtin_costs;
 pub mod bytes31;
+pub mod circuit;
 pub mod coupon;
 pub mod ec_op;
 pub mod ec_point;
@@ -289,6 +290,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            Self::RangeCheck96(info) => self::range_check::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             Self::SegmentArena(info) => self::segment_arena::build(
                 context,
                 module,
@@ -416,8 +424,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Circuit(_) => Ok(IntegerType::new(context, 64).into()),
-            CoreTypeConcrete::RangeCheck96(_) => Ok(IntegerType::new(context, 64).into()),
+            CoreTypeConcrete::Circuit(info) => self::circuit::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
         }
     }
 
@@ -723,6 +736,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::NonZero(_) => false,
             CoreTypeConcrete::Nullable(_) => false,
             CoreTypeConcrete::RangeCheck(_) => false,
+            CoreTypeConcrete::RangeCheck96(_) => false,
             CoreTypeConcrete::Uninitialized(_) => false,
             CoreTypeConcrete::Enum(info) => {
                 // Enums are memory-allocated if either:
@@ -767,7 +781,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .unwrap()
                 .is_memory_allocated(registry),
             CoreTypeConcrete::Coupon(_) => false,
-            CoreTypeConcrete::Circuit(_) | CoreTypeConcrete::RangeCheck96(_) => false,
+            CoreTypeConcrete::Circuit(_) => false,
         }
     }
 
