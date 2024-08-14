@@ -70,7 +70,7 @@ proptest-ci: check-llvm needs-cairo2 runtime-ci
 
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- tests/corelib-2.7.0
 
 doc: check-llvm
 	cargo doc --all-features --no-deps --workspace
