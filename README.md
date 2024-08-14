@@ -915,7 +915,7 @@ The trap instruction may not end up exactly where the statement is.
 export NATIVE_DEBUG_TRAP_AT_STMT=10
 ```
 
-Note: The debugger will only show source locations when using AOT.
+Note: The debugger will only show source locations when using AOT. Also you need enable the cairo-native feature `with-debug-utils`.
 
 Enable logging to see the compilation process:
 
