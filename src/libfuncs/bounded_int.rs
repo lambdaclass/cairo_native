@@ -185,7 +185,7 @@ fn build_add<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `bounded_int_add` libfunc.
+/// Generate MLIR operations for the `bounded_int_sub` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_sub<'ctx, 'this>(
     context: &'ctx Context,
@@ -307,7 +307,7 @@ fn build_sub<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `bounded_int_add` libfunc.
+/// Generate MLIR operations for the `bounded_int_mul` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_mul<'ctx, 'this>(
     context: &'ctx Context,
