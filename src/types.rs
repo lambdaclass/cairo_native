@@ -460,6 +460,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::RangeCheck96(_) 
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) // u64 is not complex
             | CoreTypeConcrete::SegmentArena(_) => false,
 
@@ -527,8 +528,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(_)) => todo!(),
             CoreTypeConcrete::Coupon(_) => false,
 
-            CoreTypeConcrete::Circuit(_)
-            | CoreTypeConcrete::RangeCheck96(_) => todo!()
+            CoreTypeConcrete::Circuit(_) => todo!()
         }
     }
 
@@ -540,6 +540,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::RangeCheck96(_)
             | CoreTypeConcrete::SegmentArena(_) => false,
             // Other builtins:
             CoreTypeConcrete::BuiltinCosts(_)
@@ -598,8 +599,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 type_info.is_zst(registry)
             }
             CoreTypeConcrete::Span(_)
-            | CoreTypeConcrete::Circuit(_)
-            | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+            | CoreTypeConcrete::Circuit(_) => todo!(),
         }
     }
 
@@ -704,7 +704,8 @@ impl TypeBuilder for CoreTypeConcrete {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
             CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Circuit(_) | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+            CoreTypeConcrete::RangeCheck96(_) => get_integer_layout(64),
+            CoreTypeConcrete::Circuit(_)  => todo!(),
         }
         .pad_to_align())
     }
