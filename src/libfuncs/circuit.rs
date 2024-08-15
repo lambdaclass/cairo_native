@@ -109,8 +109,7 @@ fn build_init_circuit_data<'ctx, 'this>(
     let dummy = entry.const_int(context, location, 1, 64)?;
 
     entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), dummy], location));
-
-    Ok(())
+    todo!()
 }
 
 /// Generate MLIR operations for the `into_u96_guarantee` libfunc.
@@ -139,7 +138,8 @@ fn build_into_u96_guarantee<'ctx, 'this>(
 
     let dummy = entry.const_int(context, location, 1, 64)?;
     entry.append_operation(helper.br(0, &[dummy], location));
-    Ok(())
+
+    todo!()
 }
 
 /// Generate MLIR operations for the `add_circuit_input` libfunc.
@@ -169,7 +169,8 @@ fn build_add_input<'ctx, 'this>(
     let dummy = entry.const_int(context, location, 1, 64)?;
     entry.append_operation(helper.br(0, &[dummy], location));
     entry.append_operation(helper.br(1, &[dummy], location));
-    Ok(())
+
+    todo!()
 }
 
 /// Generate MLIR operations for the `try_into_circuit_modulus` libfunc.
@@ -195,7 +196,8 @@ fn build_try_into_circuit_modulus<'ctx, 'this>(
 
     let dummy = entry.const_int(context, location, 1, 64)?;
     entry.append_operation(helper.br(0, &[dummy], location));
-    Ok(())
+
+    todo!()
 }
 
 /// Generate MLIR operations for the `get_circuit_descriptor` libfunc.
@@ -224,7 +226,8 @@ fn build_get_descriptor<'ctx, 'this>(
 
     let dummy = entry.const_int(context, location, 1, 64)?;
     entry.append_operation(helper.br(0, &[dummy], location));
-    Ok(())
+
+    todo!()
 }
 
 /// Generate MLIR operations for the `eval_circuit` libfunc.
@@ -267,7 +270,8 @@ fn build_eval<'ctx, 'this>(
         ],
         location,
     ));
-    Ok(())
+
+    todo!()
 }
 
 /// Generate MLIR operations for the `circuit_failure_guarantee_verify` libfunc.
@@ -297,7 +301,8 @@ fn build_failure_guarantee_verify<'ctx, 'this>(
         &[entry.argument(0)?.into(), entry.argument(1)?.into(), dummy],
         location,
     ));
-    Ok(())
+
+    todo!()
 }
 
 /// Generate MLIR operations for the `u96_limbs_less_than_guarantee_verify` libfunc.
@@ -326,7 +331,7 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     let dummy = entry.const_int(context, location, 1, 64)?;
     entry.append_operation(helper.br(0, &[dummy], location));
     entry.append_operation(helper.br(1, &[dummy], location));
-    Ok(())
+    todo!()
 }
 
 /// Generate MLIR operations for the `u96_guarantee_verify` libfunc.
@@ -351,7 +356,8 @@ fn build_u96_guarantee_verify<'ctx, 'this>(
     dbg!(branches);
 
     entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
-    Ok(())
+
+    todo!()
 }
 
 /// Generate MLIR operations for the `u96_single_limb_less_than_guarantee_verify` libfunc.
@@ -376,7 +382,8 @@ fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
     dbg!(branches);
 
     entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
-    Ok(())
+
+    todo!()
 }
 
 /// Generate MLIR operations for the `get_circuit_output` libfunc.
@@ -405,5 +412,6 @@ fn build_get_output<'ctx, 'this>(
 
     let dummy = entry.const_int(context, location, 1, 64)?;
     entry.append_operation(helper.br(0, &[dummy, dummy], location));
-    Ok(())
+
+    todo!()
 }
