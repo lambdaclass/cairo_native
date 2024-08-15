@@ -64,6 +64,7 @@ pub fn build<'ctx>(
             Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
         }
         // phantoms
+        // todo! swap unreachable with debug assert and error return
         CircuitTypeConcrete::Circuit(_)
         | CircuitTypeConcrete::AddModGate(_)
         | CircuitTypeConcrete::SubModGate(_)
@@ -80,6 +81,7 @@ pub fn build_circuit_accumulator<'ctx>(
     _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
+    // todo! swap unreachable with debug assert and error return
     let Some(generic_arg) = info.info.long_id.generic_args.get(0) else {
         unreachable!();
     };
@@ -109,6 +111,7 @@ pub fn build_circuit_data<'ctx>(
     _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
+    // todo! swap unreachable with debug assert and error return
     let Some(generic_arg) = info.info.long_id.generic_args.get(0) else {
         unreachable!();
     };
@@ -138,6 +141,7 @@ pub fn build_circuit_outputs<'ctx>(
     _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
+    // todo! swap unreachable with debug assert and error return
     let Some(generic_arg) = info.info.long_id.generic_args.get(0) else {
         unreachable!();
     };
