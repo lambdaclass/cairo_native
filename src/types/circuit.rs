@@ -10,6 +10,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         types::InfoOnlyConcreteType,
     },
+    program::GenericArg,
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -68,7 +69,7 @@ pub fn build<'ctx>(
         | CircuitTypeConcrete::SubModGate(_)
         | CircuitTypeConcrete::MulModGate(_)
         | CircuitTypeConcrete::InverseGate(_)
-        | CircuitTypeConcrete::CircuitInput(_) => todo!(),
+        | CircuitTypeConcrete::CircuitInput(_) => unreachable!(),
     }
 }
 
@@ -79,18 +80,22 @@ pub fn build_circuit_accumulator<'ctx>(
     _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let circuit = match &info.info.long_id.generic_args[0] {
-        cairo_lang_sierra::program::GenericArg::Type(id) => registry.get_type(id)?,
-        _ => todo!(),
+    let Some(generic_arg) = info.info.long_id.generic_args.get(0) else {
+        unreachable!();
     };
-    let num_inputs = match circuit {
-        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => info.circuit_info.n_inputs,
-        _ => todo!(),
+    let GenericArg::Type(circuit_type_id) = generic_arg else {
+        unreachable!();
     };
+    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
+        registry.get_type(circuit_type_id)?
+    else {
+        unreachable!()
+    };
+
+    let n_inputs = circuit.circuit_info.n_inputs;
 
     let mut types = vec![IntegerType::new(context, 64).into()];
-
-    for _ in 0..num_inputs {
+    for _ in 0..n_inputs {
         types.push(IntegerType::new(context, 384).into())
     }
 
@@ -104,18 +109,22 @@ pub fn build_circuit_data<'ctx>(
     _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let circuit = match &info.info.long_id.generic_args[0] {
-        cairo_lang_sierra::program::GenericArg::Type(id) => registry.get_type(id)?,
-        _ => todo!(),
+    let Some(generic_arg) = info.info.long_id.generic_args.get(0) else {
+        unreachable!();
     };
-    let num_inputs = match circuit {
-        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => info.circuit_info.n_inputs,
-        _ => todo!(),
+    let GenericArg::Type(circuit_type_id) = generic_arg else {
+        unreachable!();
     };
+    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
+        registry.get_type(circuit_type_id)?
+    else {
+        unreachable!()
+    };
+
+    let n_inputs = circuit.circuit_info.n_inputs;
 
     let mut types = vec![];
-
-    for _ in 0..num_inputs {
+    for _ in 0..n_inputs {
         types.push(IntegerType::new(context, 384).into())
     }
 
@@ -129,20 +138,22 @@ pub fn build_circuit_outputs<'ctx>(
     _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let circuit = match &info.info.long_id.generic_args[0] {
-        cairo_lang_sierra::program::GenericArg::Type(id) => registry.get_type(id)?,
-        _ => todo!(),
+    let Some(generic_arg) = info.info.long_id.generic_args.get(0) else {
+        unreachable!();
     };
-    let num_gates = match circuit {
-        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => {
-            info.circuit_info.values.len()
-        }
-        _ => todo!(),
+    let GenericArg::Type(circuit_type_id) = generic_arg else {
+        unreachable!();
     };
+    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
+        registry.get_type(circuit_type_id)?
+    else {
+        unreachable!()
+    };
+
+    let n_gates = circuit.circuit_info.values.len();
 
     let mut types = vec![];
-
-    for _ in 0..num_gates {
+    for _ in 0..n_gates {
         types.push(IntegerType::new(context, 384).into());
     }
 
