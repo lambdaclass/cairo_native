@@ -82,7 +82,7 @@ pub fn build_circuit_accumulator<'ctx>(
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
     // todo! swap unreachable with debug assert and error return
-    let Some(generic_arg) = info.info.long_id.generic_args.get(0) else {
+    let Some(generic_arg) = info.info.long_id.generic_args.first() else {
         unreachable!();
     };
     let GenericArg::Type(circuit_type_id) = generic_arg else {
@@ -112,7 +112,7 @@ pub fn build_circuit_data<'ctx>(
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
     // todo! swap unreachable with debug assert and error return
-    let Some(generic_arg) = info.info.long_id.generic_args.get(0) else {
+    let Some(generic_arg) = info.info.long_id.generic_args.first() else {
         unreachable!();
     };
     let GenericArg::Type(circuit_type_id) = generic_arg else {
@@ -142,7 +142,7 @@ pub fn build_circuit_outputs<'ctx>(
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
     // todo! swap unreachable with debug assert and error return
-    let Some(generic_arg) = info.info.long_id.generic_args.get(0) else {
+    let Some(generic_arg) = info.info.long_id.generic_args.first() else {
         unreachable!();
     };
     let GenericArg::Type(circuit_type_id) = generic_arg else {

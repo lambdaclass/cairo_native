@@ -13,7 +13,7 @@ use crate::{
     },
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
-use cairo_lang_sierra::extensions::circuit::{CircuitType, CircuitTypeConcrete};
+use cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete;
 use cairo_lang_sierra::extensions::utils::Range;
 use cairo_lang_sierra::{
     extensions::{
