@@ -210,11 +210,16 @@ pub fn is_zst(info: &CircuitTypeConcrete) -> bool {
     }
 }
 
-pub fn layout(info: &CircuitTypeConcrete) -> Layout {
-    match *info {
-        CircuitTypeConcrete::AddMod(_) | CircuitTypeConcrete::MulMod(_) => get_integer_layout(64),
-        CircuitTypeConcrete::CircuitModulus(_) => get_integer_layout(384),
-        CircuitTypeConcrete::U96Guarantee(_) => get_integer_layout(96),
+pub fn layout(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &CircuitTypeConcrete,
+) -> Result<Layout> {
+    match info {
+        CircuitTypeConcrete::AddMod(_) | CircuitTypeConcrete::MulMod(_) => {
+            Ok(get_integer_layout(64))
+        }
+        CircuitTypeConcrete::CircuitModulus(_) => Ok(get_integer_layout(384)),
+        CircuitTypeConcrete::U96Guarantee(_) => Ok(get_integer_layout(96)),
 
         CircuitTypeConcrete::AddModGate(_)
         | CircuitTypeConcrete::SubModGate(_)
@@ -224,11 +229,53 @@ pub fn layout(info: &CircuitTypeConcrete) -> Layout {
         | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_)
         | CircuitTypeConcrete::Circuit(_)
         | CircuitTypeConcrete::CircuitDescriptor(_)
-        | CircuitTypeConcrete::CircuitFailureGuarantee(_) => Layout::new::<()>(),
+        | CircuitTypeConcrete::CircuitFailureGuarantee(_) => Ok(Layout::new::<()>()),
 
-        CircuitTypeConcrete::CircuitData(_) => todo!(),
+        CircuitTypeConcrete::CircuitData(info) => {
+            // todo! swap unreachable with debug assert and error return
+            let Some(generic_arg) = info.info.long_id.generic_args.first() else {
+                unreachable!();
+            };
+            let GenericArg::Type(circuit_type_id) = generic_arg else {
+                unreachable!();
+            };
+            let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
+                registry.get_type(circuit_type_id)?
+            else {
+                unreachable!()
+            };
+
+            let n_inputs = circuit.circuit_info.n_inputs;
+            let mut layout = Layout::new::<()>();
+            for _ in 0..n_inputs {
+                layout = layout.extend(get_integer_layout(384))?.0;
+            }
+
+            Ok(layout)
+        }
         CircuitTypeConcrete::CircuitOutputs(_) => todo!(),
         CircuitTypeConcrete::CircuitPartialOutputs(_) => todo!(),
-        CircuitTypeConcrete::CircuitInputAccumulator(_) => todo!(),
+        CircuitTypeConcrete::CircuitInputAccumulator(info) => {
+            // todo! swap unreachable with debug assert and error return
+            let Some(generic_arg) = info.info.long_id.generic_args.first() else {
+                unreachable!();
+            };
+            let GenericArg::Type(circuit_type_id) = generic_arg else {
+                unreachable!();
+            };
+            let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
+                registry.get_type(circuit_type_id)?
+            else {
+                unreachable!()
+            };
+
+            let n_inputs = circuit.circuit_info.n_inputs;
+            let mut layout = get_integer_layout(64);
+            for _ in 0..n_inputs {
+                layout = layout.extend(get_integer_layout(384))?.0;
+            }
+
+            Ok(layout)
+        }
     }
 }

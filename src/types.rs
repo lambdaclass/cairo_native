@@ -709,7 +709,7 @@ impl TypeBuilder for CoreTypeConcrete {
             }
             CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
             CoreTypeConcrete::RangeCheck96(_) => get_integer_layout(64),
-            CoreTypeConcrete::Circuit(info) => circuit::layout(info),
+            CoreTypeConcrete::Circuit(info) => circuit::layout(registry, info)?,
         }
         .pad_to_align())
     }
