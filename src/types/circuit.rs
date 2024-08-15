@@ -7,7 +7,7 @@ use crate::{error::Result, metadata::MetadataStorage, utils::get_integer_layout}
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         types::InfoOnlyConcreteType,
     },
     program_registry::ProgramRegistry,
@@ -74,32 +74,79 @@ pub fn build<'ctx>(
 
 pub fn build_circuit_accumulator<'ctx>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
+    _module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(IntegerType::new(context, 64).into())
+    let circuit = match &info.info.long_id.generic_args[0] {
+        cairo_lang_sierra::program::GenericArg::Type(id) => registry.get_type(id)?,
+        _ => todo!(),
+    };
+    let num_inputs = match circuit {
+        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => info.circuit_info.n_inputs,
+        _ => todo!(),
+    };
+
+    let mut types = vec![IntegerType::new(context, 64).into()];
+
+    for _ in 0..num_inputs {
+        types.push(IntegerType::new(context, 384).into())
+    }
+
+    Ok(llvm::r#type::r#struct(context, &types, false))
 }
 
 pub fn build_circuit_data<'ctx>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
+    _module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(IntegerType::new(context, 64).into())
+    let circuit = match &info.info.long_id.generic_args[0] {
+        cairo_lang_sierra::program::GenericArg::Type(id) => registry.get_type(id)?,
+        _ => todo!(),
+    };
+    let num_inputs = match circuit {
+        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => info.circuit_info.n_inputs,
+        _ => todo!(),
+    };
+
+    let mut types = vec![];
+
+    for _ in 0..num_inputs {
+        types.push(IntegerType::new(context, 384).into())
+    }
+
+    Ok(llvm::r#type::r#struct(context, &types, false))
 }
 
 pub fn build_circuit_outputs<'ctx>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
+    _module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(IntegerType::new(context, 64).into())
+    let circuit = match &info.info.long_id.generic_args[0] {
+        cairo_lang_sierra::program::GenericArg::Type(id) => registry.get_type(id)?,
+        _ => todo!(),
+    };
+    let num_gates = match circuit {
+        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => {
+            info.circuit_info.values.len()
+        }
+        _ => todo!(),
+    };
+
+    let mut types = vec![];
+
+    for _ in 0..num_gates {
+        types.push(IntegerType::new(context, 384).into());
+    }
+
+    Ok(llvm::r#type::r#struct(context, &types, false))
 }
 
 pub fn is_complex(info: &CircuitTypeConcrete) -> bool {
