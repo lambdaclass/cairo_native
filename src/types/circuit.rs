@@ -19,6 +19,8 @@ use melior::{
     Context,
 };
 
+pub const CIRCUIT_INPUT_SIZE: usize = 512;
+
 /// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
@@ -30,7 +32,9 @@ pub fn build<'ctx>(
     selector: WithSelf<CircuitTypeConcrete>,
 ) -> Result<Type<'ctx>> {
     match &*selector {
-        CircuitTypeConcrete::CircuitModulus(_) => Ok(IntegerType::new(context, 384).into()),
+        CircuitTypeConcrete::CircuitModulus(_) => {
+            Ok(IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into())
+        }
         CircuitTypeConcrete::U96Guarantee(_) => Ok(IntegerType::new(context, 96).into()),
         CircuitTypeConcrete::CircuitInputAccumulator(info) => build_circuit_accumulator(
             context,
@@ -97,8 +101,8 @@ pub fn build_circuit_accumulator<'ctx>(
     let n_inputs = circuit.circuit_info.n_inputs;
 
     let mut types = vec![IntegerType::new(context, 64).into()];
-    for _ in 0..n_inputs {
-        types.push(IntegerType::new(context, 384).into())
+    for _ in 0..n_inputs - 1 {
+        types.push(IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into())
     }
 
     Ok(llvm::r#type::r#struct(context, &types, false))
@@ -128,7 +132,7 @@ pub fn build_circuit_data<'ctx>(
 
     let mut types = vec![];
     for _ in 0..n_inputs {
-        types.push(IntegerType::new(context, 384).into())
+        types.push(IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into())
     }
 
     Ok(llvm::r#type::r#struct(context, &types, false))
@@ -158,7 +162,7 @@ pub fn build_circuit_outputs<'ctx>(
 
     let mut types = vec![];
     for _ in 0..n_gates {
-        types.push(IntegerType::new(context, 384).into());
+        types.push(IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into());
     }
 
     Ok(llvm::r#type::r#struct(context, &types, false))
@@ -218,7 +222,7 @@ pub fn layout(
         CircuitTypeConcrete::AddMod(_) | CircuitTypeConcrete::MulMod(_) => {
             Ok(get_integer_layout(64))
         }
-        CircuitTypeConcrete::CircuitModulus(_) => Ok(get_integer_layout(384)),
+        CircuitTypeConcrete::CircuitModulus(_) => Ok(get_integer_layout(CIRCUIT_INPUT_SIZE as u32)),
         CircuitTypeConcrete::U96Guarantee(_) => Ok(get_integer_layout(96)),
 
         CircuitTypeConcrete::AddModGate(_)
@@ -248,7 +252,9 @@ pub fn layout(
             let n_inputs = circuit.circuit_info.n_inputs;
             let mut layout = Layout::new::<()>();
             for _ in 0..n_inputs {
-                layout = layout.extend(get_integer_layout(384))?.0;
+                layout = layout
+                    .extend(get_integer_layout(CIRCUIT_INPUT_SIZE as u32))?
+                    .0;
             }
 
             Ok(layout)
@@ -271,8 +277,10 @@ pub fn layout(
 
             let n_inputs = circuit.circuit_info.n_inputs;
             let mut layout = get_integer_layout(64);
-            for _ in 0..n_inputs {
-                layout = layout.extend(get_integer_layout(384))?.0;
+            for _ in 0..n_inputs - 1 {
+                layout = layout
+                    .extend(get_integer_layout(CIRCUIT_INPUT_SIZE as u32))?
+                    .0;
             }
 
             Ok(layout)
