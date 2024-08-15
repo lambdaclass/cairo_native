@@ -909,7 +909,7 @@ export NATIVE_DEBUG_DUMP=1
 
 ### Debugging with LLDB
 
-To debug with LLDB (or another debugger), we must compile the program with the `with-debug-utils` feature.
+To debug with LLDB (or another debugger), we must compile the binary with the `with-debug-utils` feature.
 ```bash
 cargo build --bin cairo-native-run --features with-debug-utils
 ```
@@ -933,7 +933,7 @@ If we want to manually set the breakpoint (for example, when executing a particu
 Now, we need to execute `cairo-native-run` from our debugger (LLDB). If we want to see the source locations, we also need to set the `NATIVE_DEBUG_DUMP` env var and execute the program with AOT.
 
 ```bash
-lldb -- target/debug/cairo-native-run -s debug.cairo --run-mode aot
+lldb -- target/debug/cairo-native-run -s programs/recursion.cairo --available-gas 99999999 --run-mode aot
 ```
 
 Some usefull lldb commands:
