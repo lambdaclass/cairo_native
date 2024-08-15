@@ -13,6 +13,7 @@ use crate::{
     },
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
+use cairo_lang_sierra::extensions::circuit::{CircuitType, CircuitTypeConcrete};
 use cairo_lang_sierra::extensions::utils::Range;
 use cairo_lang_sierra::{
     extensions::{
@@ -442,11 +443,14 @@ impl TypeBuilder for CoreTypeConcrete {
                 | CoreTypeConcrete::GasBuiltin(_)
                 | CoreTypeConcrete::BuiltinCosts(_)
                 | CoreTypeConcrete::RangeCheck(_)
+                | CoreTypeConcrete::RangeCheck96(_)
                 | CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
                 | CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
                 | CoreTypeConcrete::SegmentArena(_)
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_))
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
         )
     }
 
