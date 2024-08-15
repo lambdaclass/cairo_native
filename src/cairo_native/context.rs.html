@@ -219,12 +219,33 @@
 <a href="#219" id="219">219</a>
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::OnceLock;
 
 <span class="kw">use crate</span>::{
-    debug_info::DebugLocations,
     error::Error,
-    ffi::{get_data_layout_rep, get_target_triple},
+    ffi::{
+        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet,
+        mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDistinctAttrCreate,
+        mlirModuleCleanup,
+    },
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -247,7 +268,7 @@
     ir::{
         attribute::StringAttribute,
         operation::{OperationBuilder, OperationPrintingFlags},
-        Block, Identifier, Location, Module, Region,
+        Attribute, AttributeLike, Block, Identifier, Location, Module, Region,
     },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
@@ -280,11 +301,7 @@
 
     <span class="doccomment">/// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
-    </span><span class="kw">pub fn </span>compile(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        program: <span class="kw-2">&amp;</span>Program,
-        debug_locations: <span class="prelude-ty">Option</span>&lt;DebugLocations&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, Error&gt; {
+    </span><span class="kw">pub fn </span>compile(<span class="kw-2">&amp;</span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>Program) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, Error&gt; {
         <span class="kw">static </span>INITIALIZED: OnceLock&lt;()&gt; = OnceLock::new();
         INITIALIZED.get_or_init(|| <span class="kw">unsafe </span>{
             LLVM_InitializeAllTargets();
@@ -300,9 +317,53 @@
 
         <span class="kw">let </span>data_layout_ret = <span class="kw-2">&amp;</span>get_data_layout_rep()<span class="question-mark">?</span>;
 
+        <span class="kw">let </span>di_unit_id = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>id = StringAttribute::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">"compile_unit_id"</span>).to_raw();
+            mlirLLVMDistinctAttrCreate(id)
+        };
+
         <span class="kw">let </span>op = OperationBuilder::new(
             <span class="string">"builtin.module"</span>,
-            Location::name(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">"module"</span>, Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context)),
+            Location::fused(
+                <span class="kw-2">&amp;</span><span class="self">self</span>.context,
+                <span class="kw-2">&amp;</span>[Location::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">"program.sierra"</span>, <span class="number">0</span>, <span class="number">0</span>)],
+                {
+                    <span class="kw">let </span>file_attr = <span class="kw">unsafe </span>{
+                        Attribute::from_raw(mlirLLVMDIFileAttrGet(
+                            <span class="self">self</span>.context.to_raw(),
+                            StringAttribute::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">"program.sierra"</span>).to_raw(),
+                            StringAttribute::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">""</span>).to_raw(),
+                        ))
+                    };
+                    <span class="kw">unsafe </span>{
+                        <span class="kw">let </span>di_unit = mlirLLVMDICompileUnitAttrGet(
+                            <span class="self">self</span>.context.to_raw(),
+                            di_unit_id,
+                            <span class="number">0x1c</span>, <span class="comment">// rust
+                            </span>file_attr.to_raw(),
+                            StringAttribute::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">"cairo-native"</span>).to_raw(),
+                            <span class="bool-val">false</span>,
+                            <span class="kw">crate</span>::ffi::DiEmissionKind::Full,
+                        );
+
+                        <span class="kw">let </span>context = <span class="kw-2">&amp;</span><span class="self">self</span>.context;
+
+                        <span class="kw">let </span>di_module = mlirLLVMDIModuleAttrGet(
+                            context.to_raw(),
+                            file_attr.to_raw(),
+                            di_unit,
+                            StringAttribute::new(context, <span class="string">"LLVMDialectModule"</span>).to_raw(),
+                            StringAttribute::new(context, <span class="string">""</span>).to_raw(),
+                            StringAttribute::new(context, <span class="string">""</span>).to_raw(),
+                            StringAttribute::new(context, <span class="string">""</span>).to_raw(),
+                            <span class="number">0</span>,
+                            <span class="bool-val">false</span>,
+                        );
+
+                        Attribute::from_raw(di_module)
+                    }
+                },
+            ),
         )
         .add_attributes(<span class="kw-2">&amp;</span>[
             (
@@ -347,81 +408,56 @@
             program,
             <span class="kw-2">&amp;</span>registry,
             <span class="kw-2">&amp;mut </span>metadata,
-            debug_locations.as_ref(),
+            <span class="kw">unsafe </span>{ Attribute::from_raw(di_unit_id) },
         )<span class="question-mark">?</span>;
 
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>(x) = std::env::var(<span class="string">"NATIVE_DEBUG_DUMP_PREPASS"</span>) {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(x) = std::env::var(<span class="string">"NATIVE_DEBUG_DUMP"</span>) {
             <span class="kw">if </span>x == <span class="string">"1" </span>|| x == <span class="string">"true" </span>{
                 std::fs::write(<span class="string">"dump-prepass.mlir"</span>, module.as_operation().to_string())
                     .expect(<span class="string">"should work"</span>);
                 std::fs::write(
-                    <span class="string">"dump-prepass-debug.mlir"</span>,
+                    <span class="string">"dump-prepass-debug-valid.mlir"</span>,
+                    module.as_operation().to_string_with_flags(
+                        OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">false</span>),
+                    )<span class="question-mark">?</span>,
+                )
+                .expect(<span class="string">"failed to write dump-prepass-debug-valid.mlir"</span>);
+                std::fs::write(
+                    <span class="string">"dump-prepass-debug-pretty.mlir"</span>,
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">true</span>),
                     )<span class="question-mark">?</span>,
                 )
-                .expect(<span class="string">"should work"</span>);
+                .expect(<span class="string">"failed to writedump-prepass-debug-pretty.mlir"</span>);
             }
         }
 
         run_pass_manager(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;mut </span>module)<span class="question-mark">?</span>;
+
+        <span class="kw">unsafe </span>{
+            mlirModuleCleanup(module.to_raw());
+        }
 
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(x) = std::env::var(<span class="string">"NATIVE_DEBUG_DUMP"</span>) {
             <span class="kw">if </span>x == <span class="string">"1" </span>|| x == <span class="string">"true" </span>{
                 std::fs::write(<span class="string">"dump.mlir"</span>, module.as_operation().to_string())
                     .expect(<span class="string">"should work"</span>);
                 std::fs::write(
-                    <span class="string">"dump-debug.mlir"</span>,
+                    <span class="string">"dump-debug-pretty.mlir"</span>,
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">true</span>),
                     )<span class="question-mark">?</span>,
                 )
-                .expect(<span class="string">"should work"</span>);
+                .expect(<span class="string">"failed to write dump-debug-pretty.mlir"</span>);
+                std::fs::write(
+                    <span class="string">"dump-debug.mlir"</span>,
+                    module.as_operation().to_string_with_flags(
+                        OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">false</span>),
+                    )<span class="question-mark">?</span>,
+                )
+                .expect(<span class="string">"failed to write dump-debug.mlir"</span>);
             }
         }
-
-        <span class="comment">// The func to llvm pass has a bug where it sets the data layout string to ""
-        // This works around it by setting it again.
-        </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>op = module.as_operation_mut();
-            op.set_attribute(
-                <span class="string">"llvm.data_layout"</span>,
-                StringAttribute::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, data_layout_ret).into(),
-            );
-        }
-
-        <span class="prelude-val">Ok</span>(NativeModule::new(module, registry, metadata))
-    }
-
-    <span class="doccomment">/// Compiles a sierra program into MLIR and then lowers to LLVM. Using the given metadata.
-    /// Returns the corresponding NativeModule struct.
-    </span><span class="kw">pub fn </span>compile_with_metadata(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        program: <span class="kw-2">&amp;</span>Program,
-        metadata_config: MetadataComputationConfig,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, Error&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>module = Module::new(Location::unknown(<span class="kw-2">&amp;</span><span class="self">self</span>.context));
-
-        <span class="kw">let </span><span class="kw-2">mut </span>metadata = MetadataStorage::new();
-        <span class="comment">// Make the runtime library available.
-        </span>metadata.insert(RuntimeBindingsMeta::default());
-
-        <span class="kw">let </span>gas_metadata = GasMetadata::new(program, <span class="prelude-val">Some</span>(metadata_config))<span class="question-mark">?</span>;
-        metadata.insert(gas_metadata);
-
-        <span class="comment">// Create the Sierra program registry
-        </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(program)<span class="question-mark">?</span>;
-
-        <span class="kw">crate</span>::compile(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.context,
-            <span class="kw-2">&amp;</span>module,
-            program,
-            <span class="kw-2">&amp;</span>registry,
-            <span class="kw-2">&amp;mut </span>metadata,
-            <span class="prelude-val">None</span>,
-        )<span class="question-mark">?</span>;
-
-        run_pass_manager(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;mut </span>module)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(NativeModule::new(module, registry, metadata))
     }

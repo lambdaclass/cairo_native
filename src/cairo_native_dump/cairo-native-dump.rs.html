@@ -149,50 +149,8 @@
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_compiler::{
-    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-    project::setup_project, CompilerConfig,
+    compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 <span class="kw">use </span>cairo_lang_defs::plugin::NamedPlugin;
 <span class="kw">use </span>cairo_lang_semantic::plugin::PluginSuite;
@@ -201,12 +159,9 @@
     compile::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
     plugin::StarkNetPlugin,
 };
-<span class="kw">use </span>cairo_native::{
-    context::NativeContext,
-    debug_info::{DebugInfo, DebugLocations},
-};
+<span class="kw">use </span>cairo_native::context::NativeContext;
 <span class="kw">use </span>clap::Parser;
-<span class="kw">use </span>melior::{ir::operation::OperationPrintingFlags, Context};
+<span class="kw">use </span>melior::ir::operation::OperationPrintingFlags;
 <span class="kw">use </span>std::{
     ffi::OsStr,
     fs,
@@ -228,15 +183,10 @@
 
     <span class="comment">// Load the program.
     </span><span class="kw">let </span>context = NativeContext::new();
-    <span class="comment">// TODO: Reconnect debug information.
-    </span><span class="kw">let </span>(program, debug_info) = load_program(
-        Path::new(<span class="kw-2">&amp;</span>args.input),
-        <span class="prelude-val">Some</span>(context.context()),
-        args.starknet,
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>program = load_program(Path::new(<span class="kw-2">&amp;</span>args.input), args.starknet)<span class="question-mark">?</span>;
 
     <span class="comment">// Compile the program.
-    </span><span class="kw">let </span>module = context.compile(<span class="kw-2">&amp;</span>program, debug_info)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>module = context.compile(<span class="kw-2">&amp;</span>program)<span class="question-mark">?</span>;
 
     <span class="comment">// Write the output.
     </span><span class="kw">let </span>output_str = module
@@ -251,38 +201,21 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>load_program&lt;<span class="lifetime">'c</span>&gt;(
-    path: <span class="kw-2">&amp;</span>Path,
-    context: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context&gt;,
-    is_contract: bool,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(Program, <span class="prelude-ty">Option</span>&lt;DebugLocations&lt;<span class="lifetime">'c</span>&gt;&gt;), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<span class="kw">fn </span>load_program(path: <span class="kw-2">&amp;</span>Path, is_contract: bool) -&gt; <span class="prelude-ty">Result</span>&lt;Program, Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
     <span class="prelude-val">Ok</span>(<span class="kw">match </span>path.extension().and_then(OsStr::to_str) {
         <span class="prelude-val">Some</span>(<span class="string">"cairo"</span>) <span class="kw">if </span>!is_contract =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>db = RootDatabase::builder().detect_corelib().build()<span class="question-mark">?</span>;
             <span class="kw">let </span>main_crate_ids = setup_project(<span class="kw-2">&amp;mut </span>db, path)<span class="question-mark">?</span>;
-            <span class="kw">let </span>program = compile_prepared_db(
+
+            compile_prepared_db(
                 <span class="kw-2">&amp;mut </span>db,
                 main_crate_ids,
                 CompilerConfig {
                     replace_ids: <span class="bool-val">true</span>,
                     ..Default::default()
                 },
-            )<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>debug_locations = <span class="kw">if let </span><span class="prelude-val">Some</span>(context) = context {
-                <span class="kw">let </span>debug_info = DebugInfo::extract(<span class="kw-2">&amp;</span>db, <span class="kw-2">&amp;</span>program).map_err(|<span class="kw">_</span>| {
-                    <span class="kw">let </span><span class="kw-2">mut </span>buffer = String::new();
-                    <span class="macro">assert!</span>(DiagnosticsReporter::write_to_string(<span class="kw-2">&amp;mut </span>buffer).check(<span class="kw-2">&amp;</span>db));
-                    buffer
-                })<span class="question-mark">?</span>;
-
-                <span class="prelude-val">Some</span>(DebugLocations::extract(context, <span class="kw-2">&amp;</span>db, <span class="kw-2">&amp;</span>debug_info))
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>};
-
-            (program, debug_locations)
-        }
+            )<span class="question-mark">?
+        </span>}
         <span class="prelude-val">Some</span>(<span class="string">"cairo"</span>) <span class="kw">if </span>is_contract =&gt; {
             <span class="comment">// mimics cairo_lang_starknet::contract_class::compile_path
             </span><span class="kw">let </span><span class="kw-2">mut </span>plugins = PluginSuite::default();
@@ -306,32 +239,17 @@
                 },
             )<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>program = contract.extract_sierra_program()<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>debug_locations = <span class="kw">if let </span><span class="prelude-val">Some</span>(context) = context {
-                <span class="kw">let </span>debug_info = DebugInfo::extract(<span class="kw-2">&amp;</span>db, <span class="kw-2">&amp;</span>program).map_err(|<span class="kw">_</span>| {
-                    <span class="kw">let </span><span class="kw-2">mut </span>buffer = String::new();
-                    <span class="macro">assert!</span>(DiagnosticsReporter::write_to_string(<span class="kw-2">&amp;mut </span>buffer).check(<span class="kw-2">&amp;</span>db));
-                    buffer
-                })<span class="question-mark">?</span>;
-
-                <span class="prelude-val">Some</span>(DebugLocations::extract(context, <span class="kw-2">&amp;</span>db, <span class="kw-2">&amp;</span>debug_info))
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>};
-
-            (program, debug_locations)
-        }
+            contract.extract_sierra_program()<span class="question-mark">?
+        </span>}
         <span class="prelude-val">Some</span>(<span class="string">"sierra"</span>) =&gt; {
             <span class="kw">let </span>program_src = fs::read_to_string(path)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>program_parser = ProgramParser::new();
-            <span class="kw">let </span>program = program_parser
-                .parse(<span class="kw-2">&amp;</span>program_src)
-                .map_err(|e| e.map_token(|t| t.to_string()))<span class="question-mark">?</span>;
 
-            (program, <span class="prelude-val">None</span>)
-        }
+            program_parser
+                .parse(<span class="kw-2">&amp;</span>program_src)
+                .map_err(|e| e.map_token(|t| t.to_string()))<span class="question-mark">?
+        </span>}
         <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
     })
 }

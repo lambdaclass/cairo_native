@@ -503,7 +503,7 @@
     </span><span class="kw">fn </span>test_invoke_dynamic(program: Program) {
         <span class="kw">let </span>native_context = NativeContext::new();
         <span class="kw">let </span>module = native_context
-            .compile(<span class="kw-2">&amp;</span>program, <span class="prelude-val">None</span>)
+            .compile(<span class="kw-2">&amp;</span>program)
             .expect(<span class="string">"failed to compile context"</span>);
         <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
@@ -521,7 +521,7 @@
     </span><span class="kw">fn </span>test_invoke_dynamic_with_syscall_handler(program: Program) {
         <span class="kw">let </span>native_context = NativeContext::new();
         <span class="kw">let </span>module = native_context
-            .compile(<span class="kw-2">&amp;</span>program, <span class="prelude-val">None</span>)
+            .compile(<span class="kw-2">&amp;</span>program)
             .expect(<span class="string">"failed to compile context"</span>);
         <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
@@ -557,7 +557,7 @@
     </span><span class="kw">fn </span>test_invoke_contract_dynamic(starknet_program: Program) {
         <span class="kw">let </span>native_context = NativeContext::new();
         <span class="kw">let </span>module = native_context
-            .compile(<span class="kw-2">&amp;</span>starknet_program, <span class="prelude-val">None</span>)
+            .compile(<span class="kw-2">&amp;</span>starknet_program)
             .expect(<span class="string">"failed to compile context"</span>);
         <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 

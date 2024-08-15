@@ -148,7 +148,7 @@
 //! let native_context = NativeContext::new();
 //!
 //! // Compile the sierra program into a MLIR module.
-//! let native_program = native_context.compile(&amp;sierra_program, None).unwrap();
+//! let native_program = native_context.compile(&amp;sierra_program).unwrap();
 //!
 //! // The parameters of the entry point.
 //! let params = &amp;[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
@@ -221,7 +221,7 @@
 <span class="kw">pub mod </span>cache;
 <span class="kw">mod </span>compiler;
 <span class="kw">pub mod </span>context;
-<span class="kw">pub mod </span>debug_info;
+<span class="kw">pub mod </span>debug;
 <span class="kw">pub mod </span>error;
 <span class="kw">pub mod </span>execution_result;
 <span class="kw">pub mod </span>executor;

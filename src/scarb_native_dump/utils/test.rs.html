@@ -256,15 +256,6 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMode};
 <span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_runner::RunResultValue;
@@ -401,16 +392,7 @@
     <span class="kw">let </span>native_context = NativeContext::new();
 
     <span class="comment">// Compile the sierra program into a MLIR module.
-    </span><span class="kw">let </span>native_module = native_context
-        .compile_with_metadata(
-            <span class="kw-2">&amp;</span>sierra_program,
-            MetadataComputationConfig {
-                function_set_costs: function_set_costs.clone(),
-                linear_ap_change_solver: <span class="bool-val">true</span>,
-                linear_gas_solver: <span class="bool-val">true</span>,
-            },
-        )
-        .unwrap();
+    </span><span class="kw">let </span>native_module = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
 
     <span class="kw">let </span>native_executor: NativeExecutor = <span class="kw">match </span>args.run_mode {
         RunMode::Aot =&gt; {

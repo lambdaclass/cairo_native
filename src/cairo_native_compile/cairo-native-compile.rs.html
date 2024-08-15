@@ -80,11 +80,13 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_compiler::project::check_compiler_path;
 <span class="kw">use </span>cairo_native::{
-    context::NativeContext, module_to_object, object_to_shared_lib,
-    utils::cairo_to_sierra_with_debug_info,
+    context::NativeContext, module_to_object, object_to_shared_lib, utils::cairo_to_sierra,
 };
 <span class="kw">use </span>clap::{Parser, ValueEnum};
 <span class="kw">use </span>std::path::PathBuf;
@@ -135,13 +137,10 @@
     </span>check_compiler_path(args.single_file, <span class="kw-2">&amp;</span>args.path)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>native_context = NativeContext::new();
-    <span class="kw">let </span>(sierra_program, debug_locations) =
-        cairo_to_sierra_with_debug_info(native_context.context(), <span class="kw-2">&amp;</span>args.path)<span class="question-mark">?</span>;
+    <span class="kw">let </span>sierra_program = cairo_to_sierra(<span class="kw-2">&amp;</span>args.path);
 
     <span class="comment">// Compile the sierra program into a MLIR module.
-    </span><span class="kw">let </span>native_module = native_context
-        .compile(<span class="kw-2">&amp;</span>sierra_program, <span class="prelude-val">Some</span>(debug_locations))
-        .unwrap();
+    </span><span class="kw">let </span>native_module = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
 
     <span class="kw">let </span>output_mlir = args
         .output_mlir
@@ -153,12 +152,19 @@
     )
     .context(<span class="string">"Failed to write output."</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(output_library) = <span class="kw-2">&amp;</span>args.output_library {
-        <span class="kw">let </span>object_data = module_to_object(native_module.module(), args.opt_level.into())
-            .context(<span class="string">"Failed to convert module to object."</span>)<span class="question-mark">?</span>;
-        object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, output_library)
-            .context(<span class="string">"Failed to write shared library."</span>)<span class="question-mark">?</span>;
-    }
+    <span class="kw">let </span>output_lib = args.output_library.unwrap_or_else(|| {
+        PathBuf::from({
+            <span class="kw">if </span><span class="macro">cfg!</span>(target_os = <span class="string">"macos"</span>) {
+                <span class="string">"out.dylib"
+            </span>} <span class="kw">else </span>{
+                <span class="string">"out.so"
+            </span>}
+        })
+    });
+
+    <span class="kw">let </span>object_data = module_to_object(native_module.module(), args.opt_level.into())
+        .context(<span class="string">"Failed to convert module to object."</span>)<span class="question-mark">?</span>;
+    object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>output_lib).context(<span class="string">"Failed to write shared library."</span>)<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }
