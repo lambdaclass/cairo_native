@@ -1,7 +1,9 @@
 //! # `Circuit` type
 
+use std::alloc::Layout;
+
 use super::WithSelf;
-use crate::{error::Result, metadata::MetadataStorage};
+use crate::{error::Result, metadata::MetadataStorage, utils::get_integer_layout};
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
@@ -11,6 +13,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
+    dialect::llvm,
     ir::{r#type::IntegerType, Module, Type},
     Context,
 };
@@ -26,9 +29,6 @@ pub fn build<'ctx>(
     selector: WithSelf<CircuitTypeConcrete>,
 ) -> Result<Type<'ctx>> {
     match &*selector {
-        CircuitTypeConcrete::AddMod(_)
-        | CircuitTypeConcrete::MulMod(_)
-        | CircuitTypeConcrete::CircuitDescriptor(_) => Ok(IntegerType::new(context, 64).into()),
         CircuitTypeConcrete::CircuitModulus(_) => Ok(IntegerType::new(context, 384).into()),
         CircuitTypeConcrete::U96Guarantee(_) => Ok(IntegerType::new(context, 96).into()),
         CircuitTypeConcrete::CircuitInputAccumulator(info) => build_circuit_accumulator(
@@ -45,16 +45,30 @@ pub fn build<'ctx>(
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
+        CircuitTypeConcrete::CircuitOutputs(info) => build_circuit_outputs(
+            context,
+            module,
+            registry,
+            metadata,
+            WithSelf::new(selector.self_ty(), info),
+        ),
+        // builtins
+        CircuitTypeConcrete::AddMod(_)
+        | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_)
+        | CircuitTypeConcrete::MulMod(_) => Ok(IntegerType::new(context, 64).into()),
+        // noops
+        CircuitTypeConcrete::CircuitDescriptor(_)
+        | CircuitTypeConcrete::CircuitFailureGuarantee(_)
+        | CircuitTypeConcrete::CircuitPartialOutputs(_) => {
+            Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
+        }
+        // phantoms
         CircuitTypeConcrete::Circuit(_)
-        | CircuitTypeConcrete::AddModGate(_) 
+        | CircuitTypeConcrete::AddModGate(_)
         | CircuitTypeConcrete::SubModGate(_)
         | CircuitTypeConcrete::MulModGate(_)
         | CircuitTypeConcrete::InverseGate(_)
-        | CircuitTypeConcrete::CircuitFailureGuarantee(_)
-        | CircuitTypeConcrete::CircuitOutputs(_)
-        | CircuitTypeConcrete::CircuitPartialOutputs(_)
-        | CircuitTypeConcrete::CircuitInput(_) 
-        | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => todo!(),
+        | CircuitTypeConcrete::CircuitInput(_) => todo!(),
     }
 }
 
@@ -76,4 +90,83 @@ pub fn build_circuit_data<'ctx>(
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
     Ok(IntegerType::new(context, 64).into())
+}
+
+pub fn build_circuit_outputs<'ctx>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<InfoOnlyConcreteType>,
+) -> Result<Type<'ctx>> {
+    Ok(IntegerType::new(context, 64).into())
+}
+
+pub fn is_complex(info: &CircuitTypeConcrete) -> bool {
+    match *info {
+        CircuitTypeConcrete::AddMod(_)
+        | CircuitTypeConcrete::MulMod(_)
+        | CircuitTypeConcrete::AddModGate(_)
+        | CircuitTypeConcrete::SubModGate(_)
+        | CircuitTypeConcrete::MulModGate(_)
+        | CircuitTypeConcrete::U96Guarantee(_)
+        | CircuitTypeConcrete::InverseGate(_)
+        | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_)
+        | CircuitTypeConcrete::CircuitModulus(_)
+        | CircuitTypeConcrete::CircuitInput(_)
+        | CircuitTypeConcrete::Circuit(_)
+        | CircuitTypeConcrete::CircuitDescriptor(_)
+        | CircuitTypeConcrete::CircuitFailureGuarantee(_) => false,
+
+        CircuitTypeConcrete::CircuitInputAccumulator(_)
+        | CircuitTypeConcrete::CircuitPartialOutputs(_)
+        | CircuitTypeConcrete::CircuitData(_)
+        | CircuitTypeConcrete::CircuitOutputs(_) => true,
+    }
+}
+
+pub fn is_zst(info: &CircuitTypeConcrete) -> bool {
+    match *info {
+        CircuitTypeConcrete::AddModGate(_)
+        | CircuitTypeConcrete::SubModGate(_)
+        | CircuitTypeConcrete::MulModGate(_)
+        | CircuitTypeConcrete::CircuitInput(_)
+        | CircuitTypeConcrete::InverseGate(_)
+        | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_)
+        | CircuitTypeConcrete::Circuit(_)
+        | CircuitTypeConcrete::CircuitDescriptor(_)
+        | CircuitTypeConcrete::CircuitFailureGuarantee(_) => true,
+
+        CircuitTypeConcrete::AddMod(_)
+        | CircuitTypeConcrete::CircuitModulus(_)
+        | CircuitTypeConcrete::U96Guarantee(_)
+        | CircuitTypeConcrete::MulMod(_)
+        | CircuitTypeConcrete::CircuitInputAccumulator(_)
+        | CircuitTypeConcrete::CircuitPartialOutputs(_)
+        | CircuitTypeConcrete::CircuitData(_)
+        | CircuitTypeConcrete::CircuitOutputs(_) => false,
+    }
+}
+
+pub fn layout(info: &CircuitTypeConcrete) -> Layout {
+    match *info {
+        CircuitTypeConcrete::AddMod(_) | CircuitTypeConcrete::MulMod(_) => get_integer_layout(64),
+        CircuitTypeConcrete::CircuitModulus(_) => get_integer_layout(384),
+        CircuitTypeConcrete::U96Guarantee(_) => get_integer_layout(96),
+
+        CircuitTypeConcrete::AddModGate(_)
+        | CircuitTypeConcrete::SubModGate(_)
+        | CircuitTypeConcrete::MulModGate(_)
+        | CircuitTypeConcrete::CircuitInput(_)
+        | CircuitTypeConcrete::InverseGate(_)
+        | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_)
+        | CircuitTypeConcrete::Circuit(_)
+        | CircuitTypeConcrete::CircuitDescriptor(_)
+        | CircuitTypeConcrete::CircuitFailureGuarantee(_) => Layout::new::<()>(),
+
+        CircuitTypeConcrete::CircuitData(_) => todo!(),
+        CircuitTypeConcrete::CircuitOutputs(_) => todo!(),
+        CircuitTypeConcrete::CircuitPartialOutputs(_) => todo!(),
+        CircuitTypeConcrete::CircuitInputAccumulator(_) => todo!(),
+    }
 }

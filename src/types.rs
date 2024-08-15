@@ -460,7 +460,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
-            | CoreTypeConcrete::RangeCheck96(_) 
+            | CoreTypeConcrete::RangeCheck96(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) // u64 is not complex
             | CoreTypeConcrete::SegmentArena(_) => false,
 
@@ -528,7 +528,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(_)) => todo!(),
             CoreTypeConcrete::Coupon(_) => false,
 
-            CoreTypeConcrete::Circuit(_) => todo!()
+            CoreTypeConcrete::Circuit(info) => circuit::is_complex(info)
         }
     }
 
@@ -598,8 +598,8 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.inner_ty).unwrap();
                 type_info.is_zst(registry)
             }
-            CoreTypeConcrete::Span(_)
-            | CoreTypeConcrete::Circuit(_) => todo!(),
+            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Circuit(info) => circuit::is_zst(info),
         }
     }
 
@@ -705,7 +705,7 @@ impl TypeBuilder for CoreTypeConcrete {
             }
             CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
             CoreTypeConcrete::RangeCheck96(_) => get_integer_layout(64),
-            CoreTypeConcrete::Circuit(_)  => todo!(),
+            CoreTypeConcrete::Circuit(info) => circuit::layout(info),
         }
         .pad_to_align())
     }
