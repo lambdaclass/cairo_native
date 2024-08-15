@@ -12,7 +12,7 @@
 //! multiple target branches.
 //!
 //! > Note: Libfunc builders must have a branching operation out into each possible branch, even if
-//!     it's unreachable. This is required to keep the state consistent. More on that later.
+//! >  it's unreachable. This is required to keep the state consistent. More on that later.
 //!
 //! Some statements do require a special landing block. Those are the ones which are the branching
 //! target of more than a single statement. In other words, if a statement can be reached (directly)
