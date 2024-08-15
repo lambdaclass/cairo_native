@@ -106,31 +106,22 @@ fn build_init_circuit_data<'ctx, 'this>(
 /// Generate MLIR operations for the `into_u96_guarantee` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_into_u96_guarantee<'ctx, 'this>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
-    info: &SignatureAndTypeConcreteLibfunc,
+    _info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let info_type = info.ty.debug_name.clone();
-    dbg!(&info_type);
+    // input is a BoundedInt<0, 79228162514264337593543950335>
+    // output is a U96Guarantee
+    // they have the same type (i96), so we just return its argument
+    // should we debug_assert this?
 
-    let params = info
-        .param_signatures()
-        .iter()
-        .map(|p| p.ty.debug_name.clone())
-        .collect_vec();
-    dbg!(params);
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
 
-    let branches = info.branch_signatures();
-    dbg!(branches);
-
-    let dummy = entry.const_int(context, location, 1, 64)?;
-    entry.append_operation(helper.br(0, &[dummy], location));
-
-    todo!()
+    Ok(())
 }
 
 /// Generate MLIR operations for the `add_circuit_input` libfunc.
