@@ -324,6 +324,8 @@ fn invoke_dynamic(
                         CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
                         CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
+                        // todo: add RangeCheck96 to builtin_stats?
+                        CoreTypeConcrete::RangeCheck96(_) => (),
                         _ => unreachable!("{type_id:?}"),
                     }
                 }

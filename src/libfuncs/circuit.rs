@@ -1,14 +1,17 @@
 //! # Circuit libfuncs
 
 use super::LibfuncHelper;
-use crate::{block_ext::BlockExt, error::Result, metadata::MetadataStorage};
+use crate::{
+    block_ext::BlockExt, error::Result, libfuncs::r#struct::build_struct_value,
+    metadata::MetadataStorage,
+};
 use cairo_lang_sierra::{
     extensions::{
         circuit::{
-            CircuitConcreteLibfunc, CircuitTypeConcrete, ConcreteGetOutputLibFunc,
+            CircuitConcreteLibfunc, ConcreteGetOutputLibFunc,
             ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
         },
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
         ConcreteLibfunc,
     },
@@ -79,37 +82,25 @@ fn build_init_circuit_data<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let circuit_type = {
-        let circuit_type = registry.get_type(&info.ty)?;
+    let k0 = entry.const_int(context, location, 0, 64)?;
+    let accumulator_ty = &info.branch_signatures()[0].vars[1].ty;
+    let accumulator = build_struct_value(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        &accumulator_ty,
+        &[k0],
+    )?;
 
-        if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit_type)) = circuit_type
-        {
-            circuit_type
-        } else {
-            todo!()
-        }
-    };
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), accumulator], location));
 
-    dbg!(&circuit_type.info);
-    dbg!(&circuit_type.circuit_info);
-
-    let params = info
-        .param_signatures()
-        .iter()
-        .map(|p| p.ty.debug_name.clone())
-        .collect_vec();
-    dbg!(params);
-
-    let branches = info.branch_signatures();
-    dbg!(branches);
-
-    let dummy = entry.const_int(context, location, 1, 64)?;
-
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), dummy], location));
-    todo!()
+    Ok(())
 }
 
 /// Generate MLIR operations for the `into_u96_guarantee` libfunc.
