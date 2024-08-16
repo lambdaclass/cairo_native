@@ -16,6 +16,7 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
         ConcreteType,
@@ -326,6 +327,10 @@ fn invoke_dynamic(
                         CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
                         // todo: add RangeCheck96 to builtin_stats?
                         CoreTypeConcrete::RangeCheck96(_) => (),
+                        // todo: add AddMod to builtin_stats?
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => (),
+                        // todo: add MulMod to builtin_stats?
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => (),
                         _ => unreachable!("{type_id:?}"),
                     }
                 }

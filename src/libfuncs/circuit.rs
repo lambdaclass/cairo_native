@@ -5,7 +5,7 @@ use crate::{
     block_ext::BlockExt,
     error::Result,
     libfuncs::r#struct::build_struct_value,
-    metadata::MetadataStorage,
+    metadata::{debug_utils::DebugUtils, MetadataStorage},
     types::{circuit::CIRCUIT_INPUT_SIZE, TypeBuilder},
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
@@ -379,107 +379,167 @@ fn build_get_descriptor<'ctx, 'this>(
 #[allow(clippy::too_many_arguments)]
 fn build_eval<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let info_type = info.ty.debug_name.clone();
-    dbg!(&info_type);
+    let circuit_info = match registry.get_type(&info.ty).unwrap() {
+        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => &info.circuit_info,
+        _ => unreachable!(),
+    };
+    {
+        // todo! remove this debug prints
+        dbg!(circuit_info);
+        let params = info
+            .param_signatures()
+            .iter()
+            .map(|p| p.ty.debug_name.clone())
+            .collect_vec();
+        dbg!(params);
+        let branches = info.branch_signatures();
+        dbg!(branches);
+    }
 
-    let params = info
-        .param_signatures()
-        .iter()
-        .map(|p| p.ty.debug_name.clone())
-        .collect_vec();
-    dbg!(params);
+    // todo! calculate values
+    let mut values = vec![];
+    for i in 1..circuit_info.values.len() + 1 {
+        values.push(entry.const_int(context, location, i, CIRCUIT_INPUT_SIZE as u32)?)
+    }
 
-    let branches = info.branch_signatures();
-    dbg!(branches);
-
-    let dummy = entry.const_int(context, location, 1, 64)?;
-    entry.append_operation(helper.br(
-        0,
-        &[entry.argument(0)?.into(), entry.argument(1)?.into(), dummy],
+    let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
+    let (_outputs_type, outputs_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, outputs_type_id)?;
+    let outputs = build_struct_value(
+        context,
+        registry,
+        entry,
         location,
-    ));
-    entry.append_operation(helper.br(
-        1,
-        &[
-            entry.argument(0)?.into(),
-            entry.argument(1)?.into(),
-            dummy,
-            dummy,
+        helper,
+        metadata,
+        outputs_type_id,
+        &values,
+    )?;
+
+    {
+        // todo! remove this debug print
+        let outputs_ptr =
+            entry.alloca1(context, location, outputs.r#type(), outputs_layout.align())?;
+        entry.store(context, location, outputs_ptr, outputs)?;
+        metadata.get_mut::<DebugUtils>().unwrap().dump_mem(
+            context,
+            helper,
+            entry,
+            outputs_ptr,
+            outputs_layout.size(),
+            location,
+        )?;
+    }
+
+    let ktrue = entry.const_int(context, location, 1, 64)?;
+    let partial_type_id = &info.branch_signatures()[1].vars[2].ty;
+    let partial = entry.append_op_result(llvm::undef(
+        registry.build_type(context, helper, registry, metadata, partial_type_id)?,
+        location,
+    ))?;
+    let failure_type_id = &info.branch_signatures()[1].vars[3].ty;
+    let failure = entry.append_op_result(llvm::undef(
+        registry.build_type(context, helper, registry, metadata, failure_type_id)?,
+        location,
+    ))?;
+    entry.append_operation(helper.cond_br(
+        context,
+        ktrue,
+        [0, 1],
+        [
+            &[
+                entry.argument(0)?.into(),
+                entry.argument(1)?.into(),
+                outputs,
+            ],
+            &[
+                entry.argument(0)?.into(),
+                entry.argument(1)?.into(),
+                partial,
+                failure,
+            ],
         ],
         location,
     ));
 
-    todo!()
+    Ok(())
 }
 
 /// Generate MLIR operations for the `circuit_failure_guarantee_verify` libfunc.
+/// NOOP
 #[allow(clippy::too_many_arguments)]
 fn build_failure_guarantee_verify<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let params = info
-        .param_signatures()
-        .iter()
-        .map(|p| p.ty.debug_name.clone())
-        .collect_vec();
-    dbg!(params);
+    let guarantee_type_id = &info.branch_signatures()[0].vars[2].ty;
+    let guarantee_type =
+        registry.build_type(context, helper, registry, metadata, guarantee_type_id)?;
 
-    let branches = info.branch_signatures();
-    dbg!(branches);
+    let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
-    let dummy = entry.const_int(context, location, 1, 64)?;
     entry.append_operation(helper.br(
         0,
-        &[entry.argument(0)?.into(), entry.argument(1)?.into(), dummy],
+        &[
+            entry.argument(0)?.into(),
+            entry.argument(1)?.into(),
+            guarantee,
+        ],
         location,
     ));
 
-    todo!()
+    Ok(())
 }
 
 /// Generate MLIR operations for the `u96_limbs_less_than_guarantee_verify` libfunc.
+/// NOOP
 #[allow(clippy::too_many_arguments)]
 fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
 ) -> Result<()> {
-    dbg!(&info.limb_count);
+    let guarantee_type_id = &info.branch_signatures()[0].vars[0].ty;
+    let guarantee_type =
+        registry.build_type(context, helper, registry, metadata, guarantee_type_id)?;
 
-    let params = info
-        .param_signatures()
-        .iter()
-        .map(|p| p.ty.debug_name.clone())
-        .collect_vec();
-    dbg!(params);
+    let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
-    let branches = info.branch_signatures();
-    dbg!(branches);
+    let u96_type_id = &info.branch_signatures()[1].vars[0].ty;
+    let u96_type = registry.build_type(context, helper, registry, metadata, u96_type_id)?;
 
-    let dummy = entry.const_int(context, location, 1, 64)?;
-    entry.append_operation(helper.br(0, &[dummy], location));
-    entry.append_operation(helper.br(1, &[dummy], location));
-    todo!()
+    let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
+
+    let kfalse = entry.const_int(context, location, 0, 64)?;
+    entry.append_operation(helper.cond_br(
+        context,
+        kfalse,
+        [0, 1],
+        [&[guarantee], &[u96]],
+        location,
+    ));
+
+    Ok(())
 }
 
 /// Generate MLIR operations for the `u96_guarantee_verify` libfunc.
+/// NOOP
 #[allow(clippy::too_many_arguments)]
 fn build_u96_guarantee_verify<'ctx, 'this>(
     _context: &'ctx Context,
@@ -488,47 +548,32 @@ fn build_u96_guarantee_verify<'ctx, 'this>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let params = info
-        .param_signatures()
-        .iter()
-        .map(|p| p.ty.debug_name.clone())
-        .collect_vec();
-    dbg!(params);
-
-    let branches = info.branch_signatures();
-    dbg!(branches);
-
     entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
 
-    todo!()
+    Ok(())
 }
 
 /// Generate MLIR operations for the `u96_single_limb_less_than_guarantee_verify` libfunc.
+/// NOOP
 #[allow(clippy::too_many_arguments)]
 fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let params = info
-        .param_signatures()
-        .iter()
-        .map(|p| p.ty.debug_name.clone())
-        .collect_vec();
-    dbg!(params);
+    let u96_type_id = &info.branch_signatures()[0].vars[0].ty;
+    let u96_type = registry.build_type(context, helper, registry, metadata, u96_type_id)?;
+    let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
 
-    let branches = info.branch_signatures();
-    dbg!(branches);
+    entry.append_operation(helper.br(0, &[u96], location));
 
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
-
-    todo!()
+    Ok(())
 }
 
 /// Generate MLIR operations for the `get_circuit_output` libfunc.

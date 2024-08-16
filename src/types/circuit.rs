@@ -23,7 +23,7 @@ use melior::{
     Context,
 };
 
-pub const CIRCUIT_INPUT_SIZE: usize = 348;
+pub const CIRCUIT_INPUT_SIZE: usize = 384;
 
 /// Build the MLIR type.
 ///
@@ -264,7 +264,31 @@ pub fn layout(
 
             Ok(layout)
         }
-        CircuitTypeConcrete::CircuitOutputs(_) => todo!(),
+        CircuitTypeConcrete::CircuitOutputs(info) => {
+            let Some(generic_arg) = info.info.long_id.generic_args.first() else {
+                unreachable!();
+            };
+            let GenericArg::Type(circuit_type_id) = generic_arg else {
+                unreachable!();
+            };
+            let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
+                registry.get_type(circuit_type_id)?
+            else {
+                unreachable!()
+            };
+
+            let n_gates = circuit.circuit_info.values.len();
+
+            // todo! fix calculation
+            let u384_layout = Layout::from_size_align(
+                CIRCUIT_INPUT_SIZE >> 3,
+                (CIRCUIT_INPUT_SIZE >> 3).min(16),
+            )?;
+
+            let layout = layout_repeat(&u384_layout, n_gates)?.0;
+
+            Ok(layout)
+        }
         CircuitTypeConcrete::CircuitPartialOutputs(_) => todo!(),
         CircuitTypeConcrete::CircuitInputAccumulator(info) => {
             // todo! swap unreachable with debug assert and error return
