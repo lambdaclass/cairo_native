@@ -39,7 +39,7 @@ fn main() -> anyhow::Result<()> {
 
                 // Compile the sierra program into a MLIR module.
                 let native_module = native_context
-                    .compile(&compiled.into_v1().unwrap().program, None)
+                    .compile(&compiled.into_v1().unwrap().program)
                     .unwrap();
 
                 // Write the output.

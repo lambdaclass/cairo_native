@@ -893,19 +893,29 @@ the `target/` folder besides the generated JSON sierra files.
 
 ### Useful environment variables
 
-These 2 env vars will dump the generated MLIR code from any compilation on the current working directory as:
+This env will dump the generated MLIR code from any compilation on the current working directory as:
 
 - `dump.mlir`: The MLIR code after passes without locations.
 - `dump-debug.mlir`: The MLIR code after passes with locations.
 - `dump-prepass.mlir`: The MLIR code before without locations.
 - `dump-prepass-debug.mlir`: The MLIR code before passes with locations.
+- `program.sierra`: The compiled sierra code, if using a debugger such as lldb, this file path is the default used in debug info to show sources.
 
 Do note that the MLIR with locations is in pretty form and thus not suitable to pass to `mlir-opt`.
 
 ```bash
-export NATIVE_DEBUG_DUMP_PREPASS=1
 export NATIVE_DEBUG_DUMP=1
 ```
+
+Add a debugger breakpoint trap at the given sierra statement:
+
+The trap instruction may not end up exactly where the statement is.
+
+```bash
+export NATIVE_DEBUG_TRAP_AT_STMT=10
+```
+
+Note: The debugger will only show source locations when using AOT. Also you need enable the cairo-native feature `with-debug-utils` and have the env var `NATIVE_DEBUG_DUMP` set.
 
 Enable logging to see the compilation process:
 
