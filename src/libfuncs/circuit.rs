@@ -5,14 +5,14 @@ use crate::{
     block_ext::BlockExt,
     error::Result,
     libfuncs::r#struct::build_struct_value,
-    metadata::{debug_utils::DebugUtils, MetadataStorage},
+    metadata::MetadataStorage,
     types::{circuit::CIRCUIT_INPUT_SIZE, TypeBuilder},
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
         circuit::{
-            CircuitConcreteLibfunc, CircuitTypeConcrete, ConcreteGetOutputLibFunc,
+            self, CircuitConcreteLibfunc, CircuitTypeConcrete, ConcreteGetOutputLibFunc,
             ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -368,58 +368,109 @@ fn build_eval<'ctx, 'this>(
         CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => &info.circuit_info,
         _ => unreachable!(),
     };
+    // todo! remove this debug prints
+    // dbg!(circuit_info);
 
+    let circuit_data = entry.argument(3)?.into();
+    let circuit_modulus = entry.argument(4)?.into();
+
+    // todo! should arguments 5 and 6 be used?
+    // let zero = entry.argument(5)?;
+    // let one = entry.argument(6)?;
+
+    // Fill input values
+    let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
+    values[0] = Some(entry.const_int(context, location, 1, CIRCUIT_INPUT_SIZE as u32)?);
+    for i in 0..circuit_info.n_inputs {
+        values[i + 1] = Some(entry.extract_value(
+            context,
+            location,
+            circuit_data,
+            IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+            i,
+        )?);
+    }
+
+    // Evaluate circuit
     {
-        // todo! remove this debug prints
-        dbg!(circuit_info);
-        let params = itertools::Itertools::collect_vec(
-            info.param_signatures()
-                .iter()
-                .map(|p| p.ty.debug_name.clone()),
-        );
-        dbg!(params);
-        let branches = info.branch_signatures();
-        dbg!(branches);
+        let mut add_offsets = circuit_info.add_offsets.iter().peekable();
+        let mut mul_offsets = circuit_info.mul_offsets.iter();
+
+        loop {
+            while let Some(&&circuit::GateOffsets { lhs, rhs, output }) = add_offsets.peek() {
+                let lhs_value = values[lhs];
+                let rhs_value = values[rhs];
+                let output_value = values[output];
+                match (lhs_value, rhs_value, output_value) {
+                    // ADD: lhs + rhs = out
+                    (Some(lhs_value), Some(rhs_value), None) => {
+                        let value =
+                            entry.append_op_result(arith::addi(lhs_value, rhs_value, location))?;
+                        let value = entry.append_op_result(arith::remui(
+                            value,
+                            circuit_modulus,
+                            location,
+                        ))?;
+                        values[output] = Some(value);
+                    }
+                    // SUB: lhs = out - rhs
+                    (None, Some(rhs_value), Some(output_value)) => {
+                        let value = entry.append_op_result(arith::addi(
+                            output_value,
+                            circuit_modulus,
+                            location,
+                        ))?;
+                        let value =
+                            entry.append_op_result(arith::subi(value, rhs_value, location))?;
+                        let value = entry.append_op_result(arith::remui(
+                            value,
+                            circuit_modulus,
+                            location,
+                        ))?;
+                        values[lhs] = Some(value);
+                    }
+                    _ => break,
+                }
+
+                add_offsets.next();
+            }
+
+            if let Some(&circuit::GateOffsets { lhs, rhs, output }) = mul_offsets.next() {
+                let lhs_value = values[lhs];
+                let rhs_value = values[rhs];
+                let output_value = values[output];
+                match (lhs_value, rhs_value, output_value) {
+                    // MUL: lhs * rhs = out
+                    (Some(lhs), Some(rhs), None) => {
+                        let value = entry.append_op_result(arith::muli(lhs, rhs, location))?;
+                        let value = entry.append_op_result(arith::remui(
+                            value,
+                            circuit_modulus,
+                            location,
+                        ))?;
+                        values[output] = Some(value)
+                    }
+                    // DIV: lhs = out / rhs
+                    (None, Some(_rhs), Some(_output)) => {
+                        todo!()
+                    }
+                    _ => unreachable!(),
+                }
+            } else {
+                break;
+            }
+        }
     }
-    // let circuit_data = entry.argument(3)?;
-    // let circuit_modulus = entry.argument(4)?;
 
-    // todo! calculate values, right now we only mock the results
-    let mut values = vec![];
-    for i in 1..circuit_info.values.len() + 1 {
-        let value = {
-            let limb1 = entry.const_int(context, location, i, 96)?;
-            let limb2 = entry.const_int(context, location, i + 1, 96)?;
-            let limb3 = entry.const_int(context, location, i + 2, 96)?;
-            let limb4 = entry.const_int(context, location, i + 3, 96)?;
+    // Validate all values are calculated
+    let values = values
+        .into_iter()
+        .skip(1 + circuit_info.n_inputs)
+        .collect::<Option<Vec<Value>>>()
+        .expect("circuit should be solvable");
 
-            let struct_type = llvm::r#type::r#struct(
-                context,
-                &[
-                    IntegerType::new(context, 96).into(),
-                    IntegerType::new(context, 96).into(),
-                    IntegerType::new(context, 96).into(),
-                    IntegerType::new(context, 96).into(),
-                ],
-                false,
-            );
-            let struct_value = entry.append_op_result(llvm::undef(struct_type, location))?;
-
-            let struct_value = entry.insert_values(
-                context,
-                location,
-                struct_value,
-                &[limb1, limb2, limb3, limb4],
-            )?;
-
-            u384_struct_to_integer(context, entry, location, struct_value)?
-        };
-        values.push(value)
-    }
-
+    // Build output struct
     let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
-    let (_outputs_type, outputs_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, outputs_type_id)?;
     let outputs = build_struct_value(
         context,
         registry,
@@ -431,20 +482,27 @@ fn build_eval<'ctx, 'this>(
         &values,
     )?;
 
-    {
-        // todo! remove this debug print
-        let outputs_ptr =
-            entry.alloca1(context, location, outputs.r#type(), outputs_layout.align())?;
-        entry.store(context, location, outputs_ptr, outputs)?;
-        metadata.get_mut::<DebugUtils>().unwrap().dump_mem(
-            context,
-            helper,
-            entry,
-            outputs_ptr,
-            outputs_layout.size(),
-            location,
-        )?;
-    }
+    // {
+    //     // todo! remove this debug print
+    //     let (_outputs_type, outputs_layout) = registry.build_type_with_layout(
+    //         context,
+    //         helper,
+    //         registry,
+    //         metadata,
+    //         outputs_type_id,
+    //     )?;
+    //     let outputs_ptr =
+    //         entry.alloca1(context, location, outputs.r#type(), outputs_layout.align())?;
+    //     entry.store(context, location, outputs_ptr, outputs)?;
+    //     metadata.get_mut::<DebugUtils>().unwrap().dump_mem(
+    //         context,
+    //         helper,
+    //         entry,
+    //         outputs_ptr,
+    //         outputs_layout.size(),
+    //         location,
+    //     )?;
+    // }
 
     let ktrue = entry.const_int(context, location, 1, 64)?;
     let partial_type_id = &info.branch_signatures()[1].vars[2].ty;
