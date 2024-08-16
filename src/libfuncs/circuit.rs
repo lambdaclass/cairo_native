@@ -313,7 +313,7 @@ fn build_add_input<'ctx, 'this>(
         last_insert_block.append_operation(helper.br(0, &[data], location));
     }
 
-    Ok(())
+    todo!();
 }
 
 fn u384_struct_to_integer<'a>(

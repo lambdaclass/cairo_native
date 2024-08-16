@@ -3,7 +3,11 @@
 use std::alloc::Layout;
 
 use super::WithSelf;
-use crate::{error::Result, metadata::MetadataStorage, utils::get_integer_layout};
+use crate::{
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{get_integer_layout, layout_repeat},
+};
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
@@ -100,12 +104,15 @@ pub fn build_circuit_accumulator<'ctx>(
 
     let n_inputs = circuit.circuit_info.n_inputs;
 
-    let mut types = vec![IntegerType::new(context, 64).into()];
-    for _ in 0..n_inputs - 1 {
-        types.push(IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into())
-    }
+    let fields = vec![
+        IntegerType::new(context, 64).into(),
+        llvm::r#type::array(
+            IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+            n_inputs as u32 - 1,
+        ),
+    ];
 
-    Ok(llvm::r#type::r#struct(context, &types, false))
+    Ok(llvm::r#type::r#struct(context, &fields, false))
 }
 
 pub fn build_circuit_data<'ctx>(
@@ -130,12 +137,10 @@ pub fn build_circuit_data<'ctx>(
 
     let n_inputs = circuit.circuit_info.n_inputs;
 
-    let mut types = vec![];
-    for _ in 0..n_inputs {
-        types.push(IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into())
-    }
-
-    Ok(llvm::r#type::r#struct(context, &types, false))
+    Ok(llvm::r#type::array(
+        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+        n_inputs as u32,
+    ))
 }
 
 pub fn build_circuit_outputs<'ctx>(
@@ -160,12 +165,10 @@ pub fn build_circuit_outputs<'ctx>(
 
     let n_gates = circuit.circuit_info.values.len();
 
-    let mut types = vec![];
-    for _ in 0..n_gates {
-        types.push(IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into());
-    }
-
-    Ok(llvm::r#type::r#struct(context, &types, false))
+    Ok(llvm::r#type::array(
+        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+        n_gates as u32,
+    ))
 }
 
 pub fn is_complex(info: &CircuitTypeConcrete) -> bool {
@@ -250,12 +253,9 @@ pub fn layout(
             };
 
             let n_inputs = circuit.circuit_info.n_inputs;
-            let mut layout = Layout::new::<()>();
-            for _ in 0..n_inputs {
-                layout = layout
-                    .extend(get_integer_layout(CIRCUIT_INPUT_SIZE as u32))?
-                    .0;
-            }
+
+            let u384_layout = get_integer_layout(CIRCUIT_INPUT_SIZE as u32);
+            let layout = layout_repeat(&u384_layout, n_inputs)?.0;
 
             Ok(layout)
         }
@@ -276,12 +276,11 @@ pub fn layout(
             };
 
             let n_inputs = circuit.circuit_info.n_inputs;
-            let mut layout = get_integer_layout(64);
-            for _ in 0..n_inputs - 1 {
-                layout = layout
-                    .extend(get_integer_layout(CIRCUIT_INPUT_SIZE as u32))?
-                    .0;
-            }
+
+            let length_layout = get_integer_layout(64);
+            let u384_layout = get_integer_layout(CIRCUIT_INPUT_SIZE as u32);
+            let inputs_layout = layout_repeat(&u384_layout, n_inputs - 1)?.0;
+            let layout = length_layout.extend(inputs_layout)?.0;
 
             Ok(layout)
         }
