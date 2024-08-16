@@ -265,6 +265,7 @@ pub fn layout(
             Ok(layout)
         }
         CircuitTypeConcrete::CircuitOutputs(info) => {
+            // todo! swap unreachable with debug assert and error return
             let Some(generic_arg) = info.info.long_id.generic_args.first() else {
                 unreachable!();
             };
