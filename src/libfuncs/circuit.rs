@@ -384,10 +384,37 @@ fn build_eval<'ctx, 'this>(
     // let circuit_data = entry.argument(3)?;
     // let circuit_modulus = entry.argument(4)?;
 
-    // todo! calculate values
+    // todo! calculate values, right now we only mock the results
     let mut values = vec![];
     for i in 1..circuit_info.values.len() + 1 {
-        values.push(entry.const_int(context, location, i, CIRCUIT_INPUT_SIZE as u32)?)
+        let value = {
+            let limb1 = entry.const_int(context, location, i, 96)?;
+            let limb2 = entry.const_int(context, location, i + 1, 96)?;
+            let limb3 = entry.const_int(context, location, i + 2, 96)?;
+            let limb4 = entry.const_int(context, location, i + 3, 96)?;
+
+            let struct_type = llvm::r#type::r#struct(
+                context,
+                &[
+                    IntegerType::new(context, 96).into(),
+                    IntegerType::new(context, 96).into(),
+                    IntegerType::new(context, 96).into(),
+                    IntegerType::new(context, 96).into(),
+                ],
+                false,
+            );
+            let struct_value = entry.append_op_result(llvm::undef(struct_type, location))?;
+
+            let struct_value = entry.insert_values(
+                context,
+                location,
+                struct_value,
+                &[limb1, limb2, limb3, limb4],
+            )?;
+
+            u384_struct_to_integer(context, entry, location, struct_value)?
+        };
+        values.push(value)
     }
 
     let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
@@ -579,20 +606,22 @@ fn build_get_output<'ctx, 'this>(
     };
     let output_idx = output_offset_idx - circuit_info.n_inputs - 1;
 
-    let outputs_type_id = &info.branch_signatures()[0].vars[0].ty;
-    let outputs_type = registry.build_type(context, helper, registry, metadata, outputs_type_id)?;
     let outputs = entry.argument(0)?.into();
-
-    let output_integer =
-        entry.extract_value(context, location, outputs, outputs_type, output_idx)?;
-    let output = u384_integer_to_struct(context, entry, location, output_integer)?;
+    let output_integer = entry.extract_value(
+        context,
+        location,
+        outputs,
+        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+        output_idx,
+    )?;
+    let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
     let guarantee_type =
         registry.build_type(context, helper, registry, metadata, guarantee_type_id)?;
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
-    entry.append_operation(helper.br(0, &[output, guarantee], location));
+    entry.append_operation(helper.br(0, &[output_struct, guarantee], location));
 
     Ok(())
 }
@@ -652,17 +681,30 @@ fn u384_integer_to_struct<'a>(
     context: &'a Context,
     block: &'a Block<'a>,
     location: Location<'a>,
-    u384_integer: Value<'a, 'a>,
+    integer: Value<'a, 'a>,
 ) -> Result<Value<'a, 'a>> {
-    // todo! take into account other limbs
+    let u96_type = IntegerType::new(context, 96).into();
+
     let limb1 = block.append_op_result(arith::trunci(
-        u384_integer,
+        integer,
         IntegerType::new(context, 96).into(),
         location,
     ))?;
-    let limb2 = block.const_int(context, location, 0, 96)?;
-    let limb3 = block.const_int(context, location, 0, 96)?;
-    let limb4 = block.const_int(context, location, 0, 96)?;
+    let limb2 = {
+        let k96 = block.const_int(context, location, 96, CIRCUIT_INPUT_SIZE as u32)?;
+        let limb = block.append_op_result(arith::shrui(integer, k96, location))?;
+        block.append_op_result(arith::trunci(limb, u96_type, location))?
+    };
+    let limb3 = {
+        let k192 = block.const_int(context, location, 96 * 2, CIRCUIT_INPUT_SIZE as u32)?;
+        let limb = block.append_op_result(arith::shrui(integer, k192, location))?;
+        block.append_op_result(arith::trunci(limb, u96_type, location))?
+    };
+    let limb4 = {
+        let k288 = block.const_int(context, location, 96 * 3, CIRCUIT_INPUT_SIZE as u32)?;
+        let limb = block.append_op_result(arith::shrui(integer, k288, location))?;
+        block.append_op_result(arith::trunci(limb, u96_type, location))?
+    };
 
     let struct_type = llvm::r#type::r#struct(
         context,
