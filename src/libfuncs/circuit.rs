@@ -346,22 +346,22 @@ fn build_try_into_circuit_modulus<'ctx, 'this>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let params = info
-        .param_signatures()
-        .iter()
-        .map(|p| p.ty.debug_name.clone())
-        .collect_vec();
-    dbg!(params);
+    let modulus = u384_struct_to_integer(context, entry, entry.argument(0)?.into(), location)?;
+    let k1 = entry.const_int(context, location, 1, CIRCUIT_INPUT_SIZE as u32)?;
 
-    let branches = info.branch_signatures();
-    dbg!(branches);
+    let is_valid = entry.append_op_result(arith::cmpi(
+        context,
+        arith::CmpiPredicate::Ugt,
+        modulus,
+        k1,
+        location,
+    ))?;
 
-    let dummy = entry.const_int(context, location, 1, 64)?;
-    entry.append_operation(helper.br(0, &[dummy], location));
+    entry.append_operation(helper.cond_br(context, is_valid, [0, 1], [&[modulus], &[]], location));
 
-    todo!()
+    Ok(())
 }
 
 /// Generate MLIR operations for the `get_circuit_descriptor` libfunc.
