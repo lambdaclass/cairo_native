@@ -7,7 +7,7 @@ use crate::{
     libfuncs::r#struct::build_struct_value,
     metadata::MetadataStorage,
     types::{circuit::CIRCUIT_INPUT_SIZE, TypeBuilder},
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -368,30 +368,22 @@ fn build_try_into_circuit_modulus<'ctx, 'this>(
 #[allow(clippy::too_many_arguments)]
 fn build_get_descriptor<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let info_type = info.ty.debug_name.clone();
-    dbg!(&info_type);
+    let descriptor_type_id = &info.branch_signatures()[0].vars[0].ty;
+    let descriptor_type =
+        registry.build_type(context, helper, registry, metadata, descriptor_type_id)?;
 
-    let params = info
-        .param_signatures()
-        .iter()
-        .map(|p| p.ty.debug_name.clone())
-        .collect_vec();
-    dbg!(params);
+    let unit = entry.append_op_result(llvm::undef(descriptor_type, location))?;
 
-    let branches = info.branch_signatures();
-    dbg!(branches);
+    entry.append_operation(helper.br(0, &[unit], location));
 
-    let dummy = entry.const_int(context, location, 1, 64)?;
-    entry.append_operation(helper.br(0, &[dummy], location));
-
-    todo!()
+    Ok(())
 }
 
 /// Generate MLIR operations for the `eval_circuit` libfunc.
