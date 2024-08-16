@@ -23,7 +23,7 @@ use melior::{
     Context,
 };
 
-pub const CIRCUIT_INPUT_SIZE: usize = 512;
+pub const CIRCUIT_INPUT_SIZE: usize = 348;
 
 /// Build the MLIR type.
 ///
@@ -254,7 +254,12 @@ pub fn layout(
 
             let n_inputs = circuit.circuit_info.n_inputs;
 
-            let u384_layout = get_integer_layout(CIRCUIT_INPUT_SIZE as u32);
+            // todo! fix calculation
+            let u384_layout = Layout::from_size_align(
+                CIRCUIT_INPUT_SIZE >> 3,
+                (CIRCUIT_INPUT_SIZE >> 3).min(16),
+            )?;
+
             let layout = layout_repeat(&u384_layout, n_inputs)?.0;
 
             Ok(layout)
@@ -278,7 +283,12 @@ pub fn layout(
             let n_inputs = circuit.circuit_info.n_inputs;
 
             let length_layout = get_integer_layout(64);
-            let u384_layout = get_integer_layout(CIRCUIT_INPUT_SIZE as u32);
+
+            // todo! fix calculation
+            let u384_layout = Layout::from_size_align(
+                CIRCUIT_INPUT_SIZE >> 3,
+                (CIRCUIT_INPUT_SIZE >> 3).min(16),
+            )?;
             let inputs_layout = layout_repeat(&u384_layout, n_inputs - 1)?.0;
             let layout = length_layout.extend(inputs_layout)?.0;
 
