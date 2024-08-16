@@ -634,47 +634,47 @@ fn u384_struct_to_integer<'a>(
 ) -> Result<Value<'a, 'a>> {
     let u96_type = IntegerType::new(context, 96).into();
 
-    let u384_limb1 = block.append_op_result(arith::extui(
+    let limb1 = block.append_op_result(arith::extui(
         block.extract_value(context, location, u384_struct, u96_type, 0)?,
         IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
         location,
     ))?;
 
-    let u384_limb2 = {
-        let u384_limb2 = block.append_op_result(arith::extui(
+    let limb2 = {
+        let limb = block.append_op_result(arith::extui(
             block.extract_value(context, location, u384_struct, u96_type, 1)?,
             IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
             location,
         ))?;
         let k96 = block.const_int(context, location, 96, CIRCUIT_INPUT_SIZE as u32)?;
-        block.append_op_result(arith::shli(u384_limb2, k96, location))?
+        block.append_op_result(arith::shli(limb, k96, location))?
     };
 
-    let u384_limb3 = {
-        let u384_limb3 = block.append_op_result(arith::extui(
+    let limb3 = {
+        let limb = block.append_op_result(arith::extui(
             block.extract_value(context, location, u384_struct, u96_type, 2)?,
             IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
             location,
         ))?;
         let k192 = block.const_int(context, location, 96 * 2, CIRCUIT_INPUT_SIZE as u32)?;
-        block.append_op_result(arith::shli(u384_limb3, k192, location))?
+        block.append_op_result(arith::shli(limb, k192, location))?
     };
 
-    let u384_limb4 = {
-        let u384_limb4 = block.append_op_result(arith::extui(
+    let limb4 = {
+        let limb = block.append_op_result(arith::extui(
             block.extract_value(context, location, u384_struct, u96_type, 3)?,
             IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
             location,
         ))?;
         let k288 = block.const_int(context, location, 96 * 3, CIRCUIT_INPUT_SIZE as u32)?;
-        block.append_op_result(arith::shli(u384_limb4, k288, location))?
+        block.append_op_result(arith::shli(limb, k288, location))?
     };
 
-    let u384 = block.append_op_result(arith::ori(u384_limb1, u384_limb2, location))?;
-    let u384 = block.append_op_result(arith::ori(u384, u384_limb3, location))?;
-    let u384 = block.append_op_result(arith::ori(u384, u384_limb4, location))?;
+    let value = block.append_op_result(arith::ori(limb1, limb2, location))?;
+    let value = block.append_op_result(arith::ori(value, limb3, location))?;
+    let value = block.append_op_result(arith::ori(value, limb4, location))?;
 
-    Ok(u384)
+    Ok(value)
 }
 
 fn u384_integer_to_struct<'a>(
