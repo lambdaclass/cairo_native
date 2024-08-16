@@ -218,7 +218,7 @@ fn build_add_input<'ctx, 'this>(
         // Interpret u384 struct (input) as u384 integer
         let u384_struct = entry.argument(1)?.into();
         let new_input =
-            u384_struct_to_integer(context, middle_insert_block, u384_struct, location)?;
+            u384_struct_to_integer(context, middle_insert_block, location, u384_struct)?;
 
         // Store the u384 into next input pointer
         middle_insert_block.store(context, location, next_input_ptr, new_input)?;
@@ -281,7 +281,7 @@ fn build_add_input<'ctx, 'this>(
 
         // Interpret u384 struct (input) as u384 integer
         let u384_struct = entry.argument(1)?.into();
-        let new_input = u384_struct_to_integer(context, last_insert_block, u384_struct, location)?;
+        let new_input = u384_struct_to_integer(context, last_insert_block, location, u384_struct)?;
 
         // Get pointer to data end
         let data_end_ptr = last_insert_block.append_op_result(llvm::get_element_ptr(
@@ -305,27 +305,6 @@ fn build_add_input<'ctx, 'this>(
     Ok(())
 }
 
-fn u384_struct_to_integer<'a>(
-    context: &'a Context,
-    block: &'a Block<'a>,
-    u384_struct: Value<'a, 'a>,
-    location: Location<'a>,
-) -> Result<Value<'a, 'a>> {
-    // todo! take into account other limbs
-    let u384_limb1 = block.append_op_result(arith::extui(
-        block.extract_value(
-            context,
-            location,
-            u384_struct,
-            IntegerType::new(context, 96).into(),
-            0,
-        )?,
-        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
-        location,
-    ))?;
-    Ok(u384_limb1)
-}
-
 /// Generate MLIR operations for the `try_into_circuit_modulus` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_try_into_circuit_modulus<'ctx, 'this>(
@@ -337,7 +316,7 @@ fn build_try_into_circuit_modulus<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let modulus = u384_struct_to_integer(context, entry, entry.argument(0)?.into(), location)?;
+    let modulus = u384_struct_to_integer(context, entry, location, entry.argument(0)?.into())?;
     let k1 = entry.const_int(context, location, 1, CIRCUIT_INPUT_SIZE as u32)?;
 
     let is_valid = entry.append_op_result(arith::cmpi(
@@ -580,28 +559,95 @@ fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
 #[allow(clippy::too_many_arguments)]
 fn build_get_output<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &ConcreteGetOutputLibFunc,
 ) -> Result<()> {
-    dbg!(&info.circuit_ty.debug_name);
-    dbg!(&info.output_ty.debug_name);
+    let circuit_info = match registry.get_type(&info.circuit_ty).unwrap() {
+        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => &info.circuit_info,
+        _ => unreachable!(),
+    };
+    let output_type_id = &info.output_ty;
 
-    let params = info
-        .param_signatures()
-        .iter()
-        .map(|p| p.ty.debug_name.clone())
-        .collect_vec();
-    dbg!(params);
+    let Some(&output_offset_idx) = circuit_info.values.get(output_type_id) else {
+        unreachable!()
+    };
+    let output_idx = output_offset_idx - circuit_info.n_inputs - 1;
 
-    let branches = info.branch_signatures();
-    dbg!(branches);
+    let outputs_type_id = &info.branch_signatures()[0].vars[0].ty;
+    let outputs_type = registry.build_type(context, helper, registry, metadata, outputs_type_id)?;
+    let outputs = entry.argument(0)?.into();
 
-    let dummy = entry.const_int(context, location, 1, 64)?;
-    entry.append_operation(helper.br(0, &[dummy, dummy], location));
+    let output_integer =
+        entry.extract_value(context, location, outputs, outputs_type, output_idx)?;
+    let output = u384_integer_to_struct(context, entry, location, output_integer)?;
 
-    todo!()
+    let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
+    let guarantee_type =
+        registry.build_type(context, helper, registry, metadata, guarantee_type_id)?;
+    let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
+
+    entry.append_operation(helper.br(0, &[output, guarantee], location));
+
+    Ok(())
+}
+
+fn u384_struct_to_integer<'a>(
+    context: &'a Context,
+    block: &'a Block<'a>,
+    location: Location<'a>,
+    u384_struct: Value<'a, 'a>,
+) -> Result<Value<'a, 'a>> {
+    // todo! take into account other limbs
+    let u384_limb1 = block.append_op_result(arith::extui(
+        block.extract_value(
+            context,
+            location,
+            u384_struct,
+            IntegerType::new(context, 96).into(),
+            0,
+        )?,
+        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+        location,
+    ))?;
+    Ok(u384_limb1)
+}
+
+fn u384_integer_to_struct<'a>(
+    context: &'a Context,
+    block: &'a Block<'a>,
+    location: Location<'a>,
+    u384_integer: Value<'a, 'a>,
+) -> Result<Value<'a, 'a>> {
+    // todo! take into account other limbs
+    let limb1 = block.append_op_result(arith::trunci(
+        u384_integer,
+        IntegerType::new(context, 96).into(),
+        location,
+    ))?;
+    let limb2 = block.const_int(context, location, 0, 96)?;
+    let limb3 = block.const_int(context, location, 0, 96)?;
+    let limb4 = block.const_int(context, location, 0, 96)?;
+
+    let struct_type = llvm::r#type::r#struct(
+        context,
+        &[
+            IntegerType::new(context, 96).into(),
+            IntegerType::new(context, 96).into(),
+            IntegerType::new(context, 96).into(),
+            IntegerType::new(context, 96).into(),
+        ],
+        false,
+    );
+    let struct_value = block.append_op_result(llvm::undef(struct_type, location))?;
+
+    block.insert_values(
+        context,
+        location,
+        struct_value,
+        &[limb1, limb2, limb3, limb4],
+    )
 }
