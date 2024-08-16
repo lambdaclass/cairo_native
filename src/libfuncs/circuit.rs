@@ -5,7 +5,7 @@ use crate::{
     block_ext::BlockExt,
     error::Result,
     libfuncs::r#struct::build_struct_value,
-    metadata::{debug_utils::DebugUtils, MetadataStorage},
+    metadata::MetadataStorage,
     types::{circuit::CIRCUIT_INPUT_SIZE, TypeBuilder},
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
@@ -23,11 +23,7 @@ use cairo_lang_sierra::{
 };
 use itertools::Itertools;
 use melior::{
-    dialect::{
-        arith, cf,
-        llvm::{self},
-        ods::llvm::{inttoptr, ptrtoint},
-    },
+    dialect::{arith, cf, llvm},
     ir::{
         attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, Location, Value, ValueLike,
     },
