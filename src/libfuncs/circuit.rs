@@ -21,7 +21,6 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
-use itertools::Itertools;
 use melior::{
     dialect::{arith, cf, llvm},
     ir::{
@@ -369,18 +368,21 @@ fn build_eval<'ctx, 'this>(
         CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => &info.circuit_info,
         _ => unreachable!(),
     };
+
     {
         // todo! remove this debug prints
         dbg!(circuit_info);
-        let params = info
-            .param_signatures()
-            .iter()
-            .map(|p| p.ty.debug_name.clone())
-            .collect_vec();
+        let params = itertools::Itertools::collect_vec(
+            info.param_signatures()
+                .iter()
+                .map(|p| p.ty.debug_name.clone()),
+        );
         dbg!(params);
         let branches = info.branch_signatures();
         dbg!(branches);
     }
+    // let circuit_data = entry.argument(3)?;
+    // let circuit_modulus = entry.argument(4)?;
 
     // todo! calculate values
     let mut values = vec![];
@@ -601,19 +603,49 @@ fn u384_struct_to_integer<'a>(
     location: Location<'a>,
     u384_struct: Value<'a, 'a>,
 ) -> Result<Value<'a, 'a>> {
-    // todo! take into account other limbs
+    let u96_type = IntegerType::new(context, 96).into();
+
     let u384_limb1 = block.append_op_result(arith::extui(
-        block.extract_value(
-            context,
-            location,
-            u384_struct,
-            IntegerType::new(context, 96).into(),
-            0,
-        )?,
+        block.extract_value(context, location, u384_struct, u96_type, 0)?,
         IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
         location,
     ))?;
-    Ok(u384_limb1)
+
+    let u384_limb2 = {
+        let u384_limb2 = block.append_op_result(arith::extui(
+            block.extract_value(context, location, u384_struct, u96_type, 1)?,
+            IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+            location,
+        ))?;
+        let k96 = block.const_int(context, location, 96, CIRCUIT_INPUT_SIZE as u32)?;
+        block.append_op_result(arith::shli(u384_limb2, k96, location))?
+    };
+
+    let u384_limb3 = {
+        let u384_limb3 = block.append_op_result(arith::extui(
+            block.extract_value(context, location, u384_struct, u96_type, 2)?,
+            IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+            location,
+        ))?;
+        let k192 = block.const_int(context, location, 96 * 2, CIRCUIT_INPUT_SIZE as u32)?;
+        block.append_op_result(arith::shli(u384_limb3, k192, location))?
+    };
+
+    let u384_limb4 = {
+        let u384_limb4 = block.append_op_result(arith::extui(
+            block.extract_value(context, location, u384_struct, u96_type, 3)?,
+            IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+            location,
+        ))?;
+        let k288 = block.const_int(context, location, 96 * 3, CIRCUIT_INPUT_SIZE as u32)?;
+        block.append_op_result(arith::shli(u384_limb4, k288, location))?
+    };
+
+    let u384 = block.append_op_result(arith::ori(u384_limb1, u384_limb2, location))?;
+    let u384 = block.append_op_result(arith::ori(u384, u384_limb3, location))?;
+    let u384 = block.append_op_result(arith::ori(u384, u384_limb4, location))?;
+
+    Ok(u384)
 }
 
 fn u384_integer_to_struct<'a>(
