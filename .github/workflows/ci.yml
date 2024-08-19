@@ -263,7 +263,7 @@ jobs:
         run: cargo llvm-cov nextest --verbose --all-features --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
       - name: test and generate coverage lcov-test      
-        run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test-${{ matrix.partition }}.info run --bin cairo-native-test -- corelib --partition count:${{ matrix.partition }}/4
+        run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test-.info run --bin cairo-native-test -- corelib
 
       - name: save coverage data
         uses: actions/upload-artifact@v4
@@ -296,8 +296,6 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y lcov
       - name: Merge the reports
         run: lcov -a lcov-1.info -a lcov-2.info -a lcov-3.info -a lcov-4.info -o lcov.info
-      - name: Merge corelib coverage reports
-        run: lcov -a lcov-test-1.info -a lcov-test-2.info -a lcov-test-3.info -a lcov-test-4.info -o lcov-test.info
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
