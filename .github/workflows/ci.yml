@@ -276,11 +276,11 @@ jobs:
   upload-coverage:
     name: Upload Coverage
     runs-on: ubuntu-latest
-    needs: [coverage, coverage-lcov-test]
+    needs: [coverage]
     steps:
       - name: Setup rust env
         uses: dtolnay/rust-toolchain@1.80.0
-      - name: Retreive cached dependecies
+      - name: Retreive cached dependencies
         uses: Swatinem/rust-cache@v2
       - name: Install testing tools
         uses: taiki-e/install-action@v2
@@ -294,10 +294,10 @@ jobs:
           name: coverage_data
       - name: Install lcov
         run: sudo apt-get update && sudo apt-get install -y lcov
-      - name: merge the reports
-        run: lcov -a lcov-1.info -a lcov-2.info -a lcov-3.info -a lcov-4.info -o ./lcov.info
-      - name: merge the reports corelib
-        run: lcov -a lcov-test-1.info -a lcov-test-2.info -a lcov-test-3.info -a lcov-test-4.info -o ./lcov-test.info
+      - name: Merge the reports
+        run: lcov -a lcov-1.info -a lcov-2.info -a lcov-3.info -a lcov-4.info -o lcov.info
+      - name: Merge corelib coverage reports
+        run: lcov -a lcov-test-1.info -a lcov-test-2.info -a lcov-test-3.info -a lcov-test-4.info -o lcov-test.info
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
