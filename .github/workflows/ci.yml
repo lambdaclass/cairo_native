@@ -253,6 +253,8 @@ jobs:
           scarb-version: "2.7.0"
       - name: Install deps
         run: make deps
+      - name: Build runtime
+        run: make runtime
       - name: Build cairo-native-runtime library.
         run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && cargo build --profile=ci --package=cairo-native-runtime
 
