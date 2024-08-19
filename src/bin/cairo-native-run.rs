@@ -16,7 +16,6 @@ use cairo_lang_sierra_generator::{
 use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     context::NativeContext,
-    debug_info::{DebugInfo, DebugLocations},
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
     starknet_stub::StubSyscallHandler,
@@ -109,22 +108,8 @@ fn main() -> anyhow::Result<()> {
 
     let native_context = NativeContext::new();
 
-    let debug_locations = {
-        let debug_info = DebugInfo::extract(db, &sierra_program)
-            .map_err(|_| {
-                let mut buffer = String::new();
-                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(db));
-                buffer
-            })
-            .unwrap();
-
-        DebugLocations::extract(native_context.context(), db, &debug_info)
-    };
-
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context
-        .compile(&sierra_program, Some(debug_locations))
-        .unwrap();
+    let native_module = native_context.compile(&sierra_program).unwrap();
 
     let native_executor: NativeExecutor = match args.run_mode {
         RunMode::Aot => {
