@@ -241,8 +241,18 @@ jobs:
         run: make deps
       - name: Build cairo-native-runtime library.
         run: cargo build --profile=ci --package=cairo-native-runtime
-      - name: test and generate coverage
-        run: make coverage
+      - name: test and generate coverage 1
+        run: cargo llvm-cov nextest --verbose  --all-features --workspace --lcov --output-path lcov-1.info --partition count:1/4
+      - name: test and generate coverage 2 
+        run: cargo llvm-cov nextest --verbose  --all-features --workspace --lcov --output-path lcov-2.info --partition count:2/4
+      - name: test and generate coverage 3
+        run: cargo llvm-cov nextest --verbose  --all-features --workspace --lcov --output-path lcov-3.info --partition count:3/4
+      - name: test and generate coverage 4 
+        run: cargo llvm-cov nextest --verbose  --all-features --workspace --lcov --output-path lcov-4.info --partition count:4/4
+      - name: test and generate coverage 5
+        run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+      - name: merge the reports
+        run: lcov -a lcov-1.info -a lcov-2.info -a lcov-3.info -a lcov-4.info -o lcov.info
       - name: save coverage data
         uses: actions/upload-artifact@v4
         with:
