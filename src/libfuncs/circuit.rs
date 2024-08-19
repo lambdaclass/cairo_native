@@ -1288,11 +1288,26 @@ mod test {
             }
         );
 
+        dbg!(Felt::from_raw([
+            576460752303419696,
+            18446744073709551615,
+            18446744073709551615,
+            18446744073709551393
+        ]));
+
         run_program_assert_output(
             &program,
             "main",
             &[],
-            jit_enum!(0, jit_struct!(u384(["0x6", "0x0", "0x0", "0x0"]))),
+            jit_enum!(
+                0,
+                jit_struct!(u384([
+                    "0x76956587ccb74125e760fdf3",
+                    "0xe8c82ede90011c6adc4b5cfa",
+                    "0xaf4bed7eef975ff1941fdf3d",
+                    "0x7"
+                ]))
+            ),
         );
     }
 }
