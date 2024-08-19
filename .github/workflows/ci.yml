@@ -352,6 +352,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: coverage_data
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
       - name: merge the reports
         run: lcov -a lcov-1.info -a lcov-2.info -a lcov-3.info -a lcov-4.info -o lcov.info
       - name: Upload coverage
