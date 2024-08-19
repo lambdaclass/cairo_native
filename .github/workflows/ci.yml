@@ -263,6 +263,7 @@ jobs:
         run: cargo llvm-cov nextest --verbose --all-features --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
       - name: test and generate coverage lcov-test      
+        if: ${{ matrix.partition == 1 }}
         run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test-.info run --bin cairo-native-test -- corelib
 
       - name: save coverage data
