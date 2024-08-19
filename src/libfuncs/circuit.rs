@@ -471,6 +471,7 @@ fn build_gate_evaluation<'ctx, 'this>(
             match (lhs_value, rhs_value, output_value) {
                 // ADD: lhs + rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
+                    // Extend to avoid overflow
                     let lhs_value = block.append_op_result(arith::extui(
                         lhs_value,
                         IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 + 1).into(),
@@ -486,10 +487,12 @@ fn build_gate_evaluation<'ctx, 'this>(
                         IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 + 1).into(),
                         location,
                     ))?;
+                    // value = (lhs_value + rhs_value) % circuit_modulus
                     let value =
                         block.append_op_result(arith::addi(lhs_value, rhs_value, location))?;
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
+                    // Truncate back
                     let value = block.append_op_result(arith::trunci(
                         value,
                         IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
@@ -499,6 +502,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                 }
                 // SUB: lhs = out - rhs
                 (None, Some(rhs_value), Some(output_value)) => {
+                    // Extend to avoid overflow
                     let rhs_value = block.append_op_result(arith::extui(
                         rhs_value,
                         IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 + 1).into(),
@@ -514,6 +518,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 + 1).into(),
                         location,
                     ))?;
+                    // value = (output_value + circuit_modulus - rhs_value) % circuit_modulus
                     let value = block.append_op_result(arith::addi(
                         output_value,
                         circuit_modulus,
@@ -522,6 +527,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let value = block.append_op_result(arith::subi(value, rhs_value, location))?;
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
+                    // Truncate back
                     let value = block.append_op_result(arith::trunci(
                         value,
                         IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
