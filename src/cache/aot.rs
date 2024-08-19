@@ -44,7 +44,7 @@ where
             module,
             registry,
             metadata,
-        } = self.context.compile(program, None).expect("should compile");
+        } = self.context.compile(program).expect("should compile");
 
         // Compile module into an object.
         let object_data = crate::ffi::module_to_object(&module, opt_level).unwrap();

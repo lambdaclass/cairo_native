@@ -343,6 +343,8 @@ $LLVM_SYS_181_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install l
 $TABLEGEN_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 ```
 
+You can then run the `bench` makefile target: 
+
 ```bash
 make bench
 ```

@@ -212,7 +212,7 @@ mod tests {
     fn test_invoke_dynamic(program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, None)
+            .compile(&program)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
@@ -230,7 +230,7 @@ mod tests {
     fn test_invoke_dynamic_with_syscall_handler(program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, None)
+            .compile(&program)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
@@ -266,7 +266,7 @@ mod tests {
     fn test_invoke_contract_dynamic(starknet_program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&starknet_program, None)
+            .compile(&starknet_program)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
