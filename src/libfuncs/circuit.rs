@@ -506,10 +506,33 @@ fn build_gate_evaluation<'ctx, 'this>(
             match (lhs_value, rhs_value, output_value) {
                 // MUL: lhs * rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
+                    // Extend to avoid overflow
+                    let lhs_value = block.append_op_result(arith::extui(
+                        lhs_value,
+                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 * 2).into(),
+                        location,
+                    ))?;
+                    let rhs_value = block.append_op_result(arith::extui(
+                        rhs_value,
+                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 * 2).into(),
+                        location,
+                    ))?;
+                    let circuit_modulus = block.append_op_result(arith::extui(
+                        circuit_modulus,
+                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 * 2).into(),
+                        location,
+                    ))?;
+                    // value = (lhs_value * rhs_value) % circuit_modulus
                     let value =
                         block.append_op_result(arith::muli(lhs_value, rhs_value, location))?;
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
+                    // Truncate back
+                    let value = block.append_op_result(arith::trunci(
+                        value,
+                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+                        location,
+                    ))?;
                     values[output] = Some(value)
                 }
                 // INV: lhs = 1 / rhs
@@ -920,4 +943,316 @@ fn build_euclidean_algorithm<'ctx, 'this>(
     ));
 
     Ok(end_block)
+}
+
+#[cfg(test)]
+mod test {
+
+    use crate::{
+        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+        values::JitValue,
+    };
+    use cairo_lang_sierra::extensions::utils::Range;
+    use num_bigint::BigUint;
+    use num_traits::Num;
+    use starknet_types_core::felt::Felt;
+
+    fn u384(limbs: [&str; 4]) -> JitValue {
+        fn u96_range() -> Range {
+            Range {
+                lower: BigUint::from_str_radix("0", 16).unwrap().into(),
+                upper: BigUint::from_str_radix("79228162514264337593543950336", 10)
+                    .unwrap()
+                    .into(),
+            }
+        }
+
+        JitValue::Struct {
+            fields: vec![
+                JitValue::BoundedInt {
+                    value: Felt::from_hex_unchecked(limbs[0]),
+                    range: u96_range(),
+                },
+                JitValue::BoundedInt {
+                    value: Felt::from_hex_unchecked(limbs[1]),
+                    range: u96_range(),
+                },
+                JitValue::BoundedInt {
+                    value: Felt::from_hex_unchecked(limbs[2]),
+                    range: u96_range(),
+                },
+                JitValue::BoundedInt {
+                    value: Felt::from_hex_unchecked(limbs[3]),
+                    range: u96_range(),
+                },
+            ],
+            debug_name: None,
+        }
+    }
+
+    #[test]
+    fn run_add_circuit() {
+        let program = load_cairo!(
+            use core::circuit::{
+                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
+                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
+                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
+            };
+
+            fn main() -> u384 {
+                let in1 = CircuitElement::<CircuitInput<0>> {};
+                let in2 = CircuitElement::<CircuitInput<1>> {};
+                let add = circuit_add(in1, in2);
+
+                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
+
+                let outputs = (add,)
+                    .new_inputs()
+                    .next([3, 3, 3, 3])
+                    .next([6, 6, 6, 6])
+                    .done()
+                    .eval(modulus)
+                    .unwrap();
+
+                outputs.get_output(add)
+            }
+        );
+
+        run_program_assert_output(
+            &program,
+            "main",
+            &[],
+            jit_enum!(0, jit_struct!(u384(["0x9", "0x9", "0x9", "0x9"]))),
+        );
+    }
+
+    #[test]
+    fn run_sub_circuit() {
+        let program = load_cairo!(
+            use core::circuit::{
+                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
+                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
+                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
+            };
+
+            fn main() -> u384 {
+                let in1 = CircuitElement::<CircuitInput<0>> {};
+                let in2 = CircuitElement::<CircuitInput<1>> {};
+                let mul = circuit_sub(in1, in2);
+
+                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
+
+                let outputs = (mul,)
+                    .new_inputs()
+                    .next([6, 6, 6, 6])
+                    .next([3, 3, 3, 3])
+                    .done()
+                    .eval(modulus)
+                    .unwrap();
+
+                outputs.get_output(mul)
+            }
+        );
+
+        run_program_assert_output(
+            &program,
+            "main",
+            &[],
+            jit_enum!(0, jit_struct!(u384(["0x3", "0x3", "0x3", "0x3"]))),
+        );
+    }
+
+    #[test]
+    fn run_mul_circuit() {
+        let program = load_cairo!(
+            use core::circuit::{
+                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
+                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
+                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
+            };
+
+            fn main() -> u384 {
+                let in1 = CircuitElement::<CircuitInput<0>> {};
+                let in2 = CircuitElement::<CircuitInput<1>> {};
+                let mul = circuit_mul(in1, in2);
+
+                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
+
+                let outputs = (mul,)
+                    .new_inputs()
+                    .next([3, 0, 0, 0])
+                    .next([3, 3, 3, 3])
+                    .done()
+                    .eval(modulus)
+                    .unwrap();
+
+                outputs.get_output(mul)
+            }
+        );
+
+        run_program_assert_output(
+            &program,
+            "main",
+            &[],
+            jit_enum!(0, jit_struct!(u384(["0x9", "0x9", "0x9", "0x9"]))),
+        );
+    }
+
+    #[test]
+    fn run_inverse_circuit() {
+        let program = load_cairo!(
+            use core::circuit::{
+                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
+                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
+                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
+            };
+
+            fn main() -> u384 {
+                let in1 = CircuitElement::<CircuitInput<0>> {};
+                let inv = circuit_inverse(in1);
+
+                let modulus = TryInto::<_, CircuitModulus>::try_into([11, 0, 0, 0]).unwrap();
+
+                let outputs = (inv,)
+                    .new_inputs()
+                    .next([2, 0, 0, 0])
+                    .done()
+                    .eval(modulus)
+                    .unwrap();
+
+                outputs.get_output(inv)
+            }
+        );
+
+        run_program_assert_output(
+            &program,
+            "main",
+            &[],
+            jit_enum!(0, jit_struct!(u384(["0x6", "0x0", "0x0", "0x0"]))),
+        );
+    }
+
+    #[test]
+    fn run_no_coprime_circuit() {
+        let program = load_cairo!(
+            use core::circuit::{
+                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
+                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
+                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
+            };
+
+            fn main() -> u384 {
+                let in1 = CircuitElement::<CircuitInput<0>> {};
+                let inv = circuit_inverse(in1);
+
+                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 0, 0, 0]).unwrap();
+
+                let outputs = (inv,)
+                    .new_inputs()
+                    .next([3, 0, 0, 0])
+                    .done()
+                    .eval(modulus)
+                    .unwrap();
+
+                outputs.get_output(inv)
+            }
+        );
+
+        run_program_assert_output(
+            &program,
+            "main",
+            &[],
+            jit_panic!(JitValue::felt_str(
+                "30828113188794245257250221355944970489240709081949230"
+            )),
+        );
+    }
+
+    #[test]
+    fn run_mul_overflow_circuit() {
+        let program = load_cairo!(
+            use core::circuit::{
+                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
+                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
+                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
+            };
+
+            fn main() -> u384 {
+                let in1 = CircuitElement::<CircuitInput<0>> {};
+                let in2 = CircuitElement::<CircuitInput<1>> {};
+                let mul = circuit_mul(in1, in2);
+
+                let modulus = TryInto::<_, CircuitModulus>::try_into([
+                    0xffffffffffffffffffffffff,
+                    0xffffffffffffffffffffffff,
+                    0xffffffffffffffffffffffff,
+                    0xffffffffffffffffffffffff,
+                ])
+                .unwrap();
+
+                let outputs = (mul,)
+                    .new_inputs()
+                    .next([0, 0, 0, 0xffffffffffffffffffffffff])
+                    .next([16, 0, 0, 0])
+                    .done()
+                    .eval(modulus)
+                    .unwrap();
+
+                outputs.get_output(mul)
+            }
+        );
+
+        run_program_assert_output(
+            &program,
+            "main",
+            &[],
+            jit_enum!(
+                0,
+                jit_struct!(u384(["0xf", "0x0", "0x0", "0xfffffffffffffffffffffff0"]))
+            ),
+        );
+    }
+
+    #[test]
+    fn run_full_circuit() {
+        let program = load_cairo!(
+            use core::circuit::{
+                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
+                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
+                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
+            };
+
+            fn main() -> u384 {
+                let in1 = CircuitElement::<CircuitInput<0>> {};
+                let in2 = CircuitElement::<CircuitInput<1>> {};
+                let add1 = circuit_add(in1, in2);
+                let mul1 = circuit_mul(add1, in1);
+                let mul2 = circuit_mul(mul1, add1);
+                let inv1 = circuit_inverse(mul2);
+                let sub1 = circuit_sub(inv1, in2);
+                let sub2 = circuit_sub(sub1, mul2);
+                let inv2 = circuit_inverse(sub2);
+                let add2 = circuit_add(inv2, inv2);
+
+                let modulus = TryInto::<_, CircuitModulus>::try_into([17, 14, 14, 14]).unwrap();
+
+                let outputs = (add2,)
+                    .new_inputs()
+                    .next([9, 2, 9, 3])
+                    .next([5, 7, 0, 8])
+                    .done()
+                    .eval(modulus)
+                    .unwrap();
+
+                outputs.get_output(add2)
+            }
+        );
+
+        run_program_assert_output(
+            &program,
+            "main",
+            &[],
+            jit_enum!(0, jit_struct!(u384(["0x6", "0x0", "0x0", "0x0"]))),
+        );
+    }
 }
