@@ -899,7 +899,7 @@ fn build_euclidean_algorithm<'ctx, 'this>(
     // Check if r_(i+1) is 0
     // If true, then:
     // - r_i is the gcd of a and b
-    // - inv_i is the bezouf coefficient x
+    // - inv_i is the bezout coefficient x
 
     let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
     let next_remainder_eq_zero = loop_block.append_op_result(arith::cmpi(
