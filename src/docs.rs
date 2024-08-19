@@ -8,14 +8,34 @@
 /// compiled into a binary
 /// [ahead of time](https://en.wikipedia.org/wiki/Ahead-of-time_compilation).
 ///
+/// ## Getting started as a developer
+///
+/// ## Project dependencies
+/// The major dependencies of the project are the following:
+/// - Melior: This is the crate that abstracts away most of the interfacing with
+///   MLIR, our compilation target, it uses mlir-sys and tries to safely
+///   abstract MLIR in Rust.
+/// - Cairo: We use the cairo crates to keep a close tie to the API contracts
+///   of the language, they provide a really nice way to know what features the
+///   language has and aids with codegen. For example, most library functions
+///   are under enumerations, and thanks to Rust exhaustive pattern matching we
+///   can't miss any.
+/// - Runtime: The JIT runner and compiler depend on a "runtime" that lives on
+///   this repository too, it aids with more complex stuff like `pedersen`,
+///   `keccak` and dictionaries that would be quite complex to implement from
+///   the ground up in MLIR (Basically would be like coding a complex hash
+///   function in pseudo assembly).
+///
 /// ## Common definitions
-/// Within this project there are lots of functions with the same signature. As their arguments have
-/// all the same meaning, they are documented here:
+/// Within this project there are lots of functions with the same signature.
+/// As their arguments have all the same meaning, they are documented here:
 ///
 /// - `context: NativeContext`: The MLIR context.
-/// - `module: &NativeModule`: The compiled MLIR program, with other relevant information such as program registry and metadata.
+/// - `module: &NativeModule`: The compiled MLIR program, with other relevant
+///   information such as program registry and metadata.
 /// - `program: &Program`: The Sierra input program.
-/// - `registry: &ProgramRegistry<TType, TLibfunc>`: The registry extracted from the program.
+/// - `registry: &ProgramRegistry<TType, TLibfunc>`: The registry extracted
+///   from the program.
 /// - `metadata: &mut MetadataStorage`: Current compiler metadata.
 ///
 /// ## Project layout
@@ -23,57 +43,66 @@
 ///
 /// ```txt
 ///  src
-///  ├─ context.rs - The MLIR context wrapper, provides the compile method.
-///  ├─ utils.rs - Internal utilities.
-///  ├─ metadata/ - Metadata injector to use within the compilation process
-///  ├─ executor/ - Code related to the executor of programs.
-///  ├─ module.rs - The MLIR module wrapper.
-///  ├─ arch/ - Trampoline assembly for calling functions with dynamic signatures.
-///  ├─ executor.rs - The executor code.
-///  ├─ ffi.cpp - Missing FFI C wrappers
-///  ├─ libfuncs - Cairo Sierra libfunc implementations
-///  ├─ libfuncs.rs - Cairo Sierra libfunc glue code
-///  ├─ starknet.rs - Starknet syscall handler glue code.
-///  ├─ ffi.rs - Missing FFI C wrappers, rust side.
-///  ├─ block_ext.rs - A melior (MLIR) block trait extension to write less code.
-///  ├─ lib.rs - The main lib file.
-///  ├─ execution_result.rs - Program result parsing.
-///  ├─ values.rs - JIT serialization.
-///  ├─ metadata.rs - Metadata injector to use within the compilation process.
-///  ├─ compiler.rs - The glue code of the compiler, has the codegen for the function signatures
-///  and calls the libfunc codegen implementations.
-///  ├─ error.rs - Error handling
-///  ├─ bin - Binary programs
-///  ├─ types - Cairo to MLIR type information
+///  ├─ context.rs           The MLIR context wrapper, provides the compile method.
+///  ├─ utils.rs             Internal utilities.
+///  ├─ metadata/            Metadata injector to use within the compilation process
+///  ├─ executor/            Code related to the executor of programs.
+///  ├─ module.rs            The MLIR module wrapper.
+///  ├─ arch/                Trampoline assembly for calling functions with dynamic signatures.
+///  ├─ executor.rs          The executor code.
+///  ├─ ffi.cpp              Missing FFI C wrappers
+///  ├─ libfuncs             Cairo Sierra libfunc implementations
+///  ├─ libfuncs.rs          Cairo Sierra libfunc glue code
+///  ├─ starknet.rs          Starknet syscall handler glue code.
+///  ├─ ffi.rs               Missing FFI C wrappers, rust side.
+///  ├─ block_ext.rs         A melior (MLIR) block trait extension to write less code.
+///  ├─ lib.rs               The main lib file.
+///  ├─ execution_result.rs  Program result parsing.
+///  ├─ values.rs            JIT serialization.
+///  ├─ metadata.rs          Metadata injector to use within the compilation process.
+///  ├─ compiler.rs          The glue code of the compiler, has the codegen for
+///                          the function signatures and calls the libfunc
+///                          codegen implementations.
+///  ├─ error.rs             Error handling
+///  ├─ bin                  Binary programs
+///  ├─ types                Cairo to MLIR type information
 /// ```
 ///
 /// ### Library functions
 /// Path: `src/libfuncs`
 ///
-/// Here are stored all the library function implementations in MLIR, this contains the majority of the code.
+/// Here are stored all the library function implementations in MLIR, this
+/// contains the majority of the code.
 ///
-/// To store information about the different types of library functions sierra has, we divide them into the following using the enum `SierraLibFunc`:
-/// - **Branching**: These functions are implemented inline, adding blocks and jumping as necessary based on given conditions.
-/// - **Constant**: A constant value, this isn't represented as a function and is inserted inline.
+/// To store information about the different types of library functions sierra
+/// has, we divide them into the following using the enum `SierraLibFunc`:
+/// - **Branching**: These functions are implemented inline, adding blocks and
+///   jumping as necessary based on given conditions.
+/// - **Constant**: A constant value, this isn't represented as a function and
+///   is inserted inline.
 /// - **Function**: Any other function.
-/// - **InlineDataFlow**: Functions that can be implemented inline without much problem. For example: dup, store_temp
+/// - **InlineDataFlow**: Functions that can be implemented inline without much
+///   problem. For example: `dup`, `store_temp`
 ///
 /// ### Statements
 /// Path: `src/statements`
 ///
-/// Here is the code that processes the statements of non-library functions. It handles dataflow, branching, function calls, variable storage and also has implementations for the inline library functions.
+/// Here is the code that processes the statements of non-library functions.
+/// It handles dataflow, branching, function calls, variable storage and also
+/// has implementations for the inline library functions.
 ///
 /// ### User functions
-/// These are extra utility functions unrelated to sierra that aid in the development, such as wrapping return values and printing them.
+/// These are extra utility functions unrelated to sierra that aid in the
+/// development, such as wrapping return values and printing them.
 ///
 /// ## Basic API usage example
 ///
 /// The API contains two structs, `NativeContext` and `NativeExecutor`.
-/// The main purpose of `NativeContext` is MLIR initialization, compilation and lowering to LLVM.
-/// `NativeExecutor` in the other hand is responsible of executing MLIR compiled sierra programs
-/// from an entrypoint.
-/// Programs and JIT states can be cached in contexts where their execution will be done multiple
-/// times.
+/// The main purpose of `NativeContext` is MLIR initialization, compilation and
+/// lowering to LLVM.
+/// `NativeExecutor` in the other hand is responsible of executing MLIR
+/// compiled sierra programs from an entrypoint. Programs and JIT states can be
+/// cached in contexts where their execution will be done multiple times.
 ///
 /// ```rust,noexecute
 /// use starknet_types_core::felt::Felt;
@@ -113,8 +142,9 @@
 /// ```
 ///
 /// ## Running a Cairo program
-///
-/// This is a usage example using the API for an easy Cairo program that requires the least setup to get running. It allows you to compile and execute a program using the JIT.
+/// This is a usage example using the API for an easy Cairo program that
+/// requires the least setup to get running. It allows you to compile and
+/// execute a program using the JIT.
 ///
 /// Example code to run a program:
 ///
@@ -384,8 +414,11 @@ pub mod section01 {}
 /// You should read its module level documentation.
 /// But the basic flow is like this:
 /// - We take a sierra `Program` and iterate over its functions.
-/// - On each function, we create a MLIR region and a block for each statement (a.k.a library function call), taking into account possible branches.
-/// - On each statement we call the library function implementation, which appends MLIR code to the given block, and with helper methods, it handles possible branches and input/output variables.
+/// - On each function, we create a MLIR region and a block for each statement
+///   (a.k.a library function call), taking into account possible branches.
+/// - On each statement we call the library function implementation, which
+///   appends MLIR code to the given block, and with helper methods, it handles
+///   possible branches and input/output variables.
 ///
 /// ```mermaid
 /// stateDiagram-v2

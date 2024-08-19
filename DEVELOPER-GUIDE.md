@@ -1,6 +1,5 @@
 # Cairo Native Development Guide
 This is a guide to get you started into being a Cairo Native developer!
-
 Here you will learn about the code layout, MLIR and more.
 
 ## Getting started
@@ -43,13 +42,6 @@ Then you are free to go and make a PR!
 ## High level project overview
 This will explain how the project is structured, without going into much details yet:
 
-### Project dependencies
-The major dependencies of the project are the following:
-- Melior: This is the crate that abstracts away most of the interfacing with MLIR,
-our compilation target, it uses mlir-sys and tries to safely abstract MLIR in Rust.
-- Cairo: We use the cairo crates to keep a close tie to the API contracts of the language, they provide a really nice way to know what features the language has and aids with codegen. For example, most library functions are under enumerations, and thanks to Rust exhaustive pattern matching we can't miss any.
-- Runtime: The JIT runner and compiler depend on a "runtime" that lives on this repository too, it aids with more complex stuff like `pedersen`, `keccak` and dictionaries that would be quite complex to implement from the ground up in MLIR (Basically would be like coding a complex hash function in pseudo assembly).
-
 ### Build script
 We have a build script to cover a small missing functionality from `melior`, it's quite simple and the compiled cpp code is under `src/ffi.cpp`.
 
@@ -87,7 +79,6 @@ We have a build script to cover a small missing functionality from `melior`, it'
 ///
 /// ./program
 /// ```
-
 
 ---
 /// # Ahead of time Compilation Remarks
