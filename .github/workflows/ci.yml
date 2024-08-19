@@ -332,8 +332,15 @@ jobs:
           path: |
             ./lcov-test.info
 
-
   upload-coverage:
+    - name: Setup rust env
+      uses: dtolnay/rust-toolchain@1.80.0
+    - name: Retreive cached dependecies
+      uses: Swatinem/rust-cache@v2
+    - name: Install testing tools
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-nextest,cargo-llvm-cov
     name: Upload Coverage
     runs-on: ubuntu-latest
     needs: [coverage coverage-lcov-tests]
