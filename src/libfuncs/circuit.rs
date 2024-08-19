@@ -583,6 +583,20 @@ fn build_gate_evaluation<'ctx, 'this>(
                 }
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
+                    // Extend to avoid overflow
+                    let rhs_value = block.append_op_result(arith::extui(
+                        rhs_value,
+                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 * 2).into(),
+                        location,
+                    ))?;
+                    let circuit_modulus = block.append_op_result(arith::extui(
+                        circuit_modulus,
+                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 * 2).into(),
+                        location,
+                    ))?;
+                    let integer_type = rhs_value.r#type();
+
+                    // Apply egcd to find gcd and inverse
                     let egcd_result_block = build_euclidean_algorithm(
                         context,
                         block,
@@ -596,7 +610,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     block = egcd_result_block;
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
-                    let one = block.const_int(context, location, 1, CIRCUIT_INPUT_SIZE as u32)?;
+                    let one = block.const_int_from_type(context, location, 1, integer_type)?;
                     let has_inverse = block.append_op_result(arith::cmpi(
                         context,
                         CmpiPredicate::Eq,
@@ -617,7 +631,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     block = has_inverse_block;
 
                     // if the inverse is negative, then add modulus
-                    let zero = block.const_int(context, location, 0, CIRCUIT_INPUT_SIZE as u32)?;
+                    let zero = block.const_int_from_type(context, location, 0, integer_type)?;
                     let is_negative = block
                         .append_operation(arith::cmpi(
                             context,
@@ -634,6 +648,13 @@ fn build_gate_evaluation<'ctx, 'this>(
                         is_negative,
                         wrapped_inverse,
                         inverse,
+                        location,
+                    ))?;
+
+                    // Truncate back
+                    let inverse = block.append_op_result(arith::trunci(
+                        inverse,
+                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
                         location,
                     ))?;
 
@@ -919,7 +940,7 @@ fn build_euclidean_algorithm<'ctx, 'this>(
     a: Value<'ctx, 'ctx>,
     b: Value<'ctx, 'ctx>,
 ) -> Result<&'this Block<'ctx>> {
-    let integer_type = IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into();
+    let integer_type = a.r#type();
 
     let loop_block = helper.append_block(Block::new(&[
         (integer_type, location),
