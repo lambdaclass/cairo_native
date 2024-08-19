@@ -380,11 +380,70 @@ fn build_eval<'ctx, 'this>(
     // let zero = entry.argument(5)?;
     // let one = entry.argument(6)?;
 
-    // Fill input values
+    let ([ok_block, err_block], gates) = build_gate_evaluation(
+        context,
+        entry,
+        location,
+        helper,
+        circuit_info,
+        circuit_data,
+        circuit_modulus,
+    )?;
+
+    {
+        // Build output struct
+        let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
+        let outputs = build_struct_value(
+            context,
+            registry,
+            ok_block,
+            location,
+            helper,
+            metadata,
+            outputs_type_id,
+            &gates,
+        )?;
+
+        ok_block.append_operation(helper.br(0, &[add_mod, mul_mod, outputs], location));
+    }
+
+    {
+        let partial_type_id = &info.branch_signatures()[1].vars[2].ty;
+        let partial = err_block.append_op_result(llvm::undef(
+            registry.build_type(context, helper, registry, metadata, partial_type_id)?,
+            location,
+        ))?;
+        let failure_type_id = &info.branch_signatures()[1].vars[3].ty;
+        let failure = err_block.append_op_result(llvm::undef(
+            registry.build_type(context, helper, registry, metadata, failure_type_id)?,
+            location,
+        ))?;
+        err_block.append_operation(helper.br(1, &[add_mod, mul_mod, partial, failure], location));
+    }
+
+    Ok(())
+}
+
+/// Builds the evaluation of all circuit gates, returning:
+/// - An array of two branches, the success block and the error block respectively
+/// - A vector of the gate values. In case of failure, not all values are guaranteed to be computed
+fn build_gate_evaluation<'ctx, 'this>(
+    context: &'this Context,
+    mut block: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    circuit_info: &circuit::CircuitInfo,
+    circuit_data: Value<'ctx, 'ctx>,
+    circuit_modulus: Value<'ctx, 'ctx>,
+) -> Result<([&'this Block<'ctx>; 2], Vec<Value<'ctx, 'ctx>>)> {
+    // Throughout the evaluation of the circuit we maintain an array of known gate values
+    // Initially, it only contains the inputs of the circuit.
+    // Unknown values are represented as None
+
     let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
-    values[0] = Some(entry.const_int(context, location, 1, CIRCUIT_INPUT_SIZE as u32)?);
+    values[0] = Some(block.const_int(context, location, 1, CIRCUIT_INPUT_SIZE as u32)?);
     for i in 0..circuit_info.n_inputs {
-        values[i + 1] = Some(entry.extract_value(
+        values[i + 1] = Some(block.extract_value(
             context,
             location,
             circuit_data,
@@ -393,161 +452,132 @@ fn build_eval<'ctx, 'this>(
         )?);
     }
 
-    // As the evaluation may require the use of aditional blocks,
-    // we save the current block in a persistent variable across the evaluation.
-    let mut current_block = entry;
+    let err_block = helper.append_block(Block::new(&[]));
 
-    // We jump to this block if we can't solve the circuit
-    let failure_block = helper.append_block(Block::new(&[]));
+    let mut add_offsets = circuit_info.add_offsets.iter().peekable();
+    let mut mul_offsets = circuit_info.mul_offsets.iter();
 
-    // Evaluate circuit
-    {
-        let mut add_offsets = circuit_info.add_offsets.iter().peekable();
-        let mut mul_offsets = circuit_info.mul_offsets.iter();
+    // We loop until all gates have been solved
+    loop {
+        // We iterate the add gate offsets as long as we can
+        while let Some(&add_gate_offset) = add_offsets.peek() {
+            let lhs_value = values[add_gate_offset.lhs].to_owned();
+            let rhs_value = values[add_gate_offset.rhs].to_owned();
+            let output_value = values[add_gate_offset.output].to_owned();
 
-        // We loop until all gates have been solved
-        loop {
-            // We iterate the add gate offsets as long as we can
-            while let Some(&&circuit::GateOffsets { lhs, rhs, output }) = add_offsets.peek() {
-                let lhs_value = values[lhs];
-                let rhs_value = values[rhs];
-                let output_value = values[output];
-
-                // Depending on the values known at the time, we can deduce if we are dealing with an ADD gate or a SUB gate.
-                match (lhs_value, rhs_value, output_value) {
-                    // ADD: lhs + rhs = out
-                    (Some(lhs_value), Some(rhs_value), None) => {
-                        let value = current_block
-                            .append_op_result(arith::addi(lhs_value, rhs_value, location))?;
-                        let value = current_block.append_op_result(arith::remui(
-                            value,
-                            circuit_modulus,
-                            location,
-                        ))?;
-                        values[output] = Some(value);
-                    }
-                    // SUB: lhs = out - rhs
-                    (None, Some(rhs_value), Some(output_value)) => {
-                        let value = current_block.append_op_result(arith::addi(
-                            output_value,
-                            circuit_modulus,
-                            location,
-                        ))?;
-                        let value = current_block
-                            .append_op_result(arith::subi(value, rhs_value, location))?;
-                        let value = current_block.append_op_result(arith::remui(
-                            value,
-                            circuit_modulus,
-                            location,
-                        ))?;
-                        values[lhs] = Some(value);
-                    }
-                    _ => break,
+            // Depending on the values known at the time, we can deduce if we are dealing with an ADD gate or a SUB gate.
+            match (lhs_value, rhs_value, output_value) {
+                // ADD: lhs + rhs = out
+                (Some(lhs_value), Some(rhs_value), None) => {
+                    let value =
+                        block.append_op_result(arith::addi(lhs_value, rhs_value, location))?;
+                    let value =
+                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
+                    values[add_gate_offset.output] = Some(value);
                 }
-
-                add_offsets.next();
+                // SUB: lhs = out - rhs
+                (None, Some(rhs_value), Some(output_value)) => {
+                    let value = block.append_op_result(arith::addi(
+                        output_value,
+                        circuit_modulus,
+                        location,
+                    ))?;
+                    let value = block.append_op_result(arith::subi(value, rhs_value, location))?;
+                    let value =
+                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
+                    values[add_gate_offset.lhs] = Some(value);
+                }
+                // We can't solve this add gate yet, so we break from the loop
+                _ => break,
             }
 
-            // If we can't advance any more with add gate offsets, then we solve the next mul gate offset and go back to the start of the loop (solving add gate offsets).
-            if let Some(&circuit::GateOffsets { lhs, rhs, output }) = mul_offsets.next() {
-                let lhs_value = values[lhs];
-                let rhs_value = values[rhs];
-                let output_value = values[output];
+            add_offsets.next();
+        }
 
-                // Depending on the values known at the time, we can deduce if we are dealing with an MUL gate or a INV gate.
-                match (lhs_value, rhs_value, output_value) {
-                    // MUL: lhs * rhs = out
-                    (Some(lhs_value), Some(rhs_value), None) => {
-                        let value = current_block
-                            .append_op_result(arith::muli(lhs_value, rhs_value, location))?;
-                        let value = current_block.append_op_result(arith::remui(
-                            value,
-                            circuit_modulus,
-                            location,
-                        ))?;
-                        values[output] = Some(value)
-                    }
-                    // INV: lhs = 1 / rhs
-                    (None, Some(rhs_value), Some(_)) => {
-                        let egcd_result_block = build_euclidean_algorithm(
-                            context,
-                            current_block,
-                            location,
-                            helper,
-                            rhs_value,
-                            circuit_modulus,
-                        )?;
-                        let gcd = egcd_result_block.argument(0)?.into();
-                        let inverse = egcd_result_block.argument(1)?.into();
-                        current_block = egcd_result_block;
+        // If we can't advance any more with add gate offsets, then we solve the next mul gate offset and go back to the start of the loop (solving add gate offsets).
+        if let Some(&circuit::GateOffsets { lhs, rhs, output }) = mul_offsets.next() {
+            let lhs_value = values[lhs].to_owned();
+            let rhs_value = values[rhs].to_owned();
+            let output_value = values[output].to_owned();
 
-                        // if the gcd is not 1, then fail
-                        let one = current_block.const_int(
-                            context,
-                            location,
-                            1,
-                            CIRCUIT_INPUT_SIZE as u32,
-                        )?;
-                        let has_inverse = current_block.append_op_result(arith::cmpi(
-                            context,
-                            CmpiPredicate::Eq,
-                            gcd,
-                            one,
-                            location,
-                        ))?;
-                        let has_inverse_block = helper.append_block(Block::new(&[]));
-                        current_block.append_operation(cf::cond_br(
-                            context,
-                            has_inverse,
-                            has_inverse_block,
-                            failure_block,
-                            &[],
-                            &[],
-                            location,
-                        ));
-                        current_block = has_inverse_block;
-
-                        // if the inverse is < 0, add modulus
-                        let zero = current_block.const_int(
-                            context,
-                            location,
-                            0,
-                            CIRCUIT_INPUT_SIZE as u32,
-                        )?;
-                        let is_negative = current_block
-                            .append_operation(arith::cmpi(
-                                context,
-                                CmpiPredicate::Slt,
-                                inverse,
-                                zero,
-                                location,
-                            ))
-                            .result(0)?
-                            .into();
-                        let wrapped_inverse = current_block.append_op_result(arith::addi(
-                            inverse,
-                            circuit_modulus,
-                            location,
-                        ))?;
-                        let inverse = current_block.append_op_result(arith::select(
-                            is_negative,
-                            wrapped_inverse,
-                            inverse,
-                            location,
-                        ))?;
-
-                        values[lhs] = Some(inverse);
-                    }
-                    _ => unreachable!(),
+            // Depending on the values known at the time, we can deduce if we are dealing with an MUL gate or a INV gate.
+            match (lhs_value, rhs_value, output_value) {
+                // MUL: lhs * rhs = out
+                (Some(lhs_value), Some(rhs_value), None) => {
+                    let value =
+                        block.append_op_result(arith::muli(lhs_value, rhs_value, location))?;
+                    let value =
+                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
+                    values[output] = Some(value)
                 }
-            } else {
-                // If there are no mul gate offsets left, then we have the finished evaluation.
-                break;
+                // INV: lhs = 1 / rhs
+                (None, Some(rhs_value), Some(_)) => {
+                    let egcd_result_block = build_euclidean_algorithm(
+                        context,
+                        block,
+                        location,
+                        helper,
+                        rhs_value,
+                        circuit_modulus,
+                    )?;
+                    let gcd = egcd_result_block.argument(0)?.into();
+                    let inverse = egcd_result_block.argument(1)?.into();
+                    block = egcd_result_block;
+
+                    // if the gcd is not 1, then fail (a and b are not coprimes)
+                    let one = block.const_int(context, location, 1, CIRCUIT_INPUT_SIZE as u32)?;
+                    let has_inverse = block.append_op_result(arith::cmpi(
+                        context,
+                        CmpiPredicate::Eq,
+                        gcd,
+                        one,
+                        location,
+                    ))?;
+                    let has_inverse_block = helper.append_block(Block::new(&[]));
+                    block.append_operation(cf::cond_br(
+                        context,
+                        has_inverse,
+                        has_inverse_block,
+                        err_block,
+                        &[],
+                        &[],
+                        location,
+                    ));
+                    block = has_inverse_block;
+
+                    // if the inverse is negative, then add modulus
+                    let zero = block.const_int(context, location, 0, CIRCUIT_INPUT_SIZE as u32)?;
+                    let is_negative = block
+                        .append_operation(arith::cmpi(
+                            context,
+                            CmpiPredicate::Slt,
+                            inverse,
+                            zero,
+                            location,
+                        ))
+                        .result(0)?
+                        .into();
+                    let wrapped_inverse =
+                        block.append_op_result(arith::addi(inverse, circuit_modulus, location))?;
+                    let inverse = block.append_op_result(arith::select(
+                        is_negative,
+                        wrapped_inverse,
+                        inverse,
+                        location,
+                    ))?;
+
+                    values[lhs] = Some(inverse);
+                }
+                // The imposibility to solve this mul gate offset would render the circuit unsolvable
+                _ => unreachable!(),
             }
+        } else {
+            // If there are no mul gate offsets left, then we have the finished evaluation.
+            break;
         }
     }
 
-    // Validate all values are calculated
+    // Validate all values have been calculated
     // Should only panic if the circuit is not solvable (bad form)
     let values = values
         .into_iter()
@@ -555,34 +585,7 @@ fn build_eval<'ctx, 'this>(
         .collect::<Option<Vec<Value>>>()
         .expect("circuit should be solvable");
 
-    // Build output struct
-    let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
-    let outputs = build_struct_value(
-        context,
-        registry,
-        current_block,
-        location,
-        helper,
-        metadata,
-        outputs_type_id,
-        &values,
-    )?;
-
-    current_block.append_operation(helper.br(0, &[add_mod, mul_mod, outputs], location));
-
-    let partial_type_id = &info.branch_signatures()[1].vars[2].ty;
-    let partial = failure_block.append_op_result(llvm::undef(
-        registry.build_type(context, helper, registry, metadata, partial_type_id)?,
-        location,
-    ))?;
-    let failure_type_id = &info.branch_signatures()[1].vars[3].ty;
-    let failure = failure_block.append_op_result(llvm::undef(
-        registry.build_type(context, helper, registry, metadata, failure_type_id)?,
-        location,
-    ))?;
-    failure_block.append_operation(helper.br(1, &[add_mod, mul_mod, partial, failure], location));
-
-    Ok(())
+    Ok(([block, err_block], values))
 }
 
 /// Generate MLIR operations for the `circuit_failure_guarantee_verify` libfunc.
