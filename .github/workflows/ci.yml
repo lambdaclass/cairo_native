@@ -254,7 +254,7 @@ jobs:
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
-        run: cargo build --profile=ci --package=cairo-native-runtime
+        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && cargo build --profile=ci --package=cairo-native-runtime
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
         run: cargo llvm-cov nextest --verbose --all-features --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
