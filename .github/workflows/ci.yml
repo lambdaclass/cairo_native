@@ -253,29 +253,90 @@ jobs:
           scarb-version: "2.7.0"
       - name: Install deps
         run: make deps 
-      - name: Build runtime
+      - name: Build runtime and alexandria
         run: make runtime && make check-llvm && make needs-cairo2 && make build-alexandria && make runtime-ci
       - name: Build cairo-native-runtime library.
         run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && cargo build --profile=ci --package=cairo-native-runtime
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
         run: cargo llvm-cov nextest --verbose --all-features --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
-      - name: test and generate coverage lcov-test
-        run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
-      - name: merge the reports
-        run: lcov -a lcov-1.info -a lcov-2.info -a lcov-3.info -a lcov-4.info -o lcov.info
       - name: save coverage data
         uses: actions/upload-artifact@v4
         with:
           name: coverage_data
           path: |
-            ./lcov.info
+            ./${{ matrix.partition }}
+
+  coverage-lcov-test:
+    name: coverage-lcov-test
+    runs-on: ubuntu-latest
+    env:
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      RUST_LOG: debug
+    steps:
+      - uses: actions/checkout@v4
+      - name: check and free hdd space left
+        run: |
+          echo "Listing 20 largest packages"
+          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+          df -h
+          sudo apt-get update
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^temurin-.*'
+          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          df -h
+          echo "Removing large directories"
+          # deleting 15GB
+          sudo rm -rf /usr/share/dotnet/
+          sudo rm -rf /usr/local/lib/android
+          df -h
+      - name: Setup rust env
+        uses: dtolnay/rust-toolchain@1.80.0
+      - name: Retreive cached dependecies
+        uses: Swatinem/rust-cache@v2
+      - name: add llvm deb repository
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+          repo-name: llvm-repo
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - name: Install LLVM
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+      - name: Install testing tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest,cargo-llvm-cov
+      - name: Install scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "2.7.0"
+      - name: Install deps
+        run: make deps 
+      - name: Build runtime and alexandria
+        run: make runtime && make check-llvm && make needs-cairo2 && make build-alexandria && make runtime-ci
+      - name: Build cairo-native-runtime library.
+        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && cargo build --profile=ci --package=cairo-native-runtime
+      - name: test and generate coverage lcov-test      
+        run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+      - name: save coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage_data
+          path: |
             ./lcov-test.info
+
 
   upload-coverage:
     name: Upload Coverage
     runs-on: ubuntu-latest
-    needs: [coverage]
+    needs: [coverage coverage-lcov-tests]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -283,6 +344,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: coverage_data
+      - name: merge the reports
+        run: lcov -a lcov-1.info -a lcov-2.info -a lcov-3.info -a lcov-4.info -o lcov.info
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
