@@ -192,15 +192,9 @@ jobs:
   coverage:
     name: coverage
     runs-on: ubuntu-latest
-    env:
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUST_LOG: debug
     strategy:
       matrix:
-        partition: [1, 2, 3, 4]  # Define the partitions
+        partition: [1, 2, 3, 4]
         include:
           - partition: 1
             output: lcov-1.info
@@ -210,7 +204,12 @@ jobs:
             output: lcov-3.info
           - partition: 4
             output: lcov-4.info
-
+    env:
+      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      RUST_LOG: debug
     steps:
       - uses: actions/checkout@v4
       - name: check and free hdd space left
