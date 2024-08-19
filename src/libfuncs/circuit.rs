@@ -390,6 +390,7 @@ fn build_eval<'ctx, 'this>(
         circuit_modulus,
     )?;
 
+    // Ok case
     {
         // Build output struct
         let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
@@ -407,6 +408,7 @@ fn build_eval<'ctx, 'this>(
         ok_block.append_operation(helper.br(0, &[add_mod, mul_mod, outputs], location));
     }
 
+    // Error case
     {
         let partial_type_id = &info.branch_signatures()[1].vars[2].ty;
         let partial = err_block.append_op_result(llvm::undef(
