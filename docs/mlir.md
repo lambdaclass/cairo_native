@@ -50,7 +50,7 @@ Resources marked with **→** are best.
 - Other articles, posts
     - **→** [Intro to LLVM and MLIR with Rust and Melior](https://edgarluque.com/blog/mlir-with-rust/)
     - **→** [MLIR Notes](http://lastweek.io/notes/MLIR/)
-    - **→** [Compilers and IRs: LLVM IR, SPIR-V, and MLIR](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/) [[HN]](https://news.ycombinator.com/item?id=33387149)
+    - **→** [Compilers and IRs: LLVM IR, SPIR-V, and MLIR](https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/) [HN](https://news.ycombinator.com/item?id=33387149)
     - [MLIR: Redefining the compiler infrastructure](https://iq.opengenus.org/mlir-compiler-infrastructure/)
     - [Pinch: Implementing a borrow-checked language with MLIR](https://badland.io/pinch.md)
 - [Official Documentation](https://mlir.llvm.org/docs/)
