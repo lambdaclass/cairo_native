@@ -22,7 +22,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, cf, llvm},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        cf, llvm,
+    },
     ir::{
         attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, Location, Value, ValueLike,
     },
@@ -358,7 +361,7 @@ fn build_get_descriptor<'ctx, 'this>(
 fn build_eval<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
+    mut entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
@@ -369,8 +372,10 @@ fn build_eval<'ctx, 'this>(
         _ => unreachable!(),
     };
     // todo! remove this debug prints
-    // dbg!(circuit_info);
+    dbg!(circuit_info);
 
+    let add_mod = entry.argument(0)?.into();
+    let mul_mod = entry.argument(1)?.into();
     let circuit_data = entry.argument(3)?.into();
     let circuit_modulus = entry.argument(4)?.into();
 
@@ -441,8 +446,9 @@ fn build_eval<'ctx, 'this>(
                 let output_value = values[output];
                 match (lhs_value, rhs_value, output_value) {
                     // MUL: lhs * rhs = out
-                    (Some(lhs), Some(rhs), None) => {
-                        let value = entry.append_op_result(arith::muli(lhs, rhs, location))?;
+                    (Some(lhs_value), Some(rhs_value), None) => {
+                        let value =
+                            entry.append_op_result(arith::muli(lhs_value, rhs_value, location))?;
                         let value = entry.append_op_result(arith::remui(
                             value,
                             circuit_modulus,
@@ -451,8 +457,44 @@ fn build_eval<'ctx, 'this>(
                         values[output] = Some(value)
                     }
                     // DIV: lhs = out / rhs
-                    (None, Some(_rhs), Some(_output)) => {
-                        todo!()
+                    (None, Some(rhs_value), Some(_)) => {
+                        entry = build_euclidean_algorithm(
+                            context,
+                            entry,
+                            location,
+                            helper,
+                            rhs_value,
+                            circuit_modulus,
+                        )?;
+
+                        let inverse = entry.argument(1)?.into();
+
+                        // if the inverse is < 0, add modulus
+                        let zero =
+                            entry.const_int(context, location, 0, CIRCUIT_INPUT_SIZE as u32)?;
+                        let is_negative = entry
+                            .append_operation(arith::cmpi(
+                                context,
+                                CmpiPredicate::Slt,
+                                inverse,
+                                zero,
+                                location,
+                            ))
+                            .result(0)?
+                            .into();
+                        let wrapped_inverse = entry.append_op_result(arith::addi(
+                            inverse,
+                            circuit_modulus,
+                            location,
+                        ))?;
+                        let inverse = entry.append_op_result(arith::select(
+                            is_negative,
+                            wrapped_inverse,
+                            inverse,
+                            location,
+                        ))?;
+
+                        values[lhs] = Some(inverse);
                     }
                     _ => unreachable!(),
                 }
@@ -482,27 +524,30 @@ fn build_eval<'ctx, 'this>(
         &values,
     )?;
 
-    // {
-    //     // todo! remove this debug print
-    //     let (_outputs_type, outputs_layout) = registry.build_type_with_layout(
-    //         context,
-    //         helper,
-    //         registry,
-    //         metadata,
-    //         outputs_type_id,
-    //     )?;
-    //     let outputs_ptr =
-    //         entry.alloca1(context, location, outputs.r#type(), outputs_layout.align())?;
-    //     entry.store(context, location, outputs_ptr, outputs)?;
-    //     metadata.get_mut::<DebugUtils>().unwrap().dump_mem(
-    //         context,
-    //         helper,
-    //         entry,
-    //         outputs_ptr,
-    //         outputs_layout.size(),
-    //         location,
-    //     )?;
-    // }
+    {
+        // todo! remove this debug print
+        let (_outputs_type, outputs_layout) = registry.build_type_with_layout(
+            context,
+            helper,
+            registry,
+            metadata,
+            outputs_type_id,
+        )?;
+        let outputs_ptr =
+            entry.alloca1(context, location, outputs.r#type(), outputs_layout.align())?;
+        entry.store(context, location, outputs_ptr, outputs)?;
+        metadata
+            .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+            .unwrap()
+            .dump_mem(
+                context,
+                helper,
+                entry,
+                outputs_ptr,
+                outputs_layout.size(),
+                location,
+            )?;
+    }
 
     let ktrue = entry.const_int(context, location, 1, 64)?;
     let partial_type_id = &info.branch_signatures()[1].vars[2].ty;
@@ -520,17 +565,8 @@ fn build_eval<'ctx, 'this>(
         ktrue,
         [0, 1],
         [
-            &[
-                entry.argument(0)?.into(),
-                entry.argument(1)?.into(),
-                outputs,
-            ],
-            &[
-                entry.argument(0)?.into(),
-                entry.argument(1)?.into(),
-                partial,
-                failure,
-            ],
+            &[add_mod, mul_mod, outputs],
+            &[add_mod, mul_mod, partial, failure],
         ],
         location,
     ));
@@ -782,4 +818,90 @@ fn u384_integer_to_struct<'a>(
         struct_value,
         &[limb1, limb2, limb3, limb4],
     )
+}
+
+/// The extended euclidean algorithm calculates the greatest common divisor (gcd) of two integers a and b,
+/// as well as the bezout coefficients x and y such that ax+by=gcd(a,b)
+/// if gcd(a,b) = 1, then x is the modular multiplicative inverse of a modulo b.
+/// See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+///
+/// Given two numbers a, b. It returns a block with gcd(a, b) and the bezout coefficient x.
+fn build_euclidean_algorithm<'ctx, 'this>(
+    context: &'ctx Context,
+    block: &'ctx Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    a: Value<'ctx, 'ctx>,
+    b: Value<'ctx, 'ctx>,
+) -> Result<&'this Block<'ctx>> {
+    let integer_type = IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into();
+
+    let loop_block = helper.append_block(Block::new(&[
+        (integer_type, location),
+        (integer_type, location),
+        (integer_type, location),
+        (integer_type, location),
+    ]));
+    let end_block = helper.append_block(Block::new(&[
+        (integer_type, location),
+        (integer_type, location),
+    ]));
+
+    // The algorithm egcd works by calculating a series of remainders, each the remainder of dividing the previous two
+    // For the initial setup, r0 = b, r1 = a
+    // This order is chosen because if we reverse them, then the first iteration will just swap them
+    let prev_remainder = b;
+    let remainder = a;
+    // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
+    let prev_inverse = block.const_int_from_type(context, location, 0, integer_type)?;
+    let inverse = block.const_int_from_type(context, location, 1, integer_type)?;
+    block.append_operation(cf::br(
+        loop_block,
+        &[prev_remainder, remainder, prev_inverse, inverse],
+        location,
+    ));
+
+    // -- Loop body --
+    // Arguments are rem_(i-1), rem, inv_(i-1), inv
+    let prev_remainder = loop_block.argument(0)?.into();
+    let remainder = loop_block.argument(1)?.into();
+    let prev_inverse = loop_block.argument(2)?.into();
+    let inverse = loop_block.argument(3)?.into();
+
+    // First calculate q = rem_(i-1)/rem_i, rounded down
+    let quotient =
+        loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
+
+    // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
+    let rem_times_quo = loop_block.append_op_result(arith::muli(remainder, quotient, location))?;
+    let inv_times_quo = loop_block.append_op_result(arith::muli(inverse, quotient, location))?;
+    let next_remainder =
+        loop_block.append_op_result(arith::subi(prev_remainder, rem_times_quo, location))?;
+    let next_inverse =
+        loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
+
+    // Check if r_(i+1) is 0
+    // If true, then:
+    // - r_i is the gcd of a and b
+    // - inv_i is the bezouf coefficient x
+
+    let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
+    let next_remainder_eq_zero = loop_block.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        next_remainder,
+        zero,
+        location,
+    ))?;
+    loop_block.append_operation(cf::cond_br(
+        context,
+        next_remainder_eq_zero,
+        end_block,
+        loop_block,
+        &[remainder, inverse],
+        &[remainder, next_remainder, inverse, next_inverse],
+        location,
+    ));
+
+    Ok(end_block)
 }
