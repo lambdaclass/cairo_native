@@ -164,7 +164,7 @@ pub fn build_k1_new<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -192,7 +192,7 @@ pub fn build_k1_new<'ctx, 'this>(
     // Allocate `x` argument and write the value.
     let x_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, x_ty, Some(x_layout.align()))?;
+        .alloca1(context, location, x_ty, x_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -204,7 +204,7 @@ pub fn build_k1_new<'ctx, 'this>(
     // Allocate `y` argument and write the value.
     let y_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, y_ty, Some(y_layout.align()))?;
+        .alloca1(context, location, y_ty, y_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -306,13 +306,7 @@ pub fn build_k1_new<'ctx, 'this>(
             )
             .result(0)?
             .into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[0].0,
-            Some(variant_tys[0].1.align()),
-        )?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry
@@ -458,7 +452,7 @@ pub fn build_k1_add<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -484,10 +478,9 @@ pub fn build_k1_add<'ctx, 'this>(
     )?;
 
     // Allocate `p0` argument and write the value.
-    let p0_arg_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, p0_ty, Some(p0_layout.align()))?;
+    let p0_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p0_ty, p0_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -497,10 +490,9 @@ pub fn build_k1_add<'ctx, 'this>(
     ));
 
     // Allocate `p1` argument and write the value.
-    let p1_arg_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, p1_ty, Some(p1_layout.align()))?;
+    let p1_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p1_ty, p1_layout.align())?;
 
     entry.append_operation(llvm::store(
         context,
@@ -758,7 +750,7 @@ pub fn build_k1_mul<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -786,7 +778,7 @@ pub fn build_k1_mul<'ctx, 'this>(
     // Allocate `p` argument and write the value.
     let p_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, p_ty, Some(p_layout.align()))?;
+        .alloca1(context, location, p_ty, p_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -799,7 +791,7 @@ pub fn build_k1_mul<'ctx, 'this>(
     let scalar_arg_ptr =
         helper
             .init_block()
-            .alloca1(context, location, scalar_ty, Some(scalar_layout.align()))?;
+            .alloca1(context, location, scalar_ty, scalar_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -1056,7 +1048,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1077,7 +1069,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
     // Allocate `x` argument and write the value.
     let x_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, x_ty, Some(x_layout.align()))?;
+        .alloca1(context, location, x_ty, x_layout.align())?;
 
     entry.append_operation(llvm::store(
         context,
@@ -1191,13 +1183,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
             )
             .result(0)?
             .into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[0].0,
-            Some(variant_tys[0].1.align()),
-        )?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry
@@ -1372,7 +1358,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1393,7 +1379,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
     // Allocate `p` argument and write the value.
     let p_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, p_ty, Some(p_layout.align()))?;
+        .alloca1(context, location, p_ty, p_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -1685,7 +1671,7 @@ pub fn build_r1_new<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -1713,7 +1699,7 @@ pub fn build_r1_new<'ctx, 'this>(
     // Allocate `x` argument and write the value.
     let x_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, x_ty, Some(x_layout.align()))?;
+        .alloca1(context, location, x_ty, x_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -1725,7 +1711,7 @@ pub fn build_r1_new<'ctx, 'this>(
     // Allocate `y` argument and write the value.
     let y_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, y_ty, Some(y_layout.align()))?;
+        .alloca1(context, location, y_ty, y_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -1828,13 +1814,7 @@ pub fn build_r1_new<'ctx, 'this>(
             )
             .result(0)?
             .into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[0].0,
-            Some(variant_tys[0].1.align()),
-        )?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry
@@ -1980,7 +1960,7 @@ pub fn build_r1_add<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2006,10 +1986,9 @@ pub fn build_r1_add<'ctx, 'this>(
     )?;
 
     // Allocate `p0` argument and write the value.
-    let p0_arg_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, p0_ty, Some(p0_layout.align()))?;
+    let p0_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p0_ty, p0_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(2)?.into(),
@@ -2019,10 +1998,9 @@ pub fn build_r1_add<'ctx, 'this>(
     ));
 
     // Allocate `p1` argument and write the value.
-    let p1_arg_ptr =
-        helper
-            .init_block()
-            .alloca1(context, location, p1_ty, Some(p1_layout.align()))?;
+    let p1_arg_ptr = helper
+        .init_block()
+        .alloca1(context, location, p1_ty, p1_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -2280,7 +2258,7 @@ pub fn build_r1_mul<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2309,7 +2287,7 @@ pub fn build_r1_mul<'ctx, 'this>(
     // Allocate `p` argument and write the value.
     let p_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, p_ty, Some(p_layout.align()))?;
+        .alloca1(context, location, p_ty, p_layout.align())?;
 
     entry.append_operation(llvm::store(
         context,
@@ -2323,7 +2301,7 @@ pub fn build_r1_mul<'ctx, 'this>(
     let scalar_arg_ptr =
         helper
             .init_block()
-            .alloca1(context, location, scalar_ty, Some(scalar_layout.align()))?;
+            .alloca1(context, location, scalar_ty, scalar_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -2581,7 +2559,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2603,7 +2581,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
             ],
             false,
         ),
-        Some(16),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2717,13 +2695,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
             )
             .result(0)?
             .into();
-        entry.load(
-            context,
-            location,
-            ptr,
-            variant_tys[0].0,
-            Some(variant_tys[0].1.align()),
-        )?
+        entry.load(context, location, ptr, variant_tys[0].0)?
     };
     let payload_err = {
         let ptr = entry
@@ -2898,7 +2870,7 @@ pub fn build_r1_get_xy<'ctx, 'this>(
         context,
         location,
         IntegerType::new(context, 128).into(),
-        Some(get_integer_layout(128).align()),
+        get_integer_layout(128).align(),
     )?;
     entry.append_operation(llvm::store(
         context,
@@ -2919,7 +2891,7 @@ pub fn build_r1_get_xy<'ctx, 'this>(
     // Allocate `p` argument and write the value.
     let p_arg_ptr = helper
         .init_block()
-        .alloca1(context, location, p_ty, Some(p_layout.align()))?;
+        .alloca1(context, location, p_ty, p_layout.align())?;
 
     entry.append_operation(llvm::store(
         context,

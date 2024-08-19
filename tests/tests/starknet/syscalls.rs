@@ -940,8 +940,8 @@ fn keccak() {
             tag: 0,
             value: Box::new(JitValue::Struct {
                 fields: vec![
-                    JitValue::Uint128(330939983442938156232262046592599923289),
                     JitValue::Uint128(288102973244655531496349286021939642254),
+                    JitValue::Uint128(330939983442938156232262046592599923289),
                 ],
                 debug_name: None,
             }),

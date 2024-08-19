@@ -32,6 +32,7 @@ To read more in-depth documentation, visit [this page](https://lambdaclass.notio
 - [Cairo Test CLI Tool](#cairo-native-test-cli-tool)
 - [Scarb Test CLI Tool](#scarb-native-test-cli-tool)
 - [Scarb Dump CLI Tool](#scarb-native-dump-cli-tool)
+- [Ahead of time compilation remarks](#ahead-of-time-compilation-remarks)
 
 ## ⚠️ Disclaimer
 
@@ -78,6 +79,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `contract_address_const` (StarkNet)
 1. `contract_address_to_felt252` (StarkNet)
 1. `contract_address_try_from_felt252` (StarkNet)
+1. coupon
 1. `deploy_syscall` (StarkNet)
 1. `disable_ap_tracking`
 1. `downcast`
@@ -134,6 +136,7 @@ This is a list of the current progress implementing each **libfunc**.
 1. `nullable_forward_snapshot`
 1. `nullable_from_box`
 1. `pedersen`
+1. `pop_log` (StarkNet, testing)
 1. `print`
 1. `rename`
 1. `replace_class_syscall` (StarkNet)
@@ -149,6 +152,18 @@ This is a list of the current progress implementing each **libfunc**.
 1. `secp256r1_mul_syscall` (StarkNet)
 1. `secp256r1_new_syscall` (StarkNet)
 1. `send_message_to_l1_syscall` (StarkNet)
+1. `set_account_contract_address` (StarkNet, testing)
+1. `set_block_number` (StarkNet, testing)
+1. `set_block_timestamp` (StarkNet, testing)
+1. `set_caller_address` (StarkNet, testing)
+1. `set_chain_id` (StarkNet, testing)
+1. `set_contract_address` (StarkNet, testing)
+1. `set_max_fee` (StarkNet, testing)
+1. `set_nonce` (StarkNet, testing)
+1. `set_sequencer_address` (StarkNet, testing)
+1. `set_signature` (StarkNet, testing)
+1. `set_transaction_hash` (StarkNet, testing)
+1. `set_version` (StarkNet, testing)
 1. `snapshot_take` (1)
 1. `span_from_tuple`
 1. `storage_address_from_base_and_offset` (StarkNet)
@@ -228,27 +243,12 @@ This is a list of the current progress implementing each **libfunc**.
 
 <details>
 <summary>Not yet implemented libfuncs (click to open)</summary>
-1. coupon
 </details>
 
 <details>
 <summary>Not yet implemented libfuncs (testing category only, click to open)</summary>
 Testing libfuncs:
-
-1. `pop_log` (StarkNet, testing)
 1. `redeposit_gas`
-1. `set_account_contract_address` (StarkNet, testing)
-1. `set_block_number` (StarkNet, testing)
-1. `set_block_timestamp` (StarkNet, testing)
-1. `set_caller_address` (StarkNet, testing)
-1. `set_chain_id` (StarkNet, testing)
-1. `set_contract_address` (StarkNet, testing)
-1. `set_max_fee` (StarkNet, testing)
-1. `set_nonce` (StarkNet, testing)
-1. `set_sequencer_address` (StarkNet, testing)
-1. `set_signature` (StarkNet, testing)
-1. `set_transaction_hash` (StarkNet, testing)
-1. `set_version` (StarkNet, testing)
 </details>
 
 Footnotes on the libfuncs list:
@@ -323,12 +323,12 @@ ninja install
 
 </details>
 
-Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_180_PREFIX` and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
+Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_181_PREFIX` and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
 
 ```bash
 # For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-18
 export MLIR_SYS_180_PREFIX=/usr/lib/llvm-18
-export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18
+export LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
 export TABLEGEN_180_PREFIX=/usr/lib/llvm-18
 ```
 
@@ -717,7 +717,7 @@ For more examples, check out the `examples/` directory.
 ### Requirements
 
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.6.3](https://github.com/starkware-libs/cairo)
+- [cairo 2.6.4](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 18 with MLIR
 
@@ -725,7 +725,7 @@ You need to setup some environment variables:
 
 ```bash
 $MLIR_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
-$LLVM_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$LLVM_SYS_181_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 $TABLEGEN_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 ```
 
@@ -765,7 +765,7 @@ sierra2mlir program.sierra -o program.mlir
 # compile natively
 "$MLIR_SYS_180_PREFIX"/bin/clang program.ll -Wno-override-module \
     -L "$MLIR_SYS_180_PREFIX"/lib -L"./target/release/" \
-    -lsierra2mlir_utils -lmlir_c_runner_utils \
+    -lcairo_native_runtime -lmlir_c_runner_utils \
     -Wl,-rpath "$MLIR_SYS_180_PREFIX"/lib \
     -Wl,-rpath ./target/release/ \
     -o program
@@ -893,19 +893,29 @@ the `target/` folder besides the generated JSON sierra files.
 
 ### Useful environment variables
 
-These 2 env vars will dump the generated MLIR code from any compilation on the current working directory as:
+This env will dump the generated MLIR code from any compilation on the current working directory as:
 
 - `dump.mlir`: The MLIR code after passes without locations.
 - `dump-debug.mlir`: The MLIR code after passes with locations.
 - `dump-prepass.mlir`: The MLIR code before without locations.
 - `dump-prepass-debug.mlir`: The MLIR code before passes with locations.
+- `program.sierra`: The compiled sierra code, if using a debugger such as lldb, this file path is the default used in debug info to show sources.
 
 Do note that the MLIR with locations is in pretty form and thus not suitable to pass to `mlir-opt`.
 
 ```bash
-export NATIVE_DEBUG_DUMP_PREPASS=1
 export NATIVE_DEBUG_DUMP=1
 ```
+
+Add a debugger breakpoint trap at the given sierra statement:
+
+The trap instruction may not end up exactly where the statement is.
+
+```bash
+export NATIVE_DEBUG_TRAP_AT_STMT=10
+```
+
+Note: The debugger will only show source locations when using AOT. Also you need enable the cairo-native feature `with-debug-utils` and have the env var `NATIVE_DEBUG_DUMP` set.
 
 Enable logging to see the compilation process:
 
@@ -925,4 +935,13 @@ Other tips:
         .unwrap()
         .print_pointer(context, helper, entry, ptr, location)?;
 }
+```
+
+# Ahead of time Compilation Remarks
+
+To use the AOT executor, it needs to know where the static runtime library is located, this can be configured using the following
+env var pointing to the absolute path to the library:
+
+```bash
+export CAIRO_NATIVE_RUNTIME_LIBRARY=/absolute/path/to/libcairo_native_runtime.a
 ```

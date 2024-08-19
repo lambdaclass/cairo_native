@@ -30,7 +30,7 @@
 //! let native_context = NativeContext::new();
 //!
 //! // Compile the sierra program into a MLIR module.
-//! let native_program = native_context.compile(&sierra_program, None).unwrap();
+//! let native_program = native_context.compile(&sierra_program).unwrap();
 //!
 //! // The parameters of the entry point.
 //! let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
@@ -98,11 +98,12 @@ pub use self::{
     ffi::{module_to_object, object_to_shared_lib, LLVMCompileError, OptLevel},
 };
 
+mod arch;
 pub(crate) mod block_ext;
 pub mod cache;
 mod compiler;
 pub mod context;
-pub mod debug_info;
+pub mod debug;
 pub mod error;
 pub mod execution_result;
 pub mod executor;

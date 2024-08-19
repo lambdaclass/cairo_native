@@ -8,7 +8,7 @@ use std::{
     collections::HashMap,
     fmt::{self, Debug},
     hash::Hash,
-    rc::Rc,
+    sync::Arc,
 };
 
 pub struct AotProgramCache<'a, K>
@@ -16,7 +16,7 @@ where
     K: PartialEq + Eq + Hash,
 {
     context: &'a NativeContext,
-    cache: HashMap<K, Rc<AotNativeExecutor>>,
+    cache: HashMap<K, Arc<AotNativeExecutor>>,
 }
 
 impl<'a, K> AotProgramCache<'a, K>
@@ -30,7 +30,7 @@ where
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<Rc<AotNativeExecutor>> {
+    pub fn get(&self, key: &K) -> Option<Arc<AotNativeExecutor>> {
         self.cache.get(key).cloned()
     }
 
@@ -39,12 +39,12 @@ where
         key: K,
         program: &Program,
         opt_level: OptLevel,
-    ) -> Rc<AotNativeExecutor> {
+    ) -> Arc<AotNativeExecutor> {
         let NativeModule {
             module,
             registry,
             metadata,
-        } = self.context.compile(program, None).expect("should compile");
+        } = self.context.compile(program).expect("should compile");
 
         // Compile module into an object.
         let object_data = crate::ffi::module_to_object(&module, opt_level).unwrap();
@@ -65,7 +65,7 @@ where
             metadata.get::<GasMetadata>().cloned().unwrap(),
         );
 
-        let executor = Rc::new(executor);
+        let executor = Arc::new(executor);
         self.cache.insert(key, executor.clone());
 
         executor
