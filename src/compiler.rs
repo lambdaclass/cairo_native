@@ -421,7 +421,7 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
-                    assert!(block.terminator().is_some());
+                    debug_assert!(block.terminator().is_some());
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
                         if let Some(return_block) = tailrec_meta.return_target() {
@@ -768,7 +768,7 @@ fn generate_function_structure<'c, 'a>(
                                     Entry::Occupied(entry) => entry.into_mut(),
                                     Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
                                 };
-                            assert!(
+                            debug_assert!(
                                 prev_state.eq_unordered(&state),
                                 "Branch target states do not match."
                             );
@@ -784,7 +784,7 @@ fn generate_function_structure<'c, 'a>(
                     );
 
                     let (state, types) = edit_state::take_args(state.clone(), var_ids.iter())?;
-                    assert!(
+                    debug_assert!(
                         state.is_empty(),
                         "State must be empty after a return statement."
                     );
