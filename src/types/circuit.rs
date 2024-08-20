@@ -236,6 +236,7 @@ pub fn layout(
             let n_inputs = circuit.circuit_info.n_inputs;
 
             // todo! fix calculation
+            // let u384_layout = get_integer_layout(384);
             let u384_layout = Layout::from_size_align(384 >> 3, (384 >> 3).min(16))?;
 
             let layout = layout_repeat(&u384_layout, n_inputs)?.0;
@@ -256,6 +257,7 @@ pub fn layout(
             let n_gates = circuit.circuit_info.values.len();
 
             // todo! fix calculation
+            // let u384_layout = get_integer_layout(384);
             let u384_layout = Layout::from_size_align(384 >> 3, (384 >> 3).min(16))?;
 
             let layout = layout_repeat(&u384_layout, n_gates)?.0;
@@ -278,6 +280,7 @@ pub fn layout(
             let length_layout = get_integer_layout(64);
 
             // todo! fix calculation
+            // let u384_layout = get_integer_layout(384);
             let u384_layout = Layout::from_size_align(384 >> 3, (384 >> 3).min(16))?;
             let inputs_layout = layout_repeat(&u384_layout, n_inputs - 1)?.0;
             let layout = length_layout.extend(inputs_layout)?.0;
