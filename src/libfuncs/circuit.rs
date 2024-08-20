@@ -357,6 +357,7 @@ fn build_try_into_circuit_modulus<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `get_circuit_descriptor` libfunc.
+/// NOOP
 #[allow(clippy::too_many_arguments)]
 fn build_get_descriptor<'ctx, 'this>(
     context: &'ctx Context,
