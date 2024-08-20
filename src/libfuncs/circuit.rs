@@ -402,6 +402,15 @@ fn build_eval<'ctx, 'this>(
     // let zero = entry.argument(5)?;
     // let one = entry.argument(6)?;
 
+    // We multiply the amount of gates evaluated by 4 (the amount of u96s in each gate)
+    let add_mod = increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        add_mod,
+        circuit_info.add_offsets.len() * 4,
+    )?;
+
     let ([ok_block, err_block], gates) = build_gate_evaluation(
         context,
         entry,
@@ -414,6 +423,14 @@ fn build_eval<'ctx, 'this>(
 
     // Ok case
     {
+        let mul_mod = increment_builtin_counter_by(
+            context,
+            ok_block,
+            location,
+            mul_mod,
+            circuit_info.mul_offsets.len() * 4,
+        )?;
+
         // Build output struct
         let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
         let outputs = build_struct_value(
@@ -432,6 +449,16 @@ fn build_eval<'ctx, 'this>(
 
     // Error case
     {
+        // We only consider mul gates evaluated before failure
+        let mul_mod = {
+            let mul_mod_usage = err_block.append_op_result(arith::muli(
+                err_block.argument(0)?.into(),
+                err_block.const_int(context, location, 4, 64)?,
+                location,
+            ))?;
+            err_block.append_op_result(arith::addi(mul_mod, mul_mod_usage, location))
+        }?;
+
         let partial_type_id = &info.branch_signatures()[1].vars[2].ty;
         let partial = err_block.append_op_result(llvm::undef(
             registry.build_type(context, helper, registry, metadata, partial_type_id)?,
@@ -449,8 +476,9 @@ fn build_eval<'ctx, 'this>(
 }
 
 /// Builds the evaluation of all circuit gates, returning:
-/// - An array of two branches, the success block and the error block respectively
-/// - A vector of the gate values. In case of failure, not all values are guaranteed to be computed
+/// - An array of two branches, the success block and the error block respectively.
+///   - The error block contains the index of the first failure as argument.
+/// - A vector of the gate values. In case of failure, only the values up to the first error are computed.
 fn build_gate_evaluation<'ctx, 'this>(
     context: &'this Context,
     mut block: &'this Block<'ctx>,
@@ -476,10 +504,13 @@ fn build_gate_evaluation<'ctx, 'this>(
         )?);
     }
 
-    let err_block = helper.append_block(Block::new(&[]));
+    let err_block = helper.append_block(Block::new(&[(
+        IntegerType::new(context, 64).into(),
+        location,
+    )]));
 
     let mut add_offsets = circuit_info.add_offsets.iter().peekable();
-    let mut mul_offsets = circuit_info.mul_offsets.iter();
+    let mut mul_offsets = circuit_info.mul_offsets.iter().enumerate();
 
     // We loop until all gates have been solved
     loop {
@@ -565,7 +596,9 @@ fn build_gate_evaluation<'ctx, 'this>(
         }
 
         // If we can't advance any more with add gate offsets, then we solve the next mul gate offset and go back to the start of the loop (solving add gate offsets).
-        if let Some(&circuit::GateOffsets { lhs, rhs, output }) = mul_offsets.next() {
+        if let Some((gate_offset_idx, &circuit::GateOffsets { lhs, rhs, output })) =
+            mul_offsets.next()
+        {
             let lhs_value = values[lhs].to_owned();
             let rhs_value = values[rhs].to_owned();
             let output_value = values[output].to_owned();
@@ -633,6 +666,12 @@ fn build_gate_evaluation<'ctx, 'this>(
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
                     let one = block.const_int_from_type(context, location, 1, integer_type)?;
+                    let gate_offset_idx_value = block.const_int_from_type(
+                        context,
+                        location,
+                        gate_offset_idx,
+                        IntegerType::new(context, 64).into(),
+                    )?;
                     let has_inverse = block.append_op_result(arith::cmpi(
                         context,
                         CmpiPredicate::Eq,
@@ -647,7 +686,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         has_inverse_block,
                         err_block,
                         &[],
-                        &[],
+                        &[gate_offset_idx_value],
                         location,
                     ));
                     block = has_inverse_block;
