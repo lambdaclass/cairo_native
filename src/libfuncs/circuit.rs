@@ -1,6 +1,6 @@
 //! # Circuit libfuncs
 
-use super::{increment_builtin_counter_by, LibfuncHelper};
+use super::{increment_builtin_counter, increment_builtin_counter_by, LibfuncHelper};
 use crate::{
     block_ext::BlockExt,
     error::{Result, SierraAssertError},
@@ -809,7 +809,7 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
 /// NOOP
 #[allow(clippy::too_many_arguments)]
 fn build_u96_guarantee_verify<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -817,7 +817,10 @@ fn build_u96_guarantee_verify<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
+    let rc = entry.argument(0)?.into();
+    let rc = increment_builtin_counter(context, entry, location, rc)?;
+
+    entry.append_operation(helper.br(0, &[rc], location));
 
     Ok(())
 }
