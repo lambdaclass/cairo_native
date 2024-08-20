@@ -270,7 +270,7 @@ jobs:
         if: ${{ matrix.partition == '1' }}
         uses: actions/upload-artifact@v4
         with:
-          name: coverage_data
+          name: coverage_data-1
           path: |
             ./${{ matrix.output }}
             ./lcov-test.info
@@ -298,10 +298,22 @@ jobs:
           tool: cargo-nextest,cargo-llvm-cov
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download artifacts
+      - name: Download artifacts partition 1
         uses: actions/download-artifact@v4
         with:
-          name: coverage_data
+          name: coverage_data-1
+      - name: Download artifacts partition 2
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage_data-2
+      - name: Download artifacts partition 3
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage_data-3
+      - name: Download artifacts partition 4
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage_data-4
       - name: Install lcov
         run: sudo apt-get update && sudo apt-get install -y lcov
       - name: Merge the reports
