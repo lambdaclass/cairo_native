@@ -36,9 +36,7 @@ pub fn build<'ctx>(
     selector: WithSelf<CircuitTypeConcrete>,
 ) -> Result<Type<'ctx>> {
     match &*selector {
-        CircuitTypeConcrete::CircuitModulus(_) => {
-            Ok(IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into())
-        }
+        CircuitTypeConcrete::CircuitModulus(_) => Ok(IntegerType::new(context, 384).into()),
         CircuitTypeConcrete::U96Guarantee(_) => Ok(IntegerType::new(context, 96).into()),
         CircuitTypeConcrete::CircuitInputAccumulator(info) => build_circuit_accumulator(
             context,
@@ -103,10 +101,7 @@ pub fn build_circuit_accumulator<'ctx>(
 
     let fields = vec![
         IntegerType::new(context, 64).into(),
-        llvm::r#type::array(
-            IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
-            n_inputs as u32 - 1,
-        ),
+        llvm::r#type::array(IntegerType::new(context, 384).into(), n_inputs as u32 - 1),
     ];
 
     Ok(llvm::r#type::r#struct(context, &fields, false))
@@ -131,7 +126,7 @@ pub fn build_circuit_data<'ctx>(
     let n_inputs = circuit.circuit_info.n_inputs;
 
     Ok(llvm::r#type::array(
-        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+        IntegerType::new(context, 384).into(),
         n_inputs as u32,
     ))
 }
@@ -155,7 +150,7 @@ pub fn build_circuit_outputs<'ctx>(
     let n_gates = circuit.circuit_info.values.len();
 
     Ok(llvm::r#type::array(
-        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+        IntegerType::new(context, 384).into(),
         n_gates as u32,
     ))
 }
@@ -214,7 +209,7 @@ pub fn layout(
         CircuitTypeConcrete::AddMod(_) | CircuitTypeConcrete::MulMod(_) => {
             Ok(get_integer_layout(64))
         }
-        CircuitTypeConcrete::CircuitModulus(_) => Ok(get_integer_layout(CIRCUIT_INPUT_SIZE as u32)),
+        CircuitTypeConcrete::CircuitModulus(_) => Ok(get_integer_layout(384)),
         CircuitTypeConcrete::U96Guarantee(_) => Ok(get_integer_layout(96)),
 
         CircuitTypeConcrete::AddModGate(_)
@@ -241,10 +236,7 @@ pub fn layout(
             let n_inputs = circuit.circuit_info.n_inputs;
 
             // todo! fix calculation
-            let u384_layout = Layout::from_size_align(
-                CIRCUIT_INPUT_SIZE >> 3,
-                (CIRCUIT_INPUT_SIZE >> 3).min(16),
-            )?;
+            let u384_layout = Layout::from_size_align(384 >> 3, (384 >> 3).min(16))?;
 
             let layout = layout_repeat(&u384_layout, n_inputs)?.0;
 
@@ -264,10 +256,7 @@ pub fn layout(
             let n_gates = circuit.circuit_info.values.len();
 
             // todo! fix calculation
-            let u384_layout = Layout::from_size_align(
-                CIRCUIT_INPUT_SIZE >> 3,
-                (CIRCUIT_INPUT_SIZE >> 3).min(16),
-            )?;
+            let u384_layout = Layout::from_size_align(384 >> 3, (384 >> 3).min(16))?;
 
             let layout = layout_repeat(&u384_layout, n_gates)?.0;
 
@@ -289,10 +278,7 @@ pub fn layout(
             let length_layout = get_integer_layout(64);
 
             // todo! fix calculation
-            let u384_layout = Layout::from_size_align(
-                CIRCUIT_INPUT_SIZE >> 3,
-                (CIRCUIT_INPUT_SIZE >> 3).min(16),
-            )?;
+            let u384_layout = Layout::from_size_align(384 >> 3, (384 >> 3).min(16))?;
             let inputs_layout = layout_repeat(&u384_layout, n_inputs - 1)?.0;
             let layout = length_layout.extend(inputs_layout)?.0;
 

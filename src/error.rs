@@ -82,6 +82,8 @@ pub enum SierraAssertError {
     BadTypeInit(ConcreteTypeId),
     #[error("expected type information was missing")]
     BadTypeInfo,
+    #[error("circuit cannot be evaluated")]
+    ImpossibleCircuit,
 }
 
 #[derive(Error, Debug)]

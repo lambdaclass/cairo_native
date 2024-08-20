@@ -6,7 +6,7 @@ use crate::{
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
     metadata::MetadataStorage,
-    types::{circuit::CIRCUIT_INPUT_SIZE, TypeBuilder},
+    types::TypeBuilder,
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -276,7 +276,7 @@ fn build_add_input<'ctx, 'this>(
         let accumulator_input_length = last_insert_block.const_int(
             context,
             location,
-            layout_repeat(&get_integer_layout(CIRCUIT_INPUT_SIZE as u32), n_inputs - 1)?
+            layout_repeat(&get_integer_layout(384), n_inputs - 1)?
                 .0
                 .size(),
             64,
@@ -327,7 +327,7 @@ fn build_try_into_circuit_modulus<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let modulus = u384_struct_to_integer(context, entry, location, entry.argument(0)?.into())?;
-    let k1 = entry.const_int(context, location, 1, CIRCUIT_INPUT_SIZE as u32)?;
+    let k1 = entry.const_int(context, location, 1, 384)?;
 
     let is_valid = entry.append_op_result(arith::cmpi(
         context,
@@ -451,13 +451,13 @@ fn build_gate_evaluation<'ctx, 'this>(
     // Unknown values are represented as None
 
     let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
-    values[0] = Some(block.const_int(context, location, 1, CIRCUIT_INPUT_SIZE as u32)?);
+    values[0] = Some(block.const_int(context, location, 1, 384)?);
     for i in 0..circuit_info.n_inputs {
         values[i + 1] = Some(block.extract_value(
             context,
             location,
             circuit_data,
-            IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+            IntegerType::new(context, 384).into(),
             i,
         )?);
     }
@@ -482,17 +482,17 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Extend to avoid overflow
                     let lhs_value = block.append_op_result(arith::extui(
                         lhs_value,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 + 1).into(),
+                        IntegerType::new(context, 384 + 1).into(),
                         location,
                     ))?;
                     let rhs_value = block.append_op_result(arith::extui(
                         rhs_value,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 + 1).into(),
+                        IntegerType::new(context, 384 + 1).into(),
                         location,
                     ))?;
                     let circuit_modulus = block.append_op_result(arith::extui(
                         circuit_modulus,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 + 1).into(),
+                        IntegerType::new(context, 384 + 1).into(),
                         location,
                     ))?;
                     // value = (lhs_value + rhs_value) % circuit_modulus
@@ -503,7 +503,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Truncate back
                     let value = block.append_op_result(arith::trunci(
                         value,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+                        IntegerType::new(context, 384).into(),
                         location,
                     ))?;
                     values[add_gate_offset.output] = Some(value);
@@ -513,17 +513,17 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Extend to avoid overflow
                     let rhs_value = block.append_op_result(arith::extui(
                         rhs_value,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 + 1).into(),
+                        IntegerType::new(context, 384 + 1).into(),
                         location,
                     ))?;
                     let output_value = block.append_op_result(arith::extui(
                         output_value,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 + 1).into(),
+                        IntegerType::new(context, 384 + 1).into(),
                         location,
                     ))?;
                     let circuit_modulus = block.append_op_result(arith::extui(
                         circuit_modulus,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 + 1).into(),
+                        IntegerType::new(context, 384 + 1).into(),
                         location,
                     ))?;
                     // value = (output_value + circuit_modulus - rhs_value) % circuit_modulus
@@ -538,7 +538,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Truncate back
                     let value = block.append_op_result(arith::trunci(
                         value,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+                        IntegerType::new(context, 384).into(),
                         location,
                     ))?;
                     values[add_gate_offset.lhs] = Some(value);
@@ -563,17 +563,17 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Extend to avoid overflow
                     let lhs_value = block.append_op_result(arith::extui(
                         lhs_value,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 * 2).into(),
+                        IntegerType::new(context, 384 * 2).into(),
                         location,
                     ))?;
                     let rhs_value = block.append_op_result(arith::extui(
                         rhs_value,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 * 2).into(),
+                        IntegerType::new(context, 384 * 2).into(),
                         location,
                     ))?;
                     let circuit_modulus = block.append_op_result(arith::extui(
                         circuit_modulus,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 * 2).into(),
+                        IntegerType::new(context, 384 * 2).into(),
                         location,
                     ))?;
                     // value = (lhs_value * rhs_value) % circuit_modulus
@@ -584,7 +584,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Truncate back
                     let value = block.append_op_result(arith::trunci(
                         value,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+                        IntegerType::new(context, 384).into(),
                         location,
                     ))?;
                     values[output] = Some(value)
@@ -594,12 +594,12 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Extend to avoid overflow
                     let rhs_value = block.append_op_result(arith::extui(
                         rhs_value,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 * 2).into(),
+                        IntegerType::new(context, 384 * 2).into(),
                         location,
                     ))?;
                     let circuit_modulus = block.append_op_result(arith::extui(
                         circuit_modulus,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32 * 2).into(),
+                        IntegerType::new(context, 384 * 2).into(),
                         location,
                     ))?;
                     let integer_type = rhs_value.r#type();
@@ -662,7 +662,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Truncate back
                     let inverse = block.append_op_result(arith::trunci(
                         inverse,
-                        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+                        IntegerType::new(context, 384).into(),
                         location,
                     ))?;
 
@@ -821,7 +821,7 @@ fn build_get_output<'ctx, 'this>(
         context,
         location,
         outputs,
-        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+        IntegerType::new(context, 384).into(),
         output_idx,
     )?;
     let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
@@ -846,37 +846,37 @@ fn u384_struct_to_integer<'a>(
 
     let limb1 = block.append_op_result(arith::extui(
         block.extract_value(context, location, u384_struct, u96_type, 0)?,
-        IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+        IntegerType::new(context, 384).into(),
         location,
     ))?;
 
     let limb2 = {
         let limb = block.append_op_result(arith::extui(
             block.extract_value(context, location, u384_struct, u96_type, 1)?,
-            IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+            IntegerType::new(context, 384).into(),
             location,
         ))?;
-        let k96 = block.const_int(context, location, 96, CIRCUIT_INPUT_SIZE as u32)?;
+        let k96 = block.const_int(context, location, 96, 384)?;
         block.append_op_result(arith::shli(limb, k96, location))?
     };
 
     let limb3 = {
         let limb = block.append_op_result(arith::extui(
             block.extract_value(context, location, u384_struct, u96_type, 2)?,
-            IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+            IntegerType::new(context, 384).into(),
             location,
         ))?;
-        let k192 = block.const_int(context, location, 96 * 2, CIRCUIT_INPUT_SIZE as u32)?;
+        let k192 = block.const_int(context, location, 96 * 2, 384)?;
         block.append_op_result(arith::shli(limb, k192, location))?
     };
 
     let limb4 = {
         let limb = block.append_op_result(arith::extui(
             block.extract_value(context, location, u384_struct, u96_type, 3)?,
-            IntegerType::new(context, CIRCUIT_INPUT_SIZE as u32).into(),
+            IntegerType::new(context, 384).into(),
             location,
         ))?;
-        let k288 = block.const_int(context, location, 96 * 3, CIRCUIT_INPUT_SIZE as u32)?;
+        let k288 = block.const_int(context, location, 96 * 3, 384)?;
         block.append_op_result(arith::shli(limb, k288, location))?
     };
 
@@ -901,17 +901,17 @@ fn u384_integer_to_struct<'a>(
         location,
     ))?;
     let limb2 = {
-        let k96 = block.const_int(context, location, 96, CIRCUIT_INPUT_SIZE as u32)?;
+        let k96 = block.const_int(context, location, 96, 384)?;
         let limb = block.append_op_result(arith::shrui(integer, k96, location))?;
         block.append_op_result(arith::trunci(limb, u96_type, location))?
     };
     let limb3 = {
-        let k192 = block.const_int(context, location, 96 * 2, CIRCUIT_INPUT_SIZE as u32)?;
+        let k192 = block.const_int(context, location, 96 * 2, 384)?;
         let limb = block.append_op_result(arith::shrui(integer, k192, location))?;
         block.append_op_result(arith::trunci(limb, u96_type, location))?
     };
     let limb4 = {
-        let k288 = block.const_int(context, location, 96 * 3, CIRCUIT_INPUT_SIZE as u32)?;
+        let k288 = block.const_int(context, location, 96 * 3, 384)?;
         let limb = block.append_op_result(arith::shrui(integer, k288, location))?;
         block.append_op_result(arith::trunci(limb, u96_type, location))?
     };
