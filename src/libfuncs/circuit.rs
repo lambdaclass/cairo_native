@@ -398,7 +398,7 @@ fn build_eval<'ctx, 'this>(
     let circuit_data = entry.argument(3)?.into();
     let circuit_modulus = entry.argument(4)?.into();
 
-    // todo! should arguments 5 and 6 be used?
+    // arguments 5 and 6 are used to build the gate 0 (with constant value 1)
     // let zero = entry.argument(5)?;
     // let one = entry.argument(6)?;
 
