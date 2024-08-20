@@ -279,7 +279,7 @@ jobs:
         if: ${{ matrix.partition != '1' }}
         uses: actions/upload-artifact@v4
         with:
-          name: coverage_data
+          name: coverage_data-${{ matrix.partition }}
           path: ./${{ matrix.output }}
 
 
