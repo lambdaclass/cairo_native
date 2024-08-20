@@ -733,7 +733,7 @@ fn build_gate_evaluation<'ctx, 'this>(
     }
 
     // Validate all values have been calculated
-    // Should only panic if the circuit is not solvable (bad form)
+    // Should only fail if the circuit is not solvable (bad form)
     let values = values
         .into_iter()
         .skip(1 + circuit_info.n_inputs)
