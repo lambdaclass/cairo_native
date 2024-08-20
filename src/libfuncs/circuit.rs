@@ -478,7 +478,9 @@ fn build_eval<'ctx, 'this>(
 /// Builds the evaluation of all circuit gates, returning:
 /// - An array of two branches, the success block and the error block respectively.
 ///   - The error block contains the index of the first failure as argument.
-/// - A vector of the gate values. In case of failure, only the values up to the first error are computed.
+/// - A vector of the gate values. In case of failure, not all values are guaranteed to be computed.
+///
+/// The original Cairo hint evaluates all gates, even in case of failure. This implementation exits on first error, as there is no need for the partial outputs yet.
 fn build_gate_evaluation<'ctx, 'this>(
     context: &'this Context,
     mut block: &'this Block<'ctx>,
