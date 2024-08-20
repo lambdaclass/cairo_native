@@ -43,7 +43,7 @@ pub enum Error {
     MissingMetadata,
 
     #[error(transparent)]
-    SierraAssert(SierraAssertError),
+    SierraAssert(#[from] SierraAssertError),
 
     #[error(transparent)]
     Compiler(#[from] CompilerError),
@@ -78,6 +78,10 @@ pub enum SierraAssertError {
     Cast,
     #[error("range should always intersect, from {:?} to {:?}", ranges.0, ranges.1)]
     Range { ranges: Box<(Range, Range)> },
+    #[error("type {:?} should never be initialized", .0)]
+    BadTypeInit(ConcreteTypeId),
+    #[error("expected type information was missing")]
+    BadTypeInfo,
 }
 
 #[derive(Error, Debug)]

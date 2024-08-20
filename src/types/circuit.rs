@@ -4,7 +4,7 @@ use std::alloc::Layout;
 
 use super::WithSelf;
 use crate::{
-    error::Result,
+    error::{Result, SierraAssertError},
     metadata::MetadataStorage,
     utils::{get_integer_layout, layout_repeat},
 };
@@ -72,13 +72,14 @@ pub fn build<'ctx>(
             Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
         }
         // phantoms
-        // todo! swap unreachable with debug assert and error return
         CircuitTypeConcrete::Circuit(_)
         | CircuitTypeConcrete::AddModGate(_)
         | CircuitTypeConcrete::SubModGate(_)
         | CircuitTypeConcrete::MulModGate(_)
         | CircuitTypeConcrete::InverseGate(_)
-        | CircuitTypeConcrete::CircuitInput(_) => unreachable!(),
+        | CircuitTypeConcrete::CircuitInput(_) => {
+            Err(SierraAssertError::BadTypeInit(selector.self_ty.clone()))?
+        }
     }
 }
 
@@ -89,17 +90,13 @@ pub fn build_circuit_accumulator<'ctx>(
     _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    // todo! swap unreachable with debug assert and error return
-    let Some(generic_arg) = info.info.long_id.generic_args.first() else {
-        unreachable!();
-    };
-    let GenericArg::Type(circuit_type_id) = generic_arg else {
-        unreachable!();
+    let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
+        return Err(SierraAssertError::BadTypeInfo.into());
     };
     let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
         registry.get_type(circuit_type_id)?
     else {
-        unreachable!()
+        return Err(SierraAssertError::BadTypeInfo.into());
     };
 
     let n_inputs = circuit.circuit_info.n_inputs;
@@ -122,17 +119,13 @@ pub fn build_circuit_data<'ctx>(
     _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    // todo! swap unreachable with debug assert and error return
-    let Some(generic_arg) = info.info.long_id.generic_args.first() else {
-        unreachable!();
-    };
-    let GenericArg::Type(circuit_type_id) = generic_arg else {
-        unreachable!();
+    let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
+        return Err(SierraAssertError::BadTypeInfo.into());
     };
     let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
         registry.get_type(circuit_type_id)?
     else {
-        unreachable!()
+        return Err(SierraAssertError::BadTypeInfo.into());
     };
 
     let n_inputs = circuit.circuit_info.n_inputs;
@@ -150,17 +143,13 @@ pub fn build_circuit_outputs<'ctx>(
     _metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    // todo! swap unreachable with debug assert and error return
-    let Some(generic_arg) = info.info.long_id.generic_args.first() else {
-        unreachable!();
-    };
-    let GenericArg::Type(circuit_type_id) = generic_arg else {
-        unreachable!();
+    let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
+        return Err(SierraAssertError::BadTypeInfo.into());
     };
     let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
         registry.get_type(circuit_type_id)?
     else {
-        unreachable!()
+        return Err(SierraAssertError::BadTypeInfo.into());
     };
 
     let n_gates = circuit.circuit_info.values.len();
@@ -239,17 +228,14 @@ pub fn layout(
         | CircuitTypeConcrete::CircuitFailureGuarantee(_) => Ok(Layout::new::<()>()),
 
         CircuitTypeConcrete::CircuitData(info) => {
-            // todo! swap unreachable with debug assert and error return
-            let Some(generic_arg) = info.info.long_id.generic_args.first() else {
-                unreachable!();
-            };
-            let GenericArg::Type(circuit_type_id) = generic_arg else {
-                unreachable!();
+            let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first()
+            else {
+                return Err(SierraAssertError::BadTypeInfo.into());
             };
             let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
                 registry.get_type(circuit_type_id)?
             else {
-                unreachable!()
+                return Err(SierraAssertError::BadTypeInfo.into());
             };
 
             let n_inputs = circuit.circuit_info.n_inputs;
@@ -265,17 +251,14 @@ pub fn layout(
             Ok(layout)
         }
         CircuitTypeConcrete::CircuitOutputs(info) => {
-            // todo! swap unreachable with debug assert and error return
-            let Some(generic_arg) = info.info.long_id.generic_args.first() else {
-                unreachable!();
-            };
-            let GenericArg::Type(circuit_type_id) = generic_arg else {
-                unreachable!();
+            let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first()
+            else {
+                return Err(SierraAssertError::BadTypeInfo.into());
             };
             let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
                 registry.get_type(circuit_type_id)?
             else {
-                unreachable!()
+                return Err(SierraAssertError::BadTypeInfo.into());
             };
 
             let n_gates = circuit.circuit_info.values.len();
@@ -290,19 +273,15 @@ pub fn layout(
 
             Ok(layout)
         }
-        CircuitTypeConcrete::CircuitPartialOutputs(_) => todo!(),
         CircuitTypeConcrete::CircuitInputAccumulator(info) => {
-            // todo! swap unreachable with debug assert and error return
-            let Some(generic_arg) = info.info.long_id.generic_args.first() else {
-                unreachable!();
-            };
-            let GenericArg::Type(circuit_type_id) = generic_arg else {
-                unreachable!();
+            let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first()
+            else {
+                return Err(SierraAssertError::BadTypeInfo.into());
             };
             let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
                 registry.get_type(circuit_type_id)?
             else {
-                unreachable!()
+                return Err(SierraAssertError::BadTypeInfo.into());
             };
 
             let n_inputs = circuit.circuit_info.n_inputs;
@@ -318,6 +297,9 @@ pub fn layout(
             let layout = length_layout.extend(inputs_layout)?.0;
 
             Ok(layout)
+        }
+        CircuitTypeConcrete::CircuitPartialOutputs(_) => {
+            todo!("CircuitPartialOutputs is noop for now")
         }
     }
 }
