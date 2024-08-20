@@ -1,6 +1,6 @@
 //! # Circuit libfuncs
 
-use super::LibfuncHelper;
+use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
     block_ext::BlockExt,
     error::{Result, SierraAssertError},
@@ -94,6 +94,20 @@ fn build_init_circuit_data<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
+    let rc_usage = match registry.get_type(&info.ty)? {
+        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => {
+            info.circuit_info.rc96_usage()
+        }
+        _ => return Err(SierraAssertError::BadTypeInfo.into()),
+    };
+    let rc = increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.argument(0)?.into(),
+        rc_usage,
+    )?;
+
     let k0 = entry.const_int(context, location, 0, 64)?;
     let accumulator_ty = &info.branch_signatures()[0].vars[1].ty;
     let accumulator = build_struct_value(
@@ -107,7 +121,7 @@ fn build_init_circuit_data<'ctx, 'this>(
         &[k0],
     )?;
 
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), accumulator], location));
+    entry.append_operation(helper.br(0, &[rc, accumulator], location));
 
     Ok(())
 }
