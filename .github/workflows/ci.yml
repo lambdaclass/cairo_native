@@ -264,15 +264,24 @@ jobs:
 
       - name: test and generate coverage lcov-test      
         if: ${{ matrix.partition == '1' }}
-        run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test-.info run --bin cairo-native-test -- corelib
+        run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
-      - name: save coverage data
+      - name: save coverage data (lcov and output)
+        if: ${{ matrix.partition == '1' }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage_data
           path: |
             ./${{ matrix.output }}
-            ./lcov-test-${{ matrix.partition }}.info
+            ./lcov-test.info
+
+      - name: save output data only
+        if: ${{ matrix.partition != '1' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage_data
+          path: ./${{ matrix.output }}
+
 
   upload-coverage:
     name: Upload Coverage
