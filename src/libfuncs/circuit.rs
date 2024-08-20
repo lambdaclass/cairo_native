@@ -753,21 +753,19 @@ fn build_failure_guarantee_verify<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let rc = entry.argument(0)?.into();
+    let mul_mod = entry.argument(1)?.into();
+    let rc = increment_builtin_counter_by(context, entry, location, rc, 4)?;
+
+    let mul_mod = increment_builtin_counter_by(context, entry, location, mul_mod, 4)?;
+
     let guarantee_type_id = &info.branch_signatures()[0].vars[2].ty;
     let guarantee_type =
         registry.build_type(context, helper, registry, metadata, guarantee_type_id)?;
 
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
-    entry.append_operation(helper.br(
-        0,
-        &[
-            entry.argument(0)?.into(),
-            entry.argument(1)?.into(),
-            guarantee,
-        ],
-        location,
-    ));
+    entry.append_operation(helper.br(0, &[rc, mul_mod, guarantee], location));
 
     Ok(())
 }
