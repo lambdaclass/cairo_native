@@ -3,7 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
-    error::Result,
+    error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
     metadata::MetadataStorage,
     types::{circuit::CIRCUIT_INPUT_SIZE, TypeBuilder},
@@ -115,20 +115,28 @@ fn build_init_circuit_data<'ctx, 'this>(
 /// Generate MLIR operations for the `into_u96_guarantee` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_into_u96_guarantee<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureAndTypeConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     // input is a BoundedInt<0, 79228162514264337593543950335>
+    let input: Value = entry.argument(0)?.into();
     // output is a U96Guarantee
-    // they have the same type (i96), so we just return its argument
-    // should we debug_assert this?
+    let output_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
+    // they have the same type (i96)
+    debug_assert_eq!(input.r#type(), output_ty);
 
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
+    entry.append_operation(helper.br(0, &[input], location));
 
     Ok(())
 }
@@ -144,9 +152,9 @@ fn build_add_input<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let n_inputs = match registry.get_type(&info.ty).unwrap() {
+    let n_inputs = match registry.get_type(&info.ty)? {
         CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => info.circuit_info.n_inputs,
-        _ => unreachable!(),
+        _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
     let accumulator_type_id = &info.param_signatures()[0].ty;
     let accumulator_ctype = registry.get_type(accumulator_type_id)?;
@@ -367,9 +375,9 @@ fn build_eval<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let circuit_info = match registry.get_type(&info.ty).unwrap() {
+    let circuit_info = match registry.get_type(&info.ty)? {
         CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => &info.circuit_info,
-        _ => unreachable!(),
+        _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
     let add_mod = entry.argument(0)?.into();
     let mul_mod = entry.argument(1)?.into();
@@ -661,7 +669,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     values[lhs] = Some(inverse);
                 }
                 // The imposibility to solve this mul gate offset would render the circuit unsolvable
-                _ => unreachable!(),
+                _ => return Err(SierraAssertError::ImpossibleCircuit.into()),
             }
         } else {
             // If there are no mul gate offsets left, then we have the finished evaluation.
@@ -675,7 +683,7 @@ fn build_gate_evaluation<'ctx, 'this>(
         .into_iter()
         .skip(1 + circuit_info.n_inputs)
         .collect::<Option<Vec<Value>>>()
-        .expect("circuit should be solvable");
+        .ok_or(SierraAssertError::ImpossibleCircuit)?;
 
     Ok(([block, err_block], values))
 }
@@ -795,15 +803,17 @@ fn build_get_output<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &ConcreteGetOutputLibFunc,
 ) -> Result<()> {
-    let circuit_info = match registry.get_type(&info.circuit_ty).unwrap() {
+    let circuit_info = match registry.get_type(&info.circuit_ty)? {
         CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => &info.circuit_info,
-        _ => unreachable!(),
+        _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
     let output_type_id = &info.output_ty;
 
-    let Some(&output_offset_idx) = circuit_info.values.get(output_type_id) else {
-        unreachable!()
-    };
+    let output_offset_idx = *circuit_info
+        .values
+        .get(output_type_id)
+        .ok_or(SierraAssertError::BadTypeInfo)?;
+
     let output_idx = output_offset_idx - circuit_info.n_inputs - 1;
 
     let outputs = entry.argument(0)?.into();
