@@ -2,7 +2,7 @@
 
 Given the following Cairo program:
 
-```rust,noexecute
+```rust,ignore
 // This is the cairo program. It just adds two numbers together and returns the
 // result in an enum whose variant is selected using the result's parity.
 enum Parity<T> {
@@ -22,7 +22,7 @@ fn run(lhs: u128, rhs: u128) -> Parity<u128> {
 
 Let's see how it is executed. We start with the following Rust code:
 
-```rust,noexecute
+```rust,ignore
 let program = get_sierra_program();       // The result of the `cairo-compile` program.
 let module = get_native_module(&program); // This compiles the Sierra program to
                                           // MLIR (not covered here).
@@ -34,7 +34,7 @@ Given a compiled Cairo program in an MLIR module, once it is lowered to the LLVM
 ### Using the JIT executor
 If we decide to use the JIT executor we just create the jit runner and we're done.
 
-```rust,noexecute
+```rust,ignore
 let program = get_sierra_program();
 let module = get_native_module(&program);
 
@@ -47,7 +47,7 @@ let engine = JitNativeExecutor::from_native_module(module, OptLevel::Default);
 ### Using the AOT executor
 Preparing the AOT executor is more complicated since we need to compile it into a shared library and load it from disk.
 
-```rust,noexecute
+```rust,ignore
 let program = get_sierra_program();
 let module = get_native_module(&program);
 
@@ -61,7 +61,7 @@ You can use caches to keep the compiled programs in memory or disk and reuse the
 
 Adding programs to the program cache involves steps not covered here, but once they're inserted you can get executors like this:
 
-```rust,noexecute
+```rust,ignore
 let engine = program_cache.get(key).expect("program not found");
 ```
 
@@ -74,7 +74,7 @@ In a future we may be able to implement compile-time trampolines for known progr
 
 Now we need to find the function id:
 
-```rust,noexecute
+```rust,ignore
 let program = get_sierra_program();
 
 // The utility function needs the symbol of the entry point, which is built as
@@ -88,7 +88,7 @@ let function_id = find_function_id(&program, "program::program::main(f0)");
 
 The arguments must be placed in a list of `JitValue` instances. The builtins should be ignored since they are filled in automatically. The only builtins required are the `GasBuiltin` and `System` (aka. the syscall handler). They are only mandatory when required by the program itself.
 
-```rust,noexecute
+```rust,ignore
 let engine = get_execution_engine(); // This creates the execution engine (covered before).
 
 let args = [
@@ -101,7 +101,7 @@ let args = [
 
 Finally we can invoke the program like this:
 
-```rust,noexecute
+```rust,ignore
 let engine = get_execution_engine();
 
 let function_id = find_function_id(&program, "program::program::main(f0)");
@@ -127,7 +127,7 @@ println!("Builtin stats: {:?}",  execution_result.builtin_stats);
 
 Running the code above should print the following:
 
-```rust,noexecute
+```rust,ignore
 Remaining gas: None
 Return value:  Enum {
   tag: 0,
@@ -157,7 +157,7 @@ Builtin stats: BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0,
 ### Contracts
 Contracts always have the same interface, therefore they have an alternative to `invoke_dynamic` called `invoke_contract_dynamic`.
 
-```rust,noexecute
+```rust,ignore
 fn(Span<felt252>) -> PanicResult<Span<felt252>>;
 ```
 
@@ -165,7 +165,7 @@ This wrapper will attempt to deserialize the real contract arguments from the sp
 
 If the example program had the same interface as a contract (a span of felts) then it'd be invoked like this:
 
-```rust,noexecute
+```rust,ignore
 let engine = get_execution_engine();
 
 let function_id = find_function_id(&program, "program::program::main(f0)");

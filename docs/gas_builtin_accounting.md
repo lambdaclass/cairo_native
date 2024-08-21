@@ -52,7 +52,7 @@ amount being withdrawn.
 ### Example
 Let's illustrate this with a simple example using the following Cairo 1 code:
 
-```rust,noexecute
+```rust,ignore
 fn run_test() {
     let mut i: u8 = 0;
     let mut val = 0;
@@ -131,7 +131,7 @@ returned by the function. This is accomplished when
 [parsing the return values](https://github.com/lambdaclass/cairo_native/blob/65face8194054b7ed396a34a60e7b1595197543a/src/executor.rs#L286)
 from the function call:
 
-```rust,noexecute
+```rust,ignore
 ...
 for type_id in &function_signature.ret_types {
     let type_info = registry.get_type(type_id).unwrap();
@@ -174,7 +174,7 @@ called from within the program.
 ### Example
 Let us consider the following Cairo program which uses the `pedersen` builtin:
 
-```rust,noexecute
+```rust,ignore
 use core::integer::bitwise;
 use core::pedersen::pedersen;
 

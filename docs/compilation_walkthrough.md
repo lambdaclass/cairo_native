@@ -63,7 +63,7 @@ is done using the relevant methods from the `cairo_lang_compiler` crate.
 This gives us a `cairo_lang_sierra::program::Program` which has the following
 structure:
 
-```rust,noexecute
+```rust,ignore
 pub struct Program {
     pub type_declarations: Vec<TypeDeclaration, Global>,
     pub libfunc_declarations: Vec<LibfuncDeclaration, Global>,
@@ -178,7 +178,7 @@ independent code generator, but to compile down we need an actual target,
 to do so we initialize the required target and utilities (in this case we
 initialize all targets the current compiled LLVM supports):
 
-```rust,noexecute
+```rust,ignore
 LLVM_InitializeAllTargets();
 LLVM_InitializeAllTargetInfos();
 LLVM_InitializeAllTargetMCs();
@@ -189,7 +189,7 @@ LLVM_InitializeAllAsmParsers();
 After that we create a LLVM context, and pass it along the module to the
 `mlirTranslateModuleToLLVMIR` method:
 
-```rust,noexecute
+```rust ,ignore
 let llvm_module = mlirTranslateModuleToLLVMIR(mlir_module_op, llvm_context);
 ```
 
@@ -197,7 +197,7 @@ Then we need to create the target machine, which needs a target triple, the
 CPU name and CPU features. After creating the target machine, we can emit
 the object file either to a memory buffer or a file.
 
-```rust,noexecute
+```rust,ignore
 let machine = LLVMCreateTargetMachine(
             target,
             target_triple.cast(),
@@ -248,7 +248,7 @@ This initialization internally does the following:
   function name but wrapped with a prefix to instead target the C API
   wrapper, it looks like the following:
 
-```rust,noexecute
+```rust,ignore
 let function_name = format!("_mlir_ciface_{function_name}");
 ```
 
