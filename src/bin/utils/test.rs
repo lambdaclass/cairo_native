@@ -138,16 +138,7 @@ pub fn run_tests(
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context
-        .compile_with_metadata(
-            &sierra_program,
-            MetadataComputationConfig {
-                function_set_costs: function_set_costs.clone(),
-                linear_ap_change_solver: true,
-                linear_gas_solver: true,
-            },
-        )
-        .unwrap();
+    let native_module = native_context.compile(&sierra_program).unwrap();
 
     let native_executor: NativeExecutor = match args.run_mode {
         RunMode::Aot => {

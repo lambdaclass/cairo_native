@@ -3,10 +3,9 @@
 //! A Rusty interface to provide parameters to JIT calls.
 
 use crate::{
-    error::CompilerError,
-    error::Error,
+    error::{CompilerError, Error},
     types::{felt252::PRIME, TypeBuilder},
-    utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize},
+    utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize, RangeExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -18,11 +17,12 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use cairo_native_runtime::FeltDict;
 use educe::Educe;
-use num_bigint::{BigInt, Sign, ToBigInt};
-use num_traits::Euclid;
+use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
+use num_traits::{Euclid, One};
 use starknet_types_core::felt::Felt;
-use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull};
+use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull, slice};
 
 /// A JitValue is a value that can be passed to the JIT engine as an argument or received as a result.
 ///
@@ -386,7 +386,7 @@ impl JitValue {
                         let elem_ty = registry.get_type(&info.ty).unwrap();
                         let elem_layout = elem_ty.layout(registry).unwrap().pad_to_align();
 
-                        let mut value_map = HashMap::<[u8; 32], NonNull<std::ffi::c_void>>::new();
+                        let mut value_map = Box::<FeltDict>::default();
 
                         // next key must be called before next_value
 
@@ -402,7 +402,7 @@ impl JitValue {
                                 elem_layout.size(),
                             );
 
-                            value_map.insert(
+                            value_map.0.insert(
                                 key,
                                 NonNull::new(value_malloc_ptr)
                                     .expect("allocation failure")
@@ -410,7 +410,7 @@ impl JitValue {
                             );
                         }
 
-                        NonNull::new_unchecked(Box::into_raw(Box::new(value_map))).cast()
+                        NonNull::new_unchecked(Box::into_raw(value_map)).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict",
@@ -705,7 +705,7 @@ impl JitValue {
                     let (map, _) = *Box::from_raw(
                         ptr.cast::<NonNull<()>>()
                             .as_ref()
-                            .cast::<(HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64)>()
+                            .cast::<FeltDict>()
                             .as_ptr(),
                     );
 
@@ -714,6 +714,7 @@ impl JitValue {
                     for (key, val_ptr) in map.iter() {
                         let key = Felt::from_bytes_le(key);
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry));
+                        libc::free(val_ptr.as_ptr());
                     }
 
                     JitValue::Felt252Dict {
@@ -770,10 +771,18 @@ impl JitValue {
 
                 CoreTypeConcrete::Const(_) => todo!(),
                 CoreTypeConcrete::BoundedInt(info) => {
-                    let data = ptr.cast::<[u8; 32]>().as_ref();
-                    let data = Felt::from_bytes_le(data);
+                    let mut data = BigUint::from_bytes_le(slice::from_raw_parts(
+                        ptr.cast::<u8>().as_ptr(),
+                        (info.range.offset_bit_width().next_multiple_of(8) >> 3) as usize,
+                    ))
+                    .to_bigint()
+                    .unwrap();
+
+                    data &= (BigInt::one() << info.range.offset_bit_width()) - BigInt::one();
+                    data += &info.range.lower;
+
                     Self::BoundedInt {
-                        value: data,
+                        value: data.into(),
                         range: info.range.clone(),
                     }
                 }
@@ -958,8 +967,11 @@ mod test {
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
         assert_eq!(
-            JitValue::resolve_type(&ty, &registry).integer_width(),
-            Some(128)
+            JitValue::resolve_type(&ty, &registry).integer_range(&registry),
+            Some(Range {
+                lower: BigInt::from(u128::MIN),
+                upper: BigInt::from(u128::MAX) + BigInt::one(),
+            })
         );
     }
 

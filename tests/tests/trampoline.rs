@@ -14,7 +14,7 @@ fn run_program(program: &Program, entry_point: &str, args: &[JitValue]) -> Execu
     let entry_point_id = find_function_id(program, entry_point);
 
     let context = NativeContext::new();
-    let module = context.compile(program, None).unwrap();
+    let module = context.compile(program).unwrap();
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
     let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
 
@@ -519,6 +519,78 @@ fn invoke1_enum2_u8_u16() {
     r(MyEnum::B(1));
     r(MyEnum::B(10));
     r(MyEnum::B(u16::MAX));
+}
+
+#[test]
+fn invoke1_box_felt252() {
+    let (module_name, program, _) = load_cairo! {
+        fn main(x: Box<felt252>) -> felt252 {
+            x.unbox()
+        }
+    };
+
+    assert_eq!(
+        run_program(
+            &program,
+            &format!("{0}::{0}::main", module_name),
+            &[JitValue::Felt252(42.into())],
+        ),
+        ExecutionResult {
+            remaining_gas: None,
+            return_value: JitValue::Felt252(42.into()),
+            builtin_stats: BuiltinStats::default(),
+        }
+    );
+}
+
+#[test]
+fn invoke1_nullable_felt252() {
+    let (module_name, program, _) = load_cairo! {
+        use core::nullable::{match_nullable, FromNullableResult};
+
+        fn main(x: Nullable<felt252>) -> Option<felt252> {
+            match match_nullable(x) {
+                FromNullableResult::Null(()) => Option::None(()),
+                FromNullableResult::NotNull(x) => Option::Some(x.unbox()),
+            }
+        }
+    };
+
+    assert_eq!(
+        run_program(
+            &program,
+            &format!("{0}::{0}::main", module_name),
+            &[JitValue::Felt252(42.into())],
+        ),
+        ExecutionResult {
+            remaining_gas: None,
+            return_value: JitValue::Enum {
+                tag: 0,
+                value: Box::new(JitValue::Felt252(42.into())),
+                debug_name: None
+            },
+            builtin_stats: BuiltinStats::default(),
+        }
+    );
+    assert_eq!(
+        run_program(
+            &program,
+            &format!("{0}::{0}::main", module_name),
+            &[JitValue::Null],
+        ),
+        ExecutionResult {
+            remaining_gas: None,
+            return_value: JitValue::Enum {
+                tag: 1,
+                value: Box::new(JitValue::Struct {
+                    fields: Vec::new(),
+                    debug_name: None
+                }),
+                debug_name: None
+            },
+            builtin_stats: BuiltinStats::default(),
+        }
+    );
 }
 
 #[test]
