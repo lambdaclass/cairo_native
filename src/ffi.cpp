@@ -161,7 +161,7 @@ mlirLLVMDICompileUnitAttrGet(MlirContext ctx, MlirAttribute id,
   return wrap(DICompileUnitAttr::get(
       unwrap(ctx), cast<DistinctAttr>(unwrap(id)), sourceLanguage,
       cast<DIFileAttr>(unwrap(file)), cast<StringAttr>(unwrap(producer)),
-      isOptimized, DIEmissionKind(emissionKind)));
+      isOptimized, DIEmissionKind(emissionKind), DINameTableKind::Default));
 }
 
 extern "C" void mlirModuleCleanup(MlirModule mod) {
@@ -197,7 +197,8 @@ extern "C" MlirAttribute mlirLLVMDILexicalBlockAttrGet(MlirContext ctx,
                               cast<DIFileAttr>(unwrap(file)), line, column));
 }
 
-extern "C" MlirAttribute mlirLLVMDILexicalBlockAttrGetScope(MlirAttribute block) {
+extern "C" MlirAttribute
+mlirLLVMDILexicalBlockAttrGetScope(MlirAttribute block) {
   return wrap(cast<DILexicalBlockAttr>(unwrap(block)).getScope());
 }
 
@@ -257,12 +258,17 @@ extern "C" MlirAttribute mlirLLVMDICompositeTypeAttrGet(
   elementsStorage.reserve(nElements);
 
   return wrap(DICompositeTypeAttr::get(
-      unwrap(ctx), tag, cast<StringAttr>(unwrap(name)),
+      unwrap(ctx), tag, /* TODO: recId */, cast<StringAttr>(unwrap(name)),
       cast<DIFileAttr>(unwrap(file)), line, cast<DIScopeAttr>(unwrap(scope)),
       cast<DITypeAttr>(unwrap(baseType)), DIFlags(flags), sizeInBits,
       alignInBits,
       llvm::map_to_vector(unwrapList(nElements, elements, elementsStorage),
-                          [](Attribute a) { return cast<DINodeAttr>(a); })));
+                          [](Attribute a) { return cast<DINodeAttr>(a); }),
+      /* TODO: dataLocation */,
+      /* TODO: rank */,
+      /* TODO: allocated */,
+      /* TODO: associated */
+      ));
 }
 
 extern "C" MlirAttribute
@@ -270,10 +276,11 @@ mlirLLVMDIDerivedTypeAttrGet(MlirContext ctx, unsigned int tag,
                              MlirAttribute name, MlirAttribute baseType,
                              uint64_t sizeInBits, uint32_t alignInBits,
                              uint64_t offsetInBits) {
-  return wrap(DIDerivedTypeAttr::get(unwrap(ctx), tag,
-                                     cast<StringAttr>(unwrap(name)),
-                                     cast<DITypeAttr>(unwrap(baseType)),
-                                     sizeInBits, alignInBits, offsetInBits));
+  return wrap(DIDerivedTypeAttr::get(
+      unwrap(ctx), tag, cast<StringAttr>(unwrap(name)),
+      cast<DITypeAttr>(unwrap(baseType)), sizeInBits, alignInBits, offsetInBits,
+      /* TODO: dwarfAddressSpace */,
+      /* TODO: extraData */));
 }
 
 extern "C" MlirAttribute

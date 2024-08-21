@@ -68,13 +68,15 @@ id-arena = "2.2"
 itertools = "0.13.0"
 lazy_static = "1.4"
 libc = "0.2.155"
-llvm-sys = "181.1.0"
-melior = { version = "0.18.4", features = ["ods-dialects"] }
-mlir-sys = "0.2.2"
+llvm-sys = "191.0.0-rc1"
+melior = { path = "../melior/melior", features = ["ods-dialects"] }
+mlir-sys = { path = "../mlir-sys" }
 num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "=0.1.2", default-features = false, features = [
-  "std", "serde", "num-traits"
+  "std",
+  "serde",
+  "num-traits",
 ] }
 tempfile = "3.6"
 thiserror = "1.0.59"
@@ -90,7 +92,11 @@ cairo-lang-starknet-classes = "2.6.4"
 cairo-native-runtime = { version = "0.2.0", path = "runtime", optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
 libloading = "0.8.3"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json", "registry"] , optional = true }
+tracing-subscriber = { version = "0.3.18", features = [
+  "env-filter",
+  "json",
+  "registry",
+], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 anyhow = { version = "1.0", optional = true }
 cairo-lang-test-plugin = { version = "2.6.4", optional = true }
