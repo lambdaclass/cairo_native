@@ -691,14 +691,11 @@ pub mod test {
         };
 
         // Helper function to assert that a division panics.
-        let assert_panics = |lhs, rhs| match run_test(lhs, rhs) {
-            JitValue::Enum { debug_name, .. } => {
-                assert_eq!(
-                    debug_name,
-                    Some("core::panics::PanicResult::<(core::felt252,)>".into())
-                );
-            }
-            _ => panic!("division by 0 is expected to panic"),
+        let assert_panics = |lhs, rhs| {
+            assert!(
+                matches!(run_test(lhs, rhs), JitValue::Enum { tag, .. } if tag == 1),
+                "division by 0 is expected to panic",
+            )
         };
 
         // Division by zero is expected to panic.

@@ -6,8 +6,8 @@ mod U256Sqrt {
     use core::num::traits::Sqrt;
     use core::traits::Into;
     use traits::TryInto;
-    use option::OptionTrait;    
-    use integer::BoundedInt;
+    use option::OptionTrait;
+    use core::num::traits::Bounded;
 
     fn as_u256(a: u128, b: u128) -> u256{
         u256{

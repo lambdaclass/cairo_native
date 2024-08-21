@@ -5,7 +5,7 @@ use crate::{
     error::Result,
     starknet::{ArrayAbi, Felt252Abi},
     types::TypeBuilder,
-    utils::next_multiple_of_usize,
+    utils::{next_multiple_of_usize, RangeExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -25,11 +25,13 @@ use melior::{
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
-        Block, Identifier, Location, Module, Region, Value,
+        Block, Identifier, Location, Module, Region,
     },
     Context, ExecutionEngine,
 };
-use sierra_emu::{ProgramTrace, StateDump};
+use num_bigint::{BigInt, BigUint, ToBigInt};
+use num_traits::One;
+use sierra_emu::{ProgramTrace, StateDump, Value};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -39,12 +41,13 @@ use std::{
     mem::swap,
     ptr::NonNull,
     rc::Rc,
+    slice,
     sync::Weak,
 };
 
 pub struct InternalState {
     trace: RefCell<ProgramTrace>,
-    state: RefCell<OrderedHashMap<VarId, sierra_emu::Value>>,
+    state: RefCell<OrderedHashMap<VarId, Value>>,
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
 }
 
@@ -94,7 +97,7 @@ impl TraceDump {
         block: &Block,
         var_id: &VarId,
         value_ty: &ConcreteTypeId,
-        value_ptr: Value,
+        value_ptr: melior::ir::Value,
         location: Location,
     ) -> Result<()> {
         if self.bindings.insert(TraceBinding::State) {
@@ -255,30 +258,21 @@ fn value_from_pointer(
     state: &InternalState,
     value_type_id: &ConcreteTypeId,
     value_ptr: NonNull<c_void>,
-) -> sierra_emu::Value {
+) -> Value {
     let value_type = state.registry.get_type(value_type_id).unwrap();
 
     match value_type {
         CoreTypeConcrete::Felt252(_) => {
             let bytes = unsafe { value_ptr.cast::<[u8; 32]>().as_ref() };
-            sierra_emu::Value::Felt(Felt::from_bytes_le(bytes))
+            Value::Felt(Felt::from_bytes_le(bytes))
         }
-        CoreTypeConcrete::Uint8(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 1]>().as_ref() };
-            sierra_emu::Value::U8(u8::from_le_bytes(*bytes))
-        }
+        CoreTypeConcrete::Uint8(_) => unsafe { Value::U8(value_ptr.cast::<u8>().read()) },
         CoreTypeConcrete::Uint16(_) => todo!(),
-        CoreTypeConcrete::Uint32(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 4]>().as_ref() };
-            sierra_emu::Value::U32(u32::from_le_bytes(*bytes))
-        }
+        CoreTypeConcrete::Uint32(_) => unsafe { Value::U32(value_ptr.cast::<u32>().read()) },
         CoreTypeConcrete::Uint64(_) => todo!(),
-        CoreTypeConcrete::Uint128(_) => {
-            let bytes = unsafe { value_ptr.cast::<[u8; 16]>().as_ref() };
-            sierra_emu::Value::U128(u128::from_le_bytes(*bytes))
-        }
+        CoreTypeConcrete::Uint128(_) => unsafe { Value::U128(value_ptr.cast::<u128>().read()) },
         CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
-        CoreTypeConcrete::Sint8(_) => todo!(),
+        CoreTypeConcrete::Sint8(_) => unsafe { Value::I8(value_ptr.cast::<i8>().read()) },
         CoreTypeConcrete::Sint16(_) => todo!(),
         CoreTypeConcrete::Sint32(_) => todo!(),
         CoreTypeConcrete::Sint64(_) => todo!(),
@@ -310,7 +304,7 @@ fn value_from_pointer(
                 data.push(value_from_pointer(state, inner_type_id, current_ptr))
             }
 
-            sierra_emu::Value::Array {
+            Value::Array {
                 ty: inner_type_id.clone(),
                 data,
             }
@@ -333,7 +327,7 @@ fn value_from_pointer(
                 data.push(value_from_pointer(state, member_ty, current_ptr))
             }
 
-            sierra_emu::Value::Struct(data)
+            Value::Struct(data)
         }
         CoreTypeConcrete::Enum(EnumConcreteType { variants, .. }) => {
             let tag_layout = crate::utils::get_integer_layout(match variants.len() {
@@ -367,7 +361,7 @@ fn value_from_pointer(
                 unsafe { NonNull::new(value_ptr.as_ptr().byte_add(payload_offset)).unwrap() };
             let payload = value_from_pointer(state, payload_type_id, payload_ptr);
 
-            sierra_emu::Value::Enum {
+            Value::Enum {
                 self_ty: value_type_id.clone(),
                 index: tag_value,
                 payload: Box::new(payload),
@@ -390,7 +384,7 @@ fn value_from_pointer(
 
             let dict = build_dict(state, dict, inner_type_id);
 
-            sierra_emu::Value::FeltDict {
+            Value::FeltDict {
                 ty: inner_type_id.clone(),
                 data: dict,
             }
@@ -404,7 +398,7 @@ fn value_from_pointer(
 
             let dict = build_dict(state, dict, inner_type_id);
 
-            sierra_emu::Value::FeltDictEntry {
+            Value::FeltDictEntry {
                 ty: inner_type_id.clone(),
                 data: dict,
                 key,
@@ -423,15 +417,32 @@ fn value_from_pointer(
         }
         CoreTypeConcrete::GasBuiltin(_) => todo!(),
         CoreTypeConcrete::BuiltinCosts(_) => todo!(),
-        CoreTypeConcrete::NonZero(_) => todo!(),
+        CoreTypeConcrete::NonZero(info) => value_from_pointer(state, &info.ty, value_ptr),
         CoreTypeConcrete::Nullable(_) => todo!(),
-        CoreTypeConcrete::RangeCheck(_) => todo!(),
+        CoreTypeConcrete::RangeCheck(_) => Value::Unit,
         CoreTypeConcrete::RangeCheck96(_) => todo!(),
         CoreTypeConcrete::Pedersen(_) => todo!(),
         CoreTypeConcrete::Poseidon(_) => todo!(),
         CoreTypeConcrete::StarkNet(_) => todo!(),
         CoreTypeConcrete::Bytes31(_) => todo!(),
-        CoreTypeConcrete::BoundedInt(_) => todo!(),
+        CoreTypeConcrete::BoundedInt(info) => {
+            let mut data = BigUint::from_bytes_le(unsafe {
+                slice::from_raw_parts(
+                    value_ptr.cast::<u8>().as_ptr(),
+                    (info.range.offset_bit_width().next_multiple_of(8) >> 3) as usize,
+                )
+            })
+            .to_bigint()
+            .unwrap();
+
+            data &= (BigInt::one() << info.range.offset_bit_width()) - BigInt::one();
+            data += &info.range.lower;
+
+            Value::BoundedInt {
+                value: data,
+                range: info.range.lower.clone()..info.range.upper.clone(),
+            }
+        }
         CoreTypeConcrete::Coupon(_) => todo!(),
         CoreTypeConcrete::Bitwise(_) => todo!(),
         CoreTypeConcrete::Circuit(_) => todo!(),
@@ -440,9 +451,9 @@ fn value_from_pointer(
         CoreTypeConcrete::EcPoint(_) => todo!(),
         CoreTypeConcrete::EcState(_) => todo!(),
         CoreTypeConcrete::Uninitialized(InfoAndTypeConcreteType { ty, .. }) => {
-            sierra_emu::Value::Uninitialized { ty: ty.clone() }
+            Value::Uninitialized { ty: ty.clone() }
         }
-        CoreTypeConcrete::SegmentArena(_) => sierra_emu::Value::Unit,
+        CoreTypeConcrete::SegmentArena(_) => Value::Unit,
     }
 }
 
@@ -463,7 +474,7 @@ fn build_dict(
     state: &InternalState,
     dict: &HashMap<[u8; 32], NonNull<libc::c_void>>,
     inner_type_id: &ConcreteTypeId,
-) -> HashMap<Felt, sierra_emu::Value> {
+) -> HashMap<Felt, Value> {
     let mut new_dict = HashMap::new();
 
     for (key, value_ptr) in dict {

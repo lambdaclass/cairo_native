@@ -265,6 +265,19 @@ impl StarknetSyscallHandler for SyscallHandler {
     ) -> SyscallResult<(U256, U256)> {
         unimplemented!()
     }
+
+    fn sha256_process_block(
+        &mut self,
+        _prev_state: &[u32; 8],
+        _current_block: &[u32; 16],
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<[u32; 8]> {
+        unimplemented!()
+    }
+
+    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
+        std::unimplemented!();
+    }
 }
 
 fn main() {
@@ -296,7 +309,7 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(&sierra_program, None).unwrap();
+    let native_program = native_context.compile(&sierra_program).unwrap();
 
     let entry_point_fn =
         find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();

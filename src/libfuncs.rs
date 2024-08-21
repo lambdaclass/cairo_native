@@ -21,6 +21,7 @@ pub mod ap_tracking;
 pub mod array;
 pub mod bitwise;
 pub mod r#bool;
+pub mod bounded_int;
 pub mod r#box;
 pub mod branch_align;
 pub mod bytes31;
@@ -221,7 +222,10 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::CouponCall(info) => self::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::Circuit(_) | Self::BoundedInt(_) => todo!(),
+            Self::Circuit(_) => todo!(),
+            Self::BoundedInt(info) => {
+                self::bounded_int::build(context, registry, entry, location, helper, metadata, info)
+            }
         }
     }
 

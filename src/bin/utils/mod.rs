@@ -66,10 +66,9 @@ pub fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResult
             value,
             debug_name,
         } => {
-            if debug_name
-                .as_ref()
-                .expect("missing debug name")
-                .starts_with("core::panics::PanicResult::")
+            let debug_name = debug_name.as_ref().expect("missing debug name");
+            if debug_name.starts_with("core::panics::PanicResult::")
+                || debug_name.starts_with("Enum<ut@core::panics::PanicResult::")
             {
                 is_success = *tag == 0;
 

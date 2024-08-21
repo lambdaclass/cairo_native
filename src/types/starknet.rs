@@ -90,7 +90,13 @@ pub fn build<'ctx>(
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::Sha256StateHandle(_) => todo!(),
+        StarkNetTypeConcrete::Sha256StateHandle(info) => build_sha256_state_handle(
+            context,
+            module,
+            registry,
+            metadata,
+            WithSelf::new(selector.self_ty(), info),
+        ),
     }
 }
 
@@ -177,4 +183,15 @@ pub fn build_secp256_point<'ctx>(
         ],
         false,
     ))
+}
+
+pub fn build_sha256_state_handle<'ctx>(
+    context: &'ctx Context,
+    _module: &Module<'ctx>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _metadata: &mut MetadataStorage,
+    _info: WithSelf<InfoOnlyConcreteType>,
+) -> Result<Type<'ctx>> {
+    // A ptr to a heap (realloc) allocated [u32; 8]
+    Ok(llvm::r#type::pointer(context, 0))
 }
