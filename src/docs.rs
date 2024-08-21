@@ -1,5 +1,6 @@
 //! # Cairo Native Compiler and Execution Engine
 
+#[allow(clippy::needless_doctest_main)]
 #[cfg_attr(doc, aquamarine::aquamarine)]
 #[doc = include_str!("../docs/overview.md")]
 pub mod section01 {}

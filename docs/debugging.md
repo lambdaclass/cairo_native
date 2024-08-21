@@ -297,7 +297,6 @@ Once we know all that we can:
 2. Implement the fix in code.
 
 > Note: Those steps must be done in that order. Otherwise we risk
-unconsciously avoiding bugs in our tests for our bug fix implementation by
-building our tests from our implementation instead of the correct
-behaviour.
-
+> unconsciously avoiding bugs in our tests for our bug fix implementation by
+> building our tests from our implementation instead of the correct
+> behaviour.

@@ -228,6 +228,7 @@ It all boils down to the [SystemV ABI](https://refspecs.linuxbase.org/elf/x86_64
 - The stack must be aligned to 16 bytes before calling.
 - Function arguments are spread between some registers and the stack.
 - Return values use either a few registers or require a pointer.
+
 There's a few other quirks, like which registers are caller vs callee-saved, but they're not that relevant in this case.
 
 ### Arguments

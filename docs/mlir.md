@@ -32,20 +32,16 @@ Resources marked with **→** are best.
 
 - Introduction
     - **→** [2019 EuroLLVM Developers’ Meeting: MLIR: Multi-Level Intermediate Representation Compiler Infrastructure](https://www.youtube.com/watch?v=qzljG6DKgic)
-    - → [MLIR: A Compiler Infrastructure for the End of Moore’s Law](https://arxiv.org/pdf/2002.11054.pdf)
-    The paper introducing the MLIR framework
-        - 7-minute video summary of paper:
-        [Read a paper: Multi-level Intermediate Representation (MLIR)](https://www.youtube.com/watch?v=6BwqK6E8v3g)
-        - Another version of the paper:
-        [MLIR: Scaling Compiler Infrastructure for Domain Specific Computation](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/85bf23fe88bd5c7ff60365bd0c6882928562cbeb.pdf)
+    - → [MLIR: A Compiler Infrastructure for the End of Moore’s Law](https://arxiv.org/pdf/2002.11054.pdf) The paper introducing the MLIR framework
+        - 7-minute video summary of paper: [Read a paper: Multi-level Intermediate Representation (MLIR)](https://www.youtube.com/watch?v=6BwqK6E8v3g)
+        - Another version of the paper: [MLIR: Scaling Compiler Infrastructure for Domain Specific Computation](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/85bf23fe88bd5c7ff60365bd0c6882928562cbeb.pdf)
 - MLIR Tutorial
     - **→** (slides) [MLIR Tutorial (LLVM Dev Mtg, 2020)](https://llvm.org/devmtg/2020-09/slides/MLIR_Tutorial.pdf)
     - **→** (video) [2020 LLVM Developers’ Meeting: M. Amini & R. Riddle “MLIR Tutorial”](https://www.youtube.com/watch?v=Y4SvqTtOIDk)
     - (older slides) [MLIR Tutorial (LLVM Developers Meeting, Euro-LLVM 2019)](https://llvm.org/devmtg/2019-04/slides/Tutorial-AminiVasilacheZinenko-MLIR.pdf)
     - (older slides) [MLIR Tutorial (MLIR 4 HPC, 2019)](https://users.cs.utah.edu/~mhall/mlir4hpc/pienaar-MLIR-Tutorial.pdf)
     - (older video) [2019 EuroLLVM Developers’ Meeting: Mehdi & Vasilache & Zinenko “Building a Compiler with MLIR”](https://www.youtube.com/watch?v=cyICUIZ56wQ)
-- **→** Another MLIR Tutorial
-[https://github.com/j2kun/mlir-tutorial](https://github.com/j2kun/mlir-tutorial)
+- **→** Another MLIR Tutorial [https://github.com/j2kun/mlir-tutorial](https://github.com/j2kun/mlir-tutorial)
 - **→** [How to build a compiler with LLVM and MLIR](https://www.youtube.com/playlist?list=PLlONLmJCfHTo9WYfsoQvwjsa5ZB6hjOG5)
 - Other articles, posts
     - **→** [Intro to LLVM and MLIR with Rust and Melior](https://edgarluque.com/blog/mlir-with-rust/)
