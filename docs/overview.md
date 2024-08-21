@@ -1,13 +1,49 @@
 # Overview
 
-This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
-which can be [JIT-executed](https://en.wikipedia.org/wiki/Just-in-time_compilation) or further
+This crate is a compiler and JIT engine that transforms Sierra (or Cairo) 
+sources into MLIR, which can be 
+[JIT-executed](https://en.wikipedia.org/wiki/Just-in-time_compilation) or further
 compiled into a binary
 [ahead of time](https://en.wikipedia.org/wiki/Ahead-of-time_compilation).
 
 ## Getting started as a developer
+First make sure you have a working environment and are able to compile the 
+project without issues. Make sure to follow the [setup](/README.md#setup) guide 
+on steps on how to do this.
 
-## Project dependencies
+It is generally recommended to use the `optimized-dev` cargo profile when 
+testing or running programs, the make target `make build-dev` will be useful for 
+this.
+
+### Other tools
+In addition to the tools included in Cairo Native, it is also recommended you 
+have `cairo-compile` and `cairo-run` installed to check how the generated sierra 
+code looks like, and to compare results manually (when required) which will help 
+greatly when implementing functionality into Cairo Native.
+
+You can check the [cairo](https://github.com/starkware-libs/cairo) repository 
+for more info on how to get those tools.
+
+## Basic Workflow
+After having implemented your desired feature or bug fix, you should check it 
+passes all tests and lints, also make sure to add any needed test cases for the 
+added code.
+
+```bash
+# Check it passes all lints
+make check
+
+# Check it passes all tests
+make test
+```
+
+Then you are free to go and make a PR!
+
+## High level project overview
+This will explain how the project is structured, without going into much details 
+yet:
+
+### Project dependencies
 The major dependencies of the project are the following:
 - Melior: This is the crate that abstracts away most of the interfacing with
   MLIR, our compilation target, it uses mlir-sys and tries to safely
@@ -23,7 +59,7 @@ The major dependencies of the project are the following:
   the ground up in MLIR (Basically would be like coding a complex hash
   function in pseudo assembly).
 
-## Common definitions
+### Common definitions
 Within this project there are lots of functions with the same signature.
 As their arguments have all the same meaning, they are documented here:
 
@@ -40,29 +76,31 @@ The code is laid out in the following sections:
 
 ```txt
  src
- ├─ context.rs           The MLIR context wrapper, provides the compile method.
- ├─ utils.rs             Internal utilities.
- ├─ metadata/            Metadata injector to use within the compilation process
- ├─ executor/            Code related to the executor of programs.
- ├─ module.rs            The MLIR module wrapper.
- ├─ arch/                Trampoline assembly for calling functions with dynamic signatures.
- ├─ executor.rs          The executor code.
- ├─ ffi.cpp              Missing FFI C wrappers
- ├─ libfuncs             Cairo Sierra libfunc implementations
- ├─ libfuncs.rs          Cairo Sierra libfunc glue code
- ├─ starknet.rs          Starknet syscall handler glue code.
- ├─ ffi.rs               Missing FFI C wrappers, rust side.
- ├─ block_ext.rs         A melior (MLIR) block trait extension to write less code.
- ├─ lib.rs               The main lib file.
- ├─ execution_result.rs  Program result parsing.
- ├─ values.rs            JIT serialization.
- ├─ metadata.rs          Metadata injector to use within the compilation process.
- ├─ compiler.rs          The glue code of the compiler, has the codegen for
-                         the function signatures and calls the libfunc
-                         codegen implementations.
- ├─ error.rs             Error handling
- ├─ bin                  Binary programs
- ├─ types                Cairo to MLIR type information
+ ├─ arch.rs             Trampoline assembly for calling functions with dynamic signatures.
+ ├─ arch/               Architecture-specific code for the trampoline.
+ ├─ bin/                Binary programs
+ ├─ block_ext.rs        A melior (MLIR) block trait extension to write less code.
+ ├─ cache.rs            Types and implementations of compiled program caches. 
+ ├─ compiler.rs         The glue code of the compiler, has the codegen for
+                        the function signatures and calls the libfunc
+                        codegen implementations.
+ ├─ context.rs          The MLIR context wrapper, provides the compile method.
+ ├─ debug.rs            
+ ├─ docs.rs             Documentation modules.
+ ├─ error.rs            Error handling,
+ ├─ execution_result.rs Program result parsing.
+ ├─ executor.rs         The executor & related code,
+ ├─ ffi.cpp             Missing FFI C wrappers,
+ ├─ ffi.rs              Missing FFI C wrappers, rust side.
+ ├─ lib.rs              The main lib file.
+ ├─ libfuncs.rs         Cairo Sierra libfunc glue code & implementations,
+ ├─ metadata.rs         Metadata injector to use within the compilation process.
+ ├─ module.rs           The MLIR module wrapper.
+ ├─ starknet.rs         Starknet syscall handler glue code.
+ ├─ starknet_stub.rs    
+ ├─ types.rs            Cairo to MLIR type information,
+ ├─ utils.rs            Internal utilities.
+ └─ values.rs           JIT serialization.
 ```
 
 ### Library functions
@@ -93,7 +131,6 @@ These are extra utility functions unrelated to sierra that aid in the
 development, such as wrapping return values and printing them.
 
 ## Basic API usage example
-
 The API contains two structs, `NativeContext` and `NativeExecutor`.
 The main purpose of `NativeContext` is MLIR initialization, compilation and
 lowering to LLVM.

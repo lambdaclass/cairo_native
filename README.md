@@ -21,6 +21,7 @@ to machine code via MLIR and LLVM.
 
 - [Getting Started](#getting-started)
 - [Included Tools](#included-tools)
+  - [Scripts](#scripts)
   - [cairo-native-compile](#cairo-native-compile)
   - [cairo-native-dump](#cairo-native-dump)
   - [cairo-native-run](#cairo-native-run)
@@ -32,17 +33,22 @@ to machine code via MLIR and LLVM.
 
 For in-depth documentation, see the [developer documentation][].
 
-## ⚠️ Disclaimer
-🚧 Cairo Native is still being built therefore API breaking changes might happen often so use it at your own risk. 🚧
+## Disclaimer
+🚧 Cairo Native is still being built therefore API breaking changes might happen 
+often so use it at your own risk. 🚧
 
-For versions under `1.0` `cargo` doesn't comply with [semver](https://semver.org/), so we advise to pin the version the version you use. This can be done by adding `cairo-native = "0.1.0"` to your Cargo.toml
+For versions under `1.0` `cargo` doesn't comply with 
+[semver](https://semver.org/), so we advise to pin the version the version you 
+use. This can be done by adding `cairo-native = "0.1.0"` to your Cargo.toml
 
 ## Getting Started
 
 ### Dependencies
 - Linux or macOS (aarch64 included) only for now
-- LLVM 18 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/), on macOS you can use brew
-- Rust 1.78.0 or later, since we make use of the u128 [abi change](https://blog.rust-lang.org/2024/03/30/i128-layout-update.html).
+- LLVM 18 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/), 
+  on macOS you can use brew
+- Rust 1.78.0 or later, since we make use of the u128 
+  [abi change](https://blog.rust-lang.org/2024/03/30/i128-layout-update.html).
 - Git
 
 ### Setup
@@ -55,7 +61,8 @@ make deps
 ```
 
 #### Linux
-Since Linux distributions change widely, you need to install LLVM 18 via your package manager, compile it or check if the current release has a Linux binary.
+Since Linux distributions change widely, you need to install LLVM 18 via your 
+package manager, compile it or check if the current release has a Linux binary.
 
 If you are on Debian/Ubuntu, check out the repository https://apt.llvm.org/
 Then you can install with:
@@ -98,7 +105,8 @@ ninja install
 
 </details>
 
-Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_181_PREFIX` and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
+Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_181_PREFIX` 
+and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
 
 ```bash
 # For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-18
@@ -107,21 +115,25 @@ export LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
 export TABLEGEN_180_PREFIX=/usr/lib/llvm-18
 ```
 
-Alternatively, if installed from Debian/Ubuntu repository, then you can use `env.sh` to automatically setup the environment variables.
+Alternatively, if installed from Debian/Ubuntu repository, then you can use 
+`env.sh` to automatically setup the environment variables.
 
 ```bash
 source env.sh
 ```
 
 #### MacOS
-The makefile `deps` target (which you should have ran before) installs LLVM 18 with brew for you, afterwards you need to execute the `env.sh` script to setup the needed environment variables.
+The makefile `deps` target (which you should have ran before) installs LLVM 18 
+with brew for you, afterwards you need to execute the `env.sh` script to setup 
+the needed environment variables.
 
 ```bash
 source env.sh
 ```
 
 ### Make targets:
-Running `make` by itself will check whether the required LLVM installation and corelib is found, and then list available targets.
+Running `make` by itself will check whether the required LLVM installation and 
+corelib is found, and then list available targets.
 
 ```bash
 % make
@@ -149,8 +161,11 @@ Usage:
 ```
 
 ## Included Tools
-Aside from the compilation and execution engine library, Cairo Native includes a few command-line tools to aid development.
+Aside from the compilation and execution engine library, Cairo Native includes 
+a few command-line tools to aid development, and some useful scripts.
+
 These are:
+- The contents of the `/scripts/` folder
 - `cairo-native-compile`
 - `cairo-native-dump`
 - `cairo-native-run`
@@ -158,6 +173,20 @@ These are:
 - `cairo-native-stress`
 - `scarb-native-dump`
 - `scarb-native-test`
+
+### Scripts
+To aid with development, there are a couple of scripts that invoke cargo for you:
+
+```bash
+# Invokes the jit runner with the given program, entry point and json input.
+./scripts/run-jit-dev.sh <program.cairo> <entry point> '[json input]'
+
+# Example invocation of run-jit-dev.sh
+./scripts/run-jit-dev.sh programs/print.cairo print::print::main '[]'
+
+# Dumps the generated MLIR of a given cairo program
+./scripts/compile-dev.sh <program.cairo>
+```
 
 ### `cairo-native-compile`
 ```bash
@@ -194,7 +223,8 @@ Options:
 ```
 
 ### `cairo-native-run`
-This tool allows to run programs using the JIT engine, like the `cairo-run` tool, the parameters can only be felt values.
+This tool allows to run programs using the JIT engine, like the `cairo-run` 
+tool, the parameters can only be felt values.
 
 Example: `echo '1' | cairo-native-run 'program.cairo' 'program::program::main' --inputs - --outputs -`
 
@@ -217,9 +247,12 @@ Options:
 ```
 
 ### `cairo-native-test`
-This tool mimics the `cairo-test` [tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner) and is identical to it, the only feature it doesn't have is the profiler.
+This tool mimics the `cairo-test` 
+[tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner) 
+and is identical to it in interface, the only feature it doesn't have is the profiler.
 
-You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
+You can download it on our 
+[releases](https://github.com/lambdaclass/cairo_native/releases) page.
 
 ```bash
 Compiles a Cairo project and runs all the functions marked as `#[test]`.
@@ -284,7 +317,8 @@ To quickly run a stress test and save logs as json, run:
 make stress-test
 ```
 
-This takes a lot of time to finish (it will probably crash first), you can kill the program at any time.
+This takes a lot of time to finish (it will probably crash first), you can kill 
+the program at any time.
 
 To plot the results, run:
 ```bash
