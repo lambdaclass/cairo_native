@@ -193,7 +193,7 @@ println!("Builtin stats: {:?}", execution_result.builtin_stats);
 
 Running the code above should print the following:
 
-```
+```text
 Remaining gas: None
 Failure flag:  false
 Return value:  [
