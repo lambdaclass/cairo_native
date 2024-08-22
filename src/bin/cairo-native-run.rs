@@ -22,7 +22,6 @@ use cairo_native::{
 };
 use clap::{Parser, ValueEnum};
 use std::{
-    fs::File,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -150,7 +149,7 @@ fn main() -> anyhow::Result<()> {
     #[cfg(feature = "with-trace-dump")]
     if let Some(trace_output) = args.trace_output {
         let program_trace = program_trace.extract();
-        serde_json::to_writer(File::create(trace_output)?, &program_trace)?;
+        serde_json::to_writer(std::fs::File::create(trace_output)?, &program_trace)?;
     }
 
     match result_to_runresult(&result)? {
