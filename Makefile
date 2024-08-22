@@ -57,7 +57,7 @@ test: check-llvm needs-cairo2 build-alexandria runtime-ci
 
 # remove the sed once circuits are implemented.
 test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo r --profile ci --bin cairo-native-test -- tests/corelib-2.7.0
+	cargo r --profile ci --bin cairo-native-test -- corelib
 
 proptest: check-llvm needs-cairo2 runtime-ci
 	cargo test --profile ci --all-features proptest
@@ -70,7 +70,7 @@ proptest-ci: check-llvm needs-cairo2 runtime-ci
 
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- tests/corelib-2.7.0
+	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
 doc: check-llvm
 	cargo doc --all-features --no-deps --workspace

@@ -77,8 +77,8 @@ pub fn get_integer_layout(width: u32) -> Layout {
             Layout::new::<u128>().align_to(16).unwrap()
         }
     } else {
-        let width = (width as usize).next_multiple_of(8).next_power_of_two();
-        Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
+        let width = (width as usize).next_multiple_of(8);
+        Layout::from_size_align(width >> 3, 16).expect("align should be power of two")
     }
 }
 
