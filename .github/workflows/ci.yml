@@ -21,7 +21,7 @@ jobs:
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.80.0
+      - uses: dtolnay/rust-toolchain@1.80.1
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.80.0
+      - uses: dtolnay/rust-toolchain@1.80.1
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
@@ -137,7 +137,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.80.0
+        uses: dtolnay/rust-toolchain@1.80.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
@@ -170,7 +170,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.80.0
+        uses: dtolnay/rust-toolchain@1.80.1
         with:
           components: clippy
       - name: Rust `$PATH` workaround.
@@ -220,7 +220,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.80.0
+        uses: dtolnay/rust-toolchain@1.80.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
