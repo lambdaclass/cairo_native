@@ -86,12 +86,12 @@ jobs:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUSTUP_TOOLCHAIN: nightly-2024-02-01 # udeps needs nightly
+      RUSTUP_TOOLCHAIN: nightly # udeps needs nightly
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly-2024-02-01
+          toolchain: nightly
           components: rustfmt
 
       - name: add llvm deb repository

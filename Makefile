@@ -53,7 +53,7 @@ check: check-llvm
 	cargo clippy --all-targets --all-features -- -D warnings
 
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --all-features
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde
 
 # remove the sed once circuits are implemented.
 test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
@@ -63,14 +63,14 @@ proptest: check-llvm needs-cairo2 runtime-ci
 	cargo test --profile ci --all-features proptest
 
 test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --all-features
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde
 
 proptest-ci: check-llvm needs-cairo2 runtime-ci
 	cargo test --profile ci --all-features proptest
 
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- tests/corelib-2.7.0
+	cargo llvm-cov --verbose --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde --lcov --output-path lcov-test.info run --bin cairo-native-test -- tests/corelib-2.7.0
 
 doc: check-llvm
 	cargo doc --all-features --no-deps --workspace
@@ -82,7 +82,7 @@ bench: build needs-cairo2 runtime
 	./scripts/bench-hyperfine.sh
 
 bench-ci: check-llvm needs-cairo2 runtime
-	cargo criterion --all-features
+	cargo criterion --features build-cli,with-cheatcode,with-runtime,with-serde
 
 stress-test: check-llvm
 	RUST_LOG=cairo_native_stress=DEBUG cargo run --bin cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
