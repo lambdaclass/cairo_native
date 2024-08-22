@@ -106,10 +106,6 @@ enum MlirLLVMDIFlags {
 };
 typedef enum MlirLLVMDIFlags MlirLLVMDIFlags;
 
-extern "C" MlirAttribute mlirLLVMDINullTypeAttrGet(MlirContext ctx) {
-  return wrap(DINullTypeAttr::get(unwrap(ctx)));
-}
-
 extern "C" MlirAttribute mlirLLVMDIFileAttrGet(MlirContext ctx,
                                                MlirAttribute name,
                                                MlirAttribute directory) {
@@ -176,32 +172,6 @@ extern "C" void mlirModuleCleanup(MlirModule mod) {
   }
 }
 
-extern "C" MlirAttribute mlirLLVMDICompileUnitAttrGetScope(MlirContext ctx,
-                                                           MlirAttribute cu,
-                                                           MlirOperation op) {
-  return wrap(cast<DICompileUnitAttr>(unwrap(cu)).getFile());
-}
-
-extern "C" MlirAttribute mlirLLVMDIFlagsAttrGet(MlirContext ctx,
-                                                MlirLLVMDIFlags value) {
-  return wrap(DIFlagsAttr::get(unwrap(ctx), DIFlags(value)));
-}
-
-extern "C" MlirAttribute mlirLLVMDILexicalBlockAttrGet(MlirContext ctx,
-                                                       MlirAttribute scope,
-                                                       MlirAttribute file,
-                                                       unsigned int line,
-                                                       unsigned int column) {
-  return wrap(
-      DILexicalBlockAttr::get(unwrap(ctx), cast<DIScopeAttr>(unwrap(scope)),
-                              cast<DIFileAttr>(unwrap(file)), line, column));
-}
-
-extern "C" MlirAttribute
-mlirLLVMDILexicalBlockAttrGetScope(MlirAttribute block) {
-  return wrap(cast<DILexicalBlockAttr>(unwrap(block)).getScope());
-}
-
 extern "C" MlirAttribute
 mlirLLVMDISubroutineTypeAttrGet(MlirContext ctx, unsigned int callingConvention,
                                 intptr_t nTypes, MlirAttribute const *types) {
@@ -228,11 +198,6 @@ extern "C" MlirAttribute mlirLLVMDISubprogramAttrGet(
       cast<DISubroutineTypeAttr>(unwrap(type))));
 }
 
-extern "C" MlirAttribute
-mlirLLVMDISubprogramAttrGetScope(MlirAttribute diSubprogram) {
-  return wrap(cast<DISubprogramAttr>(unwrap(diSubprogram)).getScope());
-}
-
 extern "C" MlirAttribute mlirLLVMDIModuleAttrGet(
     MlirContext ctx, MlirAttribute file, MlirAttribute scope,
     MlirAttribute name, MlirAttribute configMacros, MlirAttribute includePath,
@@ -247,52 +212,4 @@ extern "C" MlirAttribute mlirLLVMDIModuleAttrGet(
 
 extern "C" MlirAttribute mlirLLVMDIModuleAttrGetScope(MlirAttribute diModule) {
   return wrap(cast<DIModuleAttr>(unwrap(diModule)).getScope());
-}
-
-extern "C" MlirAttribute mlirLLVMDICompositeTypeAttrGet(
-    MlirContext ctx, unsigned int tag, MlirAttribute recId, MlirAttribute name,
-    MlirAttribute file, uint32_t line, MlirAttribute scope,
-    MlirAttribute baseType, int64_t flags, uint64_t sizeInBits,
-    uint64_t alignInBits, intptr_t nElements, MlirAttribute const *elements,
-    MlirAttribute dataLocation, MlirAttribute rank, MlirAttribute allocated,
-    MlirAttribute associated) {
-  SmallVector<Attribute> elementsStorage;
-  elementsStorage.reserve(nElements);
-
-  return wrap(DICompositeTypeAttr::get(
-      unwrap(ctx), tag, cast<DistinctAttr>(unwrap(recId)),
-      cast<StringAttr>(unwrap(name)), cast<DIFileAttr>(unwrap(file)), line,
-      cast<DIScopeAttr>(unwrap(scope)), cast<DITypeAttr>(unwrap(baseType)),
-      DIFlags(flags), sizeInBits, alignInBits,
-      llvm::map_to_vector(unwrapList(nElements, elements, elementsStorage),
-                          [](Attribute a) { return cast<DINodeAttr>(a); }),
-      cast<DIExpressionAttr>(unwrap(dataLocation)),
-      cast<DIExpressionAttr>(unwrap(rank)),
-      cast<DIExpressionAttr>(unwrap(allocated)),
-      cast<DIExpressionAttr>(unwrap(associated))));
-}
-
-extern "C" MlirAttribute mlirLLVMDIDerivedTypeAttrGet(
-    MlirContext ctx, unsigned int tag, MlirAttribute name,
-    MlirAttribute baseType, uint64_t sizeInBits, uint32_t alignInBits,
-    uint64_t offsetInBits, int64_t dwarfAddressSpace, MlirAttribute extraData) {
-  std::optional<unsigned> addressSpace = std::nullopt;
-  if (dwarfAddressSpace >= 0)
-    addressSpace = (unsigned)dwarfAddressSpace;
-  return wrap(DIDerivedTypeAttr::get(
-      unwrap(ctx), tag, cast<StringAttr>(unwrap(name)),
-      cast<DITypeAttr>(unwrap(baseType)), sizeInBits, alignInBits, offsetInBits,
-      addressSpace, cast<DINodeAttr>(unwrap(extraData))));
-}
-
-extern "C" MlirAttribute
-mlirLLVMDILocalVariableAttrGet(MlirContext ctx, MlirAttribute scope,
-                               MlirAttribute name, MlirAttribute diFile,
-                               unsigned int line, unsigned int arg,
-                               unsigned int alignInBits, MlirAttribute diType) {
-
-  return wrap(DILocalVariableAttr::get(
-      unwrap(ctx), cast<DIScopeAttr>(unwrap(scope)),
-      cast<StringAttr>(unwrap(name)), cast<DIFileAttr>(unwrap(diFile)), line,
-      arg, alignInBits, cast<DITypeAttr>(unwrap(diType))));
 }
