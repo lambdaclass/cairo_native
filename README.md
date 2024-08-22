@@ -717,7 +717,7 @@ For more examples, check out the `examples/` directory.
 ### Requirements
 
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.7.0](https://github.com/starkware-libs/cairo)
+- [cairo 2.7.1](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 18 with MLIR
 
