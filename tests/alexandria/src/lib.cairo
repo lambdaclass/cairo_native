@@ -1,7 +1,10 @@
 mod alexandria {
     // Alexandria Math
 
+    use alexandria_encoding::reversible::ReversibleBytes;
+    use alexandria_encoding::reversible::ReversibleBits;
     use core::option::OptionTrait;
+
     fn fib() -> felt252 {
         alexandria_math::fibonacci::fib(16, 10, 1)
     }
@@ -85,30 +88,23 @@ mod alexandria {
         (encoded, decoded)
     }
 
-    use alexandria_encoding::reversible::{
-        U16ReversibleBits, U32ReversibleBits, U64ReversibleBits, U128ReversibleBits,
-        U256ReversibleBits
-    };
     fn reverse_bits() -> (u16, u32, u64, u128, u256) {
         (
-            U16ReversibleBits::reverse_bits(@333),
-            U32ReversibleBits::reverse_bits(@3333333),
-            U64ReversibleBits::reverse_bits(@3333333333333),
-            U128ReversibleBits::reverse_bits(@333333333333333333333),
-            U256ReversibleBits::reverse_bits(@33333333333333333333333333),
+            333_u16.reverse_bits(),
+            3333333_u32.reverse_bits(),
+            3333333333333_u64.reverse_bits(),
+            333333333333333333333_u128.reverse_bits(),
+            33333333333333333333333333_u256.reverse_bits(),
         )
     }
 
-    use alexandria_encoding::reversible::{
-        U16Reversible, U32Reversible, U64Reversible, U128Reversible, U256Reversible
-    };
     fn reverse_bytes() -> (u16, u32, u64, u128, u256) {
         (
-            U16Reversible::reverse_bytes(@333),
-            U32Reversible::reverse_bytes(@3333333),
-            U64Reversible::reverse_bytes(@3333333333333),
-            U128Reversible::reverse_bytes(@333333333333333333333),
-            U256Reversible::reverse_bytes(@33333333333333333333333333),
+            333_u16.reverse_bytes(),
+            3333333_u32.reverse_bytes(),
+            3333333333333_u64.reverse_bytes(),
+            333333333333333333333_u128.reverse_bytes(),
+            33333333333333333333333333_u256.reverse_bytes(),
         )
     }
 }

@@ -496,9 +496,9 @@ mod test {
             }
         };
         static ref I16_WIDEMUL: (String, Program) = load_cairo! {
-            use integer::i16_wide_mul;
+            use core::num::traits::WideMul;
             fn run_test(lhs: i16, rhs: i16) -> i32 {
-                i16_wide_mul(lhs, rhs)
+                WideMul::wide_mul(lhs,rhs)
             }
         };
     }
