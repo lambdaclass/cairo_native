@@ -733,6 +733,25 @@
 <a href="#733" id="733">733</a>
 <a href="#734" id="734">734</a>
 <a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -750,16 +769,19 @@
     ir::{Block, BlockRef, Location, Module, Operation, Region, Value, ValueLike},
     Context,
 };
+<span class="kw">use </span>num_bigint::BigInt;
 <span class="kw">use </span>std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
 
 <span class="kw">pub mod </span>ap_tracking;
 <span class="kw">pub mod </span>array;
 <span class="kw">pub mod </span>bitwise;
 <span class="kw">pub mod </span>r#bool;
+<span class="kw">pub mod </span>bounded_int;
 <span class="kw">pub mod </span>r#box;
 <span class="kw">pub mod </span>branch_align;
 <span class="kw">pub mod </span>bytes31;
 <span class="kw">pub mod </span>cast;
+<span class="kw">pub mod </span>circuit;
 <span class="kw">pub mod </span>r#const;
 <span class="kw">pub mod </span>coupon;
 <span class="kw">pub mod </span>debug;
@@ -956,6 +978,12 @@
             <span class="self">Self</span>::CouponCall(info) =&gt; <span class="self">self</span>::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
+            <span class="self">Self</span>::Circuit(info) =&gt; {
+                <span class="self">self</span>::circuit::build(context, registry, entry, location, helper, metadata, info)
+            }
+            <span class="self">Self</span>::BoundedInt(info) =&gt; {
+                <span class="self">self</span>::bounded_int::build(context, registry, entry, location, helper, metadata, info)
+            }
         }
     }
 
@@ -1237,9 +1265,19 @@
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
 ) -&gt; <span class="kw">crate</span>::error::Result&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'a</span>&gt;&gt; {
+    increment_builtin_counter_by(context, block, location, value, <span class="number">1</span>)
+}
+
+<span class="kw">pub fn </span>increment_builtin_counter_by&lt;<span class="lifetime">'ctx</span>: <span class="lifetime">'a</span>, <span class="lifetime">'a</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+    block: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
+    amount: <span class="kw">impl </span>Into&lt;BigInt&gt;,
+) -&gt; <span class="kw">crate</span>::error::Result&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'a</span>&gt;&gt; {
     block.append_op_result(arith::addi(
         value,
-        block.const_int(context, location, <span class="number">1</span>, <span class="number">64</span>)<span class="question-mark">?</span>,
+        block.const_int(context, location, amount, <span class="number">64</span>)<span class="question-mark">?</span>,
         location,
     ))
 }

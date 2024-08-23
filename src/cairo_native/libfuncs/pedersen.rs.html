@@ -130,12 +130,6 @@
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Pedersen hashing libfuncs
 //!
 
@@ -156,7 +150,7 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{arith, ods},
+    dialect::arith,
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -223,13 +217,8 @@
     <span class="kw">let </span>lhs_i256 = entry.append_op_result(arith::extui(lhs, i256_ty, location))<span class="question-mark">?</span>;
     <span class="kw">let </span>rhs_i256 = entry.append_op_result(arith::extui(rhs, i256_ty, location))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_be =
-        entry.append_op_result(ods::llvm::intr_bswap(context, lhs_i256, location).into())<span class="question-mark">?</span>;
-    <span class="kw">let </span>rhs_be =
-        entry.append_op_result(ods::llvm::intr_bswap(context, rhs_i256, location).into())<span class="question-mark">?</span>;
-
-    entry.store(context, location, lhs_ptr, lhs_be)<span class="question-mark">?</span>;
-    entry.store(context, location, rhs_ptr, rhs_be)<span class="question-mark">?</span>;
+    entry.store(context, location, lhs_ptr, lhs_i256)<span class="question-mark">?</span>;
+    entry.store(context, location, rhs_ptr, rhs_i256)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>runtime_bindings = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -238,9 +227,8 @@
     runtime_bindings
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>result_be = entry.load(context, location, dst_ptr, i256_ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>op = entry.append_op_result(ods::llvm::intr_bswap(context, result_be, location).into())<span class="question-mark">?</span>;
-    <span class="kw">let </span>result = entry.append_op_result(arith::trunci(op, felt252_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = entry.load(context, location, dst_ptr, i256_ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = entry.append_op_result(arith::trunci(result, felt252_ty, location))<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[pedersen_builtin, result], location));
     <span class="prelude-val">Ok</span>(())

@@ -2301,10 +2301,10 @@
             }
         };
         <span class="kw">static </span><span class="kw-2">ref </span>U256_SQRT: (String, Program) = <span class="macro">load_cairo!</span> {
-            <span class="kw">use </span>core::integer::u256_sqrt;
+            <span class="kw">use </span>core::num::traits::Sqrt;
 
             <span class="kw">fn </span>run_test(value: u256) -&gt; u128 {
-                u256_sqrt(value)
+                value.sqrt()
             }
         };
         <span class="kw">static </span><span class="kw-2">ref </span>U256_INV_MOD_N: (String, Program) = <span class="macro">load_cairo!</span> {

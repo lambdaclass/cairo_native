@@ -118,6 +118,12 @@
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
 </span><span class="kw">use </span><span class="kw">crate</span>::metadata::gas::GasMetadataError;
 <span class="kw">use </span>cairo_lang_sierra::extensions::modules::utils::Range;
@@ -163,7 +169,7 @@
     </span>MissingMetadata,
 
     <span class="attr">#[error(transparent)]
-    </span>SierraAssert(SierraAssertError),
+    </span>SierraAssert(<span class="attr">#[from] </span>SierraAssertError),
 
     <span class="attr">#[error(transparent)]
     </span>Compiler(<span class="attr">#[from] </span>CompilerError),
@@ -198,6 +204,12 @@
     </span>Cast,
     <span class="attr">#[error(<span class="string">"range should always intersect, from {:?} to {:?}"</span>, ranges.<span class="number">0</span>, ranges.<span class="number">1</span>)]
     </span>Range { ranges: Box&lt;(Range, Range)&gt; },
+    <span class="attr">#[error(<span class="string">"type {:?} should never be initialized"</span>, .<span class="number">0</span>)]
+    </span>BadTypeInit(ConcreteTypeId),
+    <span class="attr">#[error(<span class="string">"expected type information was missing"</span>)]
+    </span>BadTypeInfo,
+    <span class="attr">#[error(<span class="string">"circuit cannot be evaluated"</span>)]
+    </span>ImpossibleCircuit,
 }
 
 <span class="attr">#[derive(Error, Debug)]

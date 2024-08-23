@@ -1177,6 +1177,10 @@
 <a href="#1177" id="1177">1177</a>
 <a href="#1178" id="1178">1178</a>
 <a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
+<a href="#1183" id="1183">1183</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
@@ -1251,6 +1255,7 @@
     program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
+<span class="kw">use </span>cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>melior::{
     dialect::{
@@ -1534,7 +1539,7 @@
         ),
     );
 
-    <span class="kw">let </span>initial_state = edit_state::put_results(HashMap::&lt;<span class="kw">_</span>, Value&gt;::new(), {
+    <span class="kw">let </span>initial_state = edit_state::put_results(OrderedHashMap::&lt;<span class="kw">_</span>, Value&gt;::default(), {
         <span class="kw">let </span><span class="kw-2">mut </span>values = Vec::new();
 
         <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
@@ -1607,7 +1612,7 @@
                 <span class="macro">tracing::trace!</span>(<span class="string">"Implementing the statement {statement_idx}'s landing block."</span>);
 
                 state = edit_state::put_results(
-                    HashMap::default(),
+                    OrderedHashMap::default(),
                     state
                         .keys()
                         .sorted_by_key(|x| x.id)
@@ -2028,7 +2033,7 @@
     sierra_stmt_start_offset: usize,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(BlockRef&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;, BlockStorage&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;), Error&gt; {
     <span class="kw">let </span>initial_state = edit_state::put_results::&lt;Type&gt;(
-        HashMap::new(),
+        OrderedHashMap::default(),
         function
             .params
             .iter()
@@ -2115,7 +2120,10 @@
                                     Entry::Occupied(entry) =&gt; entry.into_mut(),
                                     Entry::Vacant(entry) =&gt; entry.insert((state.clone(), <span class="number">0</span>)),
                                 };
-                            <span class="macro">assert_eq!</span>(prev_state, <span class="kw-2">&amp;</span>state, <span class="string">"Branch target states do not match."</span>);
+                            <span class="macro">assert!</span>(
+                                prev_state.eq_unordered(<span class="kw-2">&amp;</span>state),
+                                <span class="string">"Branch target states do not match."
+                            </span>);
                             <span class="kw-2">*</span>pred_count += <span class="number">1</span>;
 
                             <span class="prelude-val">Ok</span>(state)
@@ -2305,7 +2313,7 @@
     statements: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>[Statement],
     statement_idx: StatementIdx,
     invocation: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Invocation,
-    state: <span class="kw-2">&amp;</span>HashMap&lt;VarId, Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;,
+    state: <span class="kw-2">&amp;</span>OrderedHashMap&lt;VarId, Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;,
 ) -&gt; Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;, Vec&lt;BranchArg&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;)&gt;
 <span class="kw">where
     </span><span class="lifetime">'this</span>: <span class="lifetime">'ctx</span>,

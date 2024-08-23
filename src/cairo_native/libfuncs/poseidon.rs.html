@@ -159,14 +159,6 @@
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Poseidon hashing libfuncs
 //!
 
@@ -187,7 +179,7 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{arith, llvm, ods},
+    dialect::{arith, ods},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -260,13 +252,9 @@
     <span class="kw">let </span>op2_i256 =
         entry.append_op_result(ods::arith::extui(context, i256_ty, op2, location).into())<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>op0_be = entry.append_op_result(llvm::intr_bswap(op0_i256, i256_ty, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>op1_be = entry.append_op_result(llvm::intr_bswap(op1_i256, i256_ty, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>op2_be = entry.append_op_result(llvm::intr_bswap(op2_i256, i256_ty, location))<span class="question-mark">?</span>;
-
-    entry.store(context, location, op0_ptr, op0_be)<span class="question-mark">?</span>;
-    entry.store(context, location, op1_ptr, op1_be)<span class="question-mark">?</span>;
-    entry.store(context, location, op2_ptr, op2_be)<span class="question-mark">?</span>;
+    entry.store(context, location, op0_ptr, op0_i256)<span class="question-mark">?</span>;
+    entry.store(context, location, op1_ptr, op1_i256)<span class="question-mark">?</span>;
+    entry.store(context, location, op2_ptr, op2_i256)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>runtime_bindings = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -275,13 +263,9 @@
     runtime_bindings
         .libfunc_hades_permutation(context, helper, entry, op0_ptr, op1_ptr, op2_ptr, location)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>op0_be = entry.load(context, location, op0_ptr, i256_ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>op1_be = entry.load(context, location, op1_ptr, i256_ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>op2_be = entry.load(context, location, op2_ptr, i256_ty)<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>op0_i256 = entry.append_op_result(llvm::intr_bswap(op0_be, i256_ty, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>op1_i256 = entry.append_op_result(llvm::intr_bswap(op1_be, i256_ty, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>op2_i256 = entry.append_op_result(llvm::intr_bswap(op2_be, i256_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>op0_i256 = entry.load(context, location, op0_ptr, i256_ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>op1_i256 = entry.load(context, location, op1_ptr, i256_ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>op2_i256 = entry.load(context, location, op2_ptr, i256_ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op0 = entry.append_op_result(arith::trunci(op0_i256, felt252_ty, location))<span class="question-mark">?</span>;
     <span class="kw">let </span>op1 = entry.append_op_result(arith::trunci(op1_i256, felt252_ty, location))<span class="question-mark">?</span>;

@@ -1009,6 +1009,59 @@
 <a href="#1009" id="1009">1009</a>
 <a href="#1010" id="1010">1010</a>
 <a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1018,7 +1071,10 @@
 };
 <span class="kw">use </span>cairo_lang_compiler::CompilerConfig;
 <span class="kw">use </span>cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        utils::Range,
+    },
     ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
@@ -1029,6 +1085,7 @@
     Context, Error, ExecutionEngine,
 };
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, Sign};
+<span class="kw">use </span>num_traits::One;
 <span class="kw">use </span>std::{
     alloc::Layout,
     borrow::Cow,
@@ -1084,8 +1141,8 @@
             Layout::new::&lt;u128&gt;().align_to(<span class="number">16</span>).unwrap()
         }
     } <span class="kw">else </span>{
-        <span class="kw">let </span>width = (width <span class="kw">as </span>usize).next_multiple_of(<span class="number">8</span>).next_power_of_two();
-        Layout::from_size_align(width &gt;&gt; <span class="number">3</span>, (width &gt;&gt; <span class="number">3</span>).min(<span class="number">16</span>)).unwrap()
+        <span class="kw">let </span>width = (width <span class="kw">as </span>usize).next_multiple_of(<span class="number">8</span>);
+        Layout::from_size_align(width &gt;&gt; <span class="number">3</span>, <span class="number">16</span>).expect(<span class="string">"align should be power of two"</span>)
     }
 }
 
@@ -1256,6 +1313,12 @@
             cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add
                 <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>[[u8; <span class="number">32</span>]; <span class="number">4</span>], <span class="kw-2">*const </span>[[u8; <span class="number">32</span>]; <span class="number">2</span>]) -&gt; bool
                 <span class="kw">as </span><span class="kw-2">*mut </span>(),
+        );
+
+        engine.register_symbol(
+            <span class="string">"cairo_native__libfunc__ec__ec_state_init"</span>,
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_init
+                <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>[[u8; <span class="number">32</span>]; <span class="number">4</span>]) <span class="kw">as </span><span class="kw-2">*mut </span>(),
         );
 
         engine.register_symbol(
@@ -1502,6 +1565,49 @@
     }
 }
 
+<span class="kw">pub trait </span>RangeExt {
+    <span class="doccomment">/// Width in bits when the offset is zero (aka. the natural representation).
+    </span><span class="kw">fn </span>zero_based_bit_width(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32;
+    <span class="doccomment">/// Width in bits when the offset is not necessarily zero (aka. the compact representation).
+    </span><span class="kw">fn </span>offset_bit_width(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32;
+}
+
+<span class="kw">impl </span>RangeExt <span class="kw">for </span>Range {
+    <span class="kw">fn </span>zero_based_bit_width(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="comment">// Formula for unsigned integers:
+        //     x.bits()
+        //
+        // Formula for signed values:
+        //   - Positive: (x.magnitude() + BigUint::one()).bits()
+        //   - Negative: (x.magnitude() - BigUint::one()).bits() + 1
+        //   - Zero: 0
+
+        </span><span class="kw">let </span>width = <span class="kw">if </span><span class="self">self</span>.lower.sign() == Sign::Minus {
+            <span class="kw">let </span>lower_width = (<span class="self">self</span>.lower.magnitude() - BigUint::one()).bits() + <span class="number">1</span>;
+            <span class="kw">let </span>upper_width = {
+                <span class="kw">let </span>upper = <span class="kw-2">&amp;</span><span class="self">self</span>.upper - <span class="kw-2">&amp;</span>BigInt::one();
+                <span class="kw">match </span>upper.sign() {
+                    Sign::Minus =&gt; (upper.magnitude() - BigUint::one()).bits() + <span class="number">1</span>,
+                    Sign::NoSign =&gt; <span class="number">0</span>,
+                    Sign::Plus =&gt; (upper.magnitude() + BigUint::one()).bits(),
+                }
+            };
+
+            lower_width.max(upper_width) <span class="kw">as </span>u32
+        } <span class="kw">else </span>{
+            (<span class="kw-2">&amp;</span><span class="self">self</span>.upper - <span class="kw-2">&amp;</span>BigInt::one()).bits() <span class="kw">as </span>u32
+        };
+
+        <span class="comment">// FIXME: Workaround for segfault in canonicalization (including LLVM 19).
+        </span>width.max(<span class="number">1</span>)
+    }
+
+    <span class="kw">fn </span>offset_bit_width(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="comment">// FIXME: Workaround for segfault in canonicalization (including LLVM 19).
+        </span>((<span class="self">self</span>.size() - BigInt::one()).bits() <span class="kw">as </span>u32).max(<span class="number">1</span>)
+    }
+}
+
 <span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>test {
     <span class="kw">use crate</span>::{
@@ -1538,9 +1644,9 @@
 
     <span class="comment">// Helper macros for faster testing.
     </span><span class="macro">macro_rules!</span> jit_struct {
-        ( $(<span class="macro-nonterminal">$x</span>:expr),* $(,)<span class="question-mark">? </span>) =&gt; {
+        ($(<span class="macro-nonterminal">$y</span>:expr),* $(,)<span class="question-mark">? </span>) =&gt; {
             <span class="kw">crate</span>::values::JitValue::Struct {
-                fields: <span class="macro">vec!</span>[$(<span class="macro-nonterminal">$x</span>), <span class="kw-2">*</span>],
+                fields: <span class="macro">vec!</span>[$(<span class="macro-nonterminal">$y</span>), <span class="kw-2">*</span>],
                 debug_name: <span class="prelude-val">None
             </span>}
         };
@@ -1606,7 +1712,7 @@
             Path::new(<span class="kw-2">&amp;</span>var(<span class="string">"CARGO_MANIFEST_DIR"</span>).unwrap()).join(<span class="string">"corelib/src"</span>),
         );
         <span class="kw">let </span>main_crate_ids = setup_project(<span class="kw-2">&amp;mut </span>db, program_file.path()).unwrap();
-        <span class="kw">let </span>program = compile_prepared_db(
+        <span class="kw">let </span>sierra_program_with_dbg = compile_prepared_db(
             <span class="kw-2">&amp;mut </span>db,
             main_crate_ids,
             CompilerConfig {
@@ -1619,7 +1725,7 @@
 
         <span class="kw">let </span>module_name = program_file.path().with_extension(<span class="string">""</span>);
         <span class="kw">let </span>module_name = module_name.file_name().unwrap().to_str().unwrap();
-        (module_name.to_string(), program)
+        (module_name.to_string(), sierra_program_with_dbg.program)
     }
 
     <span class="kw">pub fn </span>run_program(

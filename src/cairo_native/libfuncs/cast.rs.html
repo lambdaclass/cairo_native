@@ -673,55 +673,35 @@
 <a href="#673" id="673">673</a>
 <a href="#674" id="674">674</a>
 <a href="#675" id="675">675</a>
-<a href="#676" id="676">676</a>
-<a href="#677" id="677">677</a>
-<a href="#678" id="678">678</a>
-<a href="#679" id="679">679</a>
-<a href="#680" id="680">680</a>
-<a href="#681" id="681">681</a>
-<a href="#682" id="682">682</a>
-<a href="#683" id="683">683</a>
-<a href="#684" id="684">684</a>
-<a href="#685" id="685">685</a>
-<a href="#686" id="686">686</a>
-<a href="#687" id="687">687</a>
-<a href="#688" id="688">688</a>
-<a href="#689" id="689">689</a>
-<a href="#690" id="690">690</a>
-<a href="#691" id="691">691</a>
-<a href="#692" id="692">692</a>
-<a href="#693" id="693">693</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 
-</span><span class="kw">use </span>std::ops::Shr;
-
-<span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
+</span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
     block_ext::BlockExt,
-    error::{Error, <span class="prelude-ty">Result</span>, SierraAssertError},
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    types::TypeBuilder,
+    error::Result,
+    metadata::MetadataStorage,
+    types::{
+        felt252::{HALF_PRIME, PRIME},
+        TypeBuilder,
+    },
+    utils::RangeExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         casts::{CastConcreteLibfunc, DowncastConcreteLibfunc},
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc,
+        utils::Range,
     },
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{
-        arith::{<span class="self">self</span>, CmpiPredicate},
-        cf,
-    },
-    ir::{r#type::IntegerType, Block, Location},
+    dialect::arith::{<span class="self">self</span>, CmpiPredicate},
+    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
-<span class="kw">use </span>num_bigint::{BigInt, ToBigInt};
-<span class="kw">use </span>num_traits::Euclid;
-<span class="kw">use </span>starknet_types_core::felt::Felt;
+<span class="kw">use </span>num_bigint::{BigInt, Sign};
+<span class="kw">use </span>num_traits::One;
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
@@ -750,200 +730,205 @@
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>DowncastConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check =
         <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>src_value: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>src_type = registry.get_type(<span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_type = registry.get_type(<span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>src_width = src_type
-        .integer_width()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_width = dst_type
-        .integer_width()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
+    <span class="kw">if </span>info.signature.param_signatures[<span class="number">1</span>].ty == info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">1</span>].ty {
+        <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
+        entry.append_operation(helper.cond_br(
+            context,
+            k0,
+            [<span class="number">0</span>, <span class="number">1</span>],
+            [<span class="kw-2">&amp;</span>[range_check, src_value], <span class="kw-2">&amp;</span>[range_check]],
+            location,
+        ));
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+    }
 
-    <span class="kw">let </span>src_ty = src_type.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.from_ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_ty = dst_type.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.to_ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>src_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>dst_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>location = Location::name(
-        context,
-        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"downcast&lt;{:?}, {:?}&gt;"</span>, src_ty, dst_ty),
-        location,
-    );
-
-    <span class="kw">let </span>src_is_signed = src_type
-        .is_integer_signed()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_is_signed = dst_type
-        .is_integer_signed()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
-    <span class="kw">let </span>any_is_signed = src_is_signed | dst_is_signed;
-    <span class="kw">let </span>src_is_felt = <span class="macro">matches!</span>(
-        src_type,
-        CoreTypeConcrete::Felt252(<span class="kw">_</span>) | CoreTypeConcrete::BoundedInt(<span class="kw">_</span>)
-    );
-    <span class="kw">let </span>dst_is_felt = <span class="macro">matches!</span>(
-        dst_type,
-        CoreTypeConcrete::Felt252(<span class="kw">_</span>) | CoreTypeConcrete::BoundedInt(<span class="kw">_</span>)
-    );
-    <span class="kw">let </span>src_value: melior::ir::Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-
-    <span class="kw">let </span><span class="kw-2">mut </span>block = entry;
-
-    <span class="kw">let </span>(is_in_range, result) = <span class="kw">if </span>info.from_ty == info.to_ty {
-        <span class="comment">// can't cast to the same type
-        </span><span class="kw">let </span>k0 = block.const_int(context, location, <span class="number">0</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
-        (k0, src_value)
+    <span class="kw">let </span>dst_range = dst_ty.integer_range(registry).unwrap();
+    <span class="kw">let </span>src_range = <span class="kw">if </span>src_ty.is_felt252(registry) &amp;&amp; dst_range.lower.sign() == Sign::Minus {
+        <span class="kw">if </span>dst_range.upper.sign() != Sign::Plus {
+            Range {
+                lower: BigInt::from_biguint(Sign::Minus, PRIME.clone()) + <span class="number">1</span>,
+                upper: BigInt::one(),
+            }
+        } <span class="kw">else </span>{
+            Range {
+                lower: -HALF_PRIME.clone(),
+                upper: HALF_PRIME.clone() + BigInt::one(),
+            }
+        }
     } <span class="kw">else </span>{
-        <span class="comment">// make unsigned felt into signed felt
-        // felt &gt; half prime = negative
-        </span><span class="kw">let </span>felt_to_int = src_is_felt &amp;&amp; !dst_is_felt;
-        <span class="kw">let </span>src_value = <span class="kw">if </span>felt_to_int {
-            <span class="kw">let </span>attr_halfprime_i252 = metadata
-                .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                </span>.prime()
-                .shr(<span class="number">1</span>);
+        src_ty.integer_range(registry).unwrap()
+    };
+    <span class="macro">assert!</span>(
+        dst_range.lower &gt; src_range.lower || dst_range.upper &lt; src_range.upper,
+        <span class="string">"invalid downcast `{}` into `{}`: target range contains the source range"</span>,
+        info.signature.param_signatures[<span class="number">1</span>].ty,
+        info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">1</span>].ty
+    );
 
-            <span class="kw">let </span>half_prime =
-                block.const_int_from_type(context, location, attr_halfprime_i252, src_ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>src_width = <span class="kw">if </span>src_ty.is_bounded_int(registry) {
+        src_range.offset_bit_width()
+    } <span class="kw">else </span>{
+        src_ty
+            .integer_range(registry)
+            .unwrap()
+            .zero_based_bit_width()
+    };
+    <span class="kw">let </span>dst_width = <span class="kw">if </span>dst_ty.is_bounded_int(registry) {
+        dst_range.offset_bit_width()
+    } <span class="kw">else </span>{
+        dst_range.zero_based_bit_width()
+    };
 
-            <span class="kw">let </span>is_felt_neg = block.append_op_result(arith::cmpi(
+    <span class="kw">let </span>compute_width = src_range
+        .zero_based_bit_width()
+        .max(dst_range.zero_based_bit_width());
+
+    <span class="kw">let </span>is_signed = src_range.lower.sign() == Sign::Minus;
+
+    <span class="kw">let </span>src_value = <span class="kw">if </span>compute_width &gt; src_width {
+        <span class="kw">if </span>is_signed &amp;&amp; !src_ty.is_bounded_int(registry) &amp;&amp; !src_ty.is_felt252(registry) {
+            entry.append_op_result(arith::extsi(
+                src_value,
+                IntegerType::new(context, compute_width).into(),
+                location,
+            ))<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            entry.append_op_result(arith::extui(
+                src_value,
+                IntegerType::new(context, compute_width).into(),
+                location,
+            ))<span class="question-mark">?
+        </span>}
+    } <span class="kw">else </span>{
+        src_value
+    };
+
+    <span class="kw">let </span>src_value = <span class="kw">if </span>is_signed &amp;&amp; src_ty.is_felt252(registry) {
+        <span class="kw">if </span>src_range.upper.is_one() {
+            <span class="kw">let </span>adj_offset =
+                entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())<span class="question-mark">?</span>;
+            entry.append_op_result(arith::subi(src_value, adj_offset, location))<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            <span class="kw">let </span>adj_offset = entry.const_int_from_type(
+                context,
+                location,
+                HALF_PRIME.clone(),
+                src_value.r#type(),
+            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>is_negative = entry.append_op_result(arith::cmpi(
                 context,
                 CmpiPredicate::Ugt,
                 src_value,
-                half_prime,
+                adj_offset,
                 location,
             ))<span class="question-mark">?</span>;
-            <span class="kw">let </span>is_neg_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
-            <span class="kw">let </span>is_not_neg_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
-            <span class="kw">let </span>final_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[(src_ty, location)]));
 
-            block.append_operation(cf::cond_br(
-                context,
-                is_felt_neg,
-                is_neg_block,
-                is_not_neg_block,
-                <span class="kw-2">&amp;</span>[],
-                <span class="kw-2">&amp;</span>[],
-                location,
-            ));
+            <span class="kw">let </span>k_prime =
+                entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())<span class="question-mark">?</span>;
+            <span class="kw">let </span>adj_value = entry.append_op_result(arith::subi(src_value, k_prime, location))<span class="question-mark">?</span>;
 
-            {
-                <span class="kw">let </span>value = metadata
-                    .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                    </span>.prime();
-                <span class="kw">let </span>prime = is_neg_block.const_int_from_type(
-                    context,
-                    location,
-                    value.to_bigint().unwrap(),
-                    src_ty,
-                )<span class="question-mark">?</span>;
-
-                <span class="kw">let </span><span class="kw-2">mut </span>src_value_is_neg =
-                    is_neg_block.append_op_result(arith::subi(prime, src_value, location))<span class="question-mark">?</span>;
-
-                <span class="kw">let </span>kneg1 = is_neg_block.const_int_from_type(context, location, -<span class="number">1</span>, src_ty)<span class="question-mark">?</span>;
-
-                src_value_is_neg = is_neg_block.append_op_result(arith::muli(
-                    src_value_is_neg,
-                    kneg1,
-                    location,
-                ))<span class="question-mark">?</span>;
-
-                is_neg_block.append_operation(cf::br(final_block, <span class="kw-2">&amp;</span>[src_value_is_neg], location));
-            }
-
-            is_not_neg_block.append_operation(cf::br(final_block, <span class="kw-2">&amp;</span>[src_value], location));
-
-            block = final_block;
-
-            block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()
-        } <span class="kw">else </span>{
-            src_value
-        };
-
-        <span class="kw">let </span>result = <span class="kw">if </span>src_width &gt; dst_width {
-            block.append_op_result(arith::trunci(src_value, dst_ty, location))<span class="question-mark">?
-        </span>} <span class="kw">else if </span>src_is_signed {
-            block.append_op_result(arith::extsi(src_value, dst_ty, location))<span class="question-mark">?
-        </span>} <span class="kw">else </span>{
-            block.append_op_result(arith::extui(src_value, dst_ty, location))<span class="question-mark">?
-        </span>};
-
-        <span class="kw">let </span>(compare_value, compare_ty) = <span class="kw">if </span>src_width &gt; dst_width {
-            (src_value, src_ty)
-        } <span class="kw">else </span>{
-            (result, dst_ty)
-        };
-
-        <span class="kw">let </span>info_range = info
-            .to_range
-            .intersection(<span class="kw-2">&amp;</span>info.from_range)
-            .ok_or_else(|| {
-                Error::SierraAssert(SierraAssertError::Range {
-                    ranges: Box::new((info.from_range.clone(), info.to_range.clone())),
-                })
-            })<span class="question-mark">?</span>;
-
-        <span class="kw">let </span><span class="kw-2">mut </span>int_max_value: BigInt = info_range.upper - <span class="number">1</span>;
-
-        <span class="kw">let </span><span class="kw-2">mut </span>int_min_value = info_range.lower;
-
-        <span class="kw">if </span>dst_is_felt {
-            <span class="kw">let </span>prime = <span class="kw-2">&amp;</span>metadata
-                .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                </span>.prime()
-                .to_bigint()
-                .expect(<span class="string">"biguint should be casted to bigint"</span>);
-
-            int_min_value = int_min_value.rem_euclid(prime);
-            int_max_value = int_max_value.rem_euclid(prime);
-        }
-
-        <span class="kw">let </span>max_value = block.const_int_from_type(context, location, int_max_value, compare_ty)<span class="question-mark">?</span>;
-        <span class="kw">let </span>min_value = block.const_int_from_type(context, location, int_min_value, compare_ty)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>is_in_range_upper = block.append_op_result(arith::cmpi(
+            entry.append_op_result(arith::select(is_negative, adj_value, src_value, location))<span class="question-mark">?
+        </span>}
+    } <span class="kw">else if </span>src_ty.is_bounded_int(registry) &amp;&amp; src_range.lower != BigInt::ZERO {
+        <span class="kw">let </span>dst_offset = entry.const_int_from_type(
             context,
-            <span class="kw">if </span>any_is_signed {
-                CmpiPredicate::Sle
-            } <span class="kw">else </span>{
-                CmpiPredicate::Ule
-            },
-            compare_value,
-            max_value,
             location,
-        ))<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>is_in_range_lower = block.append_op_result(arith::cmpi(
-            context,
-            <span class="kw">if </span>any_is_signed {
-                CmpiPredicate::Sge
-            } <span class="kw">else </span>{
-                CmpiPredicate::Uge
-            },
-            compare_value,
-            min_value,
-            location,
-        ))<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>is_in_range =
-            block.append_op_result(arith::andi(is_in_range_upper, is_in_range_lower, location))<span class="question-mark">?</span>;
-
-        (is_in_range, result)
+            src_range.lower.clone(),
+            src_value.r#type(),
+        )<span class="question-mark">?</span>;
+        entry.append_op_result(arith::addi(src_value, dst_offset, location))<span class="question-mark">?
+    </span>} <span class="kw">else </span>{
+        src_value
     };
 
-    block.append_operation(helper.cond_br(
+    <span class="kw">let </span>lower_check = <span class="kw">if </span>dst_range.lower &gt; src_range.lower {
+        <span class="kw">let </span>dst_lower = entry.const_int_from_type(
+            context,
+            location,
+            dst_range.lower.clone(),
+            src_value.r#type(),
+        )<span class="question-mark">?</span>;
+        <span class="prelude-val">Some</span>(entry.append_op_result(arith::cmpi(
+            context,
+            <span class="kw">if </span>!is_signed {
+                CmpiPredicate::Uge
+            } <span class="kw">else </span>{
+                CmpiPredicate::Sge
+            },
+            src_value,
+            dst_lower,
+            location,
+        ))<span class="question-mark">?</span>)
+    } <span class="kw">else </span>{
+        <span class="prelude-val">None
+    </span>};
+    <span class="kw">let </span>upper_check = <span class="kw">if </span>dst_range.upper &lt; src_range.upper {
+        <span class="kw">let </span>dst_upper = entry.const_int_from_type(
+            context,
+            location,
+            dst_range.upper.clone(),
+            src_value.r#type(),
+        )<span class="question-mark">?</span>;
+        <span class="prelude-val">Some</span>(entry.append_op_result(arith::cmpi(
+            context,
+            <span class="kw">if </span>!is_signed {
+                CmpiPredicate::Ult
+            } <span class="kw">else </span>{
+                CmpiPredicate::Slt
+            },
+            src_value,
+            dst_upper,
+            location,
+        ))<span class="question-mark">?</span>)
+    } <span class="kw">else </span>{
+        <span class="prelude-val">None
+    </span>};
+
+    <span class="kw">let </span>is_in_bounds = <span class="kw">match </span>(lower_check, upper_check) {
+        (<span class="prelude-val">Some</span>(lower_check), <span class="prelude-val">Some</span>(upper_check)) =&gt; {
+            entry.append_op_result(arith::andi(lower_check, upper_check, location))<span class="question-mark">?
+        </span>}
+        (<span class="prelude-val">Some</span>(lower_check), <span class="prelude-val">None</span>) =&gt; lower_check,
+        (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(upper_check)) =&gt; upper_check,
+        (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="macro">unreachable!</span>(),
+    };
+
+    <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_ty.is_bounded_int(registry) &amp;&amp; dst_range.lower != BigInt::ZERO {
+        <span class="kw">let </span>dst_offset = entry.const_int_from_type(
+            context,
+            location,
+            dst_range.lower.clone(),
+            src_value.r#type(),
+        )<span class="question-mark">?</span>;
+        entry.append_op_result(arith::subi(src_value, dst_offset, location))<span class="question-mark">?
+    </span>} <span class="kw">else </span>{
+        src_value
+    };
+
+    <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_width &lt; compute_width {
+        entry.append_op_result(arith::trunci(
+            dst_value,
+            IntegerType::new(context, dst_width).into(),
+            location,
+        ))<span class="question-mark">?
+    </span>} <span class="kw">else </span>{
+        dst_value
+    };
+    entry.append_operation(helper.cond_br(
         context,
-        is_in_range,
+        is_in_bounds,
         [<span class="number">0</span>, <span class="number">1</span>],
-        [<span class="kw-2">&amp;</span>[range_check, result], <span class="kw-2">&amp;</span>[range_check]],
+        [<span class="kw-2">&amp;</span>[range_check, dst_value], <span class="kw-2">&amp;</span>[range_check]],
         location,
     ));
 
@@ -957,131 +942,110 @@
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>src_ty = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_ty = registry.get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>src_type = src_ty.build(
-        context,
-        helper,
-        registry,
-        metadata,
-        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
-    )<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_type = dst_ty.build(
-        context,
-        helper,
-        registry,
-        metadata,
-        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>src_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>location = Location::name(
-        context,
-        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"upcast&lt;{:?}, {:?}&gt;"</span>, src_type, dst_type),
-        location,
+    <span class="kw">if </span>info.signature.param_signatures[<span class="number">0</span>].ty == info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty {
+        entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[src_value], location));
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+    }
+
+    <span class="kw">let </span>src_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>dst_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>src_range = src_ty.integer_range(registry).unwrap();
+    <span class="kw">let </span>dst_range = dst_ty.integer_range(registry).unwrap();
+    <span class="macro">assert!</span>(
+        <span class="kw">if </span>dst_ty.is_felt252(registry) {
+            <span class="kw">let </span>alt_range = Range {
+                lower: -HALF_PRIME.clone(),
+                upper: HALF_PRIME.clone() + BigInt::one(),
+            };
+
+            (dst_range.lower &lt;= src_range.lower &amp;&amp; dst_range.upper &gt;= src_range.upper)
+                || (alt_range.lower &lt;= src_range.lower &amp;&amp; alt_range.upper &gt;= src_range.upper)
+        } <span class="kw">else </span>{
+            dst_range.lower &lt;= src_range.lower &amp;&amp; dst_range.upper &gt;= src_range.upper
+        },
+        <span class="string">"invalid upcast `{:?}` into `{:?}`: target range doesn't contain the source range"</span>,
+        info.signature.param_signatures[<span class="number">0</span>].ty,
+        info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty
     );
 
-    <span class="kw">let </span>src_width = src_ty
-        .integer_width()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_width = dst_ty
-        .integer_width()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
-    <span class="macro">assert!</span>(src_width &lt;= dst_width);
+    <span class="kw">let </span>src_width = <span class="kw">if </span>src_ty.is_bounded_int(registry) {
+        src_range.offset_bit_width()
+    } <span class="kw">else </span>{
+        src_range.zero_based_bit_width()
+    };
+    <span class="kw">let </span>dst_width = <span class="kw">if </span>dst_ty.is_bounded_int(registry) {
+        dst_range.offset_bit_width()
+    } <span class="kw">else </span>{
+        dst_range.zero_based_bit_width()
+    };
 
-    <span class="kw">let </span>is_signed = src_ty
-        .is_integer_signed()
-        .ok_or_else(|| Error::SierraAssert(SierraAssertError::Cast))<span class="question-mark">?</span>;
+    <span class="comment">// If the source can be negative, the target type must also contain negatives when upcasting.
+    </span><span class="macro">assert!</span>(
+        src_range.lower.sign() != Sign::Minus
+            || dst_ty.is_felt252(registry)
+            || dst_range.lower.sign() == Sign::Minus
+    );
+    <span class="kw">let </span>is_signed = src_range.lower.sign() == Sign::Minus;
 
-    <span class="kw">let </span>is_felt = <span class="macro">matches!</span>(dst_ty, CoreTypeConcrete::Felt252(<span class="kw">_</span>));
-
-    <span class="kw">let </span>block = entry;
-
-    <span class="kw">let </span>result = <span class="kw">if </span>src_width == dst_width {
-        block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()
-    } <span class="kw">else if </span>is_signed || is_felt {
-        <span class="kw">if </span>is_felt {
-            <span class="kw">let </span>result = block.append_op_result(arith::extsi(
-                block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                IntegerType::new(context, dst_width.try_into()<span class="question-mark">?</span>).into(),
+    <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_width &gt; src_width {
+        <span class="kw">if </span>is_signed &amp;&amp; !src_ty.is_bounded_int(registry) {
+            entry.append_op_result(arith::extsi(
+                src_value,
+                IntegerType::new(context, dst_width).into(),
                 location,
-            ))<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>kzero = block.const_int_from_type(context, location, <span class="number">0</span>, dst_type)<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>is_neg = block.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Slt,
-                result,
-                kzero,
-                location,
-            ))<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>is_neg_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
-            <span class="kw">let </span>is_not_neg_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
-            <span class="kw">let </span>final_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[(dst_type, location)]));
-
-            block.append_operation(cf::cond_br(
-                context,
-                is_neg,
-                is_neg_block,
-                is_not_neg_block,
-                <span class="kw-2">&amp;</span>[],
-                <span class="kw-2">&amp;</span>[],
-                location,
-            ));
-
-            {
-                <span class="kw">let </span>result = is_not_neg_block.append_op_result(arith::extui(
-                    entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                    IntegerType::new(context, dst_width.try_into()<span class="question-mark">?</span>).into(),
-                    location,
-                ))<span class="question-mark">?</span>;
-
-                is_not_neg_block.append_operation(cf::br(final_block, <span class="kw-2">&amp;</span>[result], location));
-            }
-
-            {
-                <span class="kw">let </span><span class="kw-2">mut </span>result = is_neg_block.append_op_result(arith::extsi(
-                    entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                    IntegerType::new(context, dst_width.try_into()<span class="question-mark">?</span>).into(),
-                    location,
-                ))<span class="question-mark">?</span>;
-
-                <span class="kw">let </span>value = metadata
-                    .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                    </span>.prime()
-                    .to_bigint()
-                    .unwrap();
-
-                <span class="kw">let </span>prime = is_neg_block.const_int_from_type(context, location, value, dst_type)<span class="question-mark">?</span>;
-
-                result = is_neg_block.append_op_result(arith::addi(result, prime, location))<span class="question-mark">?</span>;
-                is_neg_block.append_operation(cf::br(final_block, <span class="kw-2">&amp;</span>[result], location));
-            }
-
-            <span class="kw">let </span>result = final_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-            final_block.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-        } <span class="kw">else </span>{
-            block.append_op_result(arith::extsi(
-                entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                IntegerType::new(context, dst_width.try_into()<span class="question-mark">?</span>).into(),
+            ))<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            entry.append_op_result(arith::extui(
+                src_value,
+                IntegerType::new(context, dst_width).into(),
                 location,
             ))<span class="question-mark">?
         </span>}
     } <span class="kw">else </span>{
-        block.append_op_result(arith::extui(
-            block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-            IntegerType::new(context, dst_width.try_into()<span class="question-mark">?</span>).into(),
-            location,
-        ))<span class="question-mark">?
-    </span>};
+        src_value
+    };
 
-    block.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
+    <span class="kw">let </span>dst_value = <span class="kw">if </span>src_ty.is_bounded_int(registry) &amp;&amp; src_range.lower != BigInt::ZERO {
+        <span class="kw">let </span>dst_offset = entry.const_int_from_type(
+            context,
+            location,
+            <span class="kw">if </span>dst_ty.is_bounded_int(registry) {
+                <span class="kw-2">&amp;</span>src_range.lower - <span class="kw-2">&amp;</span>dst_range.lower
+            } <span class="kw">else </span>{
+                src_range.lower.clone()
+            },
+            dst_value.r#type(),
+        )<span class="question-mark">?</span>;
+        entry.append_op_result(arith::addi(dst_value, dst_offset, location))<span class="question-mark">?
+    </span>} <span class="kw">else </span>{
+        dst_value
+    };
+
+    <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_ty.is_felt252(registry) &amp;&amp; src_range.lower.sign() == Sign::Minus {
+        <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">252</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>is_negative = entry.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Slt,
+            dst_value,
+            k0,
+            location,
+        ))<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>k_prime = entry.const_int(context, location, PRIME.clone(), <span class="number">252</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>adj_value = entry.append_op_result(arith::addi(dst_value, k_prime, location))<span class="question-mark">?</span>;
+
+        entry.append_op_result(arith::select(is_negative, adj_value, dst_value, location))<span class="question-mark">?
+    </span>} <span class="kw">else </span>{
+        dst_value
+    };
+
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[dst_value], location));
     <span class="prelude-val">Ok</span>(())
 }
 

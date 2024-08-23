@@ -125,6 +125,10 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>utils;
 
 <span class="kw">use </span>anyhow::bail;
@@ -135,10 +139,10 @@
 };
 <span class="kw">use </span>cairo_lang_filesystem::cfg::{Cfg, CfgSet};
 <span class="kw">use </span>cairo_lang_starknet::starknet_plugin_suite;
-<span class="kw">use </span>cairo_lang_test_plugin::{compile_test_prepared_db, test_plugin_suite};
+<span class="kw">use </span>cairo_lang_test_plugin::{compile_test_prepared_db, test_plugin_suite, TestsCompilationConfig};
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>colored::Colorize;
-<span class="kw">use </span>std::path::{Path, PathBuf};
+<span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>tracing_subscriber::{EnvFilter, FmtSubscriber};
 <span class="kw">use </span>utils::{
     test::{display_tests_summary, filter_test_cases, run_tests},
@@ -203,7 +207,7 @@
         b.build()<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>main_crate_ids = setup_project(db, Path::new(<span class="kw-2">&amp;</span>args.path))<span class="question-mark">?</span>;
+    <span class="kw">let </span>main_crate_ids = setup_project(db, <span class="kw-2">&amp;</span>args.path)<span class="question-mark">?</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>reporter = DiagnosticsReporter::stderr().with_crates(<span class="kw-2">&amp;</span>main_crate_ids);
     <span class="kw">if </span>args.allow_warnings {
         reporter = reporter.allow_warnings();
@@ -214,10 +218,14 @@
 
     <span class="kw">let </span>db = db.snapshot();
     <span class="kw">let </span>test_crate_ids = main_crate_ids.clone();
+    <span class="kw">let </span>test_config = TestsCompilationConfig {
+        starknet: args.starknet,
+        add_statements_functions: <span class="bool-val">false</span>,
+    };
 
     <span class="kw">let </span>build_test_compilation = compile_test_prepared_db(
         <span class="kw-2">&amp;</span>db,
-        args.starknet,
+        test_config,
         main_crate_ids.clone(),
         test_crate_ids.clone(),
     )<span class="question-mark">?</span>;
@@ -230,9 +238,9 @@
     );
 
     <span class="kw">let </span>summary = run_tests(
-        compiled.named_tests,
-        compiled.sierra_program,
-        compiled.function_set_costs,
+        compiled.metadata.named_tests,
+        compiled.sierra_program.program,
+        compiled.metadata.function_set_costs,
         RunArgs {
             run_mode: args.run_mode.clone(),
             opt_level: args.opt_level,

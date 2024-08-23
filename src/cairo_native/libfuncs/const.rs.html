@@ -302,19 +302,33 @@
 <a href="#302" id="302">302</a>
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Const libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
+<span class="kw">use </span><span class="kw">crate</span>::types::felt252::PRIME;
+<span class="kw">use </span><span class="kw">crate</span>::utils::RangeExt;
 <span class="kw">use crate</span>::{
     error::{Error, <span class="prelude-ty">Result</span>},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
-    metadata::{
-        prime_modulo::PrimeModuloMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
-    },
+    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
+<span class="kw">use </span>cairo_lang_sierra::extensions::bounded_int::BoundedIntConcreteType;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         const_type::{
@@ -327,15 +341,11 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{
-        arith,
-        llvm::{<span class="self">self</span>, r#type::pointer},
-    },
-    ir::{Attribute, Block, Location, Value},
+    dialect::llvm::{<span class="self">self</span>, r#type::pointer},
+    ir::{Block, Location, Value},
     Context,
 };
-<span class="kw">use </span>num_bigint::ToBigInt;
-<span class="kw">use </span>starknet_types_core::felt::Felt;
+<span class="kw">use </span>num_bigint::Sign;
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
@@ -541,40 +551,56 @@
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::ConstDataMismatch),
         },
-        inner_type =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>info.inner_data[..] {
+        CoreTypeConcrete::BoundedInt(BoundedIntConcreteType { range, .. }) =&gt; {
+            <span class="kw">let </span>value = <span class="kw">match </span><span class="kw-2">&amp;</span>info.inner_data.as_slice() {
+                [GenericArg::Value(value)] =&gt; value.clone(),
+                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ConstDataMismatch),
+            };
+
+            <span class="comment">// Offset the value so that 0 matches with lower.
+            </span><span class="kw">let </span>value = <span class="kw-2">&amp;</span>value - <span class="kw-2">&amp;</span>range.lower;
+
+            entry.const_int(
+                context,
+                location,
+                value,
+                inner_type
+                    .integer_range(registry)
+                    .unwrap()
+                    .offset_bit_width(),
+            )
+        }
+        CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; {
+            <span class="kw">let </span>value = <span class="kw">match </span><span class="kw-2">&amp;</span>info.inner_data.as_slice() {
+                [GenericArg::Value(value)] =&gt; value.clone(),
+                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ConstDataMismatch),
+            };
+
+            <span class="kw">let </span>(sign, value) = value.into_parts();
+            <span class="kw">let </span>value = <span class="kw">match </span>sign {
+                Sign::Minus =&gt; PRIME.clone() - value,
+                <span class="kw">_ </span>=&gt; value,
+            };
+
+            entry.const_int_from_type(context, location, value.clone(), inner_ty)
+        }
+        CoreTypeConcrete::Uint8(<span class="kw">_</span>)
+        | CoreTypeConcrete::Uint16(<span class="kw">_</span>)
+        | CoreTypeConcrete::Uint32(<span class="kw">_</span>)
+        | CoreTypeConcrete::Uint64(<span class="kw">_</span>)
+        | CoreTypeConcrete::Uint128(<span class="kw">_</span>)
+        | CoreTypeConcrete::Sint8(<span class="kw">_</span>)
+        | CoreTypeConcrete::Sint16(<span class="kw">_</span>)
+        | CoreTypeConcrete::Sint32(<span class="kw">_</span>)
+        | CoreTypeConcrete::Sint64(<span class="kw">_</span>)
+        | CoreTypeConcrete::Sint128(<span class="kw">_</span>)
+        | CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>info.inner_data.as_slice() {
             [GenericArg::Value(value)] =&gt; {
-                <span class="kw">let </span>mlir_value: Value = <span class="kw">match </span>inner_type {
-                    CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; {
-                        <span class="kw">let </span>value = <span class="kw">if </span>value.sign() == num_bigint::Sign::Minus {
-                            <span class="kw">let </span>prime = metadata
-                                .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                                .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                                </span>.prime();
-
-                            value + prime.to_bigint().expect(<span class="string">"Prime to BigInt shouldn't fail"</span>)
-                        } <span class="kw">else </span>{
-                            value.clone()
-                        };
-
-                        entry.append_op_result(arith::constant(
-                            context,
-                            Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{} : {}"</span>, value, inner_ty))
-                                .unwrap(),
-                            location,
-                        ))<span class="question-mark">?
-                    </span>}
-                    <span class="comment">// any other int type
-                    </span><span class="kw">_ </span>=&gt; entry.append_op_result(arith::constant(
-                        context,
-                        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{} : {}"</span>, value, inner_ty)).unwrap(),
-                        location,
-                    ))<span class="question-mark">?</span>,
-                };
-
-                <span class="prelude-val">Ok</span>(mlir_value)
+                entry.const_int_from_type(context, location, value.clone(), inner_ty)
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::ConstDataMismatch),
         },
+        <span class="kw">_ </span>=&gt; <span class="macro">todo!</span>(<span class="string">"const for type {}"</span>, info.inner_ty),
     }
 }
 

@@ -34,50 +34,40 @@
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
-<a href="#41" id="41">41</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `BoundedInt` type
 //!
 //! A `BoundedInt` is a int with a lower and high bound.
+//!
+//! It's represented as the offseted range using the minimal number of bits. For example:
+//!   - 10 as `BoundedInt&lt;10, 20&gt;` is represented as `0 : i4`.
+//!   - 15 as `BoundedInt&lt;10, 20&gt;` is represented as `5 : i4`.
+//!   - 1 as `BoundedInt&lt;1, 1&gt;` is represented as `0 : i0`.
 
-</span><span class="kw">use crate</span>::{error::Result, metadata::MetadataStorage};
+</span><span class="kw">use </span><span class="kw">super</span>::WithSelf;
+<span class="kw">use crate</span>::{error::Result, metadata::MetadataStorage, utils::RangeExt};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         bounded_int::BoundedIntConcreteType,
         core::{CoreLibfunc, CoreType},
-        types::InfoOnlyConcreteType,
     },
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    ir::{Module, Type},
+    ir::{r#type::IntegerType, Module, Type},
     Context,
 };
-
-<span class="kw">use </span><span class="kw">super</span>::WithSelf;
 
 <span class="doccomment">/// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'ctx</span>&gt;,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    _module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'ctx</span>&gt;,
+    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;BoundedIntConcreteType&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
-    <span class="comment">// todo: possible optimization, we may be able to use less bits depending on the possible values within the range.
-
-    </span><span class="kw">let </span>info = WithSelf {
-        self_ty: info.self_ty,
-        inner: <span class="kw-2">&amp;</span>InfoOnlyConcreteType {
-            info: info.info.clone(),
-        },
-    };
-
-    <span class="kw">super</span>::felt252::build(context, module, registry, metadata, info)
+    <span class="kw">let </span>n_bits = info.range.offset_bit_width();
+    <span class="prelude-val">Ok</span>(IntegerType::new(context, n_bits).into())
 }
 </code></pre></div></section></main></body></html>

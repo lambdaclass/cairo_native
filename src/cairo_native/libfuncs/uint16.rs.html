@@ -931,7 +931,6 @@
 <a href="#931" id="931">931</a>
 <a href="#932" id="932">932</a>
 <a href="#933" id="933">933</a>
-<a href="#934" id="934">934</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u16`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -1529,16 +1528,15 @@
             }
         };
         <span class="kw">static </span><span class="kw-2">ref </span>U16_SQRT: (String, Program) = <span class="macro">load_cairo!</span> {
-            <span class="kw">use </span>core::integer::u16_sqrt;
-
+            <span class="kw">use </span>core::num::traits::Sqrt;
             <span class="kw">fn </span>run_test(value: u16) -&gt; u8 {
-                u16_sqrt(value)
+                value.sqrt()
             }
         };
         <span class="kw">static </span><span class="kw-2">ref </span>U16_WIDEMUL: (String, Program) = <span class="macro">load_cairo!</span> {
-            <span class="kw">use </span>integer::u16_wide_mul;
+            <span class="kw">use </span>core::num::traits::WideMul;
             <span class="kw">fn </span>run_test(lhs: u16, rhs: u16) -&gt; u32 {
-                u16_wide_mul(lhs, rhs)
+                WideMul::wide_mul(lhs,rhs)
             }
         };
     }

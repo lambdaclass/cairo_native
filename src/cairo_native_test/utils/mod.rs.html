@@ -575,20 +575,12 @@
 <a href="#575" id="575">575</a>
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
 </pre></div><pre class="rust"><code><span class="attr">#![cfg(feature = <span class="string">"build-cli"</span>)]
 #![allow(dead_code)]
 
 </span><span class="kw">pub mod </span>test;
 
 <span class="kw">use </span>anyhow::bail;
-<span class="kw">use </span>cairo_felt::Felt252;
 <span class="kw">use </span>cairo_lang_runner::{casm_run::format_next_item, RunResultValue};
 <span class="kw">use </span>cairo_lang_sierra::program::{Function, Program};
 <span class="kw">use </span>cairo_native::{execution_result::ExecutionResult, values::JitValue};
@@ -627,7 +619,7 @@
 }
 
 <span class="doccomment">/// Formats the given felts as a panic string.
-</span><span class="kw">pub fn </span>format_for_panic(<span class="kw-2">mut </span>felts: IntoIter&lt;Felt252&gt;) -&gt; String {
+</span><span class="kw">pub fn </span>format_for_panic(<span class="kw-2">mut </span>felts: IntoIter&lt;Felt&gt;) -&gt; String {
     <span class="kw">let </span><span class="kw-2">mut </span>items = Vec::new();
     <span class="kw">while let </span><span class="prelude-val">Some</span>(item) = format_next_item(<span class="kw-2">&amp;mut </span>felts) {
         items.push(item.quote_if_string());
@@ -651,10 +643,9 @@
             value,
             debug_name,
         } =&gt; {
-            <span class="kw">if </span>debug_name
-                .as_ref()
-                .expect(<span class="string">"missing debug name"</span>)
-                .starts_with(<span class="string">"core::panics::PanicResult::"</span>)
+            <span class="kw">let </span>debug_name = debug_name.as_ref().expect(<span class="string">"missing debug name"</span>);
+            <span class="kw">if </span>debug_name.starts_with(<span class="string">"core::panics::PanicResult::"</span>)
+                || debug_name.starts_with(<span class="string">"Enum&lt;ut@core::panics::PanicResult::"</span>)
             {
                 is_success = <span class="kw-2">*</span>tag == <span class="number">0</span>;
 
@@ -758,7 +749,6 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>cairo_felt::Felt252;
     <span class="kw">use </span>cairo_lang_sierra::ProgramParser;
     <span class="kw">use </span>std::collections::HashMap;
 
@@ -812,10 +802,10 @@
             })
             .unwrap(),
             RunResultValue::Success(<span class="macro">vec!</span>[
-                Felt252::from(<span class="number">34</span>),
-                Felt252::from(<span class="number">42</span>),
-                Felt252::from(<span class="number">100</span>),
-                Felt252::from(<span class="number">1000</span>)
+                Felt::from(<span class="number">34</span>),
+                Felt::from(<span class="number">42</span>),
+                Felt::from(<span class="number">100</span>),
+                Felt::from(<span class="number">1000</span>)
             ])
         );
     }
@@ -834,7 +824,7 @@
                 builtin_stats: Default::default(),
             })
             .unwrap(),
-            RunResultValue::Success(<span class="macro">vec!</span>[Felt252::from(<span class="number">24</span>)])
+            RunResultValue::Success(<span class="macro">vec!</span>[Felt::from(<span class="number">24</span>)])
         );
     }
 
@@ -892,11 +882,7 @@
                 builtin_stats: Default::default(),
             })
             .unwrap(),
-            RunResultValue::Panic(<span class="macro">vec!</span>[
-                Felt252::from(<span class="number">42</span>),
-                Felt252::from(<span class="number">100</span>),
-                Felt252::from(<span class="number">1000</span>)
-            ])
+            RunResultValue::Panic(<span class="macro">vec!</span>[Felt::from(<span class="number">42</span>), Felt::from(<span class="number">100</span>), Felt::from(<span class="number">1000</span>)])
         );
     }
 
@@ -910,7 +896,7 @@
                 builtin_stats: Default::default(),
             })
             .unwrap(),
-            RunResultValue::Success(<span class="macro">vec!</span>[Felt252::from(<span class="number">10</span>)])
+            RunResultValue::Success(<span class="macro">vec!</span>[Felt::from(<span class="number">10</span>)])
         );
     }
 

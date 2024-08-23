@@ -425,7 +425,7 @@
                 std::fs::write(
                     <span class="string">"dump-prepass-debug-pretty.mlir"</span>,
                     module.as_operation().to_string_with_flags(
-                        OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">true</span>),
+                        OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">false</span>),
                     )<span class="question-mark">?</span>,
                 )
                 .expect(<span class="string">"failed to writedump-prepass-debug-pretty.mlir"</span>);
@@ -445,7 +445,7 @@
                 std::fs::write(
                     <span class="string">"dump-debug-pretty.mlir"</span>,
                     module.as_operation().to_string_with_flags(
-                        OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">true</span>),
+                        OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">false</span>),
                     )<span class="question-mark">?</span>,
                 )
                 .expect(<span class="string">"failed to write dump-debug-pretty.mlir"</span>);

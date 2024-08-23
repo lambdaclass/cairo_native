@@ -142,28 +142,29 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>utils;
 
 <span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_compiler::{
+    compile_prepared_db,
     db::RootDatabase,
     diagnostics::DiagnosticsReporter,
     project::{check_compiler_path, setup_project},
+    CompilerConfig,
 };
-<span class="kw">use </span>cairo_lang_diagnostics::ToOption;
 <span class="kw">use </span>cairo_lang_runner::short_string::as_cairo_short_string;
-<span class="kw">use </span>cairo_lang_sierra_generator::{
-    db::SierraGenGroup,
-    replace_ids::{DebugReplacer, SierraIdReplacer},
-};
-<span class="kw">use </span>cairo_lang_starknet::contract::get_contracts_info;
 <span class="kw">use </span>cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
+    starknet_stub::StubSyscallHandler,
 };
 <span class="kw">use </span>clap::{Parser, ValueEnum};
-<span class="kw">use </span>std::path::{Path, PathBuf};
+<span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>tracing_subscriber::{EnvFilter, FmtSubscriber};
 <span class="kw">use </span>utils::{find_function, result_to_runresult};
 
@@ -210,31 +211,36 @@
     <span class="comment">// Check if args.path is a file or a directory.
     </span>check_compiler_path(args.single_file, <span class="kw-2">&amp;</span>args.path)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>db = <span class="kw-2">&amp;mut </span>RootDatabase::builder().detect_corelib().build()<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>db_builder = RootDatabase::builder();
+    db_builder.detect_corelib();
+    <span class="kw">if </span>args.available_gas.is_none() {
+        db_builder.skip_auto_withdraw_gas();
+    }
+    <span class="kw">let </span><span class="kw-2">mut </span>db = db_builder.build()<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>main_crate_ids = setup_project(db, Path::new(<span class="kw-2">&amp;</span>args.path))<span class="question-mark">?</span>;
+    <span class="kw">let </span>main_crate_ids = setup_project(<span class="kw-2">&amp;mut </span>db, <span class="kw-2">&amp;</span>args.path)<span class="question-mark">?</span>;
 
     <span class="kw">let </span><span class="kw-2">mut </span>reporter = DiagnosticsReporter::stderr();
     <span class="kw">if </span>args.allow_warnings {
         reporter = reporter.allow_warnings();
     }
-    <span class="kw">if </span>reporter.check(db) {
+    <span class="kw">if </span>reporter.check(<span class="kw-2">&amp;</span>db) {
         <span class="macro">anyhow::bail!</span>(<span class="string">"failed to compile: {}"</span>, args.path.display());
     }
 
-    <span class="kw">let </span>sierra_program = db
-        .get_sierra_program(main_crate_ids.clone())
-        .to_option()
-        .with_context(|| <span class="string">"Compilation failed without any diagnostics."</span>)<span class="question-mark">?
-        </span>.program
-        .clone();
-    <span class="kw">let </span>replacer = DebugReplacer { db };
+    <span class="kw">let </span>sierra_program = compile_prepared_db(
+        <span class="kw-2">&amp;mut </span>db,
+        main_crate_ids,
+        CompilerConfig {
+            replace_ids: <span class="bool-val">true</span>,
+            ..Default::default()
+        },
+    )<span class="question-mark">?
+    </span>.program;
+
     <span class="kw">if </span>args.available_gas.is_none() &amp;&amp; sierra_program.requires_gas_counter() {
         <span class="macro">anyhow::bail!</span>(<span class="string">"Program requires gas counter, please provide `--available-gas` argument."</span>);
     }
-
-    <span class="kw">let </span>_contracts_info = get_contracts_info(db, main_crate_ids, <span class="kw-2">&amp;</span>replacer)<span class="question-mark">?</span>;
-    <span class="kw">let </span>sierra_program = replacer.apply(<span class="kw-2">&amp;</span>sierra_program);
 
     <span class="kw">let </span>native_context = NativeContext::new();
 
@@ -259,8 +265,10 @@
         .get_initial_available_gas(<span class="kw-2">&amp;</span>func.id, args.available_gas.map(|x| x.try_into().unwrap()))
         .with_context(|| <span class="string">"not enough gas to run"</span>)<span class="question-mark">?</span>;
 
+    <span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = StubSyscallHandler::default();
+
     <span class="kw">let </span>result = native_executor
-        .invoke_dynamic(<span class="kw-2">&amp;</span>func.id, <span class="kw-2">&amp;</span>[], <span class="prelude-val">Some</span>(initial_gas))
+        .invoke_dynamic_with_syscall_handler(<span class="kw-2">&amp;</span>func.id, <span class="kw-2">&amp;</span>[], <span class="prelude-val">Some</span>(initial_gas), <span class="kw-2">&amp;mut </span>syscall_handler)
         .with_context(|| <span class="string">"Failed to run the function."</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>run_result = result_to_runresult(<span class="kw-2">&amp;</span>result)<span class="question-mark">?</span>;

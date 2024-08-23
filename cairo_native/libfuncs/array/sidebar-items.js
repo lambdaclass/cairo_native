@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["build","build_append","build_get","build_len","build_new","build_pop_front","build_pop_front_consume","build_slice","build_snapshot_pop_back","build_snapshot_pop_front","build_span_from_tuple"]};
+window.SIDEBAR_ITEMS = {"fn":["build","build_append","build_get","build_len","build_new","build_pop_front","build_pop_front_consume","build_slice","build_snapshot_multi_pop_back","build_snapshot_multi_pop_front","build_snapshot_pop_back","build_snapshot_pop_front","build_span_from_tuple","build_tuple_from_span"]};

@@ -1476,16 +1476,16 @@
             }
         };
         <span class="kw">static </span><span class="kw-2">ref </span>U64_SQRT: (String, Program) = <span class="macro">load_cairo!</span> {
-            <span class="kw">use </span>core::integer::u64_sqrt;
+            <span class="kw">use </span>core::num::traits::Sqrt;
 
             <span class="kw">fn </span>run_test(value: u64) -&gt; u32 {
-                u64_sqrt(value)
+                value.sqrt()
             }
         };
         <span class="kw">static </span><span class="kw-2">ref </span>U64_WIDEMUL: (String, Program) = <span class="macro">load_cairo!</span> {
-            <span class="kw">use </span>integer::u64_wide_mul;
+            <span class="kw">use </span>core::num::traits::WideMul;
             <span class="kw">fn </span>run_test(lhs: u64, rhs: u64) -&gt; u128 {
-                u64_wide_mul(lhs, rhs)
+                WideMul::wide_mul(lhs,rhs)
             }
         };
     }

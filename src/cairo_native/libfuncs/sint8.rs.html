@@ -1288,9 +1288,9 @@
             }
         };
         <span class="kw">static </span><span class="kw-2">ref </span>I8_WIDEMUL: (String, Program) = <span class="macro">load_cairo!</span> {
-            <span class="kw">use </span>integer::i8_wide_mul;
+            <span class="kw">use </span>core::num::traits::WideMul;
             <span class="kw">fn </span>run_test(lhs: i8, rhs: i8) -&gt; i16 {
-                i8_wide_mul(lhs, rhs)
+                WideMul::wide_mul(lhs,rhs)
             }
         };
     }

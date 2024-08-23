@@ -256,16 +256,20 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMode};
 <span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_runner::RunResultValue;
 <span class="kw">use </span>cairo_lang_sierra::program::Program;
 <span class="kw">use </span>cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId};
-<span class="kw">use </span>cairo_lang_test_plugin::TestCompilation;
 <span class="kw">use </span>cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     TestConfig,
 };
+<span class="kw">use </span>cairo_lang_test_plugin::{TestCompilation, TestCompilationMetadata};
 <span class="kw">use </span>cairo_lang_utils::casts::IntoOrPanic;
 <span class="kw">use </span>cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 <span class="kw">use </span>cairo_native::starknet_stub::StubSyscallHandler;
@@ -328,8 +332,9 @@
     ignored: bool,
     filter: String,
 ) -&gt; (TestCompilation, usize) {
-    <span class="kw">let </span>total_tests_count = compiled.named_tests.len();
+    <span class="kw">let </span>total_tests_count = compiled.metadata.named_tests.len();
     <span class="kw">let </span>named_tests = compiled
+        .metadata
         .named_tests
         .into_iter()
         <span class="comment">// Filtering unignored tests in `ignored` mode
@@ -345,7 +350,10 @@
         .collect_vec();
     <span class="kw">let </span>filtered_out = total_tests_count - named_tests.len();
     <span class="kw">let </span>tests = TestCompilation {
-        named_tests,
+        metadata: TestCompilationMetadata {
+            named_tests,
+            ..compiled.metadata
+        },
         ..compiled
     };
     (tests, filtered_out)

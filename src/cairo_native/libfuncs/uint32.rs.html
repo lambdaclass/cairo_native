@@ -1468,16 +1468,16 @@
             }
         };
         <span class="kw">static </span><span class="kw-2">ref </span>U32_SQRT: (String, Program) = <span class="macro">load_cairo!</span> {
-            <span class="kw">use </span>core::integer::u32_sqrt;
+            <span class="kw">use </span>core::num::traits::Sqrt;
 
             <span class="kw">fn </span>run_test(value: u32) -&gt; u16 {
-                u32_sqrt(value)
+                value.sqrt()
             }
         };
         <span class="kw">static </span><span class="kw-2">ref </span>U32_WIDEMUL: (String, Program) = <span class="macro">load_cairo!</span> {
-            <span class="kw">use </span>integer::u32_wide_mul;
+            <span class="kw">use </span>core::num::traits::WideMul;
             <span class="kw">fn </span>run_test(lhs: u32, rhs: u32) -&gt; u64 {
-                u32_wide_mul(lhs, rhs)
+                WideMul::wide_mul(lhs,rhs)
             }
         };
     }

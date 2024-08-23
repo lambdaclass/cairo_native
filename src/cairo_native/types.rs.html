@@ -963,11 +963,76 @@
 <a href="#963" id="963">963</a>
 <a href="#964" id="964">964</a>
 <a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
+<a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
 </span><span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
+<span class="kw">use </span><span class="kw">crate</span>::utils::RangeExt;
 <span class="kw">use crate</span>::{
     error::Error <span class="kw">as </span>CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
@@ -977,6 +1042,8 @@
     },
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
+<span class="kw">use </span>cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete;
+<span class="kw">use </span>cairo_lang_sierra::extensions::utils::Range;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -986,6 +1053,7 @@
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
+<span class="kw">use </span>felt252::PRIME;
 <span class="kw">use </span>melior::{
     dialect::{
         llvm::{<span class="self">self</span>, r#type::pointer},
@@ -994,7 +1062,8 @@
     ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
-<span class="kw">use </span>num_traits::Signed;
+<span class="kw">use </span>num_bigint::{BigInt, ToBigInt};
+<span class="kw">use </span>num_traits::{Bounded, One};
 <span class="kw">use </span>std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
 <span class="kw">pub mod </span>array;
@@ -1003,6 +1072,7 @@
 <span class="kw">pub mod </span>r#box;
 <span class="kw">pub mod </span>builtin_costs;
 <span class="kw">pub mod </span>bytes31;
+<span class="kw">pub mod </span>circuit;
 <span class="kw">pub mod </span>coupon;
 <span class="kw">pub mod </span>ec_op;
 <span class="kw">pub mod </span>ec_point;
@@ -1067,13 +1137,15 @@
     /// a function invocation argument or return value.
     </span><span class="kw">fn </span>is_memory_allocated(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool;
 
-    <span class="doccomment">/// If the type is an integer type, return its width in bits.
-    ///
-    /// TODO: How is it used?
-    </span><span class="kw">fn </span>integer_width(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt;;
+    <span class="doccomment">/// If the type is an integer, return its value range.
+    </span><span class="kw">fn </span>integer_range(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Range&gt;;
 
-    <span class="doccomment">/// If the type is an integer type, return if its signed.
-    </span><span class="kw">fn </span>is_integer_signed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt;;
+    <span class="doccomment">/// Return whether the type is a `BoundedInt&lt;&gt;`, either directly or indirectly (ex. through
+    /// `NonZero&lt;BoundedInt&lt;&gt;&gt;`).
+    </span><span class="kw">fn </span>is_bounded_int(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool;
+    <span class="doccomment">/// Return whether the type is a `felt252`, either directly or indirectly (ex. through
+    /// `NonZero&lt;BoundedInt&lt;&gt;&gt;`).
+    </span><span class="kw">fn </span>is_felt252(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool;
 
     <span class="doccomment">/// If the type is a enum type, return all possible variants.
     ///
@@ -1248,6 +1320,13 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            <span class="self">Self</span>::RangeCheck96(info) =&gt; <span class="self">self</span>::range_check::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             <span class="self">Self</span>::SegmentArena(info) =&gt; <span class="self">self</span>::segment_arena::build(
                 context,
                 module,
@@ -1375,6 +1454,13 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            CoreTypeConcrete::Circuit(info) =&gt; <span class="self">self</span>::circuit::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
         }
     }
 
@@ -1386,11 +1472,14 @@
                 | CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>)
                 | CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>)
                 | CoreTypeConcrete::RangeCheck(<span class="kw">_</span>)
+                | CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>)
                 | CoreTypeConcrete::Pedersen(<span class="kw">_</span>)
                 | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
                 | CoreTypeConcrete::Coupon(<span class="kw">_</span>)
                 | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>))
                 | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>)
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(<span class="kw">_</span>))
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(<span class="kw">_</span>))
         )
     }
 
@@ -1404,6 +1493,7 @@
             | CoreTypeConcrete::RangeCheck(<span class="kw">_</span>)
             | CoreTypeConcrete::Pedersen(<span class="kw">_</span>)
             | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
+            | CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) <span class="comment">// u64 is not complex
             </span>| CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
 
@@ -1456,11 +1546,22 @@
             },
             CoreTypeConcrete::Struct(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 
-            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::BoundedInt(_info) =&gt; {
+                <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
+                </span><span class="kw">let </span>value = _info.range.offset_bit_width() &gt; <span class="number">128</span>;
+
+                <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
+                </span><span class="kw">let </span>value = <span class="bool-val">false</span>;
+
+                value
+            },
             CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>)) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>))
+            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>)) =&gt; <span class="macro">todo!</span>(),
             CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+
+            CoreTypeConcrete::Circuit(info) =&gt; circuit::is_complex(info)
         }
     }
 
@@ -1472,6 +1573,7 @@
             | CoreTypeConcrete::RangeCheck(<span class="kw">_</span>)
             | CoreTypeConcrete::Pedersen(<span class="kw">_</span>)
             | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
+            | CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>)
             | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             <span class="comment">// Other builtins:
             </span>CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>)
@@ -1530,6 +1632,7 @@
                 type_info.is_zst(registry)
             }
             CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Circuit(info) =&gt; circuit::is_zst(info),
         }
     }
 
@@ -1618,6 +1721,7 @@
                         .unwrap()
                         .<span class="number">0
                 </span>}
+                StarkNetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>) =&gt; Layout::new::&lt;<span class="kw-2">*mut </span>()&gt;(),
             },
             CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; Layout::new::&lt;u64&gt;(),
             CoreTypeConcrete::Snapshot(info) =&gt; registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?</span>,
@@ -1627,15 +1731,14 @@
             CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">64</span>),
             CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">128</span>),
             CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">248</span>),
-            CoreTypeConcrete::BoundedInt(info) =&gt; get_integer_layout(
-                (info.range.lower.bits().max(info.range.upper.bits()) + <span class="number">1</span>)
-                    .try_into()
-                    .expect(<span class="string">"should always fit u32"</span>),
-            ),
+            CoreTypeConcrete::BoundedInt(info) =&gt; get_integer_layout(info.range.offset_bit_width()),
+
             CoreTypeConcrete::Const(const_type) =&gt; {
                 registry.get_type(<span class="kw-2">&amp;</span>const_type.inner_ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?
             </span>}
             CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; Layout::new::&lt;()&gt;(),
+            CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">64</span>),
+            CoreTypeConcrete::Circuit(info) =&gt; circuit::layout(registry, info)<span class="question-mark">?</span>,
         }
         .pad_to_align())
     }
@@ -1667,6 +1770,7 @@
             CoreTypeConcrete::NonZero(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Nullable(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+            CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Uninitialized(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Enum(info) =&gt; {
                 <span class="comment">// Enums are memory-allocated if either:
@@ -1711,52 +1815,76 @@
                 .unwrap()
                 .is_memory_allocated(registry),
             CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+            CoreTypeConcrete::Circuit(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn </span>integer_width(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
-        <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Uint8(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">8</span>),
-            <span class="self">Self</span>::Uint16(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">16</span>),
-            <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">32</span>),
-            <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">64</span>),
-            <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">128</span>),
-            <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">252</span>),
-            <span class="self">Self</span>::Sint8(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">8</span>),
-            <span class="self">Self</span>::Sint16(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">16</span>),
-            <span class="self">Self</span>::Sint32(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">32</span>),
-            <span class="self">Self</span>::Sint64(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">64</span>),
-            <span class="self">Self</span>::Sint128(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">128</span>),
-
-            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">252</span>),
-            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="number">248</span>),
-            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-        }
-    }
-
-    <span class="kw">fn </span>is_integer_signed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
-        <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Uint8(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
-            <span class="self">Self</span>::Uint16(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
-            <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
-            <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
-            <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
-            <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
-            <span class="self">Self</span>::Sint8(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
-            <span class="self">Self</span>::Sint16(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
-            <span class="self">Self</span>::Sint32(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
-            <span class="self">Self</span>::Sint64(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
-            <span class="self">Self</span>::Sint128(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
-
-            CoreTypeConcrete::BoundedInt(info) =&gt; {
-                <span class="prelude-val">Some</span>(info.range.lower.is_negative() || info.range.upper.is_negative())
+    <span class="kw">fn </span>integer_range(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Range&gt; {
+        <span class="kw">fn </span>range_of&lt;T&gt;() -&gt; Range
+        <span class="kw">where
+            </span>T: Bounded + Into&lt;BigInt&gt;,
+        {
+            Range {
+                lower: T::min_value().into(),
+                upper: T::max_value().into() + BigInt::one(),
             }
-            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="bool-val">false</span>),
-            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        }
 
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        <span class="prelude-val">Some</span>(<span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Uint8(<span class="kw">_</span>) =&gt; range_of::&lt;u8&gt;(),
+            <span class="self">Self</span>::Uint16(<span class="kw">_</span>) =&gt; range_of::&lt;u16&gt;(),
+            <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; range_of::&lt;u32&gt;(),
+            <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; range_of::&lt;u64&gt;(),
+            <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; range_of::&lt;u128&gt;(),
+            <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; Range {
+                lower: BigInt::ZERO,
+                upper: PRIME.to_bigint().unwrap(),
+            },
+            <span class="self">Self</span>::Sint8(<span class="kw">_</span>) =&gt; range_of::&lt;i8&gt;(),
+            <span class="self">Self</span>::Sint16(<span class="kw">_</span>) =&gt; range_of::&lt;i16&gt;(),
+            <span class="self">Self</span>::Sint32(<span class="kw">_</span>) =&gt; range_of::&lt;i32&gt;(),
+            <span class="self">Self</span>::Sint64(<span class="kw">_</span>) =&gt; range_of::&lt;i64&gt;(),
+            <span class="self">Self</span>::Sint128(<span class="kw">_</span>) =&gt; range_of::&lt;i128&gt;(),
+
+            <span class="self">Self</span>::BoundedInt(info) =&gt; info.range.clone(),
+            <span class="self">Self</span>::Bytes31(<span class="kw">_</span>) =&gt; Range {
+                lower: BigInt::ZERO,
+                upper: BigInt::one() &lt;&lt; <span class="number">248</span>,
+            },
+            <span class="self">Self</span>::Const(info) =&gt; {
+                <span class="kw">return </span>registry
+                    .get_type(<span class="kw-2">&amp;</span>info.inner_ty)
+                    .unwrap()
+                    .integer_range(registry)
+            }
+            <span class="self">Self</span>::NonZero(info) =&gt; {
+                <span class="kw">return </span>registry.get_type(<span class="kw-2">&amp;</span>info.ty).unwrap().integer_range(registry)
+            }
+
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+        })
+    }
+
+    <span class="kw">fn </span>is_bounded_int(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            CoreTypeConcrete::NonZero(info) =&gt; registry
+                .get_type(<span class="kw-2">&amp;</span>info.ty)
+                .unwrap()
+                .is_bounded_int(registry),
+
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+        }
+    }
+
+    <span class="kw">fn </span>is_felt252(<span class="kw-2">&amp;</span><span class="self">self</span>, registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            CoreTypeConcrete::NonZero(info) =&gt; {
+                registry.get_type(<span class="kw-2">&amp;</span>info.ty).unwrap().is_felt252(registry)
+            }
+
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
