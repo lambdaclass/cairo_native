@@ -76,7 +76,7 @@ fn main() -> anyhow::Result<()> {
         b.build()?
     };
 
-    let main_crate_ids = setup_project(db, Path::new(&args.path))?;
+    let main_crate_ids = setup_project(db, &args.path)?;
     let mut reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_ids);
     if args.allow_warnings {
         reporter = reporter.allow_warnings();
