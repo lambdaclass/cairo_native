@@ -253,10 +253,6 @@ fn compile_func(
 
         Some(true)
     } else {
-        for (a, b) in &return_type_infos {
-            dbg!(a);
-            dbg!(b.info());
-        }
         None
     };
 
