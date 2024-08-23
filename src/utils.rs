@@ -252,6 +252,12 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
         );
 
         engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_init",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_init
+                as *const fn(*mut [[u8; 32]; 4]) as *mut (),
+        );
+
+        engine.register_symbol(
             "cairo_native__libfunc__ec__ec_state_add_mul",
             cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul
                 as *const fn(*mut [[u8; 32]; 4], *const [u8; 32], *const [[u8; 32]; 2]) -> bool

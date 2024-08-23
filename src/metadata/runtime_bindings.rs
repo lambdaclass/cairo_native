@@ -21,6 +21,7 @@ enum RuntimeBinding {
     HadesPermutation,
     EcStateTryFinalizeNz,
     EcStateAddMul,
+    EcStateInit,
     EcStateAdd,
     EcPointTryNewNz,
     EcPointFromXNz,
@@ -274,6 +275,43 @@ impl RuntimeBindingsMeta {
             FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_point_try_new_nz"),
             &[point_ptr],
             &[IntegerType::new(context, 1).into()],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `ec_state_init()` function.
+    pub fn libfunc_ec_state_init<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        state_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::EcStateInit) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_state_init"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_init"),
+            &[state_ptr],
+            &[],
             location,
         )))
     }
