@@ -66,7 +66,7 @@ use cairo_lang_sierra::{
     edit_state,
     extensions::{
         core::{CoreLibfunc, CoreType},
-        ConcreteLibfunc, ConcreteType,
+        ConcreteLibfunc,
     },
     ids::{ConcreteTypeId, VarId},
     program::{Function, Invocation, Program, Statement, StatementIdx},

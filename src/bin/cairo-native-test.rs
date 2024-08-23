@@ -11,7 +11,7 @@ use cairo_lang_starknet::starknet_plugin_suite;
 use cairo_lang_test_plugin::{compile_test_prepared_db, test_plugin_suite, TestsCompilationConfig};
 use clap::Parser;
 use colored::Colorize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{
     test::{display_tests_summary, filter_test_cases, run_tests},
