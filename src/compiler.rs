@@ -66,7 +66,7 @@ use cairo_lang_sierra::{
     edit_state,
     extensions::{
         core::{CoreLibfunc, CoreType},
-        ConcreteLibfunc,
+        ConcreteLibfunc, ConcreteType,
     },
     ids::{ConcreteTypeId, VarId},
     program::{Function, Invocation, Program, Statement, StatementIdx},
@@ -253,6 +253,10 @@ fn compile_func(
 
         Some(true)
     } else {
+        for (a, b) in &return_type_infos {
+            dbg!(a);
+            dbg!(b.info());
+        }
         None
     };
 
