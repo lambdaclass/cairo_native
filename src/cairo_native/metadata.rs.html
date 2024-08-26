@@ -129,6 +129,28 @@
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Code generation metadata
 //!
 //! The metadata is used for various stuff that would be otherwise difficult or plain impossible
@@ -254,10 +276,32 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>runtime_library_insert_works() {
-        <span class="kw">let </span><span class="kw-2">mut </span>metadata = MetadataStorage::new();
-        <span class="kw">let </span>ret = metadata.insert(RuntimeBindingsMeta::default());
+        <span class="comment">// Create a new instance of MetadataStorage.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>metadata = MetadataStorage::new();
 
-        <span class="macro">assert!</span>(ret.is_some());
+        <span class="comment">// Insert a new instance of RuntimeBindingsMeta.
+        </span><span class="kw">let </span>ret = metadata.insert(RuntimeBindingsMeta::default());
+
+        <span class="comment">// Check that the insertion was successful by asserting that `ret` is not `None`.
+        </span><span class="macro">assert!</span>(ret.is_some());
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>runtime_library_insert_non_vacant() {
+        <span class="comment">// Create a new instance of MetadataStorage.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>metadata = MetadataStorage::new();
+
+        <span class="comment">// Insert a new instance of RuntimeBindingsMeta.
+        </span><span class="kw">let </span>ret_vacant = metadata.insert(RuntimeBindingsMeta::default());
+
+        <span class="comment">// Check that the first insertion was successful.
+        </span><span class="macro">assert!</span>(ret_vacant.is_some());
+
+        <span class="comment">// Attempt to insert another instance of RuntimeBindingsMeta.
+        </span><span class="kw">let </span>ret_non_vacant = metadata.insert(RuntimeBindingsMeta::default());
+
+        <span class="comment">// Check that the second insertion failed because an instance of the same type already exists.
+        </span><span class="macro">assert!</span>(ret_non_vacant.is_none());
     }
 }
 </code></pre></div></section></main></body></html>
