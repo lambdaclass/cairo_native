@@ -717,7 +717,7 @@ For more examples, check out the `examples/` directory.
 ### Requirements
 
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.6.4](https://github.com/starkware-libs/cairo)
+- [cairo 2.7.1](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 18 with MLIR
 
@@ -893,19 +893,57 @@ the `target/` folder besides the generated JSON sierra files.
 
 ### Useful environment variables
 
-These 2 env vars will dump the generated MLIR code from any compilation on the current working directory as:
+This env will dump the generated MLIR code from any compilation on the current working directory as:
 
 - `dump.mlir`: The MLIR code after passes without locations.
 - `dump-debug.mlir`: The MLIR code after passes with locations.
 - `dump-prepass.mlir`: The MLIR code before without locations.
 - `dump-prepass-debug.mlir`: The MLIR code before passes with locations.
+- `program.sierra`: The compiled sierra code, if using a debugger such as lldb, this file path is the default used in debug info to show sources.
 
 Do note that the MLIR with locations is in pretty form and thus not suitable to pass to `mlir-opt`.
 
 ```bash
-export NATIVE_DEBUG_DUMP_PREPASS=1
 export NATIVE_DEBUG_DUMP=1
 ```
+
+### Debugging with LLDB
+
+To debug with LLDB (or another debugger), we must compile the binary with the `with-debug-utils` feature.
+```bash
+cargo build --bin cairo-native-run --features with-debug-utils
+```
+
+Then, we can add the a debugger breakpoint trap. To add it at a given sierra statement, we can set the following env var:
+```bash
+export NATIVE_DEBUG_TRAP_AT_STMT=10
+```
+The trap instruction may not end up exactly where the statement is.
+
+If we want to manually set the breakpoint (for example, when executing a particular libfunc), then we can use the `DebugUtils` metadata in the code.
+```rust
+#[cfg(feature = "with-debug-utils")]
+{
+    metadata.get_mut::<DebugUtils>()
+        .unwrap()
+        .debug_breakpoint_trap(block, location)?;
+}
+```
+
+Now, we need to execute `cairo-native-run` from our debugger (LLDB). If we want to see the source locations, we also need to set the `NATIVE_DEBUG_DUMP` env var and execute the program with AOT.
+
+```bash
+lldb -- target/debug/cairo-native-run -s programs/recursion.cairo --available-gas 99999999 --run-mode aot
+```
+
+Some usefull lldb commands:
+- `process launch`: starts the program
+- `frame select`: shows the current line information
+- `thread step-in`: makes a source level single step
+- `thread continue`: continues execution of the current process
+- `disassemble --frame --mixed`: shows assembly instructions mixed with source level code
+
+### Logging
 
 Enable logging to see the compilation process:
 
@@ -913,7 +951,7 @@ Enable logging to see the compilation process:
 export RUST_LOG="cairo_native=trace"
 ```
 
-Other tips:
+### Other tips
 
 - Try to find the minimal program to reproduce an issue, the more isolated the easier to test.
 - Use the `debug_utils` print utilities, more info [here](https://lambdaclass.github.io/cairo_native/cairo_native/metadata/debug_utils/struct.DebugUtils.html):

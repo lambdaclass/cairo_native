@@ -17,19 +17,21 @@ use std::{collections::HashSet, marker::PhantomData};
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum RuntimeBinding {
-    DebugPrint,
     Pedersen,
     HadesPermutation,
-    EcPointFromXNz,
-    EcPointTryNewNz,
-    EcStateAdd,
-    EcStateAddMul,
     EcStateTryFinalizeNz,
+    EcStateAddMul,
+    EcStateInit,
+    EcStateAdd,
+    EcPointTryNewNz,
+    EcPointFromXNz,
     DictNew,
+    DictInsert,
     DictGet,
     DictGasRefund,
-    DictInsert,
     DictFree,
+    DictValues,
+    DebugPrint,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -277,6 +279,43 @@ impl RuntimeBindingsMeta {
         )))
     }
 
+    /// Register if necessary, then invoke the `ec_state_init()` function.
+    pub fn libfunc_ec_state_init<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        state_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::EcStateInit) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_state_init"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_init"),
+            &[state_ptr],
+            &[],
+            location,
+        )))
+    }
+
     /// Register if necessary, then invoke the `ec_state_add()` function.
     pub fn libfunc_ec_state_add<'c, 'a>(
         &mut self,
@@ -498,6 +537,55 @@ impl RuntimeBindingsMeta {
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_free"),
             &[ptr],
             &[],
+            location,
+        )))
+    }
+
+    /// Register if necessary, then invoke the `dict_clone()` function.
+    ///
+    /// Returns a opaque pointer as the result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dict_values<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        ptr: Value<'c, 'a>,
+        len_ptr: Value<'c, 'a>,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::DictValues) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__dict_values"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                        ], // ptr to dict, out ptr to length
+                        &[llvm::r#type::pointer(context, 0)], // ptr to array of struct (key, value_ptr)
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_values"),
+            &[ptr, len_ptr],
+            &[llvm::r#type::pointer(context, 0)],
             location,
         )))
     }

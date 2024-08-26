@@ -10,19 +10,24 @@ use crate::{
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
+    utils::RangeExt,
     values::JitValue,
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
+        ConcreteType,
     },
     ids::{ConcreteTypeId, FunctionId},
     program::FunctionSignature,
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
+use num_bigint::BigInt;
+use num_traits::One;
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -185,7 +190,7 @@ fn invoke_dynamic(
         });
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
-        return_ptr.as_ptr().to_bytes(&mut invoke_data);
+        return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
 
         Some(return_ptr)
     } else {
@@ -216,16 +221,16 @@ fn invoke_dynamic(
     }) {
         // Process gas requirements and syscall handler.
         match registry.get_type(type_id).unwrap() {
-            CoreTypeConcrete::GasBuiltin(_) => gas.to_bytes(&mut invoke_data),
+            CoreTypeConcrete::GasBuiltin(_) => gas.to_bytes(&mut invoke_data)?,
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
                     .expect("syscall handler is required");
 
                 (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
-                    .to_bytes(&mut invoke_data);
+                    .to_bytes(&mut invoke_data)?;
             }
-            type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data),
+            type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
             type_info => JitValueWithInfoWrapper {
                 value: iter.next().unwrap(),
                 type_id,
@@ -234,7 +239,7 @@ fn invoke_dynamic(
                 arena: &arena,
                 registry,
             }
-            .to_bytes(&mut invoke_data),
+            .to_bytes(&mut invoke_data)?,
         }
     }
 
@@ -320,6 +325,12 @@ fn invoke_dynamic(
                         CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
                         CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
+                        // todo: add RangeCheck96 to builtin_stats?
+                        CoreTypeConcrete::RangeCheck96(_) => (),
+                        // todo: add AddMod to builtin_stats?
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => (),
+                        // todo: add MulMod to builtin_stats?
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => (),
                         _ => unreachable!("{type_id:?}"),
                     }
                 }
@@ -363,6 +374,7 @@ fn parse_result(
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> Result<JitValue, Error> {
     let type_info = registry.get_type(type_id).unwrap();
+    let debug_name = type_info.info().long_id.to_string();
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
@@ -428,6 +440,24 @@ fn parse_result(
                 Ok(JitValue::Bytes31(unsafe {
                     *std::mem::transmute::<&[u64; 4], &[u8; 31]>(&ret_registers)
                 }))
+            }
+        },
+        CoreTypeConcrete::BoundedInt(info) => match return_ptr {
+            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)),
+            None => {
+                let mut data = if info.range.offset_bit_width() <= 64 {
+                    BigInt::from(ret_registers[0])
+                } else {
+                    BigInt::from(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
+                };
+
+                data &= (BigInt::one() << info.range.offset_bit_width()) - BigInt::one();
+                data += &info.range.lower;
+
+                Ok(JitValue::BoundedInt {
+                    value: data.into(),
+                    range: info.range.clone(),
+                })
             }
         },
         CoreTypeConcrete::Uint8(_) => match return_ptr {
@@ -551,14 +581,14 @@ fn parse_result(
             Ok(JitValue::Enum {
                 tag,
                 value,
-                debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+                debug_name: Some(debug_name),
             })
         }
         CoreTypeConcrete::Struct(info) => {
             if info.members.is_empty() {
                 Ok(JitValue::Struct {
                     fields: Vec::new(),
-                    debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+                    debug_name: Some(debug_name),
                 })
             } else {
                 Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
@@ -591,10 +621,11 @@ fn parse_result(
 
         CoreTypeConcrete::Felt252DictEntry(_)
         | CoreTypeConcrete::Span(_)
-        | CoreTypeConcrete::BoundedInt(_)
         | CoreTypeConcrete::Uninitialized(_)
         | CoreTypeConcrete::Coupon(_)
         | CoreTypeConcrete::StarkNet(_)
-        | CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+        | CoreTypeConcrete::Uint128MulGuarantee(_)
+        | CoreTypeConcrete::Circuit(_)
+        | CoreTypeConcrete::RangeCheck96(_) => todo!(),
     }
 }

@@ -1,6 +1,4 @@
-use integer::u16_wrapping_sub;
-use integer::u32_wrapping_sub;
-use integer::u64_wrapping_sub;
+use core::num::traits::WrappingSub;
 
 fn main() -> (
     (u16, u16, u16),
@@ -11,17 +9,17 @@ fn main() -> (
     (
         (
             6_u16 - 4_u16,
-            u16_wrapping_sub(0_u16, 2_u16),
+            0_u16.wrapping_sub(2_u16),
             50_u16 - 2_u16,
         ),
         (
             6_u32 - 4_u32,
-            u32_wrapping_sub(0_u32, 2_u32),
+            0_u32.wrapping_sub(2_u32),
             50_u32 - 2_u32,
         ),
         (
             6_u64 - 4_u64,
-            u64_wrapping_sub(0_u64, 2_u64),
+            0_u64.wrapping_sub(2_u64),
             50_u64 - 2_u64,
         ),
         (
