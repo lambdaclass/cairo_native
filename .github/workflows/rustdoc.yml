@@ -18,7 +18,7 @@ jobs:
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.79.0
+      - uses: dtolnay/rust-toolchain@1.80.1
       - uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11

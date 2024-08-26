@@ -242,6 +242,13 @@ pub trait StarknetSyscallHandler {
         remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)>;
 
+    fn sha256_process_block(
+        &mut self,
+        prev_state: &[u32; 8],
+        current_block: &[u32; 16],
+        remaining_gas: &mut u128,
+    ) -> SyscallResult<[u32; 8]>;
+
     #[cfg(feature = "with-cheatcode")]
     fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
         unimplemented!();
@@ -431,6 +438,15 @@ impl StarknetSyscallHandler for DummySyscallHandler {
         _p: Secp256r1Point,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)> {
+        unimplemented!()
+    }
+
+    fn sha256_process_block(
+        &mut self,
+        _prev_state: &[u32; 8],
+        _current_block: &[u32; 16],
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<[u32; 8]> {
         unimplemented!()
     }
 }
@@ -700,6 +716,13 @@ pub(crate) mod handler {
             gas: &mut u128,
             p: &Secp256r1Point,
         ),
+        sha256_process_block: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<*mut [u32; 8]>,
+            ptr: &mut T,
+            gas: &mut u128,
+            prev_state: &[u32; 8],
+            current_block: &[u32; 16],
+        ),
         // testing syscalls
         #[cfg(feature = "with-cheatcode")]
         pub cheatcode: extern "C" fn(
@@ -740,6 +763,7 @@ pub(crate) mod handler {
         pub const SECP256R1_GET_POINT_FROM_X: usize =
             field_offset!(Self, secp256r1_get_point_from_x) >> 3;
         pub const SECP256R1_GET_XY: usize = field_offset!(Self, secp256r1_get_xy) >> 3;
+        pub const SHA256_PROCESS_BLOCK: usize = field_offset!(Self, sha256_process_block) >> 3;
     }
 
     #[allow(unused_variables)]
@@ -772,6 +796,7 @@ pub(crate) mod handler {
                 secp256r1_mul: Self::wrap_secp256r1_mul,
                 secp256r1_get_point_from_x: Self::wrap_secp256r1_get_point_from_x,
                 secp256r1_get_xy: Self::wrap_secp256r1_get_xy,
+                sha256_process_block: Self::wrap_sha256_process_block,
                 #[cfg(feature = "with-cheatcode")]
                 cheatcode: Self::wrap_cheatcode,
             }
@@ -1639,6 +1664,36 @@ pub(crate) mod handler {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
                         payload: ManuallyDrop::new(x),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
+        }
+
+        extern "C" fn wrap_sha256_process_block(
+            result_ptr: &mut SyscallResultAbi<*mut [u32; 8]>,
+            ptr: &mut T,
+            gas: &mut u128,
+            prev_state: &[u32; 8],
+            current_block: &[u32; 16],
+        ) {
+            let result = ptr.sha256_process_block(prev_state, current_block, gas);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new({
+                            unsafe {
+                                let data = libc::malloc(std::mem::size_of_val(&x)).cast();
+                                std::ptr::copy_nonoverlapping::<u32>(
+                                    x.as_ptr().cast(),
+                                    data,
+                                    x.len(),
+                                );
+                                data.cast()
+                            }
+                        }),
                     }),
                 },
                 Err(e) => Self::wrap_error(&e),

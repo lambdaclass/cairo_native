@@ -3,11 +3,11 @@ use anyhow::Context;
 use cairo_lang_runner::RunResultValue;
 use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId};
-use cairo_lang_test_plugin::TestCompilation;
 use cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     TestConfig,
 };
+use cairo_lang_test_plugin::{TestCompilation, TestCompilationMetadata};
 use cairo_lang_utils::casts::IntoOrPanic;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use cairo_native::starknet_stub::StubSyscallHandler;
@@ -70,8 +70,9 @@ pub fn filter_test_cases(
     ignored: bool,
     filter: String,
 ) -> (TestCompilation, usize) {
-    let total_tests_count = compiled.named_tests.len();
+    let total_tests_count = compiled.metadata.named_tests.len();
     let named_tests = compiled
+        .metadata
         .named_tests
         .into_iter()
         // Filtering unignored tests in `ignored` mode
@@ -87,7 +88,10 @@ pub fn filter_test_cases(
         .collect_vec();
     let filtered_out = total_tests_count - named_tests.len();
     let tests = TestCompilation {
-        named_tests,
+        metadata: TestCompilationMetadata {
+            named_tests,
+            ..compiled.metadata
+        },
         ..compiled
     };
     (tests, filtered_out)
@@ -134,16 +138,7 @@ pub fn run_tests(
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context
-        .compile_with_metadata(
-            &sierra_program,
-            MetadataComputationConfig {
-                function_set_costs: function_set_costs.clone(),
-                linear_ap_change_solver: true,
-                linear_gas_solver: true,
-            },
-        )
-        .unwrap();
+    let native_module = native_context.compile(&sierra_program).unwrap();
 
     let native_executor: NativeExecutor = match args.run_mode {
         RunMode::Aot => {

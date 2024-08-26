@@ -134,7 +134,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 fn load_contract(path: impl AsRef<Path>) -> Program {
     let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
     let main_crate_ids = setup_project(&mut db, path.as_ref()).unwrap();
-    compile_prepared_db(
+    let sirrra_program = compile_prepared_db(
         &mut db,
         main_crate_ids,
         CompilerConfig {
@@ -142,7 +142,9 @@ fn load_contract(path: impl AsRef<Path>) -> Program {
             ..Default::default()
         },
     )
-    .unwrap()
+    .unwrap();
+
+    sirrra_program.program
 }
 
 criterion_group!(benches, criterion_benchmark);

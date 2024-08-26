@@ -494,6 +494,15 @@ impl StarknetSyscallHandler for SyscallHandler {
             _ => vec![],
         }
     }
+
+    fn sha256_process_block(
+        &mut self,
+        prev_state: &[u32; 8],
+        _current_block: &[u32; 16],
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<[u32; 8]> {
+        Ok(*prev_state)
+    }
 }
 
 lazy_static! {
@@ -1156,4 +1165,39 @@ fn pop_l2_to_l1_message() {
         .unwrap()
         .events
         .is_empty());
+}
+
+#[test]
+fn sha256_process() {
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "sha256_process",
+        &[],
+        Some(u128::MAX),
+        Some(SyscallHandler::new()),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        JitValue::Enum {
+            tag: 0,
+            value: Box::new(JitValue::Struct {
+                fields: vec![JitValue::Struct {
+                    fields: vec![
+                        1779033703_u32.into(),
+                        3144134277_u32.into(),
+                        1013904242_u32.into(),
+                        2773480762_u32.into(),
+                        1359893119_u32.into(),
+                        2600822924_u32.into(),
+                        528734635_u32.into(),
+                        1541459225_u32.into(),
+                    ],
+                    debug_name: None
+                }],
+                debug_name: None
+            }),
+            debug_name: None,
+        },
+    );
 }

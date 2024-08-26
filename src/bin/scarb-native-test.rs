@@ -81,9 +81,9 @@ fn main() -> anyhow::Result<()> {
             );
 
             let summary = run_tests(
-                compiled.named_tests,
-                compiled.sierra_program,
-                compiled.function_set_costs,
+                compiled.metadata.named_tests,
+                compiled.sierra_program.program,
+                compiled.metadata.function_set_costs,
                 RunArgs {
                     run_mode: args.run_mode.clone(),
                     opt_level: args.opt_level,

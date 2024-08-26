@@ -2,25 +2,21 @@ mod utils;
 
 use anyhow::Context;
 use cairo_lang_compiler::{
+    compile_prepared_db,
     db::RootDatabase,
     diagnostics::DiagnosticsReporter,
     project::{check_compiler_path, setup_project},
+    CompilerConfig,
 };
-use cairo_lang_diagnostics::ToOption;
 use cairo_lang_runner::short_string::as_cairo_short_string;
-use cairo_lang_sierra_generator::{
-    db::SierraGenGroup,
-    replace_ids::{DebugReplacer, SierraIdReplacer},
-};
-use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     context::NativeContext,
-    debug_info::{DebugInfo, DebugLocations},
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
+    starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
 
@@ -67,50 +63,41 @@ fn main() -> anyhow::Result<()> {
     // Check if args.path is a file or a directory.
     check_compiler_path(args.single_file, &args.path)?;
 
-    let db = &mut RootDatabase::builder().detect_corelib().build()?;
+    let mut db_builder = RootDatabase::builder();
+    db_builder.detect_corelib();
+    if args.available_gas.is_none() {
+        db_builder.skip_auto_withdraw_gas();
+    }
+    let mut db = db_builder.build()?;
 
-    let main_crate_ids = setup_project(db, Path::new(&args.path))?;
+    let main_crate_ids = setup_project(&mut db, &args.path)?;
 
     let mut reporter = DiagnosticsReporter::stderr();
     if args.allow_warnings {
         reporter = reporter.allow_warnings();
     }
-    if reporter.check(db) {
+    if reporter.check(&db) {
         anyhow::bail!("failed to compile: {}", args.path.display());
     }
 
-    let sierra_program = db
-        .get_sierra_program(main_crate_ids.clone())
-        .to_option()
-        .with_context(|| "Compilation failed without any diagnostics.")?
-        .program
-        .clone();
-    let replacer = DebugReplacer { db };
+    let sierra_program = compile_prepared_db(
+        &mut db,
+        main_crate_ids,
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )?
+    .program;
+
     if args.available_gas.is_none() && sierra_program.requires_gas_counter() {
         anyhow::bail!("Program requires gas counter, please provide `--available-gas` argument.");
     }
 
-    let _contracts_info = get_contracts_info(db, main_crate_ids, &replacer)?;
-    let sierra_program = replacer.apply(&sierra_program);
-
     let native_context = NativeContext::new();
 
-    let debug_locations = {
-        let debug_info = DebugInfo::extract(db, &sierra_program)
-            .map_err(|_| {
-                let mut buffer = String::new();
-                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(db));
-                buffer
-            })
-            .unwrap();
-
-        DebugLocations::extract(native_context.context(), db, &debug_info)
-    };
-
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context
-        .compile(&sierra_program, Some(debug_locations))
-        .unwrap();
+    let native_module = native_context.compile(&sierra_program).unwrap();
 
     let native_executor: NativeExecutor = match args.run_mode {
         RunMode::Aot => {
@@ -130,8 +117,10 @@ fn main() -> anyhow::Result<()> {
         .get_initial_available_gas(&func.id, args.available_gas.map(|x| x.try_into().unwrap()))
         .with_context(|| "not enough gas to run")?;
 
+    let mut syscall_handler = StubSyscallHandler::default();
+
     let result = native_executor
-        .invoke_dynamic(&func.id, &[], Some(initial_gas))
+        .invoke_dynamic_with_syscall_handler(&func.id, &[], Some(initial_gas), &mut syscall_handler)
         .with_context(|| "Failed to run the function.")?;
 
     let run_result = result_to_runresult(&result)?;
