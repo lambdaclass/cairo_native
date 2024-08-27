@@ -39,12 +39,12 @@ required-features = ["scarb"]
 [features]
 default = ["build-cli", "with-runtime"]
 build-cli = [
-    "dep:clap",
-    "dep:tracing-subscriber",
-    "dep:anyhow",
-    "dep:cairo-lang-test-plugin",
-    "dep:cairo-lang-runner",
-    "dep:colored",
+  "dep:clap",
+  "dep:tracing-subscriber",
+  "dep:anyhow",
+  "dep:cairo-lang-test-plugin",
+  "dep:cairo-lang-runner",
+  "dep:colored",
 ]
 scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
 with-debug-utils = []
@@ -56,14 +56,11 @@ with-cheatcode = []
 bumpalo = "3.16.0"
 cairo-lang-compiler = "2.7.1"
 cairo-lang-defs = "2.7.1"
-cairo-lang-diagnostics = "2.7.1"
 cairo-lang-filesystem = "2.7.1"
-cairo-lang-lowering = "2.7.1"
 cairo-lang-semantic = "2.7.1"
 cairo-lang-sierra = "2.7.1"
 cairo-lang-sierra-generator = "2.7.1"
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
-id-arena = "2.2"
 itertools = "0.13.0"
 lazy_static = "1.4"
 libc = "0.2.155"
@@ -73,9 +70,9 @@ mlir-sys = "0.2.2"
 num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "0.1.5", default-features = false, features = [
-    "std",
-    "serde",
-    "num-traits",
+  "std",
+  "serde",
+  "num-traits",
 ] }
 tempfile = "3.6"
 thiserror = "1.0.59"
@@ -92,9 +89,9 @@ cairo-native-runtime = { version = "0.2.0", path = "runtime", optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
 libloading = "0.8.3"
 tracing-subscriber = { version = "0.3.18", features = [
-    "env-filter",
-    "json",
-    "registry",
+  "env-filter",
+  "json",
+  "registry",
 ], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 anyhow = { version = "1.0", optional = true }
