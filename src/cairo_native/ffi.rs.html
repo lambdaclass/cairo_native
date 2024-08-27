@@ -554,6 +554,20 @@
 <a href="#554" id="554">554</a>
 <a href="#555" id="555">555</a>
 <a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # FFI Wrappers
 //!
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
@@ -565,7 +579,8 @@
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
         LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart,
     },
-    prelude::{LLVMContextRef, LLVMMemoryBufferRef, LLVMModuleRef},
+    error::LLVMGetErrorMessage,
+    prelude::LLVMMemoryBufferRef,
     target::{
         LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos,
         LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
@@ -576,13 +591,16 @@
         LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode,
         LLVMTargetMachineEmitToMemoryBuffer, LLVMTargetRef,
     },
+    transforms::pass_builder::{
+        LLVMCreatePassBuilderOptions, LLVMDisposePassBuilderOptions, LLVMRunPasses,
+    },
 };
 <span class="kw">use </span>melior::ir::{Module, Type, TypeLike};
-<span class="kw">use </span>mlir_sys::{MlirAttribute, MlirContext, MlirModule, MlirOperation};
+<span class="kw">use </span>mlir_sys::{mlirTranslateModuleToLLVMIR, MlirAttribute, MlirContext, MlirModule};
 <span class="kw">use </span>std::{
     borrow::Cow,
     error::Error,
-    ffi::{c_void, CStr},
+    ffi::{c_void, CStr, CString},
     fmt::Display,
     io::Write,
     mem::MaybeUninit,
@@ -707,13 +725,6 @@
 
 <span class="kw">extern </span><span class="string">"C" </span>{
     <span class="kw">fn </span>LLVMStructType_getFieldTypeAt(ty_ptr: <span class="kw-2">*const </span>c_void, index: u32) -&gt; <span class="kw-2">*const </span>c_void;
-
-    <span class="doccomment">/// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
-    /// This translates operations from any dilalect that has a registered implementation of LLVMTranslationDialectInterface.
-    </span><span class="kw">fn </span>mlirTranslateModuleToLLVMIR(
-        module_operation_ptr: MlirOperation,
-        llvm_context: LLVMContextRef,
-    ) -&gt; LLVMModuleRef;
 
     <span class="kw">pub fn </span>mlirLLVMDistinctAttrCreate(attr: MlirAttribute) -&gt; MlirAttribute;
 
@@ -855,7 +866,7 @@
 
         <span class="kw">let </span>op = module.as_operation().to_raw();
 
-        <span class="kw">let </span>llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context);
+        <span class="kw">let </span>llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>) <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>null = null_mut();
         <span class="kw">let </span><span class="kw-2">mut </span>error_buffer = <span class="macro">addr_of_mut!</span>(null);
@@ -892,6 +903,23 @@
             LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
+
+        <span class="kw">let </span>opts = LLVMCreatePassBuilderOptions();
+        <span class="kw">let </span>opt = <span class="kw">match </span>opt_level {
+            OptLevel::None =&gt; <span class="number">0</span>,
+            OptLevel::Less =&gt; <span class="number">1</span>,
+            OptLevel::Default =&gt; <span class="number">2</span>,
+            OptLevel::Aggressive =&gt; <span class="number">3</span>,
+        };
+        <span class="kw">let </span>passes = CString::new(<span class="macro">format!</span>(<span class="string">"default&lt;O{opt}&gt;"</span>)).unwrap();
+        <span class="kw">let </span>error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
+        <span class="kw">if </span>!error.is_null() {
+            <span class="kw">let </span>msg = LLVMGetErrorMessage(error);
+            <span class="kw">let </span>msg = CStr::from_ptr(msg);
+            <span class="prelude-val">Err</span>(LLVMCompileError(msg.to_string_lossy().into_owned()))<span class="question-mark">?</span>;
+        }
+
+        LLVMDisposePassBuilderOptions(opts);
 
         <span class="kw">let </span><span class="kw-2">mut </span>out_buf: MaybeUninit&lt;LLVMMemoryBufferRef&gt; = MaybeUninit::uninit();
 

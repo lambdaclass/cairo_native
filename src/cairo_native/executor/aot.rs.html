@@ -289,6 +289,15 @@
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -500,12 +509,15 @@
     }
 
     <span class="attr">#[rstest]
-    </span><span class="kw">fn </span>test_invoke_dynamic(program: Program) {
+    #[case(OptLevel::None)]
+    #[case(OptLevel::Default)]
+    #[case(OptLevel::Aggressive)]
+    </span><span class="kw">fn </span>test_invoke_dynamic(program: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
         <span class="kw">let </span>native_context = NativeContext::new();
         <span class="kw">let </span>module = native_context
             .compile(<span class="kw-2">&amp;</span>program)
             .expect(<span class="string">"failed to compile context"</span>);
-        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel);
 
         <span class="comment">// The first function in the program is `run_test`.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>program.funcs.first().expect(<span class="string">"should have a function"</span>).id;
@@ -518,12 +530,15 @@
     }
 
     <span class="attr">#[rstest]
-    </span><span class="kw">fn </span>test_invoke_dynamic_with_syscall_handler(program: Program) {
+    #[case(OptLevel::None)]
+    #[case(OptLevel::Default)]
+    #[case(OptLevel::Aggressive)]
+    </span><span class="kw">fn </span>test_invoke_dynamic_with_syscall_handler(program: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
         <span class="kw">let </span>native_context = NativeContext::new();
         <span class="kw">let </span>module = native_context
             .compile(<span class="kw-2">&amp;</span>program)
             .expect(<span class="string">"failed to compile context"</span>);
-        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel);
 
         <span class="comment">// The second function in the program is `get_block_hash`.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>program.funcs.get(<span class="number">1</span>).expect(<span class="string">"should have a function"</span>).id;
@@ -554,12 +569,15 @@
     }
 
     <span class="attr">#[rstest]
-    </span><span class="kw">fn </span>test_invoke_contract_dynamic(starknet_program: Program) {
+    #[case(OptLevel::None)]
+    #[case(OptLevel::Default)]
+    #[case(OptLevel::Aggressive)]
+    </span><span class="kw">fn </span>test_invoke_contract_dynamic(starknet_program: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
         <span class="kw">let </span>native_context = NativeContext::new();
         <span class="kw">let </span>module = native_context
             .compile(<span class="kw-2">&amp;</span>starknet_program)
             .expect(<span class="string">"failed to compile context"</span>);
-        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel);
 
         <span class="comment">// The last function in the program is the `get` wrapper function.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>starknet_program
