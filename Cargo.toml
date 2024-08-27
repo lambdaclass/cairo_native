@@ -39,12 +39,12 @@ required-features = ["scarb"]
 [features]
 default = ["build-cli", "with-runtime"]
 build-cli = [
-  "dep:clap",
-  "dep:tracing-subscriber",
-  "dep:anyhow",
-  "dep:cairo-lang-test-plugin",
-  "dep:cairo-lang-runner",
-  "dep:colored",
+    "dep:clap",
+    "dep:tracing-subscriber",
+    "dep:anyhow",
+    "dep:cairo-lang-test-plugin",
+    "dep:cairo-lang-runner",
+    "dep:colored",
 ]
 scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
 with-debug-utils = []
@@ -70,9 +70,9 @@ mlir-sys = "0.2.2"
 num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "0.1.5", default-features = false, features = [
-  "std",
-  "serde",
-  "num-traits",
+    "std",
+    "serde",
+    "num-traits",
 ] }
 tempfile = "3.6"
 thiserror = "1.0.59"
@@ -89,9 +89,9 @@ cairo-native-runtime = { version = "0.2.0", path = "runtime", optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
 libloading = "0.8.3"
 tracing-subscriber = { version = "0.3.18", features = [
-  "env-filter",
-  "json",
-  "registry",
+    "env-filter",
+    "json",
+    "registry",
 ], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 anyhow = { version = "1.0", optional = true }
