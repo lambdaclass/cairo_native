@@ -396,6 +396,15 @@ impl StarknetSyscallHandler for SyscallHandler {
             _ => vec![],
         }
     }
+
+    fn sha256_process_block(
+        &mut self,
+        _prev_state: &[u32; 8],
+        _current_block: &[u32; 16],
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<[u32; 8]> {
+        unimplemented!()
+    }
 }
 
 fn main() {
@@ -424,7 +433,7 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(&sierra_program, None).unwrap();
+    let native_program = native_context.compile(&sierra_program).unwrap();
 
     // Call the echo function from the contract using the generated wrapper.
 

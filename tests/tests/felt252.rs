@@ -2,12 +2,12 @@ use crate::common::{
     any_felt, compare_outputs, load_cairo, nonzero_felt, run_native_program, run_vm_program,
     DEFAULT_GAS,
 };
-use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::{starknet::DummySyscallHandler, values::JitValue};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
+use starknet_types_core::felt::Felt;
 
 lazy_static! {
 
@@ -63,7 +63,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
+            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -89,7 +89,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
+            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -115,7 +115,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
+            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -141,7 +141,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
+            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
