@@ -166,11 +166,13 @@ mlirLLVMDICompileUnitAttrGet(MlirContext ctx, MlirAttribute id,
 
 extern "C" void mlirModuleCleanup(MlirModule mod) {
   auto x = unwrap(mod);
-  for (auto &op : x.getOps().begin()->getBlock()->getOperations()) {
-    if (llvm::CastInfo<LLVMFuncOp, Operation>::isPossible(op)) {
-      LLVMFuncOp x = llvm::CastInfo<LLVMFuncOp, Operation>::doCast(op);
-      if (x.getSymName().starts_with("_mlir_ciface")) {
-        x->setLoc(mlir::UnknownLoc::get(x->getContext()));
+  if (!x.getOps().empty()) {
+    for (auto &op : x.getOps().begin()->getBlock()->getOperations()) {
+      if (llvm::CastInfo<LLVMFuncOp, Operation>::isPossible(op)) {
+        LLVMFuncOp x = llvm::CastInfo<LLVMFuncOp, Operation>::doCast(op);
+        if (x.getSymName().starts_with("_mlir_ciface")) {
+          x->setLoc(mlir::UnknownLoc::get(x->getContext()));
+        }
       }
     }
   }
