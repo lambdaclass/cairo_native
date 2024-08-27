@@ -1,103 +1,129 @@
-//! Various error types used thorough the crate.
-use crate::metadata::gas::GasMetadataError;
-use cairo_lang_sierra::extensions::modules::utils::Range;
-use cairo_lang_sierra::{
-    edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
-};
-use num_bigint::BigInt;
-use std::{alloc::LayoutError, num::TryFromIntError};
-use thiserror::Error;
+//! Various error types used throughout the crate.
+pub mod errors {
+    use crate::metadata::gas::GasMetadataError;
+    use cairo_lang_sierra::extensions::modules::utils::Range;
+    use cairo_lang_sierra::{
+        edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
+    };
+    use num_bigint::BigInt;
+    use std::{alloc::LayoutError, num::TryFromIntError};
+    use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, Error>;
+    pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error(transparent)]
-    LayoutError(#[from] LayoutError),
+    #[derive(Error, Debug)]
+    pub enum Error {
+        #[error(transparent)]
+        LayoutError(#[from] LayoutError),
 
-    #[error(transparent)]
-    MlirError(#[from] melior::Error),
+        #[error(transparent)]
+        MlirError(#[from] melior::Error),
 
-    #[error("missing parameter of type '{0}'")]
-    MissingParameter(String),
+        #[error("missing parameter of type '{0}'")]
+        MissingParameter(MissingParameterError),
 
-    #[error("unexpected value, expected value of type '{0}'")]
-    UnexpectedValue(String),
+        #[error("unexpected value, expected value of type '{0}'")]
+        UnexpectedValue(UnexpectedValueError),
 
-    #[error("a syscall handler was expected but was not provided")]
-    MissingSyscallHandler,
+        #[error("a syscall handler was expected but was not provided")]
+        MissingSyscallHandler,
 
-    #[error(transparent)]
-    LayoutErrorPolyfill(#[from] crate::utils::LayoutError),
+        #[error(transparent)]
+        LayoutErrorPolyfill(#[from] crate::utils::LayoutError),
 
-    #[error(transparent)]
-    ProgramRegistryErrorBoxed(#[from] Box<ProgramRegistryError>),
+        #[error(transparent)]
+        ProgramRegistryErrorBoxed(#[from] Box<ProgramRegistryError>),
 
-    #[error(transparent)]
-    TryFromIntError(#[from] TryFromIntError),
+        #[error(transparent)]
+        TryFromIntError(#[from] TryFromIntError),
 
-    #[error("error parsing attribute")]
-    ParseAttributeError,
+        #[error("error parsing attribute")]
+        ParseAttributeError(ParseAttributeError),
 
-    #[error("missing metadata")]
-    MissingMetadata,
+        #[error("missing metadata")]
+        MissingMetadata(MissingMetadataError),
 
-    #[error(transparent)]
-    SierraAssert(#[from] SierraAssertError),
+        #[error(transparent)]
+        SierraAssert(#[from] SierraAssertError),
 
-    #[error(transparent)]
-    Compiler(#[from] CompilerError),
+        #[error(transparent)]
+        Compiler(#[from] CompilerError),
 
-    #[error(transparent)]
-    EditStateError(#[from] EditStateError),
+        #[error(transparent)]
+        EditStateError(#[from] EditStateError),
 
-    #[error(transparent)]
-    GasMetadataError(#[from] GasMetadataError),
+        #[error(transparent)]
+        GasMetadataError(#[from] GasMetadataError),
 
-    #[error("llvm error")]
-    LLVMCompileError(String),
+        #[error("llvm error")]
+        LLVMCompileError(String),
 
-    #[error("cairo const data mismatch")]
-    ConstDataMismatch,
-}
-
-impl Error {
-    pub fn make_missing_parameter(ty: &ConcreteTypeId) -> Self {
-        Self::MissingParameter(
-            ty.debug_name
-                .as_ref()
-                .map(|x| x.to_string())
-                .unwrap_or_default(),
-        )
+        #[error("cairo const data mismatch")]
+        ConstDataMismatch,
     }
-}
 
-#[derive(Error, Debug)]
-pub enum SierraAssertError {
-    #[error("casts always happen between numerical types")]
-    Cast,
-    #[error("range should always intersect, from {:?} to {:?}", ranges.0, ranges.1)]
-    Range { ranges: Box<(Range, Range)> },
-    #[error("type {:?} should never be initialized", .0)]
-    BadTypeInit(ConcreteTypeId),
-    #[error("expected type information was missing")]
-    BadTypeInfo,
-    #[error("circuit cannot be evaluated")]
-    ImpossibleCircuit,
-}
+    #[derive(Debug, Error)]
+    pub enum MissingParameterError {
+        #[error("expected parameter of type '{0}'")]
+        ExpectedType(String),
+    }
 
-#[derive(Error, Debug)]
-pub enum CompilerError {
-    #[error("BoundedInt value is out of range: {:?} not within [{:?}, {:?})", value, range.0, range.1)]
-    BoundedIntOutOfRange {
-        value: Box<BigInt>,
-        range: Box<(BigInt, BigInt)>,
-    },
+    #[derive(Debug, Error)]
+    pub enum UnexpectedValueError {
+        #[error("unexpected value for type '{0}'")]
+        ForType(String),
+    }
+
+    #[derive(Debug, Error)]
+    pub enum ParseAttributeError {
+        #[error("error parsing attribute '{0}'")]
+        InvalidFormat(String),
+    }
+
+    #[derive(Debug, Error)]
+    pub enum MissingMetadataError {
+        #[error("missing metadata key '{0}'")]
+        MissingKey(String),
+    }
+
+    impl Error {
+        pub fn make_missing_parameter(ty: &ConcreteTypeId) -> Self {
+            Self::MissingParameter(MissingParameterError::ExpectedType(
+                ty.debug_name
+                    .as_ref()
+                    .map(|x| x.to_string())
+                    .unwrap_or_default(),
+            ))
+        }
+    }
+
+    #[derive(Error, Debug)]
+    pub enum SierraAssertError {
+        #[error("casts always happen between numerical types")]
+        Cast,
+        #[error("range should always intersect, from {:?} to {:?}", ranges.0, ranges.1)]
+        Range { ranges: Box<(Range, Range)> },
+        #[error("type {:?} should never be initialized", .0)]
+        BadTypeInit(ConcreteTypeId),
+        #[error("expected type information was missing")]
+        BadTypeInfo,
+        #[error("circuit cannot be evaluated")]
+        ImpossibleCircuit,
+    }
+
+    #[derive(Error, Debug)]
+    pub enum CompilerError {
+        #[error("BoundedInt value is out of range: {:?} not within [{:?}, {:?})", value, range.0, range.1)]
+        BoundedIntOutOfRange {
+            value: Box<BigInt>,
+            range: Box<(BigInt, BigInt)>,
+        },
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::errors::*;
 
     #[test]
     fn test_make_missing_parameter() {
