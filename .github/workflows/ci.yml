@@ -180,7 +180,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.7.0"
+          scarb-version: "2.7.1"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -251,9 +251,9 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.7.0"
+          scarb-version: "2.7.1"
       - name: Install deps
-        run: make deps 
+        run: make deps
       - name: Build runtime and alexandria
         run: make runtime && make check-llvm && make needs-cairo2 && make build-alexandria
       - name: Build cairo-native-runtime library.
@@ -262,7 +262,7 @@ jobs:
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
         run: cargo llvm-cov nextest --verbose --all-features --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
-      - name: test and generate coverage corelib     
+      - name: test and generate coverage corelib
         if: ${{ matrix.partition == '1' }}
         run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 

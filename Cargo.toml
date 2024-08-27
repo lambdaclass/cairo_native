@@ -129,7 +129,7 @@ serde_json = { version = "1.0.117" }
 salsa = "0.16.1"
 
 [build-dependencies]
-cc = "1.0.96"
+cc = "1.1.14"
 
 [profile.optimized-dev]
 inherits = "dev"

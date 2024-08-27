@@ -2,18 +2,13 @@ mod utils;
 
 use anyhow::Context;
 use cairo_lang_compiler::{
+    compile_prepared_db,
     db::RootDatabase,
     diagnostics::DiagnosticsReporter,
     project::{check_compiler_path, setup_project},
+    CompilerConfig,
 };
-use cairo_lang_diagnostics::ToOption;
 use cairo_lang_runner::short_string::as_cairo_short_string;
-use cairo_lang_sierra_generator::{
-    db::SierraGenGroup,
-    program_generator::SierraProgramWithDebug,
-    replace_ids::{replace_sierra_ids_in_program, DebugReplacer, SierraIdReplacer},
-};
-use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
@@ -21,10 +16,7 @@ use cairo_native::{
     starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
 
@@ -81,35 +73,31 @@ fn main() -> anyhow::Result<()> {
     if args.available_gas.is_none() {
         db_builder.skip_auto_withdraw_gas();
     }
-    let db = &mut db_builder.build()?;
+    let mut db = db_builder.build()?;
 
-    let main_crate_ids = setup_project(db, Path::new(&args.path))?;
+    let main_crate_ids = setup_project(&mut db, &args.path)?;
 
     let mut reporter = DiagnosticsReporter::stderr();
     if args.allow_warnings {
         reporter = reporter.allow_warnings();
     }
-    if reporter.check(db) {
+    if reporter.check(&db) {
         anyhow::bail!("failed to compile: {}", args.path.display());
     }
 
-    let SierraProgramWithDebug {
-        program: mut sierra_program,
-        debug_info: _,
-    } = Arc::unwrap_or_clone(
-        db.get_sierra_program(main_crate_ids.clone())
-            .to_option()
-            .with_context(|| "Compilation failed without any diagnostics.")?,
-    );
-    replace_sierra_ids_in_program(db, &sierra_program);
-    let replacer = DebugReplacer { db };
-    replacer.enrich_function_names(&mut sierra_program);
+    let sierra_program = compile_prepared_db(
+        &mut db,
+        main_crate_ids,
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )?
+    .program;
+
     if args.available_gas.is_none() && sierra_program.requires_gas_counter() {
         anyhow::bail!("Program requires gas counter, please provide `--available-gas` argument.");
     }
-
-    let _contracts_info = get_contracts_info(db, main_crate_ids, &replacer)?;
-    let sierra_program = replacer.apply(&sierra_program);
 
     let native_context = NativeContext::new();
 
