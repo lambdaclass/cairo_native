@@ -4,7 +4,6 @@
 pub mod test;
 
 use anyhow::bail;
-use cairo_felt::Felt252;
 use cairo_lang_runner::{casm_run::format_next_item, RunResultValue};
 use cairo_lang_sierra::program::{Function, Program};
 use cairo_native::{execution_result::ExecutionResult, values::JitValue};
@@ -43,7 +42,7 @@ pub fn find_function<'a>(
 }
 
 /// Formats the given felts as a panic string.
-pub fn format_for_panic(mut felts: IntoIter<Felt252>) -> String {
+pub fn format_for_panic(mut felts: IntoIter<Felt>) -> String {
     let mut items = Vec::new();
     while let Some(item) = format_next_item(&mut felts) {
         items.push(item.quote_if_string());
@@ -67,10 +66,9 @@ pub fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResult
             value,
             debug_name,
         } => {
-            if debug_name
-                .as_ref()
-                .expect("missing debug name")
-                .starts_with("core::panics::PanicResult::")
+            let debug_name = debug_name.as_ref().expect("missing debug name");
+            if debug_name.starts_with("core::panics::PanicResult::")
+                || debug_name.starts_with("Enum<ut@core::panics::PanicResult::")
             {
                 is_success = *tag == 0;
 
@@ -174,7 +172,6 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cairo_felt::Felt252;
     use cairo_lang_sierra::ProgramParser;
     use std::collections::HashMap;
 
@@ -228,10 +225,10 @@ mod tests {
             })
             .unwrap(),
             RunResultValue::Success(vec![
-                Felt252::from(34),
-                Felt252::from(42),
-                Felt252::from(100),
-                Felt252::from(1000)
+                Felt::from(34),
+                Felt::from(42),
+                Felt::from(100),
+                Felt::from(1000)
             ])
         );
     }
@@ -250,7 +247,7 @@ mod tests {
                 builtin_stats: Default::default(),
             })
             .unwrap(),
-            RunResultValue::Success(vec![Felt252::from(24)])
+            RunResultValue::Success(vec![Felt::from(24)])
         );
     }
 
@@ -308,11 +305,7 @@ mod tests {
                 builtin_stats: Default::default(),
             })
             .unwrap(),
-            RunResultValue::Panic(vec![
-                Felt252::from(42),
-                Felt252::from(100),
-                Felt252::from(1000)
-            ])
+            RunResultValue::Panic(vec![Felt::from(42), Felt::from(100), Felt::from(1000)])
         );
     }
 
@@ -326,7 +319,7 @@ mod tests {
                 builtin_stats: Default::default(),
             })
             .unwrap(),
-            RunResultValue::Success(vec![Felt252::from(10)])
+            RunResultValue::Success(vec![Felt::from(10)])
         );
     }
 

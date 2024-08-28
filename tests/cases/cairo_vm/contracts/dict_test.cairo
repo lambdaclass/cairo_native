@@ -1,7 +1,7 @@
 #[starknet::contract]
 mod DictTest {
     use dict::Felt252DictTrait;
-    use traits::Index;
+    use core::ops::index::Index;
 
     const KEY1: felt252 = 10;
     const KEY2: felt252 = 21;
@@ -27,12 +27,12 @@ mod DictTest {
         dict.insert(KEY4, 4);
         dict.insert(KEY5, 5);
 
-        assert(dict.index(KEY1) == 1, 'KEY1');
-        assert(dict.index(KEY2) == 2, 'KEY2');
-        assert(dict.index(KEY3) == 3, 'KEY3');
-        assert(dict.index(KEY4) == 4, 'KEY4');
-        assert(dict.index(KEY5) == 5, 'KEY5');
+        assert(dict[KEY1] == 1, 'KEY1');
+        assert(dict[KEY2] == 2, 'KEY2');
+        assert(dict[KEY3] == 3, 'KEY3');
+        assert(dict[KEY4] == 4, 'KEY4');
+        assert(dict[KEY5] == 5, 'KEY5');
 
-        return dict.index(KEY5);
+        return dict[KEY5];
     }
 }

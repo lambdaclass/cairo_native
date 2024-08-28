@@ -18,7 +18,7 @@ The process of calculating gas begins at the very outset of the compilation proc
 
 The action of withdrawing gas can be split in two steps:
 
-- **Calculating Total Gas Cost**: Using the previously constructed HashMap, we iterate over the various cost tokens (including steps, built-in usage, and memory holes) for the statement, convert them into a [common gas unit](https://github.com/starkware-libs/cairo/blob/v2.7.0-dev.0/crates/cairo-lang-runner/src/lib.rs#L136), and sum them up to get the total gas cost for the statement.
+- **Calculating Total Gas Cost**: Using the previously constructed HashMap, we iterate over the various cost tokens (including steps, built-in usage, and memory holes) for the statement, convert them into a [common gas unit](https://github.com/starkware-libs/cairo/blob/v2.7.1/crates/cairo-lang-runner/src/lib.rs#L136), and sum them up to get the total gas cost for the statement.
 - **Executing Gas Withdrawal**: The previously calculated gas cost is used when the current statement is a `withdraw_gas` libfunc call.
 
 The `withdraw_gas` libfunc takes the current leftover gas as input and uses the calculated gas cost for the statement to deduct the appropriate amount from the gas builtin. In the compiled IR, gas withdrawal appears as the total gas being reduced by a predefined constant. Additionally, the libfunc branches based on whether the remaining gas is greater than or equal to the amount being withdrawn.

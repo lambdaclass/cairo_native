@@ -1,9 +1,11 @@
 use cairo_lang_sierra::extensions::{
     array::ArrayConcreteLibfunc,
     boolean::BoolConcreteLibfunc,
+    bounded_int::BoundedIntConcreteLibfunc,
     boxing::BoxConcreteLibfunc,
     bytes31::Bytes31ConcreteLibfunc,
     casts::CastConcreteLibfunc,
+    circuit::CircuitConcreteLibfunc,
     const_type::ConstConcreteLibfunc,
     core::CoreConcreteLibfunc,
     coupon::CouponConcreteLibfunc,
@@ -54,6 +56,9 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             ArrayConcreteLibfunc::Len(_) => "array_len",
             ArrayConcreteLibfunc::SnapshotPopFront(_) => "array_snapshot_pop_front",
             ArrayConcreteLibfunc::SnapshotPopBack(_) => "array_snapshot_pop_back",
+            ArrayConcreteLibfunc::TupleFromSpan(_) => "array_tuple_from_span",
+            ArrayConcreteLibfunc::SnapshotMultiPopFront(_) => "array_snapshot_multi_pop_front",
+            ArrayConcreteLibfunc::SnapshotMultiPopBack(_) => "array_snapshot_multi_pop_back",
         },
         CoreConcreteLibfunc::BranchAlign(_) => "branch_align",
         CoreConcreteLibfunc::Bool(value) => match value {
@@ -363,6 +368,9 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
                     Secp256OpConcreteLibfunc::GetXy(_) => "secp256r1_get_xy",
                 },
             },
+            StarkNetConcreteLibfunc::Sha256ProcessBlock(_) => "sha256_process_block",
+            StarkNetConcreteLibfunc::Sha256StateHandleInit(_) => "sha256_state_handle_init",
+            StarkNetConcreteLibfunc::Sha256StateHandleDigest(_) => "sha256_state_handle_digest",
         },
         CoreConcreteLibfunc::Debug(value) => match value {
             DebugConcreteLibfunc::Print(_) => "debug_print",
@@ -372,6 +380,32 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             Bytes31ConcreteLibfunc::Const(_) => "bytes31_const",
             Bytes31ConcreteLibfunc::ToFelt252(_) => "bytes31_to_felt252",
             Bytes31ConcreteLibfunc::TryFromFelt252(_) => "bytes31_try_from_felt252",
+        },
+        CoreConcreteLibfunc::Circuit(selector) => match selector {
+            CircuitConcreteLibfunc::AddInput(_) => "circuit_add_input",
+            CircuitConcreteLibfunc::Eval(_) => "circuit_eval",
+            CircuitConcreteLibfunc::GetDescriptor(_) => "circuit_get_descriptor",
+            CircuitConcreteLibfunc::InitCircuitData(_) => "circuit_init_circuit_data",
+            CircuitConcreteLibfunc::GetOutput(_) => "circuit_get_output",
+            CircuitConcreteLibfunc::TryIntoCircuitModulus(_) => "circuit_try_into_circuit_modulus",
+            CircuitConcreteLibfunc::FailureGuaranteeVerify(_) => "circuit_failure_guarantee_verify",
+            CircuitConcreteLibfunc::IntoU96Guarantee(_) => "circuit_into_u96_guarantee",
+            CircuitConcreteLibfunc::U96GuaranteeVerify(_) => "circuit_u96_guarantee_verify",
+            CircuitConcreteLibfunc::U96LimbsLessThanGuaranteeVerify(_) => {
+                "circuit_u96_limbs_less_than_guarantee_verify"
+            }
+            CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(_) => {
+                "circuit_u96_single_limb_less_than_guarantee_verify"
+            }
+        },
+        CoreConcreteLibfunc::BoundedInt(selector) => match selector {
+            BoundedIntConcreteLibfunc::Add(_) => "bounded_int_add",
+            BoundedIntConcreteLibfunc::Sub(_) => "bounded_int_sub",
+            BoundedIntConcreteLibfunc::Mul(_) => "bounded_int_mul",
+            BoundedIntConcreteLibfunc::DivRem(_) => "bounded_int_div_rem",
+            BoundedIntConcreteLibfunc::Constrain(_) => "bounded_int_constrain",
+            BoundedIntConcreteLibfunc::IsZero(_) => "bounded_int_is_zero",
+            BoundedIntConcreteLibfunc::WrapNonZero(_) => "bounded_int_wrap_non_zero",
         },
     }
 }

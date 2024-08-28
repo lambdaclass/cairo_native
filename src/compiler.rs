@@ -72,6 +72,7 @@ use cairo_lang_sierra::{
     program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
+use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use melior::{
     dialect::{
@@ -355,7 +356,7 @@ fn compile_func(
         ),
     );
 
-    let initial_state = edit_state::put_results(HashMap::<_, Value>::new(), {
+    let initial_state = edit_state::put_results(OrderedHashMap::<_, Value>::default(), {
         let mut values = Vec::new();
 
         let mut count = 0;
@@ -428,7 +429,7 @@ fn compile_func(
                 tracing::trace!("Implementing the statement {statement_idx}'s landing block.");
 
                 state = edit_state::put_results(
-                    HashMap::default(),
+                    OrderedHashMap::default(),
                     state
                         .keys()
                         .sorted_by_key(|x| x.id)
@@ -849,7 +850,7 @@ fn generate_function_structure<'c, 'a>(
     sierra_stmt_start_offset: usize,
 ) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Error> {
     let initial_state = edit_state::put_results::<Type>(
-        HashMap::new(),
+        OrderedHashMap::default(),
         function
             .params
             .iter()
@@ -936,7 +937,10 @@ fn generate_function_structure<'c, 'a>(
                                     Entry::Occupied(entry) => entry.into_mut(),
                                     Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
                                 };
-                            assert_eq!(prev_state, &state, "Branch target states do not match.");
+                            assert!(
+                                prev_state.eq_unordered(&state),
+                                "Branch target states do not match."
+                            );
                             *pred_count += 1;
 
                             Ok(state)
@@ -1126,7 +1130,7 @@ fn generate_branching_targets<'ctx, 'this, 'a>(
     statements: &'this [Statement],
     statement_idx: StatementIdx,
     invocation: &'this Invocation,
-    state: &HashMap<VarId, Value<'ctx, 'this>>,
+    state: &OrderedHashMap<VarId, Value<'ctx, 'this>>,
 ) -> Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>
 where
     'this: 'ctx,
