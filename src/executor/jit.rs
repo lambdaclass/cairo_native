@@ -65,8 +65,6 @@ impl<'m> JitNativeExecutor<'m> {
     }
 
     /// Execute a program with the given params.
-    ///
-    /// See [`cairo_native::jit_runner::execute`]
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
@@ -89,8 +87,6 @@ impl<'m> JitNativeExecutor<'m> {
     }
 
     /// Execute a program with the given params.
-    ///
-    /// See [`cairo_native::jit_runner::execute`]
     pub fn invoke_dynamic_with_syscall_handler(
         &self,
         function_id: &FunctionId,
