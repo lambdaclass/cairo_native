@@ -24,7 +24,7 @@ use tempfile::NamedTempFile;
 #[educe(Debug)]
 pub struct AotNativeExecutor {
     #[educe(Debug(ignore))]
-    library: Library,
+    pub library: Library,
     #[educe(Debug(ignore))]
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
 

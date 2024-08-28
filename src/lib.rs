@@ -98,6 +98,9 @@ pub use self::{
     ffi::{module_to_object, object_to_shared_lib, LLVMCompileError, OptLevel},
 };
 
+#[cfg(feature = "with-trace-dump")]
+pub use cairo_native_runtime as runtime;
+
 mod arch;
 pub(crate) mod block_ext;
 pub mod cache;

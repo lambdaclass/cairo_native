@@ -356,40 +356,45 @@ fn compile_func(
         ),
     );
 
-    let initial_state = edit_state::put_results(OrderedHashMap::<_, Value>::default(), {
-        let mut values = Vec::new();
+    let initial_state =
+        edit_state::put_results(OrderedHashMap::<_, (&ConcreteTypeId, Value)>::default(), {
+            let mut values = Vec::new();
 
-        let mut count = 0;
-        for param in &function.params {
-            let type_info = registry.get_type(&param.ty)?;
-            let location = Location::new(
-                context,
-                "program.sierra",
-                sierra_stmt_start_offset + function.entry_point.0,
-                0,
-            );
+            let mut count = 0;
+            for param in &function.params {
+                let type_info = registry.get_type(&param.ty)?;
+                let location = Location::new(
+                    context,
+                    "program.sierra",
+                    sierra_stmt_start_offset + function.entry_point.0,
+                    0,
+                );
 
-            values.push((
-                &param.id,
-                if type_info.is_builtin() && type_info.is_zst(registry) {
-                    pre_entry_block
-                        .append_operation(llvm::undef(
-                            type_info.build(context, module, registry, metadata, &param.ty)?,
-                            location,
-                        ))
-                        .result(0)?
-                        .into()
-                } else {
-                    let value = entry_block.argument(count)?.into();
-                    count += 1;
+                values.push((
+                    &param.id,
+                    (
+                        &param.ty,
+                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                            pre_entry_block
+                                .append_operation(llvm::undef(
+                                    type_info
+                                        .build(context, module, registry, metadata, &param.ty)?,
+                                    location,
+                                ))
+                                .result(0)?
+                                .into()
+                        } else {
+                            let value = entry_block.argument(count)?.into();
+                            count += 1;
 
-                    value
-                },
-            ));
-        }
+                            value
+                        },
+                    ),
+                ));
+            }
 
-        values.into_iter()
-    })?;
+            values.into_iter()
+        })?;
 
     tracing::trace!("Implementing the entry block.");
     entry_block.append_operation(cf::br(
@@ -399,7 +404,7 @@ fn compile_func(
             Statement::Return(x) => x,
         }
         .iter()
-        .map(|x| initial_state[x])
+        .map(|x| initial_state[x].1)
         .collect::<Vec<_>>(),
         {
             Location::new(
@@ -431,10 +436,12 @@ fn compile_func(
                 state = edit_state::put_results(
                     OrderedHashMap::default(),
                     state
-                        .keys()
-                        .sorted_by_key(|x| x.id)
+                        .iter()
+                        .sorted_by_key(|(x, _)| x.id)
                         .enumerate()
-                        .map(|(idx, var_id)| Ok((var_id, landing_block.argument(idx)?.into())))
+                        .map(|(idx, (var_id, (ty, _)))| {
+                            Ok((var_id, (*ty, landing_block.argument(idx)?.into())))
+                        })
                         .collect::<Result<Vec<_>, Error>>()?
                         .into_iter(),
                 )?;
@@ -449,7 +456,10 @@ fn compile_func(
                         }
                         .iter(),
                     )?
-                    .1,
+                    .1
+                    .iter()
+                    .map(|x| x.1)
+                    .collect::<Vec<_>>(),
                     Location::name(
                         context,
                         &format!("landing_block(stmt_idx={})", statement_idx),
@@ -492,6 +502,21 @@ fn compile_func(
                         let libf = registry.get_libfunc(&invocation.libfunc_id)?;
                         format!("{}(stmt_idx={})", libfunc_to_name(libf), statement_idx)
                     };
+
+                    #[cfg(feature = "with-trace-dump")]
+                    self::trace_dump::build_state_snapshot(
+                        metadata.get_or_insert_with(
+                            crate::metadata::trace_dump::TraceDumpMeta::default,
+                        ),
+                        context,
+                        registry,
+                        module,
+                        &pre_entry_block,
+                        block,
+                        Location::unknown(context),
+                        statement_idx,
+                        &state,
+                    );
 
                     let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
@@ -581,8 +606,9 @@ fn compile_func(
                     invocation
                         .branches
                         .iter()
+                        .zip(concrete_libfunc.branch_signatures())
                         .zip(helper.results())
-                        .map(|(branch_info, result_values)| {
+                        .map(|((branch_info, signature), result_values)| {
                             assert_eq!(
                                 branch_info.results.len(),
                                 result_values.len(),
@@ -592,10 +618,13 @@ fn compile_func(
                             Ok((
                                 edit_state::put_results(
                                     state.clone(),
-                                    branch_info
-                                        .results
-                                        .iter()
-                                        .zip(result_values.iter().copied()),
+                                    branch_info.results.iter().zip(
+                                        signature
+                                            .vars
+                                            .iter()
+                                            .map(|x| &x.ty)
+                                            .zip(result_values.iter().copied()),
+                                    ),
                                 )?,
                                 tailrec_state.clone(),
                             ))
@@ -614,6 +643,21 @@ fn compile_func(
                             sierra_stmt_start_offset + statement_idx.0,
                             0,
                         ),
+                    );
+
+                    #[cfg(feature = "with-trace-dump")]
+                    self::trace_dump::build_state_snapshot(
+                        metadata.get_or_insert_with(
+                            crate::metadata::trace_dump::TraceDumpMeta::default,
+                        ),
+                        context,
+                        registry,
+                        module,
+                        &pre_entry_block,
+                        block,
+                        Location::unknown(context),
+                        statement_idx,
+                        &state,
                     );
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
@@ -683,7 +727,7 @@ fn compile_func(
                                     .ret_types
                                     .iter()
                                     .zip(&values)
-                                    .filter_map(|(type_id, value)| {
+                                    .filter_map(|(type_id, (_, value))| {
                                         let type_info = registry.get_type(type_id).unwrap();
                                         if type_info.is_zst(registry)
                                             || type_info.is_memory_allocated(registry)
@@ -699,7 +743,7 @@ fn compile_func(
                                     .ret_types
                                     .iter()
                                     .zip(&values)
-                                    .filter_map(|(type_id, value)| {
+                                    .filter_map(|(type_id, (_, value))| {
                                         let type_info = registry.get_type(type_id).unwrap();
                                         if type_info.is_zst(registry) {
                                             None
@@ -738,7 +782,7 @@ fn compile_func(
                         let (_ret_type_id, ret_type_info) = return_type_infos[0];
                         let ret_layout = ret_type_info.layout(registry)?;
 
-                        let ptr = values.remove(0);
+                        let (_, ptr) = values.remove(0);
                         block.append_operation(llvm::store(
                             context,
                             ptr,
@@ -751,7 +795,10 @@ fn compile_func(
                         ));
                     }
 
-                    block.append_operation(func::r#return(&values, location));
+                    block.append_operation(func::r#return(
+                        &values.into_iter().map(|x| x.1).collect::<Vec<_>>(),
+                        location,
+                    ));
 
                     Vec::new()
                 }
@@ -1130,7 +1177,7 @@ fn generate_branching_targets<'ctx, 'this, 'a>(
     statements: &'this [Statement],
     statement_idx: StatementIdx,
     invocation: &'this Invocation,
-    state: &OrderedHashMap<VarId, Value<'ctx, 'this>>,
+    state: &OrderedHashMap<VarId, (&ConcreteTypeId, Value<'ctx, 'this>)>,
 ) -> Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>
 where
     'this: 'ctx,
@@ -1149,7 +1196,7 @@ where
                         .map(|var_id| {
                             match branch.results.iter().find_position(|id| *id == var_id) {
                                 Some((i, _)) => BranchArg::Returned(i),
-                                None => BranchArg::External(state[var_id]),
+                                None => BranchArg::External(state[var_id].1),
                             }
                         })
                         .collect::<Vec<_>>();
@@ -1170,7 +1217,7 @@ where
                             .find_map(|(i, id)| (id == var_id).then_some(i))
                         {
                             Some(i) => BranchArg::Returned(i),
-                            None => BranchArg::External(state[var_id]),
+                            None => BranchArg::External(state[var_id].1),
                         }
                     })
                     .collect::<Vec<_>>();
@@ -1180,4 +1227,51 @@ where
             }
         })
         .collect()
+}
+
+#[cfg(feature = "with-trace-dump")]
+mod trace_dump {
+    use crate::{block_ext::BlockExt, metadata::trace_dump::TraceDumpMeta, types::TypeBuilder};
+    use cairo_lang_sierra::{
+        extensions::core::{CoreLibfunc, CoreType},
+        ids::{ConcreteTypeId, VarId},
+        program::StatementIdx,
+        program_registry::ProgramRegistry,
+    };
+    use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+    use melior::{
+        ir::{BlockRef, Location, Module, Value, ValueLike},
+        Context,
+    };
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn build_state_snapshot(
+        trace_dump: &mut TraceDumpMeta,
+        context: &Context,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        module: &Module,
+        init_block: &BlockRef,
+        block: &BlockRef,
+        location: Location,
+        statement_idx: StatementIdx,
+        state: &OrderedHashMap<VarId, (&ConcreteTypeId, Value)>,
+    ) {
+        for (var_id, (type_id, value)) in state.iter() {
+            let type_info = registry.get_type(type_id).unwrap();
+            let layout = type_info.layout(registry).unwrap();
+
+            let ptr_value = init_block
+                .alloca1(context, location, value.r#type(), layout.align())
+                .unwrap();
+            block.store(context, location, ptr_value, *value).unwrap();
+
+            trace_dump
+                .build_state(context, module, block, var_id, type_id, ptr_value, location)
+                .unwrap();
+        }
+
+        trace_dump
+            .build_push(context, module, block, statement_idx, location)
+            .unwrap();
+    }
 }

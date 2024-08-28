@@ -40,48 +40,48 @@ usage:
 	@echo "    clean:        Cleans the built artifacts."
 
 build: check-llvm runtime
-	cargo build --release --all-features
+	cargo build --release --features build-cli,with-cheatcode,with-runtime,with-serde
 
 build-native: check-llvm runtime
-	RUSTFLAGS="-C target-cpu=native" cargo build --release --all-features
+	RUSTFLAGS="-C target-cpu=native" cargo build --release --features build-cli,with-cheatcode,with-runtime,with-serde
 
 build-dev: check-llvm
-	cargo build --profile optimized-dev --all-features
+	cargo build --profile optimized-dev --features build-cli,with-cheatcode,with-runtime,with-serde
 
 check: check-llvm
 	cargo fmt --all -- --check
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo clippy --all-targets --features build-cli,with-cheatcode,with-runtime,with-serde -- -D warnings
 
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --all-features
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde
 
 test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo r --profile ci --bin cairo-native-test -- corelib
 
 proptest: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --all-features proptest
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde proptest
 
 test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --all-features
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde
 
 proptest-ci: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --all-features proptest
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde proptest
 
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+	cargo llvm-cov --verbose --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
 doc: check-llvm
-	cargo doc --all-features --no-deps --workspace
+	cargo doc --features build-cli,with-cheatcode,with-runtime,with-serde --no-deps --workspace
 
 doc-open: check-llvm
-	cargo doc --all-features --no-deps --workspace --open
+	cargo doc --features build-cli,with-cheatcode,with-runtime,with-serde --no-deps --workspace --open
 
 bench: build needs-cairo2 runtime
 	./scripts/bench-hyperfine.sh
 
 bench-ci: check-llvm needs-cairo2 runtime
-	cargo criterion --all-features
+	cargo criterion --features build-cli,with-cheatcode,with-runtime,with-serde
 
 stress-test: check-llvm
 	RUST_LOG=cairo_native_stress=DEBUG cargo run --bin cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
@@ -93,7 +93,7 @@ stress-clean:
 	rm -rf .aot-cache
 
 install: check-llvm
-	RUSTFLAGS="-C target-cpu=native" cargo install --all-features --locked --path .
+	RUSTFLAGS="-C target-cpu=native" cargo install --features build-cli,with-cheatcode,with-runtime,with-serde --locked --path .
 
 clean:
 	cargo clean
@@ -148,7 +148,10 @@ build-alexandria:
 	cd tests/alexandria; scarb build
 
 runtime:
-	cargo b --release --all-features -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
+	cargo b --release -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
+
+runtime-with-trace-dump:
+	cargo b --release -p cairo-native-runtime --features=with-trace-dump && cp target/release/libcairo_native_runtime.a .
 
 runtime-ci:
-	cargo b --profile ci --all-features -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .
+	cargo b --profile ci -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .

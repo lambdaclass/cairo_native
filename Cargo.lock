@@ -934,9 +934,7 @@ dependencies = [
  "bumpalo",
  "cairo-lang-compiler",
  "cairo-lang-defs",
- "cairo-lang-diagnostics",
  "cairo-lang-filesystem",
- "cairo-lang-lowering",
  "cairo-lang-runner",
  "cairo-lang-semantic",
  "cairo-lang-sierra",
@@ -954,7 +952,6 @@ dependencies = [
  "colored",
  "criterion",
  "educe",
- "id-arena",
  "itertools 0.13.0",
  "k256",
  "keccak",
@@ -992,10 +989,13 @@ dependencies = [
 name = "cairo-native-runtime"
 version = "0.2.0"
 dependencies = [
+ "cairo-lang-sierra",
  "cairo-lang-sierra-gas",
+ "cairo-lang-utils",
  "lazy_static",
  "libc",
  "rand",
+ "sierra-emu",
  "starknet-crypto 0.7.1",
  "starknet-curve 0.5.0",
  "starknet-types-core",
@@ -3380,6 +3380,32 @@ name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+
+[[package]]
+name = "sierra-emu"
+version = "0.1.0"
+source = "git+https://github.com/lambdaclass/sierra-emu#5707a7b38763a4cab91e91c7230b56053d9a5d99"
+dependencies = [
+ "cairo-lang-sierra",
+ "cairo-lang-utils",
+ "clap",
+ "k256",
+ "keccak",
+ "num-bigint",
+ "num-traits 0.2.19",
+ "p256",
+ "rand",
+ "sec1",
+ "serde",
+ "serde_json",
+ "sha2",
+ "smallvec",
+ "starknet-crypto 0.7.1",
+ "starknet-curve 0.5.0",
+ "starknet-types-core",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "signature"

@@ -51,6 +51,7 @@ with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
 with-serde = ["dep:serde"]
 with-cheatcode = []
+with-trace-dump = ["cairo-native-runtime/with-trace-dump"]
 
 [dependencies]
 bumpalo = "3.16.0"

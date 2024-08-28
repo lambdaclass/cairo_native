@@ -86,12 +86,12 @@ jobs:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUSTUP_TOOLCHAIN: nightly-2024-02-01 # udeps needs nightly
+      RUSTUP_TOOLCHAIN: nightly # udeps needs nightly
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly-2024-02-01
+          toolchain: nightly
           components: rustfmt
 
       - name: add llvm deb repository
@@ -253,7 +253,7 @@ jobs:
         with:
           scarb-version: "2.7.1"
       - name: Install deps
-        run: make deps 
+        run: make deps
       - name: Build runtime and alexandria
         run: make runtime && make check-llvm && make needs-cairo2 && make build-alexandria
       - name: Build cairo-native-runtime library.
@@ -262,7 +262,7 @@ jobs:
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
         run: cargo llvm-cov nextest --verbose --all-features --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
-      - name: test and generate coverage corelib     
+      - name: test and generate coverage corelib
         if: ${{ matrix.partition == '1' }}
         run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
@@ -281,7 +281,6 @@ jobs:
         with:
           name: coverage-data-${{ matrix.partition }}
           path: ./${{ matrix.output }}
-
 
   upload-coverage:
     name: Upload Coverage
