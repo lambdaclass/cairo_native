@@ -4,7 +4,6 @@ use anyhow::Context;
 use cairo_lang_compiler::{
     compile_prepared_db,
     db::RootDatabase,
-    diagnostics::DiagnosticsReporter,
     project::{check_compiler_path, setup_project},
     CompilerConfig,
 };
@@ -72,16 +71,8 @@ fn main() -> anyhow::Result<()> {
 
     let main_crate_ids = setup_project(&mut db, &args.path)?;
 
-    let mut reporter = DiagnosticsReporter::stderr();
-    if args.allow_warnings {
-        reporter = reporter.allow_warnings();
-    }
-    if reporter.check(&db) {
-        anyhow::bail!("failed to compile: {}", args.path.display());
-    }
-
     let sierra_program = compile_prepared_db(
-        &mut db,
+        &db,
         main_crate_ids,
         CompilerConfig {
             replace_ids: true,
