@@ -165,9 +165,9 @@ LLVM IR. This is done through passes which are the basis of how LLVM works.
 
 Given a MLIR Module with only the LLVM dialect, we can translate it,
 currently the LLVM MLIR API for this is only available in C++, so we had
-to make our temporary C API wrapper (which we contributed to upstream LLVM,
-coming soon to LLVM 18 maybe). After that we also need to use the `llvm-sys`
-crate which provides the C API bindings in Rust.
+to make our temporary C API wrapper (which we contributed to upstream LLVM. 
+After that we also need to use the `llvm-sys` crate which provides the C 
+API bindings in Rust.
 
 The required method is `mlirTranslateModuleToLLVMIR` which takes a MLIR
 Module and a LLVM Context (not a MLIR one!). The LLVM Context will be used

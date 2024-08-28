@@ -174,20 +174,6 @@ These are:
 - `scarb-native-dump`
 - `scarb-native-test`
 
-### Scripts
-To aid with development, there are a couple of scripts that invoke cargo for you:
-
-```bash
-# Invokes the jit runner with the given program, entry point and json input.
-./scripts/run-jit-dev.sh <program.cairo> <entry point> '[json input]'
-
-# Example invocation of run-jit-dev.sh
-./scripts/run-jit-dev.sh programs/print.cairo print::print::main '[]'
-
-# Dumps the generated MLIR of a given cairo program
-./scripts/compile-dev.sh <program.cairo>
-```
-
 ### `cairo-native-compile`
 ```bash
 Compiles a Cairo project outputting the generated MLIR and the shared library.

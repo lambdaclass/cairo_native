@@ -426,7 +426,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
     }
 
     /*
-    ... more code here, check out the full example in examples/starknet.rsd
+    ... more code here, check out the full example in examples/starknet.rs
     */
 }
 
