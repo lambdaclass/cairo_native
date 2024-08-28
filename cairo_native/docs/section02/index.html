@@ -1,0 +1,239 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Compilation Walkthrough"><title>cairo_native::docs::section02 - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../cairo_native/index.html">cairo_native</a><span class="version">0.2.0</span></h2></div><h2 class="location"><a href="#">Module section02</a></h2><div class="sidebar-elems"><h2><a href="../index.html">In cairo_native::docs</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../../index.html">cairo_native</a>::<wbr><a href="../index.html">docs</a>::<wbr><a class="mod" href="#">section02</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../../src/cairo_native/docs.rs.html#10">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="compilation-walkthrough"><a class="doc-anchor" href="#compilation-walkthrough">§</a>Compilation Walkthrough</h2>
+<p>This section describes the entire process Cairo Native goes through to
+compile a Cairo program to either a shared library (and how to use it) or a
+MLIR module for use in the JIT engine.</p>
+<h3 id="general-flow"><a class="doc-anchor" href="#general-flow">§</a>General flow</h3>
+<p>If you check <code>lib.rs</code> you will see the high level modules of the project.</p>
+<p>The compiler module is what glues together everything.
+You should read its module level documentation.
+But the basic flow is like this:</p>
+<ul>
+<li>We take a sierra <code>Program</code> and iterate over its functions.</li>
+<li>On each function, we create a MLIR region and a block for each statement
+(a.k.a library function call), taking into account possible branches.</li>
+<li>On each statement we call the library function implementation, which
+appends MLIR code to the given block, and with helper methods, it handles
+possible branches and input/output variables.</li>
+</ul>
+<div class="example-wrap"><pre class="language-mermaid"><code>stateDiagram-v2
+    state &quot;Load sierra program&quot; as sierra
+    state &quot;Initialize compiler&quot; as init
+    state &quot;Initialize execution engine&quot; as engine
+    state if_skip_jit &lt;&lt;choice&gt;&gt;
+    state &quot;Load MLIR dialects&quot; as dialects
+    state &quot;Create builtin module&quot; as module
+    state &quot;Create libc wrappers&quot; as libc
+    state &quot;Process Types&quot; as types
+    state &quot;Process Library functions&quot; as libfuncs
+    state &quot;Save non-flow function info&quot; as func_info
+    state &quot;Process functions&quot; as funcs
+    state &quot;Calculate block ranges per function&quot; as blocks
+    state &quot;Process statements&quot; as statements
+    state &quot;Apply MLIR passes&quot; as passes
+    [*] --&gt; Initialize
+    state Initialize {
+        sierra --&gt; init
+        init --&gt; if_skip_jit
+        if_skip_jit --&gt; engine: if JIT
+        if_skip_jit --&gt; dialects: if Compile
+        engine --&gt; dialects
+    }
+    Initialize --&gt; Compile
+    state Compile {
+        module --&gt; libc
+        libc --&gt; types
+        types --&gt; libfuncs
+        types --&gt; func_info
+        func_info --&gt; libfuncs
+        libfuncs --&gt; funcs
+        funcs --&gt; blocks
+        blocks --&gt; statements
+    }
+    Compile --&gt; passes
+    passes --&gt; Output
+    Output --&gt; [*]
+</code></pre></div><h3 id="loading-a-cairo-program"><a class="doc-anchor" href="#loading-a-cairo-program">§</a>Loading a Cairo Program</h3>
+<p>The first step is to get the sierra code from the given cairo program, this
+is done using the relevant methods from the <code>cairo_lang_compiler</code> crate.</p>
+<p>This gives us a <code>cairo_lang_sierra::program::Program</code> which has the following
+structure:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">pub struct </span>Program {
+    <span class="kw">pub </span>type_declarations: Vec&lt;TypeDeclaration, Global&gt;,
+    <span class="kw">pub </span>libfunc_declarations: Vec&lt;LibfuncDeclaration, Global&gt;,
+    <span class="kw">pub </span>statements: Vec&lt;GenStatement&lt;StatementIdx&gt;, Global&gt;,
+    <span class="kw">pub </span>funcs: Vec&lt;GenFunction&lt;StatementIdx&gt;, Global&gt;,
+}</code></pre></div>
+<p>The compilation process consists in parsing these fields to produce the
+relevant MLIR IR code.</p>
+<p>To do all this we will need a MLIR Context and a module created with that
+context, the module describes a compilation unit, in this case, the cairo
+program.</p>
+<h3 id="initialization"><a class="doc-anchor" href="#initialization">§</a>Initialization</h3>
+<p>In Cairo Native we provide a API around initializing the context, namely
+<code>NativeContext</code> which does the following when
+<a href="https://github.com/lambdaclass/cairo_native/blob/ca6549a68c1b4266a7f9ea41dc196bf4433a2ee8/src/context.rs#L52-L53">created</a>:</p>
+<ul>
+<li>Create the context</li>
+<li>Register all relevant MLIR dialects into the context</li>
+<li>Load the dialects</li>
+<li>Register all passes into the context</li>
+<li>Register all translations to LLVM IR into the context.</li>
+</ul>
+<aside>
+💡 Registering doesn’t mean using, it means that later in the compilation
+process we will use these registered features, such as the translations to
+LLVM IR to create a shared library.
+</aside>
+<h3 id="compiling-a-sierra-program-to-mlir"><a class="doc-anchor" href="#compiling-a-sierra-program-to-mlir">§</a>Compiling a Sierra Program to MLIR</h3>
+<p>The <code>NativeContext</code> has a method called
+<a href="https://github.com/lambdaclass/cairo_native/blob/ca6549a68c1b4266a7f9ea41dc196bf4433a2ee8/src/context.rs#L62-L63">compile</a>,
+which does the heavy lifting and returns a <code>NativeModule</code>.
+This module contains the generated MLIR IR code.</p>
+<p>The compile method does the following:</p>
+<ul>
+<li>Create a Module</li>
+<li>Create the Metadata storage (check the relevant section for more information).</li>
+<li>Check if the Sierra program has a gas builtin in it, if it has it will
+insert the gas metadata into the storage.</li>
+<li>Create the Sierra program registry, which allows type and function lookups.</li>
+<li>Call a internal <code>compile</code> method.</li>
+</ul>
+<p>This internal <code>compile</code> method then loops on the program function
+declarations calling the <code>compile_func</code> method on each of them.</p>
+<h4 id="compiling-a-function-compile_func"><a class="doc-anchor" href="#compiling-a-function-compile_func">§</a>Compiling a function (<code>compile_func</code>)</h4>
+<p>This method generates the structure of the function in MLIR, meaning it will
+create the region the body of the function will live on, and then a block
+for each statement, each with it’s relevant arguments and return values. It
+will also check each statement whether it is branching, and store the
+predecessors of each block, to handle jumps.</p>
+<p>While handling each statement on the function, it will build the types it
+finds from the arguments and return values as it encounters them, this is
+done using the trait <code>TypeBuilder</code>.</p>
+<p>After having the function structure created, we proceed to creating the
+initial state, which is a Hash map holding the local variables we currently
+have, the parameters.</p>
+<p>Using this initial state, it builds the entry block, which is the first
+block the function enters when it’s called, it has the function arguments
+as parameters.</p>
+<p>Then it loops on the statements of the function, on each statement it does
+the following:</p>
+<ul>
+<li>Check if there is a gas metadata, and if the statement has a gas cost,
+insert the gas cost metadata that lives on only during this statement.</li>
+<li>Get the block and possible landing block of this statement.</li>
+<li>If there is a landing block, create it. A landing block is the target
+block of a previous jump that simply forwards to the current block.</li>
+</ul>
+<h3 id="metadata-storage"><a class="doc-anchor" href="#metadata-storage">§</a>Metadata Storage</h3>
+<p>This storage is shared everywhere in the compilation process and allows to
+easily share data to the relevant places, for example the Gas Metadata
+allows getting the gas cost for a given statement, or the enum snapshot
+metadata to get the relevant variants in the libfunc builder.</p>
+<h2 id="compiling-to-native-code"><a class="doc-anchor" href="#compiling-to-native-code">§</a>Compiling to native code</h2>
+<p>We part from the point where the program has been compiled into MLIR IR,
+and we hold the MLIR Context and Module.</p>
+<p>From this point, we convert all the dialects within this IR into the LLVM
+MLIR Dialect, which is a needed precondition to transform the MLIR IR into
+LLVM IR. This is done through passes which are the basis of how LLVM works.</p>
+<aside>
+ℹ️ This translation does canonicalization, so some optimizations are done.
+</aside>
+<p>Given a MLIR Module with only the LLVM dialect, we can translate it,
+currently the LLVM MLIR API for this is only available in C++, so we had
+to make our temporary C API wrapper (which we contributed to upstream LLVM. 
+After that we also need to use the <code>llvm-sys</code> crate which provides the C 
+API bindings in Rust.</p>
+<p>The required method is <code>mlirTranslateModuleToLLVMIR</code> which takes a MLIR
+Module and a LLVM Context (not a MLIR one!). The LLVM Context will be used
+to create a LLVM Module, which we can then compile to machine code.</p>
+<p>The process is a bit verbose but interesting, LLVM itself is a target
+independent code generator, but to compile down we need an actual target,
+to do so we initialize the required target and utilities (in this case we
+initialize all targets the current compiled LLVM supports):</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code>LLVM_InitializeAllTargets();
+LLVM_InitializeAllTargetInfos();
+LLVM_InitializeAllTargetMCs();
+LLVM_InitializeAllAsmPrinters();
+LLVM_InitializeAllAsmParsers();</code></pre></div>
+<p>After that we create a LLVM context, and pass it along the module to the
+<code>mlirTranslateModuleToLLVMIR</code> method:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>llvm_module = mlirTranslateModuleToLLVMIR(mlir_module_op, llvm_context);</code></pre></div>
+<p>Then we need to create the target machine, which needs a target triple, the
+CPU name and CPU features. After creating the target machine, we can emit
+the object file either to a memory buffer or a file.</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>machine = LLVMCreateTargetMachine(
+            target,
+            target_triple.cast(),
+            target_cpu.cast(),
+            target_cpu_features.cast(),
+            LLVMCodeGenOptLevel::LLVMCodeGenLevelNone, <span class="comment">// opt level
+            </span>LLVMRelocMode::LLVMRelocDynamicNoPic,
+            LLVMCodeModel::LLVMCodeModelDefault,
+);
+
+<span class="kw">let </span><span class="kw-2">mut </span>out_buf: MaybeUninit&lt;LLVMMemoryBufferRef&gt; = MaybeUninit::uninit();
+
+LLVMTargetMachineEmitToMemoryBuffer(
+            machine,
+            llvm_module,
+            LLVMCodeGenFileType::LLVMObjectFile,
+            error_buffer,
+            out_buf.as_mut_ptr(),
+);</code></pre></div>
+<p>After emitting the object file, we need to pass it to a linker to get our
+shared library. This is currently done by executing <code>ld</code>, with the proper
+flags to create a shared library on each platform, as a process using a
+temporary file, because it can’t be piped.</p>
+<div class="example-wrap"><pre class="language-mermaid"><code>graph TD
+    A[MLIR Module using all available dialects]
+    --&gt; |Passes| B[Canonicalized MLIR module using only the LLVM dialect]
+    B --&gt; BB[mlirTranslateModuleToLLVMIR]
+    BB --&gt; C[LLVM IR Module]
+    D[Create LLVM Context] --&gt; BB
+    C --&gt; E[Emit Binary Object]
+    F[Create Target LLVM Machine] --&gt; E
+    E --&gt; |Link the object file| G[Shared Library]
+</code></pre></div><h3 id="loading-the-native-library-and-using-it"><a class="doc-anchor" href="#loading-the-native-library-and-using-it">§</a>Loading the native library and using it</h3>
+<p>To load the library, we use the crate <code>libloading</code>, passing it the path to
+our shared library.</p>
+<p>Then we initialize the <code>AotNativeExecutor</code> with the loaded library and the
+program registry.</p>
+<p>This initialization internally does the following:</p>
+<ul>
+<li>Constructs the symbol of the function to be called, which is always the
+function name but wrapped with a prefix to instead target the C API
+wrapper, it looks like the following:</li>
+</ul>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>function_name = <span class="macro">format!</span>(<span class="string">"_mlir_ciface_{function_name}"</span>);</code></pre></div>
+<ul>
+<li>Using the registry we get the function signature, although <code>libloading</code>
+allows us to have a function signature at compile time to make sure we
+call it properly, but we need to ignore this as we want to call any
+function given the library and the registry.</li>
+</ul>
+<aside>
+🚧 TODO: Explain how we call the function here, the custom assembly trampoline, etc
+</aside>
+<div class="example-wrap"><pre class="language-mermaid"><code>graph TD
+    A[Load library with libloading] --&gt; B[Get the function pointer]
+    C[Generate the target symbol&#39;s name] --&gt; B
+    D[Extract the function signature from the program&#39;s registry] --&gt; E[Setup the arguments]
+    E --&gt; F[Call the trampoline function]
+    B --&gt; F
+    F --&gt; G[Interpret the results]
+    G --&gt; H[Cleanup and deallocate]
+</code></pre></div><h3 id="addendum"><a class="doc-anchor" href="#addendum">§</a>Addendum</h3><h4 id="about-canonicalization-in-mlir"><a class="doc-anchor" href="#about-canonicalization-in-mlir">§</a>About canonicalization in MLIR:</h4>
+<p>MLIR has a single canonicalization pass, which iteratively applies the
+canonicalization patterns of all loaded dialects in a greedy way.
+Canonicalization is best-effort and not guaranteed to bring the entire IR in
+a canonical form. It applies patterns until either fix point is reached or
+the maximum number of iterations/rewrites (as specified via pass options) is
+exhausted. This is for efficiency reasons and to ensure that faulty patterns
+cannot cause infinite looping.</p>
+<p>Good read about this: <a href="https://sunfishcode.github.io/blog/2018/10/22/Canonicalization.html">https://sunfishcode.github.io/blog/2018/10/22/Canonicalization.html</a></p>
+</div></details></section></div></main></body></html>

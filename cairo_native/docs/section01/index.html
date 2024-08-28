@@ -1,0 +1,407 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Overview"><title>cairo_native::docs::section01 - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../cairo_native/index.html">cairo_native</a><span class="version">0.2.0</span></h2></div><h2 class="location"><a href="#">Module section01</a></h2><div class="sidebar-elems"><h2><a href="../index.html">In cairo_native::docs</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../../index.html">cairo_native</a>::<wbr><a href="../index.html">docs</a>::<wbr><a class="mod" href="#">section01</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../../src/cairo_native/docs.rs.html#6">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="overview"><a class="doc-anchor" href="#overview">§</a>Overview</h2>
+<p>This crate is a compiler and JIT engine that transforms Sierra (or Cairo) 
+sources into MLIR, which can be 
+<a href="https://en.wikipedia.org/wiki/Just-in-time_compilation">JIT-executed</a> or further
+compiled into a binary
+<a href="https://en.wikipedia.org/wiki/Ahead-of-time_compilation">ahead of time</a>.</p>
+<h3 id="getting-started-as-a-developer"><a class="doc-anchor" href="#getting-started-as-a-developer">§</a>Getting started as a developer</h3>
+<p>First make sure you have a working environment and are able to compile the 
+project without issues. Make sure to follow the <a href="/README.md#setup">setup</a> guide 
+on steps on how to do this.</p>
+<p>It is generally recommended to use the <code>optimized-dev</code> cargo profile when 
+testing or running programs, the make target <code>make build-dev</code> will be useful for 
+this.</p>
+<h4 id="other-tools"><a class="doc-anchor" href="#other-tools">§</a>Other tools</h4>
+<p>In addition to the tools included in Cairo Native, it is also recommended you 
+have <code>cairo-compile</code> and <code>cairo-run</code> installed to check how the generated sierra 
+code looks like, and to compare results manually (when required) which will help 
+greatly when implementing functionality into Cairo Native.</p>
+<p>You can check the <a href="https://github.com/starkware-libs/cairo">cairo</a> repository 
+for more info on how to get those tools.</p>
+<h3 id="basic-workflow"><a class="doc-anchor" href="#basic-workflow">§</a>Basic Workflow</h3>
+<p>After having implemented your desired feature or bug fix, you should check it 
+passes all tests and lints, also make sure to add any needed test cases for the 
+added code.</p>
+<div class="example-wrap"><pre class="language-bash"><code># Check it passes all lints
+make check
+
+# Check it passes all tests
+make test
+</code></pre></div>
+<p>Then you are free to go and make a PR!</p>
+<h3 id="high-level-project-overview"><a class="doc-anchor" href="#high-level-project-overview">§</a>High level project overview</h3>
+<p>This will explain how the project is structured, without going into much details 
+yet:</p>
+<h4 id="project-dependencies"><a class="doc-anchor" href="#project-dependencies">§</a>Project dependencies</h4>
+<p>The major dependencies of the project are the following:</p>
+<ul>
+<li>Melior: This is the crate that abstracts away most of the interfacing with
+MLIR, our compilation target, it uses mlir-sys and tries to safely
+abstract MLIR in Rust.</li>
+<li>Cairo: We use the cairo crates to keep a close tie to the API contracts
+of the language, they provide a really nice way to know what features the
+language has and aids with codegen. For example, most library functions
+are under enumerations, and thanks to Rust exhaustive pattern matching we
+can’t miss any.</li>
+<li>Runtime: The JIT runner and compiler depend on a “runtime” that lives on
+this repository too, it aids with more complex stuff like <code>pedersen</code>,
+<code>keccak</code> and dictionaries that would be quite complex to implement from
+the ground up in MLIR (Basically would be like coding a complex hash
+function in pseudo assembly).</li>
+</ul>
+<h4 id="common-definitions"><a class="doc-anchor" href="#common-definitions">§</a>Common definitions</h4>
+<p>Within this project there are lots of functions with the same signature.
+As their arguments have all the same meaning, they are documented here:</p>
+<ul>
+<li><code>context: NativeContext</code>: The MLIR context.</li>
+<li><code>module: &amp;NativeModule</code>: The compiled MLIR program, with other relevant
+information such as program registry and metadata.</li>
+<li><code>program: &amp;Program</code>: The Sierra input program.</li>
+<li><code>registry: &amp;ProgramRegistry&lt;TType, TLibfunc&gt;</code>: The registry extracted
+from the program.</li>
+<li><code>metadata: &amp;mut MetadataStorage</code>: Current compiler metadata.</li>
+</ul>
+<h3 id="project-layout"><a class="doc-anchor" href="#project-layout">§</a>Project layout</h3>
+<p>The code is laid out in the following sections:</p>
+<div class="example-wrap"><pre class="language-txt"><code> src
+ ├─ arch.rs             Trampoline assembly for calling functions with dynamic signatures.
+ ├─ arch/               Architecture-specific code for the trampoline.
+ ├─ bin/                Binary programs
+ ├─ block_ext.rs        A melior (MLIR) block trait extension to write less code.
+ ├─ cache.rs            Types and implementations of compiled program caches. 
+ ├─ compiler.rs         The glue code of the compiler, has the codegen for
+                        the function signatures and calls the libfunc
+                        codegen implementations.
+ ├─ context.rs          The MLIR context wrapper, provides the compile method.
+ ├─ debug.rs            
+ ├─ docs.rs             Documentation modules.
+ ├─ error.rs            Error handling,
+ ├─ execution_result.rs Program result parsing.
+ ├─ executor.rs         The executor &amp; related code,
+ ├─ ffi.cpp             Missing FFI C wrappers,
+ ├─ ffi.rs              Missing FFI C wrappers, rust side.
+ ├─ lib.rs              The main lib file.
+ ├─ libfuncs.rs         Cairo Sierra libfunc glue code &amp; implementations,
+ ├─ metadata.rs         Metadata injector to use within the compilation process.
+ ├─ module.rs           The MLIR module wrapper.
+ ├─ starknet.rs         Starknet syscall handler glue code.
+ ├─ starknet_stub.rs    
+ ├─ types.rs            Cairo to MLIR type information,
+ ├─ utils.rs            Internal utilities.
+ └─ values.rs           JIT serialization.
+</code></pre></div><h4 id="library-functions"><a class="doc-anchor" href="#library-functions">§</a>Library functions</h4>
+<p>Path: <code>src/libfuncs</code></p>
+<p>Here are stored all the library function implementations in MLIR, this
+contains the majority of the code.</p>
+<p>To store information about the different types of library functions sierra
+has, we divide them into the following using the enum <code>SierraLibFunc</code>:</p>
+<ul>
+<li><strong>Branching</strong>: These functions are implemented inline, adding blocks and
+jumping as necessary based on given conditions.</li>
+<li><strong>Constant</strong>: A constant value, this isn’t represented as a function and
+is inserted inline.</li>
+<li><strong>Function</strong>: Any other function.</li>
+<li><strong>InlineDataFlow</strong>: Functions that can be implemented inline without much
+problem. For example: <code>dup</code>, <code>store_temp</code></li>
+</ul>
+<h4 id="statements"><a class="doc-anchor" href="#statements">§</a>Statements</h4>
+<p>Path: <code>src/statements</code></p>
+<p>Here is the code that processes the statements of non-library functions.
+It handles dataflow, branching, function calls, variable storage and also
+has implementations for the inline library functions.</p>
+<h4 id="user-functions"><a class="doc-anchor" href="#user-functions">§</a>User functions</h4>
+<p>These are extra utility functions unrelated to sierra that aid in the
+development, such as wrapping return values and printing them.</p>
+<h3 id="basic-api-usage-example"><a class="doc-anchor" href="#basic-api-usage-example">§</a>Basic API usage example</h3>
+<p>The API contains two structs, <code>NativeContext</code> and <code>NativeExecutor</code>.
+The main purpose of <code>NativeContext</code> is MLIR initialization, compilation and
+lowering to LLVM.
+<code>NativeExecutor</code> in the other hand is responsible of executing MLIR
+compiled sierra programs from an entrypoint. Programs and JIT states can be
+cached in contexts where their execution will be done multiple times.</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>starknet_types_core::felt::Felt;
+<span class="kw">use </span>cairo_native::context::NativeContext;
+<span class="kw">use </span>cairo_native::executor::JitNativeExecutor;
+<span class="kw">use </span>cairo_native::values::JitValue;
+<span class="kw">use </span>std::path::Path;
+
+<span class="kw">let </span>program_path = Path::new(<span class="string">"programs/examples/hello.cairo"</span>);
+<span class="comment">// Compile the cairo program to sierra.
+</span><span class="kw">let </span>sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+
+<span class="comment">// Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
+// initialization and compilation of sierra programs into a MLIR module.
+</span><span class="kw">let </span>native_context = NativeContext::new();
+
+<span class="comment">// Compile the sierra program into a MLIR module.
+</span><span class="kw">let </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program, <span class="prelude-val">None</span>).unwrap();
+
+<span class="comment">// The parameters of the entry point.
+</span><span class="kw">let </span>params = <span class="kw-2">&amp;</span>[JitValue::Felt252(Felt::from_bytes_be_slice(<span class="string">b"user"</span>))];
+
+<span class="comment">// Find the entry point id by its name.
+</span><span class="kw">let </span>entry_point = <span class="string">"hello::hello::greet"</span>;
+<span class="kw">let </span>entry_point_id = cairo_native::utils::find_function_id(<span class="kw-2">&amp;</span>sierra_program, entry_point);
+
+<span class="comment">// Instantiate the executor.
+</span><span class="kw">let </span>native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+
+<span class="comment">// Execute the program.
+</span><span class="kw">let </span>result = native_executor
+    .invoke_dynamic(entry_point_id, params, <span class="prelude-val">None</span>)
+    .unwrap();
+
+<span class="macro">println!</span>(<span class="string">"Cairo program was compiled and executed successfully."</span>);
+<span class="macro">println!</span>(<span class="string">"{:?}"</span>, result);</code></pre></div>
+<h3 id="running-a-cairo-program"><a class="doc-anchor" href="#running-a-cairo-program">§</a>Running a Cairo program</h3>
+<p>This is a usage example using the API for an easy Cairo program that
+requires the least setup to get running. It allows you to compile and
+execute a program using the JIT.</p>
+<p>Example code to run a program:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>starknet_types_core::felt::Felt;
+<span class="kw">use </span>cairo_native::context::NativeContext;
+<span class="kw">use </span>cairo_native::executor::NativeExecutor;
+<span class="kw">use </span>cairo_native::values::JitValue;
+<span class="kw">use </span>std::path::Path;
+
+<span class="kw">fn </span>main() {
+    <span class="kw">let </span>program_path = Path::new(<span class="string">"programs/examples/hello.cairo"</span>);
+    <span class="comment">// Compile the cairo program to sierra.
+    </span><span class="kw">let </span>sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+
+    <span class="comment">// Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
+    // initialization and compilation of sierra programs into a MLIR module.
+    </span><span class="kw">let </span>native_context = NativeContext::new();
+
+    <span class="comment">// Compile the sierra program into a MLIR module.
+    </span><span class="kw">let </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
+
+    <span class="comment">// The parameters of the entry point.
+    </span><span class="kw">let </span>params = <span class="kw-2">&amp;</span>[JitValue::Felt252(Felt::from_bytes_be_slice(<span class="string">b"user"</span>))];
+
+    <span class="comment">// Find the entry point id by its name.
+    </span><span class="kw">let </span>entry_point = <span class="string">"hello::hello::greet"</span>;
+    <span class="kw">let </span>entry_point_id = cairo_native::utils::find_function_id(<span class="kw-2">&amp;</span>sierra_program, entry_point);
+
+    <span class="comment">// Instantiate the executor.
+    </span><span class="kw">let </span>native_executor = NativeExecutor::new(native_program);
+
+    <span class="comment">// Execute the program.
+    </span><span class="kw">let </span>result = native_executor
+        .execute(entry_point_id, params, <span class="prelude-val">None</span>)
+        .unwrap();
+
+    <span class="macro">println!</span>(<span class="string">"Cairo program was compiled and executed successfully."</span>);
+    <span class="macro">println!</span>(<span class="string">"{:?}"</span>, result);
+}</code></pre></div>
+<h3 id="running-a-starknet-contract"><a class="doc-anchor" href="#running-a-starknet-contract">§</a>Running a Starknet contract</h3>
+<p>Example code to run a Starknet contract:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>starknet_types_core::felt::Felt;
+<span class="kw">use </span>cairo_lang_compiler::CompilerConfig;
+<span class="kw">use </span>cairo_lang_starknet::contract_class::compile_path;
+<span class="kw">use </span>cairo_native::context::NativeContext;
+<span class="kw">use </span>cairo_native::executor::NativeExecutor;
+<span class="kw">use </span>cairo_native::utils::find_entry_point_by_idx;
+<span class="kw">use </span>cairo_native::values::JitValue;
+<span class="kw">use </span>cairo_native::{
+    metadata::syscall_handler::SyscallHandlerMeta,
+    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+};
+<span class="kw">use </span>std::path::Path;
+
+<span class="doccomment">/// To run a starknet contract, we need to use a syscall handler, here we show how to implement one (at the end).
+</span><span class="attr">#[derive(Debug)]
+</span><span class="kw">struct </span>SyscallHandler;
+
+<span class="kw">fn </span>main() {
+    <span class="kw">let </span>path = Path::new(<span class="string">"programs/examples/hello_starknet.cairo"</span>);
+
+    <span class="kw">let </span>contract = compile_path(
+        path,
+        <span class="prelude-val">None</span>,
+        CompilerConfig {
+            replace_ids: <span class="bool-val">true</span>,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    <span class="kw">let </span>entry_point = contract.entry_points_by_type.constructor.get(<span class="number">0</span>).unwrap();
+    <span class="kw">let </span>sierra_program = contract.extract_sierra_program().unwrap();
+
+    <span class="kw">let </span>native_context = NativeContext::new();
+
+    <span class="kw">let </span><span class="kw-2">mut </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
+    native_program
+        .insert_metadata(SyscallHandlerMeta::new(<span class="kw-2">&amp;mut </span>SyscallHandler))
+        .unwrap();
+
+    <span class="comment">// Call the echo function from the contract using the generated wrapper.
+    </span><span class="kw">let </span>entry_point_fn =
+        find_entry_point_by_idx(<span class="kw-2">&amp;</span>sierra_program, entry_point.function_idx).unwrap();
+
+    <span class="kw">let </span>fn_id = <span class="kw-2">&amp;</span>entry_point_fn.id;
+
+    <span class="kw">let </span>native_executor = NativeExecutor::new(native_program);
+
+    <span class="kw">let </span>result = native_executor
+        .execute_contract(
+            fn_id,
+            <span class="comment">// The calldata
+            </span><span class="kw-2">&amp;</span>[JitValue::Felt252(Felt::ONE)],
+            u64::MAX.into(),
+        )
+        .expect(<span class="string">"failed to execute the given contract"</span>);
+
+    <span class="macro">println!</span>();
+    <span class="macro">println!</span>(<span class="string">"Cairo program was compiled and executed successfully."</span>);
+    <span class="macro">println!</span>(<span class="string">"{result:#?}"</span>);
+}
+
+<span class="comment">// Implement an example syscall handler.
+</span><span class="kw">impl </span>StarkNetSyscallHandler <span class="kw">for </span>SyscallHandler {
+    <span class="kw">fn </span>get_block_hash(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        block_number: u64,
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;Felt&gt; {
+        <span class="macro">println!</span>(<span class="string">"Called `get_block_hash({block_number})` from MLIR."</span>);
+        <span class="prelude-val">Ok</span>(Felt::from_bytes_be_slice(<span class="string">b"get_block_hash ok"</span>))
+    }
+
+    <span class="kw">fn </span>get_execution_info(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;cairo_native::starknet::ExecutionInfo&gt; {
+        <span class="macro">println!</span>(<span class="string">"Called `get_execution_info()` from MLIR."</span>);
+        <span class="prelude-val">Ok</span>(ExecutionInfo {
+            block_info: BlockInfo {
+                block_number: <span class="number">1234</span>,
+                block_timestamp: <span class="number">2345</span>,
+                sequencer_address: <span class="number">3456</span>.into(),
+            },
+            tx_info: TxInfo {
+                version: <span class="number">4567</span>.into(),
+                account_contract_address: <span class="number">5678</span>.into(),
+                max_fee: <span class="number">6789</span>,
+                signature: <span class="macro">vec!</span>[<span class="number">1248</span>.into(), <span class="number">2486</span>.into()],
+                transaction_hash: <span class="number">9876</span>.into(),
+                chain_id: <span class="number">8765</span>.into(),
+                nonce: <span class="number">7654</span>.into(),
+            },
+            caller_address: <span class="number">6543</span>.into(),
+            contract_address: <span class="number">5432</span>.into(),
+            entry_point_selector: <span class="number">4321</span>.into(),
+        })
+    }
+
+    <span class="kw">fn </span>deploy(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        class_hash: Felt,
+        contract_address_salt: Felt,
+        calldata: <span class="kw-2">&amp;</span>[Felt],
+        deploy_from_zero: bool,
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;(Felt, Vec&lt;Felt&gt;)&gt; {
+        <span class="macro">println!</span>(<span class="string">"Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR."</span>);
+        <span class="prelude-val">Ok</span>((
+            class_hash + contract_address_salt,
+            calldata.iter().map(|x| x + <span class="kw-2">&amp;</span>Felt::ONE).collect(),
+        ))
+    }
+
+    <span class="kw">fn </span>replace_class(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        class_hash: Felt,
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;()&gt; {
+        <span class="macro">println!</span>(<span class="string">"Called `replace_class({class_hash})` from MLIR."</span>);
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>library_call(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        class_hash: Felt,
+        function_selector: Felt,
+        calldata: <span class="kw-2">&amp;</span>[Felt],
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
+        <span class="macro">println!</span>(
+            <span class="string">"Called `library_call({class_hash}, {function_selector}, {calldata:?})` from MLIR."
+        </span>);
+        <span class="prelude-val">Ok</span>(calldata.iter().map(|x| x * Felt::from(<span class="number">3</span>)).collect())
+    }
+
+    <span class="kw">fn </span>call_contract(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        address: Felt,
+        entry_point_selector: Felt,
+        calldata: <span class="kw-2">&amp;</span>[Felt],
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
+        <span class="macro">println!</span>(
+            <span class="string">"Called `call_contract({address}, {entry_point_selector}, {calldata:?})` from MLIR."
+        </span>);
+        <span class="prelude-val">Ok</span>(calldata.iter().map(|x| x * Felt::from(<span class="number">3</span>)).collect())
+    }
+
+    <span class="kw">fn </span>storage_read(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        address_domain: u32,
+        address: Felt,
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;Felt&gt; {
+        <span class="macro">println!</span>(<span class="string">"Called `storage_read({address_domain}, {address})` from MLIR."</span>);
+        <span class="prelude-val">Ok</span>(address * Felt::from(<span class="number">3</span>))
+    }
+
+    <span class="kw">fn </span>storage_write(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        address_domain: u32,
+        address: Felt,
+        value: Felt,
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;()&gt; {
+        <span class="macro">println!</span>(<span class="string">"Called `storage_write({address_domain}, {address}, {value})` from MLIR."</span>);
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>emit_event(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        keys: <span class="kw-2">&amp;</span>[Felt],
+        data: <span class="kw-2">&amp;</span>[Felt],
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;()&gt; {
+        <span class="macro">println!</span>(<span class="string">"Called `emit_event({keys:?}, {data:?})` from MLIR."</span>);
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>send_message_to_l1(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        to_address: Felt,
+        payload: <span class="kw-2">&amp;</span>[Felt],
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;()&gt; {
+        <span class="macro">println!</span>(<span class="string">"Called `send_message_to_l1({to_address}, {payload:?})` from MLIR."</span>);
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>keccak(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        input: <span class="kw-2">&amp;</span>[u64],
+        _gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;cairo_native::starknet::U256&gt; {
+        <span class="macro">println!</span>(<span class="string">"Called `keccak({input:?})` from MLIR."</span>);
+        <span class="prelude-val">Ok</span>(U256(Felt::from(<span class="number">1234567890</span>).to_le_bytes()))
+    }
+
+    <span class="comment">/*
+    ... more code here, check out the full example in examples/starknet.rs
+    */
+</span>}
+</code></pre></div>
+<p>For more examples, check out the <code>examples/</code> directory.</p>
+</div></details></section></div></main></body></html>

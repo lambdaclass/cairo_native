@@ -1,0 +1,257 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Execution Walkthrough"><title>cairo_native::docs::section03 - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../cairo_native/index.html">cairo_native</a><span class="version">0.2.0</span></h2></div><h2 class="location"><a href="#">Module section03</a></h2><div class="sidebar-elems"><h2><a href="../index.html">In cairo_native::docs</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../../index.html">cairo_native</a>::<wbr><a href="../index.html">docs</a>::<wbr><a class="mod" href="#">section03</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../../src/cairo_native/docs.rs.html#14">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="execution-walkthrough"><a class="doc-anchor" href="#execution-walkthrough">§</a>Execution Walkthrough</h2>
+<p>Given the following Cairo program:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="comment">// This is the cairo program. It just adds two numbers together and returns the
+// result in an enum whose variant is selected using the result's parity.
+</span><span class="kw">enum </span>Parity&lt;T&gt; {
+  Even: T,
+  Odd: T, 
+}
+<span class="doccomment">/// Add `lhs` and `rhs` together and return the result in `Parity::Even` if it's
+/// even or `Parity::Odd` otherwise.
+</span><span class="kw">fn </span>run(lhs: u128, rhs: u128) -&gt; Parity&lt;u128&gt; {
+  <span class="kw">let </span>res = lhs + rhs;
+  <span class="kw">if </span>(res &amp; <span class="number">1</span>) == <span class="number">0 </span>{
+    Parity::Even(res)
+  } <span class="kw">else </span>{
+    Parity::Odd(res)
+} }</code></pre></div>
+<p>Let’s see how it is executed. We start with the following Rust code:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>program = get_sierra_program();       <span class="comment">// The result of the `cairo-compile` program.
+</span><span class="kw">let </span>module = get_native_module(<span class="kw-2">&amp;</span>program); <span class="comment">// This compiles the Sierra program to
+                                          // MLIR (not covered here).</span></code></pre></div>
+<h3 id="execution-engine-preparation"><a class="doc-anchor" href="#execution-engine-preparation">§</a>Execution engine preparation</h3>
+<p>Given a compiled Cairo program in an MLIR module, once it is lowered to the LLVM dialect we have two options to execute it: AOT and JIT.</p>
+<h4 id="using-the-jit-executor"><a class="doc-anchor" href="#using-the-jit-executor">§</a>Using the JIT executor</h4>
+<p>If we decide to use the JIT executor we just create the jit runner and we’re done.</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>program = get_sierra_program();
+<span class="kw">let </span>module = get_native_module(<span class="kw-2">&amp;</span>program);
+
+<span class="comment">// The optimization level can be `None`, `Less`, `Default` or `Aggressive`. They
+// are equivalent to compiling a C program using `-O0`, `-O1`, `-O2` and `-O3`
+// respectively.
+</span><span class="kw">let </span>engine = JitNativeExecutor::from_native_module(module, OptLevel::Default);</code></pre></div>
+<h4 id="using-the-aot-executor"><a class="doc-anchor" href="#using-the-aot-executor">§</a>Using the AOT executor</h4>
+<p>Preparing the AOT executor is more complicated since we need to compile it into a shared library and load it from disk.</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>program = get_sierra_program();
+<span class="kw">let </span>module = get_native_module(<span class="kw-2">&amp;</span>program);
+
+<span class="comment">// Internally, this method will run all the steps mentioned before internally into
+// temporary files and return a working `AotNativeExecutor`.
+</span><span class="kw">let </span>engine = AotNativeExecutor::from_native_module(module, OptLevel::Default);</code></pre></div>
+<h4 id="using-caches"><a class="doc-anchor" href="#using-caches">§</a>Using caches</h4>
+<p>You can use caches to keep the compiled programs in memory or disk and reuse them between runs. You may use the <code>ProgramCache</code> type, or alternatively just <code>AotProgramCache</code> or <code>JitProgramCache</code> directly.</p>
+<p>Adding programs to the program cache involves steps not covered here, but once they’re inserted you can get executors like this:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>engine = program_cache.get(key).expect(<span class="string">"program not found"</span>);</code></pre></div>
+<h3 id="invoking-the-program"><a class="doc-anchor" href="#invoking-the-program">§</a>Invoking the program</h3>
+<p>Regardless of whether we decided to go with AOT or JIT, the program invocation involves the exact same steps. We need to know the entrypoint that we’ll be calling and its arguments.</p>
+<p>In a future we may be able to implement compile-time trampolines for known program signatures, but for now we need to call the <code>invoke_dynamic</code> or <code>invoke_dynamic_with_syscall_handler</code> methods which works with any signature.</p>
+<blockquote>
+<p>Note: A trampoline is a function that invokes an compiled MLIR function from Rust code.],</p>
+</blockquote>
+<p>Now we need to find the function id:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>program = get_sierra_program();
+
+<span class="comment">// The utility function needs the symbol of the entry point, which is built as
+// follows:
+//   &lt;module-name&gt;::&lt;module-name&gt;::&lt;function-name&gt;(&lt;function-idx&gt;)
+//
+// The `&lt;function-idx&gt;` comes from the Sierra program. It's the index of the
+// function in the function declaration section.
+</span><span class="kw">let </span>function_id = find_function_id(<span class="kw-2">&amp;</span>program, <span class="string">"program::program::main(f0)"</span>);</code></pre></div>
+<p>The arguments must be placed in a list of <code>JitValue</code> instances. The builtins should be ignored since they are filled in automatically. The only builtins required are the <code>GasBuiltin</code> and <code>System</code> (aka. the syscall handler). They are only mandatory when required by the program itself.</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>engine = get_execution_engine(); <span class="comment">// This creates the execution engine (covered before).
+
+</span><span class="kw">let </span>args = [
+  JitValue::Uint128(<span class="number">1234</span>),
+  JitValue::Uint128(<span class="number">4321</span>),
+];</code></pre></div>
+<blockquote>
+<p>Note: Although it’s called <code>JitValue</code> for now, it’s not tied in any way to the JIT engine. <code>JitValue</code>s are used for both the AOT and JIT engines.],</p>
+</blockquote>
+<p>Finally we can invoke the program like this:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>engine = get_execution_engine();
+
+<span class="kw">let </span>function_id = find_function_id(<span class="kw-2">&amp;</span>program, <span class="string">"program::program::main(f0)"</span>);
+<span class="kw">let </span>args = [
+  JitValue::Uint128(<span class="number">1234</span>),
+  JitValue::Uint128(<span class="number">4321</span>),
+];
+
+<span class="kw">let </span>execution_result = engine.invoke_dynamic(
+  function_id, <span class="comment">// The entry point function id.
+  </span>args,        <span class="comment">// The slice of `JitValue`s.
+  </span><span class="prelude-val">None</span>,        <span class="comment">// The available gas (if any).
+</span>)<span class="question-mark">?</span>;
+
+<span class="comment">// The return value has some useful information about the execution, like:
+//   - The remaining gas, if any was supplied.
+//   - The program's return value.
+//   - The builtin usage statistics. These contain the number of times each builtin has been used.
+</span><span class="macro">println!</span>(<span class="string">"Remaining gas: {:?}"</span>,  execution_result.remaining_gas);
+<span class="macro">println!</span>(<span class="string">"Return value:  {:#?}"</span>, execution_result.return_value);
+<span class="macro">println!</span>(<span class="string">"Builtin stats: {:?}"</span>,  execution_result.builtin_stats);</code></pre></div>
+<p>Running the code above should print the following:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code>Remaining gas: <span class="prelude-val">None
+</span>Return value:  Enum {
+  tag: <span class="number">0</span>,
+  value: Struct {
+    fields: [
+      Enum {
+        tag: <span class="number">1</span>,
+        value: Uint128(
+          <span class="number">5555</span>,
+        ),
+        debug_name: <span class="prelude-val">Some</span>(
+          <span class="string">"sample::sample::Parity::&lt;core::integer::u128&gt;"</span>,
+        ),
+      },
+    ],
+    debug_name: <span class="prelude-val">Some</span>(
+      <span class="string">"Tuple&lt;sample::sample::Parity::&lt;core::integer::u128&gt;&gt;"</span>,
+    ),
+  },
+  debug_name: <span class="prelude-val">Some</span>(
+    <span class="string">"core::panics::PanicResult::&lt;(sample::sample::Parity::&lt;core::integer::u128&gt;,)&gt;"</span>,
+  ),
+}
+Builtin stats: BuiltinStats { bitwise: <span class="number">1</span>, ec_op: <span class="number">0</span>, range_check: <span class="number">1</span>, pedersen: <span class="number">0</span>, poseidon: <span class="number">0</span>, segment_arena: <span class="number">0 </span>}</code></pre></div>
+<h4 id="contracts"><a class="doc-anchor" href="#contracts">§</a>Contracts</h4>
+<p>Contracts always have the same interface, therefore they have an alternative to <code>invoke_dynamic</code> called <code>invoke_contract_dynamic</code>.</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">fn</span>(Span&lt;felt252&gt;) -&gt; PanicResult&lt;Span&lt;felt252&gt;&gt;;</code></pre></div>
+<p>This wrapper will attempt to deserialize the real contract arguments from the span of felts, invoke the contracts, and finally serialize and return the result. When this deserialization fails, the contract will panic with the mythical <code>Failed to deserialize param #N</code> error.</p>
+<p>If the example program had the same interface as a contract (a span of felts) then it’d be invoked like this:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">let </span>engine = get_execution_engine();
+
+<span class="kw">let </span>function_id = find_function_id(<span class="kw-2">&amp;</span>program, <span class="string">"program::program::main(f0)"</span>);
+<span class="kw">let </span>args = [
+  Felt::from(<span class="number">1234</span>),
+  Felt::from(<span class="number">4321</span>),
+];
+
+<span class="kw">let </span>execution_result = engine.invoke_dynamic(
+  function_id, <span class="comment">// The entry point function id.
+  </span>args,        <span class="comment">// The slice of `JitValue`s.
+  </span><span class="prelude-val">None</span>,        <span class="comment">// The available gas (if any).
+</span>)<span class="question-mark">?</span>;
+
+<span class="comment">// The return value has some useful information about the execution, like:
+//   - The remaining gas, if any was supplied.
+//   - Whether the contract execution panicked.
+//   - The contract's return values.
+//   - The builtin usage statistics. These contain the number of times each builtin has been used.
+</span><span class="macro">println!</span>(<span class="string">"Remaining gas: {:?}"</span>, execution_result.remaining_gas);
+<span class="macro">println!</span>(<span class="string">"Failure flag:  {:?}"</span>, execution_result.failure_flag);
+<span class="macro">println!</span>(<span class="string">"Return value:  {:?}"</span>, execution_result.return_value);
+<span class="macro">println!</span>(<span class="string">"Builtin stats: {:?}"</span>, execution_result.builtin_stats);</code></pre></div>
+<p>Running the code above should print the following:</p>
+<div class="example-wrap"><pre class="language-text"><code>Remaining gas: None
+Failure flag:  false
+Return value:  [
+  JitValue::Felt252(1),
+  JitValue::Felt252(5555),
+]
+Builtin stats: BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0, poseidon: 0, segment_arena: 0 }
+</code></pre></div><h3 id="the-cairo-native-runtime"><a class="doc-anchor" href="#the-cairo-native-runtime">§</a>The Cairo Native runtime</h3>
+<p>Sometimes we need to use stuff that would be too complicated or error-prone to implement in MLIR, but that we have readily available from Rust. That’s when we use the runtime library.</p>
+<p>When using the JIT it’ll be automatically linked (if compiled with support for it, which is enabled by default). If using the AOT, the <code>CAIRO_NATIVE_RUNTIME_LIBDIR</code> environment variable will have to be modified to point to the directory that contains <code>libcairo_native_runtime.a</code>, which is built and placed in said folder by <code>make build</code>.</p>
+<p>Although it’s implemented in Rust, its functions use the C ABI and have Rust’s name mangling disabled. This means that to the extern observer it’s technically indistinguishible from a library written in C. By doing this we’re making the functions callable from MLIR.</p>
+<h4 id="syscall-handlers"><a class="doc-anchor" href="#syscall-handlers">§</a>Syscall handlers</h4>
+<p>The syscall handler is similar to the runtime in the sense that we have C-compatible functions called from MLIR, but it’s different in that they’re built into Cairo Native itself rather than an external library, and that their implementation is user-dependent.</p>
+<p>To allow for user-provided syscall handler implementations we pass a pointer to a vtable every time we detect a <code>System</code> builtin. We need a vtable and cannot use function names because the methods themselves are generic over the syscall handler implementation.</p>
+<blockquote>
+<p>Note: The <code>System</code> is used only for syscalls; every syscall has it, therefore it’s a perfect candidate for this use.</p>
+</blockquote>
+<p>Those wrappers then receive a mutable reference to the syscall handler implementation. They are responsible of converting the MLIR-compatible inputs to the Rust representations, calling the implementation, and then converting the results back into MLIR-compatible formats.</p>
+<p>This means that as far as the user is concerned, writing a syscall handler is equivalent to implementing the trait <code>StarknetSyscallHandler</code> for a custom type.</p>
+<h3 id="appendix-the-c-abi-and-the-trampoline"><a class="doc-anchor" href="#appendix-the-c-abi-and-the-trampoline">§</a>Appendix: The C ABI and the trampoline</h3>
+<p>Normally, calling FFI functions in Rust is as easy as defining an extern function using C-compatible types. We can’t do this here because we don’t know the function’s signature.</p>
+<p>It all boils down to the <a href="https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf">SystemV ABI</a> in <code>x86_64</code> or its equivalent for ARM. Both of them are really similar:</p>
+<ul>
+<li>The stack must be aligned to 16 bytes before calling.</li>
+<li>Function arguments are spread between some registers and the stack.</li>
+<li>Return values use either a few registers or require a pointer.</li>
+</ul>
+<p>There’s a few other quirks, like which registers are caller vs callee-saved, but they’re not that relevant in this case.</p>
+<h4 id="arguments"><a class="doc-anchor" href="#arguments">§</a>Arguments</h4>
+<p>Argument location in <code>x86_64</code>:
+|  # | Reg.  | Description            |
+|––|—––|————————|
+|  1 | rdi   | A single 64-bit value. |
+|  2 | rsi   | A single 64-bit value. |
+|  3 | rdx   | A single 64-bit value. |
+|  4 | rcx   | A single 64-bit value. |
+|  5 | r8    | A single 64-bit value. |
+|  6 | r9    | A single 64-bit value. |
+| 7+ | Stack | Everything else.       |</p>
+<p>Argument location in <code>aarch64</code>:</p>
+<div><table><thead><tr><th>#</th><th>Reg.</th><th>Description</th></tr></thead><tbody>
+<tr><td>1</td><td>x0</td><td>A single 64-bit value.</td></tr>
+<tr><td>2</td><td>x1</td><td>A single 64-bit value.</td></tr>
+<tr><td>3</td><td>x2</td><td>A single 64-bit value.</td></tr>
+<tr><td>4</td><td>x3</td><td>A single 64-bit value.</td></tr>
+<tr><td>5</td><td>x4</td><td>A single 64-bit value.</td></tr>
+<tr><td>6</td><td>x5</td><td>A single 64-bit value.</td></tr>
+<tr><td>7</td><td>x6</td><td>A single 64-bit value.</td></tr>
+<tr><td>8</td><td>x7</td><td>A single 64-bit value.</td></tr>
+<tr><td>9+</td><td>Stack</td><td>Everything else.</td></tr>
+</tbody></table>
+</div>
+<p>Usually function calls have arguments of types other than just 64-bit integers. In those cases, for values smaller than 64 bits the smaller register variants are written. For values larger than 64 bits the value is split into multiple registers, but there’s a catch: if when splitting the value only one value would remain in registers then that register is padded and the entire value goes into the stack. For example, an <code>u128</code> that would be split between registers and the stack is always padded and written entirely in the stack.</p>
+<p>For complex values like structs, the types are flattened into a list of values when written into registers, or just written into the stack the same way they would be written into memory (aka. with the correct alignment, etc).</p>
+<h4 id="return-values"><a class="doc-anchor" href="#return-values">§</a>Return values</h4>
+<p>As mentioned before, return values may be either returned in registers or memory (most likely the stack, but not necessarily).</p>
+<p>Argument location in <code>x86_64</code>:</p>
+<div><table><thead><tr><th>#</th><th>Reg</th><th>Description</th></tr></thead><tbody>
+<tr><td>1</td><td>rax</td><td>A single 64-bit value.</td></tr>
+<tr><td>2</td><td>rdx</td><td>The “continuation” of <code>rax</code></td></tr>
+</tbody></table>
+</div>
+<p>Argument location in <code>aarch64</code>:</p>
+<div><table><thead><tr><th>#</th><th>Reg</th><th>Description</th></tr></thead><tbody>
+<tr><td>1</td><td>x0</td><td>A single 64-bit value</td></tr>
+<tr><td>2</td><td>x1</td><td>The “continuation” of <code>x0</code></td></tr>
+<tr><td>3</td><td>x2</td><td>The “continuation” of <code>x1</code></td></tr>
+<tr><td>4</td><td>x3</td><td>The “continuation” of <code>x2</code></td></tr>
+</tbody></table>
+</div>
+<p>Values are different that arguments in that only a single value is returned. If more than a single value needs to be returned then it’ll use a pointer.</p>
+<p>When a pointer is involved we need to pass it as the first argument. This means that every actual argument has to be shifted down one slot, pushing more stuff into the stack in the process.</p>
+<h4 id="the-trampoline"><a class="doc-anchor" href="#the-trampoline">§</a>The trampoline</h4>
+<p>We cannot really influence what values are in the register or the stack from Rust, therefore we need something written in assembler to put everything into place and invoke the function pointer.</p>
+<p>This is where the trampoline comes in. It’s a simple assembler function that does three things:</p>
+<ol>
+<li>Fill in the 6 or 8 argument registers with the first values in the data pointer and copy the rest into the stack as-is (no stack alignment or anything, we guarantee from the Rust side that the stack will end up properly aligned).</li>
+<li>Invoke the function pointer.</li>
+<li>Write the return values (in registers only) into the return pointer.</li>
+</ol>
+<p>This function always has the same signature, which is C-compatible, and therefore can be used with Rust’s FFI facilities without problems.</p>
+<h5 id="aot-calling-convention"><a class="doc-anchor" href="#aot-calling-convention">§</a>AOT calling convention:</h5><h6 id="arguments-1"><a class="doc-anchor" href="#arguments-1">§</a>Arguments</h6>
+<ul>
+<li>Written on registers, then the stack.</li>
+<li>Structs’ fields are treated as individual arguments (flattened).</li>
+<li>Enums are structs internally, therefore they are also flattened (including the padding).
+<ul>
+<li>The default payload works as expected since it has the correct signature.</li>
+<li>All other payloads require breaking it down into bytes and scattering it through the padding
+and default payload’s space.</li>
+</ul>
+</li>
+</ul>
+<h6 id="return-values-1"><a class="doc-anchor" href="#return-values-1">§</a>Return values</h6>
+<ul>
+<li>Indivisible values that do not fit within a single register (ex. felt252) use multiple registers (x0-x3 for felt252).</li>
+<li>Struct arguments, etc… use the stack.</li>
+</ul>
+<p>In other words, complex values require a return pointer while simple values do not but may still use multiple registers if they don’t fit within one.</p>
+</div></details></section></div></main></body></html>

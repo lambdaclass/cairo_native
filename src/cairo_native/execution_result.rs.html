@@ -174,7 +174,7 @@
 }
 
 <span class="kw">impl </span>ContractExecutionResult {
-    <span class="doccomment">/// Convert a [`ExecuteResult`] to a [`NativeExecutionResult`]
+    <span class="doccomment">/// Convert an [`ExecutionResult`] into a [`ContractExecutionResult`]
     </span><span class="kw">pub fn </span>from_execution_result(result: ExecutionResult) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>error_msg = <span class="prelude-val">None</span>;
         <span class="kw">let </span>failure_flag;

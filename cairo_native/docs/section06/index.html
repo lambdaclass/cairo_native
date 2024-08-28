@@ -1,0 +1,262 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Debugging"><title>cairo_native::docs::section06 - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../cairo_native/index.html">cairo_native</a><span class="version">0.2.0</span></h2></div><h2 class="location"><a href="#">Module section06</a></h2><div class="sidebar-elems"><h2><a href="../index.html">In cairo_native::docs</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../../index.html">cairo_native</a>::<wbr><a href="../index.html">docs</a>::<wbr><a class="mod" href="#">section06</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../../src/cairo_native/docs.rs.html#26">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="debugging"><a class="doc-anchor" href="#debugging">§</a>Debugging</h2><h3 id="useful-environment-variables"><a class="doc-anchor" href="#useful-environment-variables">§</a>Useful environment variables</h3>
+<p>These 2 env vars will dump the generated MLIR code from any compilation on the current working directory as:</p>
+<ul>
+<li><code>dump.mlir</code>: The MLIR code after passes without locations.</li>
+<li><code>dump-debug.mlir</code>: The MLIR code after passes with locations.</li>
+<li><code>dump-prepass.mlir</code>: The MLIR code before without locations.</li>
+<li><code>dump-prepass-debug.mlir</code>: The MLIR code before passes with locations.</li>
+</ul>
+<p>Do note that the MLIR with locations is in pretty form and thus not suitable to pass to <code>mlir-opt</code>.</p>
+<div class="example-wrap"><pre class="language-bash"><code>export NATIVE_DEBUG_DUMP_PREPASS=1
+export NATIVE_DEBUG_DUMP=1
+</code></pre></div><h4 id="debugging-with-lldb"><a class="doc-anchor" href="#debugging-with-lldb">§</a>Debugging with LLDB</h4>
+<p>To debug with LLDB (or another debugger), we must compile the binary with the <code>with-debug-utils</code> feature.</p>
+<div class="example-wrap"><pre class="language-bash"><code>cargo build --bin cairo-native-run --features with-debug-utils
+</code></pre></div>
+<p>Then, we can add the a debugger breakpoint trap. To add it at a given sierra statement, we can set the following env var:</p>
+<div class="example-wrap"><pre class="language-bash"><code>export NATIVE_DEBUG_TRAP_AT_STMT=10
+</code></pre></div>
+<p>The trap instruction may not end up exactly where the statement is.</p>
+<p>If we want to manually set the breakpoint (for example, when executing a particular libfunc), then we can use the <code>DebugUtils</code> metadata in the code.</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="attr">#[cfg(feature = <span class="string">"with-debug-utils"</span>)]
+</span>{
+    metadata.get_mut::&lt;DebugUtils&gt;()
+        .unwrap()
+        .debug_breakpoint_trap(block, location)<span class="question-mark">?</span>;
+}</code></pre></div>
+<p>Now, we need to execute <code>cairo-native-run</code> from our debugger (LLDB). If we want to see the source locations, we also need to set the <code>NATIVE_DEBUG_DUMP</code> env var and execute the program with AOT.</p>
+<div class="example-wrap"><pre class="language-bash"><code>lldb -- target/debug/cairo-native-run -s programs/recursion.cairo --available-gas 99999999 --run-mode aot
+</code></pre></div>
+<p>Some usefull lldb commands:</p>
+<ul>
+<li><code>process launch</code>: starts the program</li>
+<li><code>frame select</code>: shows the current line information</li>
+<li><code>thread step-in</code>: makes a source level single step</li>
+<li><code>thread continue</code>: continues execution of the current process</li>
+<li><code>disassemble --frame --mixed</code>: shows assembly instructions mixed with source level code</li>
+</ul>
+<h3 id="logging"><a class="doc-anchor" href="#logging">§</a>Logging</h3>
+<p>Enable logging to see the compilation process:</p>
+<div class="example-wrap"><pre class="language-bash"><code>export RUST_LOG=&quot;cairo_native=trace&quot;
+</code></pre></div><h3 id="other-tips"><a class="doc-anchor" href="#other-tips">§</a>Other tips:</h3>
+<ul>
+<li>Try to find the minimal program to reproduce an issue, the more isolated the easier to test.</li>
+<li>Use the <code>debug_utils</code> print utilities, more info <a href="https://lambdaclass.github.io/cairo_native/cairo_native/metadata/debug_utils/struct.DebugUtils.html">here</a>:</li>
+</ul>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="attr">#[cfg(feature = <span class="string">"with-debug-utils"</span>)]
+</span>{
+    metadata.get_mut::&lt;DebugUtils&gt;()
+        .unwrap()
+        .print_pointer(context, helper, entry, ptr, location)<span class="question-mark">?</span>;
+}</code></pre></div>
+<h3 id="debugging-contracts"><a class="doc-anchor" href="#debugging-contracts">§</a>Debugging Contracts</h3>
+<p>Contracts are difficult to debug for various reasons, including:</p>
+<ul>
+<li>They are external to the project.</li>
+<li>We don’t have their source code.</li>
+<li>They run autogenerated code (the wrapper).</li>
+<li>They have a limited number of allowed libfuncs (ex. cannot use the print libfunc).</li>
+<li>Usually it’s not a single contract but multiple that</li>
+</ul>
+<p>Some of them have workarounds:</p>
+<h4 id="obtaining-the-contract"><a class="doc-anchor" href="#obtaining-the-contract">§</a>Obtaining the contract</h4>
+<p>There are various options for obtaining the contract, which include:</p>
+<ul>
+<li>Manually invoking the a Starknet API using <code>curl</code> with the contract class.</li>
+</ul>
+<p>Example:</p>
+<div class="example-wrap"><pre class="language-bash"><code>curl --location --request POST &#39;https://mainnet.juno.internal.lambdaclass.com&#39; \
+--header &#39;Content-Type: application/json&#39; \
+--data-raw &#39;{
+  &quot;jsonrpc&quot;: &quot;2.0&quot;,
+  &quot;method&quot;: &quot;starknet_getClass&quot;,
+  &quot;id&quot;: 0,
+  &quot;params&quot;: {
+    &quot;class_hash&quot;: &quot;0x036078334509b514626504edc9fb252328d1a240e4e948bef8d0c08dff45927f&quot;,
+    &quot;block_id&quot;: 657887
+}
+}&#39;
+</code></pre></div>
+<ul>
+<li>Running the replay with some code to write all the executed contracts on disk.</li>
+</ul>
+<p>Both should provide us with the contract, but if we’re manually invoking the API we’ll need to process the JSON a bit to:</p>
+<ul>
+<li>Remove the JsonRPC overhead, and</li>
+<li>Convert the ABI from a string of JSON into a JSON object.</li>
+</ul>
+<h4 id="interpreting-the-contract"><a class="doc-anchor" href="#interpreting-the-contract">§</a>Interpreting the contract</h4>
+<p>The contract JSON contains the Sierra program in a useless form (in the sense
+that we cannot understand anything), as well as some information about the
+entry points and some ABI types. We’ll need the Sierra program (in Sierra
+format, not the JSON) to be able to understand what should be happening.</p>
+<p>We can use the <code>starknet-sierra-extract-code</code> binary, which can be found in
+the cairo project when compiled from source (not in the binary distribution).
+That binary will extract the Sierra program without any debug information,
+which is still not very useful.</p>
+<p>Once we have the Sierra we can run the
+<a href="https://github.com/azteca1998/sierra-mapper">Sierra mapper</a> to autogenerate
+some type, libfunc and function names so that we know what we’re looking at
+without losing our mind. The Sierra mapper can be run multiple times, adding
+more names manually as the user sees fit.</p>
+<h4 id="how-to-actually-debug"><a class="doc-anchor" href="#how-to-actually-debug">§</a>How to actually debug</h4>
+<p>First of all we need to <strong>know which contract is actually failing</strong>. Most
+of the time the contract where it crashes isn’t the transaction’s class
+hash, but a chain of contract/library calls.</p>
+<p>To know which contract is being called we can add some debugging prints in
+the replay that logs contract executions. For example:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">impl </span>StarknetSyscallHandler <span class="kw">for </span>ReplaySyscallHandler {
+    <span class="comment">// ...
+
+    </span><span class="kw">fn </span>library_call(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        class_hash: Felt,
+        function_selector: Felt,
+        calldata: <span class="kw-2">&amp;</span>[Felt],
+        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
+        <span class="comment">// ...
+
+        </span><span class="macro">println!</span>(<span class="string">"Starting execution of contract {class_hash} on selector {function_selector} with calldata {calldata:?}."</span>);
+        <span class="kw">let </span>result = executor.invoke_contract_dynamic(...);
+        <span class="macro">println!</span>(<span class="string">"Finished execution of contract {class_hash}."</span>);
+        <span class="kw">if </span>result.failure_flag {
+            <span class="macro">println!</span>(<span class="string">"Execution of contract {class_hash} failed."</span>);
+        }
+
+        <span class="comment">// ...
+    </span>}
+
+    <span class="kw">fn </span>call_contract(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        address: Felt,
+        entry_point_selector: Felt,
+        calldata: <span class="kw-2">&amp;</span>[Felt],
+        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+    ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
+			  <span class="comment">// ...
+
+			  </span><span class="macro">println!</span>(<span class="string">"Starting execution of contract {class_hash} on selector {function_selector} with calldata {calldata:?}."</span>);
+			  <span class="kw">let </span>result = executor.invoke_contract_dynamic(...);
+			  <span class="macro">println!</span>(<span class="string">"Finished execution of contract {class_hash}."</span>);
+			  <span class="kw">if </span>result.failure_flag {
+					  <span class="macro">println!</span>(<span class="string">"Execution of contract {class_hash} failed."</span>);
+				}
+
+				<span class="comment">// ...
+		</span>}
+}</code></pre></div>
+<p>If we run something like the above then the
+<a href="https://github.com/lambdaclass/starknet-replay">replay</a> should start
+printing the log of what’s actually being executed and where it crashes.
+It may print multiple times the error message, but <strong>only the first one is
+the relevant one</strong> (the others should be the contract call chain in reverse
+order). Once we know which contract is being called and its calldata we can
+download and extract its Sierra as detailed above.</p>
+<p>We then need to know <strong>where it fails within the contract</strong>. To do that we
+can look at the error message and deduce where it’s used based on the Sierra
+program. For example, the error message <code>u256_mul overflow</code> is felt-encoded
+as <code>0x753235365f6d756c206f766572666c6f77</code>, or
+<code>39879774624083218221774975706286902767479</code> in decimal. If we look for
+usages of that specific value we’ll most likely find all the <strong>places where
+that error can be thrown</strong>. Now we just need to narrow them down to a single
+one and we’ll be able to actually start debugging.</p>
+<p>An idea on how to do that is modifying Cairo native so that it adds a
+breakpoint every time a constant with that error message is generated.
+For example:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="doccomment">/// Generate MLIR operations for the `felt252_const` libfunc.
+</span><span class="kw">pub fn </span>build_const&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
+    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    info: <span class="kw-2">&amp;</span>Felt252ConstConcreteLibfunc,
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">let </span>value = <span class="kw">match </span>info.c.sign() {
+        Sign::Minus =&gt; {
+            <span class="kw">let </span>prime = metadata
+                .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
+                .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                </span>.prime();
+            (<span class="kw-2">&amp;</span>info.c + prime.to_bigint().expect(<span class="string">"always is Some"</span>))
+                .to_biguint()
+                .expect(<span class="string">"always is positive"</span>)
+        }
+        <span class="kw">_ </span>=&gt; info.c.to_biguint().expect(<span class="string">"sign already checked"</span>),
+    };
+    <span class="kw">let </span>felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
+    <span class="kw">if </span>value == <span class="string">"39879774624083218221774975706286902767479"</span>.parse().unwrap() {
+        <span class="comment">// If using the debugger:
+        </span>metadata
+            .get_mut::&lt;<span class="kw">crate</span>::metadata::debug_utils::DebugUtils&gt;()
+            .unwrap()
+            .debug_breakpoint_trap(entry, location)
+            .unwrap();
+        <span class="comment">// If not using the debugger (not tested, may not provide useful information).
+        </span>metadata
+            .get_mut::&lt;<span class="kw">crate</span>::metadata::debug_utils::DebugUtils&gt;()
+            .unwrap()
+            .debug_print(
+                context,
+                helper,
+                entry,
+                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Invoked felt252_const&lt;error_msg&gt; at {location}."</span>),
+                location,
+            )
+            .unwrap();
+    }
+    <span class="kw">let </span>value = entry.const_int_from_type(context, location, value, felt252_ty)<span class="question-mark">?</span>;
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+<p>Using the debugger will also provide the internal call backtrace (of the
+contract) and register values, so it’s the recommended way, but depending on
+the contract it may not be feasible (ex. the contract is too big and running
+the debugger is not practical due to the amount of time it takes to get to
+the crash).</p>
+<p>Once we know exactly where it crashes we can follow the control flow of the
+Sierra program backwards and discover how it reached that point.</p>
+<p>In some cases the <strong>problem may be somewhere completely different from where
+the error is thrown</strong>. In other words, the error we’re seeing may be a side
+effect of a completely different bug. For example, in a <code>u256_mul overflow</code>,
+the bug may be found in the mul operation implementation, or alternatively it
+may just be that the values passed to it are not what they should be. That’s
+why it’s important to check for those cases and keep following the control
+flow backwards as required.</p>
+<h4 id="fixing-the-bug"><a class="doc-anchor" href="#fixing-the-bug">§</a>Fixing the bug</h4>
+<p>Before fixing the bug it’s really important to know:</p>
+<ul>
+<li><strong>Where</strong> it happens (in our compiler, not so much in the contract at this point)</li>
+<li><strong>Why</strong> it happens (as in, what caused this bug to be in our codebase in the first place)</li>
+<li><strong>How</strong> to fix it properly (not the actual code but to know what steps to take to fix it).</li>
+<li>Could the <strong>same bug</strong> happen in <strong>different places</strong>? (for example, if it was the implementation of <code>u64_sqrt</code>, could the same bug happen in <code>u32_sqrt</code> and others?)</li>
+<li>What <strong>side-effects</strong> will the bug fix trigger? (for example, if the fix implies changing the layout of some type, will the new layout make something completely unrelated fail later on?)</li>
+</ul>
+<p>The last one is really important since we don’t want to cause more bugs
+fixing the ones we already have. To understand the side effects we need to
+have a full understanding of the bug, which implies having an answer to (at
+least) all the other things to know before fixing it.</p>
+<p>Once we know all that we can:</p>
+<ol>
+<li>Add tests that reproduce the bug (including all the variants that we may discover).</li>
+<li>Implement the fix in code.</li>
+</ol>
+<blockquote>
+<p>Note: Those steps must be done in that order. Otherwise we risk
+unconsciously avoiding bugs in our tests for our bug fix implementation by
+building our tests from our implementation instead of the correct
+behaviour.</p>
+</blockquote>
+</div></details></section></div></main></body></html>

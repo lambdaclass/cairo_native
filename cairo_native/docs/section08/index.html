@@ -1,0 +1,86 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="MLIR Resources"><title>cairo_native::docs::section08 - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../cairo_native/index.html">cairo_native</a><span class="version">0.2.0</span></h2></div><h2 class="location"><a href="#">Module section08</a></h2><div class="sidebar-elems"><h2><a href="../index.html">In cairo_native::docs</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../../index.html">cairo_native</a>::<wbr><a href="../index.html">docs</a>::<wbr><a class="mod" href="#">section08</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../../src/cairo_native/docs.rs.html#34">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="mlir-resources"><a class="doc-anchor" href="#mlir-resources">§</a>MLIR Resources</h2><h3 id="how-mlir-works"><a class="doc-anchor" href="#how-mlir-works">§</a>How MLIR Works</h3>
+<p>MLIR is composed of <strong>dialects</strong>, which is like a IR of it’s own, and this
+IR can be converted to another dialect IR (if the functionality exists).
+This is what makes MLIR shine.</p>
+<p>Some commonly used dialects in this project:</p>
+<ul>
+<li>The arith dialect: It contains arithmetic operations, such as <code>addi</code>, <code>subi</code> for addition and subtraction.</li>
+<li>The cf dialect: It contains basic control flow operations, such as the <code>br</code> and <code>cond_br</code>, which are unconditional and conditional jumps.</li>
+</ul>
+<h4 id="the-ir"><a class="doc-anchor" href="#the-ir">§</a>The IR</h4>
+<p>The MLIR IR is composed recursively like this: <code>Operation -&gt; Region -&gt; Block -&gt; Operations</code></p>
+<p>Each operation has 1 or more region, each region has 1 or more blocks, each
+block has 1 or more operations.</p>
+<p>This way a MLIR program can be composed.</p>
+<h4 id="transformations-and-passes"><a class="doc-anchor" href="#transformations-and-passes">§</a>Transformations and passes</h4>
+<p>MLIR provides a set of transformations that can optimize the IR.
+Such as <code>canonicalize</code>.</p>
+<p>Check out <a href="https://mlir.llvm.org/docs/Canonicalization/">https://mlir.llvm.org/docs/Canonicalization/</a> and <a href="https://mlir.llvm.org/docs/Passes/">https://mlir.llvm.org/docs/Passes/</a>.</p>
+<h4 id="translating"><a class="doc-anchor" href="#translating">§</a>Translating</h4>
+<p>In our case, llvm is our target, so we end up translating all dialects down
+to the LLVM dialect, which then gets converted to LLVM IR.</p>
+<h3 id="learning-resources"><a class="doc-anchor" href="#learning-resources">§</a>Learning Resources</h3>
+<p>Resources marked with <strong>→</strong> are best.</p>
+<ul>
+<li>Introduction
+<ul>
+<li><strong>→</strong> <a href="https://www.youtube.com/watch?v=qzljG6DKgic">2019 EuroLLVM Developers’ Meeting: MLIR: Multi-Level Intermediate Representation Compiler Infrastructure</a></li>
+<li>→ <a href="https://arxiv.org/pdf/2002.11054.pdf">MLIR: A Compiler Infrastructure for the End of Moore’s Law</a> The paper introducing the MLIR framework
+<ul>
+<li>7-minute video summary of paper: <a href="https://www.youtube.com/watch?v=6BwqK6E8v3g">Read a paper: Multi-level Intermediate Representation (MLIR)</a></li>
+<li>Another version of the paper: <a href="https://storage.googleapis.com/pub-tools-public-publication-data/pdf/85bf23fe88bd5c7ff60365bd0c6882928562cbeb.pdf">MLIR: Scaling Compiler Infrastructure for Domain Specific Computation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>MLIR Tutorial
+<ul>
+<li><strong>→</strong> (slides) <a href="https://llvm.org/devmtg/2020-09/slides/MLIR_Tutorial.pdf">MLIR Tutorial (LLVM Dev Mtg, 2020)</a></li>
+<li><strong>→</strong> (video) <a href="https://www.youtube.com/watch?v=Y4SvqTtOIDk">2020 LLVM Developers’ Meeting: M. Amini &amp; R. Riddle “MLIR Tutorial”</a></li>
+<li>(older slides) <a href="https://llvm.org/devmtg/2019-04/slides/Tutorial-AminiVasilacheZinenko-MLIR.pdf">MLIR Tutorial (LLVM Developers Meeting, Euro-LLVM 2019)</a></li>
+<li>(older slides) <a href="https://users.cs.utah.edu/~mhall/mlir4hpc/pienaar-MLIR-Tutorial.pdf">MLIR Tutorial (MLIR 4 HPC, 2019)</a></li>
+<li>(older video) <a href="https://www.youtube.com/watch?v=cyICUIZ56wQ">2019 EuroLLVM Developers’ Meeting: Mehdi &amp; Vasilache &amp; Zinenko “Building a Compiler with MLIR”</a></li>
+</ul>
+</li>
+<li><strong>→</strong> Another MLIR Tutorial <a href="https://github.com/j2kun/mlir-tutorial">https://github.com/j2kun/mlir-tutorial</a></li>
+<li><strong>→</strong> <a href="https://www.youtube.com/playlist?list=PLlONLmJCfHTo9WYfsoQvwjsa5ZB6hjOG5">How to build a compiler with LLVM and MLIR</a></li>
+<li>Other articles, posts
+<ul>
+<li><strong>→</strong> <a href="https://edgarluque.com/blog/mlir-with-rust/">Intro to LLVM and MLIR with Rust and Melior</a></li>
+<li><strong>→</strong> <a href="http://lastweek.io/notes/MLIR/">MLIR Notes</a></li>
+<li><strong>→</strong> <a href="https://www.lei.chat/posts/compilers-and-irs-llvm-ir-spirv-and-mlir/">Compilers and IRs: LLVM IR, SPIR-V, and MLIR</a> <a href="https://news.ycombinator.com/item?id=33387149">HN</a></li>
+<li><a href="https://iq.opengenus.org/mlir-compiler-infrastructure/">MLIR: Redefining the compiler infrastructure</a></li>
+<li><a href="https://badland.io/pinch.md">Pinch: Implementing a borrow-checked language with MLIR</a></li>
+</ul>
+</li>
+<li><a href="https://mlir.llvm.org/docs/">Official Documentation</a>
+<ul>
+<li><a href="https://mlir.llvm.org/">MLIR Homepage</a></li>
+<li><a href="https://mlir.llvm.org/docs/LangRef/">MLIR Language Reference</a></li>
+<li><a href="https://www.youtube.com/MLIRCompiler">MLIR Compiler</a> Youtube Channel</li>
+</ul>
+</li>
+</ul>
+<h4 id="talks-presentations--videos"><a class="doc-anchor" href="#talks-presentations--videos">§</a>Talks, Presentations, &amp; Videos</h4>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=0bxyZDGs-aA">2020 LLVM in HPC Workshop: Keynote: MLIR: an Agile Infrastructure for Building a Compiler Ecosystem</a></li>
+<li><a href="https://www.youtube.com/watch?v=Vfk9n3ir_5s">2021 LLVM Dev Mtg “Representing Concurrency with Graph Regions in MLIR”</a></li>
+<li><a href="https://www.youtube.com/watch?v=VbFqA9rvxPs">2022 LLVM Dev Mtg: Paths towards unifying LLVM and MLIR</a></li>
+<li><a href="https://www.youtube.com/watch?v=YFqWa4pxXzM">2022 LLVM Dev Mtg: VAST: MLIR for program analysis of C/C++</a></li>
+<li><a href="https://www.youtube.com/watch?v=cyMQbZ0B84Q">2022 LLVM Dev Mtg: MLIR for Functional Programming</a></li>
+<li><a href="https://www.youtube.com/watch?v=QyxiqmO6_qQ">2022 EuroLLVM Dev Mtg “Prototyping a Compiler for Homomorphic Encryption Using MLIR”</a></li>
+<li><a href="https://www.youtube.com/watch?v=TsP14-hI_W0">cirgen: MLIR based compiler for zk-STARK circuit generation - Frank Laub (RISC Zero)</a></li>
+<li><a href="https://www.youtube.com/watch?v=F9qXBuSkQFY">Prototyping a compiler for homomorphic encryption using MLIR</a>
+<ul>
+<li><a href="https://llvm.org/devmtg/2022-04-03/slides/Prototyping.a.compiler.for.homomorphic.encryption.in.MLIR.pdf">Slides</a></li>
+</ul>
+</li>
+<li><a href="https://www.youtube.com/watch?v=ne5D_kqlxYg">The HEIR Compiler w/ Jeremy Kun</a></li>
+</ul>
+<h4 id="useful-code"><a class="doc-anchor" href="#useful-code">§</a>Useful code</h4>
+<ul>
+<li><a href="https://github.com/raviqqe/melior"><code>raviqqe/melior</code></a></li>
+<li><a href="https://github.com/femtomc/mlir-sys"><code>femtomc/mlir-sys</code></a> Rust bindings to the MLIR C API.</li>
+<li><a href="https://github.com/GetFirefly/firefly"><code>GetFirefly/firefly</code></a> An alternative BEAM implementation, designed for WebAssembly.</li>
+</ul>
+</div></details></section></div></main></body></html>

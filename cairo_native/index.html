@@ -1,81 +1,291 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Cairo Sierra to MLIR compiler and JIT engine"><title>cairo_native - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../cairo_native/index.html">cairo_native</a><span class="version">0.2.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">cairo_native</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../src/cairo_native/lib.rs.html#1-118">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="cairo-sierra-to-mlir-compiler-and-jit-engine"><a class="doc-anchor" href="#cairo-sierra-to-mlir-compiler-and-jit-engine">§</a>Cairo Sierra to MLIR compiler and JIT engine</h2>
-<p>This crate is a compiler and JIT engine that transforms Sierra (or Cairo) sources into MLIR,
-which can be <a href="https://en.wikipedia.org/wiki/Just-in-time_compilation">JIT-executed</a> or further
-compiled into a binary
-<a href="https://en.wikipedia.org/wiki/Ahead-of-time_compilation">ahead of time</a>.</p>
-<h3 id="usage"><a class="doc-anchor" href="#usage">§</a>Usage</h3>
-<p>The API contains two structs, <code>NativeContext</code> and <code>NativeExecutor</code>.
-The main purpose of <code>NativeContext</code> is MLIR initialization, compilation and lowering to LLVM.
-<code>NativeExecutor</code> in the other hand is responsible of executing MLIR compiled sierra programs
-from an entrypoint.
-Programs and JIT states can be cached in contexts where their execution will be done multiple
-times.</p>
-
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>starknet_types_core::felt::Felt;
-<span class="kw">use </span>cairo_native::context::NativeContext;
-<span class="kw">use </span>cairo_native::executor::JitNativeExecutor;
-<span class="kw">use </span>cairo_native::values::JitValue;
-<span class="kw">use </span>std::path::Path;
-
-<span class="kw">let </span>program_path = Path::new(<span class="string">"programs/examples/hello.cairo"</span>);
-<span class="comment">// Compile the cairo program to sierra.
-</span><span class="kw">let </span>sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
-
-<span class="comment">// Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
-// initialization and compilation of sierra programs into a MLIR module.
-</span><span class="kw">let </span>native_context = NativeContext::new();
-
-<span class="comment">// Compile the sierra program into a MLIR module.
-</span><span class="kw">let </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
-
-<span class="comment">// The parameters of the entry point.
-</span><span class="kw">let </span>params = <span class="kw-2">&amp;</span>[JitValue::Felt252(Felt::from_bytes_be_slice(<span class="string">b"user"</span>))];
-
-<span class="comment">// Find the entry point id by its name.
-</span><span class="kw">let </span>entry_point = <span class="string">"hello::hello::greet"</span>;
-<span class="kw">let </span>entry_point_id = cairo_native::utils::find_function_id(<span class="kw-2">&amp;</span>sierra_program, entry_point);
-
-<span class="comment">// Instantiate the executor.
-</span><span class="kw">let </span>native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
-
-<span class="comment">// Execute the program.
-</span><span class="kw">let </span>result = native_executor
-    .invoke_dynamic(entry_point_id, params, <span class="prelude-val">None</span>)
-    .unwrap();
-
-<span class="macro">println!</span>(<span class="string">"Cairo program was compiled and executed successfully."</span>);
-<span class="macro">println!</span>(<span class="string">"{:?}"</span>, result);</code></pre></div>
-<h3 id="common-definitions"><a class="doc-anchor" href="#common-definitions">§</a>Common definitions</h3>
-<p>Within this project there are lots of functions with the same signature. As their arguments have
-all the same meaning, they are documented here:</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="⚡ Cairo Native ⚡"><title>cairo_native - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-dd39b87e5fcfba68.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.80.1 (3f5fd8dd4 2024-08-06)" data-channel="1.80.1" data-search-js="search-d52510db62a78183.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../cairo_native/index.html">cairo_native</a><span class="version">0.2.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">cairo_native</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../src/cairo_native/lib.rs.html#1-34">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><div align="center">
+<h4 id="-cairo-native-"><a class="doc-anchor" href="#-cairo-native-">§</a>⚡ Cairo Native ⚡</h4>
+<p>A compiler to convert Cairo’s intermediate representation “Sierra” code <br>
+to machine code via MLIR and LLVM.</p>
+<p><a href="https://github.com/lambdaclass/cairo_native/issues/new">Report Bug</a> · <a href="https://github.com/lambdaclass/cairo_native/issues/new">Request Feature</a></p>
+<p><a href="https://t.me/LambdaStarkNet"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Ftg.sumanjay.workers.dev%2FLambdaStarkNet%2F&amp;logo=telegram&amp;label=chat&amp;color=neon" alt="Telegram Chat" /></a>
+<a href="https://github.com/lambdaclass/cairo_native/actions/workflows/ci.yml"><img src="https://github.com/lambdaclass/cairo_native/actions/workflows/ci.yml/badge.svg" alt="rust" /></a>
+<a href="https://codecov.io/gh/lambdaclass/cairo_native"><img src="https://img.shields.io/codecov/c/github/lambdaclass/cairo_native" alt="codecov" /></a>
+<a href="/LICENSE"><img src="https://img.shields.io/github/license/lambdaclass/cairo_native" alt="license" /></a>
+<a href="#-contributing"><img src="https://img.shields.io/static/v1?color=orange&amp;label=PRs&amp;style=flat&amp;message=welcome" alt="pr-welcome" /></a></p>
+</div>
 <ul>
-<li><code>context: NativeContext</code>: The MLIR context.</li>
-<li><code>module: &amp;NativeModule</code>: The compiled MLIR program, with other relevant information such as program registry and metadata.</li>
-<li><code>program: &amp;Program</code>: The Sierra input program.</li>
-<li><code>registry: &amp;ProgramRegistry&lt;TType, TLibfunc&gt;</code>: The registry extracted from the program.</li>
-<li><code>metadata: &amp;mut MetadataStorage</code>: Current compiler metadata.</li>
+<li><a href="#getting-started">Getting Started</a></li>
+<li><a href="#included-tools">Included Tools</a>
+<ul>
+<li><a href="#scripts">Scripts</a></li>
+<li><a href="#cairo-native-compile">cairo-native-compile</a></li>
+<li><a href="#cairo-native-dump">cairo-native-dump</a></li>
+<li><a href="#cairo-native-run">cairo-native-run</a></li>
+<li><a href="#cairo-native-test">cairo-native-test</a></li>
+<li><a href="#cairo-native-stress">cairo-native-stress</a></li>
+<li><a href="#scarb-native-dump">scarb-native-dump</a></li>
+<li><a href="#scarb-native-test">scarb-native-test</a></li>
 </ul>
-<h3 id="project-layout"><a class="doc-anchor" href="#project-layout">§</a>Project layout</h3><div class="example-wrap"><pre class="language-txt"><code> src
- ├─ context.rs - The MLIR context wrapper, provides the compile method.
- ├─ utils.rs - Internal utilities.
- ├─ metadata/ - Metadata injector to use within the compilation process
- ├─ executor/ - Code related to the executor of programs.
- ├─ module.rs - The MLIR module wrapper.
- ├─ arch/ - Trampoline assembly for calling functions with dynamic signatures.
- ├─ executor.rs - The executor code.
- ├─ ffi.cpp - Missing FFI C wrappers
- ├─ libfuncs - Cairo Sierra libfunc implementations
- ├─ libfuncs.rs - Cairo Sierra libfunc glue code
- ├─ starknet.rs - Starknet syscall handler glue code.
- ├─ ffi.rs - Missing FFI C wrappers, rust side.
- ├─ block_ext.rs - A melior (MLIR) block trait extension to write less code.
- ├─ lib.rs - The main lib file.
- ├─ execution_result.rs - Program result parsing.
- ├─ values.rs - JIT serialization.
- ├─ metadata.rs - Metadata injector to use within the compilation process.
- ├─ compiler.rs - The glue code of the compiler, has the codegen for the function signatures
- and calls the libfunc codegen implementations.
- ├─ error.rs - Error handling
- ├─ bin - Binary programs
- ├─ types - Cairo to MLIR type information
-</code></pre></div></div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="cache/index.html" title="mod cairo_native::cache">cache</a></div></li><li><div class="item-name"><a class="mod" href="context/index.html" title="mod cairo_native::context">context</a></div></li><li><div class="item-name"><a class="mod" href="debug/index.html" title="mod cairo_native::debug">debug</a></div></li><li><div class="item-name"><a class="mod" href="error/index.html" title="mod cairo_native::error">error</a></div><div class="desc docblock-short">Various error types used thorough the crate.</div></li><li><div class="item-name"><a class="mod" href="execution_result/index.html" title="mod cairo_native::execution_result">execution_result</a></div></li><li><div class="item-name"><a class="mod" href="executor/index.html" title="mod cairo_native::executor">executor</a></div><div class="desc docblock-short">Executors</div></li><li><div class="item-name"><a class="mod" href="libfuncs/index.html" title="mod cairo_native::libfuncs">libfuncs</a></div><div class="desc docblock-short">Compiler libfunc infrastructure</div></li><li><div class="item-name"><a class="mod" href="metadata/index.html" title="mod cairo_native::metadata">metadata</a></div><div class="desc docblock-short">Code generation metadata</div></li><li><div class="item-name"><a class="mod" href="module/index.html" title="mod cairo_native::module">module</a></div></li><li><div class="item-name"><a class="mod" href="starknet/index.html" title="mod cairo_native::starknet">starknet</a></div><div class="desc docblock-short">Starknet related code for <code>cairo_native</code></div></li><li><div class="item-name"><a class="mod" href="starknet_stub/index.html" title="mod cairo_native::starknet_stub">starknet_stub</a></div><div class="desc docblock-short">A (somewhat) usable implementation of the starknet syscall handler trait.</div></li><li><div class="item-name"><a class="mod" href="types/index.html" title="mod cairo_native::types">types</a></div><div class="desc docblock-short">Compiler type infrastructure</div></li><li><div class="item-name"><a class="mod" href="utils/index.html" title="mod cairo_native::utils">utils</a></div><div class="desc docblock-short">Various utilities</div></li><li><div class="item-name"><a class="mod" href="values/index.html" title="mod cairo_native::values">values</a></div><div class="desc docblock-short">JIT params and return values de/serialization</div></li></ul><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.LLVMCompileError.html" title="struct cairo_native::LLVMCompileError">LLVMCompileError</a></div><div class="desc docblock-short">A error from the LLVM API.</div></li></ul><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.OptLevel.html" title="enum cairo_native::OptLevel">OptLevel</a></div><div class="desc docblock-short">Optimization levels.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.compile.html" title="fn cairo_native::compile">compile</a></div><div class="desc docblock-short">Run the compiler on a program. The compiled program is stored in the MLIR module.</div></li><li><div class="item-name"><a class="fn" href="fn.module_to_object.html" title="fn cairo_native::module_to_object">module_to_object</a></div><div class="desc docblock-short">Converts a MLIR module to a compile object, that can be linked with a linker.</div></li><li><div class="item-name"><a class="fn" href="fn.object_to_shared_lib.html" title="fn cairo_native::object_to_shared_lib">object_to_shared_lib</a></div><div class="desc docblock-short">Links the passed object into a shared library, stored on the given path.</div></li></ul></section></div></main></body></html>
+</li>
+<li><a href="#benchmarking">Benchmarking</a></li>
+</ul>
+<p>For in-depth documentation, see the <a href="docs/index.html" title="mod cairo_native::docs">developer documentation</a>.</p>
+<h3 id="disclaimer"><a class="doc-anchor" href="#disclaimer">§</a>Disclaimer</h3>
+<p>🚧 Cairo Native is still being built therefore API breaking changes might happen 
+often so use it at your own risk. 🚧</p>
+<p>For versions under <code>1.0</code> <code>cargo</code> doesn’t comply with 
+<a href="https://semver.org/">semver</a>, so we advise to pin the version the version you 
+use. This can be done by adding <code>cairo-native = &quot;0.1.0&quot;</code> to your Cargo.toml</p>
+<h3 id="getting-started"><a class="doc-anchor" href="#getting-started">§</a>Getting Started</h3><h4 id="dependencies"><a class="doc-anchor" href="#dependencies">§</a>Dependencies</h4>
+<ul>
+<li>Linux or macOS (aarch64 included) only for now</li>
+<li>LLVM 18 with MLIR: On debian you can use <a href="https://apt.llvm.org/">apt.llvm.org</a>, 
+on macOS you can use brew</li>
+<li>Rust 1.78.0 or later, since we make use of the u128 
+<a href="https://blog.rust-lang.org/2024/03/30/i128-layout-update.html">abi change</a>.</li>
+<li>Git</li>
+</ul>
+<h4 id="setup"><a class="doc-anchor" href="#setup">§</a>Setup</h4>
+<blockquote>
+<p>This step applies to all operating systems.</p>
+</blockquote>
+<p>Run the following make target to install the dependencies (<strong>both Linux and macOS</strong>):</p>
+<div class="example-wrap"><pre class="language-bash"><code>make deps
+</code></pre></div><h5 id="linux"><a class="doc-anchor" href="#linux">§</a>Linux</h5>
+<p>Since Linux distributions change widely, you need to install LLVM 18 via your 
+package manager, compile it or check if the current release has a Linux binary.</p>
+<p>If you are on Debian/Ubuntu, check out the repository https://apt.llvm.org/
+Then you can install with:</p>
+<div class="example-wrap"><pre class="language-bash"><code>sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+</code></pre></div>
+<p>If you decide to build from source, here are some indications:</p>
+<details><summary>Install LLVM from source instructions</summary>
+<div class="example-wrap"><pre class="language-bash"><code># Go to https://github.com/llvm/llvm-project/releases
+# Download the latest LLVM 18 release:
+# The blob to download is called llvm-project-18.x.x.src.tar.xz
+
+# For example
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.7/llvm-project-18.1.7.src.tar.xz
+tar xf llvm-project-18.1.7.src.tar.xz
+
+cd llvm-project-18.1.7.src.tar
+mkdir build
+cd build
+
+# The following cmake command configures the build to be installed to /opt/llvm-18
+cmake -G Ninja ../llvm \
+   -DLLVM_ENABLE_PROJECTS=&quot;mlir;clang;clang-tools-extra;lld;polly&quot; \
+   -DLLVM_BUILD_EXAMPLES=OFF \
+   -DLLVM_TARGETS_TO_BUILD=&quot;Native&quot; \
+   -DCMAKE_INSTALL_PREFIX=/opt/llvm-18 \
+   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+   -DLLVM_PARALLEL_LINK_JOBS=4 \
+   -DLLVM_ENABLE_BINDINGS=OFF \
+   -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_LLD=ON \
+   -DLLVM_ENABLE_ASSERTIONS=OFF
+
+ninja install
+</code></pre></div></details>
+<p>Setup a environment variable called <code>MLIR_SYS_180_PREFIX</code>, <code>LLVM_SYS_181_PREFIX</code> 
+and <code>TABLEGEN_180_PREFIX</code> pointing to the llvm directory:</p>
+<div class="example-wrap"><pre class="language-bash"><code># For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-18
+export MLIR_SYS_180_PREFIX=/usr/lib/llvm-18
+export LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
+export TABLEGEN_180_PREFIX=/usr/lib/llvm-18
+</code></pre></div>
+<p>Alternatively, if installed from Debian/Ubuntu repository, then you can use 
+<code>env.sh</code> to automatically setup the environment variables.</p>
+<div class="example-wrap"><pre class="language-bash"><code>source env.sh
+</code></pre></div><h5 id="macos"><a class="doc-anchor" href="#macos">§</a>MacOS</h5>
+<p>The makefile <code>deps</code> target (which you should have ran before) installs LLVM 18 
+with brew for you, afterwards you need to execute the <code>env.sh</code> script to setup 
+the needed environment variables.</p>
+<div class="example-wrap"><pre class="language-bash"><code>source env.sh
+</code></pre></div><h4 id="make-targets"><a class="doc-anchor" href="#make-targets">§</a>Make targets:</h4>
+<p>Running <code>make</code> by itself will check whether the required LLVM installation and 
+corelib is found, and then list available targets.</p>
+<div class="example-wrap"><pre class="language-bash"><code>% make
+LLVM is correctly set at /opt/homebrew/opt/llvm.
+./scripts/check-corelib-version.sh 2.6.4
+Usage:
+    deps:         Installs the necesary dependencies.
+    build:        Builds the cairo-native library and binaries in release mode.
+    build-native: Builds cairo-native with the target-cpu=native rust flag.
+    build-dev:    Builds cairo-native under a development-optimized profile.
+    runtime:      Builds the runtime library required for AOT compilation.
+    check:        Checks format and lints.
+    test:         Runs all tests.
+    proptest:     Runs property tests.
+    coverage:     Runs all tests and computes test coverage.
+    doc:          Builds documentation.
+    doc-open:     Builds and opens documentation in browser.
+    bench:        Runs the hyperfine benchmark script.
+    bench-ci:     Runs the criterion benchmarks for CI.
+    install:      Invokes cargo to install the cairo-native tools.
+    clean:        Cleans the built artifacts.
+    stress-test   Runs a command which runs stress tests.
+    stress-plot   Plots the results of the stress test command.
+    stress-clean  Clean the cache of AOT compiled code of the stress test command.
+</code></pre></div><h3 id="included-tools"><a class="doc-anchor" href="#included-tools">§</a>Included Tools</h3>
+<p>Aside from the compilation and execution engine library, Cairo Native includes 
+a few command-line tools to aid development, and some useful scripts.</p>
+<p>These are:</p>
+<ul>
+<li>The contents of the <code>/scripts/</code> folder</li>
+<li><code>cairo-native-compile</code></li>
+<li><code>cairo-native-dump</code></li>
+<li><code>cairo-native-run</code></li>
+<li><code>cairo-native-test</code></li>
+<li><code>cairo-native-stress</code></li>
+<li><code>scarb-native-dump</code></li>
+<li><code>scarb-native-test</code></li>
+</ul>
+<h4 id="cairo-native-compile"><a class="doc-anchor" href="#cairo-native-compile">§</a><code>cairo-native-compile</code></h4><div class="example-wrap"><pre class="language-bash"><code>Compiles a Cairo project outputting the generated MLIR and the shared library.
+Exits with 1 if the compilation or run fails, otherwise 0.
+
+Usage: cairo-native-compile [OPTIONS] &lt;PATH&gt; [OUTPUT_MLIR] [OUTPUT_LIBRARY]
+
+Arguments:
+  &lt;PATH&gt;            The Cairo project path to compile and run its tests
+  [OUTPUT_MLIR]     The output path for the mlir, if none is passed, out.mlir will be the default
+  [OUTPUT_LIBRARY]  If a path is passed, a dynamic library will be compiled and saved at that path
+
+Options:
+  -s, --single-file            Whether path is a single file
+      --allow-warnings         Allows the compilation to succeed with warnings
+  -r, --replace-ids            Replaces sierra ids with human-readable ones
+  -O, --opt-level &lt;OPT_LEVEL&gt;  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                   Print help
+  -V, --version                Print version
+</code></pre></div><h4 id="cairo-native-dump"><a class="doc-anchor" href="#cairo-native-dump">§</a><code>cairo-native-dump</code></h4><div class="example-wrap"><pre class="language-bash"><code>Usage: cairo-native-dump [OPTIONS] &lt;INPUT&gt;
+
+Arguments:
+  &lt;INPUT&gt;
+
+Options:
+  -o, --output &lt;OUTPUT&gt;  [default: -]
+      --starknet         Compile a starknet contract
+  -h, --help             Print help
+</code></pre></div><h4 id="cairo-native-run"><a class="doc-anchor" href="#cairo-native-run">§</a><code>cairo-native-run</code></h4>
+<p>This tool allows to run programs using the JIT engine, like the <code>cairo-run</code> 
+tool, the parameters can only be felt values.</p>
+<p>Example: <code>echo '1' | cairo-native-run 'program.cairo' 'program::program::main' --inputs - --outputs -</code></p>
+<div class="example-wrap"><pre class="language-bash"><code>Exits with 1 if the compilation or run fails, otherwise 0.
+
+Usage: cairo-native-run [OPTIONS] &lt;PATH&gt;
+
+Arguments:
+  &lt;PATH&gt;  The Cairo project path to compile and run its tests
+
+Options:
+  -s, --single-file                    Whether path is a single file
+      --allow-warnings                 Allows the compilation to succeed with warnings
+      --available-gas &lt;AVAILABLE_GAS&gt;  In cases where gas is available, the amount of provided gas
+      --run-mode &lt;RUN_MODE&gt;            Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
+  -O, --opt-level &lt;OPT_LEVEL&gt;          Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                           Print help
+  -V, --version                        Print version
+</code></pre></div><h4 id="cairo-native-test"><a class="doc-anchor" href="#cairo-native-test">§</a><code>cairo-native-test</code></h4>
+<p>This tool mimics the <code>cairo-test</code> 
+<a href="https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner">tool</a> 
+and is identical to it in interface, the only feature it doesn’t have is the profiler.</p>
+<div class="example-wrap"><pre class="language-bash"><code>Compiles a Cairo project and runs all the functions marked as `#[test]`.
+Exits with 1 if the compilation or run fails, otherwise 0.
+
+Usage: cairo-native-test [OPTIONS] &lt;PATH&gt;
+
+Arguments:
+  &lt;PATH&gt;  The Cairo project path to compile and run its tests
+
+Options:
+  -s, --single-file            Whether path is a single file
+      --allow-warnings         Allows the compilation to succeed with warnings
+  -f, --filter &lt;FILTER&gt;        The filter for the tests, running only tests containing the filter string [default: ]
+      --include-ignored        Should we run ignored tests as well
+      --ignored                Should we run only the ignored tests
+      --starknet               Should we add the starknet plugin to run the tests
+      --run-mode &lt;RUN_MODE&gt;    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
+  -O, --opt-level &lt;OPT_LEVEL&gt;  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                   Print help
+  -V, --version                Print version
+</code></pre></div>
+<p>For single files, you can use the <code>-s, --single-file</code> option.</p>
+<p>For a project, it needs to have a <code>cairo_project.toml</code> specifying the
+<code>crate_roots</code>. You can find an example under the <code>cairo-tests/</code> folder, which
+is a cairo project that works with this tool.</p>
+<div class="example-wrap"><pre class="language-bash"><code>cairo-native-test -s myfile.cairo
+
+cairo-native-test ./cairo-tests/
+</code></pre></div>
+<p>This will run all the tests (functions marked with the <code>#[test]</code> attribute).</p>
+<h4 id="cairo-native-stress"><a class="doc-anchor" href="#cairo-native-stress">§</a><code>cairo-native-stress</code></h4>
+<p>This tool runs a stress test on Cairo Native.</p>
+<div class="example-wrap"><pre class="language-bash"><code>A stress tester for Cairo Native
+
+It compiles Sierra programs with Cairo Native, caches, and executes them with AOT runner. The compiled dynamic libraries are stored in `AOT_CACHE_DIR` relative to the current working directory.
+
+Usage: cairo-native-stress [OPTIONS] &lt;ROUNDS&gt;
+
+Arguments:
+  &lt;ROUNDS&gt;
+          Amount of rounds to execute
+
+Options:
+  -o, --output &lt;OUTPUT&gt;
+          Output file for JSON formatted logs
+
+  -h, --help
+          Print help (see a summary with &#39;-h&#39;)
+</code></pre></div>
+<p>To quickly run a stress test and save logs as json, run:</p>
+<div class="example-wrap"><pre class="language-bash"><code>make stress-test
+</code></pre></div>
+<p>This takes a lot of time to finish (it will probably crash first), you can kill 
+the program at any time.</p>
+<p>To plot the results, run:</p>
+<div class="example-wrap"><pre class="language-bash"><code>make stress-plot
+</code></pre></div>
+<p>To clear the cache directory, run:</p>
+<div class="example-wrap"><pre class="language-bash"><code>make stress-clean
+</code></pre></div><h4 id="scarb-native-dump"><a class="doc-anchor" href="#scarb-native-dump">§</a><code>scarb-native-dump</code></h4>
+<p>This tool mimics the <code>scarb build</code> <a href="https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test">command</a>.
+You can download it on our <a href="https://github.com/lambdaclass/cairo_native/releases">releases</a> page.</p>
+<p>This tool should be run at the directory where a <code>Scarb.toml</code> file is and it will
+behave like <code>scarb build</code>, leaving the MLIR files under the <code>target/</code> folder
+besides the generated JSON sierra files.</p>
+<h4 id="scarb-native-test"><a class="doc-anchor" href="#scarb-native-test">§</a><code>scarb-native-test</code></h4>
+<p>This tool mimics the <code>scarb test</code> <a href="https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test">command</a>.
+You can download it on our <a href="https://github.com/lambdaclass/cairo_native/releases">releases</a> page.</p>
+<div class="example-wrap"><pre class="language-bash"><code>Compiles all packages from a Scarb project matching `packages_filter` and
+runs all functions marked with `#[test]`. Exits with 1 if the compilation
+or run fails, otherwise 0.
+
+Usage: scarb-native-test [OPTIONS]
+
+Options:
+  -p, --package &lt;SPEC&gt;         Packages to run this command on, can be a concrete package name (`foobar`) or a prefix glob (`foo*`) [env: SCARB_PACKAGES_FILTER=] [default: *]
+  -w, --workspace              Run for all packages in the workspace
+  -f, --filter &lt;FILTER&gt;        Run only tests whose name contain FILTER [default: ]
+      --include-ignored        Run ignored and not ignored tests
+      --ignored                Run only ignored tests
+      --run-mode &lt;RUN_MODE&gt;    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
+  -O, --opt-level &lt;OPT_LEVEL&gt;  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                   Print help
+  -V, --version                Print version
+</code></pre></div><h3 id="benchmarking"><a class="doc-anchor" href="#benchmarking">§</a>Benchmarking</h3><h4 id="requirements"><a class="doc-anchor" href="#requirements">§</a>Requirements</h4>
+<ul>
+<li><a href="https://github.com/sharkdp/hyperfine">hyperfine</a>: <code>cargo install hyperfine</code></li>
+<li><a href="https://github.com/starkware-libs/cairo">cairo 2.7.1</a></li>
+<li>Cairo Corelibs</li>
+<li>LLVM 18 with MLIR</li>
+</ul>
+<p>You need to setup some environment variables:</p>
+<div class="example-wrap"><pre class="language-bash"><code>$MLIR_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$LLVM_SYS_181_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$TABLEGEN_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+</code></pre></div>
+<p>You can then run the <code>bench</code> makefile target: </p>
+<div class="example-wrap"><pre class="language-bash"><code>make bench
+</code></pre></div>
+<p>The <code>bench</code> target will run the <code>./scripts/bench-hyperfine.sh</code> script.
+This script runs hyperfine commands to compare the execution time of programs in the <code>./programs/benches/</code> folder.
+Each program is compiled and executed via the execution engine with the <code>cairo-native-run</code> command and via the cairo-vm with the <code>cairo-run</code> command provided by the <code>cairo</code> codebase.
+The <code>cairo-run</code> command should be available in the <code>$PATH</code> and ideally compiled with <code>cargo build --release</code>.
+If you want the benchmarks to run using a specific build, or the <code>cairo-run</code> commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run <code>cairo-run</code> with a full path can be specified with the <code>$CAIRO_RUN</code> environment variable.</p>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="cache/index.html" title="mod cairo_native::cache">cache</a></div></li><li><div class="item-name"><a class="mod" href="context/index.html" title="mod cairo_native::context">context</a></div></li><li><div class="item-name"><a class="mod" href="debug/index.html" title="mod cairo_native::debug">debug</a></div></li><li><div class="item-name"><a class="mod" href="docs/index.html" title="mod cairo_native::docs">docs</a></div><div class="desc docblock-short">Cairo Native Compiler and Execution Engine</div></li><li><div class="item-name"><a class="mod" href="error/index.html" title="mod cairo_native::error">error</a></div><div class="desc docblock-short">Various error types used thorough the crate.</div></li><li><div class="item-name"><a class="mod" href="execution_result/index.html" title="mod cairo_native::execution_result">execution_result</a></div></li><li><div class="item-name"><a class="mod" href="executor/index.html" title="mod cairo_native::executor">executor</a></div><div class="desc docblock-short">Executors</div></li><li><div class="item-name"><a class="mod" href="libfuncs/index.html" title="mod cairo_native::libfuncs">libfuncs</a></div><div class="desc docblock-short">Compiler libfunc infrastructure</div></li><li><div class="item-name"><a class="mod" href="metadata/index.html" title="mod cairo_native::metadata">metadata</a></div><div class="desc docblock-short">Code generation metadata</div></li><li><div class="item-name"><a class="mod" href="module/index.html" title="mod cairo_native::module">module</a></div></li><li><div class="item-name"><a class="mod" href="starknet/index.html" title="mod cairo_native::starknet">starknet</a></div><div class="desc docblock-short">Starknet related code for <code>cairo_native</code></div></li><li><div class="item-name"><a class="mod" href="starknet_stub/index.html" title="mod cairo_native::starknet_stub">starknet_stub</a></div><div class="desc docblock-short">A (somewhat) usable implementation of the starknet syscall handler trait.</div></li><li><div class="item-name"><a class="mod" href="types/index.html" title="mod cairo_native::types">types</a></div><div class="desc docblock-short">Compiler type infrastructure</div></li><li><div class="item-name"><a class="mod" href="utils/index.html" title="mod cairo_native::utils">utils</a></div><div class="desc docblock-short">Various utilities</div></li><li><div class="item-name"><a class="mod" href="values/index.html" title="mod cairo_native::values">values</a></div><div class="desc docblock-short">JIT params and return values de/serialization</div></li></ul><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.LLVMCompileError.html" title="struct cairo_native::LLVMCompileError">LLVMCompileError</a></div><div class="desc docblock-short">A error from the LLVM API.</div></li></ul><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.OptLevel.html" title="enum cairo_native::OptLevel">OptLevel</a></div><div class="desc docblock-short">Optimization levels.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.compile.html" title="fn cairo_native::compile">compile</a></div><div class="desc docblock-short">Run the compiler on a program. The compiled program is stored in the MLIR module.</div></li><li><div class="item-name"><a class="fn" href="fn.module_to_object.html" title="fn cairo_native::module_to_object">module_to_object</a></div><div class="desc docblock-short">Converts a MLIR module to a compile object, that can be linked with a linker.</div></li><li><div class="item-name"><a class="fn" href="fn.object_to_shared_lib.html" title="fn cairo_native::object_to_shared_lib">object_to_shared_lib</a></div><div class="desc docblock-short">Links the passed object into a shared library, stored on the given path.</div></li></ul></section></div></main></body></html>

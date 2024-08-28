@@ -153,10 +153,6 @@
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -224,8 +220,6 @@
     }
 
     <span class="doccomment">/// Execute a program with the given params.
-    ///
-    /// See [`cairo_native::jit_runner::execute`]
     </span><span class="kw">pub fn </span>invoke_dynamic(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
@@ -248,8 +242,6 @@
     }
 
     <span class="doccomment">/// Execute a program with the given params.
-    ///
-    /// See [`cairo_native::jit_runner::execute`]
     </span><span class="kw">pub fn </span>invoke_dynamic_with_syscall_handler(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
