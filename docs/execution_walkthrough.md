@@ -206,7 +206,7 @@ Builtin stats: BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0,
 ## The Cairo Native runtime
 Sometimes we need to use stuff that would be too complicated or error-prone to implement in MLIR, but that we have readily available from Rust. That's when we use the runtime library.
 
-When using the JIT it'll be automatically linked (if compiled with support for it, which is enabled by default). If using the AOT, the `CAIRO_NATIVE_RUNTIME_LIBRARY` environment variable will have to be modified to point to `libcairo_native_runtime.a`, which is built and placed in the root folder by `make build`.
+When using the JIT it'll be automatically linked (if compiled with support for it, which is enabled by default). If using the AOT, the `CAIRO_NATIVE_RUNTIME_LIBDIR` environment variable will have to be modified to point to the directory that contains `libcairo_native_runtime.a`, which is built and placed in said folder by `make build`.
 
 Although it's implemented in Rust, its functions use the C ABI and have Rust's name mangling disabled. This means that to the extern observer it's technically indistinguishible from a library written in C. By doing this we're making the functions callable from MLIR.
 
