@@ -1,7 +1,7 @@
 #[starknet::contract]
 mod AllocSegment {
     use dict::{Felt252DictTrait, Felt252DictEntryTrait};
-    use traits::Index;
+    use core::ops::index::Index;
     use array::{ArrayTrait, SpanTrait};
 
     #[storage]

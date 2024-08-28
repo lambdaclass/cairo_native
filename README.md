@@ -237,9 +237,6 @@ This tool mimics the `cairo-test`
 [tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner) 
 and is identical to it in interface, the only feature it doesn't have is the profiler.
 
-You can download it on our 
-[releases](https://github.com/lambdaclass/cairo_native/releases) page.
-
 ```bash
 Compiles a Cairo project and runs all the functions marked as `#[test]`.
 Exits with 1 if the compilation or run fails, otherwise 0.
@@ -351,7 +348,7 @@ Options:
 
 ### Requirements
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.6.4](https://github.com/starkware-libs/cairo)
+- [cairo 2.7.1](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 18 with MLIR
 

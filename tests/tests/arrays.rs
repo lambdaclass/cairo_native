@@ -1,12 +1,12 @@
 use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
 use crate::common::{compare_outputs, DEFAULT_GAS};
-use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::starknet::DummySyscallHandler;
 use cairo_native::values::JitValue;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
+use starknet_types_core::felt::Felt;
 
 lazy_static! {
     static ref ARRAY_GET: (String, Program, SierraCasmRunner) = load_cairo! {
@@ -55,10 +55,7 @@ fn array_get_test() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[
-            Arg::Value(DeprecatedFelt::from(10)),
-            Arg::Value(DeprecatedFelt::from(5)),
-        ],
+        &[Arg::Value(Felt::from(10)), Arg::Value(Felt::from(5))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -84,8 +81,8 @@ proptest! {
     fn array_get_test_proptest(value in any_felt(), idx in 0u32..26) {
         let program = &ARRAY_GET;
         let result_vm = run_vm_program(program, "run_test", &[
-            Arg::Value(DeprecatedFelt::from_bytes_be(&value.to_bytes_be())),
-            Arg::Value(DeprecatedFelt::from(idx))
+            Arg::Value(Felt::from_bytes_be(&value.to_bytes_be())),
+            Arg::Value(Felt::from(idx))
         ], Some(DEFAULT_GAS as usize)).unwrap();
         let result_native = run_native_program(
             program,

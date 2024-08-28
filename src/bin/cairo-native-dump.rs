@@ -64,6 +64,7 @@ fn load_program(path: &Path, is_contract: bool) -> Result<Program, Box<dyn std::
                     ..Default::default()
                 },
             )?
+            .program
         }
         Some("cairo") if is_contract => {
             // mimics cairo_lang_starknet::contract_class::compile_path

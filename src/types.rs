@@ -3,6 +3,7 @@
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
 use crate::block_ext::BlockExt;
+use crate::utils::RangeExt;
 use crate::{
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
@@ -12,6 +13,8 @@ use crate::{
     },
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
+use cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete;
+use cairo_lang_sierra::extensions::utils::Range;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -21,6 +24,7 @@ use cairo_lang_sierra::{
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
+use felt252::PRIME;
 use melior::{
     dialect::{
         llvm::{self, r#type::pointer},
@@ -29,7 +33,8 @@ use melior::{
     ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
-use num_traits::Signed;
+use num_bigint::{BigInt, ToBigInt};
+use num_traits::{Bounded, One};
 use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
 pub mod array;
@@ -38,6 +43,7 @@ pub mod bounded_int;
 pub mod r#box;
 pub mod builtin_costs;
 pub mod bytes31;
+pub mod circuit;
 pub mod coupon;
 pub mod ec_op;
 pub mod ec_point;
@@ -102,13 +108,15 @@ pub trait TypeBuilder {
     /// a function invocation argument or return value.
     fn is_memory_allocated(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
 
-    /// If the type is an integer type, return its width in bits.
-    ///
-    /// TODO: How is it used?
-    fn integer_width(&self) -> Option<usize>;
+    /// If the type is an integer, return its value range.
+    fn integer_range(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<Range>;
 
-    /// If the type is an integer type, return if its signed.
-    fn is_integer_signed(&self) -> Option<bool>;
+    /// Return whether the type is a `BoundedInt<>`, either directly or indirectly (ex. through
+    /// `NonZero<BoundedInt<>>`).
+    fn is_bounded_int(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
+    /// Return whether the type is a `felt252`, either directly or indirectly (ex. through
+    /// `NonZero<BoundedInt<>>`).
+    fn is_felt252(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool;
 
     /// If the type is a enum type, return all possible variants.
     ///
@@ -283,6 +291,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            Self::RangeCheck96(info) => self::range_check::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             Self::SegmentArena(info) => self::segment_arena::build(
                 context,
                 module,
@@ -410,6 +425,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            CoreTypeConcrete::Circuit(info) => self::circuit::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
         }
     }
 
@@ -421,11 +443,14 @@ impl TypeBuilder for CoreTypeConcrete {
                 | CoreTypeConcrete::GasBuiltin(_)
                 | CoreTypeConcrete::BuiltinCosts(_)
                 | CoreTypeConcrete::RangeCheck(_)
+                | CoreTypeConcrete::RangeCheck96(_)
                 | CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
                 | CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
                 | CoreTypeConcrete::SegmentArena(_)
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_))
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
         )
     }
 
@@ -439,6 +464,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::RangeCheck96(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) // u64 is not complex
             | CoreTypeConcrete::SegmentArena(_) => false,
 
@@ -491,11 +517,22 @@ impl TypeBuilder for CoreTypeConcrete {
             },
             CoreTypeConcrete::Struct(_) => true,
 
-            CoreTypeConcrete::BoundedInt(_) => todo!(),
+            CoreTypeConcrete::BoundedInt(_info) => {
+                #[cfg(target_arch = "x86_64")]
+                let value = _info.range.offset_bit_width() > 128;
+
+                #[cfg(target_arch = "aarch64")]
+                let value = false;
+
+                value
+            },
             CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)) => todo!(),
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_))
+            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(_)) => todo!(),
             CoreTypeConcrete::Coupon(_) => false,
+
+            CoreTypeConcrete::Circuit(info) => circuit::is_complex(info)
         }
     }
 
@@ -507,6 +544,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::RangeCheck96(_)
             | CoreTypeConcrete::SegmentArena(_) => false,
             // Other builtins:
             CoreTypeConcrete::BuiltinCosts(_)
@@ -565,6 +603,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 type_info.is_zst(registry)
             }
             CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Circuit(info) => circuit::is_zst(info),
         }
     }
 
@@ -653,6 +692,7 @@ impl TypeBuilder for CoreTypeConcrete {
                         .unwrap()
                         .0
                 }
+                StarkNetTypeConcrete::Sha256StateHandle(_) => Layout::new::<*mut ()>(),
             },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
@@ -662,15 +702,14 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint64(_) => get_integer_layout(64),
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
-            CoreTypeConcrete::BoundedInt(info) => get_integer_layout(
-                (info.range.lower.bits().max(info.range.upper.bits()) + 1)
-                    .try_into()
-                    .expect("should always fit u32"),
-            ),
+            CoreTypeConcrete::BoundedInt(info) => get_integer_layout(info.range.offset_bit_width()),
+
             CoreTypeConcrete::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
             CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
+            CoreTypeConcrete::RangeCheck96(_) => get_integer_layout(64),
+            CoreTypeConcrete::Circuit(info) => circuit::layout(registry, info)?,
         }
         .pad_to_align())
     }
@@ -702,6 +741,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::NonZero(_) => false,
             CoreTypeConcrete::Nullable(_) => false,
             CoreTypeConcrete::RangeCheck(_) => false,
+            CoreTypeConcrete::RangeCheck96(_) => false,
             CoreTypeConcrete::Uninitialized(_) => false,
             CoreTypeConcrete::Enum(info) => {
                 // Enums are memory-allocated if either:
@@ -746,52 +786,76 @@ impl TypeBuilder for CoreTypeConcrete {
                 .unwrap()
                 .is_memory_allocated(registry),
             CoreTypeConcrete::Coupon(_) => false,
+            CoreTypeConcrete::Circuit(_) => false,
         }
     }
 
-    fn integer_width(&self) -> Option<usize> {
-        match self {
-            Self::Uint8(_) => Some(8),
-            Self::Uint16(_) => Some(16),
-            Self::Uint32(_) => Some(32),
-            Self::Uint64(_) => Some(64),
-            Self::Uint128(_) => Some(128),
-            Self::Felt252(_) => Some(252),
-            Self::Sint8(_) => Some(8),
-            Self::Sint16(_) => Some(16),
-            Self::Sint32(_) => Some(32),
-            Self::Sint64(_) => Some(64),
-            Self::Sint128(_) => Some(128),
-
-            CoreTypeConcrete::BoundedInt(_) => Some(252),
-            CoreTypeConcrete::Bytes31(_) => Some(248),
-            CoreTypeConcrete::Const(_) => todo!(),
-
-            _ => None,
-        }
-    }
-
-    fn is_integer_signed(&self) -> Option<bool> {
-        match self {
-            Self::Uint8(_) => Some(false),
-            Self::Uint16(_) => Some(false),
-            Self::Uint32(_) => Some(false),
-            Self::Uint64(_) => Some(false),
-            Self::Uint128(_) => Some(false),
-            Self::Felt252(_) => Some(true),
-            Self::Sint8(_) => Some(true),
-            Self::Sint16(_) => Some(true),
-            Self::Sint32(_) => Some(true),
-            Self::Sint64(_) => Some(true),
-            Self::Sint128(_) => Some(true),
-
-            CoreTypeConcrete::BoundedInt(info) => {
-                Some(info.range.lower.is_negative() || info.range.upper.is_negative())
+    fn integer_range(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> Option<Range> {
+        fn range_of<T>() -> Range
+        where
+            T: Bounded + Into<BigInt>,
+        {
+            Range {
+                lower: T::min_value().into(),
+                upper: T::max_value().into() + BigInt::one(),
             }
-            CoreTypeConcrete::Bytes31(_) => Some(false),
-            CoreTypeConcrete::Const(_) => todo!(),
+        }
 
-            _ => None,
+        Some(match self {
+            Self::Uint8(_) => range_of::<u8>(),
+            Self::Uint16(_) => range_of::<u16>(),
+            Self::Uint32(_) => range_of::<u32>(),
+            Self::Uint64(_) => range_of::<u64>(),
+            Self::Uint128(_) => range_of::<u128>(),
+            Self::Felt252(_) => Range {
+                lower: BigInt::ZERO,
+                upper: PRIME.to_bigint().unwrap(),
+            },
+            Self::Sint8(_) => range_of::<i8>(),
+            Self::Sint16(_) => range_of::<i16>(),
+            Self::Sint32(_) => range_of::<i32>(),
+            Self::Sint64(_) => range_of::<i64>(),
+            Self::Sint128(_) => range_of::<i128>(),
+
+            Self::BoundedInt(info) => info.range.clone(),
+            Self::Bytes31(_) => Range {
+                lower: BigInt::ZERO,
+                upper: BigInt::one() << 248,
+            },
+            Self::Const(info) => {
+                return registry
+                    .get_type(&info.inner_ty)
+                    .unwrap()
+                    .integer_range(registry)
+            }
+            Self::NonZero(info) => {
+                return registry.get_type(&info.ty).unwrap().integer_range(registry)
+            }
+
+            _ => return None,
+        })
+    }
+
+    fn is_bounded_int(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
+        match self {
+            CoreTypeConcrete::BoundedInt(_) => true,
+            CoreTypeConcrete::NonZero(info) => registry
+                .get_type(&info.ty)
+                .unwrap()
+                .is_bounded_int(registry),
+
+            _ => false,
+        }
+    }
+
+    fn is_felt252(&self, registry: &ProgramRegistry<CoreType, CoreLibfunc>) -> bool {
+        match self {
+            CoreTypeConcrete::Felt252(_) => true,
+            CoreTypeConcrete::NonZero(info) => {
+                registry.get_type(&info.ty).unwrap().is_felt252(registry)
+            }
+
+            _ => false,
         }
     }
 
