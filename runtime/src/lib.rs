@@ -42,7 +42,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
         let data = *data.add(i);
 
         let value = Felt::from_bytes_le(&data);
-        if write!(target, "[DEBUG]\t{value:x}",).is_err() {
+        if write!(target, "[DEBUG]\t0x{value:x}",).is_err() {
             return 1;
         };
 
@@ -587,14 +587,14 @@ pub mod trace_dump {
                 let (x, layout) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_be(value_ptr.byte_add(offset).cast().as_ref()),
+                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
                         layout,
                     )
                 };
                 let (y, _) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_be(value_ptr.byte_add(offset).cast().as_ref()),
+                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
                         layout,
                     )
                 };
@@ -606,28 +606,28 @@ pub mod trace_dump {
                 let (x0, layout) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_be(value_ptr.byte_add(offset).cast().as_ref()),
+                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
                         layout,
                     )
                 };
                 let (y0, layout) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_be(value_ptr.byte_add(offset).cast().as_ref()),
+                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
                         layout,
                     )
                 };
                 let (x1, layout) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_be(value_ptr.byte_add(offset).cast().as_ref()),
+                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
                         layout,
                     )
                 };
                 let (y1, _) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_be(value_ptr.byte_add(offset).cast().as_ref()),
+                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
                         layout,
                     )
                 };
