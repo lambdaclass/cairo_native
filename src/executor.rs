@@ -603,9 +603,9 @@ fn parse_result(
 mod tests {
     use super::*;
     use crate::context::NativeContext;
+    use crate::starknet_stub::StubSyscallHandler;
     use crate::utils::test::load_cairo;
     use crate::utils::test::load_starknet;
-    use crate::utils::test::TestSyscallHandler;
     use crate::OptLevel;
     use cairo_lang_sierra::program::Program;
     use rstest::*;
@@ -712,7 +712,7 @@ mod tests {
                 entrypoint_function_id,
                 &[],
                 Some(u128::MAX),
-                TestSyscallHandler,
+                &mut StubSyscallHandler::default(),
             )
             .unwrap();
 
@@ -741,7 +741,7 @@ mod tests {
                 entrypoint_function_id,
                 &[],
                 Some(u128::MAX),
-                TestSyscallHandler,
+                &mut StubSyscallHandler::default(),
             )
             .unwrap();
 
