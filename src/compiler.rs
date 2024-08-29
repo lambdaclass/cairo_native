@@ -40,6 +40,7 @@
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
+    block_ext::BlockExt,
     debug::libfunc_to_name,
     error::Error,
     ffi::{
@@ -74,10 +75,14 @@ use melior::{
         llvm::{self, LoadStoreOptions},
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        attribute::{
+            DenseI64ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,
+            TypeAttribute,
+        },
+        operation::OperationBuilder,
         r#type::{FunctionType, IntegerType},
         Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
-        Value,
+        Value, ValueLike,
     },
     Context,
 };
@@ -326,25 +331,22 @@ fn compile_func(
 
     tracing::debug!("Generating the function implementation.");
     // Workaround for the `entry block of region may not have predecessors` error:
-    let pre_entry_block = region.insert_block_before(
-        entry_block,
-        Block::new(
-            &arg_types
-                .iter()
-                .map(|ty| {
-                    (
-                        *ty,
-                        Location::new(
-                            context,
-                            "program.sierra",
-                            sierra_stmt_start_offset + function.entry_point.0,
-                            0,
-                        ),
-                    )
-                })
-                .collect::<Vec<_>>(),
-        ),
-    );
+    let pre_entry_block_args = arg_types
+        .iter()
+        .map(|ty| {
+            (
+                *ty,
+                Location::new(
+                    context,
+                    "program.sierra",
+                    sierra_stmt_start_offset + function.entry_point.0,
+                    0,
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    let pre_entry_block =
+        region.insert_block_before(entry_block, Block::new(&pre_entry_block_args));
 
     let initial_state = edit_state::put_results(OrderedHashMap::<_, Value>::default(), {
         let mut values = Vec::new();
@@ -577,7 +579,24 @@ fn compile_func(
                         ));
                     }
 
-                    block.append_operation(func::r#return(&values, location));
+                    block.append_operation(llvm::r#return(
+                        Some({
+                            let res_ty = llvm::r#type::r#struct(context, &return_types, false);
+                            values.iter().enumerate().try_fold(
+                                block.append_op_result(llvm::undef(res_ty, location))?,
+                                |acc, (idx, x)| {
+                                    block.append_op_result(llvm::insert_value(
+                                        context,
+                                        acc,
+                                        DenseI64ArrayAttribute::new(context, &[idx as i64]),
+                                        *x,
+                                        location,
+                                    ))
+                                },
+                            )?
+                        }),
+                        location,
+                    ));
 
                     Vec::new()
                 }
@@ -633,10 +652,15 @@ fn compile_func(
         pre_entry_block.append_operation(cf::br(&entry_block, &arg_values, fn_location));
     }
 
-    module.body().append_operation(func::func(
+    let inner_function_name = format!("impl${function_name}");
+    module.body().append_operation(llvm::func(
         context,
-        StringAttribute::new(context, &function_name),
-        TypeAttribute::new(FunctionType::new(context, &arg_types, &return_types).into()),
+        StringAttribute::new(context, &inner_function_name),
+        TypeAttribute::new(llvm::r#type::function(
+            llvm::r#type::r#struct(context, &return_types, false),
+            &arg_types,
+            false,
+        )),
         region,
         &[
             (
@@ -644,8 +668,8 @@ fn compile_func(
                 StringAttribute::new(context, "public").into(),
             ),
             (
-                Identifier::new(context, "llvm.emit_c_interface"),
-                Attribute::unit(context),
+                Identifier::new(context, "CConv"),
+                Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
             ),
         ],
         Location::fused(
@@ -659,6 +683,21 @@ fn compile_func(
             di_subprogram,
         ),
     ));
+
+    generate_entry_point_wrapper(
+        context,
+        module,
+        function_name.as_ref(),
+        &inner_function_name,
+        &pre_entry_block_args,
+        &return_types,
+        Location::new(
+            context,
+            "program.sierra",
+            sierra_stmt_start_offset + function.entry_point.0,
+            0,
+        ),
+    )?;
 
     tracing::debug!("Done generating function {}.", function.id);
     Ok(())
@@ -1006,4 +1045,82 @@ where
             }
         })
         .collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn generate_entry_point_wrapper<'c>(
+    context: &'c Context,
+    module: &Module<'c>,
+    public_symbol: &str,
+    private_symbol: &str,
+    arg_types: &[(Type<'c>, Location<'c>)],
+    ret_types: &[Type<'c>],
+    location: Location<'c>,
+) -> Result<(), Error> {
+    let region = Region::new();
+    let block = region.append_block(Block::new(arg_types));
+
+    let mut args = Vec::with_capacity(arg_types.len());
+    for i in 0..arg_types.len() {
+        args.push(block.argument(i)?.into());
+    }
+
+    let result = block.append_op_result(
+        OperationBuilder::new("llvm.call", location)
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "var_callee_type"),
+                    TypeAttribute::new(llvm::r#type::function(
+                        llvm::r#type::r#struct(context, ret_types, false),
+                        &args.iter().map(ValueLike::r#type).collect::<Vec<_>>(),
+                        false,
+                    ))
+                    .into(),
+                ),
+                (
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(context, private_symbol).into(),
+                ),
+                (
+                    Identifier::new(context, "CConv"),
+                    Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
+                ),
+            ])
+            .add_operands(&args)
+            .add_results(&[llvm::r#type::r#struct(context, ret_types, false)])
+            .build()?,
+    )?;
+
+    let mut returns = Vec::with_capacity(ret_types.len());
+    for (i, ty) in ret_types.iter().enumerate() {
+        returns.push(block.extract_value(context, location, result, *ty, i)?);
+    }
+
+    block.append_operation(func::r#return(&returns, location));
+
+    module.body().append_operation(func::func(
+        context,
+        StringAttribute::new(context, public_symbol),
+        TypeAttribute::new(
+            FunctionType::new(
+                context,
+                &arg_types.iter().map(|x| x.0).collect::<Vec<_>>(),
+                ret_types,
+            )
+            .into(),
+        ),
+        region,
+        &[
+            (
+                Identifier::new(context, "sym_visibility"),
+                StringAttribute::new(context, "public").into(),
+            ),
+            (
+                Identifier::new(context, "llvm.emit_c_interface"),
+                Attribute::unit(context),
+            ),
+        ],
+        location,
+    ));
+    Ok(())
 }

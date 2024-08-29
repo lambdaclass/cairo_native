@@ -13,11 +13,12 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{func, llvm},
+    dialect::llvm,
     ir::{
-        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
+        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, TypeAttribute},
+        operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Location,
+        Attribute, Block, Identifier, Location, ValueLike,
     },
     Context,
 };
@@ -111,13 +112,35 @@ pub fn build<'ctx, 'this>(
         None
     };
 
-    let function_call_result = entry.append_operation(func::call(
-        context,
-        FlatSymbolRefAttribute::new(context, &generate_function_name(&info.function.id)),
-        &arguments,
-        &result_types,
-        location,
-    ));
+    let function_call_result = entry.append_op_result(
+        OperationBuilder::new("llvm.call", location)
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "var_callee_type"),
+                    TypeAttribute::new(llvm::r#type::function(
+                        llvm::r#type::r#struct(context, &result_types, false),
+                        &arguments.iter().map(ValueLike::r#type).collect::<Vec<_>>(),
+                        false,
+                    ))
+                    .into(),
+                ),
+                (
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(
+                        context,
+                        &format!("impl${}", generate_function_name(&info.function.id)),
+                    )
+                    .into(),
+                ),
+                (
+                    Identifier::new(context, "CConv"),
+                    Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
+                ),
+            ])
+            .add_operands(&arguments)
+            .add_results(&[llvm::r#type::r#struct(context, &result_types, false)])
+            .build()?,
+    )?;
 
     let mut results = Vec::new();
     match has_return_ptr {
@@ -159,15 +182,19 @@ pub fn build<'ctx, 'this>(
             // Complex return type. Just extract the values from the struct, since LLVM will
             // handle the rest.
 
-            let mut count = 0;
             for (idx, type_id) in info.function.signature.ret_types.iter().enumerate() {
                 let type_info = registry.get_type(type_id)?;
 
                 if type_info.is_builtin() && type_info.is_zst(registry) {
                     results.push(entry.argument(idx)?.into());
                 } else {
-                    let val = function_call_result.result(count)?.into();
-                    count += 1;
+                    let val = entry.extract_value(
+                        context,
+                        location,
+                        function_call_result,
+                        result_types[idx],
+                        idx,
+                    )?;
 
                     results.push(val);
                 }
@@ -184,7 +211,13 @@ pub fn build<'ctx, 'this>(
                 if type_info.is_builtin() && type_info.is_zst(registry) {
                     results.push(entry.argument(idx)?.into());
                 } else {
-                    let value = function_call_result.result(count)?.into();
+                    let value = entry.extract_value(
+                        context,
+                        location,
+                        function_call_result,
+                        result_types[count],
+                        count,
+                    )?;
                     count += 1;
 
                     results.push(value);
