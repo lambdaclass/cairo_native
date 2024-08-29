@@ -241,6 +241,6 @@ mod tests {
 
         let mut buffer = vec![];
 
-        jit_value_with_info_wrapper.to_bytes(&mut buffer);
+        let _ = jit_value_with_info_wrapper.to_bytes(&mut buffer);
     }
 }
