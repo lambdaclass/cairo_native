@@ -60,12 +60,13 @@ normal = ["aquamarine"]
 [dependencies]
 aquamarine = "0.5.0"
 bumpalo = "3.16.0"
-cairo-lang-compiler = "2.7.1"
-cairo-lang-defs = "2.7.1"
-cairo-lang-filesystem = "2.7.1"
-cairo-lang-semantic = "2.7.1"
-cairo-lang-sierra = "2.7.1"
-cairo-lang-sierra-generator = "2.7.1"
+cairo-lang-compiler = "~2.7.1"
+cairo-lang-defs = "~2.7.1"
+cairo-lang-filesystem = "~2.7.1"
+cairo-lang-semantic = "~2.7.1"
+cairo-lang-sierra = "~2.7.1"
+cairo-lang-sierra-generator = "~2.7.1"
+cairo-lang-diagnostics = "~2.7.1"
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
 itertools = "0.13.0"
 lazy_static = "1.4"
@@ -86,11 +87,11 @@ tracing = "0.1"
 
 
 # CLI dependencies
-cairo-lang-sierra-ap-change = "2.7.1"
-cairo-lang-sierra-gas = "2.7.1"
-cairo-lang-starknet = "2.7.1"
-cairo-lang-utils = "2.7.1"
-cairo-lang-starknet-classes = "2.7.1"
+cairo-lang-sierra-ap-change = "~2.7.1"
+cairo-lang-sierra-gas = "~2.7.1"
+cairo-lang-starknet = "~2.7.1"
+cairo-lang-utils = "~2.7.1"
+cairo-lang-starknet-classes = "~2.7.1"
 cairo-native-runtime = { version = "0.2.0", path = "runtime", optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
 libloading = "0.8.3"
@@ -101,8 +102,8 @@ tracing-subscriber = { version = "0.3.18", features = [
 ], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 anyhow = { version = "1.0", optional = true }
-cairo-lang-test-plugin = { version = "2.7.1", optional = true }
-cairo-lang-runner = { version = "2.7.1", optional = true }
+cairo-lang-test-plugin = { version = "~2.7.1", optional = true }
+cairo-lang-runner = { version = "~2.7.1", optional = true }
 colored = { version = "2.1.0", optional = true }
 # needed to interface with cairo-lang-*
 keccak = "0.1.5"
@@ -117,8 +118,8 @@ stats_alloc = "0.1.10"
 
 [dev-dependencies]
 cairo-vm = { version = "1.0.1", features = ["cairo-1-hints"] }
-cairo-lang-runner = "2.7.1"
-cairo-lang-semantic = { version = "2.7.1", features = ["testing"] }
+cairo-lang-runner = "~2.7.1"
+cairo-lang-semantic = { version = "~2.7.1", features = ["testing"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.9.0"
 pretty_assertions_sorted = "1.2.3"
