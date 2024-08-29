@@ -1,10 +1,13 @@
 mod utils;
 
+use std::collections::HashSet;
+use std::path::Path;
 use std::{env, fs};
 
 use anyhow::Context;
-use cairo_lang_test_plugin::TestCompilation;
-use clap::Parser;
+use cairo_lang_sierra::program::VersionedProgram;
+use cairo_lang_test_plugin::{TestCompilation, TestCompilationMetadata};
+use clap::{Parser, ValueEnum};
 use scarb_metadata::{Metadata, MetadataCommand, ScarbCommand};
 use scarb_ui::args::PackagesFilter;
 use utils::test::{display_tests_summary, filter_test_cases, find_testable_targets, run_tests};
@@ -27,12 +30,33 @@ struct Args {
     /// Run only ignored tests.
     #[arg(long, default_value_t = false)]
     ignored: bool,
+    /// Choose test kind to run.
+    #[arg(short, long)]
+    test_kind: Option<TestKind>,
     /// Run with JIT or AOT (compiled).
     #[arg(long, value_enum, default_value_t = RunMode::Jit)]
     run_mode: RunMode,
     /// Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3.
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
+}
+
+#[derive(ValueEnum, Clone, Debug, Default)]
+pub enum TestKind {
+    Unit,
+    Integration,
+    #[default]
+    All,
+}
+
+impl TestKind {
+    pub fn matches(&self, kind: &str) -> bool {
+        match self {
+            TestKind::Unit => kind == "unit",
+            TestKind::Integration => kind == "integration",
+            TestKind::All => true,
+        }
+    }
 }
 
 fn main() -> anyhow::Result<()> {
@@ -43,11 +67,31 @@ fn main() -> anyhow::Result<()> {
     // Filter packages.
     let matched = args.packages_filter.match_many(&metadata)?;
     let filter = PackagesFilter::generate_for::<Metadata>(matched.iter());
+    let test_kind = args.test_kind.unwrap_or_default();
+    let target_names = matched
+        .iter()
+        .flat_map(|package| {
+            find_testable_targets(package)
+                .iter()
+                .filter(|target| {
+                    test_kind.matches(
+                        target
+                            .params
+                            .get("test-type")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or_default(),
+                    )
+                })
+                .map(|t| t.name.clone())
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
 
     // Build only the filtered packages.
     ScarbCommand::new()
         .arg("build")
         .arg("--test")
+        .env("SCARB_TARGET_NAMES", target_names.clone().join(","))
         .env("SCARB_PACKAGES_FILTER", filter.to_env())
         .run()?;
 
@@ -60,18 +104,26 @@ fn main() -> anyhow::Result<()> {
         .unwrap_or(default_target_dir)
         .join(profile);
 
-    // Iterate over the filtered packages.
+    let mut deduplicator = TargetGroupDeduplicator::default();
     for package in matched {
         println!("testing {} ...", package.name);
 
         // Iterate over the filtered targets.
         for target in find_testable_targets(&package) {
-            let file_path = target_dir.join(format!("{}.test.json", target.name.clone()));
-            let compiled = serde_json::from_str::<TestCompilation>(
-                &fs::read_to_string(file_path.clone())
-                    .with_context(|| format!("failed to read file: {file_path}"))?,
-            )
-            .with_context(|| format!("failed to deserialize compiled tests file: {file_path}"))?;
+            if !target_names.contains(&target.name) {
+                continue;
+            }
+            let name = target
+                .params
+                .get("group-id")
+                .and_then(|v| v.as_str())
+                .map(ToString::to_string)
+                .unwrap_or(target.name.clone());
+            let already_seen = deduplicator.visit(package.name.clone(), name.clone());
+            if already_seen {
+                continue;
+            }
+            let compiled = deserialize_test_compilation(target_dir.as_std_path(), name.clone())?;
 
             let (compiled, filtered_out) = filter_test_cases(
                 compiled,
@@ -95,4 +147,42 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[derive(Default)]
+struct TargetGroupDeduplicator {
+    seen: HashSet<(String, String)>,
+}
+
+impl TargetGroupDeduplicator {
+    /// Returns true if already visited.
+    pub fn visit(&mut self, package_name: String, group_name: String) -> bool {
+        !self.seen.insert((package_name, group_name))
+    }
+}
+
+fn deserialize_test_compilation(
+    target_dir: &Path,
+    name: String,
+) -> anyhow::Result<TestCompilation> {
+    let file_path = target_dir.join(format!("{}.test.json", name));
+    let test_comp_metadata = serde_json::from_str::<TestCompilationMetadata>(
+        &fs::read_to_string(file_path.clone())
+            .with_context(|| format!("failed to read file: {file_path:?}"))?,
+    )
+    .with_context(|| {
+        format!("failed to deserialize compiled tests metadata file: {file_path:?}")
+    })?;
+
+    let file_path = target_dir.join(format!("{}.test.sierra.json", name));
+    let sierra_program = serde_json::from_str::<VersionedProgram>(
+        &fs::read_to_string(file_path.clone())
+            .with_context(|| format!("failed to read file: {file_path:?}"))?,
+    )
+    .with_context(|| format!("failed to deserialize compiled tests sierra file: {file_path:?}"))?;
+
+    Ok(TestCompilation {
+        sierra_program: sierra_program.into_v1()?,
+        metadata: test_comp_metadata,
+    })
 }

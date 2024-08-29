@@ -9,7 +9,8 @@ use llvm_sys::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
         LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart,
     },
-    prelude::{LLVMContextRef, LLVMMemoryBufferRef, LLVMModuleRef},
+    error::LLVMGetErrorMessage,
+    prelude::LLVMMemoryBufferRef,
     target::{
         LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos,
         LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
@@ -20,13 +21,16 @@ use llvm_sys::{
         LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode,
         LLVMTargetMachineEmitToMemoryBuffer, LLVMTargetRef,
     },
+    transforms::pass_builder::{
+        LLVMCreatePassBuilderOptions, LLVMDisposePassBuilderOptions, LLVMRunPasses,
+    },
 };
 use melior::ir::{Module, Type, TypeLike};
-use mlir_sys::{MlirAttribute, MlirContext, MlirModule, MlirOperation};
+use mlir_sys::{mlirTranslateModuleToLLVMIR, MlirAttribute, MlirContext, MlirModule};
 use std::{
     borrow::Cow,
     error::Error,
-    ffi::{c_void, CStr},
+    ffi::{c_void, CStr, CString},
     fmt::Display,
     io::Write,
     mem::MaybeUninit,
@@ -151,13 +155,6 @@ pub enum MlirLLVMDWTag {
 
 extern "C" {
     fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
-
-    /// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
-    /// This translates operations from any dilalect that has a registered implementation of LLVMTranslationDialectInterface.
-    fn mlirTranslateModuleToLLVMIR(
-        module_operation_ptr: MlirOperation,
-        llvm_context: LLVMContextRef,
-    ) -> LLVMModuleRef;
 
     pub fn mlirLLVMDistinctAttrCreate(attr: MlirAttribute) -> MlirAttribute;
 
@@ -299,7 +296,7 @@ pub fn module_to_object(
 
         let op = module.as_operation().to_raw();
 
-        let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context);
+        let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context as *mut _) as *mut _;
 
         let mut null = null_mut();
         let mut error_buffer = addr_of_mut!(null);
@@ -336,6 +333,23 @@ pub fn module_to_object(
             LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
+
+        let opts = LLVMCreatePassBuilderOptions();
+        let opt = match opt_level {
+            OptLevel::None => 0,
+            OptLevel::Less => 1,
+            OptLevel::Default => 2,
+            OptLevel::Aggressive => 3,
+        };
+        let passes = CString::new(format!("default<O{opt}>")).unwrap();
+        let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
+        if !error.is_null() {
+            let msg = LLVMGetErrorMessage(error);
+            let msg = CStr::from_ptr(msg);
+            Err(LLVMCompileError(msg.to_string_lossy().into_owned()))?;
+        }
+
+        LLVMDisposePassBuilderOptions(opts);
 
         let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
 
