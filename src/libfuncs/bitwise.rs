@@ -37,7 +37,7 @@ pub fn build<'ctx, 'this>(
 
     entry.append_operation(helper.br(
         0,
-        &[bitwise, logical_and, logical_xor, logical_or],
+        &[bitwise, logical_and, logical_or, logical_xor],
         location,
     ));
     Ok(())
@@ -103,8 +103,8 @@ mod test {
             ),
             jit_struct!(
                 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
+                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into(),
                 0x00000000_00000000_00000000_00000000u128.into(),
-                0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128.into()
             )
         );
     }
