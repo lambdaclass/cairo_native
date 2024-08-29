@@ -1004,6 +1004,7 @@
 <a href="#1004" id="1004">1004</a>
 <a href="#1005" id="1005">1005</a>
 <a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u128`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -1033,6 +1034,7 @@
     },
     Context,
 };
+<span class="kw">use </span>num_bigint::BigUint;
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
@@ -1200,27 +1202,27 @@
     <span class="kw">let </span>range_check =
         <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>arg1 = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>k1 = entry.const_int(context, location, <span class="number">1</span>, <span class="number">252</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>k128 = entry.const_int(context, location, <span class="number">128</span>, <span class="number">252</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>bound = BigUint::from(u128::MAX) + <span class="number">1u32</span>;
+    <span class="kw">let </span>k_u128_max_1 = entry.const_int(context, location, bound, <span class="number">252</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>min_wide_val = entry.append_op_result(arith::shli(k1, k128, location))<span class="question-mark">?</span>;
     <span class="kw">let </span>is_wide = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
-        arg1,
-        min_wide_val,
+        value,
+        k_u128_max_1,
         location,
     ))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>lsb_bits = entry.append_op_result(arith::trunci(
-        arg1,
+        value,
         IntegerType::new(context, <span class="number">128</span>).into(),
         location,
     ))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>msb_bits = entry.append_op_result(arith::shrui(arg1, k128, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>msb_bits = entry.append_op_result(arith::shrui(value, k128, location))<span class="question-mark">?</span>;
     <span class="kw">let </span>msb_bits = entry.append_op_result(arith::trunci(
         msb_bits,
         IntegerType::new(context, <span class="number">128</span>).into(),
