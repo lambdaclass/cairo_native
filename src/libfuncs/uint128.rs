@@ -632,9 +632,9 @@ mod test {
             }
         };
         static ref U128_WIDEMUL: (String, Program) = load_cairo! {
-            use integer::u128_wide_mul;
-            fn run_test(lhs: u128, rhs: u128) -> (u128, u128) {
-                u128_wide_mul(lhs, rhs)
+            use core::num::traits::WideMul;
+            fn run_test(lhs: u128, rhs: u128) -> u256 {
+                WideMul::wide_mul(lhs,rhs)
             }
         };
         static ref U128_TO_FELT252: (String, Program) = load_cairo! {
@@ -645,12 +645,19 @@ mod test {
             }
         };
         static ref U128_SQRT: (String, Program) = load_cairo! {
-            use core::integer::u128_sqrt;
-
+            use core::num::traits::Sqrt;
             fn run_test(value: u128) -> u64 {
-                u128_sqrt(value)
+                value.sqrt()
             }
         };
+    }
+
+    fn u256(value: BigUint) -> JitValue {
+        assert!(value.bits() <= 256);
+        jit_struct!(
+            JitValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
+            JitValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
+        )
     }
 
     #[test]
@@ -969,31 +976,31 @@ mod test {
             program,
             "run_test",
             &[0u128.into(), 0u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u128.into(), 1u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 0u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 1u128.into()],
-            jit_struct!(0u128.into(), 1u128.into()),
+            u256(1u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[u128::MAX.into(), u128::MAX.into()],
-            jit_struct!((u128::MAX - 1).into(), 1u128.into()),
+            u256(BigUint::from(u128::MAX) * BigUint::from(u128::MAX)),
         );
     }
 }

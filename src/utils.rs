@@ -1,17 +1,16 @@
 //! # Various utilities
 
 use crate::{
-    debug_info::{DebugInfo, DebugLocations},
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
     OptLevel,
 };
-use cairo_lang_compiler::{
-    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-    project::setup_project, CompilerConfig,
-};
+use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        utils::Range,
+    },
     ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
@@ -22,6 +21,7 @@ use melior::{
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
+use num_traits::One;
 use std::{
     alloc::Layout,
     borrow::Cow,
@@ -77,8 +77,8 @@ pub fn get_integer_layout(width: u32) -> Layout {
             Layout::new::<u128>().align_to(16).unwrap()
         }
     } else {
-        let width = (width as usize).next_multiple_of(8).next_power_of_two();
-        Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
+        let width = (width as usize).next_multiple_of(8);
+        Layout::from_size_align(width >> 3, 16).expect("align should be power of two")
     }
 }
 
@@ -109,37 +109,6 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
             .unwrap()
             .into()
     }
-}
-
-pub fn cairo_to_sierra_with_debug_info<'ctx>(
-    context: &'ctx Context,
-    program: &Path,
-) -> Result<(Program, DebugLocations<'ctx>), crate::error::Error> {
-    let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
-    let main_crate_ids = setup_project(&mut db, program).unwrap();
-    let program = compile_prepared_db(
-        &mut db,
-        main_crate_ids,
-        CompilerConfig {
-            replace_ids: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-
-    let debug_locations = {
-        let debug_info = DebugInfo::extract(&db, &program)
-            .map_err(|_| {
-                let mut buffer = String::new();
-                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
-                buffer
-            })
-            .unwrap();
-
-        DebugLocations::extract(context, &db, &debug_info)
-    };
-
-    Ok((program, debug_locations))
 }
 
 /// Returns the given entry point if present.
@@ -241,18 +210,15 @@ pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Er
     let pass_manager = PassManager::new(context);
     pass_manager.enable_verifier(true);
     pass_manager.add_pass(pass::transform::create_canonicalizer());
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
+    pass_manager.add_pass(pass::conversion::create_to_llvm());
     pass_manager.run(module)
 }
 
 #[cfg(feature = "with-runtime")]
 pub fn register_runtime_symbols(engine: &ExecutionEngine) {
+    use cairo_native_runtime::FeltDict;
+
     unsafe {
         engine.register_symbol(
             "cairo_native__libfunc__debug__print",
@@ -286,6 +252,12 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
         );
 
         engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_init",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_init
+                as *const fn(*mut [[u8; 32]; 4]) as *mut (),
+        );
+
+        engine.register_symbol(
             "cairo_native__libfunc__ec__ec_state_add_mul",
             cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul
                 as *const fn(*mut [[u8; 32]; 4], *const [u8; 32], *const [[u8; 32]; 2]) -> bool
@@ -307,20 +279,29 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
 
         engine.register_symbol(
             "cairo_native__alloc_dict",
-            cairo_native_runtime::cairo_native__alloc_dict as *const fn() -> *mut std::ffi::c_void
+            cairo_native_runtime::cairo_native__alloc_dict as *const fn() -> *mut FeltDict
                 as *mut (),
         );
 
         engine.register_symbol(
             "cairo_native__dict_free",
-            cairo_native_runtime::cairo_native__dict_free as *const fn(*mut std::ffi::c_void) -> ()
+            cairo_native_runtime::cairo_native__dict_free as *const fn(*mut FeltDict) -> ()
                 as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_values",
+            cairo_native_runtime::cairo_native__dict_values
+                as *const fn(
+                    *mut FeltDict,
+                    *mut u64,
+                ) -> *mut ([u8; 32], std::ptr::NonNull<libc::c_void>) as *mut (),
         );
 
         engine.register_symbol(
             "cairo_native__dict_get",
             cairo_native_runtime::cairo_native__dict_get
-                as *const fn(*mut std::ffi::c_void, &[u8; 32]) -> *mut std::ffi::c_void
+                as *const fn(*mut FeltDict, &[u8; 32]) -> *mut std::ffi::c_void
                 as *mut (),
         );
 
@@ -328,16 +309,16 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
             "cairo_native__dict_insert",
             cairo_native_runtime::cairo_native__dict_insert
                 as *const fn(
-                    *mut std::ffi::c_void,
+                    *mut FeltDict,
                     &[u8; 32],
                     NonNull<std::ffi::c_void>,
+                    usize,
                 ) -> *mut std::ffi::c_void as *mut (),
         );
 
         engine.register_symbol(
             "cairo_native__dict_gas_refund",
-            cairo_native_runtime::cairo_native__dict_gas_refund
-                as *const fn(*const std::ffi::c_void, NonNull<std::ffi::c_void>) -> u64
+            cairo_native_runtime::cairo_native__dict_gas_refund as *const fn(*const FeltDict) -> u64
                 as *mut (),
         );
 
@@ -520,6 +501,49 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
     }
 }
 
+pub trait RangeExt {
+    /// Width in bits when the offset is zero (aka. the natural representation).
+    fn zero_based_bit_width(&self) -> u32;
+    /// Width in bits when the offset is not necessarily zero (aka. the compact representation).
+    fn offset_bit_width(&self) -> u32;
+}
+
+impl RangeExt for Range {
+    fn zero_based_bit_width(&self) -> u32 {
+        // Formula for unsigned integers:
+        //     x.bits()
+        //
+        // Formula for signed values:
+        //   - Positive: (x.magnitude() + BigUint::one()).bits()
+        //   - Negative: (x.magnitude() - BigUint::one()).bits() + 1
+        //   - Zero: 0
+
+        let width = if self.lower.sign() == Sign::Minus {
+            let lower_width = (self.lower.magnitude() - BigUint::one()).bits() + 1;
+            let upper_width = {
+                let upper = &self.upper - &BigInt::one();
+                match upper.sign() {
+                    Sign::Minus => (upper.magnitude() - BigUint::one()).bits() + 1,
+                    Sign::NoSign => 0,
+                    Sign::Plus => (upper.magnitude() + BigUint::one()).bits(),
+                }
+            };
+
+            lower_width.max(upper_width) as u32
+        } else {
+            (&self.upper - &BigInt::one()).bits() as u32
+        };
+
+        // FIXME: Workaround for segfault in canonicalization (including LLVM 19).
+        width.max(1)
+    }
+
+    fn offset_bit_width(&self) -> u32 {
+        // FIXME: Workaround for segfault in canonicalization (including LLVM 19).
+        ((self.size() - BigInt::one()).bits() as u32).max(1)
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use crate::{
@@ -556,9 +580,9 @@ pub mod test {
 
     // Helper macros for faster testing.
     macro_rules! jit_struct {
-        ( $($x:expr),* $(,)? ) => {
+        ($($y:expr),* $(,)? ) => {
             crate::values::JitValue::Struct {
-                fields: vec![$($x), *],
+                fields: vec![$($y), *],
                 debug_name: None
             }
         };
@@ -624,7 +648,7 @@ pub mod test {
             Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
-        let program = compile_prepared_db(
+        let sierra_program_with_dbg = compile_prepared_db(
             &mut db,
             main_crate_ids,
             CompilerConfig {
@@ -637,7 +661,7 @@ pub mod test {
 
         let module_name = program_file.path().with_extension("");
         let module_name = module_name.file_name().unwrap().to_str().unwrap();
-        (module_name.to_string(), program)
+        (module_name.to_string(), sierra_program_with_dbg.program)
     }
 
     pub fn run_program(
@@ -658,7 +682,7 @@ pub mod test {
         let context = NativeContext::new();
 
         let module = context
-            .compile(program, None)
+            .compile(program)
             .expect("Could not compile test program to MLIR.");
 
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
@@ -1036,33 +1060,5 @@ pub mod test {
             sierra_program.type_declarations[0].id.debug_name,
             Some("u8".into())
         );
-    }
-
-    #[test]
-    fn test_cairo_to_sierra_with_debug_info() {
-        // Define the path to the cairo program.
-        let program_path = Path::new("programs/examples/hello.cairo");
-        // Create a new context.
-        let context = Context::new();
-        // Compile the cairo program to sierra, including debug information.
-        let sierra_program = cairo_to_sierra_with_debug_info(&context, program_path).unwrap();
-
-        // Define the name of the entry point function for comparison.
-        let entry_point = "hello::hello::greet";
-        // Find the function ID of the entry point function in the sierra program.
-        let entry_point_id = find_function_id(&sierra_program.0, entry_point);
-
-        // Assert that the debug name of the entry point function matches the expected value.
-        assert_eq!(
-            entry_point_id.debug_name,
-            Some("hello::hello::greet".into())
-        );
-
-        // Check if the sierra program contains a function with the specified debug name for the entry point function.
-        assert!(sierra_program
-            .1
-            .funcs
-            .keys()
-            .any(|func| func.debug_name == Some("hello::hello::greet".into())));
     }
 }
