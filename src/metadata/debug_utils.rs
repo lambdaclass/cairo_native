@@ -826,7 +826,7 @@ mod test {
 
     #[test]
     fn test_debug_breakpoint_trap() {
-        let mut debug_utils = DebugUtils::default();
+        let debug_utils = DebugUtils::default();
         let native_context = NativeContext::new();
         let context = native_context.context();
         let location = Location::unknown(context);
