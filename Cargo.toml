@@ -12,6 +12,7 @@ keywords = ["starknet", "cairo", "compiler", "mlir"]
 # https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
 resolver = "2"
 
+
 [[bin]]
 name = "cairo-native-dump"
 required-features = ["build-cli"]
@@ -52,18 +53,20 @@ with-runtime = ["dep:cairo-native-runtime"]
 with-serde = ["dep:serde"]
 with-cheatcode = []
 
+# the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
+[package.metadata.cargo-udeps.ignore]
+normal = ["aquamarine"]
+
 [dependencies]
+aquamarine = "0.5.0"
 bumpalo = "3.16.0"
 cairo-lang-compiler = "2.7.1"
 cairo-lang-defs = "2.7.1"
-cairo-lang-diagnostics = "2.7.1"
 cairo-lang-filesystem = "2.7.1"
-cairo-lang-lowering = "2.7.1"
 cairo-lang-semantic = "2.7.1"
 cairo-lang-sierra = "2.7.1"
 cairo-lang-sierra-generator = "2.7.1"
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
-id-arena = "2.2"
 itertools = "0.13.0"
 lazy_static = "1.4"
 libc = "0.2.155"
