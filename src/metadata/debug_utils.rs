@@ -1094,7 +1094,7 @@ mod test {
         let sierra_program = utils::cairo_to_sierra(program_path);
 
         let native_context = NativeContext::new();
-        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let native_program = native_context.compile(&sierra_program).unwrap();
 
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
@@ -1126,7 +1126,7 @@ mod test {
         let program_path = Path::new("programs/examples/hello.cairo");
         let sierra_program = utils::cairo_to_sierra(program_path);
         let native_context = NativeContext::new();
-        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let native_program = native_context.compile(&sierra_program).unwrap();
 
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
@@ -1168,7 +1168,7 @@ mod test {
         let program_path = Path::new("programs/examples/hello.cairo");
         let sierra_program = utils::cairo_to_sierra(program_path);
         let native_context = NativeContext::new();
-        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let native_program = native_context.compile(&sierra_program).unwrap();
 
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
@@ -1210,7 +1210,7 @@ mod test {
         let program_path = Path::new("programs/examples/hello.cairo");
         let sierra_program = utils::cairo_to_sierra(program_path);
         let native_context = NativeContext::new();
-        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let native_program = native_context.compile(&sierra_program).unwrap();
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
         debug_utils.register_impls(&engine);
@@ -1250,7 +1250,7 @@ mod test {
         let program_path = Path::new("programs/examples/hello.cairo");
         let sierra_program = utils::cairo_to_sierra(program_path);
         let native_context = NativeContext::new();
-        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let native_program = native_context.compile(&sierra_program).unwrap();
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
         debug_utils.register_impls(&engine);
@@ -1292,7 +1292,7 @@ mod test {
         let program_path = Path::new("programs/examples/hello.cairo");
         let sierra_program = utils::cairo_to_sierra(program_path);
         let native_context = NativeContext::new();
-        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let native_program = native_context.compile(&sierra_program).unwrap();
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
         debug_utils.register_impls(&engine);
@@ -1336,7 +1336,7 @@ mod test {
 
         let native_context = NativeContext::new();
 
-        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let native_program = native_context.compile(&sierra_program).unwrap();
 
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
@@ -1378,7 +1378,7 @@ mod test {
         let program_path = Path::new("programs/examples/hello.cairo");
         let sierra_program = utils::cairo_to_sierra(program_path);
         let native_context = NativeContext::new();
-        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let native_program = native_context.compile(&sierra_program).unwrap();
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
         debug_utils.register_impls(&engine);
@@ -1419,7 +1419,7 @@ mod test {
         let program_path = Path::new("programs/examples/hello.cairo");
         let sierra_program = utils::cairo_to_sierra(program_path);
         let native_context = NativeContext::new();
-        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let native_program = native_context.compile(&sierra_program).unwrap();
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
         debug_utils.register_impls(&engine);
@@ -1460,7 +1460,7 @@ mod test {
         let program_path = Path::new("programs/examples/hello.cairo");
         let sierra_program = utils::cairo_to_sierra(program_path);
         let native_context = NativeContext::new();
-        let native_program = native_context.compile(&sierra_program, None).unwrap();
+        let native_program = native_context.compile(&sierra_program).unwrap();
         let engine = ExecutionEngine::new(&native_program.module, 2, &[], false);
 
         debug_utils.register_impls(&engine);
