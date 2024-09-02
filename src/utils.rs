@@ -649,7 +649,7 @@ pub mod test {
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
         let sierra_program_with_dbg = compile_prepared_db(
-            &mut db,
+            &db,
             main_crate_ids,
             CompilerConfig {
                 diagnostics_reporter: DiagnosticsReporter::stderr(),
