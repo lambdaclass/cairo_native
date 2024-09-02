@@ -183,7 +183,7 @@
     <span class="kw">let </span>main_crate_ids = setup_project(<span class="kw-2">&amp;mut </span>db, <span class="kw-2">&amp;</span>args.path)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>sierra_program = compile_prepared_db(
-        <span class="kw-2">&amp;mut </span>db,
+        <span class="kw-2">&amp;</span>db,
         main_crate_ids,
         CompilerConfig {
             replace_ids: <span class="bool-val">true</span>,

@@ -123,18 +123,11 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>utils;
 
 <span class="kw">use </span>anyhow::bail;
 <span class="kw">use </span>cairo_lang_compiler::{
     db::RootDatabase,
-    diagnostics::DiagnosticsReporter,
     project::{check_compiler_path, setup_project},
 };
 <span class="kw">use </span>cairo_lang_filesystem::cfg::{Cfg, CfgSet};
@@ -208,19 +201,13 @@
     </span>};
 
     <span class="kw">let </span>main_crate_ids = setup_project(db, <span class="kw-2">&amp;</span>args.path)<span class="question-mark">?</span>;
-    <span class="kw">let </span><span class="kw-2">mut </span>reporter = DiagnosticsReporter::stderr().with_crates(<span class="kw-2">&amp;</span>main_crate_ids);
-    <span class="kw">if </span>args.allow_warnings {
-        reporter = reporter.allow_warnings();
-    }
-    <span class="kw">if </span>reporter.check(db) {
-        <span class="macro">bail!</span>(<span class="string">"failed to compile: {}"</span>, args.path.display());
-    }
 
     <span class="kw">let </span>db = db.snapshot();
     <span class="kw">let </span>test_crate_ids = main_crate_ids.clone();
     <span class="kw">let </span>test_config = TestsCompilationConfig {
         starknet: args.starknet,
         add_statements_functions: <span class="bool-val">false</span>,
+        add_statements_code_locations: <span class="bool-val">false</span>,
     };
 
     <span class="kw">let </span>build_test_compilation = compile_test_prepared_db(
@@ -228,6 +215,7 @@
         test_config,
         main_crate_ids.clone(),
         test_crate_ids.clone(),
+        args.allow_warnings,
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>(compiled, filtered_out) = filter_test_cases(
