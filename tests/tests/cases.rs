@@ -144,9 +144,13 @@ use test_case::test_case;
 #[test_case("tests/cases/cairo_vm/programs/simple_struct.cairo")]
 #[test_case("tests/cases/cairo_vm/programs/struct_span_return.cairo")]
 #[test_case("tests/cases/cairo_vm/programs/tensor_new.cairo")]
-#[test_case("tests/cases/brainfuck.cairo")]
 fn test_program_cases(program_path: &str) {
-    compare_inputless_program(program_path)
+    compare_inputless_program(program_path, None, None)
+}
+
+#[test_case("tests/cases/brainfuck.cairo")]
+fn test_program_cases_large_stack(program_path: &str) {
+    compare_inputless_program(program_path, None, Some(1024 * 1024 * 32))
 }
 
 // Contracts copied from the cairo-vm
