@@ -278,6 +278,31 @@
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Function call libfuncs
 //!
 //! Includes logic for handling direct tail recursive function calls. More information on this topic
@@ -299,11 +324,12 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{cf, func, index, llvm, memref},
+    dialect::{cf, index, llvm, memref},
     ir::{
-        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute},
+        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, TypeAttribute},
+        operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Location, Type, Value,
+        Block, Identifier, Location, Type, Value, ValueLike,
     },
     Context,
 };
@@ -350,17 +376,10 @@
         <span class="kw">let </span>depth_counter =
             entry.append_op_result(memref::load(tailrec_meta.depth_counter(), <span class="kw-2">&amp;</span>[], location))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>index1 = entry.append_op_result(index::constant(
-            context,
-            IntegerAttribute::new(Type::index(context), <span class="number">1</span>),
-            location,
-        ))<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>depth_counter_plus_1 =
-            entry.append_op_result(index::add(depth_counter, index1, location))<span class="question-mark">?</span>;
-
+        <span class="kw">let </span>k1 = entry.const_int_from_type(context, location, <span class="number">1</span>, Type::index(context))<span class="question-mark">?</span>;
+        <span class="kw">let </span>new_depth_counter = entry.append_op_result(index::add(depth_counter, k1, location))<span class="question-mark">?</span>;
         entry.append_operation(memref::store(
-            depth_counter_plus_1,
+            new_depth_counter,
             tailrec_meta.depth_counter(),
             <span class="kw-2">&amp;</span>[],
             location,
@@ -396,7 +415,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
         <span class="kw">for </span>var_info <span class="kw">in </span><span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars {
             <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>;
-
             <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
                 results.push(cont_block.append_op_result(llvm::undef(
                     type_info.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>,
@@ -428,7 +446,7 @@
             })
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="comment">// A function has a return pointer if either:
-        //   - There are multiple return values.
+        // - There are multiple return values.
         //   - The return value is memory allocated.
         </span><span class="kw">let </span>has_return_ptr = <span class="kw">if </span>return_types.len() &gt; <span class="number">1 </span>{
             result_types.extend(
@@ -467,13 +485,35 @@
             <span class="prelude-val">None
         </span>};
 
-        <span class="kw">let </span>function_call_result = entry.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, <span class="kw-2">&amp;</span>generate_function_name(<span class="kw-2">&amp;</span>info.function.id)),
-            <span class="kw-2">&amp;</span>arguments,
-            <span class="kw-2">&amp;</span>result_types,
-            location,
-        ));
+        <span class="kw">let </span>function_call_result = entry.append_op_result(
+            OperationBuilder::new(<span class="string">"llvm.call"</span>, location)
+                .add_attributes(<span class="kw-2">&amp;</span>[
+                    (
+                        Identifier::new(context, <span class="string">"var_callee_type"</span>),
+                        TypeAttribute::new(llvm::r#type::function(
+                            llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span>result_types, <span class="bool-val">false</span>),
+                            <span class="kw-2">&amp;</span>arguments.iter().map(ValueLike::r#type).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                            <span class="bool-val">false</span>,
+                        ))
+                        .into(),
+                    ),
+                    (
+                        Identifier::new(context, <span class="string">"callee"</span>),
+                        FlatSymbolRefAttribute::new(
+                            context,
+                            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"impl${}"</span>, generate_function_name(<span class="kw-2">&amp;</span>info.function.id)),
+                        )
+                        .into(),
+                    ),
+                    <span class="comment">// (
+                    //     Identifier::new(context, "CConv"),
+                    //     Attribute::parse(context, "#llvm.cconv&lt;tailcc&gt;").unwrap(),
+                    // ),
+                </span>])
+                .add_operands(<span class="kw-2">&amp;</span>arguments)
+                .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span>result_types, <span class="bool-val">false</span>)])
+                .build()<span class="question-mark">?</span>,
+        )<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::new();
         <span class="kw">match </span>has_return_ptr {
@@ -515,15 +555,19 @@
                 <span class="comment">// Complex return type. Just extract the values from the struct, since LLVM will
                 // handle the rest.
 
-                </span><span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
-                <span class="kw">for </span>(idx, type_id) <span class="kw">in </span>info.function.signature.ret_types.iter().enumerate() {
+                </span><span class="kw">for </span>(idx, type_id) <span class="kw">in </span>info.function.signature.ret_types.iter().enumerate() {
                     <span class="kw">let </span>type_info = registry.get_type(type_id)<span class="question-mark">?</span>;
 
                     <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
                         results.push(entry.argument(idx)<span class="question-mark">?</span>.into());
                     } <span class="kw">else </span>{
-                        <span class="kw">let </span>val = function_call_result.result(count)<span class="question-mark">?</span>.into();
-                        count += <span class="number">1</span>;
+                        <span class="kw">let </span>val = entry.extract_value(
+                            context,
+                            location,
+                            function_call_result,
+                            result_types[idx],
+                            idx,
+                        )<span class="question-mark">?</span>;
 
                         results.push(val);
                     }
@@ -540,7 +584,13 @@
                     <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
                         results.push(entry.argument(idx)<span class="question-mark">?</span>.into());
                     } <span class="kw">else </span>{
-                        <span class="kw">let </span>value = function_call_result.result(count)<span class="question-mark">?</span>.into();
+                        <span class="kw">let </span>value = entry.extract_value(
+                            context,
+                            location,
+                            function_call_result,
+                            result_types[count],
+                            count,
+                        )<span class="question-mark">?</span>;
                         count += <span class="number">1</span>;
 
                         results.push(value);
