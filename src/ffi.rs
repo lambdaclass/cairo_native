@@ -334,6 +334,22 @@ pub fn module_to_object(
             LLVMCodeModel::LLVMCodeModelDefault,
         );
 
+        let opts = LLVMCreatePassBuilderOptions();
+        let opt = match opt_level {
+            OptLevel::None => 0,
+            OptLevel::Less => 1,
+            OptLevel::Default => 2,
+            OptLevel::Aggressive => 3,
+        };
+        let passes = CString::new(format!("default<O{opt}>")).unwrap();
+        let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
+        if !error.is_null() {
+            let msg = LLVMGetErrorMessage(error);
+            let msg = CStr::from_ptr(msg);
+            Err(LLVMCompileError(msg.to_string_lossy().into_owned()))?;
+        }
+
+        LLVMDisposePassBuilderOptions(opts);
 
         let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
 

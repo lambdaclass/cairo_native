@@ -662,16 +662,10 @@ fn compile_func(
             false,
         )),
         region,
-        &[
-            (
-                Identifier::new(context, "sym_visibility"),
-                StringAttribute::new(context, "public").into(),
-            ),
-            (
-                Identifier::new(context, "CConv"),
-                Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
-            ),
-        ],
+        &[(
+            Identifier::new(context, "sym_visibility"),
+            StringAttribute::new(context, "public").into(),
+        )],
         Location::fused(
             context,
             &[Location::new(
@@ -1080,10 +1074,6 @@ fn generate_entry_point_wrapper<'c>(
                 (
                     Identifier::new(context, "callee"),
                     FlatSymbolRefAttribute::new(context, private_symbol).into(),
-                ),
-                (
-                    Identifier::new(context, "CConv"),
-                    Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
                 ),
             ])
             .add_operands(&args)
