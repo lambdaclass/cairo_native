@@ -1,8 +1,8 @@
 //! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
-//! will be ran only once. All libfuncs are intended to place their stack-allocating operations
-//! there so as to not grow the stack when looping.
+//! will be ran only once, even in tail-recursive functions. All libfuncs are intended to place
+//! their stack-allocating operations there so as to not grow the stack when recursing.
 //!
 //! After the pre-entry block, there is an entry block, which is in charge of preparing the first
 //! statement's arguments and jumping into it. From here on, all the statements's
@@ -37,6 +37,11 @@
 //! (`generate_function_name`)[generate_function_name] will generate a new symbol name based on its
 //! function id.
 //!
+//! ## Tail-recursive functions
+//!
+//! Part of the tail-recursion handling algorithm is implemented here, but tail-recursive functions
+//! are better explained in [their metadata section](crate::metadata::tail_recursion).
+//!
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
@@ -51,6 +56,7 @@ use crate::{
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
+        tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
     types::TypeBuilder,
@@ -60,7 +66,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     edit_state,
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
         ConcreteLibfunc,
     },
     ids::{ConcreteTypeId, VarId},
@@ -71,8 +77,10 @@ use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use melior::{
     dialect::{
-        cf, func,
+        arith::CmpiPredicate,
+        cf, func, index,
         llvm::{self, LoadStoreOptions},
+        memref,
     },
     ir::{
         attribute::{
@@ -80,7 +88,7 @@ use melior::{
             TypeAttribute,
         },
         operation::OperationBuilder,
-        r#type::{FunctionType, IntegerType},
+        r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
         Value, ValueLike,
     },
@@ -318,7 +326,7 @@ fn compile_func(
     };
 
     tracing::debug!("Generating function structure (region with blocks).");
-    let (entry_block, blocks) = generate_function_structure(
+    let (entry_block, blocks, is_recursive) = generate_function_structure(
         context,
         module,
         &region,
@@ -403,6 +411,7 @@ fn compile_func(
         },
     ));
 
+    let mut tailrec_state = Option::<(Value, BlockRef)>::None;
     foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
@@ -506,7 +515,55 @@ fn compile_func(
                             .collect::<Vec<_>>(),
                     };
 
-                    registry.get_libfunc(&invocation.libfunc_id)?.build(
+                    let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
+                    if is_recursive {
+                        if let Some(target) = libfunc.is_function_call() {
+                            if target == &function.id && state.is_empty() {
+                                let location = Location::name(
+                                    context,
+                                    &format!("recursion_counter({})", libfunc_name),
+                                    location,
+                                );
+                                let op0 = pre_entry_block.insert_operation(
+                                    0,
+                                    memref::alloca(
+                                        context,
+                                        MemRefType::new(Type::index(context), &[], None, None),
+                                        &[],
+                                        &[],
+                                        None,
+                                        location,
+                                    ),
+                                );
+                                let op1 = pre_entry_block.insert_operation_after(
+                                    op0,
+                                    index::constant(
+                                        context,
+                                        IntegerAttribute::new(Type::index(context), 0),
+                                        location,
+                                    ),
+                                );
+                                pre_entry_block.insert_operation_after(
+                                    op1,
+                                    memref::store(
+                                        op1.result(0)?.into(),
+                                        op0.result(0)?.into(),
+                                        &[],
+                                        location,
+                                    ),
+                                );
+
+                                metadata
+                                    .insert(TailRecursionMeta::new(
+                                        op0.result(0)?.into(),
+                                        &entry_block,
+                                    ))
+                                    .expect("tail recursion metadata shouldn't be inserted");
+                            }
+                        }
+                    }
+
+                    libfunc.build(
                         context,
                         registry,
                         block,
@@ -515,6 +572,12 @@ fn compile_func(
                         metadata,
                     )?;
                     assert!(block.terminator().is_some());
+
+                    if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
+                        if let Some(return_block) = tailrec_meta.return_target() {
+                            tailrec_state = Some((tailrec_meta.depth_counter(), return_block));
+                        }
+                    }
 
                     invocation
                         .branches
@@ -552,6 +615,103 @@ fn compile_func(
                     );
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
+
+                    let mut block = *block;
+                    if let Some((depth_counter, recursion_target)) = tailrec_state {
+                        let location = Location::name(
+                            context,
+                            &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
+                            Location::new(
+                                context,
+                                "program.sierra",
+                                sierra_stmt_start_offset + statement_idx.0,
+                                0,
+                            ),
+                        );
+
+                        // Perform tail recursion.
+                        let cont_block = region.insert_block_after(block, Block::new(&[]));
+
+                        let depth_counter_value =
+                            block.append_op_result(memref::load(depth_counter, &[], location))?;
+                        let k0 = block.const_int_from_type(
+                            context,
+                            location,
+                            0,
+                            Type::index(context),
+                        )?;
+                        let is_zero_depth = block.append_op_result(index::cmp(
+                            context,
+                            CmpiPredicate::Eq,
+                            depth_counter_value,
+                            k0,
+                            location,
+                        ))?;
+
+                        let k1 = block.const_int_from_type(
+                            context,
+                            location,
+                            1,
+                            Type::index(context),
+                        )?;
+                        let depth_counter_value = block.append_op_result(index::sub(
+                            depth_counter_value,
+                            k1,
+                            location,
+                        ))?;
+                        block.append_operation(memref::store(
+                            depth_counter_value,
+                            depth_counter,
+                            &[],
+                            location,
+                        ));
+
+                        let recursive_values = match has_return_ptr {
+                            Some(true) => function
+                                .signature
+                                .ret_types
+                                .iter()
+                                .zip(&values)
+                                .filter_map(|(type_id, value)| {
+                                    let type_info = registry.get_type(type_id).unwrap();
+                                    if type_info.is_zst(registry)
+                                        || type_info.is_memory_allocated(registry)
+                                    {
+                                        None
+                                    } else {
+                                        Some(*value)
+                                    }
+                                })
+                                .collect::<Vec<_>>(),
+                            Some(false) => function
+                                .signature
+                                .ret_types
+                                .iter()
+                                .zip(&values)
+                                .filter_map(|(type_id, value)| {
+                                    let type_info = registry.get_type(type_id).unwrap();
+                                    if type_info.is_zst(registry) {
+                                        None
+                                    } else {
+                                        Some(*value)
+                                    }
+                                })
+                                .collect::<Vec<_>>(),
+                            None => todo!(),
+                        };
+
+                        block.append_operation(cf::cond_br(
+                            context,
+                            is_zero_depth,
+                            &cont_block,
+                            &recursion_target,
+                            &[],
+                            &recursive_values,
+                            location,
+                        ));
+
+                        block = cont_block;
+                    }
 
                     // Remove ZST builtins from the return values.
                     for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
@@ -713,7 +873,7 @@ fn generate_function_structure<'c, 'a>(
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
     sierra_stmt_start_offset: usize,
-) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Error> {
+) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>, bool), Error> {
     let initial_state = edit_state::put_results::<Type>(
         OrderedHashMap::default(),
         function
@@ -734,6 +894,7 @@ fn generate_function_structure<'c, 'a>(
     let mut blocks = BTreeMap::new();
     let mut predecessors = HashMap::from([(function.entry_point, (initial_state.clone(), 0))]);
 
+    let mut num_tail_recursions = 0usize;
     foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
@@ -773,6 +934,12 @@ fn generate_function_structure<'c, 'a>(
                     }
 
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
+                    if let CoreConcreteLibfunc::FunctionCall(info) = libfunc {
+                        if info.function.id == function.id && state.is_empty() {
+                            num_tail_recursions += 1;
+                        }
+                    }
+
                     invocation
                         .branches
                         .iter()
@@ -926,6 +1093,7 @@ fn generate_function_structure<'c, 'a>(
                 )
             })
             .collect(),
+        num_tail_recursions == 1,
     ))
 }
 

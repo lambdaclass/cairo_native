@@ -22,6 +22,7 @@ pub mod prime_modulo;
 pub mod realloc_bindings;
 pub mod runtime_bindings;
 pub mod snapshot_clones;
+pub mod tail_recursion;
 
 /// Metadata container.
 #[cfg_attr(not(feature = "with-debug-utils"), derive(Default))]
