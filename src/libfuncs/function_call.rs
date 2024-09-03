@@ -200,10 +200,10 @@ pub fn build<'ctx, 'this>(
                         )
                         .into(),
                     ),
-                    (
-                        Identifier::new(context, "CConv"),
-                        Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
-                    ),
+                    // (
+                    //     Identifier::new(context, "CConv"),
+                    //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
+                    // ),
                 ])
                 .add_operands(&arguments)
                 .add_results(&[llvm::r#type::r#struct(context, &result_types, false)])
