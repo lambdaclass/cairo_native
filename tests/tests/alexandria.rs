@@ -21,28 +21,17 @@ fn compare_inputless_function(function_name: &str) {
     .unwrap();
 
     let program: (String, Program, SierraCasmRunner) = (module_name.to_string(), program, runner);
+    let program = &program;
 
     let result_vm =
-        run_vm_program(&program, function_name, &[], Some(DEFAULT_GAS as usize)).unwrap();
-    let (program, result_native) = std::thread::Builder::new()
-        .name("TEST RUNNER".to_string())
-        .stack_size(1024 * 1024 * 256)
-        .spawn({
-            let function_name = function_name.to_string();
-            move || {
-                let result = run_native_program(
-                    &program,
-                    &function_name,
-                    &[],
-                    Some(DEFAULT_GAS as u128),
-                    Option::<DummySyscallHandler>::None,
-                );
-                (program, result)
-            }
-        })
-        .unwrap()
-        .join()
-        .unwrap();
+        run_vm_program(program, function_name, &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_native = run_native_program(
+        program,
+        function_name,
+        &[],
+        Some(DEFAULT_GAS as u128),
+        Option::<DummySyscallHandler>::None,
+    );
 
     compare_outputs(
         &program.1,

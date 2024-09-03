@@ -395,45 +395,18 @@ pub fn run_vm_contract(
 }
 
 #[track_caller]
-pub fn compare_inputless_program(
-    program_path: &str,
-    entry_point: Option<&str>,
-    custom_stack: Option<usize>,
-) {
+pub fn compare_inputless_program(program_path: &str) {
     let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
+    let program = &program;
 
-    let result_vm = run_vm_program(&program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
-    let (program, result_native) = match custom_stack {
-        Some(custom_stack) => std::thread::Builder::new()
-            .name("TEST RUNNER".to_string())
-            .stack_size(custom_stack)
-            .spawn({
-                let entry_point = entry_point.unwrap_or("main").to_string();
-                move || {
-                    let result = run_native_program(
-                        &program,
-                        &entry_point,
-                        &[],
-                        Some(DEFAULT_GAS as u128),
-                        Option::<DummySyscallHandler>::None,
-                    );
-                    (program, result)
-                }
-            })
-            .unwrap()
-            .join()
-            .unwrap(),
-        None => {
-            let result = run_native_program(
-                &program,
-                "main",
-                &[],
-                Some(DEFAULT_GAS as u128),
-                Option::<DummySyscallHandler>::None,
-            );
-            (program, result)
-        }
-    };
+    let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_native = run_native_program(
+        program,
+        "main",
+        &[],
+        Some(DEFAULT_GAS as u128),
+        Option::<DummySyscallHandler>::None,
+    );
 
     compare_outputs(
         &program.1,
