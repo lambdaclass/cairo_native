@@ -90,7 +90,7 @@ use melior::{
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
-        Value, ValueLike,
+        Value,
     },
     Context,
 };
