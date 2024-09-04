@@ -568,6 +568,7 @@
 <a href="#568" id="568">568</a>
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # FFI Wrappers
 //!
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
@@ -905,12 +906,13 @@
         );
 
         <span class="kw">let </span>opts = LLVMCreatePassBuilderOptions();
+
         <span class="kw">let </span>opt = <span class="kw">match </span>opt_level {
             OptLevel::None =&gt; <span class="number">0</span>,
             OptLevel::Less =&gt; <span class="number">1</span>,
-            OptLevel::Default =&gt; <span class="number">2</span>,
-            OptLevel::Aggressive =&gt; <span class="number">3</span>,
-        };
+            OptLevel::Default =&gt; <span class="number">1</span>, <span class="comment">// todo: change once slp-vectorizer pass is fixed on llvm
+            </span>OptLevel::Aggressive =&gt; <span class="number">1</span>, <span class="comment">// https://github.com/llvm/llvm-project/issues/107198
+        </span>};
         <span class="kw">let </span>passes = CString::new(<span class="macro">format!</span>(<span class="string">"default&lt;O{opt}&gt;"</span>)).unwrap();
         <span class="kw">let </span>error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
         <span class="kw">if </span>!error.is_null() {
