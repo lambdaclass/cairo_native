@@ -90,7 +90,7 @@ use melior::{
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
-        Value, ValueLike,
+        Value,
     },
     Context,
 };
@@ -1236,15 +1236,6 @@ fn generate_entry_point_wrapper<'c>(
     let result = block.append_op_result(
         OperationBuilder::new("llvm.call", location)
             .add_attributes(&[
-                (
-                    Identifier::new(context, "var_callee_type"),
-                    TypeAttribute::new(llvm::r#type::function(
-                        llvm::r#type::r#struct(context, ret_types, false),
-                        &args.iter().map(ValueLike::r#type).collect::<Vec<_>>(),
-                        false,
-                    ))
-                    .into(),
-                ),
                 (
                     Identifier::new(context, "callee"),
                     FlatSymbolRefAttribute::new(context, private_symbol).into(),

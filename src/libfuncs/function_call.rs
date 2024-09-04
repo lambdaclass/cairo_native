@@ -21,10 +21,10 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{cf, index, llvm, memref},
     ir::{
-        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, TypeAttribute},
+        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Type, Value, ValueLike,
+        Block, Identifier, Location, Type, Value,
     },
     Context,
 };
@@ -183,15 +183,6 @@ pub fn build<'ctx, 'this>(
         let function_call_result = entry.append_op_result(
             OperationBuilder::new("llvm.call", location)
                 .add_attributes(&[
-                    (
-                        Identifier::new(context, "var_callee_type"),
-                        TypeAttribute::new(llvm::r#type::function(
-                            llvm::r#type::r#struct(context, &result_types, false),
-                            &arguments.iter().map(ValueLike::r#type).collect::<Vec<_>>(),
-                            false,
-                        ))
-                        .into(),
-                    ),
                     (
                         Identifier::new(context, "callee"),
                         FlatSymbolRefAttribute::new(
