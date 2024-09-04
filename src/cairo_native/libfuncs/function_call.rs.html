@@ -294,15 +294,6 @@
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Function call libfuncs
 //!
 //! Includes logic for handling direct tail recursive function calls. More information on this topic
@@ -326,10 +317,10 @@
 <span class="kw">use </span>melior::{
     dialect::{cf, index, llvm, memref},
     ir::{
-        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, TypeAttribute},
+        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Type, Value, ValueLike,
+        Block, Identifier, Location, Type, Value,
     },
     Context,
 };
@@ -488,15 +479,6 @@
         <span class="kw">let </span>function_call_result = entry.append_op_result(
             OperationBuilder::new(<span class="string">"llvm.call"</span>, location)
                 .add_attributes(<span class="kw-2">&amp;</span>[
-                    (
-                        Identifier::new(context, <span class="string">"var_callee_type"</span>),
-                        TypeAttribute::new(llvm::r#type::function(
-                            llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span>result_types, <span class="bool-val">false</span>),
-                            <span class="kw-2">&amp;</span>arguments.iter().map(ValueLike::r#type).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-                            <span class="bool-val">false</span>,
-                        ))
-                        .into(),
-                    ),
                     (
                         Identifier::new(context, <span class="string">"callee"</span>),
                         FlatSymbolRefAttribute::new(

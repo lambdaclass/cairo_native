@@ -1283,15 +1283,6 @@
 <a href="#1283" id="1283">1283</a>
 <a href="#1284" id="1284">1284</a>
 <a href="#1285" id="1285">1285</a>
-<a href="#1286" id="1286">1286</a>
-<a href="#1287" id="1287">1287</a>
-<a href="#1288" id="1288">1288</a>
-<a href="#1289" id="1289">1289</a>
-<a href="#1290" id="1290">1290</a>
-<a href="#1291" id="1291">1291</a>
-<a href="#1292" id="1292">1292</a>
-<a href="#1293" id="1293">1293</a>
-<a href="#1294" id="1294">1294</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
@@ -1384,7 +1375,7 @@
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
-        Value, ValueLike,
+        Value,
     },
     Context,
 };
@@ -2530,15 +2521,6 @@
     <span class="kw">let </span>result = block.append_op_result(
         OperationBuilder::new(<span class="string">"llvm.call"</span>, location)
             .add_attributes(<span class="kw-2">&amp;</span>[
-                (
-                    Identifier::new(context, <span class="string">"var_callee_type"</span>),
-                    TypeAttribute::new(llvm::r#type::function(
-                        llvm::r#type::r#struct(context, ret_types, <span class="bool-val">false</span>),
-                        <span class="kw-2">&amp;</span>args.iter().map(ValueLike::r#type).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-                        <span class="bool-val">false</span>,
-                    ))
-                    .into(),
-                ),
                 (
                     Identifier::new(context, <span class="string">"callee"</span>),
                     FlatSymbolRefAttribute::new(context, private_symbol).into(),
