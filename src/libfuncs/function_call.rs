@@ -21,10 +21,10 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{cf, index, llvm, memref},
     ir::{
-        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, TypeAttribute},
+        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Type, Value, ValueLike,
+        Block, Identifier, Location, Type, Value,
     },
     Context,
 };
