@@ -27,6 +27,7 @@ use melior::{
     },
     Context,
 };
+use num_bigint::BigUint;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -194,27 +195,27 @@ pub fn build_from_felt252<'ctx, 'this>(
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
-    let arg1 = entry.argument(1)?.into();
+    let value = entry.argument(1)?.into();
 
-    let k1 = entry.const_int(context, location, 1, 252)?;
     let k128 = entry.const_int(context, location, 128, 252)?;
+    let bound = BigUint::from(u128::MAX) + 1u32;
+    let k_u128_max_1 = entry.const_int(context, location, bound, 252)?;
 
-    let min_wide_val = entry.append_op_result(arith::shli(k1, k128, location))?;
     let is_wide = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
-        arg1,
-        min_wide_val,
+        value,
+        k_u128_max_1,
         location,
     ))?;
 
     let lsb_bits = entry.append_op_result(arith::trunci(
-        arg1,
+        value,
         IntegerType::new(context, 128).into(),
         location,
     ))?;
 
-    let msb_bits = entry.append_op_result(arith::shrui(arg1, k128, location))?;
+    let msb_bits = entry.append_op_result(arith::shrui(value, k128, location))?;
     let msb_bits = entry.append_op_result(arith::trunci(
         msb_bits,
         IntegerType::new(context, 128).into(),
@@ -632,9 +633,9 @@ mod test {
             }
         };
         static ref U128_WIDEMUL: (String, Program) = load_cairo! {
-            use integer::u128_wide_mul;
-            fn run_test(lhs: u128, rhs: u128) -> (u128, u128) {
-                u128_wide_mul(lhs, rhs)
+            use core::num::traits::WideMul;
+            fn run_test(lhs: u128, rhs: u128) -> u256 {
+                WideMul::wide_mul(lhs,rhs)
             }
         };
         static ref U128_TO_FELT252: (String, Program) = load_cairo! {
@@ -645,12 +646,19 @@ mod test {
             }
         };
         static ref U128_SQRT: (String, Program) = load_cairo! {
-            use core::integer::u128_sqrt;
-
+            use core::num::traits::Sqrt;
             fn run_test(value: u128) -> u64 {
-                u128_sqrt(value)
+                value.sqrt()
             }
         };
+    }
+
+    fn u256(value: BigUint) -> JitValue {
+        assert!(value.bits() <= 256);
+        jit_struct!(
+            JitValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
+            JitValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
+        )
     }
 
     #[test]
@@ -969,31 +977,31 @@ mod test {
             program,
             "run_test",
             &[0u128.into(), 0u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u128.into(), 1u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 0u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 1u128.into()],
-            jit_struct!(0u128.into(), 1u128.into()),
+            u256(1u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[u128::MAX.into(), u128::MAX.into()],
-            jit_struct!((u128::MAX - 1).into(), 1u128.into()),
+            u256(BigUint::from(u128::MAX) * BigUint::from(u128::MAX)),
         );
     }
 }

@@ -7,7 +7,10 @@ use crate::{
 };
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        utils::Range,
+    },
     ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
@@ -18,6 +21,7 @@ use melior::{
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
+use num_traits::One;
 use std::{
     alloc::Layout,
     borrow::Cow,
@@ -73,8 +77,8 @@ pub fn get_integer_layout(width: u32) -> Layout {
             Layout::new::<u128>().align_to(16).unwrap()
         }
     } else {
-        let width = (width as usize).next_multiple_of(8).next_power_of_two();
-        Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
+        let width = (width as usize).next_multiple_of(8);
+        Layout::from_size_align(width >> 3, 16).expect("align should be power of two")
     }
 }
 
@@ -245,6 +249,12 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
             cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add
                 as *const fn(*mut [[u8; 32]; 4], *const [[u8; 32]; 2]) -> bool
                 as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_init",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_init
+                as *const fn(*mut [[u8; 32]; 4]) as *mut (),
         );
 
         engine.register_symbol(
@@ -491,6 +501,49 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
     }
 }
 
+pub trait RangeExt {
+    /// Width in bits when the offset is zero (aka. the natural representation).
+    fn zero_based_bit_width(&self) -> u32;
+    /// Width in bits when the offset is not necessarily zero (aka. the compact representation).
+    fn offset_bit_width(&self) -> u32;
+}
+
+impl RangeExt for Range {
+    fn zero_based_bit_width(&self) -> u32 {
+        // Formula for unsigned integers:
+        //     x.bits()
+        //
+        // Formula for signed values:
+        //   - Positive: (x.magnitude() + BigUint::one()).bits()
+        //   - Negative: (x.magnitude() - BigUint::one()).bits() + 1
+        //   - Zero: 0
+
+        let width = if self.lower.sign() == Sign::Minus {
+            let lower_width = (self.lower.magnitude() - BigUint::one()).bits() + 1;
+            let upper_width = {
+                let upper = &self.upper - &BigInt::one();
+                match upper.sign() {
+                    Sign::Minus => (upper.magnitude() - BigUint::one()).bits() + 1,
+                    Sign::NoSign => 0,
+                    Sign::Plus => (upper.magnitude() + BigUint::one()).bits(),
+                }
+            };
+
+            lower_width.max(upper_width) as u32
+        } else {
+            (&self.upper - &BigInt::one()).bits() as u32
+        };
+
+        // FIXME: Workaround for segfault in canonicalization (including LLVM 19).
+        width.max(1)
+    }
+
+    fn offset_bit_width(&self) -> u32 {
+        // FIXME: Workaround for segfault in canonicalization (including LLVM 19).
+        ((self.size() - BigInt::one()).bits() as u32).max(1)
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use crate::{
@@ -527,9 +580,9 @@ pub mod test {
 
     // Helper macros for faster testing.
     macro_rules! jit_struct {
-        ( $($x:expr),* $(,)? ) => {
+        ($($y:expr),* $(,)? ) => {
             crate::values::JitValue::Struct {
-                fields: vec![$($x), *],
+                fields: vec![$($y), *],
                 debug_name: None
             }
         };
@@ -595,8 +648,8 @@ pub mod test {
             Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
-        let program = compile_prepared_db(
-            &mut db,
+        let sierra_program_with_dbg = compile_prepared_db(
+            &db,
             main_crate_ids,
             CompilerConfig {
                 diagnostics_reporter: DiagnosticsReporter::stderr(),
@@ -608,7 +661,7 @@ pub mod test {
 
         let module_name = program_file.path().with_extension("");
         let module_name = module_name.file_name().unwrap().to_str().unwrap();
-        (module_name.to_string(), program)
+        (module_name.to_string(), sierra_program_with_dbg.program)
     }
 
     pub fn run_program(

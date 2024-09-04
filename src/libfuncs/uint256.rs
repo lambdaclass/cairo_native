@@ -1021,10 +1021,10 @@ mod test {
             }
         };
         static ref U256_SQRT: (String, Program) = load_cairo! {
-            use core::integer::u256_sqrt;
+            use core::num::traits::Sqrt;
 
             fn run_test(value: u256) -> u128 {
-                u256_sqrt(value)
+                value.sqrt()
             }
         };
         static ref U256_INV_MOD_N: (String, Program) = load_cairo! {

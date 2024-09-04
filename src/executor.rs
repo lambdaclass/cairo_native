@@ -10,19 +10,24 @@ use crate::{
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
+    utils::RangeExt,
     values::JitValue,
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
+        ConcreteType,
     },
     ids::{ConcreteTypeId, FunctionId},
     program::FunctionSignature,
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
+use num_bigint::BigInt;
+use num_traits::One;
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -320,6 +325,12 @@ fn invoke_dynamic(
                         CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
                         CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
+                        // todo: add RangeCheck96 to builtin_stats?
+                        CoreTypeConcrete::RangeCheck96(_) => (),
+                        // todo: add AddMod to builtin_stats?
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => (),
+                        // todo: add MulMod to builtin_stats?
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => (),
                         _ => unreachable!("{type_id:?}"),
                     }
                 }
@@ -363,6 +374,7 @@ fn parse_result(
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> Result<JitValue, Error> {
     let type_info = registry.get_type(type_id).unwrap();
+    let debug_name = type_info.info().long_id.to_string();
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
@@ -428,6 +440,24 @@ fn parse_result(
                 Ok(JitValue::Bytes31(unsafe {
                     *std::mem::transmute::<&[u64; 4], &[u8; 31]>(&ret_registers)
                 }))
+            }
+        },
+        CoreTypeConcrete::BoundedInt(info) => match return_ptr {
+            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)),
+            None => {
+                let mut data = if info.range.offset_bit_width() <= 64 {
+                    BigInt::from(ret_registers[0])
+                } else {
+                    BigInt::from(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
+                };
+
+                data &= (BigInt::one() << info.range.offset_bit_width()) - BigInt::one();
+                data += &info.range.lower;
+
+                Ok(JitValue::BoundedInt {
+                    value: data.into(),
+                    range: info.range.clone(),
+                })
             }
         },
         CoreTypeConcrete::Uint8(_) => match return_ptr {
@@ -551,14 +581,14 @@ fn parse_result(
             Ok(JitValue::Enum {
                 tag,
                 value,
-                debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+                debug_name: Some(debug_name),
             })
         }
         CoreTypeConcrete::Struct(info) => {
             if info.members.is_empty() {
                 Ok(JitValue::Struct {
                     fields: Vec::new(),
-                    debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+                    debug_name: Some(debug_name),
                 })
             } else {
                 Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
@@ -591,10 +621,161 @@ fn parse_result(
 
         CoreTypeConcrete::Felt252DictEntry(_)
         | CoreTypeConcrete::Span(_)
-        | CoreTypeConcrete::BoundedInt(_)
         | CoreTypeConcrete::Uninitialized(_)
         | CoreTypeConcrete::Coupon(_)
         | CoreTypeConcrete::StarkNet(_)
-        | CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+        | CoreTypeConcrete::Uint128MulGuarantee(_)
+        | CoreTypeConcrete::Circuit(_)
+        | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::context::NativeContext;
+    use crate::starknet_stub::StubSyscallHandler;
+    use crate::utils::test::load_cairo;
+    use crate::utils::test::load_starknet;
+    use crate::OptLevel;
+    use cairo_lang_sierra::program::Program;
+    use rstest::*;
+
+    #[fixture]
+    fn program() -> Program {
+        let (_, program) = load_cairo! {
+            use core::starknet::{SyscallResultTrait, get_block_hash_syscall};
+
+            fn run_test() -> felt252 {
+                42
+            }
+
+            fn get_block_hash() -> felt252 {
+                get_block_hash_syscall(1).unwrap_syscall()
+            }
+        };
+        program
+    }
+
+    #[fixture]
+    fn starknet_program() -> Program {
+        let (_, program) = load_starknet! {
+            #[starknet::interface]
+            trait ISimpleStorage<TContractState> {
+                fn get(self: @TContractState) -> u128;
+            }
+
+            #[starknet::contract]
+            mod contract {
+                #[storage]
+                struct Storage {}
+
+                #[abi(embed_v0)]
+                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
+                    fn get(self: @ContractState) -> u128 {
+                        42
+                    }
+                }
+            }
+        };
+        program
+    }
+
+    #[rstest]
+    fn test_invoke_dynamic_aot_native_executor(program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&program)
+            .expect("failed to compile context");
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+
+        let native_executor: NativeExecutor = executor.into();
+
+        // The first function in the program is `run_test`.
+        let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
+
+        let result = native_executor
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .unwrap();
+
+        assert_eq!(result.return_value, JitValue::Felt252(Felt::from(42)));
+    }
+
+    #[rstest]
+    fn test_invoke_dynamic_jit_native_executor(program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&program)
+            .expect("failed to compile context");
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
+
+        let native_executor: NativeExecutor = executor.into();
+
+        // The first function in the program is `run_test`.
+        let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
+
+        let result = native_executor
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .unwrap();
+
+        assert_eq!(result.return_value, JitValue::Felt252(Felt::from(42)));
+    }
+
+    #[rstest]
+    fn test_invoke_contract_dynamic_aot(starknet_program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&starknet_program)
+            .expect("failed to compile context");
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+
+        let native_executor: NativeExecutor = executor.into();
+
+        // The last function in the program is the `get` wrapper function.
+        let entrypoint_function_id = &starknet_program
+            .funcs
+            .last()
+            .expect("should have a function")
+            .id;
+
+        let result = native_executor
+            .invoke_contract_dynamic(
+                entrypoint_function_id,
+                &[],
+                Some(u128::MAX),
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap();
+
+        assert_eq!(result.return_values, vec![Felt::from(42)]);
+    }
+
+    #[rstest]
+    fn test_invoke_contract_dynamic_jit(starknet_program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&starknet_program)
+            .expect("failed to compile context");
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
+
+        let native_executor: NativeExecutor = executor.into();
+
+        // The last function in the program is the `get` wrapper function.
+        let entrypoint_function_id = &starknet_program
+            .funcs
+            .last()
+            .expect("should have a function")
+            .id;
+
+        let result = native_executor
+            .invoke_contract_dynamic(
+                entrypoint_function_id,
+                &[],
+                Some(u128::MAX),
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap();
+
+        assert_eq!(result.return_values, vec![Felt::from(42)]);
     }
 }

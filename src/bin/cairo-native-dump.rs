@@ -57,13 +57,14 @@ fn load_program(path: &Path, is_contract: bool) -> Result<Program, Box<dyn std::
             let main_crate_ids = setup_project(&mut db, path)?;
 
             compile_prepared_db(
-                &mut db,
+                &db,
                 main_crate_ids,
                 CompilerConfig {
                     replace_ids: true,
                     ..Default::default()
                 },
             )?
+            .program
         }
         Some("cairo") if is_contract => {
             // mimics cairo_lang_starknet::contract_class::compile_path
