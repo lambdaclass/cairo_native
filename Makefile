@@ -8,13 +8,13 @@ UNAME := $(shell uname)
 CAIRO_2_VERSION=2.6.4
 
 check-llvm:
-ifndef MLIR_SYS_180_PREFIX
-	$(error Could not find a suitable LLVM 18 toolchain (mlir), please set MLIR_SYS_180_PREFIX env pointing to the LLVM 18 dir)
+ifndef MLIR_SYS_190_PREFIX
+	$(error Could not find a suitable LLVM 19 toolchain (mlir), please set MLIR_SYS_190_PREFIX env pointing to the LLVM 19 dir)
 endif
-ifndef TABLEGEN_180_PREFIX
-	$(error Could not find a suitable LLVM 18 toolchain (tablegen), please set TABLEGEN_180_PREFIX env pointing to the LLVM 18 dir)
+ifndef TABLEGEN_190_PREFIX
+	$(error Could not find a suitable LLVM 19 toolchain (tablegen), please set TABLEGEN_190_PREFIX env pointing to the LLVM 19 dir)
 endif
-	@echo "LLVM is correctly set at $(MLIR_SYS_180_PREFIX)."
+	@echo "LLVM is correctly set at $(MLIR_SYS_190_PREFIX)."
 
 needs-cairo2:
 ifeq ($(wildcard ./cairo2/.),)
@@ -109,7 +109,7 @@ endif
 	-ln -s cairo2/corelib corelib
 
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
-	-brew install llvm@18 --quiet
+	-brew install llvm@19 --quiet
 	@echo "You can execute the env-macos.sh script to setup the needed env variables."
 
 cairo-repo-2-dir = cairo2

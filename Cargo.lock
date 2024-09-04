@@ -2350,6 +2350,7 @@ dependencies = [
 [[package]]
 name = "melior"
 version = "0.18.5"
+source = "git+https://github.com/azteca1998/melior.git?branch=update-llvm19#86cfb2a8097b1fff30a3087e2c5e5a2a933eeda3"
 dependencies = [
  "dashmap",
  "melior-macro",
@@ -2360,6 +2361,7 @@ dependencies = [
 [[package]]
 name = "melior-macro"
 version = "0.11.5"
+source = "git+https://github.com/azteca1998/melior.git?branch=update-llvm19#86cfb2a8097b1fff30a3087e2c5e5a2a933eeda3"
 dependencies = [
  "comrak",
  "convert_case",
@@ -2415,6 +2417,7 @@ dependencies = [
 [[package]]
 name = "mlir-sys"
 version = "0.2.2"
+source = "git+https://github.com/azteca1998/mlir-sys.git?branch=update-llvm19#668ea81d928df58050b4d049ed70dad5e857426d"
 dependencies = [
  "bindgen 0.70.1",
 ]
@@ -3581,6 +3584,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 [[package]]
 name = "tblgen-alt"
 version = "0.3.6"
+source = "git+https://github.com/azteca1998/tblgen-rs-alt.git?branch=update-llvm19#3b93b36b70f61ab8a7e1b69663c4d4e03dde9c70"
 dependencies = [
  "bindgen 0.69.4",
  "cc",

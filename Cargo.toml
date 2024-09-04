@@ -69,8 +69,10 @@ itertools = "0.13.0"
 lazy_static = "1.4"
 libc = "0.2.155"
 llvm-sys = "191.0.0-rc1"
-melior = { path = "../melior/melior", features = ["ods-dialects"] }
-mlir-sys = { path = "../mlir-sys" }
+melior = { git = "https://github.com/azteca1998/melior.git", branch = "update-llvm19", features = [
+  "ods-dialects",
+] }
+mlir-sys = { git = "https://github.com/azteca1998/mlir-sys.git", branch = "update-llvm19" }
 num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "=0.1.2", default-features = false, features = [
