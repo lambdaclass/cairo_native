@@ -184,15 +184,6 @@ pub fn build<'ctx, 'this>(
             OperationBuilder::new("llvm.call", location)
                 .add_attributes(&[
                     (
-                        Identifier::new(context, "var_callee_type"),
-                        TypeAttribute::new(llvm::r#type::function(
-                            llvm::r#type::r#struct(context, &result_types, false),
-                            &arguments.iter().map(ValueLike::r#type).collect::<Vec<_>>(),
-                            false,
-                        ))
-                        .into(),
-                    ),
-                    (
                         Identifier::new(context, "callee"),
                         FlatSymbolRefAttribute::new(
                             context,
