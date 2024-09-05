@@ -186,7 +186,7 @@ fn invoke_dynamic(
         let layout = ret_types_iter.fold(Layout::new::<()>(), |layout, id| {
             let type_info = registry.get_type(id).unwrap();
             layout
-                .extend(type_info.layout(registry).unwrap())
+                .extend(dbg!(type_info.layout(registry).unwrap()))
                 .unwrap()
                 .0
         });
@@ -217,23 +217,16 @@ fn invoke_dynamic(
         previous_syscall_handler
     });
 
-    dbg!(&args);
-
     // Generate argument list.
     let mut iter = args.iter();
     for type_id in function_signature.param_types.iter().filter(|id| {
         let info = registry.get_type(id).unwrap();
         !info.is_zst(registry)
     }) {
-        dbg!(registry.get_type(type_id).unwrap().layout(registry));
         // Process gas requirements and syscall handler.
         match registry.get_type(type_id).unwrap() {
-            CoreTypeConcrete::GasBuiltin(_) => {
-                dbg!("gas");
-                gas.to_bytes(&mut invoke_data)?
-            }
+            CoreTypeConcrete::GasBuiltin(_) => gas.to_bytes(&mut invoke_data)?,
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
-                dbg!("system");
                 let syscall_handler = syscall_handler
                     .as_mut()
                     .expect("syscall handler is required");
@@ -241,22 +234,16 @@ fn invoke_dynamic(
                 (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
                     .to_bytes(&mut invoke_data)?;
             }
-            type_info if type_info.is_builtin() => {
-                dbg!("0 builtin");
-                0u64.to_bytes(&mut invoke_data)?
-            }
-            type_info => {
-                dbg!("real type");
-                JitValueWithInfoWrapper {
-                    value: iter.next().unwrap(),
-                    type_id,
-                    info: type_info,
+            type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
+            type_info => JitValueWithInfoWrapper {
+                value: iter.next().unwrap(),
+                type_id,
+                info: type_info,
 
-                    arena: &arena,
-                    registry,
-                }
-                .to_bytes(&mut invoke_data)?
+                arena: &arena,
+                registry,
             }
+            .to_bytes(&mut invoke_data)?,
         }
     }
 

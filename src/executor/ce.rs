@@ -135,6 +135,15 @@ impl ContractExecutor {
         //  it can vary from contract to contract thats why we need to store/ load it.
         let num_builtins = self.entry_points_info[&function_id.id].num_builtins;
 
+        let return_ptr = arena
+            .alloc_layout(unsafe {
+                // 64 = size of enum + u128 from gas builtin + 8 bytes for each additional builtin counter
+                Layout::from_size_align_unchecked((64 * 8 * num_builtins) as usize, 16)
+            })
+            .as_ptr();
+
+        return_ptr.to_bytes(&mut invoke_data)?;
+
         for _ in 0..num_builtins {
             0u64.to_bytes(&mut invoke_data)?;
         }
