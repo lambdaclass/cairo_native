@@ -335,11 +335,12 @@ pub fn module_to_object(
         );
 
         let opts = LLVMCreatePassBuilderOptions();
+
         let opt = match opt_level {
             OptLevel::None => 0,
             OptLevel::Less => 1,
-            OptLevel::Default => 2,
-            OptLevel::Aggressive => 3,
+            OptLevel::Default => 1, // todo: change once slp-vectorizer pass is fixed on llvm
+            OptLevel::Aggressive => 1, // https://github.com/llvm/llvm-project/issues/107198
         };
         let passes = CString::new(format!("default<O{opt}>")).unwrap();
         let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);

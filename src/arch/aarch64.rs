@@ -200,12 +200,12 @@ mod test {
     fn u8_to_bytes() {
         // Buffer initially empty
         let mut buffer = vec![];
-        u8::MAX.to_bytes(&mut buffer);
+        u8::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, [u8::MAX, 0, 0, 0, 0, 0, 0, 0]);
 
         // Buffer initially filled with 70 zeros (len > 64)
         let mut buffer = vec![0; 70];
-        u8::MAX.to_bytes(&mut buffer);
+        u8::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 70].into_iter().chain([u8::MAX]).collect::<Vec<_>>()
@@ -216,17 +216,17 @@ mod test {
     fn i8_to_bytes() {
         // Buffer initially empty
         let mut buffer = vec![];
-        i8::MAX.to_bytes(&mut buffer);
+        i8::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, [i8::MAX as u8, 0, 0, 0, 0, 0, 0, 0]);
 
         // Buffer initially empty with negative value
         let mut buffer = vec![];
-        i8::MIN.to_bytes(&mut buffer);
+        i8::MIN.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, [128, 255, 255, 255, 255, 255, 255, 255]);
 
         // Buffer initially filled with 70 zeros (len > 64)
         let mut buffer = vec![0; 70];
-        i8::MAX.to_bytes(&mut buffer);
+        i8::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 70]
@@ -237,7 +237,7 @@ mod test {
 
         // Buffer initially filled with 70 zeros (len > 64) and negative value
         let mut buffer = vec![0; 70];
-        i8::MIN.to_bytes(&mut buffer);
+        i8::MIN.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, [0; 70].into_iter().chain([128]).collect::<Vec<_>>());
     }
 
@@ -245,12 +245,12 @@ mod test {
     fn u16_to_bytes() {
         // Buffer initially empty
         let mut buffer = vec![];
-        u16::MAX.to_bytes(&mut buffer);
+        u16::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, vec![u8::MAX, u8::MAX, 0, 0, 0, 0, 0, 0]);
 
         // Buffer initially filled with 70 zeros (len > 64)
         let mut buffer = vec![0; 70];
-        u16::MAX.to_bytes(&mut buffer);
+        u16::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 70]
@@ -264,17 +264,17 @@ mod test {
     fn i16_to_bytes() {
         // Buffer initially empty
         let mut buffer = vec![];
-        i16::MAX.to_bytes(&mut buffer);
+        i16::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, vec![u8::MAX, i8::MAX as u8, 0, 0, 0, 0, 0, 0]);
 
         // Buffer initially empty with negative value
         let mut buffer = vec![];
-        i16::MIN.to_bytes(&mut buffer);
+        i16::MIN.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, [0, 128, 255, 255, 255, 255, 255, 255]);
 
         // Buffer initially filled with 70 zeros (len > 64)
         let mut buffer = vec![0; 70];
-        i16::MAX.to_bytes(&mut buffer);
+        i16::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 70]
@@ -285,7 +285,7 @@ mod test {
 
         // Buffer initially filled with 70 zeros (len > 64) and negative value
         let mut buffer = vec![0; 70];
-        i16::MIN.to_bytes(&mut buffer);
+        i16::MIN.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 70].into_iter().chain([0, 128]).collect::<Vec<_>>()
@@ -296,7 +296,7 @@ mod test {
     fn u32_to_bytes() {
         // Buffer initially empty
         let mut buffer = vec![];
-        u32::MAX.to_bytes(&mut buffer);
+        u32::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             vec![u8::MAX; 4]
@@ -307,7 +307,7 @@ mod test {
 
         // Buffer initially filled with 70 zeros (len > 64)
         let mut buffer = vec![0; 70];
-        u32::MAX.to_bytes(&mut buffer);
+        u32::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 72]
@@ -321,7 +321,7 @@ mod test {
     fn i32_to_bytes() {
         // Buffer initially empty
         let mut buffer = vec![];
-        i32::MAX.to_bytes(&mut buffer);
+        i32::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             vec![u8::MAX, u8::MAX, u8::MAX, i8::MAX as u8, 0, 0, 0, 0]
@@ -329,12 +329,12 @@ mod test {
 
         // Buffer initially empty with negative value
         let mut buffer = vec![];
-        i32::MIN.to_bytes(&mut buffer);
+        i32::MIN.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, [0, 0, 0, 128, 255, 255, 255, 255]);
 
         // Buffer initially filled with 70 zeros (len > 64)
         let mut buffer = vec![0; 70];
-        i32::MAX.to_bytes(&mut buffer);
+        i32::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 72]
@@ -345,7 +345,7 @@ mod test {
 
         // Buffer initially filled with 70 zeros (len > 64) and negative value
         let mut buffer = vec![0; 70];
-        i32::MIN.to_bytes(&mut buffer);
+        i32::MIN.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 72]
@@ -359,12 +359,12 @@ mod test {
     fn u64_to_bytes() {
         // Buffer initially empty
         let mut buffer = vec![];
-        u64::MAX.to_bytes(&mut buffer);
+        u64::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, u64::MAX.to_ne_bytes().to_vec());
 
         // Buffer initially filled with 70 zeros (len > 64)
         let mut buffer = vec![0; 70];
-        u64::MAX.to_bytes(&mut buffer);
+        u64::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 72]
@@ -378,17 +378,17 @@ mod test {
     fn i64_to_bytes() {
         // Buffer initially empty
         let mut buffer = vec![];
-        i64::MAX.to_bytes(&mut buffer);
+        i64::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, i64::MAX.to_ne_bytes().to_vec());
 
         // Buffer initially empty with negative value
         let mut buffer = vec![];
-        i64::MIN.to_bytes(&mut buffer);
+        i64::MIN.to_bytes(&mut buffer).unwrap();
         assert_eq!(buffer, i64::MIN.to_ne_bytes().to_vec());
 
         // Buffer initially filled with 70 zeros (len > 64)
         let mut buffer = vec![0; 70];
-        i64::MAX.to_bytes(&mut buffer);
+        i64::MAX.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 72]
@@ -399,7 +399,7 @@ mod test {
 
         // Buffer initially filled with 70 zeros (len > 64) and negative value
         let mut buffer = vec![0; 70];
-        i64::MIN.to_bytes(&mut buffer);
+        i64::MIN.to_bytes(&mut buffer).unwrap();
         assert_eq!(
             buffer,
             [0; 72]

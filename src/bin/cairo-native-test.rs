@@ -3,7 +3,6 @@ mod utils;
 use anyhow::bail;
 use cairo_lang_compiler::{
     db::RootDatabase,
-    diagnostics::DiagnosticsReporter,
     project::{check_compiler_path, setup_project},
 };
 use cairo_lang_filesystem::cfg::{Cfg, CfgSet};
@@ -77,19 +76,13 @@ fn main() -> anyhow::Result<()> {
     };
 
     let main_crate_ids = setup_project(db, &args.path)?;
-    let mut reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_ids);
-    if args.allow_warnings {
-        reporter = reporter.allow_warnings();
-    }
-    if reporter.check(db) {
-        bail!("failed to compile: {}", args.path.display());
-    }
 
     let db = db.snapshot();
     let test_crate_ids = main_crate_ids.clone();
     let test_config = TestsCompilationConfig {
         starknet: args.starknet,
         add_statements_functions: false,
+        add_statements_code_locations: false,
     };
 
     let build_test_compilation = compile_test_prepared_db(
@@ -97,6 +90,7 @@ fn main() -> anyhow::Result<()> {
         test_config,
         main_crate_ids.clone(),
         test_crate_ids.clone(),
+        args.allow_warnings,
     )?;
 
     let (compiled, filtered_out) = filter_test_cases(

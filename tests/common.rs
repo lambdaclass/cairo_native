@@ -123,7 +123,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
     );
     let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
     let sierra_program_with_dbg = compile_prepared_db(
-        &mut db,
+        &db,
         main_crate_ids.clone(),
         CompilerConfig {
             replace_ids: true,
@@ -160,7 +160,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     );
     let main_crate_ids = setup_project(&mut db, program_file).unwrap();
     let sierra_program_with_dbg = compile_prepared_db(
-        &mut db,
+        &db,
         main_crate_ids.clone(),
         CompilerConfig {
             replace_ids: true,
