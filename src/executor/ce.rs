@@ -11,7 +11,7 @@ use tempfile::NamedTempFile;
 
 use crate::{
     error::Error, execution_result::ContractExecutionResult, module::NativeModule,
-    starknet::StarknetSyscallHandler, utils::generate_function_name, values::JitValue, OptLevel,
+    starknet::StarknetSyscallHandler, utils::generate_function_name, OptLevel,
 };
 
 #[derive(Educe)]
@@ -25,14 +25,20 @@ pub struct ContractExecutor {
 unsafe impl Send for ContractExecutor {}
 unsafe impl Sync for ContractExecutor {}
 
+impl Clone for ContractExecutor {
+    fn clone(&self) -> Self {
+        Self::load(&self.path)
+    }
+}
+
 impl ContractExecutor {
     /// Create the executor from a native module with the given optimization level.
     /// You can save the library on the desired location later using `save`
     pub fn new(module: NativeModule, opt_level: OptLevel) -> Self {
         let NativeModule {
             module,
-            registry,
-            mut metadata,
+            registry: _,
+            metadata: _,
         } = module;
 
         let library_path = NamedTempFile::new()
