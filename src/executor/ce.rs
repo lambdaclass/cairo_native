@@ -97,16 +97,25 @@ impl ContractExecutor {
         })
     }
 
-    pub fn save(&self, to: &Path) -> std::io::Result<u64> {
-        std::fs::copy(&self.path, to)
+    /// Save the library to the desired path, alongside it is saved also a json file with additional info.
+    pub fn save(&self, to: &Path) -> Result<(), Error> {
+        std::fs::copy(&self.path, to).unwrap();
+
+        let info = serde_json::to_string(&self.entry_points_info).unwrap();
+        let path = to.with_extension("json");
+        std::fs::write(path, info).unwrap();
+
+        Ok(())
     }
 
-    /// Load the executor from an already compiled library.
+    /// Load the executor from an already compiled library with the additional info json file.
     pub fn load(library_path: &Path) -> Self {
+        let info_str = std::fs::read_to_string(library_path.with_extension("json")).unwrap();
+        let info: BTreeMap<u64, EntryPointInfo> = serde_json::from_str(&info_str).unwrap();
         Self {
             library: unsafe { Library::new(library_path).unwrap() },
             path: library_path.to_path_buf(),
-            entry_points_info: todo!(),
+            entry_points_info: info,
         }
     }
 

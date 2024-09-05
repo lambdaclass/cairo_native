@@ -47,7 +47,7 @@ build-cli = [
     "dep:cairo-lang-runner",
     "dep:colored",
 ]
-scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
+scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
 with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
 with-cheatcode = []
@@ -112,7 +112,7 @@ sha2 = "0.10.8"                                                                 
 scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.0", optional = true }
 scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.0", optional = true }
 sec1 = "0.7.3"
-serde_json = { version = "1.0.125", optional = true }
+serde_json = { version = "1.0.125" }
 stats_alloc = "0.1.10"
 
 [dev-dependencies]
