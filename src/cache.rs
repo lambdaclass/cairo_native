@@ -2,6 +2,7 @@ pub use self::{aot::AotProgramCache, jit::JitProgramCache};
 use std::hash::Hash;
 
 pub mod aot;
+pub mod ce;
 pub mod jit;
 
 #[derive(Debug)]
