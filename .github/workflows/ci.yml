@@ -104,7 +104,7 @@ jobs:
         run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: "Download and run cargo-udeps"
         run: |
-          wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.45/cargo-udeps-v0.1.45-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+          wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.50/cargo-udeps-v0.1.50-x86_64-unknown-linux-gnu.tar.gz | tar -xz
           cargo-udeps-*/cargo-udeps udeps --all-targets --all-features
 
   test:
@@ -114,7 +114,7 @@ jobs:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUST_LOG: debug,cairo_native_test=trace
+      RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
       - name: check and free hdd space left
@@ -167,7 +167,7 @@ jobs:
       MLIR_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
       LLVM_SYS_181_PREFIX: /opt/homebrew/opt/llvm@18
       TABLEGEN_180_PREFIX: /opt/homebrew/opt/llvm@18
-      RUST_LOG: debug,cairo_native_test=trace
+      RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
@@ -180,7 +180,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.7.1"
+          scarb-version: "2.8.0"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
@@ -210,7 +210,7 @@ jobs:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUST_LOG: debug
+      RUST_LOG: cairo_native=debug
     steps:
       - uses: actions/checkout@v4
       - name: check and free hdd space left
@@ -251,7 +251,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.7.1"
+          scarb-version: "2.8.0"
       - name: Install deps
         run: make deps
       - name: Build runtime and alexandria

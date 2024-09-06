@@ -36,7 +36,7 @@ pub struct ContractExecutionResult {
 }
 
 impl ContractExecutionResult {
-    /// Convert a [`ExecuteResult`] to a [`NativeExecutionResult`]
+    /// Convert an [`ExecutionResult`] into a [`ContractExecutionResult`]
     pub fn from_execution_result(result: ExecutionResult) -> Result<Self, Error> {
         let mut error_msg = None;
         let failure_flag;

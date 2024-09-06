@@ -40,11 +40,12 @@
 //! ## Tail-recursive functions
 //!
 //! Part of the tail-recursion handling algorithm is implemented here, but tail-recursive functions
-//! are better explained in (their metadata section)[crate::metadata::tail_recursion].
+//! are better explained in [their metadata section](crate::metadata::tail_recursion).
 //!
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
+    block_ext::BlockExt,
     debug::libfunc_to_name,
     error::Error,
     ffi::{
@@ -65,7 +66,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     edit_state,
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
         ConcreteLibfunc,
     },
     ids::{ConcreteTypeId, VarId},
@@ -82,7 +83,11 @@ use melior::{
         memref,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        attribute::{
+            DenseI64ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,
+            TypeAttribute,
+        },
+        operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
         Value,
@@ -129,14 +134,12 @@ pub fn compile(
         }
     }
 
-    /*
-       A Sierra file is structured consistently,
-       it first has the types, followed by a empty line,
-       then the libfuncs, then the statements start.
-
-       This is how to calculate the offset to correctly show it on the debugger.
-    */
-
+    // Sierra programs have the following structure:
+    //   1. Type declarations, one per line.
+    //   2. Libfunc declarations, one per line.
+    //   3. All the program statements, one per line.
+    //   4. Function declarations, one per line.
+    // The four sections are separated by a single blank line.
     let num_types = program.type_declarations.len() + 1;
     let n_libfuncs = program.libfunc_declarations.len() + 1;
     let sierra_stmt_start_offset = num_types + n_libfuncs + 1;
@@ -323,7 +326,7 @@ fn compile_func(
     };
 
     tracing::debug!("Generating function structure (region with blocks).");
-    let (entry_block, blocks) = generate_function_structure(
+    let (entry_block, blocks, is_recursive) = generate_function_structure(
         context,
         module,
         &region,
@@ -336,65 +339,57 @@ fn compile_func(
 
     tracing::debug!("Generating the function implementation.");
     // Workaround for the `entry block of region may not have predecessors` error:
-    let pre_entry_block = region.insert_block_before(
-        entry_block,
-        Block::new(
-            &arg_types
-                .iter()
-                .map(|ty| {
-                    (
-                        *ty,
-                        Location::new(
-                            context,
-                            "program.sierra",
-                            sierra_stmt_start_offset + function.entry_point.0,
-                            0,
-                        ),
-                    )
-                })
-                .collect::<Vec<_>>(),
-        ),
-    );
-
-    let initial_state =
-        edit_state::put_results(OrderedHashMap::<_, (&ConcreteTypeId, Value)>::default(), {
-            let mut values = Vec::new();
-
-            let mut count = 0;
-            for param in &function.params {
-                let type_info = registry.get_type(&param.ty)?;
-                let location = Location::new(
+    let pre_entry_block_args = arg_types
+        .iter()
+        .map(|ty| {
+            (
+                *ty,
+                Location::new(
                     context,
                     "program.sierra",
                     sierra_stmt_start_offset + function.entry_point.0,
                     0,
-                );
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    let pre_entry_block =
+        region.insert_block_before(entry_block, Block::new(&pre_entry_block_args));
 
-                values.push((
-                    &param.id,
-                    (
-                        &param.ty,
-                        if type_info.is_builtin() && type_info.is_zst(registry) {
-                            pre_entry_block
-                                .append_operation(llvm::undef(
-                                    type_info
-                                        .build(context, module, registry, metadata, &param.ty)?,
-                                    location,
-                                ))
-                                .result(0)?
-                                .into()
-                        } else {
-                            let value = entry_block.argument(count)?.into();
-                            count += 1;
+    let initial_state = edit_state::put_results(OrderedHashMap::<_, Value>::default(), {
+        let mut values = Vec::new();
 
-                            value
-                        },
-                    ),
-                ));
-            }
+        let mut count = 0;
+        for param in &function.params {
+            let type_info = registry.get_type(&param.ty)?;
+            let location = Location::new(
+                context,
+                "program.sierra",
+                sierra_stmt_start_offset + function.entry_point.0,
+                0,
+            );
 
-            values.into_iter()
-        })?;
+            values.push((
+                &param.id,
+                if type_info.is_builtin() && type_info.is_zst(registry) {
+                    pre_entry_block
+                        .append_operation(llvm::undef(
+                            type_info.build(context, module, registry, metadata, &param.ty)?,
+                            location,
+                        ))
+                        .result(0)?
+                        .into()
+                } else {
+                    let value = entry_block.argument(count)?.into();
+                    count += 1;
+
+                    value
+                },
+            ));
+        }
+
+        values.into_iter()
+    })?;
 
     tracing::trace!("Implementing the entry block.");
     entry_block.append_operation(cf::br(
@@ -404,7 +399,7 @@ fn compile_func(
             Statement::Return(x) => x,
         }
         .iter()
-        .map(|x| initial_state[x].1)
+        .map(|x| initial_state[x])
         .collect::<Vec<_>>(),
         {
             Location::new(
@@ -416,12 +411,12 @@ fn compile_func(
         },
     ));
 
-    let mut tailrec_storage = Vec::<(Value, BlockRef)>::new();
+    let mut tailrec_state = Option::<(Value, BlockRef)>::None;
     foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
-        (initial_state, BTreeMap::<usize, usize>::new()),
-        |statement_idx, (mut state, mut tailrec_state)| {
+        initial_state,
+        |statement_idx, mut state| {
             if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
                 let gas_cost = gas_metadata.get_gas_cost_for_statement(statement_idx);
                 metadata.remove::<GasCost>();
@@ -436,12 +431,10 @@ fn compile_func(
                 state = edit_state::put_results(
                     OrderedHashMap::default(),
                     state
-                        .iter()
-                        .sorted_by_key(|(x, _)| x.id)
+                        .keys()
+                        .sorted_by_key(|x| x.id)
                         .enumerate()
-                        .map(|(idx, (var_id, (ty, _)))| {
-                            Ok((var_id, (*ty, landing_block.argument(idx)?.into())))
-                        })
+                        .map(|(idx, var_id)| Ok((var_id, landing_block.argument(idx)?.into())))
                         .collect::<Result<Vec<_>, Error>>()?
                         .into_iter(),
                 )?;
@@ -456,10 +449,7 @@ fn compile_func(
                         }
                         .iter(),
                     )?
-                    .1
-                    .iter()
-                    .map(|x| x.1)
-                    .collect::<Vec<_>>(),
+                    .1,
                     Location::name(
                         context,
                         &format!("landing_block(stmt_idx={})", statement_idx),
@@ -503,21 +493,6 @@ fn compile_func(
                         format!("{}(stmt_idx={})", libfunc_to_name(libf), statement_idx)
                     };
 
-                    #[cfg(feature = "with-trace-dump")]
-                    self::trace_dump::build_state_snapshot(
-                        metadata.get_or_insert_with(
-                            crate::metadata::trace_dump::TraceDumpMeta::default,
-                        ),
-                        context,
-                        registry,
-                        module,
-                        &pre_entry_block,
-                        block,
-                        Location::unknown(context),
-                        statement_idx,
-                        &state,
-                    );
-
                     let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
                     let helper = LibfuncHelper {
@@ -540,53 +515,55 @@ fn compile_func(
                             .collect::<Vec<_>>(),
                     };
 
-                    let concrete_libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
-                    if let Some(target) = concrete_libfunc.is_function_call() {
-                        if target == &function.id && state.is_empty() {
-                            // TODO: Defer insertions until after the recursion has been confirmed
-                            //   (when removing the meta, if a return target is set).
-                            // TODO: Explore replacing the `memref` counter with a normal variable.
-                            let location = Location::name(
-                                context,
-                                &format!("recursion_counter({})", libfunc_name),
-                                location,
-                            );
-                            let op0 = pre_entry_block.insert_operation(
-                                0,
-                                memref::alloca(
+                    let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
+                    if is_recursive {
+                        if let Some(target) = libfunc.is_function_call() {
+                            if target == &function.id && state.is_empty() {
+                                let location = Location::name(
                                     context,
-                                    MemRefType::new(Type::index(context), &[], None, None),
-                                    &[],
-                                    &[],
-                                    None,
+                                    &format!("recursion_counter({})", libfunc_name),
                                     location,
-                                ),
-                            );
-                            let op1 = pre_entry_block.insert_operation_after(
-                                op0,
-                                index::constant(
-                                    context,
-                                    IntegerAttribute::new(Type::index(context), 0),
-                                    location,
-                                ),
-                            );
-                            pre_entry_block.insert_operation_after(
-                                op1,
-                                memref::store(
-                                    op1.result(0)?.into(),
-                                    op0.result(0)?.into(),
-                                    &[],
-                                    location,
-                                ),
-                            );
+                                );
+                                let op0 = pre_entry_block.insert_operation(
+                                    0,
+                                    memref::alloca(
+                                        context,
+                                        MemRefType::new(Type::index(context), &[], None, None),
+                                        &[],
+                                        &[],
+                                        None,
+                                        location,
+                                    ),
+                                );
+                                let op1 = pre_entry_block.insert_operation_after(
+                                    op0,
+                                    index::constant(
+                                        context,
+                                        IntegerAttribute::new(Type::index(context), 0),
+                                        location,
+                                    ),
+                                );
+                                pre_entry_block.insert_operation_after(
+                                    op1,
+                                    memref::store(
+                                        op1.result(0)?.into(),
+                                        op0.result(0)?.into(),
+                                        &[],
+                                        location,
+                                    ),
+                                );
 
-                            metadata
-                                .insert(TailRecursionMeta::new(op0.result(0)?.into(), &entry_block))
-                                .expect("should not have this metadata inserted yet");
+                                metadata
+                                    .insert(TailRecursionMeta::new(
+                                        op0.result(0)?.into(),
+                                        &entry_block,
+                                    ))
+                                    .expect("tail recursion metadata shouldn't be inserted");
+                            }
                         }
                     }
 
-                    concrete_libfunc.build(
+                    libfunc.build(
                         context,
                         registry,
                         block,
@@ -598,36 +575,28 @@ fn compile_func(
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
                         if let Some(return_block) = tailrec_meta.return_target() {
-                            tailrec_state.insert(statement_idx.0, tailrec_storage.len());
-                            tailrec_storage.push((tailrec_meta.depth_counter(), return_block));
+                            tailrec_state = Some((tailrec_meta.depth_counter(), return_block));
                         }
                     }
 
                     invocation
                         .branches
                         .iter()
-                        .zip(concrete_libfunc.branch_signatures())
                         .zip(helper.results())
-                        .map(|((branch_info, signature), result_values)| {
+                        .map(|(branch_info, result_values)| {
                             assert_eq!(
                                 branch_info.results.len(),
                                 result_values.len(),
                                 "Mismatched number of returned values from branch."
                             );
 
-                            Ok((
-                                edit_state::put_results(
-                                    state.clone(),
-                                    branch_info.results.iter().zip(
-                                        signature
-                                            .vars
-                                            .iter()
-                                            .map(|x| &x.ty)
-                                            .zip(result_values.iter().copied()),
-                                    ),
-                                )?,
-                                tailrec_state.clone(),
-                            ))
+                            Ok(edit_state::put_results(
+                                state.clone(),
+                                branch_info
+                                    .results
+                                    .iter()
+                                    .zip(result_values.iter().copied()),
+                            )?)
                         })
                         .collect::<Result<_, Error>>()?
                 }
@@ -645,25 +614,10 @@ fn compile_func(
                         ),
                     );
 
-                    #[cfg(feature = "with-trace-dump")]
-                    self::trace_dump::build_state_snapshot(
-                        metadata.get_or_insert_with(
-                            crate::metadata::trace_dump::TraceDumpMeta::default,
-                        ),
-                        context,
-                        registry,
-                        module,
-                        &pre_entry_block,
-                        block,
-                        Location::unknown(context),
-                        statement_idx,
-                        &state,
-                    );
-
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
                     let mut block = *block;
-                    if !tailrec_state.is_empty() {
+                    if let Some((depth_counter, recursion_target)) = tailrec_state {
                         let location = Location::name(
                             context,
                             &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
@@ -674,99 +628,89 @@ fn compile_func(
                                 0,
                             ),
                         );
+
                         // Perform tail recursion.
-                        for counter_idx in tailrec_state.into_values() {
-                            let cont_block = region.insert_block_after(block, Block::new(&[]));
+                        let cont_block = region.insert_block_after(block, Block::new(&[]));
 
-                            let (depth_counter, return_target) = tailrec_storage[counter_idx];
-                            let depth_counter_value = block
-                                .append_operation(memref::load(depth_counter, &[], location))
-                                .result(0)?
-                                .into();
-                            let k0 = block
-                                .append_operation(index::constant(
-                                    context,
-                                    IntegerAttribute::new(Type::index(context), 0),
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-                            let is_zero_depth = block
-                                .append_operation(index::cmp(
-                                    context,
-                                    CmpiPredicate::Eq,
-                                    depth_counter_value,
-                                    k0,
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
+                        let depth_counter_value =
+                            block.append_op_result(memref::load(depth_counter, &[], location))?;
+                        let k0 = block.const_int_from_type(
+                            context,
+                            location,
+                            0,
+                            Type::index(context),
+                        )?;
+                        let is_zero_depth = block.append_op_result(index::cmp(
+                            context,
+                            CmpiPredicate::Eq,
+                            depth_counter_value,
+                            k0,
+                            location,
+                        ))?;
 
-                            let k1 = block
-                                .append_operation(index::constant(
-                                    context,
-                                    IntegerAttribute::new(Type::index(context), 1),
-                                    location,
-                                ))
-                                .result(0)?
-                                .into();
-                            let depth_counter_value = block
-                                .append_operation(index::sub(depth_counter_value, k1, location))
-                                .result(0)?
-                                .into();
-                            block.append_operation(memref::store(
-                                depth_counter_value,
-                                depth_counter,
-                                &[],
-                                location,
-                            ));
+                        let k1 = block.const_int_from_type(
+                            context,
+                            location,
+                            1,
+                            Type::index(context),
+                        )?;
+                        let depth_counter_value = block.append_op_result(index::sub(
+                            depth_counter_value,
+                            k1,
+                            location,
+                        ))?;
+                        block.append_operation(memref::store(
+                            depth_counter_value,
+                            depth_counter,
+                            &[],
+                            location,
+                        ));
 
-                            let recursive_values = match has_return_ptr {
-                                Some(true) => function
-                                    .signature
-                                    .ret_types
-                                    .iter()
-                                    .zip(&values)
-                                    .filter_map(|(type_id, (_, value))| {
-                                        let type_info = registry.get_type(type_id).unwrap();
-                                        if type_info.is_zst(registry)
-                                            || type_info.is_memory_allocated(registry)
-                                        {
-                                            None
-                                        } else {
-                                            Some(*value)
-                                        }
-                                    })
-                                    .collect::<Vec<_>>(),
-                                Some(false) => function
-                                    .signature
-                                    .ret_types
-                                    .iter()
-                                    .zip(&values)
-                                    .filter_map(|(type_id, (_, value))| {
-                                        let type_info = registry.get_type(type_id).unwrap();
-                                        if type_info.is_zst(registry) {
-                                            None
-                                        } else {
-                                            Some(*value)
-                                        }
-                                    })
-                                    .collect::<Vec<_>>(),
-                                None => todo!(),
-                            };
+                        let recursive_values = match has_return_ptr {
+                            Some(true) => function
+                                .signature
+                                .ret_types
+                                .iter()
+                                .zip(&values)
+                                .filter_map(|(type_id, value)| {
+                                    let type_info = registry.get_type(type_id).unwrap();
+                                    if type_info.is_zst(registry)
+                                        || type_info.is_memory_allocated(registry)
+                                    {
+                                        None
+                                    } else {
+                                        Some(*value)
+                                    }
+                                })
+                                .collect::<Vec<_>>(),
+                            Some(false) => function
+                                .signature
+                                .ret_types
+                                .iter()
+                                .zip(&values)
+                                .filter_map(|(type_id, value)| {
+                                    let type_info = registry.get_type(type_id).unwrap();
+                                    if type_info.is_zst(registry) {
+                                        None
+                                    } else {
+                                        Some(*value)
+                                    }
+                                })
+                                .collect::<Vec<_>>(),
+                            None => todo!(),
+                        };
 
-                            block.append_operation(cf::cond_br(
-                                context,
-                                is_zero_depth,
-                                &cont_block,
-                                &return_target,
-                                &[],
-                                &recursive_values,
-                                location,
-                            ));
+                        block.append_operation(cf::cond_br(
+                            context,
+                            is_zero_depth,
+                            &cont_block,
+                            &recursion_target,
+                            &[],
+                            &recursive_values,
+                            location,
+                        ));
 
-                            block = cont_block;
-                        }
+                        block = cont_block;
                     }
 
                     // Remove ZST builtins from the return values.
@@ -782,7 +726,7 @@ fn compile_func(
                         let (_ret_type_id, ret_type_info) = return_type_infos[0];
                         let ret_layout = ret_type_info.layout(registry)?;
 
-                        let (_, ptr) = values.remove(0);
+                        let ptr = values.remove(0);
                         block.append_operation(llvm::store(
                             context,
                             ptr,
@@ -795,8 +739,22 @@ fn compile_func(
                         ));
                     }
 
-                    block.append_operation(func::r#return(
-                        &values.into_iter().map(|x| x.1).collect::<Vec<_>>(),
+                    block.append_operation(llvm::r#return(
+                        Some({
+                            let res_ty = llvm::r#type::r#struct(context, &return_types, false);
+                            values.iter().enumerate().try_fold(
+                                block.append_op_result(llvm::undef(res_ty, location))?,
+                                |acc, (idx, x)| {
+                                    block.append_op_result(llvm::insert_value(
+                                        context,
+                                        acc,
+                                        DenseI64ArrayAttribute::new(context, &[idx as i64]),
+                                        *x,
+                                        location,
+                                    ))
+                                },
+                            )?
+                        }),
                         location,
                     ));
 
@@ -854,20 +812,25 @@ fn compile_func(
         pre_entry_block.append_operation(cf::br(&entry_block, &arg_values, fn_location));
     }
 
-    module.body().append_operation(func::func(
+    let inner_function_name = format!("impl${function_name}");
+    module.body().append_operation(llvm::func(
         context,
-        StringAttribute::new(context, &function_name),
-        TypeAttribute::new(FunctionType::new(context, &arg_types, &return_types).into()),
+        StringAttribute::new(context, &inner_function_name),
+        TypeAttribute::new(llvm::r#type::function(
+            llvm::r#type::r#struct(context, &return_types, false),
+            &arg_types,
+            false,
+        )),
         region,
         &[
             (
                 Identifier::new(context, "sym_visibility"),
                 StringAttribute::new(context, "public").into(),
             ),
-            (
-                Identifier::new(context, "llvm.emit_c_interface"),
-                Attribute::unit(context),
-            ),
+            // (
+            //     Identifier::new(context, "CConv"),
+            //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
+            // ),
         ],
         Location::fused(
             context,
@@ -880,6 +843,21 @@ fn compile_func(
             di_subprogram,
         ),
     ));
+
+    generate_entry_point_wrapper(
+        context,
+        module,
+        function_name.as_ref(),
+        &inner_function_name,
+        &pre_entry_block_args,
+        &return_types,
+        Location::new(
+            context,
+            "program.sierra",
+            sierra_stmt_start_offset + function.entry_point.0,
+            0,
+        ),
+    )?;
 
     tracing::debug!("Done generating function {}.", function.id);
     Ok(())
@@ -895,7 +873,7 @@ fn generate_function_structure<'c, 'a>(
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
     sierra_stmt_start_offset: usize,
-) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Error> {
+) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>, bool), Error> {
     let initial_state = edit_state::put_results::<Type>(
         OrderedHashMap::default(),
         function
@@ -916,6 +894,7 @@ fn generate_function_structure<'c, 'a>(
     let mut blocks = BTreeMap::new();
     let mut predecessors = HashMap::from([(function.entry_point, (initial_state.clone(), 0))]);
 
+    let mut num_tail_recursions = 0usize;
     foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
@@ -955,6 +934,12 @@ fn generate_function_structure<'c, 'a>(
                     }
 
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
+                    if let CoreConcreteLibfunc::FunctionCall(info) = libfunc {
+                        if info.function.id == function.id && state.is_empty() {
+                            num_tail_recursions += 1;
+                        }
+                    }
+
                     invocation
                         .branches
                         .iter()
@@ -1108,6 +1093,7 @@ fn generate_function_structure<'c, 'a>(
                 )
             })
             .collect(),
+        num_tail_recursions == 1,
     ))
 }
 
@@ -1177,7 +1163,7 @@ fn generate_branching_targets<'ctx, 'this, 'a>(
     statements: &'this [Statement],
     statement_idx: StatementIdx,
     invocation: &'this Invocation,
-    state: &OrderedHashMap<VarId, (&ConcreteTypeId, Value<'ctx, 'this>)>,
+    state: &OrderedHashMap<VarId, Value<'ctx, 'this>>,
 ) -> Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>
 where
     'this: 'ctx,
@@ -1196,7 +1182,7 @@ where
                         .map(|var_id| {
                             match branch.results.iter().find_position(|id| *id == var_id) {
                                 Some((i, _)) => BranchArg::Returned(i),
-                                None => BranchArg::External(state[var_id].1),
+                                None => BranchArg::External(state[var_id]),
                             }
                         })
                         .collect::<Vec<_>>();
@@ -1217,7 +1203,7 @@ where
                             .find_map(|(i, id)| (id == var_id).then_some(i))
                         {
                             Some(i) => BranchArg::Returned(i),
-                            None => BranchArg::External(state[var_id].1),
+                            None => BranchArg::External(state[var_id]),
                         }
                     })
                     .collect::<Vec<_>>();
@@ -1229,49 +1215,71 @@ where
         .collect()
 }
 
-#[cfg(feature = "with-trace-dump")]
-mod trace_dump {
-    use crate::{block_ext::BlockExt, metadata::trace_dump::TraceDumpMeta, types::TypeBuilder};
-    use cairo_lang_sierra::{
-        extensions::core::{CoreLibfunc, CoreType},
-        ids::{ConcreteTypeId, VarId},
-        program::StatementIdx,
-        program_registry::ProgramRegistry,
-    };
-    use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
-    use melior::{
-        ir::{BlockRef, Location, Module, Value, ValueLike},
-        Context,
-    };
+#[allow(clippy::too_many_arguments)]
+fn generate_entry_point_wrapper<'c>(
+    context: &'c Context,
+    module: &Module<'c>,
+    public_symbol: &str,
+    private_symbol: &str,
+    arg_types: &[(Type<'c>, Location<'c>)],
+    ret_types: &[Type<'c>],
+    location: Location<'c>,
+) -> Result<(), Error> {
+    let region = Region::new();
+    let block = region.append_block(Block::new(arg_types));
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn build_state_snapshot(
-        trace_dump: &mut TraceDumpMeta,
-        context: &Context,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        module: &Module,
-        init_block: &BlockRef,
-        block: &BlockRef,
-        location: Location,
-        statement_idx: StatementIdx,
-        state: &OrderedHashMap<VarId, (&ConcreteTypeId, Value)>,
-    ) {
-        for (var_id, (type_id, value)) in state.iter() {
-            let type_info = registry.get_type(type_id).unwrap();
-            let layout = type_info.layout(registry).unwrap();
-
-            let ptr_value = init_block
-                .alloca1(context, location, value.r#type(), layout.align())
-                .unwrap();
-            block.store(context, location, ptr_value, *value).unwrap();
-
-            trace_dump
-                .build_state(context, module, block, var_id, type_id, ptr_value, location)
-                .unwrap();
-        }
-
-        trace_dump
-            .build_push(context, module, block, statement_idx, location)
-            .unwrap();
+    let mut args = Vec::with_capacity(arg_types.len());
+    for i in 0..arg_types.len() {
+        args.push(block.argument(i)?.into());
     }
+
+    let result = block.append_op_result(
+        OperationBuilder::new("llvm.call", location)
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(context, private_symbol).into(),
+                ),
+                // (
+                //     Identifier::new(context, "CConv"),
+                //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
+                // ),
+            ])
+            .add_operands(&args)
+            .add_results(&[llvm::r#type::r#struct(context, ret_types, false)])
+            .build()?,
+    )?;
+
+    let mut returns = Vec::with_capacity(ret_types.len());
+    for (i, ty) in ret_types.iter().enumerate() {
+        returns.push(block.extract_value(context, location, result, *ty, i)?);
+    }
+
+    block.append_operation(func::r#return(&returns, location));
+
+    module.body().append_operation(func::func(
+        context,
+        StringAttribute::new(context, public_symbol),
+        TypeAttribute::new(
+            FunctionType::new(
+                context,
+                &arg_types.iter().map(|x| x.0).collect::<Vec<_>>(),
+                ret_types,
+            )
+            .into(),
+        ),
+        region,
+        &[
+            (
+                Identifier::new(context, "sym_visibility"),
+                StringAttribute::new(context, "public").into(),
+            ),
+            (
+                Identifier::new(context, "llvm.emit_c_interface"),
+                Attribute::unit(context),
+            ),
+        ],
+        location,
+    ));
+    Ok(())
 }

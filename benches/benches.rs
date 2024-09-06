@@ -135,7 +135,7 @@ fn load_contract(path: impl AsRef<Path>) -> Program {
     let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
     let main_crate_ids = setup_project(&mut db, path.as_ref()).unwrap();
     let sirrra_program = compile_prepared_db(
-        &mut db,
+        &db,
         main_crate_ids,
         CompilerConfig {
             replace_ids: true,
