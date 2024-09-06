@@ -3,7 +3,7 @@
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
 //! APIs that are missing from melior.
 
-use crate::error::Error as CompileError;
+use crate::error::Error;
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -29,9 +29,7 @@ use melior::ir::{Module, Type, TypeLike};
 use mlir_sys::{mlirTranslateModuleToLLVMIR, MlirAttribute, MlirContext, MlirModule};
 use std::{
     borrow::Cow,
-    error::Error,
     ffi::{c_void, CStr, CString},
-    fmt::Display,
     io::Write,
     mem::MaybeUninit,
     path::Path,
@@ -220,19 +218,6 @@ pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c>
     unsafe { Type::from_raw(ty_ptr) }
 }
 
-/// A error from the LLVM API.
-#[derive(Debug, Clone)]
-pub struct LLVMCompileError(String);
-
-impl Error for LLVMCompileError {}
-
-impl Display for LLVMCompileError {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
 /// Optimization levels.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OptLevel {
@@ -277,10 +262,7 @@ impl From<u8> for OptLevel {
 }
 
 /// Converts a MLIR module to a compile object, that can be linked with a linker.
-pub fn module_to_object(
-    module: &Module<'_>,
-    opt_level: OptLevel,
-) -> Result<Vec<u8>, LLVMCompileError> {
+pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<u8>, Error> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
     INITIALIZED.get_or_init(|| unsafe {
@@ -311,7 +293,7 @@ pub fn module_to_object(
             let error = CStr::from_ptr(*error_buffer);
             let err = error.to_string_lossy().to_string();
             LLVMDisposeMessage(*error_buffer);
-            Err(LLVMCompileError(err))?;
+            Err(Error::LLVMCompileError(err))?;
         } else if !(*error_buffer).is_null() {
             LLVMDisposeMessage(*error_buffer);
             error_buffer = addr_of_mut!(null);
@@ -347,7 +329,7 @@ pub fn module_to_object(
         if !error.is_null() {
             let msg = LLVMGetErrorMessage(error);
             let msg = CStr::from_ptr(msg);
-            Err(LLVMCompileError(msg.to_string_lossy().into_owned()))?;
+            Err(Error::LLVMCompileError(msg.to_string_lossy().into_owned()))?;
         }
 
         LLVMDisposePassBuilderOptions(opts);
@@ -366,7 +348,7 @@ pub fn module_to_object(
             let error = CStr::from_ptr(*error_buffer);
             let err = error.to_string_lossy().to_string();
             LLVMDisposeMessage(*error_buffer);
-            Err(LLVMCompileError(err))?;
+            Err(Error::LLVMCompileError(err))?;
         } else if !(*error_buffer).is_null() {
             LLVMDisposeMessage(*error_buffer);
         }
@@ -487,7 +469,7 @@ pub fn get_target_triple() -> String {
 /// Gets the data layout reprrsentation as a string, to be given to the MLIR module.
 /// LLVM uses this to know the proper alignments for the given sizes, etc.
 /// This function gets the data layout of the host target triple.
-pub fn get_data_layout_rep() -> Result<String, CompileError> {
+pub fn get_data_layout_rep() -> Result<String, Error> {
     unsafe {
         let mut null = null_mut();
         let error_buffer = addr_of_mut!(null);
@@ -505,7 +487,7 @@ pub fn get_data_layout_rep() -> Result<String, CompileError> {
             let err = error.to_string_lossy().to_string();
             tracing::error!("error getting target triple: {}", err);
             LLVMDisposeMessage(*error_buffer);
-            Err(CompileError::LLVMCompileError(err))?;
+            Err(Error::LLVMCompileError(err))?;
         }
         if !(*error_buffer).is_null() {
             LLVMDisposeMessage(*error_buffer);

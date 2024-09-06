@@ -63,17 +63,6 @@ pub enum BuiltinType {
     System,
 }
 
-unsafe impl Send for ContractExecutor {}
-unsafe impl Sync for ContractExecutor {}
-
-impl Clone for ContractExecutor {
-    fn clone(&self) -> Self {
-        let mut x = Self::load(&self.path);
-        x.entry_points_info = self.entry_points_info.clone();
-        x
-    }
-}
-
 impl ContractExecutor {
     /// Create the executor from a sierra program with the given optimization level.
     /// You can save the library on the desired location later using `save`
@@ -131,42 +120,50 @@ impl ContractExecutor {
             infos.insert(x.id.id, EntryPointInfo { builtins });
         }
 
-        let library_path = NamedTempFile::new()
-            .unwrap()
+        let library_path = NamedTempFile::new()?
             .into_temp_path()
             .keep()
             .expect("can only fail on windows");
 
-        let object_data = crate::module_to_object(&module, opt_level).unwrap();
-        crate::object_to_shared_lib(&object_data, &library_path).unwrap();
+        let object_data = crate::module_to_object(&module, opt_level)?;
+        crate::object_to_shared_lib(&object_data, &library_path)?;
 
         Ok(Self {
-            library: unsafe { Library::new(&library_path).unwrap() },
+            library: unsafe { Library::new(&library_path)? },
             path: library_path,
             entry_points_info: infos,
         })
     }
 
+    /// Clone this executor, can't be the trait because it can fail.
+    ///
+    /// It loads from the stored path the library and json file to "clone" the executor.
+    pub fn clone_executor(&self) -> Result<Self, Error> {
+        let mut x = Self::load(&self.path)?;
+        x.entry_points_info = self.entry_points_info.clone();
+        Ok(x)
+    }
+
     /// Save the library to the desired path, alongside it is saved also a json file with additional info.
     pub fn save(&self, to: &Path) -> Result<(), Error> {
-        std::fs::copy(&self.path, to).unwrap();
+        std::fs::copy(&self.path, to)?;
 
-        let info = serde_json::to_string(&self.entry_points_info).unwrap();
+        let info = serde_json::to_string(&self.entry_points_info)?;
         let path = to.with_extension("json");
-        std::fs::write(path, info).unwrap();
+        std::fs::write(path, info)?;
 
         Ok(())
     }
 
     /// Load the executor from an already compiled library with the additional info json file.
-    pub fn load(library_path: &Path) -> Self {
-        let info_str = std::fs::read_to_string(library_path.with_extension("json")).unwrap();
-        let info: BTreeMap<u64, EntryPointInfo> = serde_json::from_str(&info_str).unwrap();
-        Self {
-            library: unsafe { Library::new(library_path).unwrap() },
+    pub fn load(library_path: &Path) -> Result<Self, Error> {
+        let info_str = std::fs::read_to_string(library_path.with_extension("json"))?;
+        let info: BTreeMap<u64, EntryPointInfo> = serde_json::from_str(&info_str)?;
+        Ok(Self {
+            library: unsafe { Library::new(library_path)? },
             path: library_path.to_path_buf(),
             entry_points_info: info,
-        }
+        })
     }
 
     /// Runs the given entry point.
@@ -180,7 +177,7 @@ impl ContractExecutor {
         let arena = Bump::new();
         let mut invoke_data = Vec::<u8>::new();
 
-        let function_ptr = self.find_function_ptr(function_id);
+        let function_ptr = self.find_function_ptr(function_id)?;
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         // substract 2, which are the gas and syscall builtin
@@ -314,7 +311,7 @@ impl ContractExecutor {
             .as_ptr()
             .align_offset(layout.align());
 
-        let tag_layout = Layout::from_size_align(1, 1).unwrap();
+        let tag_layout = Layout::from_size_align(1, 1)?;
         let enum_ptr = unsafe {
             NonNull::new(return_ptr.cast::<u8>().as_ptr().add(align_offset))
                 .expect("nonnull is null")
@@ -326,7 +323,7 @@ impl ContractExecutor {
         let value_ptr = unsafe {
             enum_ptr
                 .cast::<u8>()
-                .add(tag_layout.extend(value_layout).unwrap().1)
+                .add(tag_layout.extend(value_layout)?.1)
         };
 
         let value_ptr = &mut value_ptr.cast();
@@ -380,18 +377,17 @@ impl ContractExecutor {
         })
     }
 
-    pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
+    pub fn find_function_ptr(&self, function_id: &FunctionId) -> Result<*mut c_void, Error> {
         let function_name = generate_function_name(function_id);
         let function_name = format!("_mlir_ciface_{function_name}");
 
         // Arguments and return values are hardcoded since they'll be handled by the trampoline.
-        unsafe {
+        Ok(unsafe {
             self.library
-                .get::<extern "C" fn()>(function_name.as_bytes())
-                .unwrap()
+                .get::<extern "C" fn()>(function_name.as_bytes())?
                 .into_raw()
                 .into_raw()
-        }
+        })
     }
 }
 
