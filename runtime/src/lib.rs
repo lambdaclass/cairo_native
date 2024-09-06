@@ -570,6 +570,7 @@ pub mod trace_dump {
         match type_info {
             CoreTypeConcrete::Felt252(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::ContractAddress(_))
+            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::ClassHash(_))
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::StorageAddress(_))
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::StorageBaseAddress(_)) => {
                 Value::Felt(Felt::from_bytes_le(value_ptr.cast().as_ref()))
@@ -770,6 +771,7 @@ pub mod trace_dump {
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
             | CoreTypeConcrete::RangeCheck(_)
+            | CoreTypeConcrete::SegmentArena(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
             | CoreTypeConcrete::Uint128MulGuarantee(_) => Value::Unit,
 
@@ -791,7 +793,6 @@ pub mod trace_dump {
             }
             CoreTypeConcrete::Span(_) => todo!("CoreTypeConcrete::Span"),
             CoreTypeConcrete::StarkNet(selector) => match selector {
-                StarkNetTypeConcrete::ClassHash(_) => todo!("StarkNetTypeConcrete::ClassHash"),
                 StarkNetTypeConcrete::Secp256Point(_) => {
                     todo!("StarkNetTypeConcrete::Secp256Point")
                 }
@@ -800,7 +801,6 @@ pub mod trace_dump {
                 }
                 _ => unreachable!(),
             },
-            CoreTypeConcrete::SegmentArena(_) => todo!("CoreTypeConcrete::SegmentArena"),
             CoreTypeConcrete::Bytes31(_) => todo!("CoreTypeConcrete::Bytes31"),
             CoreTypeConcrete::BoundedInt(_) => todo!("CoreTypeConcrete::BoundedInt"),
         }
