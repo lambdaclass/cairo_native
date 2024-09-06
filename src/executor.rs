@@ -37,7 +37,7 @@ use std::{
 };
 
 mod aot;
-mod ce;
+pub mod ce;
 mod jit;
 
 #[cfg(target_arch = "aarch64")]
@@ -157,7 +157,6 @@ fn invoke_dynamic(
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
-    dbg!("--------");
     let arena = Bump::new();
     let mut invoke_data = Vec::<u8>::new();
 
@@ -186,12 +185,10 @@ fn invoke_dynamic(
         let layout = ret_types_iter.fold(Layout::new::<()>(), |layout, id| {
             let type_info = registry.get_type(id).unwrap();
             layout
-                .extend(dbg!(type_info.layout(registry).unwrap()))
+                .extend(type_info.layout(registry).unwrap())
                 .unwrap()
                 .0
         });
-
-        dbg!(&layout);
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
         return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
@@ -330,11 +327,15 @@ fn invoke_dynamic(
                         CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
                         // todo: add RangeCheck96 to builtin_stats?
-                        CoreTypeConcrete::RangeCheck96(_) => (),
+                        CoreTypeConcrete::RangeCheck96(_) => builtin_stats.range_check_96 = value,
                         // todo: add AddMod to builtin_stats?
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => (),
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                            builtin_stats.circuit_add = value
+                        }
                         // todo: add MulMod to builtin_stats?
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => (),
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                            builtin_stats.circuit_mul = value
+                        }
                         _ => unreachable!("{type_id:?}"),
                     }
                 }
@@ -568,7 +569,6 @@ fn parse_result(
                     ),
                 }
             };
-
             let value = match ptr {
                 Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)),
                 Err(offset) => {

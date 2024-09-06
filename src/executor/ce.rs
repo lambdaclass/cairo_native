@@ -1,15 +1,19 @@
 use std::{
     alloc::Layout,
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     ffi::c_void,
     path::{Path, PathBuf},
+    ptr::NonNull,
 };
 
 use bumpalo::Bump;
 use cairo_lang_sierra::{
-    extensions::core::CoreTypeConcrete,
+    extensions::{
+        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, starknet::StarkNetTypeConcrete,
+        ConcreteType,
+    },
     ids::FunctionId,
-    program::{FunctionSignature, Program},
+    program::Program,
 };
 use educe::Educe;
 use libloading::Library;
@@ -19,8 +23,9 @@ use tempfile::NamedTempFile;
 
 use crate::{
     arch::AbiArgument,
+    context::NativeContext,
     error::Error,
-    execution_result::ContractExecutionResult,
+    execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
     module::NativeModule,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -40,7 +45,22 @@ pub struct ContractExecutor {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntryPointInfo {
-    pub num_builtins: u64,
+    pub builtins: Vec<BuiltinType>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub enum BuiltinType {
+    Bitwise,
+    EcOp,
+    RangeCheck,
+    SegmentArena,
+    Poseidon,
+    Pedersen,
+    RangeCheck96,
+    CircuitAdd,
+    CircuitMul,
+    Gas,
+    System,
 }
 
 unsafe impl Send for ContractExecutor {}
@@ -55,9 +75,12 @@ impl Clone for ContractExecutor {
 }
 
 impl ContractExecutor {
-    /// Create the executor from a native module with the given optimization level.
+    /// Create the executor from a sierra program with the given optimization level.
     /// You can save the library on the desired location later using `save`
-    pub fn new(module: NativeModule, opt_level: OptLevel, p: &Program) -> Result<Self, Error> {
+    pub fn new(sierra_program: &Program, opt_level: OptLevel) -> Result<Self, Error> {
+        let native_context = NativeContext::new();
+        let module = native_context.compile(sierra_program)?;
+
         let NativeModule {
             module,
             registry,
@@ -66,19 +89,46 @@ impl ContractExecutor {
 
         let mut infos = BTreeMap::new();
 
-        for x in &p.funcs {
-            let mut num_builtins = 0;
+        for x in &sierra_program.funcs {
+            let mut builtins = Vec::new();
 
             for p in &x.params {
                 let ty = registry.get_type(&p.ty)?;
-                if ty.is_builtin() && !matches!(ty, CoreTypeConcrete::GasBuiltin(_)) {
-                    num_builtins += 1;
+                if ty.is_builtin() {
+                    match ty {
+                        CoreTypeConcrete::Bitwise(_) => builtins.push(BuiltinType::Bitwise),
+                        CoreTypeConcrete::EcOp(_) => builtins.push(BuiltinType::EcOp),
+                        CoreTypeConcrete::RangeCheck(_) => builtins.push(BuiltinType::RangeCheck),
+                        CoreTypeConcrete::Pedersen(_) => builtins.push(BuiltinType::Pedersen),
+                        CoreTypeConcrete::Poseidon(_) => builtins.push(BuiltinType::Poseidon),
+                        CoreTypeConcrete::Coupon(_) => {}
+                        CoreTypeConcrete::SegmentArena(_) => {
+                            builtins.push(BuiltinType::SegmentArena)
+                        }
+                        // todo: add RangeCheck96 to builtin_stats?
+                        CoreTypeConcrete::RangeCheck96(_) => {
+                            builtins.push(BuiltinType::RangeCheck96)
+                        }
+                        // todo: add AddMod to builtin_stats?
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                            builtins.push(BuiltinType::CircuitAdd)
+                        }
+                        // todo: add MulMod to builtin_stats?
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                            builtins.push(BuiltinType::CircuitMul)
+                        }
+                        CoreTypeConcrete::GasBuiltin(_) => builtins.push(BuiltinType::Gas),
+                        CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+                            builtins.push(BuiltinType::System)
+                        }
+                        _ => unreachable!("{:?}", ty.info()),
+                    }
                 } else {
                     break;
                 }
             }
 
-            infos.insert(x.id.id, EntryPointInfo { num_builtins });
+            infos.insert(x.id.id, EntryPointInfo { builtins });
         }
 
         let library_path = NamedTempFile::new()
@@ -133,28 +183,35 @@ impl ContractExecutor {
         let function_ptr = self.find_function_ptr(function_id);
 
         //  it can vary from contract to contract thats why we need to store/ load it.
-        let num_builtins = self.entry_points_info[&function_id.id].num_builtins;
+        // substract 2, which are the gas and syscall builtin
+        let num_builtins = self.entry_points_info[&function_id.id].builtins.len() - 2;
 
-        let return_ptr = arena
-            .alloc_layout(unsafe {
-                // 64 = size of enum + u128 from gas builtin + 8 bytes for each additional builtin counter
-                Layout::from_size_align_unchecked((64 * 8 * num_builtins) as usize, 16)
-            })
-            .as_ptr();
+        // There is always a return ptr because contracts always return more than 1 thing (builtin counters, syscall, enum)
+        let return_ptr = arena.alloc_layout(unsafe {
+            // 64 = size of enum + syscall + u128 from gas builtin + 8 bytes for each additional builtin counter
+            // align is 16 because of the u128
+            Layout::from_size_align_unchecked(64 * 8 * num_builtins, 16)
+        });
 
-        return_ptr.to_bytes(&mut invoke_data)?;
-
-        for _ in 0..num_builtins {
-            0u64.to_bytes(&mut invoke_data)?;
-        }
-
-        let gas = gas.unwrap_or(0);
-        gas.to_bytes(&mut invoke_data)?;
+        return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
 
         let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
 
-        (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
-            .to_bytes(&mut invoke_data)?;
+        for b in &self.entry_points_info[&function_id.id].builtins {
+            match b {
+                BuiltinType::Gas => {
+                    let gas = gas.unwrap_or(0);
+                    gas.to_bytes(&mut invoke_data)?;
+                }
+                BuiltinType::System => {
+                    (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
+                        .to_bytes(&mut invoke_data)?;
+                }
+                _ => {
+                    0u64.to_bytes(&mut invoke_data)?;
+                }
+            }
+        }
 
         let felt_layout = get_integer_layout(252).pad_to_align();
         let ptr: *mut () = unsafe { libc::malloc(felt_layout.size() * args.len()).cast() };
@@ -203,7 +260,124 @@ impl ContractExecutor {
             );
         }
 
-        todo!()
+        // Parse final gas.
+        unsafe fn read_value<T>(ptr: &mut NonNull<()>) -> &T {
+            let align_offset = ptr
+                .cast::<u8>()
+                .as_ptr()
+                .align_offset(std::mem::align_of::<T>());
+            let value_ptr = ptr.cast::<u8>().as_ptr().add(align_offset).cast::<T>();
+
+            *ptr = NonNull::new_unchecked(value_ptr.add(1)).cast();
+            &*value_ptr
+        }
+
+        let mut remaining_gas = 0;
+        let mut builtin_stats = BuiltinStats::default();
+
+        let return_ptr = &mut return_ptr.cast();
+
+        for b in &self.entry_points_info[&function_id.id].builtins {
+            match b {
+                BuiltinType::Gas => {
+                    remaining_gas = unsafe { *read_value::<u128>(return_ptr) };
+                }
+                BuiltinType::System => {
+                    let ptr = return_ptr.cast::<*mut ()>();
+                    *return_ptr = unsafe { NonNull::new_unchecked(ptr.as_ptr().add(1)).cast() };
+                }
+                x => {
+                    let value = unsafe { *read_value::<u64>(return_ptr) } as usize;
+
+                    match x {
+                        BuiltinType::Bitwise => builtin_stats.bitwise = value,
+                        BuiltinType::EcOp => builtin_stats.ec_op = value,
+                        BuiltinType::RangeCheck => builtin_stats.range_check = value,
+                        BuiltinType::SegmentArena => builtin_stats.segment_arena = value,
+                        BuiltinType::Poseidon => builtin_stats.poseidon = value,
+                        BuiltinType::Pedersen => builtin_stats.pedersen = value,
+                        BuiltinType::RangeCheck96 => builtin_stats.range_check_96 = value,
+                        BuiltinType::CircuitAdd => builtin_stats.circuit_add = value,
+                        BuiltinType::CircuitMul => builtin_stats.circuit_mul = value,
+                        BuiltinType::Gas => {}
+                        BuiltinType::System => {}
+                    }
+                }
+            }
+        }
+
+        // align the pointer
+        // layout of the enum type.
+        let layout = unsafe { Layout::from_size_align_unchecked(32, 8) };
+        let align_offset = return_ptr
+            .cast::<u8>()
+            .as_ptr()
+            .align_offset(layout.align());
+
+        let tag_layout = Layout::from_size_align(1, 1).unwrap();
+        let enum_ptr = unsafe {
+            NonNull::new(return_ptr.cast::<u8>().as_ptr().add(align_offset))
+                .expect("nonnull is null")
+        };
+
+        let tag = *unsafe { enum_ptr.cast::<u8>().as_ref() } as usize;
+        // layout of both enum variants, both are a array of felts
+        let value_layout = unsafe { Layout::from_size_align_unchecked(24, 8) };
+        let value_ptr = unsafe {
+            enum_ptr
+                .cast::<u8>()
+                .add(tag_layout.extend(value_layout).unwrap().1)
+        };
+
+        let value_ptr = &mut value_ptr.cast();
+
+        let array_ptr: *mut u8 = unsafe { *read_value(value_ptr) };
+        let start: u32 = unsafe { *read_value(value_ptr) };
+        let end: u32 = unsafe { *read_value(value_ptr) };
+        let _cap: u32 = unsafe { *read_value(value_ptr) };
+
+        let elem_stride = felt_layout.pad_to_align().size();
+
+        // this pointer can be null if the array has a size of 0.
+        let data_ptr = unsafe { array_ptr.byte_add(elem_stride * start as usize) };
+
+        assert!(end >= start);
+        let num_elems = (end - start) as usize;
+        let mut array_value = Vec::with_capacity(num_elems);
+
+        for i in 0..num_elems {
+            // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
+            let cur_elem_ptr = NonNull::new(unsafe { data_ptr.byte_add(elem_stride * i) }).unwrap();
+            let data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().as_ref() };
+            let data = Felt::from_bytes_le_slice(data);
+
+            array_value.push(data);
+        }
+
+        if !array_ptr.is_null() {
+            unsafe { libc::free(array_ptr.cast()) };
+        }
+
+        let mut error_msg = None;
+
+        if tag != 0 {
+            let bytes_err: Vec<_> = array_value
+                .iter()
+                .flat_map(|felt| felt.to_bytes_be().to_vec())
+                // remove null chars
+                .filter(|b| *b != 0)
+                .collect();
+            let str_error = String::from_utf8(bytes_err).unwrap().to_owned();
+
+            error_msg = Some(str_error);
+        }
+
+        Ok(ContractExecutionResult {
+            remaining_gas,
+            failure_flag: tag == 0,
+            return_values: array_value,
+            error_msg,
+        })
     }
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
@@ -218,5 +392,62 @@ impl ContractExecutor {
                 .into_raw()
                 .into_raw()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{starknet_stub::StubSyscallHandler, utils::test::load_starknet};
+    use cairo_lang_sierra::program::Program;
+    use rstest::*;
+
+    #[fixture]
+    fn starknet_program() -> Program {
+        let (_, program) = load_starknet! {
+            #[starknet::interface]
+            trait ISimpleStorage<TContractState> {
+                fn get(self: @TContractState, x: felt252) -> felt252;
+            }
+
+            #[starknet::contract]
+            mod contract {
+                #[storage]
+                struct Storage {}
+
+                #[abi(embed_v0)]
+                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
+                    fn get(self: @ContractState, x: felt252) -> felt252 {
+                        x
+                    }
+                }
+            }
+        };
+        program
+    }
+
+    #[rstest]
+    #[case(OptLevel::None)]
+    #[case(OptLevel::Default)]
+    fn test_invoke_contract_dynamic(starknet_program: Program, #[case] optlevel: OptLevel) {
+        let executor = ContractExecutor::new(&starknet_program, optlevel).unwrap();
+
+        // The last function in the program is the `get` wrapper function.
+        let entrypoint_function_id = &starknet_program
+            .funcs
+            .last()
+            .expect("should have a function")
+            .id;
+
+        let result = executor
+            .run(
+                entrypoint_function_id,
+                &[2.into()],
+                Some(u64::MAX as u128),
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap();
+
+        assert_eq!(result.return_values, vec![Felt::from(2)]);
     }
 }
