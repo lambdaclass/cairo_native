@@ -1,3 +1,36 @@
+//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
+//! enabling efficient serialization of the program/data once compiled.
+//!
+//! This executor heavily relies on the stability of the contract entry point argument order.
+//!
+//! Right now this order is like the following:
+//!
+//! 1. One or more builtins (rangecheck, etc)
+//! 2. Gas builtin
+//! 3. System builtin (the syscall handler)
+//! 4. A Array of felts (calldata)
+//!
+//! ## How it works:
+//!
+//! The only variable data we need to know at call time is the builtins order,
+//! to save this, when first compiling the sierra program (with [`ContractExecutor::new`]) it iterates through all the user
+//! defined functions (this includes the contract wrappers, which are the ones that matter)
+//! and saves the builtin arguments in a `Vec`.
+//!
+//! The API provides two more methods: [`ContractExecutor::save`] and [`ContractExecutor::load`].
+//!
+//! Save can be used to save the compiled program into the given path, alongside it will be saved
+//! a json file with the entry points and their builtins (as seen in the example)
+//!
+//! ```json
+//! {"0":{"builtins":[]},"1":{"builtins":["RangeCheck","Gas","System"]}}
+//! ```
+//!
+//! If the given path is "program.so", then at the same location, "program.json" will be saved.
+//!
+//! When loading, passing the "program.so" path will make it load the program and the "program.json" alongside it.
+//!
+
 use std::{
     alloc::Layout,
     collections::BTreeMap,
@@ -145,7 +178,8 @@ impl ContractExecutor {
     }
 
     /// Save the library to the desired path, alongside it is saved also a json file with additional info.
-    pub fn save(&self, to: &Path) -> Result<(), Error> {
+    pub fn save(&self, to: impl AsRef<Path>) -> Result<(), Error> {
+        let to = to.as_ref();
         std::fs::copy(&self.path, to)?;
 
         let info = serde_json::to_string(&self.entry_points_info)?;
@@ -427,6 +461,7 @@ mod tests {
     #[case(OptLevel::Default)]
     fn test_invoke_contract_dynamic(starknet_program: Program, #[case] optlevel: OptLevel) {
         let executor = ContractExecutor::new(&starknet_program, optlevel).unwrap();
+        executor.save("hello.so").unwrap();
 
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
