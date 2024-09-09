@@ -375,7 +375,7 @@ impl ContractExecutor {
         let mut array_value = Vec::with_capacity(num_elems);
 
         for i in 0..num_elems {
-            // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
+            // safe to create a NonNull because if the array has elements, the data_ptr can't be null.
             let cur_elem_ptr = NonNull::new(unsafe { data_ptr.byte_add(elem_stride * i) }).unwrap();
             let data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().as_ref() };
             let data = Felt::from_bytes_le_slice(data);
@@ -454,10 +454,33 @@ mod tests {
         program
     }
 
+    #[fixture]
+    fn starknet_program_empty() -> Program {
+        let (_, program) = load_starknet! {
+            #[starknet::interface]
+            trait ISimpleStorage<TContractState> {
+                fn call(self: @TContractState);
+            }
+
+            #[starknet::contract]
+            mod contract {
+                #[storage]
+                struct Storage {}
+
+                #[abi(embed_v0)]
+                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
+                    fn call(self: @ContractState) {
+                    }
+                }
+            }
+        };
+        program
+    }
+
     #[rstest]
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
-    fn test_invoke_contract_dynamic(starknet_program: Program, #[case] optlevel: OptLevel) {
+    fn test_contract_executor(starknet_program: Program, #[case] optlevel: OptLevel) {
         let executor = ContractExecutor::new(&starknet_program, optlevel).unwrap();
         executor.save("hello.so").unwrap();
 
@@ -478,5 +501,31 @@ mod tests {
             .unwrap();
 
         assert_eq!(result.return_values, vec![Felt::from(2)]);
+    }
+
+    #[rstest]
+    #[case(OptLevel::None)]
+    #[case(OptLevel::Default)]
+    fn test_contract_executor_empty(starknet_program_empty: Program, #[case] optlevel: OptLevel) {
+        let executor = ContractExecutor::new(&starknet_program_empty, optlevel).unwrap();
+        executor.save("hello.so").unwrap();
+
+        // The last function in the program is the `get` wrapper function.
+        let entrypoint_function_id = &starknet_program_empty
+            .funcs
+            .last()
+            .expect("should have a function")
+            .id;
+
+        let result = executor
+            .run(
+                entrypoint_function_id,
+                &[],
+                Some(u64::MAX as u128),
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap();
+
+        assert_eq!(result.return_values, vec![]);
     }
 }
