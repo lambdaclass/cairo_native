@@ -67,6 +67,7 @@ use crate::{
     OptLevel,
 };
 
+/// Please look at the module [`crate::executor::ce`] level docs.
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct ContractExecutor {
@@ -127,15 +128,12 @@ impl ContractExecutor {
                         CoreTypeConcrete::SegmentArena(_) => {
                             builtins.push(BuiltinType::SegmentArena)
                         }
-                        // todo: add RangeCheck96 to builtin_stats?
                         CoreTypeConcrete::RangeCheck96(_) => {
                             builtins.push(BuiltinType::RangeCheck96)
                         }
-                        // todo: add AddMod to builtin_stats?
                         CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
                             builtins.push(BuiltinType::CircuitAdd)
                         }
-                        // todo: add MulMod to builtin_stats?
                         CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
                             builtins.push(BuiltinType::CircuitMul)
                         }
