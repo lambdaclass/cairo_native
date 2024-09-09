@@ -718,42 +718,28 @@ pub mod trace_dump {
                 Value::Struct(members)
             }
             CoreTypeConcrete::Enum(info) => {
-                let num_variants = match info.variants.len() {
-                    0 => unreachable!(),
-                    1 => 0,
-                    n => (n.next_power_of_two().next_multiple_of(8) >> 3) as _,
-                };
-
-                let layout = Layout::new::<()>();
-                let (tag_value, layout) = match num_variants {
-                    x if x <= 8 => {
-                        let (layout, offset) = layout.extend(Layout::new::<u8>()).unwrap();
-                        (
-                            value_ptr.byte_add(offset).cast::<u8>().read() as usize,
-                            layout,
-                        )
+                let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
+                let (tag_value, layout) = match tag_bits {
+                    0 => todo!(),
+                    width if width <= 8 => {
+                        (value_ptr.cast::<u8>().read() as usize, Layout::new::<u8>())
                     }
-                    x if x <= 16 => {
-                        let (layout, offset) = layout.extend(Layout::new::<u16>()).unwrap();
-                        (
-                            value_ptr.byte_add(offset).cast::<u16>().read() as usize,
-                            layout,
-                        )
-                    }
-                    x if x <= 32 => {
-                        let (layout, offset) = layout.extend(Layout::new::<u32>()).unwrap();
-                        (
-                            value_ptr.byte_add(offset).cast::<u32>().read() as usize,
-                            layout,
-                        )
-                    }
-                    x if x <= 64 => {
-                        let (layout, offset) = layout.extend(Layout::new::<u64>()).unwrap();
-                        (
-                            value_ptr.byte_add(offset).cast::<u64>().read() as usize,
-                            layout,
-                        )
-                    }
+                    width if width <= 16 => (
+                        value_ptr.cast::<u16>().read() as usize,
+                        Layout::new::<u16>(),
+                    ),
+                    width if width <= 32 => (
+                        value_ptr.cast::<u32>().read() as usize,
+                        Layout::new::<u32>(),
+                    ),
+                    width if width <= 64 => (
+                        value_ptr.cast::<u64>().read() as usize,
+                        Layout::new::<u64>(),
+                    ),
+                    width if width <= 128 => (
+                        value_ptr.cast::<u128>().read() as usize,
+                        Layout::new::<()>(),
+                    ),
                     _ => todo!(),
                 };
 
