@@ -476,6 +476,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
 pub mod trace_dump {
     use cairo_lang_sierra::{
         extensions::{
+            bounded_int::BoundedIntConcreteType,
             core::{CoreLibfunc, CoreType, CoreTypeConcrete},
             starknet::StarkNetTypeConcrete,
         },
@@ -484,12 +485,15 @@ pub mod trace_dump {
         program_registry::ProgramRegistry,
     };
     use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+    use num_bigint::BigInt;
+    use num_traits::One;
     use sierra_emu::{ProgramTrace, StateDump, Value};
     use starknet_crypto::Felt;
     use std::{
         alloc::Layout,
         collections::HashMap,
         mem::swap,
+        ops::Range,
         ptr::NonNull,
         sync::{LazyLock, Mutex},
     };
@@ -580,6 +584,23 @@ pub mod trace_dump {
             CoreTypeConcrete::Uint64(_) => Value::U64(value_ptr.cast().read()),
             CoreTypeConcrete::Uint128(_) | CoreTypeConcrete::GasBuiltin(_) => {
                 Value::U128(value_ptr.cast().read())
+            }
+
+            CoreTypeConcrete::BoundedInt(BoundedIntConcreteType { range, .. }) => {
+                let n_bits = ((range.size() - BigInt::one()).bits() as u32).max(1);
+                let n_bytes = n_bits.next_multiple_of(8) >> 3;
+
+                let data = NonNull::slice_from_raw_parts(value_ptr.cast::<u8>(), n_bytes as usize);
+
+                let value = BigInt::from_bytes_le(num_bigint::Sign::Plus, data.as_ref());
+
+                Value::BoundedInt {
+                    range: Range {
+                        start: range.lower.clone(),
+                        end: range.upper.clone(),
+                    },
+                    value: value + &range.lower,
+                }
             }
 
             CoreTypeConcrete::EcPoint(_) => {
@@ -801,7 +822,6 @@ pub mod trace_dump {
                 _ => unreachable!(),
             },
             CoreTypeConcrete::Bytes31(_) => todo!("CoreTypeConcrete::Bytes31"),
-            CoreTypeConcrete::BoundedInt(_) => todo!("CoreTypeConcrete::BoundedInt"),
         }
     }
 }
