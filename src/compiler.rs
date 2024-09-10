@@ -99,6 +99,7 @@ use std::{
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
 };
+use tracing::debug;
 
 /// The [BlockStorage] type is used to map each statement into its own entry block (on the right),
 /// and its landing block (on the left) if required.
@@ -604,30 +605,32 @@ fn compile_func(
                         }
                     }
 
-                    invocation
-                        .branches
-                        .iter()
-                        .zip(libfunc.branch_signatures())
-                        .zip(helper.results())
-                        .map(|((branch_info, signature), result_values)| {
-                            assert_eq!(
-                                branch_info.results.len(),
-                                result_values.len(),
-                                "Mismatched number of returned values from branch."
-                            );
+                    StatementCompileResult::Processed(
+                        invocation
+                            .branches
+                            .iter()
+                            .zip(libfunc.branch_signatures())
+                            .zip(helper.results())
+                            .map(|((branch_info, signature), result_values)| {
+                                assert_eq!(
+                                    branch_info.results.len(),
+                                    result_values.len(),
+                                    "Mismatched number of returned values from branch."
+                                );
 
-                            Ok(edit_state::put_results(
-                                state.clone(),
-                                branch_info.results.iter().zip(
-                                    signature
-                                        .vars
-                                        .iter()
-                                        .map(|x| &x.ty)
-                                        .zip(result_values.iter().copied()),
-                                ),
-                            )?)
-                        })
-                        .collect::<Result<_, Error>>()?
+                                Ok(edit_state::put_results(
+                                    state.clone(),
+                                    branch_info.results.iter().zip(
+                                        signature
+                                            .vars
+                                            .iter()
+                                            .map(|x| &x.ty)
+                                            .zip(result_values.iter().copied()),
+                                    ),
+                                )?)
+                            })
+                            .collect::<Result<_, Error>>()?,
+                    )
                 }
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
@@ -644,117 +647,133 @@ fn compile_func(
                     );
 
                     #[cfg(feature = "with-trace-dump")]
-                    self::trace_dump::build_state_snapshot(
-                        metadata.get_or_insert_with(
-                            crate::metadata::trace_dump::TraceDumpMeta::default,
-                        ),
-                        context,
-                        registry,
-                        module,
-                        &pre_entry_block,
-                        block,
-                        Location::unknown(context),
-                        statement_idx,
-                        &state,
-                    );
+                    if !is_recursive || tailrec_state.is_some() {
+                        self::trace_dump::build_state_snapshot(
+                            metadata.get_or_insert_with(
+                                crate::metadata::trace_dump::TraceDumpMeta::default,
+                            ),
+                            context,
+                            registry,
+                            module,
+                            &pre_entry_block,
+                            block,
+                            Location::unknown(context),
+                            statement_idx,
+                            &state,
+                        );
+                    }
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
                     let mut block = *block;
-                    if let Some((depth_counter, recursion_target)) = tailrec_state {
-                        let location = Location::name(
-                            context,
-                            &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
-                            Location::new(
-                                context,
-                                "program.sierra",
-                                sierra_stmt_start_offset + statement_idx.0,
-                                0,
-                            ),
-                        );
+                    if is_recursive {
+                        match tailrec_state {
+                            None => {
+                                // If this block is reached it means that a return has been detected
+                                // within a tail-recursive function before the recursive call has
+                                // been generated. Since we don't have the return target block at
+                                // this point we need to defer this return statement's generation.
+                                return Ok(StatementCompileResult::Deferred);
+                            }
+                            Some((depth_counter, recursion_target)) => {
+                                let location = Location::name(
+                                    context,
+                                    &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
+                                    Location::new(
+                                        context,
+                                        "program.sierra",
+                                        sierra_stmt_start_offset + statement_idx.0,
+                                        0,
+                                    ),
+                                );
 
-                        // Perform tail recursion.
-                        let cont_block = region.insert_block_after(block, Block::new(&[]));
+                                // Perform tail recursion.
+                                let cont_block = region.insert_block_after(block, Block::new(&[]));
 
-                        let depth_counter_value =
-                            block.append_op_result(memref::load(depth_counter, &[], location))?;
-                        let k0 = block.const_int_from_type(
-                            context,
-                            location,
-                            0,
-                            Type::index(context),
-                        )?;
-                        let is_zero_depth = block.append_op_result(index::cmp(
-                            context,
-                            CmpiPredicate::Eq,
-                            depth_counter_value,
-                            k0,
-                            location,
-                        ))?;
+                                let depth_counter_value = block.append_op_result(memref::load(
+                                    depth_counter,
+                                    &[],
+                                    location,
+                                ))?;
+                                let k0 = block.const_int_from_type(
+                                    context,
+                                    location,
+                                    0,
+                                    Type::index(context),
+                                )?;
+                                let is_zero_depth = block.append_op_result(index::cmp(
+                                    context,
+                                    CmpiPredicate::Eq,
+                                    depth_counter_value,
+                                    k0,
+                                    location,
+                                ))?;
 
-                        let k1 = block.const_int_from_type(
-                            context,
-                            location,
-                            1,
-                            Type::index(context),
-                        )?;
-                        let depth_counter_value = block.append_op_result(index::sub(
-                            depth_counter_value,
-                            k1,
-                            location,
-                        ))?;
-                        block.append_operation(memref::store(
-                            depth_counter_value,
-                            depth_counter,
-                            &[],
-                            location,
-                        ));
+                                let k1 = block.const_int_from_type(
+                                    context,
+                                    location,
+                                    1,
+                                    Type::index(context),
+                                )?;
+                                let depth_counter_value = block.append_op_result(index::sub(
+                                    depth_counter_value,
+                                    k1,
+                                    location,
+                                ))?;
+                                block.append_operation(memref::store(
+                                    depth_counter_value,
+                                    depth_counter,
+                                    &[],
+                                    location,
+                                ));
 
-                        let recursive_values = match has_return_ptr {
-                            Some(true) => function
-                                .signature
-                                .ret_types
-                                .iter()
-                                .zip(&values)
-                                .filter_map(|(type_id, (_, value))| {
-                                    let type_info = registry.get_type(type_id).unwrap();
-                                    if type_info.is_zst(registry)
-                                        || type_info.is_memory_allocated(registry)
-                                    {
-                                        None
-                                    } else {
-                                        Some(*value)
-                                    }
-                                })
-                                .collect::<Vec<_>>(),
-                            Some(false) => function
-                                .signature
-                                .ret_types
-                                .iter()
-                                .zip(&values)
-                                .filter_map(|(type_id, (_, value))| {
-                                    let type_info = registry.get_type(type_id).unwrap();
-                                    if type_info.is_zst(registry) {
-                                        None
-                                    } else {
-                                        Some(*value)
-                                    }
-                                })
-                                .collect::<Vec<_>>(),
-                            None => todo!(),
-                        };
+                                let recursive_values = match has_return_ptr {
+                                    Some(true) => function
+                                        .signature
+                                        .ret_types
+                                        .iter()
+                                        .zip(&values)
+                                        .filter_map(|(type_id, (_, value))| {
+                                            let type_info = registry.get_type(type_id).unwrap();
+                                            if type_info.is_zst(registry)
+                                                || type_info.is_memory_allocated(registry)
+                                            {
+                                                None
+                                            } else {
+                                                Some(*value)
+                                            }
+                                        })
+                                        .collect::<Vec<_>>(),
+                                    Some(false) => function
+                                        .signature
+                                        .ret_types
+                                        .iter()
+                                        .zip(&values)
+                                        .filter_map(|(type_id, (_, value))| {
+                                            let type_info = registry.get_type(type_id).unwrap();
+                                            if type_info.is_zst(registry) {
+                                                None
+                                            } else {
+                                                Some(*value)
+                                            }
+                                        })
+                                        .collect::<Vec<_>>(),
+                                    None => todo!(),
+                                };
 
-                        block.append_operation(cf::cond_br(
-                            context,
-                            is_zero_depth,
-                            &cont_block,
-                            &recursion_target,
-                            &[],
-                            &recursive_values,
-                            location,
-                        ));
+                                block.append_operation(cf::cond_br(
+                                    context,
+                                    is_zero_depth,
+                                    &cont_block,
+                                    &recursion_target,
+                                    &[],
+                                    &recursive_values,
+                                    location,
+                                ));
 
-                        block = cont_block;
+                                block = cont_block;
+                            }
+                        }
                     }
 
                     // Remove ZST builtins from the return values.
@@ -802,7 +821,7 @@ fn compile_func(
                         location,
                     ));
 
-                    Vec::new()
+                    StatementCompileResult::Processed(Vec::new())
                 }
             })
         },
@@ -984,44 +1003,46 @@ fn generate_function_structure<'c, 'a>(
                         }
                     }
 
-                    invocation
-                        .branches
-                        .iter()
-                        .zip(libfunc.branch_signatures())
-                        .map(|(branch, branch_signature)| {
-                            let state = edit_state::put_results(
-                                state.clone(),
-                                branch.results.iter().zip(
-                                    branch_signature
-                                        .vars
-                                        .iter()
-                                        .map(|var_info| -> Result<_, Error> {
-                                            registry.get_type(&var_info.ty)?.build(
-                                                context,
-                                                module,
-                                                registry,
-                                                metadata_storage,
-                                                &var_info.ty,
-                                            )
-                                        })
-                                        .collect::<Result<Vec<_>, _>>()?,
-                                ),
-                            )?;
+                    StatementCompileResult::Processed(
+                        invocation
+                            .branches
+                            .iter()
+                            .zip(libfunc.branch_signatures())
+                            .map(|(branch, branch_signature)| {
+                                let state = edit_state::put_results(
+                                    state.clone(),
+                                    branch.results.iter().zip(
+                                        branch_signature
+                                            .vars
+                                            .iter()
+                                            .map(|var_info| -> Result<_, Error> {
+                                                registry.get_type(&var_info.ty)?.build(
+                                                    context,
+                                                    module,
+                                                    registry,
+                                                    metadata_storage,
+                                                    &var_info.ty,
+                                                )
+                                            })
+                                            .collect::<Result<Vec<_>, _>>()?,
+                                    ),
+                                )?;
 
-                            let (prev_state, pred_count) =
-                                match predecessors.entry(statement_idx.next(&branch.target)) {
-                                    Entry::Occupied(entry) => entry.into_mut(),
-                                    Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
-                                };
-                            assert!(
-                                prev_state.eq_unordered(&state),
-                                "Branch target states do not match."
-                            );
-                            *pred_count += 1;
+                                let (prev_state, pred_count) =
+                                    match predecessors.entry(statement_idx.next(&branch.target)) {
+                                        Entry::Occupied(entry) => entry.into_mut(),
+                                        Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
+                                    };
+                                assert!(
+                                    prev_state.eq_unordered(&state),
+                                    "Branch target states do not match."
+                                );
+                                *pred_count += 1;
 
-                            Ok(state)
-                        })
-                        .collect::<Result<_, Error>>()?
+                                Ok(state)
+                            })
+                            .collect::<Result<_, Error>>()?,
+                    )
                 }
                 Statement::Return(var_ids) => {
                     tracing::trace!(
@@ -1045,7 +1066,7 @@ fn generate_function_structure<'c, 'a>(
                         block.add_argument(ty, location);
                     }
 
-                    Vec::new()
+                    StatementCompileResult::Processed(Vec::new())
                 }
             })
         },
@@ -1166,7 +1187,7 @@ fn foreach_statement_in_function<S, E>(
     statements: &[Statement],
     entry_point: StatementIdx,
     initial_state: S,
-    mut closure: impl FnMut(StatementIdx, S) -> Result<Vec<S>, E>,
+    mut closure: impl FnMut(StatementIdx, S) -> Result<StatementCompileResult<Vec<S>>, E>,
 ) -> Result<(), E>
 where
     S: Clone,
@@ -1179,24 +1200,32 @@ where
             continue;
         }
 
-        let branch_states = closure(statement_idx, state)?;
+        match closure(statement_idx, state.clone())? {
+            StatementCompileResult::Processed(branch_states) => {
+                let branches = match &statements[statement_idx.0] {
+                    Statement::Invocation(x) => x.branches.as_slice(),
+                    Statement::Return(_) => &[],
+                };
+                assert_eq!(
+                    branches.len(),
+                    branch_states.len(),
+                    "Returned number of states must match the number of branches."
+                );
 
-        let branches = match &statements[statement_idx.0] {
-            Statement::Invocation(x) => x.branches.as_slice(),
-            Statement::Return(_) => &[],
-        };
-        assert_eq!(
-            branches.len(),
-            branch_states.len(),
-            "Returned number of states must match the number of branches."
-        );
+                queue.extend(
+                    branches
+                        .iter()
+                        .map(|branch| statement_idx.next(&branch.target))
+                        .zip(branch_states),
+                );
+            }
+            StatementCompileResult::Deferred => {
+                debug!("Statement {statement_idx}'s compilation has been deferred.");
 
-        queue.extend(
-            branches
-                .iter()
-                .map(|branch| statement_idx.next(&branch.target))
-                .zip(branch_states),
-        );
+                visited.remove(&statement_idx);
+                queue.insert(0, (statement_idx, state));
+            }
+        }
     }
 
     Ok(())
@@ -1326,6 +1355,12 @@ fn generate_entry_point_wrapper<'c>(
         location,
     ));
     Ok(())
+}
+
+#[derive(Clone, Debug)]
+enum StatementCompileResult<T> {
+    Processed(T),
+    Deferred,
 }
 
 #[cfg(feature = "with-trace-dump")]
