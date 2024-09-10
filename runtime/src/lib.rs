@@ -415,16 +415,15 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
     scalar_ptr: NonNull<[u8; 32]>,
     point_ptr: NonNull<[[u8; 32]; 2]>,
 ) {
-    let mut state = ProjectivePoint::from_affine(
+    // Here the points should already be checked as valid, so we can use unchecked.
+    let mut state = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(&state_ptr.as_ref()[0]),
         Felt::from_bytes_le(&state_ptr.as_ref()[1]),
-    )
-    .unwrap();
-    let point = ProjectivePoint::from_affine(
+    );
+    let point = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(&point_ptr.as_ref()[0]),
         Felt::from_bytes_le(&point_ptr.as_ref()[1]),
-    )
-    .unwrap();
+    );
     let scalar = Felt::from_bytes_le(scalar_ptr.as_ref());
 
     state += &point.mul(scalar);
