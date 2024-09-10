@@ -3220,7 +3220,7 @@ dependencies = [
 [[package]]
 name = "scarb-metadata"
 version = "1.12.0"
-source = "git+https://github.com/software-mansion/scarb.git?rev=v2.8.0#09590f5fc07365c3e4188b0e8fa2e774a8269d68"
+source = "git+https://github.com/software-mansion/scarb.git?rev=v2.8.2#a37b4cbfc9d7560e4d1375a3b1707c165aedd22a"
 dependencies = [
  "camino",
  "semver",
@@ -3232,7 +3232,7 @@ dependencies = [
 [[package]]
 name = "scarb-ui"
 version = "0.1.5"
-source = "git+https://github.com/software-mansion/scarb.git?rev=v2.8.0#09590f5fc07365c3e4188b0e8fa2e774a8269d68"
+source = "git+https://github.com/software-mansion/scarb.git?rev=v2.8.2#a37b4cbfc9d7560e4d1375a3b1707c165aedd22a"
 dependencies = [
  "anyhow",
  "camino",
