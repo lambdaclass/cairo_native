@@ -109,7 +109,7 @@ colored = { version = "2.1.0", optional = true }
 keccak = "0.1.5"
 k256 = "0.13.3"
 p256 = "0.13.2"
-sha2 = "0.10.8"                                                                                             # needed for the syscall handler stub
+sha2 = "0.10.8" # needed for the syscall handler stub
 scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.2", optional = true }
 scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.2", optional = true }
 sec1 = "0.7.3"
@@ -121,7 +121,7 @@ cairo-vm = { version = "1.0.1", features = ["cairo-1-hints"] }
 cairo-lang-runner = "2.8.2"
 cairo-lang-semantic = { version = "2.8.2", features = ["testing"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
-lambdaworks-math = "0.9.0"
+lambdaworks-math = "0.10.0"
 pretty_assertions_sorted = "1.2.3"
 proptest = "1.4.0"
 rstest = "0.22.0"

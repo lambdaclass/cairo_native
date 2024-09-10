@@ -959,7 +959,7 @@ dependencies = [
  "itertools 0.13.0",
  "k256",
  "keccak",
- "lambdaworks-math 0.9.0",
+ "lambdaworks-math 0.10.0",
  "lazy_static",
  "libc",
  "libloading",
@@ -2258,9 +2258,9 @@ dependencies = [
 
 [[package]]
 name = "lambdaworks-math"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "030a60407d8b7bfef27f591acd5c570a7729d81f99531e992f6d61189b89e72d"
+checksum = "d1bd2632acbd9957afc5aeec07ad39f078ae38656654043bf16e046fa2730e23"
 dependencies = [
  "rayon",
  "serde",
