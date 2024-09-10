@@ -738,7 +738,7 @@ pub mod trace_dump {
                     ),
                     width if width <= 128 => (
                         value_ptr.cast::<u128>().read() as usize,
-                        Layout::new::<()>(),
+                        Layout::new::<u128>(),
                     ),
                     _ => todo!(),
                 };
