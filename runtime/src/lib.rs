@@ -476,6 +476,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
 pub mod trace_dump {
     use cairo_lang_sierra::{
         extensions::{
+            bounded_int::BoundedIntConcreteType,
             core::{CoreLibfunc, CoreType, CoreTypeConcrete},
             starknet::StarkNetTypeConcrete,
         },
@@ -484,12 +485,15 @@ pub mod trace_dump {
         program_registry::ProgramRegistry,
     };
     use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+    use num_bigint::BigInt;
+    use num_traits::One;
     use sierra_emu::{ProgramTrace, StateDump, Value};
     use starknet_crypto::Felt;
     use std::{
         alloc::Layout,
         collections::HashMap,
         mem::swap,
+        ops::Range,
         ptr::NonNull,
         sync::{LazyLock, Mutex},
     };
@@ -569,6 +573,7 @@ pub mod trace_dump {
         match type_info {
             CoreTypeConcrete::Felt252(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::ContractAddress(_))
+            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::ClassHash(_))
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::StorageAddress(_))
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::StorageBaseAddress(_)) => {
                 Value::Felt(Felt::from_bytes_le(value_ptr.cast().as_ref()))
@@ -579,6 +584,23 @@ pub mod trace_dump {
             CoreTypeConcrete::Uint64(_) => Value::U64(value_ptr.cast().read()),
             CoreTypeConcrete::Uint128(_) | CoreTypeConcrete::GasBuiltin(_) => {
                 Value::U128(value_ptr.cast().read())
+            }
+
+            CoreTypeConcrete::BoundedInt(BoundedIntConcreteType { range, .. }) => {
+                let n_bits = ((range.size() - BigInt::one()).bits() as u32).max(1);
+                let n_bytes = n_bits.next_multiple_of(8) >> 3;
+
+                let data = NonNull::slice_from_raw_parts(value_ptr.cast::<u8>(), n_bytes as usize);
+
+                let value = BigInt::from_bytes_le(num_bigint::Sign::Plus, data.as_ref());
+
+                Value::BoundedInt {
+                    range: Range {
+                        start: range.lower.clone(),
+                        end: range.upper.clone(),
+                    },
+                    value: value + &range.lower,
+                }
             }
 
             CoreTypeConcrete::EcPoint(_) => {
@@ -696,42 +718,28 @@ pub mod trace_dump {
                 Value::Struct(members)
             }
             CoreTypeConcrete::Enum(info) => {
-                let num_variants = match info.variants.len() {
-                    0 => unreachable!(),
-                    1 => 0,
-                    n => (n.next_power_of_two().next_multiple_of(8) >> 3) as _,
-                };
-
-                let layout = Layout::new::<()>();
-                let (tag_value, layout) = match num_variants {
-                    x if x <= 8 => {
-                        let (layout, offset) = layout.extend(Layout::new::<u8>()).unwrap();
-                        (
-                            value_ptr.byte_add(offset).cast::<u8>().read() as usize,
-                            layout,
-                        )
+                let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
+                let (tag_value, layout) = match tag_bits {
+                    0 => todo!(),
+                    width if width <= 8 => {
+                        (value_ptr.cast::<u8>().read() as usize, Layout::new::<u8>())
                     }
-                    x if x <= 16 => {
-                        let (layout, offset) = layout.extend(Layout::new::<u16>()).unwrap();
-                        (
-                            value_ptr.byte_add(offset).cast::<u16>().read() as usize,
-                            layout,
-                        )
-                    }
-                    x if x <= 32 => {
-                        let (layout, offset) = layout.extend(Layout::new::<u32>()).unwrap();
-                        (
-                            value_ptr.byte_add(offset).cast::<u32>().read() as usize,
-                            layout,
-                        )
-                    }
-                    x if x <= 64 => {
-                        let (layout, offset) = layout.extend(Layout::new::<u64>()).unwrap();
-                        (
-                            value_ptr.byte_add(offset).cast::<u64>().read() as usize,
-                            layout,
-                        )
-                    }
+                    width if width <= 16 => (
+                        value_ptr.cast::<u16>().read() as usize,
+                        Layout::new::<u16>(),
+                    ),
+                    width if width <= 32 => (
+                        value_ptr.cast::<u32>().read() as usize,
+                        Layout::new::<u32>(),
+                    ),
+                    width if width <= 64 => (
+                        value_ptr.cast::<u64>().read() as usize,
+                        Layout::new::<u64>(),
+                    ),
+                    width if width <= 128 => (
+                        value_ptr.cast::<u128>().read() as usize,
+                        Layout::new::<u128>(),
+                    ),
                     _ => todo!(),
                 };
 
@@ -769,6 +777,7 @@ pub mod trace_dump {
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
             | CoreTypeConcrete::RangeCheck(_)
+            | CoreTypeConcrete::SegmentArena(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
             | CoreTypeConcrete::Uint128MulGuarantee(_) => Value::Unit,
 
@@ -790,7 +799,6 @@ pub mod trace_dump {
             }
             CoreTypeConcrete::Span(_) => todo!("CoreTypeConcrete::Span"),
             CoreTypeConcrete::StarkNet(selector) => match selector {
-                StarkNetTypeConcrete::ClassHash(_) => todo!("StarkNetTypeConcrete::ClassHash"),
                 StarkNetTypeConcrete::Secp256Point(_) => {
                     todo!("StarkNetTypeConcrete::Secp256Point")
                 }
@@ -799,9 +807,7 @@ pub mod trace_dump {
                 }
                 _ => unreachable!(),
             },
-            CoreTypeConcrete::SegmentArena(_) => todo!("CoreTypeConcrete::SegmentArena"),
             CoreTypeConcrete::Bytes31(_) => todo!("CoreTypeConcrete::Bytes31"),
-            CoreTypeConcrete::BoundedInt(_) => todo!("CoreTypeConcrete::BoundedInt"),
         }
     }
 }

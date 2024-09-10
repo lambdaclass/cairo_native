@@ -28,7 +28,7 @@ pub struct AotNativeExecutor {
     #[educe(Debug(ignore))]
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
 
-    gas_metadata: GasMetadata,
+    pub gas_metadata: GasMetadata,
 }
 
 unsafe impl Send for AotNativeExecutor {}
