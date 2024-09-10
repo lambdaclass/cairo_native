@@ -37,7 +37,7 @@ use std::{
 };
 
 mod aot;
-pub mod ce;
+pub mod contract;
 mod jit;
 
 #[cfg(target_arch = "aarch64")]

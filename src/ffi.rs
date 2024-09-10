@@ -3,7 +3,7 @@
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
 //! APIs that are missing from melior.
 
-use crate::error::Error;
+use crate::error::{Error, Result};
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -262,7 +262,7 @@ impl From<u8> for OptLevel {
 }
 
 /// Converts a MLIR module to a compile object, that can be linked with a linker.
-pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<u8>, Error> {
+pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<u8>> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
     INITIALIZED.get_or_init(|| unsafe {
@@ -371,7 +371,7 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 }
 
 /// Links the passed object into a shared library, stored on the given path.
-pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(), std::io::Error> {
+pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()> {
     // linker seems to need a file and doesn't accept stdin
     let mut file = NamedTempFile::new()?;
     file.write_all(object)?;
@@ -469,7 +469,7 @@ pub fn get_target_triple() -> String {
 /// Gets the data layout reprrsentation as a string, to be given to the MLIR module.
 /// LLVM uses this to know the proper alignments for the given sizes, etc.
 /// This function gets the data layout of the host target triple.
-pub fn get_data_layout_rep() -> Result<String, Error> {
+pub fn get_data_layout_rep() -> Result<String> {
     unsafe {
         let mut null = null_mut();
         let error_buffer = addr_of_mut!(null);

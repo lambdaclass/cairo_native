@@ -37,6 +37,7 @@ use std::{
     ffi::c_void,
     path::{Path, PathBuf},
     ptr::NonNull,
+    sync::Arc,
 };
 
 use bumpalo::Bump;
@@ -57,7 +58,7 @@ use tempfile::NamedTempFile;
 use crate::{
     arch::AbiArgument,
     context::NativeContext,
-    error::Error,
+    error::Result,
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
     module::NativeModule,
@@ -68,11 +69,11 @@ use crate::{
 };
 
 /// Please look at the module [`crate::executor::ce`] level docs.
-#[derive(Educe)]
+#[derive(Educe, Clone)]
 #[educe(Debug)]
 pub struct ContractExecutor {
     #[educe(Debug(ignore))]
-    library: Library,
+    library: Arc<Library>,
     path: PathBuf,
     entry_points_info: BTreeMap<u64, EntryPointInfo>,
 }
@@ -100,7 +101,7 @@ pub enum BuiltinType {
 impl ContractExecutor {
     /// Create the executor from a sierra program with the given optimization level.
     /// You can save the library on the desired location later using `save`
-    pub fn new(sierra_program: &Program, opt_level: OptLevel) -> Result<Self, Error> {
+    pub fn new(sierra_program: &Program, opt_level: OptLevel) -> Result<Self> {
         let native_context = NativeContext::new();
         let module = native_context.compile(sierra_program)?;
 
@@ -160,23 +161,14 @@ impl ContractExecutor {
         crate::object_to_shared_lib(&object_data, &library_path)?;
 
         Ok(Self {
-            library: unsafe { Library::new(&library_path)? },
+            library: Arc::new(unsafe { Library::new(&library_path)? }),
             path: library_path,
             entry_points_info: infos,
         })
     }
 
-    /// Clone this executor, can't be the trait because it can fail.
-    ///
-    /// It loads from the stored path the library and json file to "clone" the executor.
-    pub fn clone_executor(&self) -> Result<Self, Error> {
-        let mut x = Self::load(&self.path)?;
-        x.entry_points_info = self.entry_points_info.clone();
-        Ok(x)
-    }
-
     /// Save the library to the desired path, alongside it is saved also a json file with additional info.
-    pub fn save(&self, to: impl AsRef<Path>) -> Result<(), Error> {
+    pub fn save(&self, to: impl AsRef<Path>) -> Result<()> {
         let to = to.as_ref();
         std::fs::copy(&self.path, to)?;
 
@@ -188,11 +180,11 @@ impl ContractExecutor {
     }
 
     /// Load the executor from an already compiled library with the additional info json file.
-    pub fn load(library_path: &Path) -> Result<Self, Error> {
+    pub fn load(library_path: &Path) -> Result<Self> {
         let info_str = std::fs::read_to_string(library_path.with_extension("json"))?;
         let info: BTreeMap<u64, EntryPointInfo> = serde_json::from_str(&info_str)?;
         Ok(Self {
-            library: unsafe { Library::new(library_path)? },
+            library: Arc::new(unsafe { Library::new(library_path)? }),
             path: library_path.to_path_buf(),
             entry_points_info: info,
         })
@@ -205,7 +197,7 @@ impl ContractExecutor {
         args: &[Felt],
         gas: Option<u128>,
         mut syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult, Error> {
+    ) -> Result<ContractExecutionResult> {
         let arena = Bump::new();
         let mut invoke_data = Vec::<u8>::new();
 
@@ -409,7 +401,7 @@ impl ContractExecutor {
         })
     }
 
-    pub fn find_function_ptr(&self, function_id: &FunctionId) -> Result<*mut c_void, Error> {
+    pub fn find_function_ptr(&self, function_id: &FunctionId) -> Result<*mut c_void> {
         let function_name = generate_function_name(function_id);
         let function_name = format!("_mlir_ciface_{function_name}");
 
