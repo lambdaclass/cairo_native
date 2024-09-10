@@ -211,7 +211,7 @@ impl ContractExecutor {
         let return_ptr = arena.alloc_layout(unsafe {
             // 64 = size of enum + syscall + u128 from gas builtin + 8 bytes for each additional builtin counter
             // align is 16 because of the u128
-            Layout::from_size_align_unchecked(64 * 8 * num_builtins, 16)
+            Layout::from_size_align_unchecked(64 + 8 * num_builtins, 16)
         });
 
         return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
@@ -395,7 +395,7 @@ impl ContractExecutor {
 
         Ok(ContractExecutionResult {
             remaining_gas,
-            failure_flag: tag == 0,
+            failure_flag: tag != 0,
             return_values: array_value,
             error_msg,
         })
@@ -427,7 +427,7 @@ mod tests {
         let (_, program) = load_starknet! {
             #[starknet::interface]
             trait ISimpleStorage<TContractState> {
-                fn get(self: @TContractState, x: felt252) -> felt252;
+                fn get(self: @TContractState, x: felt252) -> (felt252, felt252);
             }
 
             #[starknet::contract]
@@ -437,8 +437,8 @@ mod tests {
 
                 #[abi(embed_v0)]
                 impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
-                    fn get(self: @ContractState, x: felt252) -> felt252 {
-                        x
+                    fn get(self: @ContractState, x: felt252) -> (felt252, felt252) {
+                        (x, x * 2)
                     }
                 }
             }
@@ -474,7 +474,6 @@ mod tests {
     #[case(OptLevel::Default)]
     fn test_contract_executor(starknet_program: Program, #[case] optlevel: OptLevel) {
         let executor = ContractExecutor::new(&starknet_program, optlevel).unwrap();
-        executor.save("hello.so").unwrap();
 
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
@@ -492,7 +491,7 @@ mod tests {
             )
             .unwrap();
 
-        assert_eq!(result.return_values, vec![Felt::from(2)]);
+        assert_eq!(result.return_values, vec![Felt::from(2), Felt::from(4)]);
     }
 
     #[rstest]
@@ -500,7 +499,6 @@ mod tests {
     #[case(OptLevel::Default)]
     fn test_contract_executor_empty(starknet_program_empty: Program, #[case] optlevel: OptLevel) {
         let executor = ContractExecutor::new(&starknet_program_empty, optlevel).unwrap();
-        executor.save("hello.so").unwrap();
 
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program_empty
