@@ -356,40 +356,45 @@ fn compile_func(
     let pre_entry_block =
         region.insert_block_before(entry_block, Block::new(&pre_entry_block_args));
 
-    let initial_state = edit_state::put_results(OrderedHashMap::<_, Value>::default(), {
-        let mut values = Vec::new();
+    let initial_state =
+        edit_state::put_results(OrderedHashMap::<_, (&ConcreteTypeId, Value)>::default(), {
+            let mut values = Vec::new();
 
-        let mut count = 0;
-        for param in &function.params {
-            let type_info = registry.get_type(&param.ty)?;
-            let location = Location::new(
-                context,
-                "program.sierra",
-                sierra_stmt_start_offset + function.entry_point.0,
-                0,
-            );
+            let mut count = 0;
+            for param in &function.params {
+                let type_info = registry.get_type(&param.ty)?;
+                let location = Location::new(
+                    context,
+                    "program.sierra",
+                    sierra_stmt_start_offset + function.entry_point.0,
+                    0,
+                );
 
-            values.push((
-                &param.id,
-                if type_info.is_builtin() && type_info.is_zst(registry) {
-                    pre_entry_block
-                        .append_operation(llvm::undef(
-                            type_info.build(context, module, registry, metadata, &param.ty)?,
-                            location,
-                        ))
-                        .result(0)?
-                        .into()
-                } else {
-                    let value = entry_block.argument(count)?.into();
-                    count += 1;
+                values.push((
+                    &param.id,
+                    (
+                        &param.ty,
+                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                            pre_entry_block
+                                .append_operation(llvm::undef(
+                                    type_info
+                                        .build(context, module, registry, metadata, &param.ty)?,
+                                    location,
+                                ))
+                                .result(0)?
+                                .into()
+                        } else {
+                            let value = entry_block.argument(count)?.into();
+                            count += 1;
 
-                    value
-                },
-            ));
-        }
+                            value
+                        },
+                    ),
+                ));
+            }
 
-        values.into_iter()
-    })?;
+            values.into_iter()
+        })?;
 
     tracing::trace!("Implementing the entry block.");
     entry_block.append_operation(cf::br(
@@ -399,7 +404,7 @@ fn compile_func(
             Statement::Return(x) => x,
         }
         .iter()
-        .map(|x| initial_state[x])
+        .map(|x| initial_state[x].1)
         .collect::<Vec<_>>(),
         {
             Location::new(
@@ -431,10 +436,12 @@ fn compile_func(
                 state = edit_state::put_results(
                     OrderedHashMap::default(),
                     state
-                        .keys()
-                        .sorted_by_key(|x| x.id)
+                        .iter()
+                        .sorted_by_key(|(x, _)| x.id)
                         .enumerate()
-                        .map(|(idx, var_id)| Ok((var_id, landing_block.argument(idx)?.into())))
+                        .map(|(idx, (var_id, (ty, _)))| {
+                            Ok((var_id, (*ty, landing_block.argument(idx)?.into())))
+                        })
                         .collect::<Result<Vec<_>, Error>>()?
                         .into_iter(),
                 )?;
@@ -449,7 +456,10 @@ fn compile_func(
                         }
                         .iter(),
                     )?
-                    .1,
+                    .1
+                    .iter()
+                    .map(|x| x.1)
+                    .collect::<Vec<_>>(),
                     Location::name(
                         context,
                         &format!("landing_block(stmt_idx={})", statement_idx),
@@ -597,8 +607,9 @@ fn compile_func(
                     invocation
                         .branches
                         .iter()
+                        .zip(libfunc.branch_signatures())
                         .zip(helper.results())
-                        .map(|(branch_info, result_values)| {
+                        .map(|((branch_info, signature), result_values)| {
                             assert_eq!(
                                 branch_info.results.len(),
                                 result_values.len(),
@@ -607,10 +618,13 @@ fn compile_func(
 
                             Ok(edit_state::put_results(
                                 state.clone(),
-                                branch_info
-                                    .results
-                                    .iter()
-                                    .zip(result_values.iter().copied()),
+                                branch_info.results.iter().zip(
+                                    signature
+                                        .vars
+                                        .iter()
+                                        .map(|x| &x.ty)
+                                        .zip(result_values.iter().copied()),
+                                ),
                             )?)
                         })
                         .collect::<Result<_, Error>>()?
@@ -702,7 +716,7 @@ fn compile_func(
                                 .ret_types
                                 .iter()
                                 .zip(&values)
-                                .filter_map(|(type_id, value)| {
+                                .filter_map(|(type_id, (_, value))| {
                                     let type_info = registry.get_type(type_id).unwrap();
                                     if type_info.is_zst(registry)
                                         || type_info.is_memory_allocated(registry)
@@ -718,7 +732,7 @@ fn compile_func(
                                 .ret_types
                                 .iter()
                                 .zip(&values)
-                                .filter_map(|(type_id, value)| {
+                                .filter_map(|(type_id, (_, value))| {
                                     let type_info = registry.get_type(type_id).unwrap();
                                     if type_info.is_zst(registry) {
                                         None
@@ -756,7 +770,7 @@ fn compile_func(
                         let (_ret_type_id, ret_type_info) = return_type_infos[0];
                         let ret_layout = ret_type_info.layout(registry)?;
 
-                        let ptr = values.remove(0);
+                        let (_, ptr) = values.remove(0);
                         block.append_operation(llvm::store(
                             context,
                             ptr,
@@ -774,7 +788,7 @@ fn compile_func(
                             let res_ty = llvm::r#type::r#struct(context, &return_types, false);
                             values.iter().enumerate().try_fold(
                                 block.append_op_result(llvm::undef(res_ty, location))?,
-                                |acc, (idx, x)| {
+                                |acc, (idx, (_, x))| {
                                     block.append_op_result(llvm::insert_value(
                                         context,
                                         acc,
@@ -1193,7 +1207,7 @@ fn generate_branching_targets<'ctx, 'this, 'a>(
     statements: &'this [Statement],
     statement_idx: StatementIdx,
     invocation: &'this Invocation,
-    state: &OrderedHashMap<VarId, Value<'ctx, 'this>>,
+    state: &OrderedHashMap<VarId, (&ConcreteTypeId, Value<'ctx, 'this>)>,
 ) -> Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>
 where
     'this: 'ctx,
@@ -1212,7 +1226,7 @@ where
                         .map(|var_id| {
                             match branch.results.iter().find_position(|id| *id == var_id) {
                                 Some((i, _)) => BranchArg::Returned(i),
-                                None => BranchArg::External(state[var_id]),
+                                None => BranchArg::External(state[var_id].1),
                             }
                         })
                         .collect::<Vec<_>>();
@@ -1233,7 +1247,7 @@ where
                             .find_map(|(i, id)| (id == var_id).then_some(i))
                         {
                             Some(i) => BranchArg::Returned(i),
-                            None => BranchArg::External(state[var_id]),
+                            None => BranchArg::External(state[var_id].1),
                         }
                     })
                     .collect::<Vec<_>>();
@@ -1360,4 +1374,3 @@ mod trace_dump {
             .unwrap();
     }
 }
-

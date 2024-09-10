@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
 
-#[derive(Clone, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, ValueEnum)]
 enum RunMode {
     Aot,
     Jit,
@@ -44,6 +44,10 @@ struct Args {
     /// Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3.
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
+
+    #[cfg(feature = "with-trace-dump")]
+    #[arg(long)]
+    trace_output: Option<PathBuf>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -83,6 +87,21 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
+    #[cfg(feature = "with-trace-dump")]
+    {
+        use cairo_lang_sierra::program_registry::ProgramRegistry;
+        use cairo_native::types::TypeBuilder;
+        use cairo_native_runtime::trace_dump::{TraceDump, TRACE_DUMP};
+
+        TRACE_DUMP.lock().unwrap().insert(
+            0,
+            TraceDump::new(
+                ProgramRegistry::new(&sierra_program).unwrap(),
+                |ty, registry| ty.layout(registry).unwrap(),
+            ),
+        );
+    }
+
     let gas_metadata =
         GasMetadata::new(&sierra_program, Some(MetadataComputationConfig::default())).unwrap();
 
@@ -117,6 +136,25 @@ fn main() -> anyhow::Result<()> {
     }
     if let Some(gas) = result.remaining_gas {
         println!("Remaining gas: {gas}");
+    }
+
+    #[cfg(feature = "with-trace-dump")]
+    if let Some(trace_output) = args.trace_output {
+        assert_eq!(
+            args.run_mode,
+            RunMode::Jit,
+            "AOT trace dump for programs is not yet supported"
+        );
+
+        let traces = cairo_native_runtime::trace_dump::TRACE_DUMP.lock().unwrap();
+        assert_eq!(traces.len(), 1);
+
+        let trace_dump = traces.values().next().unwrap();
+        serde_json::to_writer(
+            std::fs::File::create(trace_output).unwrap(),
+            &trace_dump.trace,
+        )
+        .unwrap();
     }
 
     Ok(())

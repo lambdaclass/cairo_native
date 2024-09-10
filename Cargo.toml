@@ -52,7 +52,7 @@ with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
 with-serde = ["dep:serde"]
 with-cheatcode = []
-with-trace-dump = ["cairo-native-runtime/with-trace-dump"]
+with-trace-dump = ["dep:serde_json", "cairo-native-runtime/with-trace-dump"]
 
 # the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
 [package.metadata.cargo-udeps.ignore]
