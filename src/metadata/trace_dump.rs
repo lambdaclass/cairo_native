@@ -12,7 +12,7 @@ use melior::{
         r#type::{FunctionType, IntegerType, MemRefType},
         Block, Identifier, Location, Module, Region, Value,
     },
-    Context,
+    Context, ExecutionEngine,
 };
 use std::collections::HashSet;
 
@@ -158,5 +158,25 @@ impl TraceDumpMeta {
         }
 
         Ok(())
+    }
+
+    pub fn register_impls(&self, engine: &ExecutionEngine) {
+        if self.bindings.contains(&TraceBinding::State) {
+            unsafe {
+                engine.register_symbol(
+                    "cairo_native__trace_dump__push",
+                    cairo_native_runtime::trace_dump::cairo_native__trace_dump__push as *mut (),
+                );
+            }
+        }
+
+        if !self.bindings.is_empty() {
+            unsafe {
+                engine.register_symbol(
+                    "cairo_native__trace_dump__state",
+                    cairo_native_runtime::trace_dump::cairo_native__trace_dump__state as *mut (),
+                );
+            }
+        }
     }
 }

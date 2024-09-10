@@ -203,6 +203,12 @@ pub fn create_engine(
         .unwrap()
         .register_impls(&engine);
 
+    #[cfg(feature = "with-trace-dump")]
+    _metadata
+        .get::<crate::metadata::trace_dump::TraceDumpMeta>()
+        .unwrap()
+        .register_impls(&engine);
+
     engine
 }
 
@@ -323,12 +329,10 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
         );
 
         #[cfg(feature = "with-cheatcode")]
-        {
-            engine.register_symbol(
-                "cairo_native__vtable_cheatcode",
-                crate::starknet::cairo_native__vtable_cheatcode as *mut (),
-            );
-        }
+        engine.register_symbol(
+            "cairo_native__vtable_cheatcode",
+            crate::starknet::cairo_native__vtable_cheatcode as *mut (),
+        );
     }
 }
 
