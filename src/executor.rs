@@ -37,6 +37,7 @@ use std::{
 };
 
 mod aot;
+pub mod contract;
 mod jit;
 
 #[cfg(target_arch = "aarch64")]
@@ -326,11 +327,15 @@ fn invoke_dynamic(
                         CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
                         // todo: add RangeCheck96 to builtin_stats?
-                        CoreTypeConcrete::RangeCheck96(_) => (),
+                        CoreTypeConcrete::RangeCheck96(_) => builtin_stats.range_check_96 = value,
                         // todo: add AddMod to builtin_stats?
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => (),
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                            builtin_stats.circuit_add = value
+                        }
                         // todo: add MulMod to builtin_stats?
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => (),
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                            builtin_stats.circuit_mul = value
+                        }
                         _ => unreachable!("{type_id:?}"),
                     }
                 }
@@ -564,7 +569,6 @@ fn parse_result(
                     ),
                 }
             };
-
             let value = match ptr {
                 Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)),
                 Err(offset) => {
