@@ -22,3 +22,4 @@ rand = "0.8.5"
 [profile.release]
 lto = true
 codegen-units = 1
+panic = "abort"
