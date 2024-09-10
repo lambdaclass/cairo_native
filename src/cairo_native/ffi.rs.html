@@ -551,30 +551,12 @@
 <a href="#551" id="551">551</a>
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
-<a href="#554" id="554">554</a>
-<a href="#555" id="555">555</a>
-<a href="#556" id="556">556</a>
-<a href="#557" id="557">557</a>
-<a href="#558" id="558">558</a>
-<a href="#559" id="559">559</a>
-<a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
-<a href="#562" id="562">562</a>
-<a href="#563" id="563">563</a>
-<a href="#564" id="564">564</a>
-<a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # FFI Wrappers
 //!
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
 //! APIs that are missing from melior.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::error::Error <span class="kw">as </span>CompileError;
+</span><span class="kw">use </span><span class="kw">crate</span>::error::{Error, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -600,9 +582,7 @@
 <span class="kw">use </span>mlir_sys::{mlirTranslateModuleToLLVMIR, MlirAttribute, MlirContext, MlirModule};
 <span class="kw">use </span>std::{
     borrow::Cow,
-    error::Error,
     ffi::{c_void, CStr, CString},
-    fmt::Display,
     io::Write,
     mem::MaybeUninit,
     path::Path,
@@ -791,19 +771,6 @@
     <span class="kw">unsafe </span>{ Type::from_raw(ty_ptr) }
 }
 
-<span class="doccomment">/// A error from the LLVM API.
-</span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>LLVMCompileError(String);
-
-<span class="kw">impl </span>Error <span class="kw">for </span>LLVMCompileError {}
-
-<span class="kw">impl </span>Display <span class="kw">for </span>LLVMCompileError {
-    <span class="attr">#[inline]
-    </span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
-        f.write_str(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>)
-    }
-}
-
 <span class="doccomment">/// Optimization levels.
 </span><span class="attr">#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 </span><span class="kw">pub enum </span>OptLevel {
@@ -848,10 +815,7 @@
 }
 
 <span class="doccomment">/// Converts a MLIR module to a compile object, that can be linked with a linker.
-</span><span class="kw">pub fn </span>module_to_object(
-    module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'_</span>&gt;,
-    opt_level: OptLevel,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LLVMCompileError&gt; {
+</span><span class="kw">pub fn </span>module_to_object(module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'_</span>&gt;, opt_level: OptLevel) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
     <span class="kw">static </span>INITIALIZED: OnceLock&lt;()&gt; = OnceLock::new();
 
     INITIALIZED.get_or_init(|| <span class="kw">unsafe </span>{
@@ -882,7 +846,7 @@
             <span class="kw">let </span>error = CStr::from_ptr(<span class="kw-2">*</span>error_buffer);
             <span class="kw">let </span>err = error.to_string_lossy().to_string();
             LLVMDisposeMessage(<span class="kw-2">*</span>error_buffer);
-            <span class="prelude-val">Err</span>(LLVMCompileError(err))<span class="question-mark">?</span>;
+            <span class="prelude-val">Err</span>(Error::LLVMCompileError(err))<span class="question-mark">?</span>;
         } <span class="kw">else if </span>!(<span class="kw-2">*</span>error_buffer).is_null() {
             LLVMDisposeMessage(<span class="kw-2">*</span>error_buffer);
             error_buffer = <span class="macro">addr_of_mut!</span>(null);
@@ -918,7 +882,7 @@
         <span class="kw">if </span>!error.is_null() {
             <span class="kw">let </span>msg = LLVMGetErrorMessage(error);
             <span class="kw">let </span>msg = CStr::from_ptr(msg);
-            <span class="prelude-val">Err</span>(LLVMCompileError(msg.to_string_lossy().into_owned()))<span class="question-mark">?</span>;
+            <span class="prelude-val">Err</span>(Error::LLVMCompileError(msg.to_string_lossy().into_owned()))<span class="question-mark">?</span>;
         }
 
         LLVMDisposePassBuilderOptions(opts);
@@ -937,7 +901,7 @@
             <span class="kw">let </span>error = CStr::from_ptr(<span class="kw-2">*</span>error_buffer);
             <span class="kw">let </span>err = error.to_string_lossy().to_string();
             LLVMDisposeMessage(<span class="kw-2">*</span>error_buffer);
-            <span class="prelude-val">Err</span>(LLVMCompileError(err))<span class="question-mark">?</span>;
+            <span class="prelude-val">Err</span>(Error::LLVMCompileError(err))<span class="question-mark">?</span>;
         } <span class="kw">else if </span>!(<span class="kw-2">*</span>error_buffer).is_null() {
             LLVMDisposeMessage(<span class="kw-2">*</span>error_buffer);
         }
@@ -960,7 +924,7 @@
 }
 
 <span class="doccomment">/// Links the passed object into a shared library, stored on the given path.
-</span><span class="kw">pub fn </span>object_to_shared_lib(object: <span class="kw-2">&amp;</span>[u8], output_filename: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
+</span><span class="kw">pub fn </span>object_to_shared_lib(object: <span class="kw-2">&amp;</span>[u8], output_filename: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// linker seems to need a file and doesn't accept stdin
     </span><span class="kw">let </span><span class="kw-2">mut </span>file = NamedTempFile::new()<span class="question-mark">?</span>;
     file.write_all(object)<span class="question-mark">?</span>;
@@ -1058,7 +1022,7 @@
 <span class="doccomment">/// Gets the data layout reprrsentation as a string, to be given to the MLIR module.
 /// LLVM uses this to know the proper alignments for the given sizes, etc.
 /// This function gets the data layout of the host target triple.
-</span><span class="kw">pub fn </span>get_data_layout_rep() -&gt; <span class="prelude-ty">Result</span>&lt;String, CompileError&gt; {
+</span><span class="kw">pub fn </span>get_data_layout_rep() -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
     <span class="kw">unsafe </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>null = null_mut();
         <span class="kw">let </span>error_buffer = <span class="macro">addr_of_mut!</span>(null);
@@ -1076,7 +1040,7 @@
             <span class="kw">let </span>err = error.to_string_lossy().to_string();
             <span class="macro">tracing::error!</span>(<span class="string">"error getting target triple: {}"</span>, err);
             LLVMDisposeMessage(<span class="kw-2">*</span>error_buffer);
-            <span class="prelude-val">Err</span>(CompileError::LLVMCompileError(err))<span class="question-mark">?</span>;
+            <span class="prelude-val">Err</span>(Error::LLVMCompileError(err))<span class="question-mark">?</span>;
         }
         <span class="kw">if </span>!(<span class="kw-2">*</span>error_buffer).is_null() {
             LLVMDisposeMessage(<span class="kw-2">*</span>error_buffer);

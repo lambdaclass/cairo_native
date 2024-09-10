@@ -1622,8 +1622,6 @@
 <a href="#1622" id="1622">1622</a>
 <a href="#1623" id="1623">1623</a>
 <a href="#1624" id="1624">1624</a>
-<a href="#1625" id="1625">1625</a>
-<a href="#1626" id="1626">1626</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
@@ -1657,8 +1655,7 @@
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-</span><span class="attr">#[derive(Clone, Educe)]
-#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
+</span><span class="attr">#[derive(Clone, Educe, serde::Serialize, serde::Deserialize)]
 #[educe(Debug, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>JitValue {
     Felt252(<span class="attr">#[educe(Debug(method(std::fmt::Display::fmt)))] </span>Felt),
@@ -1703,7 +1700,7 @@
     },
     BoundedInt {
         value: Felt,
-        <span class="attr">#[cfg_attr(feature = <span class="string">"with-serde"</span>, serde(with = <span class="string">"range_serde"</span>))]
+        <span class="attr">#[serde(with = <span class="string">"range_serde"</span>)]
         </span>range: Range,
     },
     <span class="doccomment">/// Used as return value for Nullables that are null.
@@ -3171,8 +3168,7 @@
     }
 }
 
-<span class="attr">#[cfg(feature = <span class="string">"with-serde"</span>)]
-</span><span class="kw">mod </span>range_serde {
+<span class="kw">mod </span>range_serde {
     <span class="kw">use </span>std::fmt;
 
     <span class="kw">use </span>cairo_lang_sierra::extensions::utils::Range;

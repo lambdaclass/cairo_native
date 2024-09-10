@@ -2789,12 +2789,12 @@
             }
         );
 
-        <span class="macro">dbg!</span>(Felt::from_raw([
+        Felt::from_raw([
             <span class="number">576460752303419696</span>,
             <span class="number">18446744073709551615</span>,
             <span class="number">18446744073709551615</span>,
-            <span class="number">18446744073709551393
-        </span>]));
+            <span class="number">18446744073709551393</span>,
+        ]);
 
         run_program_assert_output(
             <span class="kw-2">&amp;</span>program,

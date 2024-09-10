@@ -124,6 +124,15 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
 </span><span class="kw">use </span><span class="kw">crate</span>::metadata::gas::GasMetadataError;
 <span class="kw">use </span>cairo_lang_sierra::extensions::modules::utils::Range;
@@ -185,6 +194,15 @@
 
     <span class="attr">#[error(<span class="string">"cairo const data mismatch"</span>)]
     </span>ConstDataMismatch,
+
+    <span class="attr">#[error(transparent)]
+    </span>IoError(<span class="attr">#[from] </span>std::io::Error),
+
+    <span class="attr">#[error(transparent)]
+    </span>LibraryLoadError(<span class="attr">#[from] </span>libloading::Error),
+
+    <span class="attr">#[error(transparent)]
+    </span>SerdeJsonError(<span class="attr">#[from] </span>serde_json::Error),
 }
 
 <span class="kw">impl </span>Error {

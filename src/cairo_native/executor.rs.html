@@ -779,6 +779,10 @@
 <a href="#779" id="779">779</a>
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -818,6 +822,7 @@
 };
 
 <span class="kw">mod </span>aot;
+<span class="kw">pub mod </span>contract;
 <span class="kw">mod </span>jit;
 
 <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
@@ -1107,11 +1112,15 @@
                         CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; builtin_stats.segment_arena = value,
                         <span class="comment">// todo: add RangeCheck96 to builtin_stats?
-                        </span>CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; (),
+                        </span>CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; builtin_stats.range_check_96 = value,
                         <span class="comment">// todo: add AddMod to builtin_stats?
-                        </span>CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(<span class="kw">_</span>)) =&gt; (),
+                        </span>CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(<span class="kw">_</span>)) =&gt; {
+                            builtin_stats.circuit_add = value
+                        }
                         <span class="comment">// todo: add MulMod to builtin_stats?
-                        </span>CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(<span class="kw">_</span>)) =&gt; (),
+                        </span>CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(<span class="kw">_</span>)) =&gt; {
+                            builtin_stats.circuit_mul = value
+                        }
                         <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">"{type_id:?}"</span>),
                     }
                 }
@@ -1345,7 +1354,6 @@
                     ),
                 }
             };
-
             <span class="kw">let </span>value = <span class="kw">match </span>ptr {
                 <span class="prelude-val">Ok</span>(ptr) =&gt; Box::new(JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.variants[tag], registry)),
                 <span class="prelude-val">Err</span>(offset) =&gt; {

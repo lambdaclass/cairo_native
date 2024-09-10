@@ -1729,6 +1729,13 @@
 <a href="#1729" id="1729">1729</a>
 <a href="#1730" id="1730">1730</a>
 <a href="#1731" id="1731">1731</a>
+<a href="#1732" id="1732">1732</a>
+<a href="#1733" id="1733">1733</a>
+<a href="#1734" id="1734">1734</a>
+<a href="#1735" id="1735">1735</a>
+<a href="#1736" id="1736">1736</a>
+<a href="#1737" id="1737">1737</a>
+<a href="#1738" id="1738">1738</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -1750,16 +1757,18 @@
 </span><span class="kw">pub struct </span>Felt252Abi(<span class="kw">pub </span>[u8; <span class="number">32</span>]);
 <span class="doccomment">/// Binary representation of a `u256` (in MLIR).
 </span><span class="comment">// TODO: This shouldn't need to be public.
-</span><span class="attr">#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
+</span><span class="attr">#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 #[repr(C, align(<span class="number">16</span>))]
 </span><span class="kw">pub struct </span>U256 {
     <span class="kw">pub </span>lo: u128,
     <span class="kw">pub </span>hi: u128,
 }
 
-<span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
+<span class="attr">#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 </span><span class="kw">pub struct </span>ExecutionInfo {
     <span class="kw">pub </span>block_info: BlockInfo,
     <span class="kw">pub </span>tx_info: TxInfo,
@@ -1768,8 +1777,9 @@
     <span class="kw">pub </span>entry_point_selector: Felt,
 }
 
-<span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
+<span class="attr">#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 </span><span class="kw">pub struct </span>ExecutionInfoV2 {
     <span class="kw">pub </span>block_info: BlockInfo,
     <span class="kw">pub </span>tx_info: TxV2Info,
@@ -1778,8 +1788,9 @@
     <span class="kw">pub </span>entry_point_selector: Felt,
 }
 
-<span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
+<span class="attr">#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 </span><span class="kw">pub struct </span>TxV2Info {
     <span class="kw">pub </span>version: Felt,
     <span class="kw">pub </span>account_contract_address: Felt,
@@ -1796,24 +1807,27 @@
     <span class="kw">pub </span>account_deployment_data: Vec&lt;Felt&gt;,
 }
 
-<span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
+<span class="attr">#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 </span><span class="kw">pub struct </span>ResourceBounds {
     <span class="kw">pub </span>resource: Felt,
     <span class="kw">pub </span>max_amount: u64,
     <span class="kw">pub </span>max_price_per_unit: u128,
 }
 
-<span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
+<span class="attr">#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 </span><span class="kw">pub struct </span>BlockInfo {
     <span class="kw">pub </span>block_number: u64,
     <span class="kw">pub </span>block_timestamp: u64,
     <span class="kw">pub </span>sequencer_address: Felt,
 }
 
-<span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = <span class="string">"with-serde"</span>, derive(serde::Serialize, serde::Deserialize))]
+<span class="attr">#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 </span><span class="kw">pub struct </span>TxInfo {
     <span class="kw">pub </span>version: Felt,
     <span class="kw">pub </span>account_contract_address: Felt,

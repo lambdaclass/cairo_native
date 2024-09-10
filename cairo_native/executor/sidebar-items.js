@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["NativeExecutor"],"struct":["AotNativeExecutor","JitNativeExecutor"]};
+window.SIDEBAR_ITEMS = {"enum":["NativeExecutor"],"mod":["contract"],"struct":["AotNativeExecutor","JitNativeExecutor"]};
