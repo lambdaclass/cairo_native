@@ -362,7 +362,7 @@ Once you have generated traces for both the Sierra emulator and Cairo Native, yo
 
 #### Useful Scripts
 
-In the `scripts` folder of starknet-replay, you can find useful scripts for debugging. Make sure to execute them in the root directory.
+In the `scripts` folder of starknet-replay, you can find useful scripts for debugging. Make sure to execute them in the root directory. Some scripts require `delta` to be installed.
 
 - `compare-traces`: Compares every trace and outputs which are different. This can help finding the buggy contract when there are a lot of traces.
     ```bash
@@ -376,7 +376,7 @@ In the `scripts` folder of starknet-replay, you can find useful scripts for debu
     ```bash
     ./scripts/diff-trace.sh 1
     ```
-- `diff-trace-flow`: Like `diff-trace`, but only diffs the statement indexes. It can be used to visualize the control flow difference.
+- `diff-trace-flow`: Like `diff-trace`, but only diffs (with `delta`) the statement indexes. It can be used to visualize the control flow difference.
     ```bash
     ./scripts/diff-trace-flow.sh 1
     ```
