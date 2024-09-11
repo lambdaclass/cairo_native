@@ -159,9 +159,8 @@ jobs:
         run: |
           {
             echo "Benchmark Results for ${{ matrix.branch }} programs :rocket:"
-            for f in target_programs/*.md; do
-              echo
-              cat $f
+            echo
+            cat $OUTPUT_DIR/PROGRAM.md
             done
           } | tee -a comment_body.md
       - name: Find comment
@@ -175,11 +174,11 @@ jobs:
         uses: peter-evans/create-or-update-comment@v3
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          body-path: bench-hyperfine.md
+          body-path: comment_body.md
       - name: Update comment
         uses: peter-evans/create-or-update-comment@v3
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
-          body-path: bench-hyperfine.md
+          body-path: comment_body.md
           edit-mode: replace
       
