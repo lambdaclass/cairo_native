@@ -98,7 +98,8 @@ jobs:
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
-      COMPILER: cairo2/bin/cairo-compile
+      PROGRAM: fib_2M
+      RUN: ./target/release/cairo-native-run
     outputs:
       benchmark-hashes-base: ${{ steps.export-hashes.outputs.benchmark-hashes-base }}
       benchmark-hashes-head: ${{ steps.export-hashes.outputs.benchmark-hashes-head }}
@@ -149,8 +150,8 @@ jobs:
         run: make deps
       - name: Build cairo-native-runtime library.
         run: cargo build --profile=ci --package=cairo-native-runtime
-      - name: Build Programs
-        run: $COMPILER 
+      - name: Run Program
+        run: ./scripts/bench-hyperfine.sh programs/benches/$PROGRAM.cairo
       - name: Print tables
         if: steps.run-benchmarks.outputs.benchmark_count != 0
         run: |
@@ -168,18 +169,18 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
-          body-includes: Benchmark Results for ${{ matrix.branch }} programs
+          body-includes: Benchmark Results for ${{ matrix.branch }} program
       - name: Create comment
         if: steps.fc.outputs.comment-id == '' && steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/create-or-update-comment@v3
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          body-path: comment_body.md
+          body-path: bench-hyperfine.md
       - name: Update comment
         if: steps.fc.outputs.comment-id != '' && steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/create-or-update-comment@v3
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
-          body-path: comment_body.md
+          body-path: bench-hyperfine.md
           edit-mode: replace
       
