@@ -86,3 +86,100 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body-path: bench-hyperfine.md
           edit-mode: replace
+  
+  hyperfine-branches:
+    strategy:
+      matrix:
+        branch: [ base, head ]
+    name: test (linux, amd64)
+    runs-on: ubuntu-latest
+    env:
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      RUST_LOG: cairo_native=debug,cairo_native_test=debug
+      COMPILER: cairo2/bin/cairo-compile
+    outputs:
+      benchmark-hashes-base: ${{ steps.export-hashes.outputs.benchmark-hashes-base }}
+      benchmark-hashes-head: ${{ steps.export-hashes.outputs.benchmark-hashes-head }}
+    steps:
+      - name: Checkout base commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request[matrix.branch].sha }} 
+      - name: check and free hdd space left
+        run: |
+          echo "Listing 20 largest packages"
+          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+          df -h
+          sudo apt-get update
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^temurin-.*'
+          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          df -h
+          echo "Removing large directories"
+          # deleting 15GB
+          sudo rm -rf /usr/share/dotnet/
+          sudo rm -rf /usr/local/lib/android
+          df -h
+      - name: Setup rust env
+        uses: dtolnay/rust-toolchain@1.80.1
+        with:
+          components: clippy
+      - name: Retreive cached dependecies
+        uses: Swatinem/rust-cache@v2
+      - name: add llvm deb repository
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+          repo-name: llvm-repo
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - run: sudo apt-get update && sudo apt-get upgrade -y
+      - name: Install LLVM
+        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+      - name: Install Hyperfine
+        uses: taiki-e/install-action@v2
+        with:
+          tool: hyperfine@1.16
+      - name: Install deps
+        run: make deps
+      - name: Build cairo-native-runtime library.
+        run: cargo build --profile=ci --package=cairo-native-runtime
+      - name: Build Programs
+        run: $COMPILER 
+      - name: Print tables
+        if: steps.run-benchmarks.outputs.benchmark_count != 0
+        run: |
+          {
+            echo "Benchmark Results for ${{ matrix.branch }} programs :rocket:"
+            for f in target_programs/*.md; do
+              echo
+              cat $f
+            done
+          } | tee -a comment_body.md
+      - name: Find comment
+        if: ${{ steps.run-benchmarks.outputs.benchmark_count != 0 }}
+        uses: peter-evans/find-comment@v2
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: Benchmark Results for ${{ matrix.branch }} programs
+      - name: Create comment
+        if: steps.fc.outputs.comment-id == '' && steps.run-benchmarks.outputs.benchmark_count != 0
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: comment_body.md
+      - name: Update comment
+        if: steps.fc.outputs.comment-id != '' && steps.run-benchmarks.outputs.benchmark_count != 0
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          body-path: comment_body.md
+          edit-mode: replace
+      
