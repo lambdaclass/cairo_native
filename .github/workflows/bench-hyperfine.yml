@@ -98,9 +98,9 @@ jobs:
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
-      PROGRAM: programs/benches/fib_2M
+      PROGRAM: fib_2M
       RUN: target/release/cairo-native-run
-      OUTPUT_DIR: target/bench-outputs
+      OUTPUT_DIR: programs/benches
     steps:
       - name: Checkout base commit
         uses: actions/checkout@v4
@@ -151,7 +151,7 @@ jobs:
         run: |
           hyperfine \
           --warmup 3 \
-          --export-markdown "$OUTPUT_DIR/$base_name.md" \
+          --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
           -n "cairo-native " "$RUN --run-mode=aot -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
           >> /dev/stderr
