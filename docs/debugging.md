@@ -311,7 +311,7 @@ By combining both tools, we can hopefully pinpoint exactly which *libfunc* imple
 
 Before starting, make sure to clone [starknet-replay](https://github.com/lambdaclass/starknet-replay).
 
-### Obtaining Sierra Emulator Trace in Starknet Replay
+#### Obtaining Sierra Emulator Trace in Starknet Replay
 
 Obtaining the sierra trace for a transaction execution is straightforward:
 
@@ -320,12 +320,11 @@ Obtaining the sierra trace for a transaction execution is straightforward:
     ```bash
     cargo run --features use-sierra-emu tx <HASH> <CHAIN> <BLOCK>
     ```
-
 3. Once finished, it will have written the traces of each inner contract inside of `traces/emu`, relative to the current working directory.
 
 As single transaction can invoke multiple contracts (by contract and library calls), this generates a trace file for each contract executed, numbered in ascending order: `trace_0.json`, `trace_1.json`, etc.
 
-### Obtaining Cairo Native Trace in Starknet Replay
+#### Obtaining Cairo Native Trace in Starknet Replay
 
 Supporting transaction execution with Cairo Native trace dump required quite a few hacks, which is why we haven’t merged it to main. This is why we need to use a specific cairo native branch.
 
@@ -334,10 +333,9 @@ Supporting transaction execution with Cairo Native trace dump required quite a f
     ```bash
     cargo run --features with-trace-dump tx <HASH> <CHAIN> <BLOCK>
     ```
-
 3. Once finished, it will have written the traces of each inner contract inside of `traces/native`, relative to the current working directory.
 
-### Patching Dependencies
+#### Patching Dependencies
 
 If the execution panicks, It may indicate that not all required libfuncs or types have been implemented (for either sierra emulator or Cairo Native trace dump feature). It is a good idea to patch the dependencies to a local path and implement the missing features. You can add this to `Cargo.toml`
 
@@ -348,7 +346,7 @@ cairo-native = { path = "../cairo_native" }
 sierra-emu = { path = "../sierra-emu" }
 ```
 
-### Comparing Traces
+#### Comparing Traces
 
 Once you have generated traces for both the Sierra emulator and Cairo Native, you can begin debugging.
 
@@ -357,7 +355,6 @@ Once you have generated traces for both the Sierra emulator and Cairo Native, yo
     diff "traces/{emu,native}/trace_0.json" # or
     delta "traces/{emu,native}/trace_0.json" --side-by-side
     ```
-
 2. Look for the first significant difference between the traces. Not all the differences are significant, for example:
     1. Sometimes the emulator and Cairo Native differ in the Gas builtin. It usually doesn’t affect the outcome of the contract.
     2. The ec_state_init libfunc randomizes an elliptic curve point, which is why they always differ.
@@ -367,7 +364,7 @@ Once you have generated traces for both the Sierra emulator and Cairo Native, yo
     2. If it’s a libfunc invocation, then that libfunc is probably the one that is buggy.
     3. If it’s a library or contract call, then the bug is probably in another contract, and you should move onto the next trace.
 
-### Useful Scripts
+#### Useful Scripts
 
 In the `scripts` folder of starknet-replay, you can find useful scripts for debugging. Make sure to execute them in the root directory.
 
@@ -379,17 +376,14 @@ In the `scripts` folder of starknet-replay, you can find useful scripts for debu
     difference: ./traces/emu/trace_3.json ./traces/native/trace_3.json
     missing file: ./traces/native/trace_4.json
     ```
-
 - `diff-trace`: Receives a trace number, and executes `delta` to compare that trace.
     ```bash
     ./scripts/diff-trace.sh 1
     ```
-
 - `diff-trace-flow`: Like `diff-trace`, but only diffs the statement indexes. It can be used to visualize the control flow difference.
     ```bash
     ./scripts/diff-trace-flow.sh 1
     ```
-
 - `string-to-felt`: Converts the given string to a felt. Can be used to search in the code where a specific error message was generated.
     ```bash
     > ./scripts/string-to-felt.sh "u256_mul Overflow"
