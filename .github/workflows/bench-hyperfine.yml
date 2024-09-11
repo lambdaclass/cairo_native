@@ -98,11 +98,9 @@ jobs:
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
-      PROGRAM: fib_2M
-      RUN: ./target/release/cairo-native-run
-    outputs:
-      benchmark-hashes-base: ${{ steps.export-hashes.outputs.benchmark-hashes-base }}
-      benchmark-hashes-head: ${{ steps.export-hashes.outputs.benchmark-hashes-head }}
+      PROGRAM: programs/benches/fib_2M
+      RUN: target/release/cairo-native-run
+      OUTPUT_DIR: target/bench-outputs
     steps:
       - name: Checkout base commit
         uses: actions/checkout@v4
@@ -139,7 +137,6 @@ jobs:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-      - run: sudo apt-get update && sudo apt-get upgrade -y
       - name: Install LLVM
         run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: Install Hyperfine
@@ -151,9 +148,14 @@ jobs:
       - name: Build cairo-native-runtime library.
         run: cargo build --profile=ci --package=cairo-native-runtime
       - name: Run Program
-        run: ./scripts/bench-hyperfine.sh programs/benches/$PROGRAM.cairo
+        run: |
+          hyperfine \
+          --warmup 3 \
+          --export-markdown "$OUTPUT_DIR/$base_name.md" \
+          --export-json "$OUTPUT_DIR/$PROGRAM.json" \
+          -n "cairo-native " "$RUN --run-mode=aot -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
+          >> /dev/stderr
       - name: Print tables
-        if: steps.run-benchmarks.outputs.benchmark_count != 0
         run: |
           {
             echo "Benchmark Results for ${{ matrix.branch }} programs :rocket:"
@@ -163,7 +165,6 @@ jobs:
             done
           } | tee -a comment_body.md
       - name: Find comment
-        if: ${{ steps.run-benchmarks.outputs.benchmark_count != 0 }}
         uses: peter-evans/find-comment@v2
         id: fc
         with:
@@ -171,13 +172,11 @@ jobs:
           comment-author: 'github-actions[bot]'
           body-includes: Benchmark Results for ${{ matrix.branch }} program
       - name: Create comment
-        if: steps.fc.outputs.comment-id == '' && steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/create-or-update-comment@v3
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body-path: bench-hyperfine.md
       - name: Update comment
-        if: steps.fc.outputs.comment-id != '' && steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/create-or-update-comment@v3
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
