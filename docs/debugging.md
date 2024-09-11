@@ -320,7 +320,7 @@ Before starting, make sure to clone [starknet-replay](https://github.com/lambdac
     ```
 3. Once finished, it will have written the traces of each inner contract inside of `traces/emu`, relative to the current working directory.
 
-As single transaction can invoke multiple contracts (by contract and library calls), this generates a trace file for each contract executed, numbered in ascending order: `trace_0.json`, `trace_1.json`, etc.
+As a single transaction can invoke multiple contracts (by contract and library calls), this generates a trace file for each contract executed, numbered in ascending order: `trace_0.json`, `trace_1.json`, etc.
 
 #### Obtaining Cairo Native Trace in Starknet Replay
 
@@ -333,7 +333,7 @@ As single transaction can invoke multiple contracts (by contract and library cal
 
 #### Patching Dependencies
 
-If the execution panicks, It may indicate that not all required libfuncs or types have been implemented (for either sierra emulator or Cairo Native trace dump feature). It is a good idea to patch the dependencies to a local path and implement the missing features. You can add this to `Cargo.toml`
+If the execution panics, It may indicate that not all the required libfuncs or types have been implemented (for either sierra emulator or Cairo Native trace dump feature). It is a good idea to patch the dependencies to a local path and implement the missing features. You can add this to `Cargo.toml`
 
 ```toml
 [patch.'https://github.com/lambdaclass/cairo_native']
@@ -344,7 +344,7 @@ sierra-emu = { path = "../sierra-emu" }
 
 #### Comparing Traces
 
-Once you have generated traces for both the Sierra emulator and Cairo Native, you can begin debugging.
+Once you have generated the traces for both the Sierra emulator and Cairo Native, you can begin debugging.
 
 1. Compare the traces of the same contract with the favorite tool:
     ```bash
