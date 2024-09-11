@@ -153,8 +153,9 @@ jobs:
           --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
-          -n "cairo-native " "$RUN --run-mode=aot -s $OUTPUT_DIR/$PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
-          >> /dev/stderr
+          -n "cairo-native " "$RUN -s $OUTPUT_DIR/$PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
+          >> /dev/stderr \
+          -- --show-output
       - name: Print tables
         run: |
           {
