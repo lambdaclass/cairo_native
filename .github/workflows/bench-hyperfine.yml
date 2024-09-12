@@ -163,7 +163,6 @@ jobs:
             echo "Benchmark Results for ${{ matrix.branch }} programs :rocket:"
             echo
             cat $OUTPUT_DIR/$PROGRAM.md
-            done
           } | tee -a comment_body.md
       - name: Find comment
         uses: peter-evans/find-comment@v2
