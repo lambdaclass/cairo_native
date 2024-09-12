@@ -164,8 +164,9 @@ jobs:
     needs: [ build-binaries ]
     runs-on: ubuntu-latest
     env:
+      ROOT_DIR: $(dirname $(dirname ${0%/*}))
       PROGRAM: fib_2M
-      OUTPUT_DIR: programs/benches
+      OUTPUT_DIR: $ROOT_DIR/target/bench-outputs
     steps:
       - name: Install Hyperfine
         uses: taiki-e/install-action@v2
@@ -186,12 +187,14 @@ jobs:
 
       - name: Run Program
         run: |
+          cp programs/benches/$PROGRAM.cairo .
+          midir -p $OUTPUT_DIR
           BINS="base,head"
           hyperfine \
           --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
-           -L bin "$BINS" -n "{bin} fib_2M" "./bin/cairo-native-run-{bin} -s $OUTPUT_DIR/$PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
+           -L bin "$BINS" -n "{bin} fib_2M" "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
           >> /dev/stderr 
           echo "benchmark_count=$(ls $OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
 
