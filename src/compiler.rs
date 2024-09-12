@@ -1311,8 +1311,12 @@ fn generate_entry_point_wrapper<'c>(
     Ok(())
 }
 
+/// Return type for the closure in [`foreach_statement_in_function`] that determines whether the
+/// statement was processed successfully or needs to be processed again at the end.
 #[derive(Clone, Debug)]
 enum StatementCompileResult<T> {
+    /// The statement was processed successfully.
     Processed(T),
+    /// The statement's processing has to be deferred until the end.
     Deferred,
 }
