@@ -88,17 +88,17 @@ jobs:
           edit-mode: replace
   
   build-binaries:
+    env:
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
         branch: [ base, head ]
     name: Build cairo-native-run for ${{ matrix.branch }}
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout base commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request[matrix.branch].sha }}
-
       - name: Populate cache
         uses: actions/cache@v3
         id: cache 
@@ -143,7 +143,12 @@ jobs:
       
       - name: Install LLVM
         run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
-
+      
+      - name: Checkout base commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request[matrix.branch].sha }}
+      
       - name: Build binary
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         run: |
@@ -155,10 +160,6 @@ jobs:
     name: Bench PR (linux, amd64)
     runs-on: ubuntu-latest
     env:
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUST_LOG: cairo_native=debug,cairo_native_test=debug
       PROGRAM: fib_2M
       OUTPUT_DIR: programs/benches
     steps:
