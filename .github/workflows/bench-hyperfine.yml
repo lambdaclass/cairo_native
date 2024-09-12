@@ -100,7 +100,7 @@ jobs:
           ref: ${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: Populate cache
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         id: cache 
         with:
           path: bin/cairo-native-run--${{ matrix.branch }}
@@ -132,7 +132,7 @@ jobs:
           components: clippy
           
       - name: Retreive cached dependecies
-        uses: Swatinem/rust-cache@v4
+        uses: Swatinem/rust-cache@v2
 
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11
@@ -152,7 +152,7 @@ jobs:
           cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
   
   hyperfine-branches:
-    name: test (linux, amd64)
+    name: Bench PR (linux, amd64)
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
@@ -214,7 +214,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body-path: comment_body.md
-          
+
       - name: Update comment
         if: steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/create-or-update-comment@v3
