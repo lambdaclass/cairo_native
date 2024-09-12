@@ -151,13 +151,16 @@ jobs:
         run: make runtime-ci
       - name: Run Program
         run: |
+          BINS="base,head"
           hyperfine \
           --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
-          -n "cairo-native " "$RUN -s $OUTPUT_DIR/$PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
-          >> /dev/stderr \
+           -L bin "$BINS" -n "{bin} fib_2M" "$RUN -s $OUTPUT_DIR/$PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
+          >> /dev/stderr 
+          echo "benchmark_count=$(ls $OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
       - name: Print tables
+        if: steps.run-benchmarks.outputs.benchmark_count != 0
         run: |
           {
             echo "Benchmark Results for ${{ matrix.branch }} programs :rocket:"
@@ -165,6 +168,7 @@ jobs:
             cat $OUTPUT_DIR/$PROGRAM.md
           } | tee -a comment_body.md
       - name: Find comment
+        if: steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/find-comment@v2
         id: fc
         with:
@@ -172,15 +176,16 @@ jobs:
           comment-author: 'github-actions[bot]'
           body-includes: Benchmark Results for ${{ matrix.branch }} program
       - name: Create comment
+        if: steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/create-or-update-comment@v3
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body-path: comment_body.md
       - name: Update comment
+        if: steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/create-or-update-comment@v3
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
           body-path: comment_body.md
           edit-mode: replace
-      
