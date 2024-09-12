@@ -166,7 +166,7 @@ jobs:
     env:
       ROOT_DIR: $(dirname $(dirname ${0%/*}))
       PROGRAM: fib_2M
-      OUTPUT_DIR: $ROOT_DIR/target/bench-outputs
+      OUTPUT_DIR: target/bench-outputs
     steps:
       - name: Checkout base commit
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
@@ -195,11 +195,11 @@ jobs:
             BINS="base,head"
             hyperfine \
             --warmup 3 \
-            --export-markdown "$OUTPUT_DIR/PROGRAM.md" \
-            --export-json "$OUTPUT_DIR/$PROGRAM.json" \
+            --export-markdown "$ROOT_DIR/$OUTPUT_DIR/PROGRAM.md" \
+            --export-json "$ROOT_DIR/$OUTPUT_DIR/$PROGRAM.json" \
              -L bin "$BINS" -n "{bin} $PROGRAM" "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
             >> /dev/stderr  
-            echo "benchmark_count=$(ls $OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
+            echo "benchmark_count=$(ls $ROOT_DIR/$OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
 
       - name: Print tables
         if: steps.run-benchmarks.outputs.benchmark_count != 0
@@ -207,7 +207,7 @@ jobs:
           {
             echo "Benchmark Results  :rocket:"
             echo
-            cat $OUTPUT_DIR/$PROGRAM.md
+            cat $ROOT_DIR/$OUTPUT_DIR/$PROGRAM.md
           } | tee -a comment_body.md
 
       - name: Find comment
