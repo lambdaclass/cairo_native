@@ -87,25 +87,25 @@ jobs:
           body-path: bench-hyperfine.md
           edit-mode: replace
   
-  hyperfine-branches:
+  build-binaries:
     strategy:
       matrix:
         branch: [ base, head ]
-    name: test (linux, amd64)
-    runs-on: ubuntu-latest
-    env:
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUST_LOG: cairo_native=debug,cairo_native_test=debug
-      PROGRAM: fib_2M
-      RUN: target/release/cairo-native-run
-      OUTPUT_DIR: programs/benches
+    name: Build cairo-native-run for ${{ matrix.branch }}
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout base commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request[matrix.branch].sha }} 
+          ref: ${{ github.event.pull_request[matrix.branch].sha }}
+
+      - name: Populate cache
+        uses: actions/cache@v4
+        id: cache 
+        with:
+          path: bin/cairo-native-run--${{ matrix.branch }}
+          key: binary-${{ github.event.pull_request[matrix.branch].sha }}
+      
       - name: check and free hdd space left
         run: |
           echo "Listing 20 largest packages"
@@ -125,30 +125,60 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
-      - name: Setup rust env
+
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@1.80.1
         with:
           components: clippy
+          
       - name: Retreive cached dependecies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@v4
+
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11
         with:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      
       - name: Install LLVM
         run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+
+      - name: Build binary
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+        run: |
+          make build
+          mkdir bin
+          cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
+  
+  hyperfine-branches:
+    name: test (linux, amd64)
+    runs-on: ubuntu-latest
+    env:
+      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
+      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
+      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      RUST_LOG: cairo_native=debug,cairo_native_test=debug
+      PROGRAM: fib_2M
+      OUTPUT_DIR: programs/benches
+    steps:
       - name: Install Hyperfine
         uses: taiki-e/install-action@v2
         with:
           tool: hyperfine@1.16
-      - name: Install deps
-        run: make deps
-      - name: Build project
-        run: make build
-      - name: Build runtime subproject
-        run: make runtime-ci
+
+      - name: Fetch base binary
+        uses: actions/cache/restore@v3
+        with:
+          path: bin/cairo-native-run-base
+          key: binary-${{ github.event.pull_request.base.sha }}
+    
+      - name: Fetch HEAD binary
+        uses: actions/cache/restore@v3
+        with:
+          path: bin/cairo-native-run-head
+          key: binary-${{ github.event.pull_request.head.sha }}
+
       - name: Run Program
         run: |
           BINS="base,head"
@@ -156,9 +186,10 @@ jobs:
           --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
-           -L bin "$BINS" -n "{bin} fib_2M" "$RUN -s $OUTPUT_DIR/$PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
+           -L bin "$BINS" -n "{bin} fib_2M" "./bin/cairo-native-run-{bin} -s $OUTPUT_DIR/$PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
           >> /dev/stderr 
           echo "benchmark_count=$(ls $OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
+
       - name: Print tables
         if: steps.run-benchmarks.outputs.benchmark_count != 0
         run: |
@@ -167,6 +198,7 @@ jobs:
             echo
             cat $OUTPUT_DIR/$PROGRAM.md
           } | tee -a comment_body.md
+
       - name: Find comment
         if: steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/find-comment@v2
@@ -175,12 +207,14 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
           body-includes: Benchmark Results for ${{ matrix.branch }} program
+
       - name: Create comment
         if: steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/create-or-update-comment@v3
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body-path: comment_body.md
+          
       - name: Update comment
         if: steps.run-benchmarks.outputs.benchmark_count != 0
         uses: peter-evans/create-or-update-comment@v3
