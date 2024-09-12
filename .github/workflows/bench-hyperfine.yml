@@ -145,8 +145,10 @@ jobs:
           tool: hyperfine@1.16
       - name: Install deps
         run: make deps
-      - name: Build cairo-native-runtime library.
-        run: cargo build --profile=ci --package=cairo-native-runtime
+      - name: Build project
+        run: make build
+      - name: Build runtime subproject
+        run: make runtime-ci
       - name: Run Program
         run: |
           hyperfine \
@@ -155,13 +157,12 @@ jobs:
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
           -n "cairo-native " "$RUN -s $OUTPUT_DIR/$PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
           >> /dev/stderr \
-          -- --show-output
       - name: Print tables
         run: |
           {
             echo "Benchmark Results for ${{ matrix.branch }} programs :rocket:"
             echo
-            cat $OUTPUT_DIR/PROGRAM.md
+            cat $OUTPUT_DIR/$PROGRAM.md
             done
           } | tee -a comment_body.md
       - name: Find comment
