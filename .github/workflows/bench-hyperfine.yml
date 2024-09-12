@@ -127,14 +127,11 @@ jobs:
           df -h
 
       - name: Install Rust
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         uses: dtolnay/rust-toolchain@1.80.1
-        with:
-          components: clippy
           
-      - name: Retreive cached dependecies
-        uses: Swatinem/rust-cache@v2
-
       - name: add llvm deb repository
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         uses: myci-actions/add-deb-repo@11
         with:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
@@ -142,12 +139,18 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       
       - name: Install LLVM
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       
       - name: Checkout base commit
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request[matrix.branch].sha }}
+        
+      - name: Fetch Rust cache
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+        uses: Swatinem/rust-cache@v2
       
       - name: Build binary
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
@@ -158,6 +161,7 @@ jobs:
   
   hyperfine-branches:
     name: Bench PR (linux, amd64)
+    needs: [ build-binaries ]
     runs-on: ubuntu-latest
     env:
       PROGRAM: fib_2M
@@ -195,7 +199,7 @@ jobs:
         if: steps.run-benchmarks.outputs.benchmark_count != 0
         run: |
           {
-            echo "Benchmark Results for ${{ matrix.branch }} programs :rocket:"
+            echo "Benchmark Results  :rocket:"
             echo
             cat $OUTPUT_DIR/$PROGRAM.md
           } | tee -a comment_body.md
@@ -207,7 +211,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
-          body-includes: Benchmark Results for ${{ matrix.branch }} program
+          body-includes: Benchmark Results
 
       - name: Create comment
         if: steps.run-benchmarks.outputs.benchmark_count != 0
