@@ -326,13 +326,10 @@ fn invoke_dynamic(
                         CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
                         CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
-                        // todo: add RangeCheck96 to builtin_stats?
                         CoreTypeConcrete::RangeCheck96(_) => builtin_stats.range_check_96 = value,
-                        // todo: add AddMod to builtin_stats?
                         CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
                             builtin_stats.circuit_add = value
                         }
-                        // todo: add MulMod to builtin_stats?
                         CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
                             builtin_stats.circuit_mul = value
                         }
