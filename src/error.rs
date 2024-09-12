@@ -59,6 +59,15 @@ pub enum Error {
 
     #[error("cairo const data mismatch")]
     ConstDataMismatch,
+
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    LibraryLoadError(#[from] libloading::Error),
+
+    #[error(transparent)]
+    SerdeJsonError(#[from] serde_json::Error),
 }
 
 impl Error {
