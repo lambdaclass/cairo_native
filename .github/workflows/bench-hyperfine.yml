@@ -103,7 +103,7 @@ jobs:
         uses: actions/cache@v3
         id: cache 
         with:
-          path: bin/cairo-native-run--${{ matrix.branch }}
+          path: bin/cairo-native-run-${{ matrix.branch }}
           key: binary-${{ github.event.pull_request[matrix.branch].sha }}
       
       - name: check and free hdd space left
