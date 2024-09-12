@@ -180,6 +180,7 @@ jobs:
         uses: peter-evans/create-or-update-comment@v3
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
           body-path: comment_body.md
           edit-mode: replace
       
