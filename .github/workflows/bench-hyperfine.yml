@@ -168,6 +168,11 @@ jobs:
       PROGRAM: fib_2M
       OUTPUT_DIR: $ROOT_DIR/target/bench-outputs
     steps:
+      - name: Checkout base commit
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request[matrix.base].sha }}
       - name: Install Hyperfine
         uses: taiki-e/install-action@v2
         with:
@@ -188,7 +193,7 @@ jobs:
       - name: Run Program
         run: |
           cp programs/benches/$PROGRAM.cairo .
-          midir -p $OUTPUT_DIR
+          mkdir -p $OUTPUT_DIR
           BINS="base,head"
           hyperfine \
           --warmup 3 \
