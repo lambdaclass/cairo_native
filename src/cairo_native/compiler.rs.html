@@ -1283,6 +1283,43 @@
 <a href="#1283" id="1283">1283</a>
 <a href="#1284" id="1284">1284</a>
 <a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
@@ -1384,6 +1421,7 @@
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
 };
+<span class="kw">use </span>tracing::trace;
 
 <span class="doccomment">/// The [BlockStorage] type is used to map each statement into its own entry block (on the right),
 /// and its landing block (on the left) if required.
@@ -1864,27 +1902,29 @@
                         }
                     }
 
-                    invocation
-                        .branches
-                        .iter()
-                        .zip(helper.results())
-                        .map(|(branch_info, result_values)| {
-                            <span class="macro">assert_eq!</span>(
-                                branch_info.results.len(),
-                                result_values.len(),
-                                <span class="string">"Mismatched number of returned values from branch."
-                            </span>);
+                    StatementCompileResult::Processed(
+                        invocation
+                            .branches
+                            .iter()
+                            .zip(helper.results())
+                            .map(|(branch_info, result_values)| {
+                                <span class="macro">assert_eq!</span>(
+                                    branch_info.results.len(),
+                                    result_values.len(),
+                                    <span class="string">"Mismatched number of returned values from branch."
+                                </span>);
 
-                            <span class="prelude-val">Ok</span>(edit_state::put_results(
-                                state.clone(),
-                                branch_info
-                                    .results
-                                    .iter()
-                                    .zip(result_values.iter().copied()),
-                            )<span class="question-mark">?</span>)
-                        })
-                        .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, Error&gt;&gt;()<span class="question-mark">?
-                </span>}
+                                <span class="prelude-val">Ok</span>(edit_state::put_results(
+                                    state.clone(),
+                                    branch_info
+                                        .results
+                                        .iter()
+                                        .zip(result_values.iter().copied()),
+                                )<span class="question-mark">?</span>)
+                            })
+                            .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, Error&gt;&gt;()<span class="question-mark">?</span>,
+                    )
+                }
                 Statement::Return(var_ids) =&gt; {
                     <span class="macro">tracing::trace!</span>(<span class="string">"Implementing the return statement at {statement_idx}"</span>);
 
@@ -1902,100 +1942,114 @@
                     <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw-2">mut </span>values) = edit_state::take_args(state, var_ids.iter())<span class="question-mark">?</span>;
 
                     <span class="kw">let </span><span class="kw-2">mut </span>block = <span class="kw-2">*</span>block;
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>((depth_counter, recursion_target)) = tailrec_state {
-                        <span class="kw">let </span>location = Location::name(
-                            context,
-                            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"return(stmt_idx={}, tail_recursion)"</span>, statement_idx),
-                            Location::new(
-                                context,
-                                <span class="string">"program.sierra"</span>,
-                                sierra_stmt_start_offset + statement_idx.<span class="number">0</span>,
-                                <span class="number">0</span>,
-                            ),
-                        );
+                    <span class="kw">if </span>is_recursive {
+                        <span class="kw">match </span>tailrec_state {
+                            <span class="prelude-val">None </span>=&gt; {
+                                <span class="comment">// If this block is reached it means that a return has been detected
+                                // within a tail-recursive function before the recursive call has
+                                // been generated. Since we don't have the return target block at
+                                // this point we need to defer this return statement's generation.
+                                </span><span class="kw">return </span><span class="prelude-val">Ok</span>(StatementCompileResult::Deferred);
+                            }
+                            <span class="prelude-val">Some</span>((depth_counter, recursion_target)) =&gt; {
+                                <span class="kw">let </span>location = Location::name(
+                                    context,
+                                    <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"return(stmt_idx={}, tail_recursion)"</span>, statement_idx),
+                                    Location::new(
+                                        context,
+                                        <span class="string">"program.sierra"</span>,
+                                        sierra_stmt_start_offset + statement_idx.<span class="number">0</span>,
+                                        <span class="number">0</span>,
+                                    ),
+                                );
 
-                        <span class="comment">// Perform tail recursion.
-                        </span><span class="kw">let </span>cont_block = region.insert_block_after(block, Block::new(<span class="kw-2">&amp;</span>[]));
+                                <span class="comment">// Perform tail recursion.
+                                </span><span class="kw">let </span>cont_block = region.insert_block_after(block, Block::new(<span class="kw-2">&amp;</span>[]));
 
-                        <span class="kw">let </span>depth_counter_value =
-                            block.append_op_result(memref::load(depth_counter, <span class="kw-2">&amp;</span>[], location))<span class="question-mark">?</span>;
-                        <span class="kw">let </span>k0 = block.const_int_from_type(
-                            context,
-                            location,
-                            <span class="number">0</span>,
-                            Type::index(context),
-                        )<span class="question-mark">?</span>;
-                        <span class="kw">let </span>is_zero_depth = block.append_op_result(index::cmp(
-                            context,
-                            CmpiPredicate::Eq,
-                            depth_counter_value,
-                            k0,
-                            location,
-                        ))<span class="question-mark">?</span>;
+                                <span class="kw">let </span>depth_counter_value = block.append_op_result(memref::load(
+                                    depth_counter,
+                                    <span class="kw-2">&amp;</span>[],
+                                    location,
+                                ))<span class="question-mark">?</span>;
+                                <span class="kw">let </span>k0 = block.const_int_from_type(
+                                    context,
+                                    location,
+                                    <span class="number">0</span>,
+                                    Type::index(context),
+                                )<span class="question-mark">?</span>;
+                                <span class="kw">let </span>is_zero_depth = block.append_op_result(index::cmp(
+                                    context,
+                                    CmpiPredicate::Eq,
+                                    depth_counter_value,
+                                    k0,
+                                    location,
+                                ))<span class="question-mark">?</span>;
 
-                        <span class="kw">let </span>k1 = block.const_int_from_type(
-                            context,
-                            location,
-                            <span class="number">1</span>,
-                            Type::index(context),
-                        )<span class="question-mark">?</span>;
-                        <span class="kw">let </span>depth_counter_value = block.append_op_result(index::sub(
-                            depth_counter_value,
-                            k1,
-                            location,
-                        ))<span class="question-mark">?</span>;
-                        block.append_operation(memref::store(
-                            depth_counter_value,
-                            depth_counter,
-                            <span class="kw-2">&amp;</span>[],
-                            location,
-                        ));
+                                <span class="kw">let </span>k1 = block.const_int_from_type(
+                                    context,
+                                    location,
+                                    <span class="number">1</span>,
+                                    Type::index(context),
+                                )<span class="question-mark">?</span>;
+                                <span class="kw">let </span>depth_counter_value = block.append_op_result(index::sub(
+                                    depth_counter_value,
+                                    k1,
+                                    location,
+                                ))<span class="question-mark">?</span>;
+                                block.append_operation(memref::store(
+                                    depth_counter_value,
+                                    depth_counter,
+                                    <span class="kw-2">&amp;</span>[],
+                                    location,
+                                ));
 
-                        <span class="kw">let </span>recursive_values = <span class="kw">match </span>has_return_ptr {
-                            <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; function
-                                .signature
-                                .ret_types
-                                .iter()
-                                .zip(<span class="kw-2">&amp;</span>values)
-                                .filter_map(|(type_id, value)| {
-                                    <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
-                                    <span class="kw">if </span>type_info.is_zst(registry)
-                                        || type_info.is_memory_allocated(registry)
-                                    {
-                                        <span class="prelude-val">None
-                                    </span>} <span class="kw">else </span>{
-                                        <span class="prelude-val">Some</span>(<span class="kw-2">*</span>value)
-                                    }
-                                })
-                                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-                            <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; function
-                                .signature
-                                .ret_types
-                                .iter()
-                                .zip(<span class="kw-2">&amp;</span>values)
-                                .filter_map(|(type_id, value)| {
-                                    <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
-                                    <span class="kw">if </span>type_info.is_zst(registry) {
-                                        <span class="prelude-val">None
-                                    </span>} <span class="kw">else </span>{
-                                        <span class="prelude-val">Some</span>(<span class="kw-2">*</span>value)
-                                    }
-                                })
-                                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-                            <span class="prelude-val">None </span>=&gt; <span class="macro">todo!</span>(),
-                        };
+                                <span class="kw">let </span>recursive_values = <span class="kw">match </span>has_return_ptr {
+                                    <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; function
+                                        .signature
+                                        .ret_types
+                                        .iter()
+                                        .zip(<span class="kw-2">&amp;</span>values)
+                                        .filter_map(|(type_id, value)| {
+                                            <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
+                                            <span class="kw">if </span>type_info.is_zst(registry)
+                                                || type_info.is_memory_allocated(registry)
+                                            {
+                                                <span class="prelude-val">None
+                                            </span>} <span class="kw">else </span>{
+                                                <span class="prelude-val">Some</span>(<span class="kw-2">*</span>value)
+                                            }
+                                        })
+                                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                                    <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; function
+                                        .signature
+                                        .ret_types
+                                        .iter()
+                                        .zip(<span class="kw-2">&amp;</span>values)
+                                        .filter_map(|(type_id, value)| {
+                                            <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
+                                            <span class="kw">if </span>type_info.is_zst(registry) {
+                                                <span class="prelude-val">None
+                                            </span>} <span class="kw">else </span>{
+                                                <span class="prelude-val">Some</span>(<span class="kw-2">*</span>value)
+                                            }
+                                        })
+                                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                                    <span class="prelude-val">None </span>=&gt; <span class="macro">todo!</span>(),
+                                };
 
-                        block.append_operation(cf::cond_br(
-                            context,
-                            is_zero_depth,
-                            <span class="kw-2">&amp;</span>cont_block,
-                            <span class="kw-2">&amp;</span>recursion_target,
-                            <span class="kw-2">&amp;</span>[],
-                            <span class="kw-2">&amp;</span>recursive_values,
-                            location,
-                        ));
+                                block.append_operation(cf::cond_br(
+                                    context,
+                                    is_zero_depth,
+                                    <span class="kw-2">&amp;</span>cont_block,
+                                    <span class="kw-2">&amp;</span>recursion_target,
+                                    <span class="kw-2">&amp;</span>[],
+                                    <span class="kw-2">&amp;</span>recursive_values,
+                                    location,
+                                ));
 
-                        block = cont_block;
+                                block = cont_block;
+                            }
+                        }
                     }
 
                     <span class="comment">// Remove ZST builtins from the return values.
@@ -2043,7 +2097,7 @@
                         location,
                     ));
 
-                    Vec::new()
+                    StatementCompileResult::Processed(Vec::new())
                 }
             })
         },
@@ -2225,45 +2279,47 @@
                         }
                     }
 
-                    invocation
-                        .branches
-                        .iter()
-                        .zip(libfunc.branch_signatures())
-                        .map(|(branch, branch_signature)| {
-                            <span class="kw">let </span>state = edit_state::put_results(
-                                state.clone(),
-                                branch.results.iter().zip(
-                                    branch_signature
-                                        .vars
-                                        .iter()
-                                        .map(|var_info| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, Error&gt; {
-                                            registry.get_type(<span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>.build(
-                                                context,
-                                                module,
-                                                registry,
-                                                metadata_storage,
-                                                <span class="kw-2">&amp;</span>var_info.ty,
-                                            )
-                                        })
-                                        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
-                                ),
-                            )<span class="question-mark">?</span>;
+                    StatementCompileResult::Processed(
+                        invocation
+                            .branches
+                            .iter()
+                            .zip(libfunc.branch_signatures())
+                            .map(|(branch, branch_signature)| {
+                                <span class="kw">let </span>state = edit_state::put_results(
+                                    state.clone(),
+                                    branch.results.iter().zip(
+                                        branch_signature
+                                            .vars
+                                            .iter()
+                                            .map(|var_info| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, Error&gt; {
+                                                registry.get_type(<span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>.build(
+                                                    context,
+                                                    module,
+                                                    registry,
+                                                    metadata_storage,
+                                                    <span class="kw-2">&amp;</span>var_info.ty,
+                                                )
+                                            })
+                                            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
+                                    ),
+                                )<span class="question-mark">?</span>;
 
-                            <span class="kw">let </span>(prev_state, pred_count) =
-                                <span class="kw">match </span>predecessors.entry(statement_idx.next(<span class="kw-2">&amp;</span>branch.target)) {
-                                    Entry::Occupied(entry) =&gt; entry.into_mut(),
-                                    Entry::Vacant(entry) =&gt; entry.insert((state.clone(), <span class="number">0</span>)),
-                                };
-                            <span class="macro">assert!</span>(
-                                prev_state.eq_unordered(<span class="kw-2">&amp;</span>state),
-                                <span class="string">"Branch target states do not match."
-                            </span>);
-                            <span class="kw-2">*</span>pred_count += <span class="number">1</span>;
+                                <span class="kw">let </span>(prev_state, pred_count) =
+                                    <span class="kw">match </span>predecessors.entry(statement_idx.next(<span class="kw-2">&amp;</span>branch.target)) {
+                                        Entry::Occupied(entry) =&gt; entry.into_mut(),
+                                        Entry::Vacant(entry) =&gt; entry.insert((state.clone(), <span class="number">0</span>)),
+                                    };
+                                <span class="macro">assert!</span>(
+                                    prev_state.eq_unordered(<span class="kw-2">&amp;</span>state),
+                                    <span class="string">"Branch target states do not match."
+                                </span>);
+                                <span class="kw-2">*</span>pred_count += <span class="number">1</span>;
 
-                            <span class="prelude-val">Ok</span>(state)
-                        })
-                        .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, Error&gt;&gt;()<span class="question-mark">?
-                </span>}
+                                <span class="prelude-val">Ok</span>(state)
+                            })
+                            .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, Error&gt;&gt;()<span class="question-mark">?</span>,
+                    )
+                }
                 Statement::Return(var_ids) =&gt; {
                     <span class="macro">tracing::trace!</span>(
                         <span class="string">"Creating block for return statement at index {statement_idx}."
@@ -2286,7 +2342,7 @@
                         block.add_argument(ty, location);
                     }
 
-                    Vec::new()
+                    StatementCompileResult::Processed(Vec::new())
                 }
             })
         },
@@ -2407,7 +2463,7 @@
     statements: <span class="kw-2">&amp;</span>[Statement],
     entry_point: StatementIdx,
     initial_state: S,
-    <span class="kw-2">mut </span>closure: <span class="kw">impl </span>FnMut(StatementIdx, S) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;S&gt;, E&gt;,
+    <span class="kw-2">mut </span>closure: <span class="kw">impl </span>FnMut(StatementIdx, S) -&gt; <span class="prelude-ty">Result</span>&lt;StatementCompileResult&lt;Vec&lt;S&gt;&gt;, E&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), E&gt;
 <span class="kw">where
     </span>S: Clone,
@@ -2420,24 +2476,32 @@
             <span class="kw">continue</span>;
         }
 
-        <span class="kw">let </span>branch_states = closure(statement_idx, state)<span class="question-mark">?</span>;
+        <span class="kw">match </span>closure(statement_idx, state.clone())<span class="question-mark">? </span>{
+            StatementCompileResult::Processed(branch_states) =&gt; {
+                <span class="kw">let </span>branches = <span class="kw">match </span><span class="kw-2">&amp;</span>statements[statement_idx.<span class="number">0</span>] {
+                    Statement::Invocation(x) =&gt; x.branches.as_slice(),
+                    Statement::Return(<span class="kw">_</span>) =&gt; <span class="kw-2">&amp;</span>[],
+                };
+                <span class="macro">assert_eq!</span>(
+                    branches.len(),
+                    branch_states.len(),
+                    <span class="string">"Returned number of states must match the number of branches."
+                </span>);
 
-        <span class="kw">let </span>branches = <span class="kw">match </span><span class="kw-2">&amp;</span>statements[statement_idx.<span class="number">0</span>] {
-            Statement::Invocation(x) =&gt; x.branches.as_slice(),
-            Statement::Return(<span class="kw">_</span>) =&gt; <span class="kw-2">&amp;</span>[],
-        };
-        <span class="macro">assert_eq!</span>(
-            branches.len(),
-            branch_states.len(),
-            <span class="string">"Returned number of states must match the number of branches."
-        </span>);
+                queue.extend(
+                    branches
+                        .iter()
+                        .map(|branch| statement_idx.next(<span class="kw-2">&amp;</span>branch.target))
+                        .zip(branch_states),
+                );
+            }
+            StatementCompileResult::Deferred =&gt; {
+                <span class="macro">trace!</span>(<span class="string">"Statement {statement_idx}'s compilation has been deferred."</span>);
 
-        queue.extend(
-            branches
-                .iter()
-                .map(|branch| statement_idx.next(<span class="kw-2">&amp;</span>branch.target))
-                .zip(branch_states),
-        );
+                visited.remove(<span class="kw-2">&amp;</span>statement_idx);
+                queue.insert(<span class="number">0</span>, (statement_idx, state));
+            }
+        }
     }
 
     <span class="prelude-val">Ok</span>(())
@@ -2567,5 +2631,15 @@
         location,
     ));
     <span class="prelude-val">Ok</span>(())
+}
+
+<span class="doccomment">/// Return type for the closure in [`foreach_statement_in_function`] that determines whether the
+/// statement was processed successfully or needs to be processed again at the end.
+</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="kw">enum </span>StatementCompileResult&lt;T&gt; {
+    <span class="doccomment">/// The statement was processed successfully.
+    </span>Processed(T),
+    <span class="doccomment">/// The statement's processing has to be deferred until the end.
+    </span>Deferred,
 }
 </code></pre></div></section></main></body></html>
