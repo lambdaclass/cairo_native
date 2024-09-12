@@ -172,7 +172,7 @@ jobs:
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request[matrix.base].sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
       - name: Install Hyperfine
         uses: taiki-e/install-action@v2
         with:
