@@ -86,7 +86,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body-path: bench-hyperfine.md
           edit-mode: replace
-  
+
   build-binaries:
     env:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
@@ -101,11 +101,19 @@ jobs:
     steps:
       - name: Populate cache
         uses: actions/cache@v3
-        id: cache 
+        id: cache-binary 
         with:
+          if: ${{ matrix.branch == 'base' }}
           path: bin/cairo-native-run-${{ matrix.branch }}
           key: binary-${{ github.event.pull_request[matrix.branch].sha }} 
       
+      - name: cache program
+        uses: actions/cache@v3
+        id: cache-program 
+        with:
+          path: bench-program-${{ matrix.branch }}
+          key: program-${{ github.event.pull_request[matrix.branch].sha }} 
+
       - name: check and free hdd space left
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         run: |
@@ -159,6 +167,11 @@ jobs:
           make build
           mkdir bin
           cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
+      
+      - name: Fetch Program
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+        run: |
+          cp programs/benches/$PROGRAM.cairo bench-program-base
   
   hyperfine-branches:
     name: Bench PR (linux, amd64)
@@ -168,7 +181,6 @@ jobs:
       PROGRAM: fib_2M
       OUTPUT_DIR: bench-outputs
     steps:
-      - uses: actions/checkout@v4
       - name: Install Hyperfine
         uses: taiki-e/install-action@v2
         with:
@@ -186,17 +198,22 @@ jobs:
           path: bin/cairo-native-run-head
           key: binary-${{ github.event.pull_request.head.sha }}
 
+      - name: Fetch Program
+        uses: actions/cache/restore@v3
+        with:
+          path: bench-program-base
+          key: program-${{ github.event.pull_request.base.sha }} 
+      
       - name: Run Program
         run: |
           BINS="base"
-          cp programs/benches/$PROGRAM.cairo .
           mkdir $OUTPUT_DIR
           hyperfine \
           --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
           -L bin "$BINS" -n "{bin} $PROGRAM" \
-          "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
+          "./bin/cairo-native-run-{bin} -s bench-program-base --opt-level 3 --available-gas 18446744073709551615" \        
           >> /dev/stderr 
             echo "benchmark_count=$(ls $OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
 
