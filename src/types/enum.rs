@@ -438,27 +438,29 @@ pub fn build<'ctx>(
     let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
 
     let tag_layout = get_integer_layout(tag_bits);
-    let layout = info.variants.iter().fold(tag_layout, |acc, id| {
+    let layout = info.variants.iter().try_fold(tag_layout, |acc, id| {
         let layout = tag_layout
-            .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
-            .unwrap()
+            .extend(registry.get_type(id)?.layout(registry)?)?
             .0;
 
-        Layout::from_size_align(
+        Result::Ok(Layout::from_size_align(
             acc.size().max(layout.size()),
             acc.align().max(layout.align()),
-        )
-        .unwrap()
-    });
+        )?)
+    })?;
 
     let i8_ty = IntegerType::new(context, 8).into();
     Ok(match info.variants.len() {
         0 => llvm::r#type::array(IntegerType::new(context, 8).into(), 0),
         1 => registry.build_type(context, module, registry, metadata, &info.variants[0])?,
-        _ if info
-            .variants
-            .iter()
-            .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =>
+        _ if 'block: {
+            for type_id in &info.variants {
+                if !registry.get_type(type_id)?.is_zst(registry)? {
+                    break 'block false;
+                }
+            }
+            true
+        } =>
         {
             llvm::r#type::r#struct(
                 context,

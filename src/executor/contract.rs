@@ -119,13 +119,17 @@ impl ContractExecutor {
             for p in &x.params {
                 let ty = registry.get_type(&p.ty)?;
                 if ty.is_builtin() {
+                    // Skip zero sized builtins
+                    if ty.is_zst(&registry)? {
+                        continue;
+                    }
+
                     match ty {
                         CoreTypeConcrete::Bitwise(_) => builtins.push(BuiltinType::Bitwise),
                         CoreTypeConcrete::EcOp(_) => builtins.push(BuiltinType::EcOp),
                         CoreTypeConcrete::RangeCheck(_) => builtins.push(BuiltinType::RangeCheck),
                         CoreTypeConcrete::Pedersen(_) => builtins.push(BuiltinType::Pedersen),
                         CoreTypeConcrete::Poseidon(_) => builtins.push(BuiltinType::Poseidon),
-                        CoreTypeConcrete::Coupon(_) => {}
                         CoreTypeConcrete::SegmentArena(_) => {
                             builtins.push(BuiltinType::SegmentArena)
                         }
