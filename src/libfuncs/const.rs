@@ -288,7 +288,7 @@ pub fn build_const_type_value<'ctx, 'this>(
 pub mod test {
     use crate::{
         utils::test::{jit_struct, load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
 
     #[test]
@@ -309,6 +309,6 @@ pub mod test {
         );
 
         let result = run_program(&program, "run_test", &[]).return_value;
-        assert_eq!(result, jit_struct!(JitValue::Sint32(-2)));
+        assert_eq!(result, jit_struct!(Value::Sint32(-2)));
     }
 }

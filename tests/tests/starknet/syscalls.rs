@@ -11,7 +11,7 @@ use cairo_native::{
         BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
         StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
     },
-    JitValue,
+    Value,
 };
 use lazy_static::lazy_static;
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
@@ -521,9 +521,9 @@ fn get_block_hash() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Felt252(
+            value: Box::new(Value::Felt252(
                 Felt::from_dec_str(
                     "1158579293198495875788224011889333769139150068959598053296510642728083832673",
                 )
@@ -546,62 +546,62 @@ fn get_execution_info() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
+                    Value::Struct {
                         fields: vec![
-                            JitValue::Uint64(10057862467973663535),
-                            JitValue::Uint64(13878668747512495966),
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Uint64(10057862467973663535),
+                            Value::Uint64(13878668747512495966),
+                            Value::Felt252(Felt::from_dec_str(
                                 "1126241460712630201003776917997524449163698107789103849210792326381258973685",
                             )
                             .unwrap()),
                         ],
                         debug_name: None,
                     },
-                    JitValue::Struct {
+                    Value::Struct {
                         fields: vec![
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Felt252(Felt::from_dec_str(
                                 "1724985403142256920476849371638528834056988111202434162793214195754735917407",
                             )
                             .unwrap()),
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Felt252(Felt::from_dec_str(
                                 "2419272378964094005143278046496347854926114240785059742454535261490265649110",
                             )
                             .unwrap()),
-                            JitValue::Uint128(67871905340377755668863509019681938001),
-                            JitValue::Struct {
+                            Value::Uint128(67871905340377755668863509019681938001),
+                            Value::Struct {
                                 fields: vec![
-                                    JitValue::Array(Vec::new()),
+                                    Value::Array(Vec::new()),
                                 ],
                                 debug_name: None
                             },
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Felt252(Felt::from_dec_str(
                                 "2073267424102447009330753642820908998776456851902897601865334818765025369132",
                             )
                             .unwrap()),
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Felt252(Felt::from_dec_str(
                                 "1727570805086347994328356733148206517040691113666039929118050093237140484117",
                             )
                             .unwrap()),
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Felt252(Felt::from_dec_str(
                                 "2223335940097352947792108259394621577330089800429182023415494612506457867705",
                             )
                             .unwrap()),
                         ],
                         debug_name: None,
                     },
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "2367044879643293830108311482898145302930693201376043522909298679498599559539",
                     )
                     .unwrap()),
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "2322490563038631685097154208793293355074547843057070254216662565231428808211",
                     )
                     .unwrap()),
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "1501296828847480842982002010206952982741090100977850506550982801410247026532",
                     )
                     .unwrap()),
@@ -625,75 +625,75 @@ fn get_execution_info_v2() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
+                    Value::Struct {
                         fields: vec![
-                            JitValue::Uint64(10290342497028289173),
-                            JitValue::Uint64(8376161426686560326),
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Uint64(10290342497028289173),
+                            Value::Uint64(8376161426686560326),
+                            Value::Felt252(Felt::from_dec_str(
                                 "1815189516202718271265591469295511271015058493881778555617445818147186579905",
                             )
                             .unwrap()),
                         ],
                         debug_name: None,
                     },
-                    JitValue::Struct {
+                    Value::Struct {
                         fields: vec![
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Felt252(Felt::from_dec_str(
                                 "1946630339019864531118751968563861838541265142438690346764722398811248737786",
                             )
                             .unwrap()),
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Felt252(Felt::from_dec_str(
                                 "2501333093425095943815772537228190103182643237630648877273495185321298605376",
                             )
                             .unwrap()),
-                            JitValue::Uint128(268753657614351187400966367706860329387),
-                            JitValue::Struct {
-                                fields: vec![JitValue::Array(Vec::new())],
+                            Value::Uint128(268753657614351187400966367706860329387),
+                            Value::Struct {
+                                fields: vec![Value::Array(Vec::new())],
                                 debug_name: None,
                             },
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Felt252(Felt::from_dec_str(
                                 "1123336726531770778820945049824733201592457249587063926479184903627272350002",
                             )
                             .unwrap()),
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Felt252(Felt::from_dec_str(
                                 "2128916697180095451339935431635121484141376377516602728602049361615810538124",
                             )
                             .unwrap()),
-                            JitValue::Felt252(Felt::from_dec_str(
+                            Value::Felt252(Felt::from_dec_str(
                                 "3012936192361023209451741736298028332652992971202997279327088951248532774884",
                             )
                             .unwrap()),
-                            JitValue::Struct {
-                                fields: vec![JitValue::Array(Vec::new())],
+                            Value::Struct {
+                                fields: vec![Value::Array(Vec::new())],
                                 debug_name: None,
                             },
-                            JitValue::Uint128(215444579144685671333997376989135077200),
-                            JitValue::Struct {
-                                fields: vec![JitValue::Array(Vec::new())],
+                            Value::Uint128(215444579144685671333997376989135077200),
+                            Value::Struct {
+                                fields: vec![Value::Array(Vec::new())],
                                 debug_name: None,
                             },
-                            JitValue::Uint32(140600095),
-                            JitValue::Uint32(988370659),
-                            JitValue::Struct {
-                                fields: vec![JitValue::Array(Vec::new())],
+                            Value::Uint32(140600095),
+                            Value::Uint32(988370659),
+                            Value::Struct {
+                                fields: vec![Value::Array(Vec::new())],
                                 debug_name: None,
                             },
                         ],
                         debug_name: None,
                     },
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "1185632056775552928459345712365014492063999606476424661067102766803470217687",
                     )
                     .unwrap()),
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "741063429140548584082645215539704615048011618665759826371923004739480130327",
                     )
                     .unwrap()),
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "477501848519111015718660527024172361930966806556174677443839145770405114061",
                     )
                     .unwrap()),
@@ -717,16 +717,16 @@ fn deploy() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "1833707083418045616336697070784512826809940908236872124572250196391719980392",
                     )
                     .unwrap()),
-                    JitValue::Struct {
-                        fields: vec![JitValue::Array(Vec::new())],
+                    Value::Struct {
+                        fields: vec![Value::Array(Vec::new())],
                         debug_name: None,
                     },
                 ],
@@ -749,9 +749,9 @@ fn replace_class() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: Vec::new(),
                 debug_name: None,
             }),
@@ -772,19 +772,19 @@ fn library_call() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
-                fields: vec![JitValue::Array(vec![
-                    JitValue::Felt252(Felt::from_dec_str(
+            value: Box::new(Value::Struct {
+                fields: vec![Value::Array(vec![
+                    Value::Felt252(Felt::from_dec_str(
                         "3358892263739032253767642605669710712087178958719188919195252597609334880396"
                     )
                     .unwrap()),
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "1104291043781086177955655234103730593173963850634630109574183288837411031513"
                     )
                     .unwrap()),
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "3346377229881115874907650557159666001431249650068516742483979624047277128413"
                     )
                     .unwrap()),
@@ -808,19 +808,19 @@ fn call_contract() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
-                fields: vec![JitValue::Array(vec![
-                    JitValue::Felt252(Felt::from_dec_str(
+            value: Box::new(Value::Struct {
+                fields: vec![Value::Array(vec![
+                    Value::Felt252(Felt::from_dec_str(
                         "3358892263739032253767642605669710712087178958719188919195252597609334880396"
                     )
                     .unwrap()),
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "1104291043781086177955655234103730593173963850634630109574183288837411031513"
                     )
                     .unwrap()),
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "3346377229881115874907650557159666001431249650068516742483979624047277128413"
                     )
                     .unwrap()),
@@ -844,11 +844,11 @@ fn storage_read() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Felt252(Felt::from_dec_str(
+                    Value::Felt252(Felt::from_dec_str(
                         "1013181629378419652272218169322268188846114273878719855200100663863924329981",
                     )
                     .unwrap()),
@@ -872,10 +872,10 @@ fn storage_write() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
-                fields: vec![JitValue::Struct {
+            value: Box::new(Value::Struct {
+                fields: vec![Value::Struct {
                     fields: Vec::new(),
                     debug_name: None,
                 }],
@@ -898,9 +898,9 @@ fn emit_event() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: Vec::new(),
                 debug_name: None,
             }),
@@ -921,9 +921,9 @@ fn send_message_to_l1() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: Vec::new(),
                 debug_name: None,
             }),
@@ -944,12 +944,12 @@ fn keccak() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Uint128(288102973244655531496349286021939642254),
-                    JitValue::Uint128(330939983442938156232262046592599923289),
+                    Value::Uint128(288102973244655531496349286021939642254),
+                    Value::Uint128(330939983442938156232262046592599923289),
                 ],
                 debug_name: None,
             }),
@@ -967,15 +967,15 @@ fn set_sequencer_address() {
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
         "set_sequencer_address",
-        &[JitValue::Felt252(address)],
+        &[Value::Felt252(address)],
         Some(u128::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Struct {
-            fields: vec![JitValue::Array(vec![])],
+        Value::Struct {
+            fields: vec![Value::Array(vec![])],
             debug_name: Some("core::array::Span::<core::felt252>".to_string())
         }
     );
@@ -993,15 +993,15 @@ fn set_max_fee() {
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
         "set_max_fee",
-        &[JitValue::Felt252(Felt::from(max_fee))],
+        &[Value::Felt252(Felt::from(max_fee))],
         Some(u128::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Struct {
-            fields: vec![JitValue::Array(vec![])],
+        Value::Struct {
+            fields: vec![Value::Array(vec![])],
             debug_name: Some("core::array::Span::<core::felt252>".to_string())
         }
     );
@@ -1017,7 +1017,7 @@ fn set_signature() {
     let signature_jit = signature
         .clone()
         .into_iter()
-        .map(JitValue::Felt252)
+        .map(Value::Felt252)
         .collect::<Vec<_>>();
 
     let state = Arc::new(Mutex::new(TestingState::default()));
@@ -1025,15 +1025,15 @@ fn set_signature() {
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
         "set_signature",
-        &[JitValue::Array(signature_jit)],
+        &[Value::Array(signature_jit)],
         Some(u128::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Struct {
-            fields: vec![JitValue::Array(vec![])],
+        Value::Struct {
+            fields: vec![Value::Array(vec![])],
             debug_name: Some("core::array::Span::<core::felt252>".to_string())
         }
     );
@@ -1059,7 +1059,7 @@ fn pop_log() {
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
         "pop_log",
-        &[JitValue::Felt252(log_index)],
+        &[Value::Felt252(log_index)],
         Some(u128::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
@@ -1072,13 +1072,13 @@ fn pop_log() {
 
     let serialized_log_jit = serialized_log
         .into_iter()
-        .map(JitValue::Felt252)
+        .map(Value::Felt252)
         .collect::<Vec<_>>();
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Struct {
-            fields: vec![JitValue::Array(serialized_log_jit)],
+        Value::Struct {
+            fields: vec![Value::Array(serialized_log_jit)],
             debug_name: Some("core::array::Span::<core::felt252>".to_string())
         }
     );
@@ -1102,15 +1102,15 @@ fn pop_log_empty() {
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
         "pop_log",
-        &[JitValue::Felt252(log_index)],
+        &[Value::Felt252(log_index)],
         Some(u128::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Struct {
-            fields: vec![JitValue::Array(Vec::new())],
+        Value::Struct {
+            fields: vec![Value::Array(Vec::new())],
             debug_name: Some("core::array::Span::<core::felt252>".to_string())
         }
     );
@@ -1133,7 +1133,7 @@ fn pop_l2_to_l1_message() {
     let result = run_native_program(
         &SYSCALLS_PROGRAM,
         "pop_l2_to_l1_message",
-        &[JitValue::Felt252(log_index)],
+        &[Value::Felt252(log_index)],
         Some(u128::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
@@ -1145,13 +1145,13 @@ fn pop_l2_to_l1_message() {
 
     let serialized_message_jit = serialized_message
         .into_iter()
-        .map(JitValue::Felt252)
+        .map(Value::Felt252)
         .collect::<Vec<_>>();
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Struct {
-            fields: vec![JitValue::Array(serialized_message_jit)],
+        Value::Struct {
+            fields: vec![Value::Array(serialized_message_jit)],
             debug_name: Some("core::array::Span::<core::felt252>".to_string())
         }
     );
@@ -1178,10 +1178,10 @@ fn sha256_process() {
 
     assert_eq_sorted!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
-                fields: vec![JitValue::Struct {
+            value: Box::new(Value::Struct {
+                fields: vec![Value::Struct {
                     fields: vec![
                         1779033703_u32.into(),
                         3144134277_u32.into(),

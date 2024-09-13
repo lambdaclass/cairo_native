@@ -257,7 +257,7 @@ fn snapshot_take<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_dict, load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
@@ -299,7 +299,7 @@ mod test {
         assert_eq!(
             result,
             jit_dict!(
-                2 => JitValue::Array(vec![3u32.into(), 4u32.into()])
+                2 => Value::Array(vec![3u32.into(), 4u32.into()])
             ),
         );
     }
@@ -345,13 +345,13 @@ mod test {
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
             result.return_value,
-            JitValue::Felt252Dict {
+            Value::Felt252Dict {
                 value: HashMap::from([
                     (
                         Felt::ZERO,
-                        JitValue::Enum {
+                        Value::Enum {
                             tag: 0,
-                            value: Box::new(JitValue::Struct {
+                            value: Box::new(Value::Struct {
                                 fields: Vec::new(),
                                 debug_name: None
                             }),
@@ -360,9 +360,9 @@ mod test {
                     ),
                     (
                         Felt::ONE,
-                        JitValue::Enum {
+                        Value::Enum {
                             tag: 1,
-                            value: Box::new(JitValue::Struct {
+                            value: Box::new(Value::Struct {
                                 fields: Vec::new(),
                                 debug_name: None
                             }),
@@ -392,12 +392,12 @@ mod test {
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
             result.return_value,
-            JitValue::Felt252Dict {
+            Value::Felt252Dict {
                 value: HashMap::from([
-                    (Felt::ZERO, JitValue::Felt252(Felt::ZERO)),
-                    (Felt::ONE, JitValue::Felt252(Felt::ONE)),
-                    (Felt::TWO, JitValue::Felt252(Felt::TWO)),
-                    (Felt::THREE, JitValue::Felt252(Felt::THREE)),
+                    (Felt::ZERO, Value::Felt252(Felt::ZERO)),
+                    (Felt::ONE, Value::Felt252(Felt::ONE)),
+                    (Felt::TWO, Value::Felt252(Felt::TWO)),
+                    (Felt::THREE, Value::Felt252(Felt::THREE)),
                 ]),
                 debug_name: None,
             },
@@ -428,38 +428,38 @@ mod test {
         let result = run_program(&program, "run_program", &[]);
         pretty_assertions_sorted::assert_eq_sorted!(
             result.return_value,
-            JitValue::Felt252Dict {
+            Value::Felt252Dict {
                 value: HashMap::from([
-                    (Felt::ZERO, JitValue::Null),
+                    (Felt::ZERO, Value::Null),
                     (
                         Felt::ONE,
-                        JitValue::Struct {
+                        Value::Struct {
                             fields: Vec::from([
-                                JitValue::Uint8(0),
-                                JitValue::Sint16(1),
-                                JitValue::Felt252(2.into()),
+                                Value::Uint8(0),
+                                Value::Sint16(1),
+                                Value::Felt252(2.into()),
                             ]),
                             debug_name: None,
                         },
                     ),
                     (
                         Felt::TWO,
-                        JitValue::Struct {
+                        Value::Struct {
                             fields: Vec::from([
-                                JitValue::Uint8(1),
-                                JitValue::Sint16(-2),
-                                JitValue::Felt252(3.into()),
+                                Value::Uint8(1),
+                                Value::Sint16(-2),
+                                Value::Felt252(3.into()),
                             ]),
                             debug_name: None,
                         },
                     ),
                     (
                         Felt::THREE,
-                        JitValue::Struct {
+                        Value::Struct {
                             fields: Vec::from([
-                                JitValue::Uint8(2),
-                                JitValue::Sint16(3),
-                                JitValue::Felt252(4.into()),
+                                Value::Uint8(2),
+                                Value::Sint16(3),
+                                Value::Felt252(4.into()),
                             ]),
                             debug_name: None,
                         },
@@ -487,12 +487,12 @@ mod test {
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
             result.return_value,
-            JitValue::Felt252Dict {
+            Value::Felt252Dict {
                 value: HashMap::from([
-                    (Felt::ZERO, JitValue::Uint128(0)),
-                    (Felt::ONE, JitValue::Uint128(1)),
-                    (Felt::TWO, JitValue::Uint128(2)),
-                    (Felt::THREE, JitValue::Uint128(3)),
+                    (Felt::ZERO, Value::Uint128(0)),
+                    (Felt::ONE, Value::Uint128(1)),
+                    (Felt::TWO, Value::Uint128(2)),
+                    (Felt::THREE, Value::Uint128(3)),
                 ]),
                 debug_name: None,
             },

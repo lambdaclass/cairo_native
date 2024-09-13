@@ -302,7 +302,7 @@ fn snapshot_take<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
 
@@ -321,16 +321,16 @@ mod test {
 
         assert_eq!(
             result,
-            JitValue::Array(vec![
-                JitValue::Array(vec![
-                    JitValue::Felt252(1.into()),
-                    JitValue::Felt252(2.into()),
-                    JitValue::Felt252(3.into()),
+            Value::Array(vec![
+                Value::Array(vec![
+                    Value::Felt252(1.into()),
+                    Value::Felt252(2.into()),
+                    Value::Felt252(3.into()),
                 ]),
-                JitValue::Array(vec![
-                    JitValue::Felt252(4.into()),
-                    JitValue::Felt252(5.into()),
-                    JitValue::Felt252(6.into()),
+                Value::Array(vec![
+                    Value::Felt252(4.into()),
+                    Value::Felt252(5.into()),
+                    Value::Felt252(6.into()),
                 ]),
             ]),
         );

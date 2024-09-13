@@ -566,7 +566,7 @@ pub fn build_guarantee_verify<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -655,11 +655,11 @@ mod test {
         };
     }
 
-    fn u256(value: BigUint) -> JitValue {
+    fn u256(value: BigUint) -> Value {
         assert!(value.bits() <= 256);
         jit_struct!(
-            JitValue::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
-            JitValue::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
+            Value::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
+            Value::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
         )
     }
 
@@ -694,7 +694,7 @@ mod test {
     fn u128_safe_divmod() {
         let program = &U128_SAFE_DIVMOD;
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
-        let error = JitValue::Felt252(Felt::from_bytes_be_slice(b"Division by 0"));
+        let error = Value::Felt252(Felt::from_bytes_be_slice(b"Division by 0"));
 
         run_program_assert_output(
             program,
@@ -858,7 +858,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        jit_panic!(JitValue::Felt252(error)),
+                        jit_panic!(Value::Felt252(error)),
                     );
                 }
             }
@@ -910,7 +910,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        jit_panic!(JitValue::Felt252(error)),
+                        jit_panic!(Value::Felt252(error)),
                     );
                 }
             }

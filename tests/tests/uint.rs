@@ -1,7 +1,7 @@
 use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::{starknet::DummySyscallHandler, JitValue};
+use cairo_native::{starknet::DummySyscallHandler, Value};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 
@@ -449,7 +449,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -475,7 +475,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -501,7 +501,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -527,7 +527,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -553,7 +553,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into())],
+            &[Value::Felt252(a.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -581,7 +581,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -607,7 +607,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -633,7 +633,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -659,7 +659,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -685,7 +685,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into())],
+            &[Value::Felt252(a.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -713,7 +713,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -739,7 +739,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -765,7 +765,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -791,7 +791,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -817,7 +817,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into())],
+            &[Value::Felt252(a.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -845,7 +845,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -871,7 +871,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -897,7 +897,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -923,7 +923,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -949,7 +949,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into())],
+            &[Value::Felt252(a.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -977,7 +977,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -1003,7 +1003,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -1029,7 +1029,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -1055,7 +1055,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into()), JitValue::Felt252(b.into())],
+            &[Value::Felt252(a.into()), Value::Felt252(b.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -1081,7 +1081,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a.into())],
+            &[Value::Felt252(a.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );

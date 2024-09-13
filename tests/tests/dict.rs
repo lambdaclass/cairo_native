@@ -3,7 +3,7 @@ use crate::common::{
 };
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::{starknet::DummySyscallHandler, JitValue};
+use cairo_native::{starknet::DummySyscallHandler, Value};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
@@ -35,7 +35,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a), JitValue::Felt252(b)],
+            &[Value::Felt252(a), Value::Felt252(b)],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );

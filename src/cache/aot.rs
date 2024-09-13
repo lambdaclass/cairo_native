@@ -84,7 +84,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{utils::test::load_cairo, values::JitValue};
+    use crate::{utils::test::load_cairo, values::Value};
     use starknet_types_core::felt::Felt;
 
     #[test]
@@ -105,6 +105,6 @@ mod tests {
             .expect("should run");
 
         // After compiling and inserting the program, we should be able to run it.
-        assert_eq!(res.return_value, JitValue::Felt252(Felt::from(42)));
+        assert_eq!(res.return_value, Value::Felt252(Felt::from(42)));
     }
 }

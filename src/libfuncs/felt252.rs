@@ -369,7 +369,7 @@ pub fn build_is_zero<'ctx, 'this>(
 pub mod test {
     use crate::{
         utils::test::{load_cairo, run_program, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -432,82 +432,82 @@ pub mod test {
         run_program_assert_output(
             &FELT252_ADD,
             "run_test",
-            &[JitValue::felt_str("0"), JitValue::felt_str("0")],
-            JitValue::felt_str("0"),
+            &[Value::felt_str("0"), Value::felt_str("0")],
+            Value::felt_str("0"),
         );
         run_program_assert_output(
             &FELT252_ADD,
             "run_test",
-            &[JitValue::felt_str("1"), JitValue::felt_str("2")],
-            JitValue::felt_str("3"),
+            &[Value::felt_str("1"), Value::felt_str("2")],
+            Value::felt_str("3"),
         );
 
-        fn r(lhs: JitValue, rhs: JitValue) -> JitValue {
+        fn r(lhs: Value, rhs: Value) -> Value {
             run_program(&FELT252_ADD, "run_test", &[lhs, rhs]).return_value
         }
 
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("1")),
-            JitValue::felt_str("1")
+            r(Value::felt_str("0"), Value::felt_str("1")),
+            Value::felt_str("1")
         );
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-2")),
-            JitValue::felt_str("-2")
+            r(Value::felt_str("0"), Value::felt_str("-2")),
+            Value::felt_str("-2")
         );
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-1")),
-            JitValue::felt_str("-1")
-        );
-
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("0")),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("1")),
-            JitValue::felt_str("2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("-1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("0")
+            r(Value::felt_str("0"), Value::felt_str("-1")),
+            Value::felt_str("-1")
         );
 
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("0")),
-            JitValue::felt_str("-2")
+            r(Value::felt_str("1"), Value::felt_str("0")),
+            Value::felt_str("1")
         );
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("1")),
-            JitValue::felt_str("-1")
+            r(Value::felt_str("1"), Value::felt_str("1")),
+            Value::felt_str("2")
         );
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-2")),
-            JitValue::felt_str("-4")
+            r(Value::felt_str("1"), Value::felt_str("-2")),
+            Value::felt_str("-1")
         );
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-1")),
-            JitValue::felt_str("-3")
+            r(Value::felt_str("1"), Value::felt_str("-1")),
+            Value::felt_str("0")
         );
 
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("0")),
-            JitValue::felt_str("-1")
+            r(Value::felt_str("-2"), Value::felt_str("0")),
+            Value::felt_str("-2")
         );
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("1")),
-            JitValue::felt_str("0")
+            r(Value::felt_str("-2"), Value::felt_str("1")),
+            Value::felt_str("-1")
         );
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("-3")
+            r(Value::felt_str("-2"), Value::felt_str("-2")),
+            Value::felt_str("-4")
         );
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("-2")
+            r(Value::felt_str("-2"), Value::felt_str("-1")),
+            Value::felt_str("-3")
+        );
+
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("0")),
+            Value::felt_str("-1")
+        );
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("1")),
+            Value::felt_str("0")
+        );
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("-2")),
+            Value::felt_str("-3")
+        );
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("-1")),
+            Value::felt_str("-2")
         );
     }
 
@@ -516,71 +516,71 @@ pub mod test {
         let r = |lhs, rhs| run_program(&FELT252_SUB, "run_test", &[lhs, rhs]).return_value;
 
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("0")),
-            JitValue::felt_str("0")
+            r(Value::felt_str("0"), Value::felt_str("0")),
+            Value::felt_str("0")
         );
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("1")),
-            JitValue::felt_str("-1")
+            r(Value::felt_str("0"), Value::felt_str("1")),
+            Value::felt_str("-1")
         );
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-2")),
-            JitValue::felt_str("2")
+            r(Value::felt_str("0"), Value::felt_str("-2")),
+            Value::felt_str("2")
         );
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-1")),
-            JitValue::felt_str("1")
-        );
-
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("0")),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("1")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("3")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("2")
+            r(Value::felt_str("0"), Value::felt_str("-1")),
+            Value::felt_str("1")
         );
 
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("0")),
-            JitValue::felt_str("-2")
+            r(Value::felt_str("1"), Value::felt_str("0")),
+            Value::felt_str("1")
         );
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("1")),
-            JitValue::felt_str("-3")
+            r(Value::felt_str("1"), Value::felt_str("1")),
+            Value::felt_str("0")
         );
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-2")),
-            JitValue::felt_str("0")
+            r(Value::felt_str("1"), Value::felt_str("-2")),
+            Value::felt_str("3")
         );
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-1")),
-            JitValue::felt_str("-1")
+            r(Value::felt_str("1"), Value::felt_str("-1")),
+            Value::felt_str("2")
         );
 
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("0")),
-            JitValue::felt_str("-1")
+            r(Value::felt_str("-2"), Value::felt_str("0")),
+            Value::felt_str("-2")
         );
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("1")),
-            JitValue::felt_str("-2")
+            r(Value::felt_str("-2"), Value::felt_str("1")),
+            Value::felt_str("-3")
         );
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("1")
+            r(Value::felt_str("-2"), Value::felt_str("-2")),
+            Value::felt_str("0")
         );
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("0")
+            r(Value::felt_str("-2"), Value::felt_str("-1")),
+            Value::felt_str("-1")
+        );
+
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("0")),
+            Value::felt_str("-1")
+        );
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("1")),
+            Value::felt_str("-2")
+        );
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("-2")),
+            Value::felt_str("1")
+        );
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("-1")),
+            Value::felt_str("0")
         );
     }
 
@@ -589,71 +589,71 @@ pub mod test {
         let r = |lhs, rhs| run_program(&FELT252_MUL, "run_test", &[lhs, rhs]).return_value;
 
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("0")),
-            JitValue::felt_str("0")
+            r(Value::felt_str("0"), Value::felt_str("0")),
+            Value::felt_str("0")
         );
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("1")),
-            JitValue::felt_str("0")
+            r(Value::felt_str("0"), Value::felt_str("1")),
+            Value::felt_str("0")
         );
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-2")),
-            JitValue::felt_str("0")
+            r(Value::felt_str("0"), Value::felt_str("-2")),
+            Value::felt_str("0")
         );
         assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-1")),
-            JitValue::felt_str("0")
-        );
-
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("0")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("1")),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("-2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("-1")
+            r(Value::felt_str("0"), Value::felt_str("-1")),
+            Value::felt_str("0")
         );
 
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("0")),
-            JitValue::felt_str("0")
+            r(Value::felt_str("1"), Value::felt_str("0")),
+            Value::felt_str("0")
         );
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("1")),
-            JitValue::felt_str("-2")
+            r(Value::felt_str("1"), Value::felt_str("1")),
+            Value::felt_str("1")
         );
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-2")),
-            JitValue::felt_str("4")
+            r(Value::felt_str("1"), Value::felt_str("-2")),
+            Value::felt_str("-2")
         );
         assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-1")),
-            JitValue::felt_str("2")
+            r(Value::felt_str("1"), Value::felt_str("-1")),
+            Value::felt_str("-1")
         );
 
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("0")),
-            JitValue::felt_str("0")
+            r(Value::felt_str("-2"), Value::felt_str("0")),
+            Value::felt_str("0")
         );
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("1")),
-            JitValue::felt_str("-1")
+            r(Value::felt_str("-2"), Value::felt_str("1")),
+            Value::felt_str("-2")
         );
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("2")
+            r(Value::felt_str("-2"), Value::felt_str("-2")),
+            Value::felt_str("4")
         );
         assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("1")
+            r(Value::felt_str("-2"), Value::felt_str("-1")),
+            Value::felt_str("2")
+        );
+
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("0")),
+            Value::felt_str("0")
+        );
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("1")),
+            Value::felt_str("-1")
+        );
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("-2")),
+            Value::felt_str("2")
+        );
+        assert_eq!(
+            r(Value::felt_str("-1"), Value::felt_str("-1")),
+            Value::felt_str("1")
         );
     }
 
@@ -664,8 +664,8 @@ pub mod test {
 
         // Helper function to extract the result struct field from the return value.
         let extract_struct_field = |result| match result {
-            JitValue::Enum { value, .. } => match *value {
-                JitValue::Struct { fields, .. } => fields[0].clone(),
+            Value::Enum { value, .. } => match *value {
+                Value::Struct { fields, .. } => fields[0].clone(),
                 _ => panic!("Expected Struct"),
             },
             _ => panic!("Expected Enum"),
@@ -674,79 +674,76 @@ pub mod test {
         // Helper function to assert that a division panics.
         let assert_panics = |lhs, rhs| {
             assert!(
-                matches!(run_test(lhs, rhs), JitValue::Enum { tag, .. } if tag == 1),
+                matches!(run_test(lhs, rhs), Value::Enum { tag, .. } if tag == 1),
                 "division by 0 is expected to panic",
             )
         };
 
         // Division by zero is expected to panic.
-        assert_panics(JitValue::felt_str("0"), JitValue::felt_str("0"));
-        assert_panics(JitValue::felt_str("1"), JitValue::felt_str("0"));
-        assert_panics(JitValue::felt_str("-2"), JitValue::felt_str("0"));
+        assert_panics(Value::felt_str("0"), Value::felt_str("0"));
+        assert_panics(Value::felt_str("1"), Value::felt_str("0"));
+        assert_panics(Value::felt_str("-2"), Value::felt_str("0"));
 
         // Test cases for valid division results.
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("0"), JitValue::felt_str("1"))),
-            JitValue::felt_str("0")
+            extract_struct_field(run_test(Value::felt_str("0"), Value::felt_str("1"))),
+            Value::felt_str("0")
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("0"), JitValue::felt_str("-2"))),
-            JitValue::felt_str("0")
+            extract_struct_field(run_test(Value::felt_str("0"), Value::felt_str("-2"))),
+            Value::felt_str("0")
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("0"), JitValue::felt_str("-1"))),
-            JitValue::felt_str("0")
+            extract_struct_field(run_test(Value::felt_str("0"), Value::felt_str("-1"))),
+            Value::felt_str("0")
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("1"), JitValue::felt_str("1"))),
-            JitValue::felt_str("1")
+            extract_struct_field(run_test(Value::felt_str("1"), Value::felt_str("1"))),
+            Value::felt_str("1")
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("1"), JitValue::felt_str("-2"))),
-            JitValue::felt_str(
+            extract_struct_field(run_test(Value::felt_str("1"), Value::felt_str("-2"))),
+            Value::felt_str(
                 "1809251394333065606848661391547535052811553607665798349986546028067936010240"
             )
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("1"), JitValue::felt_str("-1"))),
-            JitValue::felt_str("-1")
+            extract_struct_field(run_test(Value::felt_str("1"), Value::felt_str("-1"))),
+            Value::felt_str("-1")
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-2"), JitValue::felt_str("1"))),
-            JitValue::felt_str("-2")
+            extract_struct_field(run_test(Value::felt_str("-2"), Value::felt_str("1"))),
+            Value::felt_str("-2")
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-2"), JitValue::felt_str("-2"))),
-            JitValue::felt_str("1")
+            extract_struct_field(run_test(Value::felt_str("-2"), Value::felt_str("-2"))),
+            Value::felt_str("1")
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-2"), JitValue::felt_str("-1"))),
-            JitValue::felt_str("2")
+            extract_struct_field(run_test(Value::felt_str("-2"), Value::felt_str("-1"))),
+            Value::felt_str("2")
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-1"), JitValue::felt_str("1"))),
-            JitValue::felt_str("-1")
+            extract_struct_field(run_test(Value::felt_str("-1"), Value::felt_str("1"))),
+            Value::felt_str("-1")
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-1"), JitValue::felt_str("-2"))),
-            JitValue::felt_str(
+            extract_struct_field(run_test(Value::felt_str("-1"), Value::felt_str("-2"))),
+            Value::felt_str(
                 "1809251394333065606848661391547535052811553607665798349986546028067936010241"
             )
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-1"), JitValue::felt_str("-1"))),
-            JitValue::felt_str("1")
+            extract_struct_field(run_test(Value::felt_str("-1"), Value::felt_str("-1"))),
+            Value::felt_str("1")
         );
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("6"), JitValue::felt_str("2"))),
-            JitValue::felt_str("3")
+            extract_struct_field(run_test(Value::felt_str("6"), Value::felt_str("2"))),
+            Value::felt_str("3")
         );
         assert_eq!(
-            extract_struct_field(run_test(
-                JitValue::felt_str("1000"),
-                JitValue::felt_str("2")
-            )),
-            JitValue::felt_str("500")
+            extract_struct_field(run_test(Value::felt_str("1000"), Value::felt_str("2"))),
+            Value::felt_str("500")
         );
     }
 
@@ -754,12 +751,12 @@ pub mod test {
     fn felt252_const() {
         assert_eq!(
             run_program(&FELT252_CONST, "run_test", &[]).return_value,
-            JitValue::Struct {
+            Value::Struct {
                 fields: vec![
-                    JitValue::felt_str("0"),
-                    JitValue::felt_str("1"),
-                    JitValue::felt_str("-2"),
-                    JitValue::felt_str("-1")
+                    Value::felt_str("0"),
+                    Value::felt_str("1"),
+                    Value::felt_str("-2"),
+                    Value::felt_str("-1")
                 ],
                 debug_name: None
             }
@@ -770,9 +767,9 @@ pub mod test {
     fn felt252_is_zero() {
         let r = |x| run_program(&FELT252_IS_ZERO, "run_test", &[x]).return_value;
 
-        assert_eq!(r(JitValue::felt_str("0")), JitValue::felt_str("1"));
-        assert_eq!(r(JitValue::felt_str("1")), JitValue::felt_str("0"));
-        assert_eq!(r(JitValue::felt_str("-2")), JitValue::felt_str("0"));
-        assert_eq!(r(JitValue::felt_str("-1")), JitValue::felt_str("0"));
+        assert_eq!(r(Value::felt_str("0")), Value::felt_str("1"));
+        assert_eq!(r(Value::felt_str("1")), Value::felt_str("0"));
+        assert_eq!(r(Value::felt_str("-2")), Value::felt_str("0"));
+        assert_eq!(r(Value::felt_str("-1")), Value::felt_str("0"));
     }
 }

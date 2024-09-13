@@ -5,7 +5,7 @@ use crate::{
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{create_engine, generate_function_name},
-    values::JitValue,
+    values::Value,
     OptLevel,
 };
 use cairo_lang_sierra::{
@@ -68,7 +68,7 @@ impl<'m> JitNativeExecutor<'m> {
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
-        args: &[JitValue],
+        args: &[Value],
         gas: Option<u128>,
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
@@ -90,7 +90,7 @@ impl<'m> JitNativeExecutor<'m> {
     pub fn invoke_dynamic_with_syscall_handler(
         &self,
         function_id: &FunctionId,
-        args: &[JitValue],
+        args: &[Value],
         gas: Option<u128>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ExecutionResult, Error> {
@@ -125,9 +125,9 @@ impl<'m> JitNativeExecutor<'m> {
             &self.registry,
             self.find_function_ptr(function_id),
             self.extract_signature(function_id),
-            &[JitValue::Struct {
-                fields: vec![JitValue::Array(
-                    args.iter().cloned().map(JitValue::Felt252).collect(),
+            &[Value::Struct {
+                fields: vec![Value::Array(
+                    args.iter().cloned().map(Value::Felt252).collect(),
                 )],
                 // TODO: Populate `debug_name`.
                 debug_name: None,

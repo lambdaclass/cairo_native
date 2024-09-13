@@ -521,7 +521,7 @@ pub fn build_from_felt252<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo},
-        values::JitValue,
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -660,7 +660,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        jit_panic!(JitValue::Felt252(error)),
+                        jit_panic!(Value::Felt252(error)),
                     );
                 }
             }
@@ -712,7 +712,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        jit_panic!(JitValue::Felt252(error)),
+                        jit_panic!(Value::Felt252(error)),
                     );
                 }
             }

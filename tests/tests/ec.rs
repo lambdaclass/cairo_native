@@ -3,7 +3,7 @@ use crate::common::{
 };
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::{starknet::DummySyscallHandler, JitValue};
+use cairo_native::{starknet::DummySyscallHandler, Value};
 use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use proptest::prelude::*;
@@ -76,7 +76,7 @@ fn ec_point_from_x_big() {
     let result_native = run_native_program(
         program,
         "run_test",
-        &[JitValue::Felt252(Felt::from_bytes_be(&x.to_bytes_be()))],
+        &[Value::Felt252(Felt::from_bytes_be(&x.to_bytes_be()))],
         Some(DEFAULT_GAS as u128),
         Option::<DummySyscallHandler>::None,
     );
@@ -104,7 +104,7 @@ fn ec_point_from_x_small() {
     let result_native = run_native_program(
         program,
         "run_test",
-        &[JitValue::Felt252(Felt::from_bytes_be(&x.to_bytes_be()))],
+        &[Value::Felt252(Felt::from_bytes_be(&x.to_bytes_be()))],
         Some(DEFAULT_GAS as u128),
         Option::<DummySyscallHandler>::None,
     );
@@ -132,7 +132,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a), JitValue::Felt252(b)],
+            &[Value::Felt252(a), Value::Felt252(b)],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -158,7 +158,7 @@ proptest! {
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a)],
+            &[Value::Felt252(a)],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );

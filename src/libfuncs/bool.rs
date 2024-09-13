@@ -212,7 +212,7 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
 
     #[test]
@@ -370,9 +370,9 @@ mod test {
         );
 
         let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_value;
-        assert_eq!(result, JitValue::Felt252(1.into()));
+        assert_eq!(result, Value::Felt252(1.into()));
 
         let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_value;
-        assert_eq!(result, JitValue::Felt252(0.into()));
+        assert_eq!(result, Value::Felt252(0.into()));
     }
 }

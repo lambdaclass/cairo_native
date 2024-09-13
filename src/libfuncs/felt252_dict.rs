@@ -113,7 +113,7 @@ pub fn build_squash<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_dict, jit_enum, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
 
     #[test]
@@ -229,7 +229,7 @@ mod test {
                 5 => 6u32,
             )],
             jit_struct!(
-                JitValue::Felt252(0.into()),
+                Value::Felt252(0.into()),
                 jit_dict!(
                     1 => 2u32,
                     2 => 3u32,

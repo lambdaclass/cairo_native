@@ -3,7 +3,7 @@ use crate::common::{compare_outputs, DEFAULT_GAS};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::starknet::DummySyscallHandler;
-use cairo_native::JitValue;
+use cairo_native::Value;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
@@ -124,7 +124,7 @@ fn fib() {
     let result_native = run_native_program(
         &FIB,
         "run_test",
-        &[JitValue::Felt252(10.into())],
+        &[Value::Felt252(10.into())],
         Some(DEFAULT_GAS as u128),
         Option::<DummySyscallHandler>::None,
     );
@@ -150,7 +150,7 @@ fn logistic_map() {
     let result_native = run_native_program(
         &LOGISTIC_MAP,
         "run_test",
-        &[JitValue::Felt252(1000.into())],
+        &[Value::Felt252(1000.into())],
         Some(DEFAULT_GAS as u128),
         Option::<DummySyscallHandler>::None,
     );
@@ -190,10 +190,10 @@ fn pedersen() {
         &PEDERSEN,
         "run_test",
         &[
-            JitValue::felt_str(
+            Value::felt_str(
                 "2163739901324492107409690946633517860331020929182861814098856895601180685",
             ),
-            JitValue::felt_str(
+            Value::felt_str(
                 "2392090257937917229310563411601744459500735555884672871108624696010915493156",
             ),
         ],
@@ -222,7 +222,7 @@ fn factorial() {
     let result_native = run_native_program(
         &FACTORIAL,
         "run_test",
-        &[JitValue::Felt252(13.into())],
+        &[Value::Felt252(13.into())],
         Some(DEFAULT_GAS as u128),
         Option::<DummySyscallHandler>::None,
     );
@@ -249,7 +249,7 @@ proptest! {
         let result_native = run_native_program(
             &FIB,
             "run_test",
-            &[JitValue::Felt252(n.into())],
+            &[Value::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -274,7 +274,7 @@ proptest! {
         let result_native = run_native_program(
             &LOGISTIC_MAP,
             "run_test",
-            &[JitValue::Felt252(n.into())],
+            &[Value::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -299,7 +299,7 @@ proptest! {
         let result_native = run_native_program(
             &FACTORIAL,
             "run_test",
-            &[JitValue::Felt252(n.into())],
+            &[Value::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -325,7 +325,7 @@ proptest! {
         let result_native = run_native_program(
             &PEDERSEN,
             "run_test",
-            &[JitValue::Felt252(a), JitValue::Felt252(b)],
+            &[Value::Felt252(a), Value::Felt252(b)],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -353,7 +353,7 @@ proptest! {
         let result_native = run_native_program(
             &POSEIDON,
             "run_test",
-            &[JitValue::Felt252(a), JitValue::Felt252(b), JitValue::Felt252(c)],
+            &[Value::Felt252(a), Value::Felt252(b), Value::Felt252(c)],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );

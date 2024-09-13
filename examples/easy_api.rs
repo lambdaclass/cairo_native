@@ -1,5 +1,5 @@
 use cairo_native::{
-    context::NativeContext, executor::JitNativeExecutor, utils::cairo_to_sierra, JitValue,
+    context::NativeContext, executor::JitNativeExecutor, utils::cairo_to_sierra, Value,
 };
 use starknet_types_core::felt::Felt;
 use std::path::Path;
@@ -18,7 +18,7 @@ fn main() {
     let native_program = native_context.compile(&sierra_program).unwrap();
 
     // The parameters of the entry point.
-    let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
+    let params = &[Value::Felt252(Felt::from_bytes_be_slice(b"user"))];
 
     // Find the entry point id by its name.
     let entry_point = "hello::hello::greet";

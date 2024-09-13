@@ -501,7 +501,7 @@ pub fn build_zero<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -590,45 +590,43 @@ mod test {
 
     #[test]
     fn ec_point_is_zero() {
-        let r = |x, y| {
-            run_program(&EC_POINT_IS_ZERO, "run_test", &[JitValue::EcPoint(x, y)]).return_value
-        };
+        let r =
+            |x, y| run_program(&EC_POINT_IS_ZERO, "run_test", &[Value::EcPoint(x, y)]).return_value;
 
         assert_eq!(r(0.into(), 0.into()), jit_enum!(0, jit_struct!()));
         assert_eq!(
             r(0.into(), 1.into()),
-            jit_enum!(1, JitValue::EcPoint(0.into(), 1.into()))
+            jit_enum!(1, Value::EcPoint(0.into(), 1.into()))
         );
         assert_eq!(r(1.into(), 0.into()), jit_enum!(0, jit_struct!()));
         assert_eq!(
             r(1.into(), 1.into()),
-            jit_enum!(1, JitValue::EcPoint(1.into(), 1.into()))
+            jit_enum!(1, Value::EcPoint(1.into(), 1.into()))
         );
     }
 
     #[test]
     fn ec_neg() {
-        let r = |x, y| run_program(&EC_NEG, "run_test", &[JitValue::EcPoint(x, y)]).return_value;
+        let r = |x, y| run_program(&EC_NEG, "run_test", &[Value::EcPoint(x, y)]).return_value;
 
-        assert_eq!(r(0.into(), 0.into()), JitValue::EcPoint(0.into(), 0.into()));
+        assert_eq!(r(0.into(), 0.into()), Value::EcPoint(0.into(), 0.into()));
         assert_eq!(
             r(0.into(), 1.into()),
-            JitValue::EcPoint(0.into(), Felt::from(-1))
+            Value::EcPoint(0.into(), Felt::from(-1))
         );
-        assert_eq!(r(1.into(), 0.into()), JitValue::EcPoint(1.into(), 0.into()));
+        assert_eq!(r(1.into(), 0.into()), Value::EcPoint(1.into(), 0.into()));
         assert_eq!(
             r(1.into(), 1.into()),
-            JitValue::EcPoint(1.into(), Felt::from(-1))
+            Value::EcPoint(1.into(), Felt::from(-1))
         );
     }
 
     #[test]
     fn ec_point_from_x() {
-        let r =
-            |x| run_program(&EC_POINT_FROM_X_NZ, "run_test", &[JitValue::Felt252(x)]).return_value;
+        let r = |x| run_program(&EC_POINT_FROM_X_NZ, "run_test", &[Value::Felt252(x)]).return_value;
 
         assert_eq!(r(0.into()), jit_enum!(1, jit_struct!()));
-        assert_eq!(r(1234.into()), jit_enum!(0, JitValue::EcPoint(
+        assert_eq!(r(1234.into()), jit_enum!(0, Value::EcPoint(
             Felt::from(1234),
             Felt::from_dec_str("1301976514684871091717790968549291947487646995000837413367950573852273027507").unwrap()
         )));
@@ -637,18 +635,18 @@ mod test {
     #[test]
     fn ec_state_add() {
         run_program_assert_output(&EC_STATE_ADD, "run_test", &[
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
                 Felt::from_dec_str("2835232394579952276045648147338966184268723952674536708929458753792035266179").unwrap(),
                 Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
                 Felt::from_dec_str("2835232394579952276045648147338966184268723952674536708929458753792035266179").unwrap()
             ),
-            JitValue::EcPoint(
+            Value::EcPoint(
                 Felt::from_dec_str("1234").unwrap(),
                 Felt::from_dec_str("1301976514684871091717790968549291947487646995000837413367950573852273027507").unwrap()
             )
         ],
-        JitValue::EcState(
+        Value::EcState(
             Felt::from_dec_str("763975897824944497806946001227010133599886598340174017198031710397718335159").unwrap(),
             Felt::from_dec_str("2805180267536471620369715068237762638204710971142209985448115065526708105983").unwrap(),
             Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
@@ -659,19 +657,19 @@ mod test {
     #[test]
     fn ec_state_add_mul() {
         run_program_assert_output(&EC_STATE_ADD_MUL, "run_test", &[
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
                 Felt::from_dec_str("2835232394579952276045648147338966184268723952674536708929458753792035266179").unwrap(),
                 Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
                 Felt::from_dec_str("2835232394579952276045648147338966184268723952674536708929458753792035266179").unwrap()
             ),
             Felt::ONE.into(), // scalar
-            JitValue::EcPoint(
+            Value::EcPoint(
                 Felt::from_dec_str("1234").unwrap(),
                 Felt::from_dec_str("1301976514684871091717790968549291947487646995000837413367950573852273027507").unwrap()
             )
         ],
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str("763975897824944497806946001227010133599886598340174017198031710397718335159").unwrap(),
                 Felt::from_dec_str("2805180267536471620369715068237762638204710971142209985448115065526708105983").unwrap(),
                 Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
@@ -680,19 +678,19 @@ mod test {
         );
 
         run_program_assert_output(&EC_STATE_ADD_MUL, "run_test", &[
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
                 Felt::from_dec_str("2835232394579952276045648147338966184268723952674536708929458753792035266179").unwrap(),
                 Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
                 Felt::from_dec_str("2835232394579952276045648147338966184268723952674536708929458753792035266179").unwrap()
             ),
             Felt::from(2).into(), // scalar
-            JitValue::EcPoint(
+            Value::EcPoint(
                 Felt::from_dec_str("1234").unwrap(),
                 Felt::from_dec_str("1301976514684871091717790968549291947487646995000837413367950573852273027507").unwrap()
             )
         ],
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str("3016674370847061744386893405108272070153695046160622325692702034987910716850").unwrap(),
                 Felt::from_dec_str("898133181809473419542838028331350248951548889944002871647069130998202992502").unwrap(),
                 Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
@@ -706,7 +704,7 @@ mod test {
         run_program_assert_output(
             &EC_STATE_FINALIZE,
             "run_test",
-            &[JitValue::EcState(
+            &[Value::EcState(
                 Felt::from_dec_str(
                     "3151312365169595090315724863753927489909436624354740709748557281394568342450",
                 )
@@ -727,14 +725,14 @@ mod test {
             jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(&EC_STATE_FINALIZE, "run_test", &[
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str("763975897824944497806946001227010133599886598340174017198031710397718335159").unwrap(),
                 Felt::from_dec_str("2805180267536471620369715068237762638204710971142209985448115065526708105983").unwrap(),
                 Felt::from_dec_str("3151312365169595090315724863753927489909436624354740709748557281394568342450").unwrap(),
                 Felt::from_dec_str("2835232394579952276045648147338966184268723952674536708929458753792035266179").unwrap()
             ),
         ],
-            jit_enum!(0, JitValue::EcPoint(
+            jit_enum!(0, Value::EcPoint(
                     Felt::from(1234),
                     Felt::from_dec_str("1301976514684871091717790968549291947487646995000837413367950573852273027507").unwrap()
                 )
@@ -746,7 +744,7 @@ mod test {
     fn ec_state_init() {
         let result = run_program(&EC_STATE_INIT, "run_test", &[]);
         // cant match the values because the state init is a random point
-        assert!(matches!(result.return_value, JitValue::EcState(_, _, _, _)));
+        assert!(matches!(result.return_value, Value::EcState(_, _, _, _)));
     }
 
     #[test]
@@ -767,7 +765,7 @@ mod test {
                 Felt::from_dec_str("1234").unwrap().into(),
                 Felt::from_dec_str("1301976514684871091717790968549291947487646995000837413367950573852273027507").unwrap().into()
             ],
-                jit_enum!(0, JitValue::EcPoint(
+                jit_enum!(0, Value::EcPoint(
                     Felt::from_dec_str("1234").unwrap(),
                     Felt::from_dec_str("1301976514684871091717790968549291947487646995000837413367950573852273027507").unwrap()
                 ))
@@ -779,7 +777,7 @@ mod test {
             &[  Felt::from_dec_str("1234").unwrap().into(),
                 Felt::from_dec_str("1301976514684871091717790968549291947487646995000837413367950573852273027507").unwrap().neg().into()
                 ],
-                jit_enum!(0, JitValue::EcPoint(
+                jit_enum!(0, Value::EcPoint(
                     Felt::from_dec_str("1234").unwrap(),
                     Felt::from_dec_str("1301976514684871091717790968549291947487646995000837413367950573852273027507").unwrap().neg()
                 ))
@@ -802,7 +800,7 @@ mod test {
             run_program_assert_output(
                 &EC_POINT_UNWRAP,
                 "run_test",
-                &[JitValue::EcPoint(parse(a), parse(b))],
+                &[Value::EcPoint(parse(a), parse(b))],
                 jit_struct!(parse(ea).into(), parse(eb).into()),
             );
         }
@@ -824,7 +822,7 @@ mod test {
             &EC_POINT_ZERO,
             "run_test",
             &[],
-            JitValue::EcPoint(
+            Value::EcPoint(
                 Felt::from_dec_str("0").unwrap(),
                 Felt::from_dec_str("0").unwrap().neg(),
             ),

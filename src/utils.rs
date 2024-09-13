@@ -457,7 +457,7 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
 pub mod test {
     use crate::{
         context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        starknet_stub::StubSyscallHandler, utils::*, values::JitValue,
+        starknet_stub::StubSyscallHandler, utils::*, values::Value,
     };
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
@@ -490,7 +490,7 @@ pub mod test {
     // Helper macros for faster testing.
     macro_rules! jit_struct {
         ($($y:expr),* $(,)? ) => {
-            crate::values::JitValue::Struct {
+            crate::values::Value::Struct {
                 fields: vec![$($y), *],
                 debug_name: None
             }
@@ -498,7 +498,7 @@ pub mod test {
     }
     macro_rules! jit_enum {
         ( $tag:expr, $value:expr ) => {
-            crate::values::JitValue::Enum {
+            crate::values::Value::Enum {
                 tag: $tag,
                 value: Box::new($value),
                 debug_name: None,
@@ -507,7 +507,7 @@ pub mod test {
     }
     macro_rules! jit_dict {
         ( $($key:expr $(=>)+ $value:expr),* $(,)? ) => {
-            crate::values::JitValue::Felt252Dict {
+            crate::values::Value::Felt252Dict {
                 value: {
                     let mut map = std::collections::HashMap::new();
                     $(map.insert($key.into(), $value.into());)*
@@ -576,7 +576,7 @@ pub mod test {
     pub fn run_program(
         program: &(String, Program),
         entry_point: &str,
-        args: &[JitValue],
+        args: &[Value],
     ) -> ExecutionResult {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
@@ -610,8 +610,8 @@ pub mod test {
     pub fn run_program_assert_output(
         program: &(String, Program),
         entry_point: &str,
-        args: &[JitValue],
-        output: JitValue,
+        args: &[Value],
+        output: Value,
     ) {
         let result = run_program(program, entry_point, args);
         assert_eq!(result.return_value, output);

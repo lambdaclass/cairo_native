@@ -1083,14 +1083,14 @@ mod test {
 
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     use cairo_lang_sierra::extensions::utils::Range;
     use num_bigint::BigUint;
     use num_traits::Num;
     use starknet_types_core::felt::Felt;
 
-    fn u384(limbs: [&str; 4]) -> JitValue {
+    fn u384(limbs: [&str; 4]) -> Value {
         fn u96_range() -> Range {
             Range {
                 lower: BigUint::from_str_radix("0", 16).unwrap().into(),
@@ -1100,21 +1100,21 @@ mod test {
             }
         }
 
-        JitValue::Struct {
+        Value::Struct {
             fields: vec![
-                JitValue::BoundedInt {
+                Value::BoundedInt {
                     value: Felt::from_hex_unchecked(limbs[0]),
                     range: u96_range(),
                 },
-                JitValue::BoundedInt {
+                Value::BoundedInt {
                     value: Felt::from_hex_unchecked(limbs[1]),
                     range: u96_range(),
                 },
-                JitValue::BoundedInt {
+                Value::BoundedInt {
                     value: Felt::from_hex_unchecked(limbs[2]),
                     range: u96_range(),
                 },
-                JitValue::BoundedInt {
+                Value::BoundedInt {
                     value: Felt::from_hex_unchecked(limbs[3]),
                     range: u96_range(),
                 },
@@ -1295,7 +1295,7 @@ mod test {
             &program,
             "main",
             &[],
-            jit_panic!(JitValue::felt_str(
+            jit_panic!(Value::felt_str(
                 "30828113188794245257250221355944970489240709081949230"
             )),
         );
