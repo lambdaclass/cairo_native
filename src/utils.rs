@@ -1,15 +1,11 @@
 //! # Various utilities
 
 use crate::{
-    debug_info::{DebugInfo, DebugLocations},
     metadata::MetadataStorage,
     types::{felt252::PRIME, TypeBuilder},
     OptLevel,
 };
-use cairo_lang_compiler::{
-    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-    project::setup_project, CompilerConfig,
-};
+use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -26,10 +22,12 @@ use melior::{
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::One;
+use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     borrow::Cow,
     fmt::{self, Display},
+    ops::Neg,
     path::Path,
     ptr::NonNull,
     sync::Arc,
@@ -80,8 +78,8 @@ pub fn get_integer_layout(width: u32) -> Layout {
             Layout::new::<u128>().align_to(16).unwrap()
         }
     } else {
-        let width = (width as usize).next_multiple_of(8).next_power_of_two();
-        Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
+        let width = (width as usize).next_multiple_of(8);
+        Layout::from_size_align(width >> 3, 16).expect("align should be power of two")
     }
 }
 
@@ -112,37 +110,6 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
             .unwrap()
             .into()
     }
-}
-
-pub fn cairo_to_sierra_with_debug_info<'ctx>(
-    context: &'ctx Context,
-    program: &Path,
-) -> Result<(Program, DebugLocations<'ctx>), crate::error::Error> {
-    let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
-    let main_crate_ids = setup_project(&mut db, program).unwrap();
-    let sierra_program_with_dbg = compile_prepared_db(
-        &mut db,
-        main_crate_ids,
-        CompilerConfig {
-            replace_ids: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-
-    let debug_locations = {
-        let debug_info = DebugInfo::extract(&db, &sierra_program_with_dbg.program)
-            .map_err(|_| {
-                let mut buffer = String::new();
-                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
-                buffer
-            })
-            .unwrap();
-
-        DebugLocations::extract(context, &db, &debug_info)
-    };
-
-    Ok((sierra_program_with_dbg.program, debug_locations))
 }
 
 /// Returns the given entry point if present.
@@ -178,29 +145,39 @@ pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> Option
         .map(|func| &func.id)
 }
 
+/// Parse a numeric string into felt, wrapping negatives around the prime modulo.
+pub fn felt252_str(value: &str) -> Felt {
+    let value = value
+        .parse::<BigInt>()
+        .expect("value must be a digit number");
+    let value = match value.sign() {
+        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
+        _ => value.to_biguint().unwrap(),
+    };
+
+    value.into()
+}
+
 /// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
-pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
+pub fn felt252_bigint(value: impl Into<BigInt>) -> Felt {
     let value: BigInt = value.into();
     let value = match value.sign() {
         Sign::Minus => Cow::Owned(&*PRIME - value.magnitude()),
         _ => Cow::Borrowed(value.magnitude()),
     };
 
-    let mut u32_digits = value.to_u32_digits();
-    u32_digits.resize(8, 0);
-    u32_digits.try_into().unwrap()
+    value.as_ref().into()
 }
 
 /// Parse a short string into a felt that can be used in the cairo-native input.
-pub fn felt252_short_str(value: &str) -> [u32; 8] {
+pub fn felt252_short_str(value: &str) -> Felt {
     let values: Vec<_> = value
         .chars()
         .filter_map(|c| c.is_ascii().then_some(c as u8))
         .collect();
 
-    let mut digits = BigUint::from_bytes_be(&values).to_u32_digits();
-    digits.resize(8, 0);
-    digits.try_into().unwrap()
+    assert!(values.len() < 32);
+    Felt::from_bytes_be_slice(&values)
 }
 
 /// Creates the execution engine, with all symbols registered.
@@ -228,13 +205,8 @@ pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Er
     let pass_manager = PassManager::new(context);
     pass_manager.enable_verifier(true);
     pass_manager.add_pass(pass::transform::create_canonicalizer());
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
+    pass_manager.add_pass(pass::conversion::create_to_llvm());
     pass_manager.run(module)
 }
 
@@ -272,6 +244,12 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
             cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add
                 as *const fn(*mut [[u8; 32]; 4], *const [[u8; 32]; 2]) -> bool
                 as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_init",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_init
+                as *const fn(*mut [[u8; 32]; 4]) as *mut (),
         );
 
         engine.register_symbol(
@@ -648,7 +626,7 @@ pub mod test {
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
         let sierra_program_with_dbg = compile_prepared_db(
-            &mut db,
+            &db,
             main_crate_ids,
             CompilerConfig {
                 diagnostics_reporter: DiagnosticsReporter::stderr(),
@@ -681,7 +659,7 @@ pub mod test {
         let context = NativeContext::new();
 
         let module = context
-            .compile(program, None)
+            .compile(program)
             .expect("Could not compile test program to MLIR.");
 
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
@@ -883,47 +861,77 @@ pub mod test {
     }
 
     // ==============================
+    // == TESTS: felt252_str
+    // ==============================
+    #[test]
+    #[should_panic(expected = "value must be a digit number")]
+    fn test_felt252_str_invalid_input() {
+        let value = "not_a_number";
+        felt252_str(value);
+    }
+
+    #[test]
+    fn test_felt252_str_positive_number() {
+        let value = "123";
+        let result = felt252_str(value);
+        assert_eq!(result, 123.into());
+    }
+
+    #[test]
+    fn test_felt252_str_negative_number() {
+        let value = "-123";
+        let result = felt252_str(value);
+        assert_eq!(
+            result,
+            Felt::from_dec_str(
+                "3618502788666131213697322783095070105623107215331596699973092056135872020358"
+            )
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_felt252_str_zero() {
+        let value = "0";
+        let result = felt252_str(value);
+        assert_eq!(result, Felt::ZERO);
+    }
+
+    // ==============================
     // == TESTS: felt252_short_str
     // ==============================
     #[test]
     fn test_felt252_short_str_short_numeric_string() {
         let value = "12345";
         let result = felt252_short_str(value);
-        assert_eq!(result, [842216501, 49, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 211295614005u64.into());
     }
 
     #[test]
     fn test_felt252_short_str_short_string_with_non_numeric_characters() {
         let value = "hello";
         let result = felt252_short_str(value);
-        assert_eq!(result, [1701604463, 104, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 448378203247u64.into());
     }
 
     #[test]
+    #[should_panic]
     fn test_felt252_short_str_long_numeric_string() {
-        let value = "1234567890123456789012345678901234567890";
-        let result = felt252_short_str(value);
-        assert_eq!(
-            result,
-            [
-                926431536, 859059510, 959459634, 892745528, 825373492, 926431536, 859059510,
-                959459634
-            ]
-        );
+        felt252_short_str("1234567890123456789012345678901234567890");
     }
 
     #[test]
     fn test_felt252_short_str_empty_string() {
         let value = "";
         let result = felt252_short_str(value);
-        assert_eq!(result, [0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, Felt::ZERO);
     }
 
     #[test]
     fn test_felt252_short_str_string_with_non_ascii_characters() {
         let value = "h€llø";
         let result = felt252_short_str(value);
-        assert_eq!(result, [6843500, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 6843500.into());
     }
 
     // ==============================
@@ -1022,33 +1030,5 @@ pub mod test {
             sierra_program.type_declarations[0].id.debug_name,
             Some("u8".into())
         );
-    }
-
-    #[test]
-    fn test_cairo_to_sierra_with_debug_info() {
-        // Define the path to the cairo program.
-        let program_path = Path::new("programs/examples/hello.cairo");
-        // Create a new context.
-        let context = Context::new();
-        // Compile the cairo program to sierra, including debug information.
-        let sierra_program = cairo_to_sierra_with_debug_info(&context, program_path).unwrap();
-
-        // Define the name of the entry point function for comparison.
-        let entry_point = "hello::hello::greet";
-        // Find the function ID of the entry point function in the sierra program.
-        let entry_point_id = find_function_id(&sierra_program.0, entry_point).unwrap();
-
-        // Assert that the debug name of the entry point function matches the expected value.
-        assert_eq!(
-            entry_point_id.debug_name,
-            Some("hello::hello::greet".into())
-        );
-
-        // Check if the sierra program contains a function with the specified debug name for the entry point function.
-        assert!(sierra_program
-            .1
-            .funcs
-            .keys()
-            .any(|func| func.debug_name == Some("hello::hello::greet".into())));
     }
 }

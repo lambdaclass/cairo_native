@@ -19,11 +19,12 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{cf, func, index, llvm, memref},
+    dialect::{cf, index, llvm, memref},
     ir::{
-        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute},
+        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
+        operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Location, Type, Value,
+        Block, Identifier, Location, Type, Value,
     },
     Context,
 };
@@ -70,17 +71,10 @@ pub fn build<'ctx, 'this>(
         let depth_counter =
             entry.append_op_result(memref::load(tailrec_meta.depth_counter(), &[], location))?;
 
-        let index1 = entry.append_op_result(index::constant(
-            context,
-            IntegerAttribute::new(Type::index(context), 1),
-            location,
-        ))?;
-
-        let depth_counter_plus_1 =
-            entry.append_op_result(index::add(depth_counter, index1, location))?;
-
+        let k1 = entry.const_int_from_type(context, location, 1, Type::index(context))?;
+        let new_depth_counter = entry.append_op_result(index::add(depth_counter, k1, location))?;
         entry.append_operation(memref::store(
-            depth_counter_plus_1,
+            new_depth_counter,
             tailrec_meta.depth_counter(),
             &[],
             location,
@@ -146,7 +140,7 @@ pub fn build<'ctx, 'this>(
                     Err(e) => return Some(Err(e)),
                 };
 
-                (type_info.is_builtin() && is_zst).then_some(Ok((type_id, type_info)))
+                (!(type_info.is_builtin() && is_zst)).then_some(Ok((type_id, type_info)))
             })
             .collect::<Result<Vec<_>>>()?;
         // A function has a return pointer if either:
@@ -191,13 +185,26 @@ pub fn build<'ctx, 'this>(
             None
         };
 
-        let function_call_result = entry.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, &generate_function_name(&info.function.id)),
-            &arguments,
-            &result_types,
-            location,
-        ));
+        let function_call_result = entry.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "callee"),
+                        FlatSymbolRefAttribute::new(
+                            context,
+                            &format!("impl${}", generate_function_name(&info.function.id)),
+                        )
+                        .into(),
+                    ),
+                    // (
+                    //     Identifier::new(context, "CConv"),
+                    //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
+                    // ),
+                ])
+                .add_operands(&arguments)
+                .add_results(&[llvm::r#type::r#struct(context, &result_types, false)])
+                .build()?,
+        )?;
 
         let mut results = Vec::new();
         match has_return_ptr {
@@ -239,15 +246,19 @@ pub fn build<'ctx, 'this>(
                 // Complex return type. Just extract the values from the struct, since LLVM will
                 // handle the rest.
 
-                let mut count = 0;
                 for (idx, type_id) in info.function.signature.ret_types.iter().enumerate() {
                     let type_info = registry.get_type(type_id)?;
 
                     if type_info.is_builtin() && type_info.is_zst(registry)? {
                         results.push(entry.argument(idx)?.into());
                     } else {
-                        let val = function_call_result.result(count)?.into();
-                        count += 1;
+                        let val = entry.extract_value(
+                            context,
+                            location,
+                            function_call_result,
+                            result_types[idx],
+                            idx,
+                        )?;
 
                         results.push(val);
                     }
@@ -264,7 +275,13 @@ pub fn build<'ctx, 'this>(
                     if type_info.is_builtin() && type_info.is_zst(registry)? {
                         results.push(entry.argument(idx)?.into());
                     } else {
-                        let value = function_call_result.result(count)?.into();
+                        let value = entry.extract_value(
+                            context,
+                            location,
+                            function_call_result,
+                            result_types[count],
+                            count,
+                        )?;
                         count += 1;
 
                         results.push(value);

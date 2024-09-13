@@ -438,10 +438,10 @@ pub mod test {
         };
 
         static ref FELT252_IS_ZERO: (String, Program) = load_cairo! {
-            fn run_test(x: felt252) -> felt252 {
+            fn run_test(x: felt252) -> bool {
                 match x {
-                    0 => 1,
-                    _ => 0,
+                    0 => true,
+                    _ => false,
                 }
             }
         };
@@ -572,10 +572,16 @@ pub mod test {
             )
             .return_value
             {
-                JitValue::Enum { tag: 0, value, .. } => Some(match &*value {
-                    JitValue::Felt252(x) => *x,
-                    _ => panic!("invalid return type payload"),
-                }),
+                JitValue::Enum { tag: 0, value, .. } => match *value {
+                    JitValue::Struct { fields, .. } => {
+                        assert_eq!(fields.len(), 1);
+                        Some(match &fields[0] {
+                            JitValue::Felt252(x) => *x,
+                            _ => panic!("invalid return type payload"),
+                        })
+                    }
+                    _ => panic!("invalid return type"),
+                },
                 JitValue::Enum { tag: 1, .. } => None,
                 _ => panic!("invalid return type"),
             }

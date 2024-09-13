@@ -31,8 +31,7 @@ use std::{alloc::Layout, collections::HashMap, ptr::NonNull, slice};
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Clone, Educe)]
-#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Educe, serde::Serialize, serde::Deserialize)]
 #[educe(Debug, Eq, PartialEq)]
 pub enum JitValue {
     Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
@@ -77,7 +76,7 @@ pub enum JitValue {
     },
     BoundedInt {
         value: Felt,
-        #[cfg_attr(feature = "with-serde", serde(with = "range_serde"))]
+        #[serde(with = "range_serde")]
         range: Range,
     },
     /// Used as return value for Nullables that are null.
@@ -195,8 +194,8 @@ impl JitValue {
                 Self::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
-                    let data = felt252_bigint(value.to_bigint());
-                    ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
+                    let data = felt252_bigint(value.to_bigint()).to_bytes_le();
+                    ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
                 Self::BoundedInt {
@@ -229,8 +228,8 @@ impl JitValue {
                     }
 
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
-                    let data = felt252_bigint(value);
-                    ptr.cast::<[u32; 8]>().as_mut().copy_from_slice(&data);
+                    let data = felt252_bigint(value).to_bytes_le();
+                    ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
 
@@ -486,11 +485,11 @@ impl JitValue {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2)?.0.pad_to_align())
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint());
-                    let b = felt252_bigint(b.to_bigint());
+                    let a = felt252_bigint(a.to_bigint()).to_bytes_le();
+                    let b = felt252_bigint(b.to_bigint()).to_bytes_le();
                     let data = [a, b];
 
-                    ptr.cast::<[[u32; 8]; 2]>().as_mut().copy_from_slice(&data);
+                    ptr.cast::<[[u8; 32]; 2]>().as_mut().copy_from_slice(&data);
 
                     ptr
                 }
@@ -499,13 +498,13 @@ impl JitValue {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 4)?.0.pad_to_align())
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint());
-                    let b = felt252_bigint(b.to_bigint());
-                    let c = felt252_bigint(c.to_bigint());
-                    let d = felt252_bigint(d.to_bigint());
+                    let a = felt252_bigint(a.to_bigint()).to_bytes_le();
+                    let b = felt252_bigint(b.to_bigint()).to_bytes_le();
+                    let c = felt252_bigint(c.to_bigint()).to_bytes_le();
+                    let d = felt252_bigint(d.to_bigint()).to_bytes_le();
                     let data = [a, b, c, d];
 
-                    ptr.cast::<[[u32; 8]; 4]>().as_mut().copy_from_slice(&data);
+                    ptr.cast::<[[u8; 32]; 4]>().as_mut().copy_from_slice(&data);
 
                     ptr
                 }
@@ -1526,7 +1525,6 @@ mod test {
     }
 }
 
-#[cfg(feature = "with-serde")]
 mod range_serde {
     use std::fmt;
 

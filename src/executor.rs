@@ -16,6 +16,7 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
         ConcreteType,
@@ -36,6 +37,7 @@ use std::{
 };
 
 mod aot;
+pub mod contract;
 mod jit;
 
 #[cfg(target_arch = "aarch64")]
@@ -165,31 +167,28 @@ fn invoke_dynamic(
     //     - All builtins except GasBuiltin and Starknet are ZST.
     //     - The unit struct is a ZST.
     //   - The return argument is complex.
-    let mut ret_types = Vec::new();
-    for id in &function_signature.ret_types {
-        let info = registry.get_type(id)?;
-        if !(info.is_builtin() && info.is_zst(registry)?) {
-            ret_types.push((id, info));
-        }
-    }
+    let mut ret_types_iter = function_signature
+        .ret_types
+        .iter()
+        .filter(|id| {
+            let info = registry.get_type(id).unwrap();
+            !(info.is_builtin() && info.is_zst(registry).unwrap())
+        })
+        .peekable();
 
-    let num_return_args = ret_types.len();
+    let num_return_args = ret_types_iter.clone().count();
     let mut return_ptr = if num_return_args > 1
-        || ret_types
-            .first()
-            .and_then(|(_, info)| match info.is_complex(registry) {
-                Ok(x) => x.then_some(info).map(Ok),
-                Err(e) => Some(Err(e)),
-            })
-            .transpose()?
-            .is_some()
+        || ret_types_iter
+            .peek()
+            .is_some_and(|id| registry.get_type(id).unwrap().is_complex(registry).unwrap())
     {
-        let layout = ret_types.into_iter().try_fold(
-            Layout::new::<()>(),
-            |layout, (_, info)| -> Result<_, Error> {
-                Ok(layout.extend(info.layout(registry)?)?.0)
-            },
-        )?;
+        let layout = ret_types_iter.fold(Layout::new::<()>(), |layout, id| {
+            let type_info = registry.get_type(id).unwrap();
+            layout
+                .extend(type_info.layout(registry).unwrap())
+                .unwrap()
+                .0
+        });
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
         return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
@@ -217,25 +216,12 @@ fn invoke_dynamic(
 
     // Generate argument list.
     let mut iter = args.iter();
-    for type_id in
-        function_signature
-            .param_types
-            .iter()
-            .filter_map(|id| -> Option<Result<_, Error>> {
-                let info = match registry.get_type(id) {
-                    Ok(x) => x,
-                    Err(e) => return Some(Err(e.into())),
-                };
-                match info.is_zst(registry) {
-                    Ok(x) => Ok((!x).then_some(id)).transpose(),
-                    Err(e) => Some(Err(e)),
-                }
-            })
-    {
-        let type_id = type_id?;
-
+    for type_id in function_signature.param_types.iter().filter(|id| {
+        let info = registry.get_type(id).unwrap();
+        !info.is_zst(registry).unwrap()
+    }) {
         // Process gas requirements and syscall handler.
-        match registry.get_type(type_id)? {
+        match registry.get_type(type_id).unwrap() {
             CoreTypeConcrete::GasBuiltin(_) => gas.to_bytes(&mut invoke_data)?,
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
@@ -307,7 +293,7 @@ fn invoke_dynamic(
     let mut remaining_gas = None;
     let mut builtin_stats = BuiltinStats::default();
     for type_id in &function_signature.ret_types {
-        let type_info = registry.get_type(type_id)?;
+        let type_info = registry.get_type(type_id).unwrap();
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => {
                 remaining_gas = Some(match &mut return_ptr {
@@ -340,6 +326,13 @@ fn invoke_dynamic(
                         CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
                         CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
+                        CoreTypeConcrete::RangeCheck96(_) => builtin_stats.range_check_96 = value,
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                            builtin_stats.circuit_add = value
+                        }
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                            builtin_stats.circuit_mul = value
+                        }
                         _ => unreachable!("{type_id:?}"),
                     }
                 }
@@ -349,20 +342,23 @@ fn invoke_dynamic(
     }
 
     // Parse return values.
-    let return_value = match function_signature
+    let return_value = function_signature
         .ret_types
         .last()
-        .map(|id| Result::<_, Error>::Ok((id, registry.get_type(id)?)))
-        .transpose()?
-    {
-        Some((id, info)) if info.is_builtin() => {
-            parse_result(id, registry, return_ptr, ret_registers)?
-        }
-        _ => JitValue::Struct {
-            fields: Vec::new(),
-            debug_name: None,
-        },
-    };
+        .and_then(|ret_type| {
+            let type_info = registry.get_type(ret_type).unwrap();
+            if type_info.is_builtin() {
+                None
+            } else {
+                Some(parse_result(ret_type, registry, return_ptr, ret_registers))
+            }
+        })
+        .unwrap_or_else(|| {
+            Ok(JitValue::Struct {
+                fields: vec![],
+                debug_name: None,
+            })
+        })?;
 
     Ok(ExecutionResult {
         remaining_gas,
@@ -379,12 +375,12 @@ fn parse_result(
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> Result<JitValue, Error> {
-    let type_info = registry.get_type(type_id)?;
+    let type_info = registry.get_type(type_id).unwrap();
     let debug_name = type_info.info().long_id.to_string();
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
-        let layout = type_info.layout(registry)?;
+        let layout = type_info.layout(registry).unwrap();
         let align_offset = return_ptr
             .cast::<u8>()
             .as_ptr()
@@ -398,7 +394,9 @@ fn parse_result(
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => JitValue::from_jit(return_ptr.unwrap(), type_id, registry),
+        CoreTypeConcrete::Array(_) => {
+            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry)?)
+        }
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
             let value = JitValue::from_jit(ptr, &info.ty, registry)?;
@@ -406,7 +404,7 @@ fn parse_result(
             Ok(value)
         },
         CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
-            JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
+            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry)?)
         }
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
@@ -415,7 +413,7 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -424,13 +422,15 @@ fn parse_result(
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
-                Ok(JitValue::Felt252(Felt::from_bytes_le(unsafe {
-                    std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-                })))
+                Ok(JitValue::Felt252(
+                    starknet_types_core::felt::Felt::from_bytes_le(unsafe {
+                        std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
+                    }),
+                ))
             }
         },
         CoreTypeConcrete::Bytes31(_) => match return_ptr {
-            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -445,7 +445,7 @@ fn parse_result(
             }
         },
         CoreTypeConcrete::BoundedInt(info) => match return_ptr {
-            Some(return_ptr) => JitValue::from_jit(return_ptr, type_id, registry),
+            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)?),
             None => {
                 let mut data = if info.range.offset_bit_width() <= 64 {
                     BigInt::from(ret_registers[0])
@@ -524,7 +524,7 @@ fn parse_result(
         },
         CoreTypeConcrete::Enum(info) => {
             let (_, tag_layout, variant_layouts) =
-                crate::types::r#enum::get_layout_for_variants(registry, &info.variants)?;
+                crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
 
             let (tag, ptr) = if type_info.is_memory_allocated(registry)? || return_ptr.is_some() {
                 let ptr = return_ptr.unwrap();
@@ -546,7 +546,7 @@ fn parse_result(
                         NonNull::new_unchecked(
                             ptr.cast::<u8>()
                                 .as_ptr()
-                                .add(tag_layout.extend(variant_layouts[tag])?.1),
+                                .add(tag_layout.extend(variant_layouts[tag]).unwrap().1),
                         )
                         .cast()
                     }),
@@ -566,7 +566,6 @@ fn parse_result(
                     ),
                 }
             };
-
             let value = match ptr {
                 Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)?),
                 Err(offset) => {
@@ -593,14 +592,14 @@ fn parse_result(
                     debug_name: Some(debug_name),
                 })
             } else {
-                JitValue::from_jit(return_ptr.unwrap(), type_id, registry)
+                Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry)?)
             }
         }
         CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
                 addr_of_mut!(ret_registers[0]) as *mut ()
             ));
-            JitValue::from_jit(ptr, type_id, registry)
+            Ok(JitValue::from_jit(ptr, type_id, registry)?)
         },
 
         CoreTypeConcrete::Snapshot(info) => {
@@ -628,5 +627,155 @@ fn parse_result(
         | CoreTypeConcrete::Uint128MulGuarantee(_)
         | CoreTypeConcrete::Circuit(_)
         | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::context::NativeContext;
+    use crate::starknet_stub::StubSyscallHandler;
+    use crate::utils::test::load_cairo;
+    use crate::utils::test::load_starknet;
+    use crate::OptLevel;
+    use cairo_lang_sierra::program::Program;
+    use rstest::*;
+
+    #[fixture]
+    fn program() -> Program {
+        let (_, program) = load_cairo! {
+            use core::starknet::{SyscallResultTrait, get_block_hash_syscall};
+
+            fn run_test() -> felt252 {
+                42
+            }
+
+            fn get_block_hash() -> felt252 {
+                get_block_hash_syscall(1).unwrap_syscall()
+            }
+        };
+        program
+    }
+
+    #[fixture]
+    fn starknet_program() -> Program {
+        let (_, program) = load_starknet! {
+            #[starknet::interface]
+            trait ISimpleStorage<TContractState> {
+                fn get(self: @TContractState) -> u128;
+            }
+
+            #[starknet::contract]
+            mod contract {
+                #[storage]
+                struct Storage {}
+
+                #[abi(embed_v0)]
+                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
+                    fn get(self: @ContractState) -> u128 {
+                        42
+                    }
+                }
+            }
+        };
+        program
+    }
+
+    #[rstest]
+    fn test_invoke_dynamic_aot_native_executor(program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&program)
+            .expect("failed to compile context");
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+
+        let native_executor: NativeExecutor = executor.into();
+
+        // The first function in the program is `run_test`.
+        let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
+
+        let result = native_executor
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .unwrap();
+
+        assert_eq!(result.return_value, JitValue::Felt252(Felt::from(42)));
+    }
+
+    #[rstest]
+    fn test_invoke_dynamic_jit_native_executor(program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&program)
+            .expect("failed to compile context");
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
+
+        let native_executor: NativeExecutor = executor.into();
+
+        // The first function in the program is `run_test`.
+        let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
+
+        let result = native_executor
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .unwrap();
+
+        assert_eq!(result.return_value, JitValue::Felt252(Felt::from(42)));
+    }
+
+    #[rstest]
+    fn test_invoke_contract_dynamic_aot(starknet_program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&starknet_program)
+            .expect("failed to compile context");
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+
+        let native_executor: NativeExecutor = executor.into();
+
+        // The last function in the program is the `get` wrapper function.
+        let entrypoint_function_id = &starknet_program
+            .funcs
+            .last()
+            .expect("should have a function")
+            .id;
+
+        let result = native_executor
+            .invoke_contract_dynamic(
+                entrypoint_function_id,
+                &[],
+                Some(u128::MAX),
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap();
+
+        assert_eq!(result.return_values, vec![Felt::from(42)]);
+    }
+
+    #[rstest]
+    fn test_invoke_contract_dynamic_jit(starknet_program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&starknet_program)
+            .expect("failed to compile context");
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
+
+        let native_executor: NativeExecutor = executor.into();
+
+        // The last function in the program is the `get` wrapper function.
+        let entrypoint_function_id = &starknet_program
+            .funcs
+            .last()
+            .expect("should have a function")
+            .id;
+
+        let result = native_executor
+            .invoke_contract_dynamic(
+                entrypoint_function_id,
+                &[],
+                Some(u128::MAX),
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap();
+
+        assert_eq!(result.return_values, vec![Felt::from(42)]);
     }
 }

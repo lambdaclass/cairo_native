@@ -1,5 +1,6 @@
 //! Trait that extends the melior Block type to aid in codegen and consistency.
 
+use crate::{error::Error, utils::get_integer_layout};
 use melior::{
     dialect::{llvm::r#type::pointer, ods},
     ir::{
@@ -10,8 +11,6 @@ use melior::{
     Context,
 };
 use num_bigint::BigInt;
-
-use crate::{error::Error, utils::get_integer_layout};
 
 pub trait BlockExt<'ctx> {
     /// Appends the operation and returns the first result.

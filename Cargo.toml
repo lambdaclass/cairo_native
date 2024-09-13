@@ -46,24 +46,26 @@ build-cli = [
     "dep:cairo-lang-runner",
     "dep:colored",
 ]
-scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata", "dep:serde_json"]
+scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
 with-debug-utils = []
 with-runtime = ["dep:cairo-native-runtime"]
-with-serde = ["dep:serde"]
 with-cheatcode = []
 
+# the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
+[package.metadata.cargo-udeps.ignore]
+normal = ["aquamarine"]
+
 [dependencies]
+aquamarine = "0.5.0"
 bumpalo = "3.16.0"
-cairo-lang-compiler = "2.7.0"
-cairo-lang-defs = "2.7.0"
-cairo-lang-diagnostics = "2.7.0"
-cairo-lang-filesystem = "2.7.0"
-cairo-lang-lowering = "2.7.0"
-cairo-lang-semantic = "2.7.0"
-cairo-lang-sierra = "2.7.0"
-cairo-lang-sierra-generator = "2.7.0"
+cairo-lang-compiler = "2.8.2"
+cairo-lang-defs = "2.8.2"
+cairo-lang-filesystem = "2.8.2"
+cairo-lang-semantic = "2.8.2"
+cairo-lang-sierra = "2.8.2"
+cairo-lang-sierra-generator = "2.8.2"
+cairo-lang-diagnostics = "2.8.2"
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
-id-arena = "2.2"
 itertools = "0.13.0"
 lazy_static = "1.4"
 libc = "0.2.155"
@@ -72,7 +74,7 @@ melior = { version = "0.18.4", features = ["ods-dialects"] }
 mlir-sys = "0.2.2"
 num-bigint = "0.4.4"
 num-traits = "0.2"
-starknet-types-core = { version = "=0.1.5", default-features = false, features = [
+starknet-types-core = { version = "0.1.5", default-features = false, features = [
     "std",
     "serde",
     "num-traits",
@@ -83,11 +85,11 @@ tracing = "0.1"
 
 
 # CLI dependencies
-cairo-lang-sierra-ap-change = "2.7.0"
-cairo-lang-sierra-gas = "2.7.0"
-cairo-lang-starknet = "2.7.0"
-cairo-lang-utils = "2.7.0"
-cairo-lang-starknet-classes = "2.7.0"
+cairo-lang-sierra-ap-change = "2.8.2"
+cairo-lang-sierra-gas = "2.8.2"
+cairo-lang-starknet = "2.8.2"
+cairo-lang-utils = "2.8.2"
+cairo-lang-starknet-classes = "2.8.2"
 cairo-native-runtime = { version = "0.2.0", path = "runtime", optional = true }
 clap = { version = "4.5", features = ["derive"], optional = true }
 libloading = "0.8.3"
@@ -96,38 +98,37 @@ tracing-subscriber = { version = "0.3.18", features = [
     "json",
     "registry",
 ], optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
+serde = { version = "1.0", features = ["derive"] }
 anyhow = { version = "1.0", optional = true }
-cairo-lang-test-plugin = { version = "2.7.0", optional = true }
-cairo-lang-runner = { version = "2.7.0", optional = true }
+cairo-lang-test-plugin = { version = "2.8.2", optional = true }
+cairo-lang-runner = { version = "2.8.2", optional = true }
 colored = { version = "2.1.0", optional = true }
 # needed to interface with cairo-lang-*
-keccak = "0.1.3"
+keccak = "0.1.5"
 k256 = "0.13.3"
 p256 = "0.13.2"
-sha2 = "0.10.8"                                                                                             # needed for the syscall handler stub
-scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.7.0", optional = true }
-scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.7.0", optional = true }
+sha2 = "0.10.8" # needed for the syscall handler stub
+scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.2", optional = true }
+scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.2", optional = true }
 sec1 = "0.7.3"
-serde_json = { version = "1.0.117", optional = true }
+serde_json = { version = "1.0.125" }
 stats_alloc = "0.1.10"
 
 [dev-dependencies]
-cairo-vm = { version = "1.0.0-rc6", features = ["cairo-1-hints"] }
-cairo-lang-runner = "2.7.0"
-cairo-lang-semantic = { version = "2.7.0", features = ["testing"] }
+cairo-vm = { version = "1.0.1", features = ["cairo-1-hints"] }
+cairo-lang-runner = "2.8.2"
+cairo-lang-semantic = { version = "2.8.2", features = ["testing"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
-lambdaworks-math = "0.7.0"
+lambdaworks-math = "0.10.0"
 pretty_assertions_sorted = "1.2.3"
 proptest = "1.4.0"
-rstest = "0.21.0"
+rstest = "0.22.0"
 test-case = "3.3"
 walkdir = "2.5.0"
 serde_json = { version = "1.0.117" }
-salsa = "0.16.1"
 
 [build-dependencies]
-cc = "1.0.96"
+cc = "1.1.14"
 
 [profile.optimized-dev]
 inherits = "dev"

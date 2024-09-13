@@ -21,7 +21,7 @@ jobs:
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.80.0
+      - uses: dtolnay/rust-toolchain@1.81.0
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.80.0
+      - uses: dtolnay/rust-toolchain@1.81.0
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
@@ -86,12 +86,12 @@ jobs:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUSTUP_TOOLCHAIN: nightly-2024-02-01 # udeps needs nightly
+      RUSTUP_TOOLCHAIN: nightly # udeps needs nightly
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly-2024-02-01
+          toolchain: nightly
           components: rustfmt
 
       - name: add llvm deb repository
@@ -104,7 +104,7 @@ jobs:
         run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
       - name: "Download and run cargo-udeps"
         run: |
-          wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.45/cargo-udeps-v0.1.45-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+          wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.50/cargo-udeps-v0.1.50-x86_64-unknown-linux-gnu.tar.gz | tar -xz
           cargo-udeps-*/cargo-udeps udeps --all-targets --all-features
 
   test:
@@ -114,7 +114,7 @@ jobs:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUST_LOG: debug,cairo_native_test=trace
+      RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
       - name: check and free hdd space left
@@ -137,7 +137,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.80.0
+        uses: dtolnay/rust-toolchain@1.81.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
@@ -157,6 +157,7 @@ jobs:
         run: make test-ci
       - name: test-cairo
         run: make test-cairo
+
   test_macos:
     name: Test (macOS, Apple silicon)
     runs-on: macos-14
@@ -166,11 +167,11 @@ jobs:
       MLIR_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
       LLVM_SYS_181_PREFIX: /opt/homebrew/opt/llvm@18
       TABLEGEN_180_PREFIX: /opt/homebrew/opt/llvm@18
-      RUST_LOG: debug,cairo_native_test=trace
+      RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.80.0
+        uses: dtolnay/rust-toolchain@1.81.0
         with:
           components: clippy
       - name: Rust `$PATH` workaround.
@@ -179,25 +180,37 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.7.0"
+          scarb-version: "2.8.2"
       - name: Install deps
         run: make deps
       - name: Build cairo-native-runtime library.
-        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && cargo build --profile=ci --package=cairo-native-runtime
+        run: cargo build --profile=ci --package=cairo-native-runtime
       - name: Run tests
-        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && make test-ci
+        run: make test-ci
       - name: test-cairo
-        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && make test-cairo
+        run: make test-cairo
 
   coverage:
     name: coverage
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        partition: [1, 2, 3, 4]
+        include:
+          - partition: 1
+            output: lcov-1.info
+          - partition: 2
+            output: lcov-2.info
+          - partition: 3
+            output: lcov-3.info
+          - partition: 4
+            output: lcov-4.info
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      RUST_LOG: debug
+      RUST_LOG: cairo_native=debug
     steps:
       - uses: actions/checkout@v4
       - name: check and free hdd space left
@@ -220,7 +233,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.80.0
+        uses: dtolnay/rust-toolchain@1.81.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
@@ -231,37 +244,80 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
         run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Install testing tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest,cargo-llvm-cov
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.7.0"
+          scarb-version: "2.8.2"
       - name: Install deps
         run: make deps
+      - name: Build runtime and alexandria
+        run: make runtime && make check-llvm && make needs-cairo2 && make build-alexandria
       - name: Build cairo-native-runtime library.
-        run: cargo build --profile=ci --package=cairo-native-runtime
-      - name: test and generate coverage
-        run: make coverage
-      - name: save coverage data
+        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && cargo build --profile=ci --package=cairo-native-runtime
+
+      - name: Run tests and generate coverage partition ${{ matrix.partition }}
+        run: cargo llvm-cov nextest --verbose --all-features --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
+
+      - name: test and generate coverage corelib
+        if: ${{ matrix.partition == '1' }}
+        run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+
+      - name: save coverage data with corelib
+        if: ${{ matrix.partition == '1' }}
         uses: actions/upload-artifact@v4
         with:
-          name: coverage_data
+          name: coverage-data-1
           path: |
-            ./lcov.info
+            ./${{ matrix.output }}
             ./lcov-test.info
+
+      - name: save coverage data
+        if: ${{ matrix.partition != '1' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data-${{ matrix.partition }}
+          path: ./${{ matrix.output }}
+
 
   upload-coverage:
     name: Upload Coverage
     runs-on: ubuntu-latest
     needs: [coverage]
     steps:
+      - name: Setup rust env
+        uses: dtolnay/rust-toolchain@1.80.0
+      - name: Retreive cached dependencies
+        uses: Swatinem/rust-cache@v2
+      - name: Install testing tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest,cargo-llvm-cov
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download artifacts
+      - name: Download artifacts partition 1
         uses: actions/download-artifact@v4
         with:
-          name: coverage_data
+          name: coverage-data-1
+      - name: Download artifacts partition 2
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-data-2
+      - name: Download artifacts partition 3
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-data-3
+      - name: Download artifacts partition 4
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-data-4
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+      - name: Merge the reports
+        run: lcov -a lcov-1.info -a lcov-2.info -a lcov-3.info -a lcov-4.info -o lcov.info
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:

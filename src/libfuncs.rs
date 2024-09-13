@@ -15,6 +15,7 @@ use melior::{
     ir::{Block, BlockRef, Location, Module, Operation, Region, Value, ValueLike},
     Context,
 };
+use num_bigint::BigInt;
 use std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
 
 pub mod ap_tracking;
@@ -26,6 +27,7 @@ pub mod r#box;
 pub mod branch_align;
 pub mod bytes31;
 pub mod cast;
+pub mod circuit;
 pub mod r#const;
 pub mod coupon;
 pub mod debug;
@@ -222,7 +224,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::CouponCall(info) => self::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
-            Self::Circuit(_) => todo!(),
+            Self::Circuit(info) => {
+                self::circuit::build(context, registry, entry, location, helper, metadata, info)
+            }
             Self::BoundedInt(info) => {
                 self::bounded_int::build(context, registry, entry, location, helper, metadata, info)
             }
@@ -507,9 +511,19 @@ pub fn increment_builtin_counter<'ctx: 'a, 'a>(
     location: Location<'ctx>,
     value: Value<'ctx, '_>,
 ) -> crate::error::Result<Value<'ctx, 'a>> {
+    increment_builtin_counter_by(context, block, location, value, 1)
+}
+
+pub fn increment_builtin_counter_by<'ctx: 'a, 'a>(
+    context: &'ctx Context,
+    block: &'ctx Block<'ctx>,
+    location: Location<'ctx>,
+    value: Value<'ctx, '_>,
+    amount: impl Into<BigInt>,
+) -> crate::error::Result<Value<'ctx, 'a>> {
     block.append_op_result(arith::addi(
         value,
-        block.const_int(context, location, 1, 64)?,
+        block.const_int(context, location, amount, 64)?,
         location,
     ))
 }

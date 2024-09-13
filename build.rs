@@ -8,7 +8,7 @@ fn main() {
         .flag("-std=c++17")
         .flag_if_supported("-Wno-unused-parameter")
         .flag_if_supported("-Wno-comment")
-        .include(&format!("{mlir_path}/include"))
+        .include(format!("{mlir_path}/include"))
         .file("src/ffi.cpp")
         .compile("ffi");
 

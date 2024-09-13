@@ -123,7 +123,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
     );
     let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
     let sierra_program_with_dbg = compile_prepared_db(
-        &mut db,
+        &db,
         main_crate_ids.clone(),
         CompilerConfig {
             replace_ids: true,
@@ -160,7 +160,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
     );
     let main_crate_ids = setup_project(&mut db, program_file).unwrap();
     let sierra_program_with_dbg = compile_prepared_db(
-        &mut db,
+        &db,
         main_crate_ids.clone(),
         CompilerConfig {
             replace_ids: true,
@@ -230,7 +230,7 @@ pub fn run_native_program(
     let context = NativeContext::new();
 
     let module = context
-        .compile(program, None)
+        .compile(program)
         .expect("Could not compile test program to MLIR.");
 
     assert!(
@@ -426,7 +426,7 @@ pub fn run_native_starknet_contract(
 ) -> ContractExecutionResult {
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(sierra_program, None).unwrap();
+    let native_program = native_context.compile(sierra_program).unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;

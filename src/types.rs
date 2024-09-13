@@ -12,6 +12,7 @@ use crate::{
     },
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt, RangeExt},
 };
+use cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete;
 use cairo_lang_sierra::extensions::utils::Range;
 use cairo_lang_sierra::{
     extensions::{
@@ -41,6 +42,7 @@ pub mod bounded_int;
 pub mod r#box;
 pub mod builtin_costs;
 pub mod bytes31;
+pub mod circuit;
 pub mod coupon;
 pub mod ec_op;
 pub mod ec_point;
@@ -306,6 +308,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            Self::RangeCheck96(info) => self::range_check::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             Self::SegmentArena(info) => self::segment_arena::build(
                 context,
                 module,
@@ -433,8 +442,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            CoreTypeConcrete::Circuit(_) => todo!(),
-            CoreTypeConcrete::RangeCheck96(_) => todo!(),
+            CoreTypeConcrete::Circuit(info) => self::circuit::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
         }
     }
 
@@ -446,11 +460,14 @@ impl TypeBuilder for CoreTypeConcrete {
                 | CoreTypeConcrete::GasBuiltin(_)
                 | CoreTypeConcrete::BuiltinCosts(_)
                 | CoreTypeConcrete::RangeCheck(_)
+                | CoreTypeConcrete::RangeCheck96(_)
                 | CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
                 | CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
                 | CoreTypeConcrete::SegmentArena(_)
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_))
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
         )
     }
 
@@ -467,6 +484,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::RangeCheck96(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) // u64 is not complex
             | CoreTypeConcrete::SegmentArena(_) => false,
 
@@ -534,8 +552,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(_)) => todo!(),
             CoreTypeConcrete::Coupon(_) => false,
 
-            CoreTypeConcrete::Circuit(_)
-            | CoreTypeConcrete::RangeCheck96(_) => todo!()
+            CoreTypeConcrete::Circuit(info) => circuit::is_complex(info)
         })
     }
 
@@ -550,6 +567,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::RangeCheck96(_)
             | CoreTypeConcrete::SegmentArena(_) => false,
             // Other builtins:
             CoreTypeConcrete::BuiltinCosts(_)
@@ -610,9 +628,8 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.inner_ty)?;
                 type_info.is_zst(registry)?
             }
-            CoreTypeConcrete::Span(_)
-            | CoreTypeConcrete::Circuit(_)
-            | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Circuit(info) => circuit::is_zst(info),
         })
     }
 
@@ -712,7 +729,8 @@ impl TypeBuilder for CoreTypeConcrete {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
             }
             CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
-            CoreTypeConcrete::Circuit(_) | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+            CoreTypeConcrete::RangeCheck96(_) => get_integer_layout(64),
+            CoreTypeConcrete::Circuit(info) => circuit::layout(registry, info)?,
         }
         .pad_to_align())
     }
@@ -747,6 +765,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::NonZero(_) => false,
             CoreTypeConcrete::Nullable(_) => false,
             CoreTypeConcrete::RangeCheck(_) => false,
+            CoreTypeConcrete::RangeCheck96(_) => false,
             CoreTypeConcrete::Uninitialized(_) => false,
             CoreTypeConcrete::Enum(info) => {
                 // Enums are memory-allocated if either:
@@ -797,7 +816,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .get_type(&info.inner_ty)?
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
-            CoreTypeConcrete::Circuit(_) | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+            CoreTypeConcrete::Circuit(_) => false,
         })
     }
 
@@ -836,8 +855,8 @@ impl TypeBuilder for CoreTypeConcrete {
                 lower: BigInt::ZERO,
                 upper: BigInt::one() << 248,
             },
-            Self::Const(info) => return registry.get_type(&info.inner_ty)?.integer_range(registry),
-            Self::NonZero(info) => return registry.get_type(&info.ty)?.integer_range(registry),
+            Self::Const(info) => registry.get_type(&info.inner_ty)?.integer_range(registry)?,
+            Self::NonZero(info) => registry.get_type(&info.ty)?.integer_range(registry)?,
 
             _ => return Err(crate::error::Error::IntegerLikeTypeExpected),
         })
