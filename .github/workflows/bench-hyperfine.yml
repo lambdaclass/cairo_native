@@ -95,7 +95,7 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
-        branch: [ base, head ]
+        branch: [ head ]
     name: Build cairo-native-run for ${{ matrix.branch }}
     runs-on: ubuntu-22.04
     steps:
@@ -193,14 +193,15 @@ jobs:
         run: |
           BINS="base,head"
   
-          cp programs/benches/fib_2M.cairo .
+          cp programs/benches/$PROGRAM.cairo .
+          
           mkdir $OUTPUT_DIR
           hyperfine \
           --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
-          -L bin "$BINS" -n "{bin} fib_2M" "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
-          >> /dev/stderr --show-output 
+          -L bin "$BINS" -n "{bin} $PROGRAM" "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
+          >> /dev/stderr 
             echo "benchmark_count=$(ls $OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
 
       - name: Print tables
