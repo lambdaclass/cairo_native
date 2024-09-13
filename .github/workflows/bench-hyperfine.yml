@@ -92,7 +92,7 @@ jobs:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
-      POGRAM: fib_2M
+      PROGRAM: fib_2M
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
@@ -106,13 +106,6 @@ jobs:
         with:
           path: bin/cairo-native-run-${{ matrix.branch }}
           key: binary-${{ github.event.pull_request[matrix.branch].sha }} 
-      
-      - name: cache program
-        uses: actions/cache@v3
-        id: cache-program 
-        with:
-          path: bench-program-${{ matrix.branch }}
-          key: program-${{ github.event.pull_request[matrix.branch].sha }} 
 
       - name: check and free hdd space left
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
@@ -130,7 +123,7 @@ jobs:
           sudo apt-get clean
           df -h
           echo "Removing large directories"
-          # deleting 15GB
+          deleting 15GB
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
@@ -168,8 +161,14 @@ jobs:
           mkdir bin
           cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
       
+      - name: Cache program
+        uses: actions/cache@v3
+        id: cache-program 
+        with:
+          path: bench-program-${{ matrix.branch }}
+          key: program-${{ github.event.pull_request[matrix.branch].sha }} 
+      
       - name: Fetch Program
-        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         run: |
           cp programs/benches/$PROGRAM.cairo bench-program-base
   
@@ -202,7 +201,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: bench-program-base
-          key: program-${{ github.event.pull_request.base.sha }} 
+          key: program-${{ github.event.pull_request.head.sha }} 
       
       - name: Run Program
         run: |
