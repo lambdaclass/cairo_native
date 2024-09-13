@@ -92,6 +92,7 @@ jobs:
       MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
       LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
       TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      POGRAM: fib_2M
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
