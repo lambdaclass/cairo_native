@@ -168,10 +168,6 @@ jobs:
       PROGRAM: fib_2M
       OUTPUT_DIR: bench-outputs
     steps:
-      - name: Checkout base commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
       - name: Install Hyperfine
         uses: taiki-e/install-action@v2
         with:
