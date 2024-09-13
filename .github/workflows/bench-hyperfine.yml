@@ -193,6 +193,9 @@ jobs:
         run: |
             ROOT_DIR="$(dirname "$(dirname "${0%/*}")")"
             BINS="base,head"
+
+            mkdir $OUTPUT_DIR
+            
             hyperfine \
             --warmup 3 \
             --export-markdown "$ROOT_DIR/$OUTPUT_DIR/PROGRAM.md" \
