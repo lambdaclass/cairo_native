@@ -3,11 +3,11 @@
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
 //! of time. It also provides a cache to avoid recompiling previously compiled programs.
 
-pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
+pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNativeExecutor};
 use crate::{
     arch::{AbiArgument, JitValueWithInfoWrapper},
     error::Error,
-    execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
+    execution_result::{BuiltinStats, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::RangeExt,
@@ -21,23 +21,21 @@ use cairo_lang_sierra::{
         starknet::StarkNetTypeConcrete,
         ConcreteType,
     },
-    ids::{ConcreteTypeId, FunctionId},
+    ids::ConcreteTypeId,
     program::FunctionSignature,
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
 use num_bigint::BigInt;
 use num_traits::One;
-use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     arch::global_asm,
     ptr::{addr_of_mut, NonNull},
-    sync::Arc,
 };
 
 mod aot;
-pub mod contract;
+mod contract;
 mod jit;
 
 #[cfg(target_arch = "aarch64")]
@@ -57,86 +55,6 @@ extern "C" {
         args_len: usize,
         ret_ptr: *mut u64,
     );
-}
-
-/// The cairo native executor, either AOT or JIT based.
-#[derive(Debug, Clone)]
-pub enum NativeExecutor<'m> {
-    Aot(Arc<AotNativeExecutor>),
-    Jit(Arc<JitNativeExecutor<'m>>),
-}
-
-impl<'a> NativeExecutor<'a> {
-    /// Invoke the given function by its function id, with the given arguments and gas.
-    pub fn invoke_dynamic(
-        &self,
-        function_id: &FunctionId,
-        args: &[JitValue],
-        gas: Option<u128>,
-    ) -> Result<ExecutionResult, Error> {
-        match self {
-            NativeExecutor::Aot(executor) => executor.invoke_dynamic(function_id, args, gas),
-            NativeExecutor::Jit(executor) => executor.invoke_dynamic(function_id, args, gas),
-        }
-    }
-
-    /// Invoke the given function by its function id, with the given arguments and gas.
-    /// This should be used for programs which require a syscall handler, whose
-    /// implementation should be passed on.
-    pub fn invoke_dynamic_with_syscall_handler(
-        &self,
-        function_id: &FunctionId,
-        args: &[JitValue],
-        gas: Option<u128>,
-        syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ExecutionResult, Error> {
-        match self {
-            NativeExecutor::Aot(executor) => executor.invoke_dynamic_with_syscall_handler(
-                function_id,
-                args,
-                gas,
-                syscall_handler,
-            ),
-            NativeExecutor::Jit(executor) => executor.invoke_dynamic_with_syscall_handler(
-                function_id,
-                args,
-                gas,
-                syscall_handler,
-            ),
-        }
-    }
-
-    /// Invoke the given function by its function id, with the given arguments and gas.
-    /// This should be used for starknet contracts which require a syscall handler, whose
-    /// implementation should be passed on.
-    pub fn invoke_contract_dynamic(
-        &self,
-        function_id: &FunctionId,
-        args: &[Felt],
-        gas: Option<u128>,
-        syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult, Error> {
-        match self {
-            NativeExecutor::Aot(executor) => {
-                executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)
-            }
-            NativeExecutor::Jit(executor) => {
-                executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)
-            }
-        }
-    }
-}
-
-impl<'m> From<AotNativeExecutor> for NativeExecutor<'m> {
-    fn from(value: AotNativeExecutor) -> Self {
-        Self::Aot(Arc::new(value))
-    }
-}
-
-impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
-    fn from(value: JitNativeExecutor<'m>) -> Self {
-        Self::Jit(Arc::new(value))
-    }
 }
 
 /// Internal method.
@@ -634,13 +552,13 @@ fn parse_result(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::context::NativeContext;
-    use crate::starknet_stub::StubSyscallHandler;
-    use crate::utils::test::load_cairo;
-    use crate::utils::test::load_starknet;
-    use crate::OptLevel;
+    use crate::{
+        context::NativeContext, starknet_stub::StubSyscallHandler, utils::test::load_cairo,
+        utils::test::load_starknet, OptLevel,
+    };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
+    use starknet_types_core::felt::Felt;
 
     #[fixture]
     fn program() -> Program {
@@ -690,12 +608,10 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let native_executor: NativeExecutor = executor.into();
-
         // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
-        let result = native_executor
+        let result = executor
             .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
             .unwrap();
 
@@ -710,12 +626,10 @@ mod tests {
             .expect("failed to compile context");
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let native_executor: NativeExecutor = executor.into();
-
         // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
-        let result = native_executor
+        let result = executor
             .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
             .unwrap();
 
@@ -730,8 +644,6 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let native_executor: NativeExecutor = executor.into();
-
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
@@ -739,7 +651,7 @@ mod tests {
             .expect("should have a function")
             .id;
 
-        let result = native_executor
+        let result = executor
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],
@@ -759,8 +671,6 @@ mod tests {
             .expect("failed to compile context");
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let native_executor: NativeExecutor = executor.into();
-
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
@@ -768,7 +678,7 @@ mod tests {
             .expect("should have a function")
             .id;
 
-        let result = native_executor
+        let result = executor
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],

@@ -1,5 +1,3 @@
-use std::sync::OnceLock;
-
 use crate::{
     error::Error,
     ffi::{
@@ -34,6 +32,7 @@ use melior::{
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
+use std::sync::OnceLock;
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]

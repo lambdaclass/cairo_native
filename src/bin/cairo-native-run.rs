@@ -5,7 +5,7 @@ use cairo_lang_compiler::{
 use cairo_lang_runner::short_string::as_cairo_short_string;
 use cairo_native::{
     context::NativeContext,
-    executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
+    executor::{AotNativeExecutor, JitNativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
     starknet_stub::StubSyscallHandler,
 };
@@ -74,12 +74,30 @@ fn main() -> anyhow::Result<()> {
     // Compile the sierra program into a MLIR module.
     let native_module = native_context.compile(&sierra_program).unwrap();
 
-    let native_executor: NativeExecutor = match args.run_mode {
+    let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> = match args.run_mode {
         RunMode::Aot => {
-            AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+            let executor =
+                AotNativeExecutor::from_native_module(native_module, args.opt_level.into());
+            Box::new(move |function_id, args, gas, syscall_handler| {
+                executor.invoke_dynamic_with_syscall_handler(
+                    function_id,
+                    args,
+                    gas,
+                    syscall_handler,
+                )
+            })
         }
         RunMode::Jit => {
-            JitNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+            let executor =
+                JitNativeExecutor::from_native_module(native_module, args.opt_level.into());
+            Box::new(move |function_id, args, gas, syscall_handler| {
+                executor.invoke_dynamic_with_syscall_handler(
+                    function_id,
+                    args,
+                    gas,
+                    syscall_handler,
+                )
+            })
         }
     };
 
@@ -94,8 +112,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut syscall_handler = StubSyscallHandler::default();
 
-    let result = native_executor
-        .invoke_dynamic_with_syscall_handler(&func.id, &[], Some(initial_gas), &mut syscall_handler)
+    let result = native_executor(&func.id, &[], Some(initial_gas), &mut syscall_handler)
         .with_context(|| "Failed to run the function.")?;
 
     let run_result = result_to_runresult(&result)?;
