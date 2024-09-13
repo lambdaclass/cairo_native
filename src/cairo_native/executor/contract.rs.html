@@ -519,6 +519,10 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
@@ -640,13 +644,17 @@
             <span class="kw">for </span>p <span class="kw">in </span><span class="kw-2">&amp;</span>x.params {
                 <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>p.ty)<span class="question-mark">?</span>;
                 <span class="kw">if </span>ty.is_builtin() {
+                    <span class="comment">// Skip zero sized builtins
+                    </span><span class="kw">if </span>ty.is_zst(<span class="kw-2">&amp;</span>registry) {
+                        <span class="kw">continue</span>;
+                    }
+
                     <span class="kw">match </span>ty {
                         CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::Bitwise),
                         CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::EcOp),
                         CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::RangeCheck),
                         CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::Pedersen),
                         CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::Poseidon),
-                        CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; {}
                         CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; {
                             builtins.push(BuiltinType::SegmentArena)
                         }
