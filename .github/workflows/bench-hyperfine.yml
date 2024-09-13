@@ -110,7 +110,6 @@ jobs:
         uses: actions/cache@v3
         id: cache-program 
         with:
-          if: ${{ matrix.branch == 'base' }}
           path: bench-program-${{ matrix.branch }}
           key: program-${{ github.event.pull_request[matrix.branch].sha }} 
 
