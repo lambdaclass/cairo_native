@@ -103,7 +103,6 @@ jobs:
         uses: actions/cache@v3
         id: cache-binary 
         with:
-          if: ${{ matrix.branch == 'base' }}
           path: bin/cairo-native-run-${{ matrix.branch }}
           key: binary-${{ github.event.pull_request[matrix.branch].sha }} 
       
@@ -111,6 +110,7 @@ jobs:
         uses: actions/cache@v3
         id: cache-program 
         with:
+          if: ${{ matrix.branch == 'base' }}
           path: bench-program-${{ matrix.branch }}
           key: program-${{ github.event.pull_request[matrix.branch].sha }} 
 
