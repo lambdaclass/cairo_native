@@ -581,6 +581,8 @@
 <a href="#581" id="581">581</a>
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum type
 //!
 //! Enumerations are special because they can potentially represent an unlimited amount of things at
@@ -1021,27 +1023,29 @@
     <span class="kw">let </span>tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
 
     <span class="kw">let </span>tag_layout = get_integer_layout(tag_bits);
-    <span class="kw">let </span>layout = info.variants.iter().fold(tag_layout, |acc, id| {
+    <span class="kw">let </span>layout = info.variants.iter().try_fold(tag_layout, |acc, id| {
         <span class="kw">let </span>layout = tag_layout
-            .extend(registry.get_type(id).unwrap().layout(registry).unwrap())
-            .unwrap()
-            .<span class="number">0</span>;
+            .extend(registry.get_type(id)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?</span>)<span class="question-mark">?
+            </span>.<span class="number">0</span>;
 
-        Layout::from_size_align(
+        Result::Ok(Layout::from_size_align(
             acc.size().max(layout.size()),
             acc.align().max(layout.align()),
-        )
-        .unwrap()
-    });
+        )<span class="question-mark">?</span>)
+    })<span class="question-mark">?</span>;
 
     <span class="kw">let </span>i8_ty = IntegerType::new(context, <span class="number">8</span>).into();
     <span class="prelude-val">Ok</span>(<span class="kw">match </span>info.variants.len() {
         <span class="number">0 </span>=&gt; llvm::r#type::array(IntegerType::new(context, <span class="number">8</span>).into(), <span class="number">0</span>),
         <span class="number">1 </span>=&gt; registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.variants[<span class="number">0</span>])<span class="question-mark">?</span>,
-        <span class="kw">_ if </span>info
-            .variants
-            .iter()
-            .all(|type_id| registry.get_type(type_id).unwrap().is_zst(registry)) =&gt;
+        <span class="kw">_ if </span><span class="lifetime">'block</span>: {
+            <span class="kw">for </span>type_id <span class="kw">in </span><span class="kw-2">&amp;</span>info.variants {
+                <span class="kw">if </span>!registry.get_type(type_id)<span class="question-mark">?</span>.is_zst(registry)<span class="question-mark">? </span>{
+                    <span class="kw">break </span><span class="lifetime">'block </span><span class="bool-val">false</span>;
+                }
+            }
+            <span class="bool-val">true
+        </span>} =&gt;
         {
             llvm::r#type::r#struct(
                 context,

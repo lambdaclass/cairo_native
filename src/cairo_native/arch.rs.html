@@ -310,7 +310,7 @@
                 y0.to_bytes(buffer)<span class="question-mark">?</span>;
             }
             (JitValue::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) =&gt; {
-                <span class="kw">if </span><span class="self">self</span>.info.is_memory_allocated(<span class="self">self</span>.registry) {
+                <span class="kw">if </span><span class="self">self</span>.info.is_memory_allocated(<span class="self">self</span>.registry)<span class="question-mark">? </span>{
                     <span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>abi_ptr = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>abi_ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ref() };

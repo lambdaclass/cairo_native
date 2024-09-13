@@ -60,7 +60,6 @@
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `felt252` type
 //!
 //! A `felt252` is a 252-bit number within a
@@ -119,9 +118,8 @@
     <span class="prelude-val">Ok</span>(IntegerType::new(context, <span class="number">252</span>).into())
 }
 
-<span class="kw">pub fn </span>register_prime_modulo_meta(metadata: <span class="kw-2">&amp;mut </span>MetadataStorage) -&gt; <span class="kw-2">&amp;mut </span>PrimeModuloMeta&lt;Felt&gt; {
+<span class="kw">pub fn </span>register_prime_modulo_meta(metadata: <span class="kw-2">&amp;mut </span>MetadataStorage) -&gt; <span class="kw-2">&amp;</span>PrimeModuloMeta&lt;Felt&gt; {
     metadata
-        .insert(PrimeModuloMeta::&lt;Felt&gt;::new(PRIME.clone()))
-        .unwrap()
+        .get_or_insert_with::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;(|| PrimeModuloMeta::&lt;Felt&gt;::new(PRIME.clone()))
 }
 </code></pre></div></section></main></body></html>

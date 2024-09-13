@@ -133,6 +133,12 @@
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
 </span><span class="kw">use </span><span class="kw">crate</span>::metadata::gas::GasMetadataError;
 <span class="kw">use </span>cairo_lang_sierra::extensions::modules::utils::Range;
@@ -194,6 +200,12 @@
 
     <span class="attr">#[error(<span class="string">"cairo const data mismatch"</span>)]
     </span>ConstDataMismatch,
+
+    <span class="attr">#[error(<span class="string">"expected an integer-like type"</span>)]
+    </span>IntegerLikeTypeExpected,
+
+    <span class="attr">#[error(<span class="string">"integer conversion failed"</span>)]
+    </span>IntegerConversion,
 
     <span class="attr">#[error(transparent)]
     </span>IoError(<span class="attr">#[from] </span>std::io::Error),

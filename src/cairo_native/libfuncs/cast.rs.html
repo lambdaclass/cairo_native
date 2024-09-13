@@ -670,9 +670,6 @@
 <a href="#670" id="670">670</a>
 <a href="#671" id="671">671</a>
 <a href="#672" id="672">672</a>
-<a href="#673" id="673">673</a>
-<a href="#674" id="674">674</a>
-<a href="#675" id="675">675</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -752,8 +749,8 @@
     <span class="kw">let </span>src_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>dst_range = dst_ty.integer_range(registry).unwrap();
-    <span class="kw">let </span>src_range = <span class="kw">if </span>src_ty.is_felt252(registry) &amp;&amp; dst_range.lower.sign() == Sign::Minus {
+    <span class="kw">let </span>dst_range = dst_ty.integer_range(registry)<span class="question-mark">?</span>;
+    <span class="kw">let </span>src_range = <span class="kw">if </span>src_ty.is_felt252(registry)<span class="question-mark">? </span>&amp;&amp; dst_range.lower.sign() == Sign::Minus {
         <span class="kw">if </span>dst_range.upper.sign() != Sign::Plus {
             Range {
                 lower: BigInt::from_biguint(Sign::Minus, PRIME.clone()) + <span class="number">1</span>,
@@ -766,8 +763,8 @@
             }
         }
     } <span class="kw">else </span>{
-        src_ty.integer_range(registry).unwrap()
-    };
+        src_ty.integer_range(registry)<span class="question-mark">?
+    </span>};
     <span class="macro">assert!</span>(
         dst_range.lower &gt; src_range.lower || dst_range.upper &lt; src_range.upper,
         <span class="string">"invalid downcast `{}` into `{}`: target range contains the source range"</span>,
@@ -775,15 +772,12 @@
         info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">1</span>].ty
     );
 
-    <span class="kw">let </span>src_width = <span class="kw">if </span>src_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>src_width = <span class="kw">if </span>src_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         src_range.offset_bit_width()
     } <span class="kw">else </span>{
-        src_ty
-            .integer_range(registry)
-            .unwrap()
-            .zero_based_bit_width()
+        src_ty.integer_range(registry)<span class="question-mark">?</span>.zero_based_bit_width()
     };
-    <span class="kw">let </span>dst_width = <span class="kw">if </span>dst_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>dst_width = <span class="kw">if </span>dst_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         dst_range.offset_bit_width()
     } <span class="kw">else </span>{
         dst_range.zero_based_bit_width()
@@ -796,7 +790,7 @@
     <span class="kw">let </span>is_signed = src_range.lower.sign() == Sign::Minus;
 
     <span class="kw">let </span>src_value = <span class="kw">if </span>compute_width &gt; src_width {
-        <span class="kw">if </span>is_signed &amp;&amp; !src_ty.is_bounded_int(registry) &amp;&amp; !src_ty.is_felt252(registry) {
+        <span class="kw">if </span>is_signed &amp;&amp; !src_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; !src_ty.is_felt252(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extsi(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
@@ -813,7 +807,7 @@
         src_value
     };
 
-    <span class="kw">let </span>src_value = <span class="kw">if </span>is_signed &amp;&amp; src_ty.is_felt252(registry) {
+    <span class="kw">let </span>src_value = <span class="kw">if </span>is_signed &amp;&amp; src_ty.is_felt252(registry)<span class="question-mark">? </span>{
         <span class="kw">if </span>src_range.upper.is_one() {
             <span class="kw">let </span>adj_offset =
                 entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())<span class="question-mark">?</span>;
@@ -839,7 +833,7 @@
 
             entry.append_op_result(arith::select(is_negative, adj_value, src_value, location))<span class="question-mark">?
         </span>}
-    } <span class="kw">else if </span>src_ty.is_bounded_int(registry) &amp;&amp; src_range.lower != BigInt::ZERO {
+    } <span class="kw">else if </span>src_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; src_range.lower != BigInt::ZERO {
         <span class="kw">let </span>dst_offset = entry.const_int_from_type(
             context,
             location,
@@ -903,7 +897,7 @@
         (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="macro">unreachable!</span>(),
     };
 
-    <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_ty.is_bounded_int(registry) &amp;&amp; dst_range.lower != BigInt::ZERO {
+    <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; dst_range.lower != BigInt::ZERO {
         <span class="kw">let </span>dst_offset = entry.const_int_from_type(
             context,
             location,
@@ -955,10 +949,10 @@
     <span class="kw">let </span>src_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>src_range = src_ty.integer_range(registry).unwrap();
-    <span class="kw">let </span>dst_range = dst_ty.integer_range(registry).unwrap();
+    <span class="kw">let </span>src_range = src_ty.integer_range(registry)<span class="question-mark">?</span>;
+    <span class="kw">let </span>dst_range = dst_ty.integer_range(registry)<span class="question-mark">?</span>;
     <span class="macro">assert!</span>(
-        <span class="kw">if </span>dst_ty.is_felt252(registry) {
+        <span class="kw">if </span>dst_ty.is_felt252(registry)<span class="question-mark">? </span>{
             <span class="kw">let </span>alt_range = Range {
                 lower: -HALF_PRIME.clone(),
                 upper: HALF_PRIME.clone() + BigInt::one(),
@@ -974,12 +968,12 @@
         info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty
     );
 
-    <span class="kw">let </span>src_width = <span class="kw">if </span>src_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>src_width = <span class="kw">if </span>src_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         src_range.offset_bit_width()
     } <span class="kw">else </span>{
         src_range.zero_based_bit_width()
     };
-    <span class="kw">let </span>dst_width = <span class="kw">if </span>dst_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>dst_width = <span class="kw">if </span>dst_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         dst_range.offset_bit_width()
     } <span class="kw">else </span>{
         dst_range.zero_based_bit_width()
@@ -988,13 +982,13 @@
     <span class="comment">// If the source can be negative, the target type must also contain negatives when upcasting.
     </span><span class="macro">assert!</span>(
         src_range.lower.sign() != Sign::Minus
-            || dst_ty.is_felt252(registry)
-            || dst_range.lower.sign() == Sign::Minus
+            || dst_ty.is_felt252(registry)<span class="question-mark">?
+            </span>|| dst_range.lower.sign() == Sign::Minus
     );
     <span class="kw">let </span>is_signed = src_range.lower.sign() == Sign::Minus;
 
     <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_width &gt; src_width {
-        <span class="kw">if </span>is_signed &amp;&amp; !src_ty.is_bounded_int(registry) {
+        <span class="kw">if </span>is_signed &amp;&amp; !src_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extsi(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
@@ -1011,11 +1005,11 @@
         src_value
     };
 
-    <span class="kw">let </span>dst_value = <span class="kw">if </span>src_ty.is_bounded_int(registry) &amp;&amp; src_range.lower != BigInt::ZERO {
+    <span class="kw">let </span>dst_value = <span class="kw">if </span>src_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; src_range.lower != BigInt::ZERO {
         <span class="kw">let </span>dst_offset = entry.const_int_from_type(
             context,
             location,
-            <span class="kw">if </span>dst_ty.is_bounded_int(registry) {
+            <span class="kw">if </span>dst_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
                 <span class="kw-2">&amp;</span>src_range.lower - <span class="kw-2">&amp;</span>dst_range.lower
             } <span class="kw">else </span>{
                 src_range.lower.clone()
@@ -1027,7 +1021,7 @@
         dst_value
     };
 
-    <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_ty.is_felt252(registry) &amp;&amp; src_range.lower.sign() == Sign::Minus {
+    <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_ty.is_felt252(registry)<span class="question-mark">? </span>&amp;&amp; src_range.lower.sign() == Sign::Minus {
         <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">252</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>is_negative = entry.append_op_result(arith::cmpi(
             context,

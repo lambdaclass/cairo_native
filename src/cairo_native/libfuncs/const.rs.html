@@ -314,7 +314,6 @@
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Const libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -524,7 +523,9 @@
                     payload_value,
                     <span class="kw-2">&amp;</span>info.inner_ty,
                     payload_ty,
-                    variant_index.try_into().unwrap(),
+                    variant_index
+                        .try_into()
+                        .map_err(|<span class="kw">_</span>| Error::IntegerConversion)<span class="question-mark">?</span>,
                 )
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::ConstDataMismatch),
@@ -564,10 +565,7 @@
                 context,
                 location,
                 value,
-                inner_type
-                    .integer_range(registry)
-                    .unwrap()
-                    .offset_bit_width(),
+                inner_type.integer_range(registry)<span class="question-mark">?</span>.offset_bit_width(),
             )
         }
         CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; {

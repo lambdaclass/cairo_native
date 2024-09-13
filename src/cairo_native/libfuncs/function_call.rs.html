@@ -294,6 +294,11 @@
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Function call libfuncs
 //!
 //! Includes logic for handling direct tail recursive function calls. More information on this topic
@@ -342,9 +347,9 @@
     <span class="kw">for </span>(idx, type_id) <span class="kw">in </span>info.function.signature.param_types.iter().enumerate() {
         <span class="kw">let </span>type_info = registry.get_type(type_id)<span class="question-mark">?</span>;
 
-        <span class="kw">if </span>!(type_info.is_builtin() &amp;&amp; type_info.is_zst(registry)) {
+        <span class="kw">if </span>!(type_info.is_builtin() &amp;&amp; type_info.is_zst(registry)<span class="question-mark">?</span>) {
             arguments.push(
-                <span class="kw">if </span>tailrec_meta.is_none() &amp;&amp; type_info.is_memory_allocated(registry) {
+                <span class="kw">if </span>tailrec_meta.is_none() &amp;&amp; type_info.is_memory_allocated(registry)<span class="question-mark">? </span>{
                     <span class="kw">let </span>elem_ty = type_info.build(context, helper, registry, metadata, type_id)<span class="question-mark">?</span>;
                     <span class="kw">let </span>stack_ptr = helper.init_block().alloca1(
                         context,
@@ -389,16 +394,14 @@
                 .ret_types
                 .iter()
                 .map(|ty| {
-                    (
+                    <span class="prelude-val">Ok</span>((
                         registry
-                            .get_type(ty)
-                            .unwrap()
-                            .build(context, helper, registry, metadata, ty)
-                            .unwrap(),
+                            .get_type(ty)<span class="question-mark">?
+                            </span>.build(context, helper, registry, metadata, ty)<span class="question-mark">?</span>,
                         location,
-                    )
+                    ))
                 })
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;&gt;()<span class="question-mark">?</span>,
         ));
         tailrec_meta.set_return_target(cont_block);
 
@@ -406,7 +409,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
         <span class="kw">for </span>var_info <span class="kw">in </span><span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars {
             <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>;
-            <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
+
+            <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry)<span class="question-mark">? </span>{
                 results.push(cont_block.append_op_result(llvm::undef(
                     type_info.build(context, helper, registry, metadata, <span class="kw-2">&amp;</span>var_info.ty)<span class="question-mark">?</span>,
                     location,
@@ -428,16 +432,20 @@
             .ret_types
             .iter()
             .filter_map(|type_id| {
-                <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
-                <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
-                    <span class="prelude-val">None
-                </span>} <span class="kw">else </span>{
-                    <span class="prelude-val">Some</span>((type_id, type_info))
-                }
+                <span class="kw">let </span>type_info = <span class="kw">match </span>registry.get_type(type_id) {
+                    <span class="prelude-val">Ok</span>(x) =&gt; x,
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e.into())),
+                };
+                <span class="kw">let </span>is_zst = <span class="kw">match </span>type_info.is_zst(registry) {
+                    <span class="prelude-val">Ok</span>(x) =&gt; x,
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e)),
+                };
+
+                (!(type_info.is_builtin() &amp;&amp; is_zst)).then_some(<span class="prelude-val">Ok</span>((type_id, type_info)))
             })
-            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;&gt;()<span class="question-mark">?</span>;
         <span class="comment">// A function has a return pointer if either:
-        // - There are multiple return values.
+        //   - There are multiple return values.
         //   - The return value is memory allocated.
         </span><span class="kw">let </span>has_return_ptr = <span class="kw">if </span>return_types.len() &gt; <span class="number">1 </span>{
             result_types.extend(
@@ -452,7 +460,9 @@
             <span class="prelude-val">Some</span>(<span class="bool-val">false</span>)
         } <span class="kw">else if </span>return_types
             .first()
-            .is_some_and(|(<span class="kw">_</span>, type_info)| type_info.is_memory_allocated(registry))
+            .map(|(<span class="kw">_</span>, type_info)| type_info.is_memory_allocated(registry))
+            .transpose()<span class="question-mark">?
+            </span>== <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)
         {
             <span class="kw">let </span>(type_id, type_info) = return_types[<span class="number">0</span>];
             <span class="kw">let </span>layout = type_info.layout(registry)<span class="question-mark">?</span>;
@@ -506,7 +516,7 @@
                 <span class="kw">for </span>(idx, type_id) <span class="kw">in </span>info.function.signature.ret_types.iter().enumerate() {
                     <span class="kw">let </span>type_info = registry.get_type(type_id)<span class="question-mark">?</span>;
 
-                    <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
+                    <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry)<span class="question-mark">? </span>{
                         results.push(entry.argument(idx)<span class="question-mark">?</span>.into());
                     } <span class="kw">else </span>{
                         <span class="kw">let </span>val = arguments[<span class="number">0</span>];
@@ -540,7 +550,7 @@
                 </span><span class="kw">for </span>(idx, type_id) <span class="kw">in </span>info.function.signature.ret_types.iter().enumerate() {
                     <span class="kw">let </span>type_info = registry.get_type(type_id)<span class="question-mark">?</span>;
 
-                    <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
+                    <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry)<span class="question-mark">? </span>{
                         results.push(entry.argument(idx)<span class="question-mark">?</span>.into());
                     } <span class="kw">else </span>{
                         <span class="kw">let </span>val = entry.extract_value(
@@ -561,9 +571,9 @@
                 </span><span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
                 <span class="kw">for </span>(idx, type_id) <span class="kw">in </span>info.function.signature.ret_types.iter().enumerate() {
                     <span class="kw">let </span>type_info = registry.get_type(type_id)<span class="question-mark">?</span>;
-                    <span class="macro">assert!</span>(!type_info.is_memory_allocated(registry));
+                    <span class="macro">assert!</span>(!type_info.is_memory_allocated(registry)<span class="question-mark">?</span>);
 
-                    <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry) {
+                    <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry)<span class="question-mark">? </span>{
                         results.push(entry.argument(idx)<span class="question-mark">?</span>.into());
                     } <span class="kw">else </span>{
                         <span class="kw">let </span>value = entry.extract_value(

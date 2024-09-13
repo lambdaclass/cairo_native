@@ -780,6 +780,25 @@
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
 <a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -952,25 +971,34 @@
     </span><span class="kw">let </span><span class="kw-2">mut </span>ret_types_iter = function_signature
         .ret_types
         .iter()
-        .filter(|id| {
-            <span class="kw">let </span>info = registry.get_type(id).unwrap();
-            !(info.is_builtin() &amp;&amp; info.is_zst(registry))
+        .filter_map(|id| {
+            <span class="kw">let </span>type_info = <span class="kw">match </span>registry.get_type(id) {
+                <span class="prelude-val">Ok</span>(x) =&gt; x,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e.into())),
+            };
+            <span class="kw">let </span>is_zst = <span class="kw">match </span>type_info.is_zst(registry) {
+                <span class="prelude-val">Ok</span>(x) =&gt; x,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e)),
+            };
+
+            <span class="prelude-val">Ok</span>((!(type_info.is_builtin() &amp;&amp; is_zst)).then_some(id)).transpose()
         })
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?
+        </span>.into_iter()
         .peekable();
 
     <span class="kw">let </span>num_return_args = ret_types_iter.clone().count();
     <span class="kw">let </span><span class="kw-2">mut </span>return_ptr = <span class="kw">if </span>num_return_args &gt; <span class="number">1
         </span>|| ret_types_iter
             .peek()
-            .is_some_and(|id| registry.get_type(id).unwrap().is_complex(registry))
+            .map(|id| registry.get_type(id)<span class="question-mark">?</span>.is_complex(registry))
+            .transpose()<span class="question-mark">?
+            </span>== <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)
     {
-        <span class="kw">let </span>layout = ret_types_iter.fold(Layout::new::&lt;()&gt;(), |layout, id| {
-            <span class="kw">let </span>type_info = registry.get_type(id).unwrap();
-            layout
-                .extend(type_info.layout(registry).unwrap())
-                .unwrap()
-                .<span class="number">0
-        </span>});
+        <span class="kw">let </span>layout = ret_types_iter.try_fold(Layout::new::&lt;()&gt;(), |layout, id| {
+            <span class="kw">let </span>type_info = registry.get_type(id)<span class="question-mark">?</span>;
+            <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, Error&gt;::Ok(layout.extend(type_info.layout(registry)<span class="question-mark">?</span>)<span class="question-mark">?</span>.<span class="number">0</span>)
+        })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>return_ptr = arena.alloc_layout(layout).cast::&lt;()&gt;();
         return_ptr.as_ptr().to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
@@ -998,12 +1026,20 @@
 
     <span class="comment">// Generate argument list.
     </span><span class="kw">let </span><span class="kw-2">mut </span>iter = args.iter();
-    <span class="kw">for </span>type_id <span class="kw">in </span>function_signature.param_types.iter().filter(|id| {
-        <span class="kw">let </span>info = registry.get_type(id).unwrap();
-        !info.is_zst(registry)
+    <span class="kw">for </span>item <span class="kw">in </span>function_signature.param_types.iter().filter_map(|type_id| {
+        <span class="kw">let </span>type_info = <span class="kw">match </span>registry.get_type(type_id) {
+            <span class="prelude-val">Ok</span>(x) =&gt; x,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e.into())),
+        };
+        <span class="kw">match </span>type_info.is_zst(registry) {
+            <span class="prelude-val">Ok</span>(x) =&gt; (!x).then_some(<span class="prelude-val">Ok</span>((type_id, type_info))),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e)),
+        }
     }) {
+        <span class="kw">let </span>(type_id, type_info) = item<span class="question-mark">?</span>;
+
         <span class="comment">// Process gas requirements and syscall handler.
-        </span><span class="kw">match </span>registry.get_type(type_id).unwrap() {
+        </span><span class="kw">match </span>type_info {
             CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; gas.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>,
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
                 <span class="kw">let </span>syscall_handler = syscall_handler
@@ -1075,7 +1111,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>remaining_gas = <span class="prelude-val">None</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>builtin_stats = BuiltinStats::default();
     <span class="kw">for </span>type_id <span class="kw">in </span><span class="kw-2">&amp;</span>function_signature.ret_types {
-        <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
+        <span class="kw">let </span>type_info = registry.get_type(type_id)<span class="question-mark">?</span>;
         <span class="kw">match </span>type_info {
             CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; {
                 remaining_gas = <span class="prelude-val">Some</span>(<span class="kw">match </span><span class="kw-2">&amp;mut </span>return_ptr {
@@ -1095,7 +1131,7 @@
                 <span class="prelude-val">None </span>=&gt; {}
             },
             <span class="kw">_ if </span>type_info.is_builtin() =&gt; {
-                <span class="kw">if </span>!type_info.is_zst(registry) {
+                <span class="kw">if </span>!type_info.is_zst(registry)<span class="question-mark">? </span>{
                     <span class="kw">let </span>value = <span class="kw">match </span><span class="kw-2">&amp;mut </span>return_ptr {
                         <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="kw">unsafe </span>{ <span class="kw-2">*</span>read_value::&lt;u64&gt;(return_ptr) },
                         <span class="prelude-val">None </span>=&gt; ret_registers[<span class="number">0</span>],
@@ -1128,19 +1164,22 @@
         .ret_types
         .last()
         .and_then(|ret_type| {
-            <span class="kw">let </span>type_info = registry.get_type(ret_type).unwrap();
+            <span class="kw">let </span>type_info = <span class="kw">match </span>registry.get_type(ret_type) {
+                <span class="prelude-val">Ok</span>(x) =&gt; x,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e.into())),
+            };
+
             <span class="kw">if </span>type_info.is_builtin() {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
                 <span class="prelude-val">Some</span>(parse_result(ret_type, registry, return_ptr, ret_registers))
             }
         })
-        .unwrap_or_else(|| {
-            <span class="prelude-val">Ok</span>(JitValue::Struct {
-                fields: <span class="macro">vec!</span>[],
-                debug_name: <span class="prelude-val">None</span>,
-            })
-        })<span class="question-mark">?</span>;
+        .transpose()<span class="question-mark">?
+        </span>.unwrap_or_else(|| JitValue::Struct {
+            fields: <span class="macro">vec!</span>[],
+            debug_name: <span class="prelude-val">None</span>,
+        });
 
     <span class="prelude-val">Ok</span>(ExecutionResult {
         remaining_gas,
@@ -1157,12 +1196,12 @@
     <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">2</span>],
     <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">4</span>],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;JitValue, Error&gt; {
-    <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
+    <span class="kw">let </span>type_info = registry.get_type(type_id)<span class="question-mark">?</span>;
     <span class="kw">let </span>debug_name = type_info.info().long_id.to_string();
 
     <span class="comment">// Align the pointer to the actual return value.
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(return_ptr) = <span class="kw-2">&amp;mut </span>return_ptr {
-        <span class="kw">let </span>layout = type_info.layout(registry).unwrap();
+        <span class="kw">let </span>layout = type_info.layout(registry)<span class="question-mark">?</span>;
         <span class="kw">let </span>align_offset = return_ptr
             .cast::&lt;u8&gt;()
             .as_ptr()
@@ -1177,16 +1216,16 @@
 
     <span class="kw">match </span>type_info {
         CoreTypeConcrete::Array(<span class="kw">_</span>) =&gt; {
-            <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+            <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>)
         }
         CoreTypeConcrete::Box(info) =&gt; <span class="kw">unsafe </span>{
             <span class="kw">let </span>ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[<span class="number">0</span>] <span class="kw">as </span><span class="kw-2">*mut </span>()));
-            <span class="kw">let </span>value = JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry);
+            <span class="kw">let </span>value = JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
             libc::free(ptr.cast().as_ptr());
             <span class="prelude-val">Ok</span>(value)
         },
         CoreTypeConcrete::EcPoint(<span class="kw">_</span>) | CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; {
-            <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+            <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>)
         }
         CoreTypeConcrete::Felt252(<span class="kw">_</span>)
         | CoreTypeConcrete::StarkNet(
@@ -1195,7 +1234,7 @@
             | StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>)
             | StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>),
         ) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr, type_id, registry)),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr, type_id, registry)<span class="question-mark">?</span>),
             <span class="prelude-val">None </span>=&gt; {
                 <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
                 </span><span class="comment">// Since x86_64's return values hold at most two different 64bit registers,
@@ -1212,7 +1251,7 @@
             }
         },
         CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr, type_id, registry)),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr, type_id, registry)<span class="question-mark">?</span>),
             <span class="prelude-val">None </span>=&gt; {
                 <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
                 </span><span class="comment">// Since x86_64's return values hold at most two different 64bit registers,
@@ -1227,7 +1266,7 @@
             }
         },
         CoreTypeConcrete::BoundedInt(info) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr, type_id, registry)),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr, type_id, registry)<span class="question-mark">?</span>),
             <span class="prelude-val">None </span>=&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="kw">if </span>info.range.offset_bit_width() &lt;= <span class="number">64 </span>{
                     BigInt::from(ret_registers[<span class="number">0</span>])
@@ -1299,16 +1338,16 @@
                 <span class="prelude-val">Ok</span>(JitValue::Null)
             } <span class="kw">else </span>{
                 <span class="kw">let </span>ptr = NonNull::new_unchecked(ptr);
-                <span class="kw">let </span>value = JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry);
+                <span class="kw">let </span>value = JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
                 libc::free(ptr.as_ptr().cast());
                 <span class="prelude-val">Ok</span>(value)
             }
         },
         CoreTypeConcrete::Enum(info) =&gt; {
             <span class="kw">let </span>(<span class="kw">_</span>, tag_layout, variant_layouts) =
-                <span class="kw">crate</span>::types::r#enum::get_layout_for_variants(registry, <span class="kw-2">&amp;</span>info.variants).unwrap();
+                <span class="kw">crate</span>::types::r#enum::get_layout_for_variants(registry, <span class="kw-2">&amp;</span>info.variants)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>(tag, ptr) = <span class="kw">if </span>type_info.is_memory_allocated(registry) || return_ptr.is_some() {
+            <span class="kw">let </span>(tag, ptr) = <span class="kw">if </span>type_info.is_memory_allocated(registry)<span class="question-mark">? </span>|| return_ptr.is_some() {
                 <span class="kw">let </span>ptr = return_ptr.unwrap();
 
                 <span class="kw">let </span>tag = <span class="kw">unsafe </span>{
@@ -1328,7 +1367,7 @@
                         NonNull::new_unchecked(
                             ptr.cast::&lt;u8&gt;()
                                 .as_ptr()
-                                .add(tag_layout.extend(variant_layouts[tag]).unwrap().<span class="number">1</span>),
+                                .add(tag_layout.extend(variant_layouts[tag])<span class="question-mark">?</span>.<span class="number">1</span>),
                         )
                         .cast()
                     }),
@@ -1349,7 +1388,7 @@
                 }
             };
             <span class="kw">let </span>value = <span class="kw">match </span>ptr {
-                <span class="prelude-val">Ok</span>(ptr) =&gt; Box::new(JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.variants[tag], registry)),
+                <span class="prelude-val">Ok</span>(ptr) =&gt; Box::new(JitValue::from_jit(ptr, <span class="kw-2">&amp;</span>info.variants[tag], registry)<span class="question-mark">?</span>),
                 <span class="prelude-val">Err</span>(offset) =&gt; {
                     ret_registers.copy_within(offset.., <span class="number">0</span>);
                     Box::new(parse_result(
@@ -1374,15 +1413,14 @@
                     debug_name: <span class="prelude-val">Some</span>(debug_name),
                 })
             } <span class="kw">else </span>{
-                <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+                <span class="prelude-val">Ok</span>(JitValue::from_jit(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>)
             }
         }
         CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) | CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; <span class="kw">unsafe </span>{
             <span class="kw">let </span>ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
                 <span class="macro">addr_of_mut!</span>(ret_registers[<span class="number">0</span>]) <span class="kw">as </span><span class="kw-2">*mut </span>()
             ));
-            <span class="kw">let </span>value = JitValue::from_jit(ptr, type_id, registry);
-            <span class="prelude-val">Ok</span>(value)
+            <span class="prelude-val">Ok</span>(JitValue::from_jit(ptr, type_id, registry)<span class="question-mark">?</span>)
         },
 
         CoreTypeConcrete::Snapshot(info) =&gt; {

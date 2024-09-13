@@ -4055,9 +4055,9 @@
 
         <span class="macro">assert_eq!</span>(
             result,
-            <span class="macro">jit_panic!</span>(JitValue::felt_str(
-                <span class="string">"1637570914057682275393755530660268060279989363"
-            </span>))
+            <span class="macro">jit_panic!</span>(
+                Felt::from_dec_str(<span class="string">"1637570914057682275393755530660268060279989363"</span>).unwrap()
+            )
         );
     }
 

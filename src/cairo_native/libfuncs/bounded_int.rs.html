@@ -729,14 +729,6 @@
 <a href="#729" id="729">729</a>
 <a href="#730" id="730">730</a>
 <a href="#731" id="731">731</a>
-<a href="#732" id="732">732</a>
-<a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
-<a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Bounded int libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -820,19 +812,18 @@
     </span><span class="kw">let </span>lhs_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>rhs_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_range = lhs_ty.integer_range(registry).unwrap();
-    <span class="kw">let </span>rhs_range = rhs_ty.integer_range(registry).unwrap();
+    <span class="kw">let </span>lhs_range = lhs_ty.integer_range(registry)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs_range = rhs_ty.integer_range(registry)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_range = registry
         .get_type(<span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.integer_range(registry)
-        .unwrap();
+        </span>.integer_range(registry)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_width = <span class="kw">if </span>lhs_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>lhs_width = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         lhs_range.offset_bit_width()
     } <span class="kw">else </span>{
         lhs_range.zero_based_bit_width()
     };
-    <span class="kw">let </span>rhs_width = <span class="kw">if </span>rhs_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>rhs_width = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         rhs_range.offset_bit_width()
     } <span class="kw">else </span>{
         rhs_range.zero_based_bit_width()
@@ -855,7 +846,7 @@
     </span><span class="macro">assert!</span>(compute_range.offset_bit_width() &gt;= lhs_width);
     <span class="macro">assert!</span>(compute_range.offset_bit_width() &gt;= rhs_width);
     <span class="kw">let </span>lhs_value = <span class="kw">if </span>compute_range.offset_bit_width() &gt; lhs_width {
-        <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
+        <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))<span class="question-mark">?
@@ -864,7 +855,7 @@
         lhs_value
     };
     <span class="kw">let </span>rhs_value = <span class="kw">if </span>compute_range.offset_bit_width() &gt; rhs_width {
-        <span class="kw">if </span>rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
+        <span class="kw">if </span>rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))<span class="question-mark">?
@@ -874,7 +865,7 @@
     };
 
     <span class="comment">// Offset the operands so that they are compatible.
-    </span><span class="kw">let </span>lhs_offset = <span class="kw">if </span>lhs_ty.is_bounded_int(registry) {
+    </span><span class="kw">let </span>lhs_offset = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         <span class="kw-2">&amp;</span>lhs_range.lower - <span class="kw-2">&amp;</span>compute_range.lower
     } <span class="kw">else </span>{
         lhs_range.lower.clone()
@@ -886,7 +877,7 @@
         lhs_value
     };
 
-    <span class="kw">let </span>rhs_offset = <span class="kw">if </span>rhs_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>rhs_offset = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         <span class="kw-2">&amp;</span>rhs_range.lower - <span class="kw-2">&amp;</span>compute_range.lower
     } <span class="kw">else </span>{
         rhs_range.lower.clone()
@@ -942,19 +933,18 @@
     </span><span class="kw">let </span>lhs_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>rhs_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_range = lhs_ty.integer_range(registry).unwrap();
-    <span class="kw">let </span>rhs_range = rhs_ty.integer_range(registry).unwrap();
+    <span class="kw">let </span>lhs_range = lhs_ty.integer_range(registry)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs_range = rhs_ty.integer_range(registry)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_range = registry
         .get_type(<span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.integer_range(registry)
-        .unwrap();
+        </span>.integer_range(registry)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_width = <span class="kw">if </span>lhs_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>lhs_width = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         lhs_range.offset_bit_width()
     } <span class="kw">else </span>{
         lhs_range.zero_based_bit_width()
     };
-    <span class="kw">let </span>rhs_width = <span class="kw">if </span>rhs_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>rhs_width = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         rhs_range.offset_bit_width()
     } <span class="kw">else </span>{
         rhs_range.zero_based_bit_width()
@@ -977,7 +967,7 @@
     </span><span class="macro">assert!</span>(compute_range.offset_bit_width() &gt;= lhs_width);
     <span class="macro">assert!</span>(compute_range.offset_bit_width() &gt;= rhs_width);
     <span class="kw">let </span>lhs_value = <span class="kw">if </span>compute_range.offset_bit_width() &gt; lhs_width {
-        <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
+        <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))<span class="question-mark">?
@@ -986,7 +976,7 @@
         lhs_value
     };
     <span class="kw">let </span>rhs_value = <span class="kw">if </span>compute_range.offset_bit_width() &gt; rhs_width {
-        <span class="kw">if </span>rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
+        <span class="kw">if </span>rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))<span class="question-mark">?
@@ -996,7 +986,7 @@
     };
 
     <span class="comment">// Offset the operands so that they are compatible.
-    </span><span class="kw">let </span>lhs_offset = <span class="kw">if </span>lhs_ty.is_bounded_int(registry) {
+    </span><span class="kw">let </span>lhs_offset = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         <span class="kw-2">&amp;</span>lhs_range.lower - <span class="kw-2">&amp;</span>compute_range.lower
     } <span class="kw">else </span>{
         lhs_range.lower.clone()
@@ -1008,7 +998,7 @@
         lhs_value
     };
 
-    <span class="kw">let </span>rhs_offset = <span class="kw">if </span>rhs_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>rhs_offset = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         <span class="kw-2">&amp;</span>rhs_range.lower - <span class="kw-2">&amp;</span>compute_range.lower
     } <span class="kw">else </span>{
         rhs_range.lower.clone()
@@ -1064,19 +1054,18 @@
     </span><span class="kw">let </span>lhs_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>rhs_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_range = lhs_ty.integer_range(registry).unwrap();
-    <span class="kw">let </span>rhs_range = rhs_ty.integer_range(registry).unwrap();
+    <span class="kw">let </span>lhs_range = lhs_ty.integer_range(registry)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs_range = rhs_ty.integer_range(registry)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_range = registry
         .get_type(<span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.integer_range(registry)
-        .unwrap();
+        </span>.integer_range(registry)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_width = <span class="kw">if </span>lhs_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>lhs_width = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         lhs_range.offset_bit_width()
     } <span class="kw">else </span>{
         lhs_range.zero_based_bit_width()
     };
-    <span class="kw">let </span>rhs_width = <span class="kw">if </span>rhs_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>rhs_width = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         rhs_range.offset_bit_width()
     } <span class="kw">else </span>{
         rhs_range.zero_based_bit_width()
@@ -1100,7 +1089,7 @@
     </span><span class="macro">assert!</span>(compute_range.zero_based_bit_width() &gt;= lhs_width);
     <span class="macro">assert!</span>(compute_range.zero_based_bit_width() &gt;= rhs_width);
     <span class="kw">let </span>lhs_value = <span class="kw">if </span>compute_range.zero_based_bit_width() &gt; lhs_width {
-        <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
+        <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))<span class="question-mark">?
@@ -1109,7 +1098,7 @@
         lhs_value
     };
     <span class="kw">let </span>rhs_value = <span class="kw">if </span>compute_range.zero_based_bit_width() &gt; rhs_width {
-        <span class="kw">if </span>rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
+        <span class="kw">if </span>rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))<span class="question-mark">?
@@ -1119,14 +1108,14 @@
     };
 
     <span class="comment">// Offset the operands so that they are compatible with the operation.
-    </span><span class="kw">let </span>lhs_value = <span class="kw">if </span>lhs_ty.is_bounded_int(registry) &amp;&amp; lhs_range.lower != BigInt::ZERO {
+    </span><span class="kw">let </span>lhs_value = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; lhs_range.lower != BigInt::ZERO {
         <span class="kw">let </span>lhs_offset =
             entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)<span class="question-mark">?</span>;
         entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))<span class="question-mark">?
     </span>} <span class="kw">else </span>{
         lhs_value
     };
-    <span class="kw">let </span>rhs_value = <span class="kw">if </span>rhs_ty.is_bounded_int(registry) &amp;&amp; rhs_range.lower != BigInt::ZERO {
+    <span class="kw">let </span>rhs_value = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; rhs_range.lower != BigInt::ZERO {
         <span class="kw">let </span>rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)<span class="question-mark">?</span>;
         entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))<span class="question-mark">?
@@ -1181,23 +1170,21 @@
     </span><span class="kw">let </span>lhs_ty = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>rhs_ty = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">2</span>].ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_range = lhs_ty.integer_range(registry).unwrap();
-    <span class="kw">let </span>rhs_range = rhs_ty.integer_range(registry).unwrap();
+    <span class="kw">let </span>lhs_range = lhs_ty.integer_range(registry)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs_range = rhs_ty.integer_range(registry)<span class="question-mark">?</span>;
     <span class="kw">let </span>div_range = registry
         .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
-        </span>.integer_range(registry)
-        .unwrap();
+        </span>.integer_range(registry)<span class="question-mark">?</span>;
     <span class="kw">let </span>rem_range = registry
         .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">2</span>].ty)<span class="question-mark">?
-        </span>.integer_range(registry)
-        .unwrap();
+        </span>.integer_range(registry)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_width = <span class="kw">if </span>lhs_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>lhs_width = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         lhs_range.offset_bit_width()
     } <span class="kw">else </span>{
         lhs_range.zero_based_bit_width()
     };
-    <span class="kw">let </span>rhs_width = <span class="kw">if </span>rhs_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>rhs_width = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         rhs_range.offset_bit_width()
     } <span class="kw">else </span>{
         rhs_range.zero_based_bit_width()
@@ -1223,7 +1210,7 @@
     </span><span class="macro">assert!</span>(compute_range.zero_based_bit_width() &gt;= lhs_width);
     <span class="macro">assert!</span>(compute_range.zero_based_bit_width() &gt;= rhs_width);
     <span class="kw">let </span>lhs_value = <span class="kw">if </span>compute_range.zero_based_bit_width() &gt; lhs_width {
-        <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
+        <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))<span class="question-mark">?
@@ -1232,7 +1219,7 @@
         lhs_value
     };
     <span class="kw">let </span>rhs_value = <span class="kw">if </span>compute_range.zero_based_bit_width() &gt; rhs_width {
-        <span class="kw">if </span>rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
+        <span class="kw">if </span>rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))<span class="question-mark">?
@@ -1242,14 +1229,14 @@
     };
 
     <span class="comment">// Offset the operands so that they are compatible with the operation.
-    </span><span class="kw">let </span>lhs_value = <span class="kw">if </span>lhs_ty.is_bounded_int(registry) &amp;&amp; lhs_range.lower != BigInt::ZERO {
+    </span><span class="kw">let </span>lhs_value = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; lhs_range.lower != BigInt::ZERO {
         <span class="kw">let </span>lhs_offset =
             entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)<span class="question-mark">?</span>;
         entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))<span class="question-mark">?
     </span>} <span class="kw">else </span>{
         lhs_value
     };
-    <span class="kw">let </span>rhs_value = <span class="kw">if </span>rhs_ty.is_bounded_int(registry) &amp;&amp; rhs_range.lower != BigInt::ZERO {
+    <span class="kw">let </span>rhs_value = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; rhs_range.lower != BigInt::ZERO {
         <span class="kw">let </span>rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)<span class="question-mark">?</span>;
         entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))<span class="question-mark">?
@@ -1316,9 +1303,9 @@
     <span class="kw">let </span>src_value: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>src_ty = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>src_range = src_ty.integer_range(registry).unwrap();
+    <span class="kw">let </span>src_range = src_ty.integer_range(registry)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>src_width = <span class="kw">if </span>src_ty.is_bounded_int(registry) {
+    <span class="kw">let </span>src_width = <span class="kw">if </span>src_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         src_range.offset_bit_width()
     } <span class="kw">else </span>{
         src_range.zero_based_bit_width()
@@ -1326,12 +1313,10 @@
 
     <span class="kw">let </span>lower_range = registry
         .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
-        </span>.integer_range(registry)
-        .unwrap();
+        </span>.integer_range(registry)<span class="question-mark">?</span>;
     <span class="kw">let </span>upper_range = registry
         .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">1</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
-        </span>.integer_range(registry)
-        .unwrap();
+        </span>.integer_range(registry)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>boundary =
         entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())<span class="question-mark">?</span>;
@@ -1429,7 +1414,7 @@
     <span class="kw">let </span>src_value: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
     <span class="kw">let </span>src_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>src_range = src_ty.integer_range(registry).unwrap();
+    <span class="kw">let </span>src_range = src_ty.integer_range(registry)<span class="question-mark">?</span>;
 
     <span class="macro">assert!</span>(
         src_range.lower &lt;= BigInt::ZERO &amp;&amp; BigInt::ZERO &lt; src_range.upper,
@@ -1469,8 +1454,7 @@
 
     <span class="kw">let </span>src_range = registry
         .get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.integer_range(registry)
-        .unwrap();
+        </span>.integer_range(registry)<span class="question-mark">?</span>;
     <span class="macro">assert!</span>(src_range.lower &gt; BigInt::ZERO || BigInt::ZERO &gt;= src_range.upper);
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[src_value], location));

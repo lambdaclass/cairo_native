@@ -645,7 +645,7 @@
                 <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>p.ty)<span class="question-mark">?</span>;
                 <span class="kw">if </span>ty.is_builtin() {
                     <span class="comment">// Skip zero sized builtins
-                    </span><span class="kw">if </span>ty.is_zst(<span class="kw-2">&amp;</span>registry) {
+                    </span><span class="kw">if </span>ty.is_zst(<span class="kw-2">&amp;</span>registry)<span class="question-mark">? </span>{
                         <span class="kw">continue</span>;
                     }
 

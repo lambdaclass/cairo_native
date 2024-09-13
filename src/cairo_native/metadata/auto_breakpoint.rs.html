@@ -43,9 +43,12 @@
 <a href="#43" id="43">43</a>
 <a href="#44" id="44">44</a>
 <a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
 </pre></div><pre class="rust"><code><span class="attr">#![cfg(feature = <span class="string">"with-debug-utils"</span>)]
 
 </span><span class="kw">use super</span>::{debug_utils::DebugUtils, MetadataStorage};
+<span class="kw">use </span><span class="kw">crate</span>::error::Error;
 <span class="kw">use </span>cairo_lang_sierra::ids::ConcreteTypeId;
 <span class="kw">use </span>melior::ir::{Block, Location};
 <span class="kw">use </span>std::collections::HashSet;
@@ -78,14 +81,15 @@
         location: Location,
         metadata: <span class="kw-2">&amp;</span>MetadataStorage,
         event: <span class="kw-2">&amp;</span>BreakpointEvent,
-    ) {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span><span class="self">self</span>.has_event(event) {
             metadata
                 .get::&lt;DebugUtils&gt;()
                 .unwrap()
-                .debug_breakpoint_trap(block, location)
-                .unwrap();
+                .debug_breakpoint_trap(block, location)<span class="question-mark">?</span>;
         }
+
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div></section></main></body></html>

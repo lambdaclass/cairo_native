@@ -1032,36 +1032,6 @@
 <a href="#1032" id="1032">1032</a>
 <a href="#1033" id="1033">1033</a>
 <a href="#1034" id="1034">1034</a>
-<a href="#1035" id="1035">1035</a>
-<a href="#1036" id="1036">1036</a>
-<a href="#1037" id="1037">1037</a>
-<a href="#1038" id="1038">1038</a>
-<a href="#1039" id="1039">1039</a>
-<a href="#1040" id="1040">1040</a>
-<a href="#1041" id="1041">1041</a>
-<a href="#1042" id="1042">1042</a>
-<a href="#1043" id="1043">1043</a>
-<a href="#1044" id="1044">1044</a>
-<a href="#1045" id="1045">1045</a>
-<a href="#1046" id="1046">1046</a>
-<a href="#1047" id="1047">1047</a>
-<a href="#1048" id="1048">1048</a>
-<a href="#1049" id="1049">1049</a>
-<a href="#1050" id="1050">1050</a>
-<a href="#1051" id="1051">1051</a>
-<a href="#1052" id="1052">1052</a>
-<a href="#1053" id="1053">1053</a>
-<a href="#1054" id="1054">1054</a>
-<a href="#1055" id="1055">1055</a>
-<a href="#1056" id="1056">1056</a>
-<a href="#1057" id="1057">1057</a>
-<a href="#1058" id="1058">1058</a>
-<a href="#1059" id="1059">1059</a>
-<a href="#1060" id="1060">1060</a>
-<a href="#1061" id="1061">1061</a>
-<a href="#1062" id="1062">1062</a>
-<a href="#1063" id="1063">1063</a>
-<a href="#1064" id="1064">1064</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1086,6 +1056,7 @@
 };
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, Sign};
 <span class="kw">use </span>num_traits::One;
+<span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::{
     alloc::Layout,
     borrow::Cow,
@@ -1197,19 +1168,19 @@
         .find(|x| x.id.id == entry_point_idx <span class="kw">as </span>u64)
 }
 
-<span class="doccomment">/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
+<span class="doccomment">/// Given a string representing a function name, searches in the program for the id corresponding
+/// to said function, and returns a reference to it.
 </span><span class="attr">#[track_caller]
-</span><span class="kw">pub fn </span>find_function_id&lt;<span class="lifetime">'a</span>&gt;(program: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Program, function_name: <span class="kw-2">&amp;</span>str) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'a </span>FunctionId {
-    <span class="kw-2">&amp;</span>program
+</span><span class="kw">pub fn </span>find_function_id&lt;<span class="lifetime">'a</span>&gt;(program: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Program, function_name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>FunctionId&gt; {
+    program
         .funcs
         .iter()
         .find(|x| x.id.debug_name.as_deref() == <span class="prelude-val">Some</span>(function_name))
-        .unwrap()
-        .id
+        .map(|func| <span class="kw-2">&amp;</span>func.id)
 }
 
 <span class="doccomment">/// Parse a numeric string into felt, wrapping negatives around the prime modulo.
-</span><span class="kw">pub fn </span>felt252_str(value: <span class="kw-2">&amp;</span>str) -&gt; [u32; <span class="number">8</span>] {
+</span><span class="kw">pub fn </span>felt252_str(value: <span class="kw-2">&amp;</span>str) -&gt; Felt {
     <span class="kw">let </span>value = value
         .parse::&lt;BigInt&gt;()
         .expect(<span class="string">"value must be a digit number"</span>);
@@ -1218,35 +1189,29 @@
         <span class="kw">_ </span>=&gt; value.to_biguint().unwrap(),
     };
 
-    <span class="kw">let </span><span class="kw-2">mut </span>u32_digits = value.to_u32_digits();
-    u32_digits.resize(<span class="number">8</span>, <span class="number">0</span>);
-    u32_digits.try_into().unwrap()
+    value.into()
 }
 
 <span class="doccomment">/// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
-</span><span class="kw">pub fn </span>felt252_bigint(value: <span class="kw">impl </span>Into&lt;BigInt&gt;) -&gt; [u32; <span class="number">8</span>] {
+</span><span class="kw">pub fn </span>felt252_bigint(value: <span class="kw">impl </span>Into&lt;BigInt&gt;) -&gt; Felt {
     <span class="kw">let </span>value: BigInt = value.into();
     <span class="kw">let </span>value = <span class="kw">match </span>value.sign() {
-        Sign::Minus =&gt; <span class="kw-2">&amp;*</span>PRIME - value.neg().to_biguint().unwrap(),
-        <span class="kw">_ </span>=&gt; value.to_biguint().unwrap(),
+        Sign::Minus =&gt; Cow::Owned(<span class="kw-2">&amp;*</span>PRIME - value.magnitude()),
+        <span class="kw">_ </span>=&gt; Cow::Borrowed(value.magnitude()),
     };
 
-    <span class="kw">let </span><span class="kw-2">mut </span>u32_digits = value.to_u32_digits();
-    u32_digits.resize(<span class="number">8</span>, <span class="number">0</span>);
-    u32_digits.try_into().unwrap()
+    value.as_ref().into()
 }
 
 <span class="doccomment">/// Parse a short string into a felt that can be used in the cairo-native input.
-</span><span class="kw">pub fn </span>felt252_short_str(value: <span class="kw-2">&amp;</span>str) -&gt; [u32; <span class="number">8</span>] {
+</span><span class="kw">pub fn </span>felt252_short_str(value: <span class="kw-2">&amp;</span>str) -&gt; Felt {
     <span class="kw">let </span>values: Vec&lt;<span class="kw">_</span>&gt; = value
         .chars()
-        .filter(|<span class="kw-2">&amp;</span>c| c.is_ascii())
-        .map(|c| c <span class="kw">as </span>u8)
+        .filter_map(|c| c.is_ascii().then_some(c <span class="kw">as </span>u8))
         .collect();
 
-    <span class="kw">let </span><span class="kw-2">mut </span>digits = BigUint::from_bytes_be(<span class="kw-2">&amp;</span>values).to_u32_digits();
-    digits.resize(<span class="number">8</span>, <span class="number">0</span>);
-    digits.try_into().unwrap()
+    <span class="macro">assert!</span>(values.len() &lt; <span class="number">32</span>);
+    Felt::from_bytes_be_slice(<span class="kw-2">&amp;</span>values)
 }
 
 <span class="doccomment">/// Creates the execution engine, with all symbols registered.
@@ -1415,24 +1380,6 @@
     }
 
     FmtWrapper(fmt)
-}
-
-<span class="comment">// POLYFILLS of nightly features
-
-</span><span class="attr">#[inline]
-</span><span class="kw">pub const fn </span>next_multiple_of_usize(lhs: usize, rhs: usize) -&gt; usize {
-    <span class="kw">match </span>lhs % rhs {
-        <span class="number">0 </span>=&gt; lhs,
-        r =&gt; lhs + (rhs - r),
-    }
-}
-
-<span class="attr">#[inline]
-</span><span class="kw">pub const fn </span>next_multiple_of_u32(lhs: u32, rhs: u32) -&gt; u32 {
-    <span class="kw">match </span>lhs % rhs {
-        <span class="number">0 </span>=&gt; lhs,
-        r =&gt; lhs + (rhs - r),
-    }
 }
 
 <span class="doccomment">/// Edit: Copied from the std lib.
@@ -1961,7 +1908,7 @@
     </span><span class="kw">fn </span>test_felt252_str_positive_number() {
         <span class="kw">let </span>value = <span class="string">"123"</span>;
         <span class="kw">let </span>result = felt252_str(value);
-        <span class="macro">assert_eq!</span>(result, [<span class="number">123</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]);
+        <span class="macro">assert_eq!</span>(result, <span class="number">123</span>.into());
     }
 
     <span class="attr">#[test]
@@ -1970,10 +1917,10 @@
         <span class="kw">let </span>result = felt252_str(value);
         <span class="macro">assert_eq!</span>(
             result,
-            [
-                <span class="number">4294967174</span>, <span class="number">4294967295</span>, <span class="number">4294967295</span>, <span class="number">4294967295</span>, <span class="number">4294967295</span>, <span class="number">4294967295</span>, <span class="number">16</span>,
-                <span class="number">134217728
-            </span>]
+            Felt::from_dec_str(
+                <span class="string">"3618502788666131213697322783095070105623107215331596699973092056135872020358"
+            </span>)
+            .unwrap()
         );
     }
 
@@ -1981,7 +1928,7 @@
     </span><span class="kw">fn </span>test_felt252_str_zero() {
         <span class="kw">let </span>value = <span class="string">"0"</span>;
         <span class="kw">let </span>result = felt252_str(value);
-        <span class="macro">assert_eq!</span>(result, [<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]);
+        <span class="macro">assert_eq!</span>(result, Felt::ZERO);
     }
 
     <span class="comment">// ==============================
@@ -1991,41 +1938,34 @@
     </span><span class="kw">fn </span>test_felt252_short_str_short_numeric_string() {
         <span class="kw">let </span>value = <span class="string">"12345"</span>;
         <span class="kw">let </span>result = felt252_short_str(value);
-        <span class="macro">assert_eq!</span>(result, [<span class="number">842216501</span>, <span class="number">49</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]);
+        <span class="macro">assert_eq!</span>(result, <span class="number">211295614005u64</span>.into());
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_felt252_short_str_short_string_with_non_numeric_characters() {
         <span class="kw">let </span>value = <span class="string">"hello"</span>;
         <span class="kw">let </span>result = felt252_short_str(value);
-        <span class="macro">assert_eq!</span>(result, [<span class="number">1701604463</span>, <span class="number">104</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]);
+        <span class="macro">assert_eq!</span>(result, <span class="number">448378203247u64</span>.into());
     }
 
     <span class="attr">#[test]
+    #[should_panic]
     </span><span class="kw">fn </span>test_felt252_short_str_long_numeric_string() {
-        <span class="kw">let </span>value = <span class="string">"1234567890123456789012345678901234567890"</span>;
-        <span class="kw">let </span>result = felt252_short_str(value);
-        <span class="macro">assert_eq!</span>(
-            result,
-            [
-                <span class="number">926431536</span>, <span class="number">859059510</span>, <span class="number">959459634</span>, <span class="number">892745528</span>, <span class="number">825373492</span>, <span class="number">926431536</span>, <span class="number">859059510</span>,
-                <span class="number">959459634
-            </span>]
-        );
+        felt252_short_str(<span class="string">"1234567890123456789012345678901234567890"</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_felt252_short_str_empty_string() {
         <span class="kw">let </span>value = <span class="string">""</span>;
         <span class="kw">let </span>result = felt252_short_str(value);
-        <span class="macro">assert_eq!</span>(result, [<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]);
+        <span class="macro">assert_eq!</span>(result, Felt::ZERO);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_felt252_short_str_string_with_non_ascii_characters() {
         <span class="kw">let </span>value = <span class="string">"h€llø"</span>;
         <span class="kw">let </span>result = felt252_short_str(value);
-        <span class="macro">assert_eq!</span>(result, [<span class="number">6843500</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]);
+        <span class="macro">assert_eq!</span>(result, <span class="number">6843500</span>.into());
     }
 
     <span class="comment">// ==============================
@@ -2090,7 +2030,7 @@
         <span class="comment">// Define the entry point function for comparison.
         </span><span class="kw">let </span>entry_point = <span class="string">"hello::hello::greet"</span>;
         <span class="comment">// Find the function ID of the entry point function in the sierra program.
-        </span><span class="kw">let </span>entry_point_id = find_function_id(<span class="kw-2">&amp;</span>sierra_program, entry_point);
+        </span><span class="kw">let </span>entry_point_id = find_function_id(<span class="kw-2">&amp;</span>sierra_program, entry_point).unwrap();
 
         <span class="comment">// Assert that the debug name of the entry point function matches the expected value.
         </span><span class="macro">assert_eq!</span>(

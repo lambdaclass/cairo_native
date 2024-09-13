@@ -326,9 +326,17 @@
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Trait that extends the melior Block type to aid in codegen and consistency.
 
-</span><span class="kw">use </span>melior::{
+</span><span class="kw">use crate</span>::{error::Error, utils::get_integer_layout};
+<span class="kw">use </span>melior::{
     dialect::{llvm::r#type::pointer, ods},
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
@@ -338,8 +346,6 @@
     Context,
 };
 <span class="kw">use </span>num_bigint::BigInt;
-
-<span class="kw">use crate</span>::{error::Error, utils::get_integer_layout};
 
 <span class="kw">pub trait </span>BlockExt&lt;<span class="lifetime">'ctx</span>&gt; {
     <span class="doccomment">/// Appends the operation and returns the first result.
@@ -513,7 +519,11 @@
                 context,
                 value_type,
                 container,
-                DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[index.try_into().unwrap()]).into(),
+                DenseI64ArrayAttribute::new(
+                    context,
+                    <span class="kw-2">&amp;</span>[index.try_into().map_err(|<span class="kw">_</span>| Error::IntegerConversion)<span class="question-mark">?</span>],
+                )
+                .into(),
                 location,
             )
             .into(),
@@ -534,7 +544,11 @@
                 container.r#type(),
                 container,
                 value,
-                DenseI64ArrayAttribute::new(context, <span class="kw-2">&amp;</span>[index.try_into().unwrap()]).into(),
+                DenseI64ArrayAttribute::new(
+                    context,
+                    <span class="kw-2">&amp;</span>[index.try_into().map_err(|<span class="kw">_</span>| Error::IntegerConversion)<span class="question-mark">?</span>],
+                )
+                .into(),
                 location,
             )
             .into(),
@@ -621,7 +635,7 @@
         op.set_elem_type(TypeAttribute::new(elem_type));
         op.set_alignment(IntegerAttribute::new(
             IntegerType::new(context, <span class="number">64</span>).into(),
-            align.try_into().unwrap(),
+            align.try_into().map_err(|<span class="kw">_</span>| Error::IntegerConversion)<span class="question-mark">?</span>,
         ));
 
         <span class="self">self</span>.append_op_result(op.into())

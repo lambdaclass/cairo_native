@@ -779,6 +779,19 @@
 <a href="#779" id="779">779</a>
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Debug utilities
 //!
 //! A collection of utilities to debug values in MLIR in execution.
@@ -864,7 +877,11 @@
 
 </span><span class="attr">#![cfg(feature = <span class="string">"with-debug-utils"</span>)]
 
-</span><span class="kw">use crate</span>::{block_ext::BlockExt, error::Result, utils::get_integer_layout};
+</span><span class="kw">use crate</span>::{
+    block_ext::BlockExt,
+    error::{Error, <span class="prelude-ty">Result</span>},
+    utils::get_integer_layout,
+};
 <span class="kw">use </span>melior::{
     dialect::{
         arith, func,
@@ -966,7 +983,10 @@
 
         <span class="kw">let </span>ty = llvm::r#type::array(
             IntegerType::new(context, <span class="number">8</span>).into(),
-            message.len().try_into().unwrap(),
+            message
+                .len()
+                .try_into()
+                .map_err(|<span class="kw">_</span>| Error::IntegerConversion)<span class="question-mark">?</span>,
         );
 
         <span class="kw">let </span>ptr = block.alloca1(context, location, ty, get_integer_layout(<span class="number">8</span>).align())<span class="question-mark">?</span>;
@@ -977,7 +997,10 @@
                     context,
                     llvm::r#type::array(
                         IntegerType::new(context, <span class="number">8</span>).into(),
-                        message.len().try_into().unwrap(),
+                        message
+                            .len()
+                            .try_into()
+                            .map_err(|<span class="kw">_</span>| Error::IntegerConversion)<span class="question-mark">?</span>,
                     ),
                     StringAttribute::new(context, message).into(),
                     location,
@@ -992,7 +1015,10 @@
                 context,
                 IntegerAttribute::new(
                     IntegerType::new(context, <span class="number">64</span>).into(),
-                    message.len().try_into().unwrap(),
+                    message
+                        .len()
+                        .try_into()
+                        .map_err(|<span class="kw">_</span>| Error::IntegerConversion)<span class="question-mark">?</span>,
                 )
                 .into(),
                 location,

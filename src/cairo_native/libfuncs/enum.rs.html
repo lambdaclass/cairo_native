@@ -722,7 +722,7 @@
                 type_id: info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">0</span>].ty.clone(),
                 variant_idx: info.index,
             },
-        )
+        )<span class="question-mark">?</span>;
     }
 
     <span class="kw">let </span>val = build_enum_value(
@@ -774,7 +774,7 @@
                 context,
                 <span class="kw-2">&amp;</span>[
                     tag_ty,
-                    <span class="kw">if </span>payload_type_info.is_zst(registry) {
+                    <span class="kw">if </span>payload_type_info.is_zst(registry)<span class="question-mark">? </span>{
                         llvm::r#type::array(IntegerType::new(context, <span class="number">8</span>).into(), <span class="number">0</span>)
                     } <span class="kw">else </span>{
                         variant_tys[variant_index].<span class="number">0
@@ -801,13 +801,13 @@
             <span class="kw">let </span>val = entry.append_op_result(llvm::undef(enum_ty, location))<span class="question-mark">?</span>;
             <span class="kw">let </span>val = entry.insert_value(context, location, val, tag_val, <span class="number">0</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span><span class="kw-2">mut </span>val = <span class="kw">if </span>payload_type_info.is_zst(registry) {
+            <span class="kw">let </span><span class="kw-2">mut </span>val = <span class="kw">if </span>payload_type_info.is_zst(registry)<span class="question-mark">? </span>{
                 val
             } <span class="kw">else </span>{
                 entry.insert_value(context, location, val, payload_value, <span class="number">1</span>)<span class="question-mark">?
             </span>};
 
-            <span class="kw">if </span>type_info.is_memory_allocated(registry) {
+            <span class="kw">if </span>type_info.is_memory_allocated(registry)<span class="question-mark">? </span>{
                 <span class="kw">let </span>stack_ptr = helper.init_block().alloca1(
                     context,
                     location,
@@ -852,7 +852,7 @@
         </span>.try_into()<span class="question-mark">?</span>;
     <span class="kw">let </span>enum_type = registry.get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="comment">// we assume its never memory allocated since its always a enum with only a tag
-    </span><span class="macro">assert!</span>(!enum_type.is_memory_allocated(registry));
+    </span><span class="macro">assert!</span>(!enum_type.is_memory_allocated(registry)<span class="question-mark">?</span>);
 
     <span class="kw">let </span>enum_ty = enum_type.build(
         context,
@@ -930,7 +930,7 @@
                 variant_ids,
             )<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>(stack_ptr, tag_val) = <span class="kw">if </span>type_info.is_memory_allocated(registry) {
+            <span class="kw">let </span>(stack_ptr, tag_val) = <span class="kw">if </span>type_info.is_memory_allocated(registry)<span class="question-mark">? </span>{
                 <span class="kw">let </span>stack_ptr = helper.init_block().alloca1(
                     context,
                     location,
@@ -1024,7 +1024,7 @@
                         </span><span class="kw">if </span>variant_ids.len() == <span class="number">1 </span>{
                             entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()
                         } <span class="kw">else </span>{
-                            <span class="macro">assert!</span>(registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>.is_zst(registry));
+                            <span class="macro">assert!</span>(registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>.is_zst(registry)<span class="question-mark">?</span>);
                             block
                                 .append_operation(llvm::undef(payload_ty, location))
                                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1088,7 +1088,7 @@
                 <span class="kw-2">&amp;</span>variant_ids,
             )<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>(stack_ptr, tag_val) = <span class="kw">if </span>type_info.is_memory_allocated(registry) {
+            <span class="kw">let </span>(stack_ptr, tag_val) = <span class="kw">if </span>type_info.is_memory_allocated(registry)<span class="question-mark">? </span>{
                 <span class="kw">let </span>stack_ptr = helper.init_block().alloca1(
                     context,
                     location,
@@ -1167,7 +1167,7 @@
                         </span><span class="kw">if </span>variant_ids.len() == <span class="number">1 </span>{
                             entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()
                         } <span class="kw">else </span>{
-                            <span class="macro">assert!</span>(registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>.is_zst(registry));
+                            <span class="macro">assert!</span>(registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>.is_zst(registry)<span class="question-mark">?</span>);
                             block.append_op_result(llvm::undef(payload_ty, location))<span class="question-mark">?
                         </span>}
                     }
