@@ -211,14 +211,23 @@ fn compile_func(
         arg_types
             .iter_mut()
             .zip(function.signature.param_types.iter().filter_map(|type_id| {
-                let type_info = registry.get_type(type_id).unwrap();
-                if type_info.is_builtin() && type_info.is_zst(registry).unwrap() {
+                let type_info = match registry.get_type(type_id) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e.into())),
+                };
+                let is_zst = match type_info.is_zst(registry) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e)),
+                };
+
+                if type_info.is_builtin() && is_zst {
                     None
                 } else {
-                    Some(type_info)
+                    Some(Ok(type_info))
                 }
             }))
     {
+        let type_info = type_info?;
         if type_info.is_memory_allocated(registry)? {
             *ty = llvm::r#type::pointer(context, 0);
         }
@@ -231,14 +240,22 @@ fn compile_func(
         .ret_types
         .iter()
         .filter_map(|type_id| {
-            let type_info = registry.get_type(type_id).unwrap();
-            if type_info.is_builtin() && type_info.is_zst(registry).unwrap() {
+            let type_info = match registry.get_type(type_id) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e.into())),
+            };
+            let is_zst = match type_info.is_zst(registry) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e)),
+            };
+
+            if type_info.is_builtin() && is_zst {
                 None
             } else {
-                Some((type_id, type_info))
+                Some(Ok((type_id, type_info)))
             }
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()?;
     // Possible values:
     //   None        => Doesn't return anything.
     //   Some(false) => Has a complex return type.
@@ -247,7 +264,9 @@ fn compile_func(
         Some(false)
     } else if return_type_infos
         .first()
-        .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry).unwrap())
+        .map(|(_, type_info)| type_info.is_memory_allocated(registry))
+        .transpose()?
+        == Some(true)
     {
         assert_eq!(return_types.len(), 1);
 
@@ -687,30 +706,49 @@ fn compile_func(
                                         .iter()
                                         .zip(&values)
                                         .filter_map(|(type_id, value)| {
-                                            let type_info = registry.get_type(type_id).unwrap();
-                                            if type_info.is_zst(registry).unwrap()
-                                                || type_info.is_memory_allocated(registry).unwrap()
-                                            {
+                                            let type_info = match registry.get_type(type_id) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e.into())),
+                                            };
+                                            let is_zst = match type_info.is_zst(registry) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e)),
+                                            };
+                                            let is_memory_allocated =
+                                                match type_info.is_memory_allocated(registry) {
+                                                    Ok(x) => x,
+                                                    Err(e) => return Some(Err(e)),
+                                                };
+
+                                            if is_zst || is_memory_allocated {
                                                 None
                                             } else {
-                                                Some(*value)
+                                                Some(Ok(*value))
                                             }
                                         })
-                                        .collect::<Vec<_>>(),
+                                        .collect::<Result<Vec<_>, _>>()?,
                                     Some(false) => function
                                         .signature
                                         .ret_types
                                         .iter()
                                         .zip(&values)
                                         .filter_map(|(type_id, value)| {
-                                            let type_info = registry.get_type(type_id).unwrap();
-                                            if type_info.is_zst(registry).unwrap() {
+                                            let type_info = match registry.get_type(type_id) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e.into())),
+                                            };
+                                            let is_zst = match type_info.is_zst(registry) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e)),
+                                            };
+
+                                            if is_zst {
                                                 None
                                             } else {
-                                                Some(*value)
+                                                Some(Ok(*value))
                                             }
                                         })
-                                        .collect::<Vec<_>>(),
+                                        .collect::<Result<Vec<_>, _>>()?,
                                     None => todo!(),
                                 };
 
@@ -732,7 +770,7 @@ fn compile_func(
                     // Remove ZST builtins from the return values.
                     for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
                         let type_info = registry.get_type(type_id)?;
-                        if type_info.is_builtin() && type_info.is_zst(registry).unwrap() {
+                        if type_info.is_builtin() && type_info.is_zst(registry)? {
                             values.remove(idx);
                         }
                     }
@@ -791,13 +829,23 @@ fn compile_func(
                 registry
                     .get_type(type_id)
                     .map(|type_info| {
-                        if type_info.is_builtin() && type_info.is_zst(registry).unwrap() {
+                        let is_zst = match type_info.is_zst(registry) {
+                            Ok(x) => x,
+                            Err(e) => return Some(Err(e)),
+                        };
+
+                        if type_info.is_builtin() && is_zst {
                             None
                         } else {
-                            Some((type_id, type_info))
+                            Some(Ok((type_id, type_info)))
                         }
                     })
+                    .map_err(Error::from)
                     .transpose()
+                    .map(|x| match x {
+                        Ok(Ok(x)) => Ok(x),
+                        Ok(Err(e)) | Err(e) => Err(e),
+                    })
             })
             .enumerate()
         {
@@ -1127,8 +1175,12 @@ fn extract_types<'c: 'a, 'a>(
             Ok(x) => x,
             Err(e) => return Some(Err(e.into())),
         };
+        let is_zst = match type_info.is_zst(registry) {
+            Ok(x) => x,
+            Err(e) => return Some(Err(e)),
+        };
 
-        if type_info.is_builtin() && type_info.is_zst(registry).unwrap() {
+        if type_info.is_builtin() && is_zst {
             None
         } else {
             Some(type_info.build(context, module, registry, metadata_storage, id))
