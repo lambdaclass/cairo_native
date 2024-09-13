@@ -1,10 +1,6 @@
 //! # Various utilities
 
-use crate::{
-    metadata::MetadataStorage,
-    types::{felt252::PRIME, TypeBuilder},
-    OptLevel,
-};
+use crate::{metadata::MetadataStorage, types::TypeBuilder, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
     extensions::{
@@ -22,6 +18,7 @@ use melior::{
 };
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::One;
+use std::sync::LazyLock;
 use std::{
     alloc::Layout,
     borrow::Cow,
@@ -37,6 +34,18 @@ use thiserror::Error;
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
 #[cfg(target_os = "linux")]
 pub const SHARED_LIBRARY_EXT: &str = "so";
+
+/// The `felt252` prime modulo.
+pub static PRIME: LazyLock<BigUint> = LazyLock::new(|| {
+    "3618502788666131213697322783095070105623107215331596699973092056135872020481"
+        .parse()
+        .unwrap()
+});
+pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
+    "1809251394333065606848661391547535052811553607665798349986546028067936010240"
+        .parse()
+        .unwrap()
+});
 
 /// Generate a function name.
 ///

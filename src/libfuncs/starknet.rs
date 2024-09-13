@@ -7,8 +7,7 @@ use crate::{
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    types::felt252::PRIME,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -35,12 +34,10 @@ use melior::{
     },
     Context,
 };
-use num_bigint::{Sign, ToBigUint};
+use num_bigint::Sign;
 use std::alloc::Layout;
 
 mod secp256;
-
-#[cfg(feature = "with-cheatcode")]
 mod testing;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -479,19 +476,15 @@ pub fn build_class_hash_const<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
-    let value = match info.c.sign() {
-        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
-        _ => info.c.to_biguint().unwrap(),
-    };
-
-    let value = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(context, &format!("{value} : i252")).unwrap(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let value = entry.const_int(
+        context,
+        location,
+        match info.c.sign() {
+            Sign::Minus => &*PRIME - info.c.magnitude(),
+            _ => info.c.magnitude().clone(),
+        },
+        252,
+    )?;
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())
@@ -566,19 +559,15 @@ pub fn build_contract_address_const<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
-    let value = match info.c.sign() {
-        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
-        _ => info.c.to_biguint().unwrap(),
-    };
-
-    let value = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(context, &format!("{value} : i252")).unwrap(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let value = entry.const_int(
+        context,
+        location,
+        match info.c.sign() {
+            Sign::Minus => &*PRIME - info.c.magnitude(),
+            _ => info.c.magnitude().clone(),
+        },
+        252,
+    )?;
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())
@@ -1197,19 +1186,15 @@ pub fn build_storage_base_address_const<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
-    let value = match info.c.sign() {
-        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
-        _ => info.c.to_biguint().unwrap(),
-    };
-
-    let value = entry
-        .append_operation(arith::constant(
-            context,
-            Attribute::parse(context, &format!("{value} : i252")).unwrap(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let value = entry.const_int(
+        context,
+        location,
+        match info.c.sign() {
+            Sign::Minus => &*PRIME - info.c.magnitude(),
+            _ => info.c.magnitude().clone(),
+        },
+        252,
+    )?;
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())

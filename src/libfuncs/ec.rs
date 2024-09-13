@@ -4,11 +4,8 @@ use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
     error::{Error, Result},
-    metadata::{
-        prime_modulo::PrimeModuloMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
-    },
-    types::felt252::register_prime_modulo_meta,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,8 +24,6 @@ use melior::{
     ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location},
     Context,
 };
-use num_bigint::ToBigInt;
-use starknet_types_core::felt::Felt;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -115,7 +110,7 @@ pub fn build_neg<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let y = entry.extract_value(
@@ -126,24 +121,13 @@ pub fn build_neg<'ctx, 'this>(
         1,
     )?;
 
-    let prime = match metadata.get::<PrimeModuloMeta<Felt>>() {
-        Some(x) => x.prime(),
-        None => {
-            // Since the `EcPoint` type is external, there is no guarantee that
-            // `PrimeModuloMeta<Felt252>` will be available.
-            register_prime_modulo_meta(metadata).prime()
-        }
-    };
-
-    let k_prime = entry.const_int(context, location, prime.to_bigint().unwrap(), 252)?;
-
+    let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
     let k0 = entry.const_int(context, location, 0, 252)?;
 
     let y_is_zero =
         entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))?;
 
     let y_neg = entry.append_op_result(arith::subi(k_prime, y, location))?;
-
     let y_neg = entry.append_op_result(
         OperationBuilder::new("arith.select", location)
             .add_operands(&[y_is_zero, k0, y_neg])

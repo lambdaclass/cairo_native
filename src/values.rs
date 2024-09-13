@@ -4,8 +4,10 @@
 
 use crate::{
     error::{CompilerError, Error},
-    types::{felt252::PRIME, TypeBuilder},
-    utils::{felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize, RangeExt},
+    types::TypeBuilder,
+    utils::{
+        felt252_bigint, get_integer_layout, layout_repeat, next_multiple_of_usize, RangeExt, PRIME,
+    },
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -214,9 +216,9 @@ impl JitValue {
                         .into());
                     }
 
-                    let prime = &PRIME.to_bigint().unwrap();
-                    let lower = lower.rem_euclid(prime);
-                    let upper = upper.rem_euclid(prime);
+                    let prime = BigInt::from_biguint(Sign::Plus, PRIME.clone());
+                    let lower = lower.rem_euclid(&prime);
+                    let upper = upper.rem_euclid(&prime);
 
                     // Check if value is within the valid range
                     if !(lower <= value && value < upper) {

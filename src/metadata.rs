@@ -18,7 +18,6 @@ pub mod auto_breakpoint;
 pub mod debug_utils;
 pub mod enum_snapshot_variants;
 pub mod gas;
-pub mod prime_modulo;
 pub mod realloc_bindings;
 pub mod runtime_bindings;
 pub mod snapshot_clones;

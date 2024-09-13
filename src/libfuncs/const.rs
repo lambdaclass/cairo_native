@@ -1,19 +1,17 @@
 //! # Const libfuncs
 
 use super::LibfuncHelper;
-use crate::block_ext::BlockExt;
-use crate::types::felt252::PRIME;
-use crate::utils::RangeExt;
 use crate::{
+    block_ext::BlockExt,
     error::{Error, Result},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    utils::{ProgramRegistryExt, RangeExt, PRIME},
 };
-use cairo_lang_sierra::extensions::bounded_int::BoundedIntConcreteType;
 use cairo_lang_sierra::{
     extensions::{
+        bounded_int::BoundedIntConcreteType,
         const_type::{
             ConstAsBoxConcreteLibfunc, ConstAsImmediateConcreteLibfunc, ConstConcreteLibfunc,
             ConstConcreteType,

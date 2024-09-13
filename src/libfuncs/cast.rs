@@ -5,11 +5,8 @@ use crate::{
     block_ext::BlockExt,
     error::Result,
     metadata::MetadataStorage,
-    types::{
-        felt252::{HALF_PRIME, PRIME},
-        TypeBuilder,
-    },
-    utils::RangeExt,
+    types::TypeBuilder,
+    utils::{RangeExt, HALF_PRIME, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -86,8 +83,8 @@ pub fn build_downcast<'ctx, 'this>(
             }
         } else {
             Range {
-                lower: -HALF_PRIME.clone(),
-                upper: HALF_PRIME.clone() + BigInt::one(),
+                lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
+                upper: BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()) + BigInt::one(),
             }
         }
     } else {
@@ -285,8 +282,8 @@ pub fn build_upcast<'ctx, 'this>(
     assert!(
         if dst_ty.is_felt252(registry) {
             let alt_range = Range {
-                lower: -HALF_PRIME.clone(),
-                upper: HALF_PRIME.clone() + BigInt::one(),
+                lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
+                upper: BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()) + BigInt::one(),
             };
 
             (dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper)

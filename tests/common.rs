@@ -31,11 +31,8 @@ use cairo_native::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
-    types::{
-        felt252::{HALF_PRIME, PRIME},
-        TypeBuilder,
-    },
-    utils::find_entry_point_by_idx,
+    types::TypeBuilder,
+    utils::{find_entry_point_by_idx, HALF_PRIME, PRIME},
     values::JitValue,
     OptLevel,
 };
@@ -536,35 +533,35 @@ pub fn compare_outputs(
             CoreTypeConcrete::Uint16(_) => JitValue::Uint16(values[0].to_u16().unwrap()),
             CoreTypeConcrete::Uint8(_) => JitValue::Uint8(values[0].to_u8().unwrap()),
             CoreTypeConcrete::Sint128(_) => {
-                JitValue::Sint128(if values[0].to_bigint() >= *HALF_PRIME {
+                JitValue::Sint128(if values[0].to_biguint() >= *HALF_PRIME {
                     -(&*PRIME - &values[0].to_biguint()).to_i128().unwrap()
                 } else {
                     values[0].to_biguint().to_i128().unwrap()
                 })
             }
             CoreTypeConcrete::Sint64(_) => {
-                JitValue::Sint64(if values[0].to_bigint() >= *HALF_PRIME {
+                JitValue::Sint64(if values[0].to_biguint() >= *HALF_PRIME {
                     -(&*PRIME - &values[0].to_biguint()).to_i64().unwrap()
                 } else {
                     values[0].to_biguint().to_i64().unwrap()
                 })
             }
             CoreTypeConcrete::Sint32(_) => {
-                JitValue::Sint32(if values[0].to_bigint() >= *HALF_PRIME {
+                JitValue::Sint32(if values[0].to_biguint() >= *HALF_PRIME {
                     -(&*PRIME - &values[0].to_biguint()).to_i32().unwrap()
                 } else {
                     values[0].to_biguint().to_i32().unwrap()
                 })
             }
             CoreTypeConcrete::Sint16(_) => {
-                JitValue::Sint16(if values[0].to_bigint() >= *HALF_PRIME {
+                JitValue::Sint16(if values[0].to_biguint() >= *HALF_PRIME {
                     -(&*PRIME - &values[0].to_biguint()).to_i16().unwrap()
                 } else {
                     values[0].to_biguint().to_i16().unwrap()
                 })
             }
             CoreTypeConcrete::Sint8(_) => {
-                JitValue::Sint8(if values[0].to_bigint() >= *HALF_PRIME {
+                JitValue::Sint8(if values[0].to_biguint() >= *HALF_PRIME {
                     -(&*PRIME - &values[0].to_biguint()).to_i8().unwrap()
                 } else {
                     values[0].to_biguint().to_i8().unwrap()
