@@ -165,7 +165,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PROGRAM: fib_2M
-      OUTPUT_DIR: target/bench-outputs
+      OUTPUT_DIR: bench-outputs
     steps:
       - name: Checkout base commit
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
