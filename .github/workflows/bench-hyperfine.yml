@@ -108,7 +108,7 @@ jobs:
           key: binary-${{ github.event.pull_request[matrix.branch].sha }} 
 
       - name: check and free hdd space left
-        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-cache-binary.outputs.cache-hit != 'true' }}
         run: |
           echo "Listing 20 largest packages"
           dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
@@ -169,6 +169,7 @@ jobs:
           key: program-${{ github.event.pull_request[matrix.branch].sha }} 
       
       - name: Fetch Program
+        if: ${{ steps.cache-program.outputs.cache-hit != 'true' }}
         run: |
           cp programs/benches/$PROGRAM.cairo bench-program-base
   
