@@ -100,6 +100,12 @@ jobs:
     name: Build cairo-native-run for ${{ matrix.branch }}
     runs-on: ubuntu-22.04
     steps:
+      - name: Checkout base commit
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request[matrix.branch].sha }}
+
       - name: Populate cache
         uses: actions/cache@v3
         id: cache-binary 
@@ -143,12 +149,6 @@ jobs:
       - name: Install LLVM
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
         run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
-      
-      - name: Checkout base commit
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request[matrix.branch].sha }}
         
       - name: Fetch Rust cache
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
