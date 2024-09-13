@@ -1,10 +1,9 @@
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{

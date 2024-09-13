@@ -2,12 +2,11 @@
 
 use super::{increment_builtin_counter, increment_builtin_counter_by, LibfuncHelper};
 use crate::{
-    block_ext::BlockExt,
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
+    utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{

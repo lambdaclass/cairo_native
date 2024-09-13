@@ -2,9 +2,7 @@
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-use crate::{
-    block_ext::BlockExt, error::Error as CoreLibfuncBuilderError, metadata::MetadataStorage,
-};
+use crate::{error::Error as CoreLibfuncBuilderError, metadata::MetadataStorage, utils::BlockExt};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},

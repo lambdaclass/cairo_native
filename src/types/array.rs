@@ -18,14 +18,13 @@
 //! [^2]: Those numbers are number of items, **not bytes**.
 
 use super::{TypeBuilder, WithSelf};
-use crate::block_ext::BlockExt;
 use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
-    utils::ProgramRegistryExt,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{

@@ -4,10 +4,10 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{

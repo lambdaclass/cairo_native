@@ -7,11 +7,10 @@ use std::ops::Deref;
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{

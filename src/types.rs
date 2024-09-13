@@ -3,14 +3,13 @@
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
 use crate::{
-    block_ext::BlockExt,
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
-    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt, RangeExt, PRIME},
+    utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{

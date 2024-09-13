@@ -8,7 +8,6 @@
 
 use super::WithSelf;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
@@ -16,6 +15,7 @@ use crate::{
         snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
     types::TypeBuilder,
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{

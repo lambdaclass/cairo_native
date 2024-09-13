@@ -15,7 +15,6 @@ pub use self::{
 };
 
 mod arch;
-pub(crate) mod block_ext;
 pub mod cache;
 mod compiler;
 pub mod context;

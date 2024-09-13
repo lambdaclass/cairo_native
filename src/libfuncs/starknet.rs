@@ -2,12 +2,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, ProgramRegistryExt, PRIME},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{

@@ -45,7 +45,6 @@
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
-    block_ext::BlockExt,
     debug::libfunc_to_name,
     error::Error,
     ffi::{
@@ -60,7 +59,7 @@ use crate::{
         MetadataStorage,
     },
     types::TypeBuilder,
-    utils::generate_function_name,
+    utils::{generate_function_name, BlockExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{

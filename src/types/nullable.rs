@@ -6,13 +6,13 @@
 //! `Box<T>` we can reuse its pointer, just leaving it null when there's no value.
 
 use super::{TypeBuilder, WithSelf};
-use crate::block_ext::BlockExt;
 use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{

@@ -83,7 +83,10 @@
 
 #![cfg(feature = "with-debug-utils")]
 
-use crate::{block_ext::BlockExt, error::Result, utils::get_integer_layout};
+use crate::{
+    error::Result,
+    utils::{get_integer_layout, BlockExt},
+};
 use melior::{
     dialect::{
         arith, func,

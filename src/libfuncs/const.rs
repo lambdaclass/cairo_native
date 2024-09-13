@@ -2,12 +2,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::{Error, Result},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::{ProgramRegistryExt, RangeExt, PRIME},
+    utils::{BlockExt, ProgramRegistryExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{

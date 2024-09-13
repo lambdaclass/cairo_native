@@ -2,10 +2,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, ProgramRegistryExt, PRIME},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{

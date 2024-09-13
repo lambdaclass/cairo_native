@@ -2,8 +2,10 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt, error::Result, metadata::MetadataStorage, types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
