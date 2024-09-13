@@ -209,7 +209,7 @@ jobs:
           {
             echo "Benchmark Results  :rocket:"
             echo
-            cat $ROOT_DIR/$OUTPUT_DIR/$PROGRAM.md
+            cat $OUTPUT_DIR/$PROGRAM.md
           } | tee -a comment_body.md
 
       - name: Find comment
