@@ -31,8 +31,7 @@ use std::{alloc::Layout, collections::HashMap, ops::Neg, ptr::NonNull, slice};
 /// The debug_name field on some variants is `Some` when receiving a [`JitValue`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Clone, Educe)]
-#[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Educe, serde::Serialize, serde::Deserialize)]
 #[educe(Debug, Eq, PartialEq)]
 pub enum JitValue {
     Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
@@ -77,7 +76,7 @@ pub enum JitValue {
     },
     BoundedInt {
         value: Felt,
-        #[cfg_attr(feature = "with-serde", serde(with = "range_serde"))]
+        #[serde(with = "range_serde")]
         range: Range,
     },
     /// Used as return value for Nullables that are null.
@@ -1545,7 +1544,6 @@ mod test {
     }
 }
 
-#[cfg(feature = "with-serde")]
 mod range_serde {
     use std::fmt;
 

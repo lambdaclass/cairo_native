@@ -34,20 +34,20 @@ to machine code via MLIR and LLVM.
 For in-depth documentation, see the [developer documentation][].
 
 ## Disclaimer
-🚧 Cairo Native is still being built therefore API breaking changes might happen 
+🚧 Cairo Native is still being built therefore API breaking changes might happen
 often so use it at your own risk. 🚧
 
-For versions under `1.0` `cargo` doesn't comply with 
-[semver](https://semver.org/), so we advise to pin the version the version you 
+For versions under `1.0` `cargo` doesn't comply with
+[semver](https://semver.org/), so we advise to pin the version the version you
 use. This can be done by adding `cairo-native = "0.1.0"` to your Cargo.toml
 
 ## Getting Started
 
 ### Dependencies
 - Linux or macOS (aarch64 included) only for now
-- LLVM 18 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/), 
+- LLVM 18 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/),
   on macOS you can use brew
-- Rust 1.78.0 or later, since we make use of the u128 
+- Rust 1.78.0 or later, since we make use of the u128
   [abi change](https://blog.rust-lang.org/2024/03/30/i128-layout-update.html).
 - Git
 
@@ -61,7 +61,7 @@ make deps
 ```
 
 #### Linux
-Since Linux distributions change widely, you need to install LLVM 18 via your 
+Since Linux distributions change widely, you need to install LLVM 18 via your
 package manager, compile it or check if the current release has a Linux binary.
 
 If you are on Debian/Ubuntu, check out the repository https://apt.llvm.org/
@@ -105,7 +105,7 @@ ninja install
 
 </details>
 
-Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_181_PREFIX` 
+Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_181_PREFIX`
 and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
 
 ```bash
@@ -115,7 +115,7 @@ export LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
 export TABLEGEN_180_PREFIX=/usr/lib/llvm-18
 ```
 
-Alternatively, if installed from Debian/Ubuntu repository, then you can use 
+Alternatively, if installed from Debian/Ubuntu repository, then you can use
 `env.sh` to automatically setup the environment variables.
 
 ```bash
@@ -123,8 +123,8 @@ source env.sh
 ```
 
 #### MacOS
-The makefile `deps` target (which you should have ran before) installs LLVM 18 
-with brew for you, afterwards you need to execute the `env.sh` script to setup 
+The makefile `deps` target (which you should have ran before) installs LLVM 18
+with brew for you, afterwards you need to execute the `env.sh` script to setup
 the needed environment variables.
 
 ```bash
@@ -132,7 +132,7 @@ source env.sh
 ```
 
 ### Make targets:
-Running `make` by itself will check whether the required LLVM installation and 
+Running `make` by itself will check whether the required LLVM installation and
 corelib is found, and then list available targets.
 
 ```bash
@@ -161,7 +161,7 @@ Usage:
 ```
 
 ## Included Tools
-Aside from the compilation and execution engine library, Cairo Native includes 
+Aside from the compilation and execution engine library, Cairo Native includes
 a few command-line tools to aid development, and some useful scripts.
 
 These are:
@@ -209,7 +209,7 @@ Options:
 ```
 
 ### `cairo-native-run`
-This tool allows to run programs using the JIT engine, like the `cairo-run` 
+This tool allows to run programs using the JIT engine, like the `cairo-run`
 tool, the parameters can only be felt values.
 
 Example: `echo '1' | cairo-native-run 'program.cairo' 'program::program::main' --inputs - --outputs -`
@@ -233,8 +233,8 @@ Options:
 ```
 
 ### `cairo-native-test`
-This tool mimics the `cairo-test` 
-[tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner) 
+This tool mimics the `cairo-test`
+[tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner)
 and is identical to it in interface, the only feature it doesn't have is the profiler.
 
 ```bash
@@ -300,7 +300,7 @@ To quickly run a stress test and save logs as json, run:
 make stress-test
 ```
 
-This takes a lot of time to finish (it will probably crash first), you can kill 
+This takes a lot of time to finish (it will probably crash first), you can kill
 the program at any time.
 
 To plot the results, run:
@@ -348,7 +348,7 @@ Options:
 
 ### Requirements
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.7.1](https://github.com/starkware-libs/cairo)
+- [cairo 2.8.2](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 18 with MLIR
 
@@ -360,7 +360,7 @@ $LLVM_SYS_181_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install l
 $TABLEGEN_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
 ```
 
-You can then run the `bench` makefile target: 
+You can then run the `bench` makefile target:
 
 ```bash
 make bench
