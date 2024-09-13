@@ -2,7 +2,10 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
+    block_ext::BlockExt,
+    error::{Error, Result},
+    metadata::MetadataStorage,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -68,7 +71,8 @@ pub fn build_const<'ctx, 'this>(
 
     let op0 = entry.append_operation(arith::constant(
         context,
-        Attribute::parse(context, &format!("{value} : {value_ty}")).unwrap(),
+        Attribute::parse(context, &format!("{value} : {value_ty}"))
+            .ok_or(Error::ParseAttributeError)?,
         location,
     ));
 
@@ -137,7 +141,8 @@ pub fn build_from_felt252<'ctx, 'this>(
 
     let const_max = entry.append_op_result(arith::constant(
         context,
-        Attribute::parse(context, &format!("{} : {}", max_value, felt252_ty)).unwrap(),
+        Attribute::parse(context, &format!("{} : {}", max_value, felt252_ty))
+            .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
 

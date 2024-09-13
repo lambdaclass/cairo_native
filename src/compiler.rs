@@ -99,7 +99,6 @@ use std::{
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
 };
-use tracing::trace;
 
 /// The [BlockStorage] type is used to map each statement into its own entry block (on the right),
 /// and its landing block (on the left) if required.
@@ -212,15 +211,24 @@ fn compile_func(
         arg_types
             .iter_mut()
             .zip(function.signature.param_types.iter().filter_map(|type_id| {
-                let type_info = registry.get_type(type_id).unwrap();
-                if type_info.is_builtin() && type_info.is_zst(registry) {
+                let type_info = match registry.get_type(type_id) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e.into())),
+                };
+                let is_zst = match type_info.is_zst(registry) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e)),
+                };
+
+                if type_info.is_builtin() && is_zst {
                     None
                 } else {
-                    Some(type_info)
+                    Some(Ok(type_info))
                 }
             }))
     {
-        if type_info.is_memory_allocated(registry) {
+        let type_info = type_info?;
+        if type_info.is_memory_allocated(registry)? {
             *ty = llvm::r#type::pointer(context, 0);
         }
     }
@@ -232,14 +240,22 @@ fn compile_func(
         .ret_types
         .iter()
         .filter_map(|type_id| {
-            let type_info = registry.get_type(type_id).unwrap();
-            if type_info.is_builtin() && type_info.is_zst(registry) {
+            let type_info = match registry.get_type(type_id) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e.into())),
+            };
+            let is_zst = match type_info.is_zst(registry) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e)),
+            };
+
+            if type_info.is_builtin() && is_zst {
                 None
             } else {
-                Some((type_id, type_info))
+                Some(Ok((type_id, type_info)))
             }
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()?;
     // Possible values:
     //   None        => Doesn't return anything.
     //   Some(false) => Has a complex return type.
@@ -248,7 +264,9 @@ fn compile_func(
         Some(false)
     } else if return_type_infos
         .first()
-        .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
+        .map(|(_, type_info)| type_info.is_memory_allocated(registry))
+        .transpose()?
+        == Some(true)
     {
         assert_eq!(return_types.len(), 1);
 
@@ -372,7 +390,7 @@ fn compile_func(
 
             values.push((
                 &param.id,
-                if type_info.is_builtin() && type_info.is_zst(registry) {
+                if type_info.is_builtin() && type_info.is_zst(registry)? {
                     pre_entry_block
                         .append_operation(llvm::undef(
                             type_info.build(context, module, registry, metadata, &param.ty)?,
@@ -688,30 +706,49 @@ fn compile_func(
                                         .iter()
                                         .zip(&values)
                                         .filter_map(|(type_id, value)| {
-                                            let type_info = registry.get_type(type_id).unwrap();
-                                            if type_info.is_zst(registry)
-                                                || type_info.is_memory_allocated(registry)
-                                            {
+                                            let type_info = match registry.get_type(type_id) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e.into())),
+                                            };
+                                            let is_zst = match type_info.is_zst(registry) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e)),
+                                            };
+                                            let is_memory_allocated =
+                                                match type_info.is_memory_allocated(registry) {
+                                                    Ok(x) => x,
+                                                    Err(e) => return Some(Err(e)),
+                                                };
+
+                                            if is_zst || is_memory_allocated {
                                                 None
                                             } else {
-                                                Some(*value)
+                                                Some(Ok(*value))
                                             }
                                         })
-                                        .collect::<Vec<_>>(),
+                                        .collect::<Result<Vec<_>, _>>()?,
                                     Some(false) => function
                                         .signature
                                         .ret_types
                                         .iter()
                                         .zip(&values)
                                         .filter_map(|(type_id, value)| {
-                                            let type_info = registry.get_type(type_id).unwrap();
-                                            if type_info.is_zst(registry) {
+                                            let type_info = match registry.get_type(type_id) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e.into())),
+                                            };
+                                            let is_zst = match type_info.is_zst(registry) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e)),
+                                            };
+
+                                            if is_zst {
                                                 None
                                             } else {
-                                                Some(*value)
+                                                Some(Ok(*value))
                                             }
                                         })
-                                        .collect::<Vec<_>>(),
+                                        .collect::<Result<Vec<_>, _>>()?,
                                     None => todo!(),
                                 };
 
@@ -733,7 +770,7 @@ fn compile_func(
                     // Remove ZST builtins from the return values.
                     for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
                         let type_info = registry.get_type(type_id)?;
-                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                        if type_info.is_builtin() && type_info.is_zst(registry)? {
                             values.remove(idx);
                         }
                     }
@@ -792,13 +829,23 @@ fn compile_func(
                 registry
                     .get_type(type_id)
                     .map(|type_info| {
-                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                        let is_zst = match type_info.is_zst(registry) {
+                            Ok(x) => x,
+                            Err(e) => return Some(Err(e)),
+                        };
+
+                        if type_info.is_builtin() && is_zst {
                             None
                         } else {
-                            Some((type_id, type_info))
+                            Some(Ok((type_id, type_info)))
                         }
                     })
+                    .map_err(Error::from)
                     .transpose()
+                    .map(|x| match x {
+                        Ok(Ok(x)) => Ok(x),
+                        Ok(Err(e)) | Err(e) => Err(e),
+                    })
             })
             .enumerate()
         {
@@ -807,7 +854,7 @@ fn compile_func(
             let mut value = pre_entry_block
                 .argument((has_return_ptr == Some(true)) as usize + i)?
                 .into();
-            if type_info.is_memory_allocated(registry) {
+            if type_info.is_memory_allocated(registry)? {
                 value = pre_entry_block
                     .append_operation(llvm::load(
                         context,
@@ -1128,8 +1175,12 @@ fn extract_types<'c: 'a, 'a>(
             Ok(x) => x,
             Err(e) => return Some(Err(e.into())),
         };
+        let is_zst = match type_info.is_zst(registry) {
+            Ok(x) => x,
+            Err(e) => return Some(Err(e)),
+        };
 
-        if type_info.is_builtin() && type_info.is_zst(registry) {
+        if type_info.is_builtin() && is_zst {
             None
         } else {
             Some(type_info.build(context, module, registry, metadata_storage, id))
@@ -1174,7 +1225,7 @@ where
                 );
             }
             StatementCompileResult::Deferred => {
-                trace!("Statement {statement_idx}'s compilation has been deferred.");
+                tracing::trace!("Statement {statement_idx}'s compilation has been deferred.");
 
                 visited.remove(&statement_idx);
                 queue.insert(0, (statement_idx, state));

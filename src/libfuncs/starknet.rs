@@ -3,7 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
-    error::Result,
+    error::{Error, Result},
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
@@ -35,8 +35,8 @@ use melior::{
     },
     Context,
 };
-use num_bigint::{Sign, ToBigUint};
-use std::alloc::Layout;
+use num_bigint::Sign;
+use std::{alloc::Layout, borrow::Cow};
 
 mod secp256;
 
@@ -480,14 +480,15 @@ pub fn build_class_hash_const<'ctx, 'this>(
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
     let value = match info.c.sign() {
-        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
-        _ => info.c.to_biguint().unwrap(),
+        Sign::Minus => Cow::Owned(&*PRIME - info.c.magnitude()),
+        _ => Cow::Borrowed(info.c.magnitude()),
     };
 
     let value = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, &format!("{value} : i252")).unwrap(),
+            Attribute::parse(context, &format!("{value} : i252"))
+                .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -531,7 +532,7 @@ pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
                 context,
                 "3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252",
             )
-            .unwrap(),
+            .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -567,14 +568,15 @@ pub fn build_contract_address_const<'ctx, 'this>(
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
     let value = match info.c.sign() {
-        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
-        _ => info.c.to_biguint().unwrap(),
+        Sign::Minus => Cow::Owned(&*PRIME - info.c.magnitude()),
+        _ => Cow::Borrowed(info.c.magnitude()),
     };
 
     let value = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, &format!("{value} : i252")).unwrap(),
+            Attribute::parse(context, &format!("{value} : i252"))
+                .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -605,7 +607,7 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
                 context,
                 "3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252",
             )
-            .unwrap(),
+            .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -1198,14 +1200,15 @@ pub fn build_storage_base_address_const<'ctx, 'this>(
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
     let value = match info.c.sign() {
-        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
-        _ => info.c.to_biguint().unwrap(),
+        Sign::Minus => Cow::Owned(&*PRIME - info.c.magnitude()),
+        _ => Cow::Borrowed(info.c.magnitude()),
     };
 
     let value = entry
         .append_operation(arith::constant(
             context,
-            Attribute::parse(context, &format!("{value} : i252")).unwrap(),
+            Attribute::parse(context, &format!("{value} : i252"))
+                .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -1234,7 +1237,7 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
                 context,
                 "3618502788666131106986593281521497120414687020801267626233049500247285300992 : i252",
             )
-            .unwrap(),
+            .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -1342,7 +1345,7 @@ pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
                 context,
                 "3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252",
             )
-            .unwrap(),
+            .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?

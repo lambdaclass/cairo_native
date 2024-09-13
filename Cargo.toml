@@ -12,7 +12,6 @@ keywords = ["starknet", "cairo", "compiler", "mlir"]
 # https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
 resolver = "2"
 
-
 [[bin]]
 name = "cairo-native-dump"
 required-features = ["build-cli"]

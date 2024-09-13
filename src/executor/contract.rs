@@ -120,7 +120,7 @@ impl ContractExecutor {
                 let ty = registry.get_type(&p.ty)?;
                 if ty.is_builtin() {
                     // Skip zero sized builtins
-                    if ty.is_zst(&registry) {
+                    if ty.is_zst(&registry)? {
                         continue;
                     }
 
