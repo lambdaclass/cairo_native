@@ -95,7 +95,7 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
-        branch: [ base ]
+        branch: [ base, head ]
     name: Build cairo-native-run for ${{ matrix.branch }}
     runs-on: ubuntu-22.04
     steps:
@@ -104,7 +104,7 @@ jobs:
         id: cache 
         with:
           path: bin/cairo-native-run-${{ matrix.branch }}
-          key: binary-${{ github.event.pull_request[matrix.branch].sha }}
+          key: binary-${{ github.event.pull_request[matrix.branch].sha }} 
       
       - name: check and free hdd space left
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
@@ -168,6 +168,7 @@ jobs:
       PROGRAM: fib_2M
       OUTPUT_DIR: bench-outputs
     steps:
+      - uses: actions/checkout@v4
       - name: Install Hyperfine
         uses: taiki-e/install-action@v2
         with:
@@ -187,10 +188,8 @@ jobs:
 
       - name: Run Program
         run: |
-          BINS="base"
-  
+          BINS="base,head"
           cp programs/benches/$PROGRAM.cairo .
-          
           mkdir $OUTPUT_DIR
           hyperfine \
           --warmup 3 \
