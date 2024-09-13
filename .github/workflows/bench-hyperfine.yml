@@ -95,7 +95,7 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
-        branch: [ head ]
+        branch: [ base ]
     name: Build cairo-native-run for ${{ matrix.branch }}
     runs-on: ubuntu-22.04
     steps:
@@ -107,6 +107,7 @@ jobs:
           key: binary-${{ github.event.pull_request[matrix.branch].sha }}
       
       - name: check and free hdd space left
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         run: |
           echo "Listing 20 largest packages"
           dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
@@ -168,7 +169,6 @@ jobs:
       OUTPUT_DIR: bench-outputs
     steps:
       - name: Checkout base commit
-        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
@@ -191,7 +191,7 @@ jobs:
 
       - name: Run Program
         run: |
-          BINS="base,head"
+          BINS="base"
   
           cp programs/benches/$PROGRAM.cairo .
           
