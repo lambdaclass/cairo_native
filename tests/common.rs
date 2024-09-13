@@ -12,7 +12,9 @@ use cairo_lang_runner::{
 };
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        starknet::StarkNetTypeConcrete,
         ConcreteType,
     },
     ids::{ConcreteTypeId, FunctionId},
@@ -31,10 +33,8 @@ use cairo_native::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
-    types::TypeBuilder,
     utils::{find_entry_point_by_idx, HALF_PRIME, PRIME},
-    values::JitValue,
-    OptLevel,
+    JitValue, OptLevel,
 };
 use cairo_vm::{
     hint_processor::cairo_1_hint_processor::hint_processor::Cairo1HintProcessor,
@@ -721,7 +721,24 @@ pub fn compare_outputs(
 
     let mut size_cache = HashMap::new();
     let ty = function.signature.ret_types.last();
-    let is_builtin = ty.map_or(false, |ty| registry.get_type(ty).unwrap().is_builtin());
+    let is_builtin = ty.map_or(false, |ty| {
+        matches!(
+            registry.get_type(ty).unwrap(),
+            CoreTypeConcrete::Bitwise(_)
+                | CoreTypeConcrete::EcOp(_)
+                | CoreTypeConcrete::GasBuiltin(_)
+                | CoreTypeConcrete::BuiltinCosts(_)
+                | CoreTypeConcrete::RangeCheck(_)
+                | CoreTypeConcrete::RangeCheck96(_)
+                | CoreTypeConcrete::Pedersen(_)
+                | CoreTypeConcrete::Poseidon(_)
+                | CoreTypeConcrete::Coupon(_)
+                | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+                | CoreTypeConcrete::SegmentArena(_)
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_))
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
+        )
+    });
     let returns_panic = ty.map_or(false, |ty| {
         ty.debug_name
             .as_ref()

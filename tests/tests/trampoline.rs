@@ -5,8 +5,7 @@ use cairo_native::{
     execution_result::{BuiltinStats, ExecutionResult},
     executor::JitNativeExecutor,
     utils::find_function_id,
-    values::JitValue,
-    OptLevel,
+    JitValue, OptLevel,
 };
 use starknet_types_core::felt::Felt;
 

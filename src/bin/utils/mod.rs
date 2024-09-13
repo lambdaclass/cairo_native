@@ -1,16 +1,16 @@
 #![cfg(feature = "build-cli")]
 #![allow(dead_code)]
 
-pub mod test;
-
 use anyhow::bail;
 use cairo_lang_runner::{casm_run::format_next_item, RunResultValue};
 use cairo_lang_sierra::program::{Function, Program};
-use cairo_native::{execution_result::ExecutionResult, values::JitValue};
+use cairo_native::{execution_result::ExecutionResult, JitValue};
 use clap::ValueEnum;
 use itertools::Itertools;
 use starknet_types_core::felt::Felt;
 use std::vec::IntoIter;
+
+pub mod test;
 
 pub(super) struct RunArgs {
     pub run_mode: RunMode,

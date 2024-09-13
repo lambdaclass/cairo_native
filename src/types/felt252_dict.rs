@@ -6,8 +6,6 @@
 //! used to count accesses to the dictionary. The type is interacted through the runtime functions to
 //! insert, get elements and increment the access counter.
 
-use std::cell::Cell;
-
 use super::WithSelf;
 use crate::{
     block_ext::BlockExt,
@@ -37,6 +35,7 @@ use melior::{
     },
     Context,
 };
+use std::cell::Cell;
 
 /// Build the MLIR type.
 ///

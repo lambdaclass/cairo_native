@@ -1,5 +1,3 @@
-mod utils;
-
 use anyhow::Context;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
@@ -15,6 +13,8 @@ use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
+
+mod utils;
 
 #[derive(Clone, Debug, ValueEnum)]
 enum RunMode {

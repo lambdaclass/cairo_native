@@ -3,7 +3,7 @@ use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use cairo_native::{
     starknet::{Secp256k1Point, Secp256r1Point, StarknetSyscallHandler, SyscallResult, U256},
-    values::JitValue,
+    JitValue,
 };
 use lazy_static::lazy_static;
 use pretty_assertions_sorted::assert_eq;

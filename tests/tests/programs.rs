@@ -3,7 +3,7 @@ use crate::common::{compare_outputs, DEFAULT_GAS};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::starknet::DummySyscallHandler;
-use cairo_native::values::JitValue;
+use cairo_native::JitValue;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;

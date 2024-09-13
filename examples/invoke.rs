@@ -1,5 +1,5 @@
 use cairo_native::{
-    context::NativeContext, executor::JitNativeExecutor, utils::find_entry_point, values::JitValue,
+    context::NativeContext, executor::JitNativeExecutor, utils::find_entry_point, JitValue,
 };
 use std::path::Path;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};

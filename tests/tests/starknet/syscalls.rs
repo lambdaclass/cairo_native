@@ -11,9 +11,8 @@ use cairo_native::{
         BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
         StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
     },
-    values::JitValue,
+    JitValue,
 };
-use itertools::Itertools;
 use lazy_static::lazy_static;
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use starknet_types_core::felt::Felt;
@@ -1019,7 +1018,7 @@ fn set_signature() {
         .clone()
         .into_iter()
         .map(JitValue::Felt252)
-        .collect_vec();
+        .collect::<Vec<_>>();
 
     let state = Arc::new(Mutex::new(TestingState::default()));
 
@@ -1074,7 +1073,7 @@ fn pop_log() {
     let serialized_log_jit = serialized_log
         .into_iter()
         .map(JitValue::Felt252)
-        .collect_vec();
+        .collect::<Vec<_>>();
 
     assert_eq_sorted!(
         result.return_value,
@@ -1147,7 +1146,7 @@ fn pop_l2_to_l1_message() {
     let serialized_message_jit = serialized_message
         .into_iter()
         .map(JitValue::Felt252)
-        .collect_vec();
+        .collect::<Vec<_>>();
 
     assert_eq_sorted!(
         result.return_value,

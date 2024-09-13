@@ -2,8 +2,9 @@
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-use crate::block_ext::BlockExt;
-use crate::{error::Error as CoreLibfuncBuilderError, metadata::MetadataStorage};
+use crate::{
+    block_ext::BlockExt, error::Error as CoreLibfuncBuilderError, metadata::MetadataStorage,
+};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
@@ -18,49 +19,49 @@ use melior::{
 use num_bigint::BigInt;
 use std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
 
-pub mod ap_tracking;
-pub mod array;
-pub mod bitwise;
-pub mod r#bool;
-pub mod bounded_int;
-pub mod r#box;
-pub mod branch_align;
-pub mod bytes31;
-pub mod cast;
-pub mod circuit;
-pub mod r#const;
-pub mod coupon;
-pub mod debug;
-pub mod drop;
-pub mod dup;
-pub mod ec;
-pub mod r#enum;
-pub mod felt252;
-pub mod felt252_dict;
-pub mod felt252_dict_entry;
-pub mod function_call;
-pub mod gas;
-pub mod mem;
-pub mod nullable;
-pub mod pedersen;
-pub mod poseidon;
-pub mod sint128;
-pub mod sint16;
-pub mod sint32;
-pub mod sint64;
-pub mod sint8;
-pub mod snapshot_take;
-pub mod starknet;
-pub mod r#struct;
-pub mod uint128;
-pub mod uint16;
-pub mod uint256;
-pub mod uint32;
-pub mod uint512;
-pub mod uint64;
-pub mod uint8;
-pub mod unconditional_jump;
-pub mod unwrap_non_zero;
+mod ap_tracking;
+mod array;
+mod bitwise;
+mod r#bool;
+mod bounded_int;
+mod r#box;
+mod branch_align;
+mod bytes31;
+mod cast;
+mod circuit;
+mod r#const;
+mod coupon;
+mod debug;
+mod drop;
+mod dup;
+mod ec;
+mod r#enum;
+mod felt252;
+mod felt252_dict;
+mod felt252_dict_entry;
+mod function_call;
+mod gas;
+mod mem;
+mod nullable;
+mod pedersen;
+mod poseidon;
+mod sint128;
+mod sint16;
+mod sint32;
+mod sint64;
+mod sint8;
+mod snapshot_take;
+mod starknet;
+mod r#struct;
+mod uint128;
+mod uint16;
+mod uint256;
+mod uint32;
+mod uint512;
+mod uint64;
+mod uint8;
+mod unconditional_jump;
+mod unwrap_non_zero;
 
 /// Generation of MLIR operations from their Sierra counterparts.
 ///
@@ -251,25 +252,26 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
 /// This helper is necessary because the statement following the current one may not have the same
 /// arguments as the results returned by the current statement. Because of that, a direct jump
 /// cannot be made and some processing is required.
-pub struct LibfuncHelper<'ctx, 'this>
+pub(crate) struct LibfuncHelper<'ctx, 'this>
 where
     'this: 'ctx,
 {
-    pub(crate) module: &'this Module<'ctx>,
-    pub(crate) init_block: &'this BlockRef<'ctx, 'this>,
+    pub module: &'this Module<'ctx>,
+    pub init_block: &'this BlockRef<'ctx, 'this>,
 
-    pub(crate) region: &'this Region<'ctx>,
-    pub(crate) blocks_arena: &'this Bump,
-    pub(crate) last_block: Cell<&'this BlockRef<'ctx, 'this>>,
+    pub region: &'this Region<'ctx>,
+    pub blocks_arena: &'this Bump,
+    pub last_block: Cell<&'this BlockRef<'ctx, 'this>>,
 
-    pub(crate) branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
-    pub(crate) results: Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>,
+    pub branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
+    pub results: Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>,
 }
 
 impl<'ctx, 'this> LibfuncHelper<'ctx, 'this>
 where
     'this: 'ctx,
 {
+    #[doc(hidden)]
     pub(crate) fn results(self) -> impl Iterator<Item = Vec<Value<'ctx, 'this>>> {
         self.results.into_iter().enumerate().map(|(branch_idx, x)| {
             x.into_iter()
@@ -498,14 +500,14 @@ pub(crate) enum BranchArg<'ctx, 'this> {
 /// May point to either a block within the same libfunc using [BranchTarget::Jump] or to one of the
 /// statement's branches using [BranchTarget::Return] with the branch index.
 #[derive(Clone, Copy, Debug)]
-pub enum BranchTarget<'ctx, 'a> {
+enum BranchTarget<'ctx, 'a> {
     /// A block within the current libfunc.
     Jump(&'a Block<'ctx>),
     /// A statement's branch target by its index.
     Return(usize),
 }
 
-pub fn increment_builtin_counter<'ctx: 'a, 'a>(
+fn increment_builtin_counter<'ctx: 'a, 'a>(
     context: &'ctx Context,
     block: &'ctx Block<'ctx>,
     location: Location<'ctx>,
@@ -514,7 +516,7 @@ pub fn increment_builtin_counter<'ctx: 'a, 'a>(
     increment_builtin_counter_by(context, block, location, value, 1)
 }
 
-pub fn increment_builtin_counter_by<'ctx: 'a, 'a>(
+fn increment_builtin_counter_by<'ctx: 'a, 'a>(
     context: &'ctx Context,
     block: &'ctx Block<'ctx>,
     location: Location<'ctx>,

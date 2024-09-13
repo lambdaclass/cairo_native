@@ -11,6 +11,7 @@
 pub use self::{
     compiler::compile,
     ffi::{module_to_object, object_to_shared_lib, OptLevel},
+    values::JitValue,
 };
 
 mod arch;
@@ -24,11 +25,11 @@ pub mod error;
 pub mod execution_result;
 pub mod executor;
 mod ffi;
-pub mod libfuncs;
+mod libfuncs;
 pub mod metadata;
 pub mod module;
 pub mod starknet;
 pub mod starknet_stub;
-pub mod types;
+mod types;
 pub mod utils;
-pub mod values;
+mod values;

@@ -1,6 +1,6 @@
 use cairo_native::{
     execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
-    values::JitValue,
+    JitValue,
 };
 use test_case::test_case;
 
