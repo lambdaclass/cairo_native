@@ -164,7 +164,6 @@ jobs:
     needs: [ build-binaries ]
     runs-on: ubuntu-latest
     env:
-      ROOT_DIR: $(dirname $(dirname ${0%/*}))
       PROGRAM: fib_2M
       OUTPUT_DIR: target/bench-outputs
     steps:
@@ -192,6 +191,7 @@ jobs:
 
       - name: Run Program
         run: |
+            ROOT_DIR="$(dirname "$(dirname "${0%/*}")")"
             BINS="base,head"
             hyperfine \
             --warmup 3 \
