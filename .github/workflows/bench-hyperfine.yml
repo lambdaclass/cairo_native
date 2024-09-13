@@ -95,7 +95,7 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
-        branch: [ head ]
+        branch: [ base ]
     name: Build cairo-native-run for ${{ matrix.branch }}
     runs-on: ubuntu-22.04
     steps:
@@ -188,9 +188,7 @@ jobs:
 
       - name: Run Program
         run: |
-          BINS="head"
-          PROGRAM: fib_2M
-          OUTPUT_DIR: bench-outputs
+          BINS="base"
           cp programs/benches/$PROGRAM.cairo .
           mkdir $OUTPUT_DIR
           hyperfine \
