@@ -191,18 +191,18 @@ jobs:
 
       - name: Run Program
         run: |
-            ROOT_DIR="$(dirname "$(dirname "${0%/*}")")"
             BINS="base,head"
-
-            mkdir -p $OUTPUT_DIR
+            
+            cp programs/benches/$PROGRAM.cairo .
+            mkdir $OUTPUT_DIR/
 
             hyperfine \
             --warmup 3 \
-            --export-markdown "$ROOT_DIR/$OUTPUT_DIR/PROGRAM.md" \
-            --export-json "$ROOT_DIR/$OUTPUT_DIR/$PROGRAM.json" \
-             -L bin "$BINS" -n "{bin} $PROGRAM" "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
+            --export-markdown "$OUTPUT_DIR/PROGRAM.md" \
+            --export-json "$OUTPUT_DIR/$PROGRAM.json" \
+             -L bin "$BINS" -n "{bin} $PROGRAM" "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
             >> /dev/stderr  
-            echo "benchmark_count=$(ls $ROOT_DIR/$OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
+            echo "benchmark_count=$(ls $OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
 
       - name: Print tables
         if: steps.run-benchmarks.outputs.benchmark_count != 0
