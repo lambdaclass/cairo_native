@@ -471,6 +471,9 @@
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
 </span><span class="kw">use </span>cairo_lang_sierra_gas::core_libfunc_cost::{
@@ -771,7 +774,11 @@
     <span class="kw">let </span>x3 = x2 * x;
     <span class="kw">let </span>alpha_x_plus_beta = x + BETA;
     <span class="kw">let </span>rhs = x3 + alpha_x_plus_beta;
-    <span class="kw">let </span>y = rhs.sqrt().unwrap_or_else(|| Felt::from(<span class="number">3</span>) * rhs);
+    <span class="comment">// https://github.com/starkware-libs/cairo/blob/9b603b88c2e5a98eec1bb8f323260b7765e94911/crates/cairo-lang-runner/src/casm_run/mod.rs#L1825
+    </span><span class="kw">let </span>y = rhs
+        .sqrt()
+        .unwrap_or_else(|| (Felt::THREE * rhs).sqrt().unwrap());
+    <span class="kw">let </span>y = y.min(-y);
 
     <span class="kw">match </span>AffinePoint::new(x, y) {
         <span class="prelude-val">Ok</span>(point) =&gt; {
@@ -831,7 +838,8 @@
         }
     };
 
-    <span class="kw">let </span>state = AffinePoint::new(random_x, random_y).unwrap();
+    <span class="comment">// We already made sure its a valid point.
+    </span><span class="kw">let </span>state = AffinePoint::new_unchecked(random_x, random_y);
 
     state_ptr.as_mut()[<span class="number">0</span>].copy_from_slice(<span class="kw-2">&amp;</span>state.x().to_bytes_le());
     state_ptr.as_mut()[<span class="number">1</span>].copy_from_slice(<span class="kw-2">&amp;</span>state.y().to_bytes_le());
@@ -854,16 +862,15 @@
     <span class="kw-2">mut </span>state_ptr: NonNull&lt;[[u8; <span class="number">32</span>]; <span class="number">4</span>]&gt;,
     point_ptr: NonNull&lt;[[u8; <span class="number">32</span>]; <span class="number">2</span>]&gt;,
 ) {
-    <span class="kw">let </span><span class="kw-2">mut </span>state = ProjectivePoint::from_affine(
+    <span class="comment">// We use unchecked methods because the inputs must already be valid points.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>state = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr.as_ref()[<span class="number">0</span>]),
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr.as_ref()[<span class="number">1</span>]),
-    )
-    .unwrap();
-    <span class="kw">let </span>point = AffinePoint::new(
+    );
+    <span class="kw">let </span>point = AffinePoint::new_unchecked(
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>point_ptr.as_ref()[<span class="number">0</span>]),
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>point_ptr.as_ref()[<span class="number">1</span>]),
-    )
-    .unwrap();
+    );
 
     state += <span class="kw-2">&amp;</span>point;
     <span class="kw">let </span>state = state.to_affine().unwrap();
@@ -921,16 +928,15 @@
     <span class="kw-2">mut </span>point_ptr: NonNull&lt;[[u8; <span class="number">32</span>]; <span class="number">2</span>]&gt;,
     state_ptr: NonNull&lt;[[u8; <span class="number">32</span>]; <span class="number">4</span>]&gt;,
 ) -&gt; bool {
-    <span class="kw">let </span>state = ProjectivePoint::from_affine(
+    <span class="comment">// We use unchecked methods because the inputs must already be valid points.
+    </span><span class="kw">let </span>state = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr.as_ref()[<span class="number">0</span>]),
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr.as_ref()[<span class="number">1</span>]),
-    )
-    .unwrap();
-    <span class="kw">let </span>random = ProjectivePoint::from_affine(
+    );
+    <span class="kw">let </span>random = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr.as_ref()[<span class="number">2</span>]),
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr.as_ref()[<span class="number">3</span>]),
-    )
-    .unwrap();
+    );
 
     <span class="kw">if </span>state.x() == random.x() &amp;&amp; state.y() == random.y() {
         <span class="bool-val">false
