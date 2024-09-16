@@ -1,8 +1,8 @@
 # Environment detection.
 
 UNAME := $(shell uname)
-CAIRO_2_VERSION = 2.8.0
-SCARB_VERSION = 2.8.0
+CAIRO_2_VERSION = 2.8.2
+SCARB_VERSION = 2.8.2
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
@@ -46,24 +46,24 @@ endif
 
 .PHONY: build
 build: check-llvm runtime
-	cargo build --release --features build-cli,with-cheatcode,with-runtime,with-serde
+	cargo build --release --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: build-natives
 build-native: check-llvm runtime
-	RUSTFLAGS="-C target-cpu=native" cargo build --release --features build-cli,with-cheatcode,with-runtime,with-serde
+	RUSTFLAGS="-C target-cpu=native" cargo build --release --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: build-dev
 build-dev: check-llvm
-	cargo build --profile optimized-dev --features build-cli,with-cheatcode,with-runtime,with-serde
+	cargo build --profile optimized-dev --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: check
 check: check-llvm
 	cargo fmt --all -- --check
-	cargo clippy --all-targets --features build-cli,with-cheatcode,with-runtime,with-serde -- -D warnings
+	cargo clippy --all-targets --features build-cli,with-cheatcode,with-runtime -- -D warnings
 
 .PHONY: test
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
@@ -71,28 +71,28 @@ test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde proptest
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime proptest
 
 .PHONY: test-cli
 test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: proptest-cli
 proptest-ci: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde proptest
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime proptest
 
 .PHONY: coverage
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo llvm-cov --verbose --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --features build-cli,with-cheatcode,with-runtime,with-serde --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+	cargo llvm-cov --verbose --profile ci --features build-cli,with-cheatcode,with-runtime --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile ci --features build-cli,with-cheatcode,with-runtime --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
 .PHONY: doc
 doc: check-llvm
-	cargo doc --features build-cli,with-cheatcode,with-runtime,with-serde --no-deps --workspace
+	cargo doc --features build-cli,with-cheatcode,with-runtime --no-deps --workspace
 
 .PHONY: doc-open
 doc-open: check-llvm
-	cargo doc --features build-cli,with-cheatcode,with-runtime,with-serde --no-deps --workspace --open
+	cargo doc --features build-cli,with-cheatcode,with-runtime --no-deps --workspace --open
 
 .PHONY: bench
 bench: build needs-cairo2 runtime
@@ -100,7 +100,7 @@ bench: build needs-cairo2 runtime
 
 .PHONY: bench-ci
 bench-ci: check-llvm needs-cairo2 runtime
-	cargo criterion --features build-cli,with-cheatcode,with-runtime,with-serde
+	cargo criterion --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: stress-test
 stress-test: check-llvm
@@ -116,7 +116,7 @@ stress-clean:
 
 .PHONY: install
 install: check-llvm
-	RUSTFLAGS="-C target-cpu=native" cargo install --features build-cli,with-cheatcode,with-runtime,with-serde --locked --path .
+	RUSTFLAGS="-C target-cpu=native" cargo install --features build-cli,with-cheatcode,with-runtime --locked --path .
 
 .PHONY: clean
 clean: stress-clean

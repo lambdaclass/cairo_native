@@ -10,7 +10,7 @@
 
 pub use self::{
     compiler::compile,
-    ffi::{module_to_object, object_to_shared_lib, LLVMCompileError, OptLevel},
+    ffi::{module_to_object, object_to_shared_lib, OptLevel},
 };
 
 #[cfg(feature = "with-trace-dump")]
