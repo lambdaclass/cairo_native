@@ -1398,7 +1398,10 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
+        utils::{
+            felt252_str,
+            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
+        },
         values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
@@ -1706,7 +1709,7 @@ mod test {
 
         assert_eq!(
             result,
-            jit_panic!(Value::felt_str(
+            jit_panic!(felt252_str(
                 "1637570914057682275393755530660268060279989363"
             ))
         );

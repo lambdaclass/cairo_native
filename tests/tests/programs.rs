@@ -3,6 +3,7 @@ use crate::common::{compare_outputs, DEFAULT_GAS};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::starknet::DummySyscallHandler;
+use cairo_native::utils::felt252_str;
 use cairo_native::Value;
 use lazy_static::lazy_static;
 use proptest::prelude::*;
@@ -190,12 +191,12 @@ fn pedersen() {
         &PEDERSEN,
         "run_test",
         &[
-            Value::felt_str(
+            Value::Felt252(felt252_str(
                 "2163739901324492107409690946633517860331020929182861814098856895601180685",
-            ),
-            Value::felt_str(
+            )),
+            Value::Felt252(felt252_str(
                 "2392090257937917229310563411601744459500735555884672871108624696010915493156",
-            ),
+            )),
         ],
         Some(DEFAULT_GAS as u128),
         Option::<DummySyscallHandler>::None,

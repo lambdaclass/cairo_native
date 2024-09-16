@@ -15,6 +15,7 @@ use melior::{
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
+use starknet_types_core::felt::Felt;
 use std::sync::LazyLock;
 use std::{
     alloc::Layout,
@@ -136,19 +137,19 @@ pub fn find_entry_point_by_idx(
         .find(|x| x.id.id == entry_point_idx as u64)
 }
 
-/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
+/// Given a string representing a function name, searches in the program for the id corresponding
+/// to said function, and returns a reference to it.
 #[track_caller]
-pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> &'a FunctionId {
-    &program
+pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> Option<&'a FunctionId> {
+    program
         .funcs
         .iter()
         .find(|x| x.id.debug_name.as_deref() == Some(function_name))
-        .unwrap()
-        .id
+        .map(|func| &func.id)
 }
 
 /// Parse a numeric string into felt, wrapping negatives around the prime modulo.
-pub fn felt252_str(value: &str) -> [u32; 8] {
+pub fn felt252_str(value: &str) -> Felt {
     let value = value
         .parse::<BigInt>()
         .expect("value must be a digit number");
@@ -157,35 +158,29 @@ pub fn felt252_str(value: &str) -> [u32; 8] {
         _ => value.to_biguint().unwrap(),
     };
 
-    let mut u32_digits = value.to_u32_digits();
-    u32_digits.resize(8, 0);
-    u32_digits.try_into().unwrap()
+    value.into()
 }
 
 /// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
-pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
+pub fn felt252_bigint(value: impl Into<BigInt>) -> Felt {
     let value: BigInt = value.into();
     let value = match value.sign() {
-        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-        _ => value.to_biguint().unwrap(),
+        Sign::Minus => Cow::Owned(&*PRIME - value.magnitude()),
+        _ => Cow::Borrowed(value.magnitude()),
     };
 
-    let mut u32_digits = value.to_u32_digits();
-    u32_digits.resize(8, 0);
-    u32_digits.try_into().unwrap()
+    value.as_ref().into()
 }
 
 /// Parse a short string into a felt that can be used in the cairo-native input.
-pub fn felt252_short_str(value: &str) -> [u32; 8] {
+pub fn felt252_short_str(value: &str) -> Felt {
     let values: Vec<_> = value
         .chars()
-        .filter(|&c| c.is_ascii())
-        .map(|c| c as u8)
+        .filter_map(|c| c.is_ascii().then_some(c as u8))
         .collect();
 
-    let mut digits = BigUint::from_bytes_be(&values).to_u32_digits();
-    digits.resize(8, 0);
-    digits.try_into().unwrap()
+    assert!(values.len() < 32);
+    Felt::from_bytes_be_slice(&values)
 }
 
 /// Creates the execution engine, with all symbols registered.
@@ -354,24 +349,6 @@ where
     }
 
     FmtWrapper(fmt)
-}
-
-// POLYFILLS of nightly features
-
-#[inline]
-pub const fn next_multiple_of_usize(lhs: usize, rhs: usize) -> usize {
-    match lhs % rhs {
-        0 => lhs,
-        r => lhs + (rhs - r),
-    }
-}
-
-#[inline]
-pub const fn next_multiple_of_u32(lhs: u32, rhs: u32) -> u32 {
-    match lhs % rhs {
-        0 => lhs,
-        r => lhs + (rhs - r),
-    }
 }
 
 /// Edit: Copied from the std lib.
@@ -806,7 +783,7 @@ pub mod test {
     fn test_felt252_str_positive_number() {
         let value = "123";
         let result = felt252_str(value);
-        assert_eq!(result, [123, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 123.into());
     }
 
     #[test]
@@ -815,10 +792,10 @@ pub mod test {
         let result = felt252_str(value);
         assert_eq!(
             result,
-            [
-                4294967174, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 16,
-                134217728
-            ]
+            Felt::from_dec_str(
+                "3618502788666131213697322783095070105623107215331596699973092056135872020358"
+            )
+            .unwrap()
         );
     }
 
@@ -826,7 +803,7 @@ pub mod test {
     fn test_felt252_str_zero() {
         let value = "0";
         let result = felt252_str(value);
-        assert_eq!(result, [0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, Felt::ZERO);
     }
 
     // ==============================
@@ -836,41 +813,34 @@ pub mod test {
     fn test_felt252_short_str_short_numeric_string() {
         let value = "12345";
         let result = felt252_short_str(value);
-        assert_eq!(result, [842216501, 49, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 211295614005u64.into());
     }
 
     #[test]
     fn test_felt252_short_str_short_string_with_non_numeric_characters() {
         let value = "hello";
         let result = felt252_short_str(value);
-        assert_eq!(result, [1701604463, 104, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 448378203247u64.into());
     }
 
     #[test]
+    #[should_panic]
     fn test_felt252_short_str_long_numeric_string() {
-        let value = "1234567890123456789012345678901234567890";
-        let result = felt252_short_str(value);
-        assert_eq!(
-            result,
-            [
-                926431536, 859059510, 959459634, 892745528, 825373492, 926431536, 859059510,
-                959459634
-            ]
-        );
+        felt252_short_str("1234567890123456789012345678901234567890");
     }
 
     #[test]
     fn test_felt252_short_str_empty_string() {
         let value = "";
         let result = felt252_short_str(value);
-        assert_eq!(result, [0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, Felt::ZERO);
     }
 
     #[test]
     fn test_felt252_short_str_string_with_non_ascii_characters() {
         let value = "h€llø";
         let result = felt252_short_str(value);
-        assert_eq!(result, [6843500, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 6843500.into());
     }
 
     // ==============================
@@ -935,7 +905,7 @@ pub mod test {
         // Define the entry point function for comparison.
         let entry_point = "hello::hello::greet";
         // Find the function ID of the entry point function in the sierra program.
-        let entry_point_id = find_function_id(&sierra_program, entry_point);
+        let entry_point_id = find_function_id(&sierra_program, entry_point).unwrap();
 
         // Assert that the debug name of the entry point function matches the expected value.
         assert_eq!(

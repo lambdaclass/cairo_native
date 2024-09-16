@@ -73,8 +73,8 @@ pub fn build_downcast<'ctx, 'this>(
     let src_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
 
-    let dst_range = dst_ty.integer_range(registry).unwrap();
-    let src_range = if src_ty.is_felt252(registry) && dst_range.lower.sign() == Sign::Minus {
+    let dst_range = dst_ty.integer_range(registry)?;
+    let src_range = if src_ty.is_felt252(registry)? && dst_range.lower.sign() == Sign::Minus {
         if dst_range.upper.sign() != Sign::Plus {
             Range {
                 lower: BigInt::from_biguint(Sign::Minus, PRIME.clone()) + 1,
@@ -87,7 +87,7 @@ pub fn build_downcast<'ctx, 'this>(
             }
         }
     } else {
-        src_ty.integer_range(registry).unwrap()
+        src_ty.integer_range(registry)?
     };
     assert!(
         dst_range.lower > src_range.lower || dst_range.upper < src_range.upper,
@@ -96,15 +96,12 @@ pub fn build_downcast<'ctx, 'this>(
         info.signature.branch_signatures[0].vars[1].ty
     );
 
-    let src_width = if src_ty.is_bounded_int(registry) {
+    let src_width = if src_ty.is_bounded_int(registry)? {
         src_range.offset_bit_width()
     } else {
-        src_ty
-            .integer_range(registry)
-            .unwrap()
-            .zero_based_bit_width()
+        src_ty.integer_range(registry)?.zero_based_bit_width()
     };
-    let dst_width = if dst_ty.is_bounded_int(registry) {
+    let dst_width = if dst_ty.is_bounded_int(registry)? {
         dst_range.offset_bit_width()
     } else {
         dst_range.zero_based_bit_width()
@@ -117,7 +114,7 @@ pub fn build_downcast<'ctx, 'this>(
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
     let src_value = if compute_width > src_width {
-        if is_signed && !src_ty.is_bounded_int(registry) && !src_ty.is_felt252(registry) {
+        if is_signed && !src_ty.is_bounded_int(registry)? && !src_ty.is_felt252(registry)? {
             entry.append_op_result(arith::extsi(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
@@ -134,7 +131,7 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
-    let src_value = if is_signed && src_ty.is_felt252(registry) {
+    let src_value = if is_signed && src_ty.is_felt252(registry)? {
         if src_range.upper.is_one() {
             let adj_offset =
                 entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
@@ -160,7 +157,7 @@ pub fn build_downcast<'ctx, 'this>(
 
             entry.append_op_result(arith::select(is_negative, adj_value, src_value, location))?
         }
-    } else if src_ty.is_bounded_int(registry) && src_range.lower != BigInt::ZERO {
+    } else if src_ty.is_bounded_int(registry)? && src_range.lower != BigInt::ZERO {
         let dst_offset = entry.const_int_from_type(
             context,
             location,
@@ -224,7 +221,7 @@ pub fn build_downcast<'ctx, 'this>(
         (None, None) => unreachable!(),
     };
 
-    let dst_value = if dst_ty.is_bounded_int(registry) && dst_range.lower != BigInt::ZERO {
+    let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
         let dst_offset = entry.const_int_from_type(
             context,
             location,
@@ -276,10 +273,10 @@ pub fn build_upcast<'ctx, 'this>(
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[0].ty)?;
 
-    let src_range = src_ty.integer_range(registry).unwrap();
-    let dst_range = dst_ty.integer_range(registry).unwrap();
+    let src_range = src_ty.integer_range(registry)?;
+    let dst_range = dst_ty.integer_range(registry)?;
     assert!(
-        if dst_ty.is_felt252(registry) {
+        if dst_ty.is_felt252(registry)? {
             let alt_range = Range {
                 lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
                 upper: BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()) + BigInt::one(),
@@ -295,12 +292,12 @@ pub fn build_upcast<'ctx, 'this>(
         info.signature.branch_signatures[0].vars[0].ty
     );
 
-    let src_width = if src_ty.is_bounded_int(registry) {
+    let src_width = if src_ty.is_bounded_int(registry)? {
         src_range.offset_bit_width()
     } else {
         src_range.zero_based_bit_width()
     };
-    let dst_width = if dst_ty.is_bounded_int(registry) {
+    let dst_width = if dst_ty.is_bounded_int(registry)? {
         dst_range.offset_bit_width()
     } else {
         dst_range.zero_based_bit_width()
@@ -309,13 +306,13 @@ pub fn build_upcast<'ctx, 'this>(
     // If the source can be negative, the target type must also contain negatives when upcasting.
     assert!(
         src_range.lower.sign() != Sign::Minus
-            || dst_ty.is_felt252(registry)
+            || dst_ty.is_felt252(registry)?
             || dst_range.lower.sign() == Sign::Minus
     );
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
     let dst_value = if dst_width > src_width {
-        if is_signed && !src_ty.is_bounded_int(registry) {
+        if is_signed && !src_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extsi(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
@@ -332,11 +329,11 @@ pub fn build_upcast<'ctx, 'this>(
         src_value
     };
 
-    let dst_value = if src_ty.is_bounded_int(registry) && src_range.lower != BigInt::ZERO {
+    let dst_value = if src_ty.is_bounded_int(registry)? && src_range.lower != BigInt::ZERO {
         let dst_offset = entry.const_int_from_type(
             context,
             location,
-            if dst_ty.is_bounded_int(registry) {
+            if dst_ty.is_bounded_int(registry)? {
                 &src_range.lower - &dst_range.lower
             } else {
                 src_range.lower.clone()
@@ -348,7 +345,7 @@ pub fn build_upcast<'ctx, 'this>(
         dst_value
     };
 
-    let dst_value = if dst_ty.is_felt252(registry) && src_range.lower.sign() == Sign::Minus {
+    let dst_value = if dst_ty.is_felt252(registry)? && src_range.lower.sign() == Sign::Minus {
         let k0 = entry.const_int(context, location, 0, 252)?;
         let is_negative = entry.append_op_result(arith::cmpi(
             context,

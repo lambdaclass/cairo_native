@@ -184,7 +184,11 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
                 context,
                 value_type,
                 container,
-                DenseI64ArrayAttribute::new(context, &[index.try_into().unwrap()]).into(),
+                DenseI64ArrayAttribute::new(
+                    context,
+                    &[index.try_into().map_err(|_| Error::IntegerConversion)?],
+                )
+                .into(),
                 location,
             )
             .into(),
@@ -205,7 +209,11 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
                 container.r#type(),
                 container,
                 value,
-                DenseI64ArrayAttribute::new(context, &[index.try_into().unwrap()]).into(),
+                DenseI64ArrayAttribute::new(
+                    context,
+                    &[index.try_into().map_err(|_| Error::IntegerConversion)?],
+                )
+                .into(),
                 location,
             )
             .into(),
@@ -292,7 +300,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         op.set_elem_type(TypeAttribute::new(elem_type));
         op.set_alignment(IntegerAttribute::new(
             IntegerType::new(context, 64).into(),
-            align.try_into().unwrap(),
+            align.try_into().map_err(|_| Error::IntegerConversion)?,
         ));
 
         self.append_op_result(op.into())

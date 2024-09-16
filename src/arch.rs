@@ -114,7 +114,7 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
                 y0.to_bytes(buffer)?;
             }
             (Value::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) => {
-                if self.info.is_memory_allocated(self.registry) {
+                if self.info.is_memory_allocated(self.registry)? {
                     let abi_ptr = self.value.to_jit(self.arena, self.registry, self.type_id)?;
 
                     let abi_ptr = unsafe { *abi_ptr.cast::<NonNull<()>>().as_ref() };

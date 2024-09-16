@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
@@ -523,7 +523,7 @@ pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
                 context,
                 "3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252",
             )
-            .unwrap(),
+            .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -593,7 +593,7 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
                 context,
                 "3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252",
             )
-            .unwrap(),
+            .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -1218,7 +1218,7 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
                 context,
                 "3618502788666131106986593281521497120414687020801267626233049500247285300992 : i252",
             )
-            .unwrap(),
+            .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?
@@ -1326,7 +1326,7 @@ pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
                 context,
                 "3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252",
             )
-            .unwrap(),
+            .ok_or(Error::ParseAttributeError)?,
             location,
         ))
         .result(0)?

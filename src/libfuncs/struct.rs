@@ -57,7 +57,7 @@ pub fn build_construct<'ctx, 'this>(
     let mut fields = Vec::new();
 
     for (i, _) in info.param_signatures().iter().enumerate() {
-        fields.push(entry.argument(i).unwrap().into());
+        fields.push(entry.argument(i)?.into());
     }
 
     let value = build_struct_value(

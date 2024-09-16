@@ -10,7 +10,7 @@ use cairo_native::{
 use starknet_types_core::felt::Felt;
 
 fn run_program(program: &Program, entry_point: &str, args: &[Value]) -> ExecutionResult {
-    let entry_point_id = find_function_id(program, entry_point);
+    let entry_point_id = find_function_id(program, entry_point).expect("entry point not found");
 
     let context = NativeContext::new();
     let module = context.compile(program).unwrap();
