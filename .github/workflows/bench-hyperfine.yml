@@ -2,7 +2,7 @@ name: Bench
 
 on:
   pull_request:
-    branches: [main]
+    branches: ['**']
   merge_group:
     types: [checks_requested]
 
@@ -97,7 +97,7 @@ jobs:
       matrix:
         branch: [ base ]
     name: Build cairo-native-run for ${{ matrix.branch }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Populate cache
         uses: actions/cache@v3
@@ -129,7 +129,7 @@ jobs:
 
       - name: Install Rust
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-        uses: dtolnay/rust-toolchain@1.80.1
+        uses: dtolnay/rust-toolchain@1.81.0
           
       - name: add llvm deb repository
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
@@ -142,7 +142,7 @@ jobs:
       - name: Install LLVM
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
-      
+
       - name: Checkout base commit
         if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v4
@@ -169,6 +169,7 @@ jobs:
       OUTPUT_DIR: bench-outputs
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Hyperfine
         uses: taiki-e/install-action@v2
         with:
@@ -198,7 +199,7 @@ jobs:
           -L bin "$BINS" -n "{bin} $PROGRAM" \
           "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
           >> /dev/stderr 
-            echo "benchmark_count=$(ls $OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
+          echo "benchmark_count=$(ls $OUTPUT_DIR/$PROGRAM.md | wc -l)" >> $GITHUB_OUTPUT
 
       - name: Print tables
         if: steps.run-benchmarks.outputs.benchmark_count != 0
