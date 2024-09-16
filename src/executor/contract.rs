@@ -75,6 +75,7 @@ pub struct ContractExecutor {
     #[educe(Debug(ignore))]
     library: Arc<Library>,
     path: PathBuf,
+    is_temp_path: bool,
     entry_points_info: BTreeMap<u64, EntryPointInfo>,
 }
 
@@ -100,10 +101,13 @@ pub enum BuiltinType {
 
 impl ContractExecutor {
     /// Create the executor from a sierra program with the given optimization level.
-    /// You can save the library on the desired location later using `save`
+    /// You can save the library on the desired location later using `save`.
+    /// If not saved, the path is treated as
+    /// a temporary file an deleted when dropped.
+    /// If you loaded a ContractExecutor using [`load`] then it will not be treated as a temp file.
     pub fn new(sierra_program: &Program, opt_level: OptLevel) -> Result<Self> {
         let native_context = NativeContext::new();
-        let module = native_context.compile(sierra_program)?;
+        let module = native_context.compile(sierra_program, true)?;
 
         let NativeModule {
             module,
@@ -167,18 +171,22 @@ impl ContractExecutor {
         Ok(Self {
             library: Arc::new(unsafe { Library::new(&library_path)? }),
             path: library_path,
+            is_temp_path: true,
             entry_points_info: infos,
         })
     }
 
     /// Save the library to the desired path, alongside it is saved also a json file with additional info.
-    pub fn save(&self, to: impl AsRef<Path>) -> Result<()> {
+    pub fn save(&mut self, to: impl AsRef<Path>) -> Result<()> {
         let to = to.as_ref();
         std::fs::copy(&self.path, to)?;
 
         let info = serde_json::to_string(&self.entry_points_info)?;
         let path = to.with_extension("json");
         std::fs::write(path, info)?;
+
+        self.path = to.to_path_buf();
+        self.is_temp_path = false;
 
         Ok(())
     }
@@ -190,6 +198,7 @@ impl ContractExecutor {
         Ok(Self {
             library: Arc::new(unsafe { Library::new(library_path)? }),
             path: library_path.to_path_buf(),
+            is_temp_path: false,
             entry_points_info: info,
         })
     }
@@ -205,7 +214,7 @@ impl ContractExecutor {
         let arena = Bump::new();
         let mut invoke_data = Vec::<u8>::new();
 
-        let function_ptr = self.find_function_ptr(function_id)?;
+        let function_ptr = self.find_function_ptr(function_id, true)?;
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         // substract 2, which are the gas and syscall builtin
@@ -405,8 +414,12 @@ impl ContractExecutor {
         })
     }
 
-    pub fn find_function_ptr(&self, function_id: &FunctionId) -> Result<*mut c_void> {
-        let function_name = generate_function_name(function_id);
+    pub fn find_function_ptr(
+        &self,
+        function_id: &FunctionId,
+        is_for_contract_executor: bool,
+    ) -> Result<*mut c_void> {
+        let function_name = generate_function_name(function_id, is_for_contract_executor);
         let function_name = format!("_mlir_ciface_{function_name}");
 
         // Arguments and return values are hardcoded since they'll be handled by the trampoline.
@@ -416,6 +429,15 @@ impl ContractExecutor {
                 .into_raw()
                 .into_raw()
         })
+    }
+}
+
+impl Drop for ContractExecutor {
+    fn drop(&mut self) {
+        if self.is_temp_path {
+            std::fs::remove_file(&self.path).ok();
+            std::fs::remove_file(self.path.with_extension("json")).ok();
+        }
     }
 }
 

@@ -639,6 +639,6 @@ mod test {
         };
 
         let native_context = NativeContext::new();
-        native_context.compile(&program).unwrap();
+        native_context.compile(&program, false).unwrap();
     }
 }

@@ -230,7 +230,7 @@ pub fn run_native_program(
     let context = NativeContext::new();
 
     let module = context
-        .compile(program)
+        .compile(program, false)
         .expect("Could not compile test program to MLIR.");
 
     assert!(
@@ -426,7 +426,7 @@ pub fn run_native_starknet_contract(
 ) -> ContractExecutionResult {
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(sierra_program).unwrap();
+    let native_program = native_context.compile(sierra_program, false).unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
