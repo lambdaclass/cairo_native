@@ -2,7 +2,7 @@ name: Bench
 
 on:
   pull_request:
-    branches: ['**']
+    branches: ['main']
   merge_group:
     types: [checks_requested]
 
@@ -194,7 +194,6 @@ jobs:
           mkdir $OUTPUT_DIR
           make deps
           hyperfine \
-          --show-output \
           --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
@@ -203,7 +202,6 @@ jobs:
           >> /dev/stderr 
 
       - name: Print tables
-        if: steps.run-benchmarks.outputs.benchmark_count != 0
         run: |
           {
             echo "Benchmark Results  :rocket:"
