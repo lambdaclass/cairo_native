@@ -95,7 +95,7 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
-        branch: [ base ]
+        branch: [ head ]
     name: Build cairo-native-run for ${{ matrix.branch }}
     runs-on: ubuntu-latest
     steps:
