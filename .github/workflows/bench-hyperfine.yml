@@ -95,7 +95,7 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
-        branch: [ base ]
+        branch: [ base, head ]
     name: Build cairo-native-run for ${{ matrix.branch }}
     runs-on: ubuntu-latest
     steps:
@@ -189,12 +189,11 @@ jobs:
 
       - name: Run Program
         run: |
-          BINS="base"
+          BINS="base head"
           cp programs/benches/$PROGRAM.cairo .
           mkdir $OUTPUT_DIR
           make deps
           hyperfine \
-          --show-output \
           --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
@@ -212,25 +211,18 @@ jobs:
             cat $OUTPUT_DIR/$PROGRAM.md
           } | tee -a comment_body.md
 
-      - name: Find comment
-        if: steps.run-benchmarks.outputs.benchmark_count != 0
-        uses: peter-evans/find-comment@v2
+      - name: Find Bench Comment
+        continue-on-error: true
+        uses: peter-evans/find-comment@v3
         id: fc
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: Benchmark Results
-
-      - name: Create comment
-        if: steps.run-benchmarks.outputs.benchmark_count != 0
-        uses: peter-evans/create-or-update-comment@v3
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body-path: comment_body.md
-
-      - name: Update comment
-        if: steps.run-benchmarks.outputs.benchmark_count != 0
-        uses: peter-evans/create-or-update-comment@v3
+          comment-author: "github-actions[bot]"
+          body-includes: Benchmarking
+          
+      - name: Create or update bench comment
+        continue-on-error: true
+        uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
