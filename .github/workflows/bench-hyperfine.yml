@@ -192,6 +192,7 @@ jobs:
           BINS="base"
           cp programs/benches/$PROGRAM.cairo .
           mkdir $OUTPUT_DIR
+          make deps
           hyperfine \
           --show-output \
           --warmup 3 \
