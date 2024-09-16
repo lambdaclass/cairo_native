@@ -95,7 +95,7 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
-        branch: [ head ]
+        branch: [ base ]
     name: Build cairo-native-run for ${{ matrix.branch }}
     runs-on: ubuntu-latest
     steps:
@@ -193,6 +193,7 @@ jobs:
           cp programs/benches/$PROGRAM.cairo .
           mkdir $OUTPUT_DIR
           hyperfine \
+          --show-output \
           --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
