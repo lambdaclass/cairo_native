@@ -2,7 +2,7 @@ name: Bench
 
 on:
   pull_request:
-    branches: ['main']
+    branches: [main]
   merge_group:
     types: [checks_requested]
 
@@ -43,7 +43,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
-      - uses: dtolnay/rust-toolchain@1.80.1
+      - uses: dtolnay/rust-toolchain@1.81.0
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -197,14 +197,15 @@ jobs:
           --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
-          -L bin "$BINS" -n "{bin} $PROGRAM" \
-          "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
-          >> /dev/stderr 
+          -L bin "$BINS" 
+          -n "head $PROGRAM" "./bin/cairo-native-run-head -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
+          -n "base $PROGRAM" "./bin/cairo-native-run-base -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
+          >> /dev/stderr
 
       - name: Print tables
         run: |
           {
-            echo "Benchmark Results  :rocket:"
+            echo "Benchmark Results base v head :rocket:"
             echo
             cat $OUTPUT_DIR/$PROGRAM.md
           } | tee -a comment_body.md
