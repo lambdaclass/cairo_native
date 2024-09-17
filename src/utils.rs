@@ -53,6 +53,26 @@ pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
     }
 }
 
+/// Decode an UTF-8 error message replacing invalid bytes with their hexadecimal representation, as
+/// done by Python's `x.decode('utf-8', errors='backslashreplace')`.
+pub fn decode_error_message(data: &[u8]) -> String {
+    let mut pos = 0;
+    utf8_iter::ErrorReportingUtf8Chars::new(data).fold(String::new(), |mut acc, ch| {
+        match ch {
+            Ok(ch) => {
+                acc.push(ch);
+                pos += ch.len_utf8();
+            }
+            Err(_) => {
+                acc.push_str(&format!("\\x{:02x}", data[pos]));
+                pos += 1;
+            }
+        };
+
+        acc
+    })
+}
+
 /// Return the layout for an integer of arbitrary width.
 ///
 /// This assumes the platform's maximum (effective) alignment is 16 bytes, and that every integer

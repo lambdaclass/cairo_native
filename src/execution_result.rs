@@ -2,7 +2,7 @@
 ///
 /// This module contains the structures used to interpret the program execution results, either
 /// normal programs or starknet contracts.
-use crate::{error::Error, values::JitValue};
+use crate::{error::Error, utils::decode_error_message, values::JitValue};
 use starknet_types_core::felt::Felt;
 
 #[derive(
@@ -126,7 +126,7 @@ impl ContractExecutionResult {
                             // remove null chars
                             .filter(|b| *b != 0)
                             .collect();
-                        let str_error = String::from_utf8(bytes_err).unwrap().to_owned();
+                        let str_error = decode_error_message(&bytes_err);
 
                         error_msg = Some(str_error);
                         felt_vec
