@@ -189,15 +189,15 @@ jobs:
 
       - name: Run Program
         run: |
+          BINS="base,head"
           cp programs/benches/$PROGRAM.cairo .
           mkdir $OUTPUT_DIR
           make deps
           hyperfine \
-          --warmup 3 \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
-          -n "head $PROGRAM" "./bin/cairo-native-run-head -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
-          -n "base $PROGRAM" "./bin/cairo-native-run-base -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
+          -L bin "$BINS" \
+          -n "{bin} $PROGRAM" "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
           >> /dev/stderr
 
       - name: Print tables
