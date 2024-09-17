@@ -198,13 +198,13 @@ jobs:
       - name: Fetch base runtime-library
         uses: actions/cache/restore@v3
         with:
-          path: lib/libcairo-native-runtime-base
+          path: lib/libcairo-native-runtime-base.a
           key: library-${{ github.event.pull_request.base.sha }}
 
       - name: Fetch HEAD runtime-library
         uses: actions/cache/restore@v3
         with:
-          path: lib/libcairo-native-runtime-head
+          path: lib/libcairo-native-runtime-head.a
           key: library-${{ github.event.pull_request.head.sha }}
 
       - name: Build Dependencies
