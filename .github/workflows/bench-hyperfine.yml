@@ -251,3 +251,5 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body-path: comment_body.md
           edit-mode: replace
+
+  hyperfine -n "head (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=target/release/libcairo-native-runtime.a; ./target/release/cairo-native-run --run-mode=aot -s fib_2M.cairo --opt-level 3 --available-gas 18446744073709551615" --show-output
