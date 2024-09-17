@@ -110,7 +110,7 @@ jobs:
         uses: actions/cache@v3
         id: cache-library 
         with:
-          path: lib/libcairo-native-runtime-${{ matrix.branch }}
+          path: lib/libcairo-native-runtime-${{ matrix.branch }}.a
           key: library-${{ github.event.pull_request[matrix.branch].sha }} 
       
       - name: check and free hdd space left
@@ -161,12 +161,12 @@ jobs:
         uses: Swatinem/rust-cache@v2
       
       - name: Build binary
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        #if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         run: |
           make build
           mkdir bin lib
           cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
-          cp target/release/libcairo_native_runtime.a lib/libcairo-native-runtime-${{ matrix.branch }}
+          cp target/release/libcairo_native_runtime.a lib/libcairo-native-runtime-${{ matrix.branch }}.a
   
   hyperfine-prs:
     name: Bench PR (linux, amd64)
