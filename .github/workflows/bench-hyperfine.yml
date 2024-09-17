@@ -219,8 +219,7 @@ jobs:
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
           --warmup 3 \
           -L bin "$BINS" \
-          --prepare "export CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-{bin}.a" \
-          --shell=none \
+          --setup "export CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-{bin}.a" \
           --show-output \
           -n "{bin} $PROGRAM (JIT)" "./bin/cairo-native-run-{bin} --run-mode=jit -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
           -n "{bin} $PROGRAM (AOT)" "./bin/cairo-native-run-{bin} --run-mode=aot -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
@@ -251,4 +250,3 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body-path: comment_body.md
           edit-mode: replace
-
