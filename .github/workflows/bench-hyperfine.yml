@@ -212,6 +212,7 @@ jobs:
 
       - name: Run Program
         run: |
+          BINS="base"
           cp programs/benches/$PROGRAM.cairo .
           mkdir $OUTPUT_DIR
           hyperfine \
