@@ -197,6 +197,7 @@ jobs:
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
           -L bin "$BINS" \
+          --warmup 3 \
           -n "{bin} $PROGRAM" "./bin/cairo-native-run-{bin} -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \        
           >> /dev/stderr
 
