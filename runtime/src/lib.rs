@@ -298,7 +298,11 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
     let x3 = x2 * x;
     let alpha_x_plus_beta = x + BETA;
     let rhs = x3 + alpha_x_plus_beta;
-    let y = rhs.sqrt().unwrap_or_else(|| Felt::from(3) * rhs);
+    // https://github.com/starkware-libs/cairo/blob/9b603b88c2e5a98eec1bb8f323260b7765e94911/crates/cairo-lang-runner/src/casm_run/mod.rs#L1825
+    let y = rhs
+        .sqrt()
+        .unwrap_or_else(|| (Felt::THREE * rhs).sqrt().unwrap());
+    let y = y.min(-y);
 
     match AffinePoint::new(x, y) {
         Ok(point) => {
@@ -358,7 +362,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(
         }
     };
 
-    let state = AffinePoint::new(random_x, random_y).unwrap();
+    // We already made sure its a valid point.
+    let state = AffinePoint::new_unchecked(random_x, random_y);
 
     state_ptr.as_mut()[0].copy_from_slice(&state.x().to_bytes_le());
     state_ptr.as_mut()[1].copy_from_slice(&state.y().to_bytes_le());
@@ -381,16 +386,15 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
     mut state_ptr: NonNull<[[u8; 32]; 4]>,
     point_ptr: NonNull<[[u8; 32]; 2]>,
 ) {
-    let mut state = ProjectivePoint::from_affine(
+    // We use unchecked methods because the inputs must already be valid points.
+    let mut state = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(&state_ptr.as_ref()[0]),
         Felt::from_bytes_le(&state_ptr.as_ref()[1]),
-    )
-    .unwrap();
-    let point = AffinePoint::new(
+    );
+    let point = AffinePoint::new_unchecked(
         Felt::from_bytes_le(&point_ptr.as_ref()[0]),
         Felt::from_bytes_le(&point_ptr.as_ref()[1]),
-    )
-    .unwrap();
+    );
 
     state += &point;
     let state = state.to_affine().unwrap();
@@ -448,16 +452,15 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
     mut point_ptr: NonNull<[[u8; 32]; 2]>,
     state_ptr: NonNull<[[u8; 32]; 4]>,
 ) -> bool {
-    let state = ProjectivePoint::from_affine(
+    // We use unchecked methods because the inputs must already be valid points.
+    let state = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(&state_ptr.as_ref()[0]),
         Felt::from_bytes_le(&state_ptr.as_ref()[1]),
-    )
-    .unwrap();
-    let random = ProjectivePoint::from_affine(
+    );
+    let random = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(&state_ptr.as_ref()[2]),
         Felt::from_bytes_le(&state_ptr.as_ref()[3]),
-    )
-    .unwrap();
+    );
 
     if state.x() == random.x() && state.y() == random.y() {
         false
