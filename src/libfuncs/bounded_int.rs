@@ -81,19 +81,18 @@ fn build_add<'ctx, 'this>(
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let rhs_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
 
-    let lhs_range = lhs_ty.integer_range(registry).unwrap();
-    let rhs_range = rhs_ty.integer_range(registry).unwrap();
+    let lhs_range = lhs_ty.integer_range(registry)?;
+    let rhs_range = rhs_ty.integer_range(registry)?;
     let dst_range = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
-        .integer_range(registry)
-        .unwrap();
+        .integer_range(registry)?;
 
-    let lhs_width = if lhs_ty.is_bounded_int(registry) {
+    let lhs_width = if lhs_ty.is_bounded_int(registry)? {
         lhs_range.offset_bit_width()
     } else {
         lhs_range.zero_based_bit_width()
     };
-    let rhs_width = if rhs_ty.is_bounded_int(registry) {
+    let rhs_width = if rhs_ty.is_bounded_int(registry)? {
         rhs_range.offset_bit_width()
     } else {
         rhs_range.zero_based_bit_width()
@@ -116,7 +115,7 @@ fn build_add<'ctx, 'this>(
     assert!(compute_range.offset_bit_width() >= lhs_width);
     assert!(compute_range.offset_bit_width() >= rhs_width);
     let lhs_value = if compute_range.offset_bit_width() > lhs_width {
-        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
+        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
@@ -125,7 +124,7 @@ fn build_add<'ctx, 'this>(
         lhs_value
     };
     let rhs_value = if compute_range.offset_bit_width() > rhs_width {
-        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
+        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
@@ -135,7 +134,7 @@ fn build_add<'ctx, 'this>(
     };
 
     // Offset the operands so that they are compatible.
-    let lhs_offset = if lhs_ty.is_bounded_int(registry) {
+    let lhs_offset = if lhs_ty.is_bounded_int(registry)? {
         &lhs_range.lower - &compute_range.lower
     } else {
         lhs_range.lower.clone()
@@ -147,7 +146,7 @@ fn build_add<'ctx, 'this>(
         lhs_value
     };
 
-    let rhs_offset = if rhs_ty.is_bounded_int(registry) {
+    let rhs_offset = if rhs_ty.is_bounded_int(registry)? {
         &rhs_range.lower - &compute_range.lower
     } else {
         rhs_range.lower.clone()
@@ -203,19 +202,18 @@ fn build_sub<'ctx, 'this>(
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let rhs_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
 
-    let lhs_range = lhs_ty.integer_range(registry).unwrap();
-    let rhs_range = rhs_ty.integer_range(registry).unwrap();
+    let lhs_range = lhs_ty.integer_range(registry)?;
+    let rhs_range = rhs_ty.integer_range(registry)?;
     let dst_range = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
-        .integer_range(registry)
-        .unwrap();
+        .integer_range(registry)?;
 
-    let lhs_width = if lhs_ty.is_bounded_int(registry) {
+    let lhs_width = if lhs_ty.is_bounded_int(registry)? {
         lhs_range.offset_bit_width()
     } else {
         lhs_range.zero_based_bit_width()
     };
-    let rhs_width = if rhs_ty.is_bounded_int(registry) {
+    let rhs_width = if rhs_ty.is_bounded_int(registry)? {
         rhs_range.offset_bit_width()
     } else {
         rhs_range.zero_based_bit_width()
@@ -238,7 +236,7 @@ fn build_sub<'ctx, 'this>(
     assert!(compute_range.offset_bit_width() >= lhs_width);
     assert!(compute_range.offset_bit_width() >= rhs_width);
     let lhs_value = if compute_range.offset_bit_width() > lhs_width {
-        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
+        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
@@ -247,7 +245,7 @@ fn build_sub<'ctx, 'this>(
         lhs_value
     };
     let rhs_value = if compute_range.offset_bit_width() > rhs_width {
-        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
+        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
@@ -257,7 +255,7 @@ fn build_sub<'ctx, 'this>(
     };
 
     // Offset the operands so that they are compatible.
-    let lhs_offset = if lhs_ty.is_bounded_int(registry) {
+    let lhs_offset = if lhs_ty.is_bounded_int(registry)? {
         &lhs_range.lower - &compute_range.lower
     } else {
         lhs_range.lower.clone()
@@ -269,7 +267,7 @@ fn build_sub<'ctx, 'this>(
         lhs_value
     };
 
-    let rhs_offset = if rhs_ty.is_bounded_int(registry) {
+    let rhs_offset = if rhs_ty.is_bounded_int(registry)? {
         &rhs_range.lower - &compute_range.lower
     } else {
         rhs_range.lower.clone()
@@ -325,19 +323,18 @@ fn build_mul<'ctx, 'this>(
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let rhs_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
 
-    let lhs_range = lhs_ty.integer_range(registry).unwrap();
-    let rhs_range = rhs_ty.integer_range(registry).unwrap();
+    let lhs_range = lhs_ty.integer_range(registry)?;
+    let rhs_range = rhs_ty.integer_range(registry)?;
     let dst_range = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
-        .integer_range(registry)
-        .unwrap();
+        .integer_range(registry)?;
 
-    let lhs_width = if lhs_ty.is_bounded_int(registry) {
+    let lhs_width = if lhs_ty.is_bounded_int(registry)? {
         lhs_range.offset_bit_width()
     } else {
         lhs_range.zero_based_bit_width()
     };
-    let rhs_width = if rhs_ty.is_bounded_int(registry) {
+    let rhs_width = if rhs_ty.is_bounded_int(registry)? {
         rhs_range.offset_bit_width()
     } else {
         rhs_range.zero_based_bit_width()
@@ -361,7 +358,7 @@ fn build_mul<'ctx, 'this>(
     assert!(compute_range.zero_based_bit_width() >= lhs_width);
     assert!(compute_range.zero_based_bit_width() >= rhs_width);
     let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
-        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
+        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
@@ -370,7 +367,7 @@ fn build_mul<'ctx, 'this>(
         lhs_value
     };
     let rhs_value = if compute_range.zero_based_bit_width() > rhs_width {
-        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
+        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
@@ -380,14 +377,14 @@ fn build_mul<'ctx, 'this>(
     };
 
     // Offset the operands so that they are compatible with the operation.
-    let lhs_value = if lhs_ty.is_bounded_int(registry) && lhs_range.lower != BigInt::ZERO {
+    let lhs_value = if lhs_ty.is_bounded_int(registry)? && lhs_range.lower != BigInt::ZERO {
         let lhs_offset =
             entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))?
     } else {
         lhs_value
     };
-    let rhs_value = if rhs_ty.is_bounded_int(registry) && rhs_range.lower != BigInt::ZERO {
+    let rhs_value = if rhs_ty.is_bounded_int(registry)? && rhs_range.lower != BigInt::ZERO {
         let rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))?
@@ -442,23 +439,21 @@ fn build_divrem<'ctx, 'this>(
     let lhs_ty = registry.get_type(&info.param_signatures()[1].ty)?;
     let rhs_ty = registry.get_type(&info.param_signatures()[2].ty)?;
 
-    let lhs_range = lhs_ty.integer_range(registry).unwrap();
-    let rhs_range = rhs_ty.integer_range(registry).unwrap();
+    let lhs_range = lhs_ty.integer_range(registry)?;
+    let rhs_range = rhs_ty.integer_range(registry)?;
     let div_range = registry
         .get_type(&info.branch_signatures()[0].vars[1].ty)?
-        .integer_range(registry)
-        .unwrap();
+        .integer_range(registry)?;
     let rem_range = registry
         .get_type(&info.branch_signatures()[0].vars[2].ty)?
-        .integer_range(registry)
-        .unwrap();
+        .integer_range(registry)?;
 
-    let lhs_width = if lhs_ty.is_bounded_int(registry) {
+    let lhs_width = if lhs_ty.is_bounded_int(registry)? {
         lhs_range.offset_bit_width()
     } else {
         lhs_range.zero_based_bit_width()
     };
-    let rhs_width = if rhs_ty.is_bounded_int(registry) {
+    let rhs_width = if rhs_ty.is_bounded_int(registry)? {
         rhs_range.offset_bit_width()
     } else {
         rhs_range.zero_based_bit_width()
@@ -484,7 +479,7 @@ fn build_divrem<'ctx, 'this>(
     assert!(compute_range.zero_based_bit_width() >= lhs_width);
     assert!(compute_range.zero_based_bit_width() >= rhs_width);
     let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
-        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry) {
+        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
@@ -493,7 +488,7 @@ fn build_divrem<'ctx, 'this>(
         lhs_value
     };
     let rhs_value = if compute_range.zero_based_bit_width() > rhs_width {
-        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry) {
+        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
@@ -503,14 +498,14 @@ fn build_divrem<'ctx, 'this>(
     };
 
     // Offset the operands so that they are compatible with the operation.
-    let lhs_value = if lhs_ty.is_bounded_int(registry) && lhs_range.lower != BigInt::ZERO {
+    let lhs_value = if lhs_ty.is_bounded_int(registry)? && lhs_range.lower != BigInt::ZERO {
         let lhs_offset =
             entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))?
     } else {
         lhs_value
     };
-    let rhs_value = if rhs_ty.is_bounded_int(registry) && rhs_range.lower != BigInt::ZERO {
+    let rhs_value = if rhs_ty.is_bounded_int(registry)? && rhs_range.lower != BigInt::ZERO {
         let rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))?
@@ -577,9 +572,9 @@ fn build_constrain<'ctx, 'this>(
     let src_value: Value = entry.argument(1)?.into();
 
     let src_ty = registry.get_type(&info.param_signatures()[1].ty)?;
-    let src_range = src_ty.integer_range(registry).unwrap();
+    let src_range = src_ty.integer_range(registry)?;
 
-    let src_width = if src_ty.is_bounded_int(registry) {
+    let src_width = if src_ty.is_bounded_int(registry)? {
         src_range.offset_bit_width()
     } else {
         src_range.zero_based_bit_width()
@@ -587,12 +582,10 @@ fn build_constrain<'ctx, 'this>(
 
     let lower_range = registry
         .get_type(&info.branch_signatures()[0].vars[1].ty)?
-        .integer_range(registry)
-        .unwrap();
+        .integer_range(registry)?;
     let upper_range = registry
         .get_type(&info.branch_signatures()[1].vars[1].ty)?
-        .integer_range(registry)
-        .unwrap();
+        .integer_range(registry)?;
 
     let boundary =
         entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?;
@@ -690,7 +683,7 @@ fn build_is_zero<'ctx, 'this>(
     let src_value: Value = entry.argument(0)?.into();
 
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
-    let src_range = src_ty.integer_range(registry).unwrap();
+    let src_range = src_ty.integer_range(registry)?;
 
     assert!(
         src_range.lower <= BigInt::ZERO && BigInt::ZERO < src_range.upper,
@@ -730,8 +723,7 @@ fn build_wrap_non_zero<'ctx, 'this>(
 
     let src_range = registry
         .get_type(&info.signature.param_signatures[0].ty)?
-        .integer_range(registry)
-        .unwrap();
+        .integer_range(registry)?;
     assert!(src_range.lower > BigInt::ZERO || BigInt::ZERO >= src_range.upper);
 
     entry.append_operation(helper.br(0, &[src_value], location));

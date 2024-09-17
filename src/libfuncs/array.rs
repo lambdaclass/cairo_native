@@ -1707,9 +1707,9 @@ mod test {
 
         assert_eq!(
             result,
-            jit_panic!(JitValue::felt_str(
-                "1637570914057682275393755530660268060279989363"
-            ))
+            jit_panic!(
+                Felt::from_dec_str("1637570914057682275393755530660268060279989363").unwrap()
+            )
         );
     }
 
