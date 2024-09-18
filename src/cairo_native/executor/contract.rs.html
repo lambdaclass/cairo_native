@@ -589,7 +589,7 @@
     module::NativeModule,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::{generate_function_name, get_integer_layout},
+    utils::{decode_error_message, generate_function_name, get_integer_layout},
     OptLevel,
 };
 
@@ -917,7 +917,7 @@
                 <span class="comment">// remove null chars
                 </span>.filter(|b| <span class="kw-2">*</span>b != <span class="number">0</span>)
                 .collect();
-            <span class="kw">let </span>str_error = String::from_utf8(bytes_err).unwrap().to_owned();
+            <span class="kw">let </span>str_error = decode_error_message(<span class="kw-2">&amp;</span>bytes_err);
 
             error_msg = <span class="prelude-val">Some</span>(str_error);
         }

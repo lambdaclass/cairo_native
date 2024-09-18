@@ -1032,6 +1032,65 @@
 <a href="#1032" id="1032">1032</a>
 <a href="#1033" id="1033">1033</a>
 <a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1085,6 +1144,26 @@
     } <span class="kw">else </span>{
         Cow::Owned(<span class="macro">format!</span>(<span class="string">"f{}"</span>, function_id.id))
     }
+}
+
+<span class="doccomment">/// Decode an UTF-8 error message replacing invalid bytes with their hexadecimal representation, as
+/// done by Python's `x.decode('utf-8', errors='backslashreplace')`.
+</span><span class="kw">pub fn </span>decode_error_message(data: <span class="kw-2">&amp;</span>[u8]) -&gt; String {
+    <span class="kw">let </span><span class="kw-2">mut </span>pos = <span class="number">0</span>;
+    utf8_iter::ErrorReportingUtf8Chars::new(data).fold(String::new(), |<span class="kw-2">mut </span>acc, ch| {
+        <span class="kw">match </span>ch {
+            <span class="prelude-val">Ok</span>(ch) =&gt; {
+                acc.push(ch);
+                pos += ch.len_utf8();
+            }
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                acc.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"\\x{:02x}"</span>, data[pos]));
+                pos += <span class="number">1</span>;
+            }
+        };
+
+        acc
+    })
 }
 
 <span class="doccomment">/// Return the layout for an integer of arbitrary width.
@@ -1892,6 +1971,45 @@
         <span class="kw">let </span>entry_point = find_entry_point_by_idx(<span class="kw-2">&amp;</span>program, <span class="number">15</span>);
         <span class="macro">assert!</span>(entry_point.is_some());
         <span class="macro">assert_eq!</span>(entry_point.unwrap().id.id, <span class="number">15</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>decode_error_message() {
+        <span class="comment">// Checkout [issue 795](https://github.com/lambdaclass/cairo_native/issues/795) for context.
+        </span><span class="macro">assert_eq!</span>(
+            <span class="kw">super</span>::decode_error_message(<span class="kw-2">&amp;</span>[
+                <span class="number">97</span>, <span class="number">114</span>, <span class="number">103</span>, <span class="number">101</span>, <span class="number">110</span>, <span class="number">116</span>, <span class="number">47</span>, <span class="number">109</span>, <span class="number">117</span>, <span class="number">108</span>, <span class="number">116</span>, <span class="number">105</span>, <span class="number">99</span>, <span class="number">97</span>, <span class="number">108</span>, <span class="number">108</span>, <span class="number">45</span>,
+                <span class="number">102</span>, <span class="number">97</span>, <span class="number">105</span>, <span class="number">108</span>, <span class="number">101</span>, <span class="number">100</span>, <span class="number">3</span>, <span class="number">232</span>, <span class="number">78</span>, <span class="number">97</span>, <span class="number">116</span>, <span class="number">105</span>, <span class="number">118</span>, <span class="number">101</span>, <span class="number">32</span>, <span class="number">101</span>, <span class="number">120</span>, <span class="number">101</span>,
+                <span class="number">99</span>, <span class="number">117</span>, <span class="number">116</span>, <span class="number">105</span>, <span class="number">111</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">101</span>, <span class="number">114</span>, <span class="number">114</span>, <span class="number">111</span>, <span class="number">114</span>, <span class="number">58</span>, <span class="number">32</span>, <span class="number">69</span>, <span class="number">114</span>, <span class="number">114</span>,
+                <span class="number">111</span>, <span class="number">114</span>, <span class="number">32</span>, <span class="number">97</span>, <span class="number">116</span>, <span class="number">32</span>, <span class="number">112</span>, <span class="number">99</span>, <span class="number">61</span>, <span class="number">48</span>, <span class="number">58</span>, <span class="number">49</span>, <span class="number">48</span>, <span class="number">52</span>, <span class="number">58</span>, <span class="number">10</span>, <span class="number">71</span>, <span class="number">111</span>, <span class="number">116</span>,
+                <span class="number">32</span>, <span class="number">97</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">101</span>, <span class="number">120</span>, <span class="number">99</span>, <span class="number">101</span>, <span class="number">112</span>, <span class="number">116</span>, <span class="number">105</span>, <span class="number">111</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">119</span>, <span class="number">104</span>, <span class="number">105</span>,
+                <span class="number">108</span>, <span class="number">101</span>, <span class="number">32</span>, <span class="number">101</span>, <span class="number">120</span>, <span class="number">101</span>, <span class="number">99</span>, <span class="number">117</span>, <span class="number">116</span>, <span class="number">105</span>, <span class="number">110</span>, <span class="number">103</span>, <span class="number">32</span>, <span class="number">97</span>, <span class="number">32</span>, <span class="number">104</span>, <span class="number">105</span>,
+                <span class="number">110</span>, <span class="number">116</span>, <span class="number">58</span>, <span class="number">32</span>, <span class="number">69</span>, <span class="number">114</span>, <span class="number">114</span>, <span class="number">111</span>, <span class="number">114</span>, <span class="number">32</span>, <span class="number">97</span>, <span class="number">116</span>, <span class="number">32</span>, <span class="number">112</span>, <span class="number">99</span>, <span class="number">61</span>, <span class="number">48</span>, <span class="number">58</span>, <span class="number">49</span>,
+                <span class="number">56</span>, <span class="number">52</span>, <span class="number">58</span>, <span class="number">10</span>, <span class="number">71</span>, <span class="number">111</span>, <span class="number">116</span>, <span class="number">32</span>, <span class="number">97</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">101</span>, <span class="number">120</span>, <span class="number">99</span>, <span class="number">101</span>, <span class="number">112</span>, <span class="number">116</span>, <span class="number">105</span>,
+                <span class="number">111</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">119</span>, <span class="number">104</span>, <span class="number">105</span>, <span class="number">108</span>, <span class="number">101</span>, <span class="number">32</span>, <span class="number">101</span>, <span class="number">120</span>, <span class="number">101</span>, <span class="number">99</span>, <span class="number">117</span>, <span class="number">116</span>, <span class="number">105</span>, <span class="number">110</span>,
+                <span class="number">103</span>, <span class="number">32</span>, <span class="number">97</span>, <span class="number">32</span>, <span class="number">104</span>, <span class="number">105</span>, <span class="number">110</span>, <span class="number">116</span>, <span class="number">58</span>, <span class="number">32</span>, <span class="number">69</span>, <span class="number">120</span>, <span class="number">99</span>, <span class="number">101</span>, <span class="number">101</span>, <span class="number">100</span>, <span class="number">101</span>, <span class="number">100</span>,
+                <span class="number">32</span>, <span class="number">116</span>, <span class="number">104</span>, <span class="number">101</span>, <span class="number">32</span>, <span class="number">109</span>, <span class="number">97</span>, <span class="number">120</span>, <span class="number">105</span>, <span class="number">109</span>, <span class="number">117</span>, <span class="number">109</span>, <span class="number">32</span>, <span class="number">110</span>, <span class="number">117</span>, <span class="number">109</span>, <span class="number">98</span>,
+                <span class="number">101</span>, <span class="number">114</span>, <span class="number">32</span>, <span class="number">111</span>, <span class="number">102</span>, <span class="number">32</span>, <span class="number">101</span>, <span class="number">118</span>, <span class="number">101</span>, <span class="number">110</span>, <span class="number">116</span>, <span class="number">115</span>, <span class="number">44</span>, <span class="number">32</span>, <span class="number">110</span>, <span class="number">117</span>, <span class="number">109</span>,
+                <span class="number">98</span>, <span class="number">101</span>, <span class="number">114</span>, <span class="number">32</span>, <span class="number">101</span>, <span class="number">118</span>, <span class="number">101</span>, <span class="number">110</span>, <span class="number">116</span>, <span class="number">115</span>, <span class="number">58</span>, <span class="number">32</span>, <span class="number">49</span>, <span class="number">48</span>, <span class="number">48</span>, <span class="number">49</span>, <span class="number">44</span>, <span class="number">32</span>,
+                <span class="number">109</span>, <span class="number">97</span>, <span class="number">120</span>, <span class="number">32</span>, <span class="number">110</span>, <span class="number">117</span>, <span class="number">109</span>, <span class="number">98</span>, <span class="number">101</span>, <span class="number">114</span>, <span class="number">32</span>, <span class="number">101</span>, <span class="number">118</span>, <span class="number">101</span>, <span class="number">110</span>, <span class="number">116</span>, <span class="number">115</span>,
+                <span class="number">58</span>, <span class="number">32</span>, <span class="number">49</span>, <span class="number">48</span>, <span class="number">48</span>, <span class="number">48</span>, <span class="number">46</span>, <span class="number">10</span>, <span class="number">67</span>, <span class="number">97</span>, <span class="number">105</span>, <span class="number">114</span>, <span class="number">111</span>, <span class="number">32</span>, <span class="number">116</span>, <span class="number">114</span>, <span class="number">97</span>, <span class="number">99</span>, <span class="number">101</span>,
+                <span class="number">98</span>, <span class="number">97</span>, <span class="number">99</span>, <span class="number">107</span>, <span class="number">32</span>, <span class="number">40</span>, <span class="number">109</span>, <span class="number">111</span>, <span class="number">115</span>, <span class="number">116</span>, <span class="number">32</span>, <span class="number">114</span>, <span class="number">101</span>, <span class="number">99</span>, <span class="number">101</span>, <span class="number">110</span>, <span class="number">116</span>, <span class="number">32</span>,
+                <span class="number">99</span>, <span class="number">97</span>, <span class="number">108</span>, <span class="number">108</span>, <span class="number">32</span>, <span class="number">108</span>, <span class="number">97</span>, <span class="number">115</span>, <span class="number">116</span>, <span class="number">41</span>, <span class="number">58</span>, <span class="number">10</span>, <span class="number">85</span>, <span class="number">110</span>, <span class="number">107</span>, <span class="number">110</span>, <span class="number">111</span>, <span class="number">119</span>,
+                <span class="number">110</span>, <span class="number">32</span>, <span class="number">108</span>, <span class="number">111</span>, <span class="number">99</span>, <span class="number">97</span>, <span class="number">116</span>, <span class="number">105</span>, <span class="number">111</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">40</span>, <span class="number">112</span>, <span class="number">99</span>, <span class="number">61</span>, <span class="number">48</span>, <span class="number">58</span>, <span class="number">49</span>, <span class="number">52</span>,
+                <span class="number">51</span>, <span class="number">52</span>, <span class="number">41</span>, <span class="number">10</span>, <span class="number">85</span>, <span class="number">110</span>, <span class="number">107</span>, <span class="number">110</span>, <span class="number">111</span>, <span class="number">119</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">108</span>, <span class="number">111</span>, <span class="number">99</span>, <span class="number">97</span>, <span class="number">116</span>, <span class="number">105</span>,
+                <span class="number">111</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">40</span>, <span class="number">112</span>, <span class="number">99</span>, <span class="number">61</span>, <span class="number">48</span>, <span class="number">58</span>, <span class="number">49</span>, <span class="number">51</span>, <span class="number">57</span>, <span class="number">53</span>, <span class="number">41</span>, <span class="number">10</span>, <span class="number">85</span>, <span class="number">110</span>, <span class="number">107</span>, <span class="number">110</span>,
+                <span class="number">111</span>, <span class="number">119</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">108</span>, <span class="number">111</span>, <span class="number">99</span>, <span class="number">97</span>, <span class="number">116</span>, <span class="number">105</span>, <span class="number">111</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">40</span>, <span class="number">112</span>, <span class="number">99</span>, <span class="number">61</span>, <span class="number">48</span>,
+                <span class="number">58</span>, <span class="number">57</span>, <span class="number">53</span>, <span class="number">51</span>, <span class="number">41</span>, <span class="number">10</span>, <span class="number">85</span>, <span class="number">110</span>, <span class="number">107</span>, <span class="number">110</span>, <span class="number">111</span>, <span class="number">119</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">108</span>, <span class="number">111</span>, <span class="number">99</span>, <span class="number">97</span>,
+                <span class="number">116</span>, <span class="number">105</span>, <span class="number">111</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">40</span>, <span class="number">112</span>, <span class="number">99</span>, <span class="number">61</span>, <span class="number">48</span>, <span class="number">58</span>, <span class="number">51</span>, <span class="number">51</span>, <span class="number">57</span>, <span class="number">41</span>, <span class="number">10</span>, <span class="number">10</span>, <span class="number">67</span>, <span class="number">97</span>,
+                <span class="number">105</span>, <span class="number">114</span>, <span class="number">111</span>, <span class="number">32</span>, <span class="number">116</span>, <span class="number">114</span>, <span class="number">97</span>, <span class="number">99</span>, <span class="number">101</span>, <span class="number">98</span>, <span class="number">97</span>, <span class="number">99</span>, <span class="number">107</span>, <span class="number">32</span>, <span class="number">40</span>, <span class="number">109</span>, <span class="number">111</span>, <span class="number">115</span>,
+                <span class="number">116</span>, <span class="number">32</span>, <span class="number">114</span>, <span class="number">101</span>, <span class="number">99</span>, <span class="number">101</span>, <span class="number">110</span>, <span class="number">116</span>, <span class="number">32</span>, <span class="number">99</span>, <span class="number">97</span>, <span class="number">108</span>, <span class="number">108</span>, <span class="number">32</span>, <span class="number">108</span>, <span class="number">97</span>, <span class="number">115</span>, <span class="number">116</span>,
+                <span class="number">41</span>, <span class="number">58</span>, <span class="number">10</span>, <span class="number">85</span>, <span class="number">110</span>, <span class="number">107</span>, <span class="number">110</span>, <span class="number">111</span>, <span class="number">119</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">108</span>, <span class="number">111</span>, <span class="number">99</span>, <span class="number">97</span>, <span class="number">116</span>, <span class="number">105</span>, <span class="number">111</span>,
+                <span class="number">110</span>, <span class="number">32</span>, <span class="number">40</span>, <span class="number">112</span>, <span class="number">99</span>, <span class="number">61</span>, <span class="number">48</span>, <span class="number">58</span>, <span class="number">49</span>, <span class="number">54</span>, <span class="number">55</span>, <span class="number">56</span>, <span class="number">41</span>, <span class="number">10</span>, <span class="number">85</span>, <span class="number">110</span>, <span class="number">107</span>, <span class="number">110</span>, <span class="number">111</span>,
+                <span class="number">119</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">108</span>, <span class="number">111</span>, <span class="number">99</span>, <span class="number">97</span>, <span class="number">116</span>, <span class="number">105</span>, <span class="number">111</span>, <span class="number">110</span>, <span class="number">32</span>, <span class="number">40</span>, <span class="number">112</span>, <span class="number">99</span>, <span class="number">61</span>, <span class="number">48</span>, <span class="number">58</span>,
+                <span class="number">49</span>, <span class="number">54</span>, <span class="number">54</span>, <span class="number">52</span>, <span class="number">41</span>, <span class="number">10
+            </span>]),
+            <span class="string">"argent/multicall-failed\x03\\xe8Native execution error: Error at pc=0:104:\nGot an exception while executing a hint: Error at pc=0:184:\nGot an exception while executing a hint: Exceeded the maximum number of events, number events: 1001, max number events: 1000.\nCairo traceback (most recent call last):\nUnknown location (pc=0:1434)\nUnknown location (pc=0:1395)\nUnknown location (pc=0:953)\nUnknown location (pc=0:339)\n\nCairo traceback (most recent call last):\nUnknown location (pc=0:1678)\nUnknown location (pc=0:1664)\n"</span>,
+        );
     }
 
     <span class="comment">// ==============================
