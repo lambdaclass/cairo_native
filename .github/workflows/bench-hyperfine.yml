@@ -164,7 +164,7 @@ jobs:
         # if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         run: |
           make build
-          mkdir bin lib-${{ matrix.branch }}
+          mkdir bin lib
           cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
           cp target/release/libcairo_native_runtime.a lib/libcairo-native-runtime-${{ matrix.branch }}.a
   
