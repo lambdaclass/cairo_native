@@ -474,6 +474,7 @@
 <a href="#474" id="474">474</a>
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
 </span><span class="kw">use </span>cairo_lang_sierra_gas::core_libfunc_cost::{
@@ -485,6 +486,7 @@
 <span class="kw">use </span>starknet_types_core::{
     curve::{AffinePoint, ProjectivePoint},
     felt::Felt,
+    hash::StarkHash,
 };
 <span class="kw">use </span>std::ops::Mul;
 <span class="kw">use </span>std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
@@ -586,7 +588,7 @@
     <span class="kw">let </span>rhs = Felt::from_bytes_le_slice(rhs);
 
     <span class="comment">// Compute pedersen hash and copy the result into `dst`.
-    </span><span class="kw">let </span>res = starknet_crypto::pedersen_hash(<span class="kw-2">&amp;</span>lhs, <span class="kw-2">&amp;</span>rhs);
+    </span><span class="kw">let </span>res = starknet_types_core::hash::Pedersen::hash(<span class="kw-2">&amp;</span>lhs, <span class="kw-2">&amp;</span>rhs);
     dst.copy_from_slice(<span class="kw-2">&amp;</span>res.to_bytes_le());
 }
 
@@ -621,7 +623,7 @@
     ];
 
     <span class="comment">// Compute Poseidon permutation.
-    </span>starknet_crypto::poseidon_permute_comp(<span class="kw-2">&amp;mut </span>state);
+    </span>starknet_types_core::hash::Poseidon::hades_permutation(<span class="kw-2">&amp;mut </span>state);
 
     <span class="comment">// Write back the results.
     </span>op0.copy_from_slice(<span class="kw-2">&amp;</span>state[<span class="number">0</span>].to_bytes_le());
