@@ -212,14 +212,12 @@ jobs:
 
       - name: Run Program
         run: |
-          BINS="base,head"
           cp programs/benches/$PROGRAM.cairo .
           mkdir $OUTPUT_DIR
           hyperfine \
           --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
           --warmup 3 \
-          -L bin "$BINS" \
           --show-output \
           -n "head $PROGRAM (JIT)" "./bin/cairo-native-run-head --run-mode=jit -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
           -n "base $PROGRAM (JIT)" "./bin/cairo-native-run-base --run-mode=jit -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
