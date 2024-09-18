@@ -95,7 +95,7 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     strategy:
       matrix:
-        branch: [ base ]
+        branch: [ base, head ]
     name: Build cairo-native-run for ${{ matrix.branch }}
     runs-on: ubuntu-latest
     steps:
@@ -212,7 +212,7 @@ jobs:
 
       - name: Run Program
         run: |
-          BINS="base"
+          BINS="base,head"
           cp programs/benches/$PROGRAM.cairo .
           mkdir $OUTPUT_DIR
           hyperfine \
@@ -220,10 +220,9 @@ jobs:
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
           --warmup 3 \
           -L bin "$BINS" \
-          --prepare "export CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-base.a" \
           --show-output \
           -n "{bin} $PROGRAM (JIT)" "./bin/cairo-native-run-{bin} --run-mode=jit -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
-          -n "{bin} $PROGRAM (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-base.a ./bin/cairo-native-run-{bin} --run-mode=aot -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
+          -n "{bin} $PROGRAM (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-{bin}.a ./bin/cairo-native-run-{bin} --run-mode=aot -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
           >> /dev/stderr
 
       - name: Print tables
