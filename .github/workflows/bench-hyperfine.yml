@@ -212,25 +212,28 @@ jobs:
 
       - name: Run Program
         run: |
-          cp programs/benches/$PROGRAM.cairo .
           mkdir $OUTPUT_DIR
-          hyperfine \
-          --export-markdown "$OUTPUT_DIR/$PROGRAM.md" \
-          --export-json "$OUTPUT_DIR/$PROGRAM.json" \
-          --warmup 3 \
-          --show-output \
-          -n "head $PROGRAM (JIT)" "./bin/cairo-native-run-head --run-mode=jit -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
-          -n "base $PROGRAM (JIT)" "./bin/cairo-native-run-base --run-mode=jit -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
-          -n "head $PROGRAM (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-head.a ./bin/cairo-native-run-head --run-mode=aot -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
-          -n "base $PROGRAM (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-base.a ./bin/cairo-native-run-base --run-mode=aot -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
-          >> /dev/stderr
-
+          cp programs/benches/*.cairo $OUTPUT_DIR
+          for f in $OUTPUT_DIR/*.cairo; do
+            hyperfine \
+            --export-markdown "${f%.*}.md" \
+            --export-json "${f%.*}.json" \
+            --warmup 3 \
+            --show-output \
+            -n "head ${basename $f} (JIT)" "./bin/cairo-native-run-head --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "base ${basename $f} (JIT)" "./bin/cairo-native-run-base --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "head ${basename $f} (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-head.a ./bin/cairo-native-run-head --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "base ${basename $f} (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-base.a ./bin/cairo-native-run-base --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            >> /dev/stderr
+          done
       - name: Print tables
         run: |
           {
             echo "Benchmark results base v head"
-            echo
-            cat $OUTPUT_DIR/$PROGRAM.md
+            for f in $OUTPUT_DIR/*.md, do
+              echo
+              cat $f
+            done
           } | tee -a comment_body.md
 
       - name: Find Bench Comment
