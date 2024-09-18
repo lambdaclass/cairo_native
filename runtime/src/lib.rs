@@ -9,6 +9,7 @@ use starknet_curve::curve_params::BETA;
 use starknet_types_core::{
     curve::{AffinePoint, ProjectivePoint},
     felt::Felt,
+    hash::StarkHash,
 };
 use std::ops::Mul;
 use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
@@ -110,7 +111,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
     let rhs = Felt::from_bytes_le_slice(rhs);
 
     // Compute pedersen hash and copy the result into `dst`.
-    let res = starknet_crypto::pedersen_hash(&lhs, &rhs);
+    let res = starknet_types_core::hash::Pedersen::hash(&lhs, &rhs);
     dst.copy_from_slice(&res.to_bytes_le());
 }
 
@@ -145,7 +146,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
     ];
 
     // Compute Poseidon permutation.
-    starknet_crypto::poseidon_permute_comp(&mut state);
+    starknet_types_core::hash::Poseidon::hades_permutation(&mut state);
 
     // Write back the results.
     op0.copy_from_slice(&state[0].to_bytes_le());

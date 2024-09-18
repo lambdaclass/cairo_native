@@ -64,7 +64,7 @@ use crate::{
     module::NativeModule,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::{generate_function_name, get_integer_layout},
+    utils::{decode_error_message, generate_function_name, get_integer_layout},
     OptLevel,
 };
 
@@ -401,7 +401,7 @@ impl ContractExecutor {
                 // remove null chars
                 .filter(|b| *b != 0)
                 .collect();
-            let str_error = String::from_utf8(bytes_err).unwrap().to_owned();
+            let str_error = decode_error_message(&bytes_err);
 
             error_msg = Some(str_error);
         }
