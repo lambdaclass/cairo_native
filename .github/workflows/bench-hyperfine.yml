@@ -228,7 +228,7 @@ jobs:
       - name: Print tables
         run: |
           {
-            echo "Benchmark results base v head"
+            echo "Benchmark results Main vs HEAD"
             for f in $OUTPUT_DIR/*.md; do
               echo
               cat $f
