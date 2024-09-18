@@ -103,12 +103,18 @@ jobs:
         uses: actions/cache@v3
         id: cache-binary 
         with:
-          path: |
-            bin/cairo-native-run-${{ matrix.branch }}
-            bin/libcairo-native-runtime-${{ matrix.branch }}.a
-          key: binary-${{ github.event.pull_request[matrix.branch].sha }} 
+          path: bin/cairo-native-run-${{ matrix.branch }}
+          key: binary-${{ github.event.pull_request[matrix.branch].sha }}
+        
+      - name: Cache runtime-library
+        uses: actions/cache@v3
+        id: cache-library 
+        with:
+          path: lib/libcairo-native-runtime-${{ matrix.branch }}.a
+          key: library-${{ github.event.pull_request[matrix.branch].sha }} 
       
       - name: check and free hdd space left
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
         run: |
           echo "Listing 20 largest packages"
           dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
@@ -129,11 +135,11 @@ jobs:
           df -h
 
       - name: Install Rust
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-librart.outputs.cache-hit != 'true' }}
         uses: dtolnay/rust-toolchain@1.81.0
           
       - name: add llvm deb repository
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-librart.outputs.cache-hit != 'true' }}
         uses: myci-actions/add-deb-repo@11
         with:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
@@ -141,26 +147,26 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       
       - name: Install LLVM
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-librart.outputs.cache-hit != 'true' }}
         run: sudo apt-get update && sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
 
       - name: Checkout base commit
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-librart.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request[matrix.branch].sha }}
         
       - name: Fetch Rust cache
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-librart.outputs.cache-hit != 'true' }}
         uses: Swatinem/rust-cache@v2
       
       - name: Build binary
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-librart.outputs.cache-hit != 'true' }}
         run: |
           make build
-          mkdir bin
+          mkdir lib bin
           cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
-          cp target/release/libcairo_native_runtime.a bin/libcairo-native-runtime-${{ matrix.branch }}.a
+          cp target/release/libcairo_native_runtime.a lib/libcairo-native-runtime-${{ matrix.branch }}.a
   
   hyperfine-prs:
     name: Bench PR (linux, amd64)
@@ -180,18 +186,26 @@ jobs:
       - name: Fetch base binary
         uses: actions/cache/restore@v3
         with:
-          path: |
-            bin/cairo-native-run-base
-            bin/libcairo-native-runtime-base
+          path: bin/cairo-native-run-base
           key: binary-${{ github.event.pull_request.base.sha }}
-    
+
       - name: Fetch HEAD binary
         uses: actions/cache/restore@v3
         with:
-          path: |
-            bin/cairo-native-run-head
-            bin/libcairo-native-runtime-head
+          path: bin/cairo-native-run-head
           key: binary-${{ github.event.pull_request.head.sha }}
+
+      - name: Fetch base runtime-library
+        uses: actions/cache/restore@v3
+        with:
+          path: lib/libcairo-native-runtime-base.a
+          key: library-${{ github.event.pull_request.base.sha }}
+
+      - name: Fetch head runtime-library
+        uses: actions/cache/restore@v3
+        with:
+          path: lib/libcairo-native-runtime-head.a
+          key: library-${{ github.event.pull_request.head.sha }}
 
       - name: Build Dependencies
         run: make deps
@@ -206,7 +220,7 @@ jobs:
           --export-json "$OUTPUT_DIR/$PROGRAM.json" \
           --warmup 3 \
           -L bin "$BINS" \
-          --prepare "export CAIRO_NATIVE_RUNTIME_LIBRARY=bin/libcairo-native-runtime-base.a" \
+          --prepare "export CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-base.a" \
           --show-output \
           -n "{bin} $PROGRAM (JIT)" "./bin/cairo-native-run-{bin} --run-mode=jit -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
           -n "{bin} $PROGRAM (AOT)" "./bin/cairo-native-run-{bin} --run-mode=aot -s $PROGRAM.cairo --opt-level 3 --available-gas 18446744073709551615" \
