@@ -10,11 +10,10 @@ crate-type = ["rlib", "cdylib", "staticlib"]
 
 [dependencies]
 starknet-types-core = { version = "0.1.5", default-features = false, features = [
-    "std", "serde",
+    "std", "serde", "hash"
 ] }
-cairo-lang-sierra-gas = "2.7.1"
+cairo-lang-sierra-gas = "2.8.2"
 libc = "0.2.158"
-starknet-crypto = "0.7.1"
 starknet-curve = "0.5.0"
 lazy_static = "1.5.0"
 rand = "0.8.5"

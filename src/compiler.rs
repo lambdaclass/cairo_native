@@ -40,11 +40,12 @@
 //! ## Tail-recursive functions
 //!
 //! Part of the tail-recursion handling algorithm is implemented here, but tail-recursive functions
-//! are better explained in (their metadata section)[crate::metadata::tail_recursion].
+//! are better explained in [their metadata section](crate::metadata::tail_recursion).
 //!
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
+    block_ext::BlockExt,
     debug::libfunc_to_name,
     error::Error,
     ffi::{
@@ -65,7 +66,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     edit_state,
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
         ConcreteLibfunc,
     },
     ids::{ConcreteTypeId, VarId},
@@ -82,7 +83,11 @@ use melior::{
         memref,
     },
     ir::{
-        attribute::{IntegerAttribute, StringAttribute, TypeAttribute},
+        attribute::{
+            DenseI64ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,
+            TypeAttribute,
+        },
+        operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
         Value,
@@ -122,6 +127,7 @@ pub fn compile(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
+    ignore_debug_names: bool,
 ) -> Result<(), Error> {
     if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
         if x == "1" || x == "true" {
@@ -129,14 +135,12 @@ pub fn compile(
         }
     }
 
-    /*
-       A Sierra file is structured consistently,
-       it first has the types, followed by a empty line,
-       then the libfuncs, then the statements start.
-
-       This is how to calculate the offset to correctly show it on the debugger.
-    */
-
+    // Sierra programs have the following structure:
+    //   1. Type declarations, one per line.
+    //   2. Libfunc declarations, one per line.
+    //   3. All the program statements, one per line.
+    //   4. Function declarations, one per line.
+    // The four sections are separated by a single blank line.
     let num_types = program.type_declarations.len() + 1;
     let n_libfuncs = program.libfunc_declarations.len() + 1;
     let sierra_stmt_start_offset = num_types + n_libfuncs + 1;
@@ -152,6 +156,7 @@ pub fn compile(
             metadata,
             di_compile_unit_id,
             sierra_stmt_start_offset,
+            ignore_debug_names,
         )?;
     }
 
@@ -165,6 +170,8 @@ pub fn compile(
 /// and name. Check out [compile](self::compile) for a description of the other arguments.
 ///
 /// The [module docs](self) contain more information about the compilation process.
+///
+/// If [`ignore_debug_names`] is true, then the function name will always be `f{id}` without any debug name info if it ever exists.
 #[allow(clippy::too_many_arguments)]
 fn compile_func(
     context: &Context,
@@ -175,6 +182,7 @@ fn compile_func(
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
     sierra_stmt_start_offset: usize,
+    ignore_debug_names: bool,
 ) -> Result<(), Error> {
     let fn_location = Location::new(
         context,
@@ -208,15 +216,24 @@ fn compile_func(
         arg_types
             .iter_mut()
             .zip(function.signature.param_types.iter().filter_map(|type_id| {
-                let type_info = registry.get_type(type_id).unwrap();
-                if type_info.is_builtin() && type_info.is_zst(registry) {
+                let type_info = match registry.get_type(type_id) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e.into())),
+                };
+                let is_zst = match type_info.is_zst(registry) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e)),
+                };
+
+                if type_info.is_builtin() && is_zst {
                     None
                 } else {
-                    Some(type_info)
+                    Some(Ok(type_info))
                 }
             }))
     {
-        if type_info.is_memory_allocated(registry) {
+        let type_info = type_info?;
+        if type_info.is_memory_allocated(registry)? {
             *ty = llvm::r#type::pointer(context, 0);
         }
     }
@@ -228,14 +245,22 @@ fn compile_func(
         .ret_types
         .iter()
         .filter_map(|type_id| {
-            let type_info = registry.get_type(type_id).unwrap();
-            if type_info.is_builtin() && type_info.is_zst(registry) {
+            let type_info = match registry.get_type(type_id) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e.into())),
+            };
+            let is_zst = match type_info.is_zst(registry) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e)),
+            };
+
+            if type_info.is_builtin() && is_zst {
                 None
             } else {
-                Some((type_id, type_info))
+                Some(Ok((type_id, type_info)))
             }
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()?;
     // Possible values:
     //   None        => Doesn't return anything.
     //   Some(false) => Has a complex return type.
@@ -244,7 +269,9 @@ fn compile_func(
         Some(false)
     } else if return_type_infos
         .first()
-        .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
+        .map(|(_, type_info)| type_info.is_memory_allocated(registry))
+        .transpose()?
+        == Some(true)
     {
         assert_eq!(return_types.len(), 1);
 
@@ -256,7 +283,10 @@ fn compile_func(
         None
     };
 
-    let function_name = generate_function_name(&function.id);
+    let function_name = generate_function_name(&function.id, ignore_debug_names);
+    // Don't care about whether it is for the contract executor for inner impls
+    // so we don't have to pass the boolean to the function call libfunc.
+    let function_name_for_inner = generate_function_name(&function.id, false);
 
     let di_subprogram = unsafe {
         // Various DWARF debug attributes for this function.
@@ -323,7 +353,7 @@ fn compile_func(
     };
 
     tracing::debug!("Generating function structure (region with blocks).");
-    let (entry_block, blocks) = generate_function_structure(
+    let (entry_block, blocks, is_recursive) = generate_function_structure(
         context,
         module,
         &region,
@@ -336,25 +366,22 @@ fn compile_func(
 
     tracing::debug!("Generating the function implementation.");
     // Workaround for the `entry block of region may not have predecessors` error:
-    let pre_entry_block = region.insert_block_before(
-        entry_block,
-        Block::new(
-            &arg_types
-                .iter()
-                .map(|ty| {
-                    (
-                        *ty,
-                        Location::new(
-                            context,
-                            "program.sierra",
-                            sierra_stmt_start_offset + function.entry_point.0,
-                            0,
-                        ),
-                    )
-                })
-                .collect::<Vec<_>>(),
-        ),
-    );
+    let pre_entry_block_args = arg_types
+        .iter()
+        .map(|ty| {
+            (
+                *ty,
+                Location::new(
+                    context,
+                    "program.sierra",
+                    sierra_stmt_start_offset + function.entry_point.0,
+                    0,
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    let pre_entry_block =
+        region.insert_block_before(entry_block, Block::new(&pre_entry_block_args));
 
     let initial_state = edit_state::put_results(OrderedHashMap::<_, Value>::default(), {
         let mut values = Vec::new();
@@ -371,7 +398,7 @@ fn compile_func(
 
             values.push((
                 &param.id,
-                if type_info.is_builtin() && type_info.is_zst(registry) {
+                if type_info.is_builtin() && type_info.is_zst(registry)? {
                     pre_entry_block
                         .append_operation(llvm::undef(
                             type_info.build(context, module, registry, metadata, &param.ty)?,
@@ -411,12 +438,12 @@ fn compile_func(
         },
     ));
 
-    let mut tailrec_storage = Vec::<(Value, BlockRef)>::new();
+    let mut tailrec_state = Option::<(Value, BlockRef)>::None;
     foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
-        (initial_state, BTreeMap::<usize, usize>::new()),
-        |statement_idx, (mut state, mut tailrec_state)| {
+        initial_state,
+        |statement_idx, mut state| {
             if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
                 let gas_cost = gas_metadata.get_gas_cost_for_statement(statement_idx);
                 metadata.remove::<GasCost>();
@@ -515,53 +542,55 @@ fn compile_func(
                             .collect::<Vec<_>>(),
                     };
 
-                    let concrete_libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
-                    if let Some(target) = concrete_libfunc.is_function_call() {
-                        if target == &function.id && state.is_empty() {
-                            // TODO: Defer insertions until after the recursion has been confirmed
-                            //   (when removing the meta, if a return target is set).
-                            // TODO: Explore replacing the `memref` counter with a normal variable.
-                            let location = Location::name(
-                                context,
-                                &format!("recursion_counter({})", libfunc_name),
-                                location,
-                            );
-                            let op0 = pre_entry_block.insert_operation(
-                                0,
-                                memref::alloca(
+                    let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
+                    if is_recursive {
+                        if let Some(target) = libfunc.is_function_call() {
+                            if target == &function.id && state.is_empty() {
+                                let location = Location::name(
                                     context,
-                                    MemRefType::new(Type::index(context), &[], None, None),
-                                    &[],
-                                    &[],
-                                    None,
+                                    &format!("recursion_counter({})", libfunc_name),
                                     location,
-                                ),
-                            );
-                            let op1 = pre_entry_block.insert_operation_after(
-                                op0,
-                                index::constant(
-                                    context,
-                                    IntegerAttribute::new(Type::index(context), 0),
-                                    location,
-                                ),
-                            );
-                            pre_entry_block.insert_operation_after(
-                                op1,
-                                memref::store(
-                                    op1.result(0)?.into(),
-                                    op0.result(0)?.into(),
-                                    &[],
-                                    location,
-                                ),
-                            );
+                                );
+                                let op0 = pre_entry_block.insert_operation(
+                                    0,
+                                    memref::alloca(
+                                        context,
+                                        MemRefType::new(Type::index(context), &[], None, None),
+                                        &[],
+                                        &[],
+                                        None,
+                                        location,
+                                    ),
+                                );
+                                let op1 = pre_entry_block.insert_operation_after(
+                                    op0,
+                                    index::constant(
+                                        context,
+                                        IntegerAttribute::new(Type::index(context), 0),
+                                        location,
+                                    ),
+                                );
+                                pre_entry_block.insert_operation_after(
+                                    op1,
+                                    memref::store(
+                                        op1.result(0)?.into(),
+                                        op0.result(0)?.into(),
+                                        &[],
+                                        location,
+                                    ),
+                                );
 
-                            metadata
-                                .insert(TailRecursionMeta::new(op0.result(0)?.into(), &entry_block))
-                                .expect("should not have this metadata inserted yet");
+                                metadata
+                                    .insert(TailRecursionMeta::new(
+                                        op0.result(0)?.into(),
+                                        &entry_block,
+                                    ))
+                                    .expect("tail recursion metadata shouldn't be inserted");
+                            }
                         }
                     }
 
-                    concrete_libfunc.build(
+                    libfunc.build(
                         context,
                         registry,
                         block,
@@ -573,34 +602,32 @@ fn compile_func(
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
                         if let Some(return_block) = tailrec_meta.return_target() {
-                            tailrec_state.insert(statement_idx.0, tailrec_storage.len());
-                            tailrec_storage.push((tailrec_meta.depth_counter(), return_block));
+                            tailrec_state = Some((tailrec_meta.depth_counter(), return_block));
                         }
                     }
 
-                    invocation
-                        .branches
-                        .iter()
-                        .zip(helper.results())
-                        .map(|(branch_info, result_values)| {
-                            assert_eq!(
-                                branch_info.results.len(),
-                                result_values.len(),
-                                "Mismatched number of returned values from branch."
-                            );
+                    StatementCompileResult::Processed(
+                        invocation
+                            .branches
+                            .iter()
+                            .zip(helper.results())
+                            .map(|(branch_info, result_values)| {
+                                assert_eq!(
+                                    branch_info.results.len(),
+                                    result_values.len(),
+                                    "Mismatched number of returned values from branch."
+                                );
 
-                            Ok((
-                                edit_state::put_results(
+                                Ok(edit_state::put_results(
                                     state.clone(),
                                     branch_info
                                         .results
                                         .iter()
                                         .zip(result_values.iter().copied()),
-                                )?,
-                                tailrec_state.clone(),
-                            ))
-                        })
-                        .collect::<Result<_, Error>>()?
+                                )?)
+                            })
+                            .collect::<Result<_, Error>>()?,
+                    )
                 }
                 Statement::Return(var_ids) => {
                     tracing::trace!("Implementing the return statement at {statement_idx}");
@@ -619,116 +646,139 @@ fn compile_func(
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
                     let mut block = *block;
-                    if !tailrec_state.is_empty() {
-                        let location = Location::name(
-                            context,
-                            &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
-                            Location::new(
-                                context,
-                                "program.sierra",
-                                sierra_stmt_start_offset + statement_idx.0,
-                                0,
-                            ),
-                        );
-                        // Perform tail recursion.
-                        for counter_idx in tailrec_state.into_values() {
-                            let cont_block = region.insert_block_after(block, Block::new(&[]));
-
-                            let (depth_counter, return_target) = tailrec_storage[counter_idx];
-                            let depth_counter_value = block
-                                .append_operation(memref::load(depth_counter, &[], location))
-                                .result(0)?
-                                .into();
-                            let k0 = block
-                                .append_operation(index::constant(
+                    if is_recursive {
+                        match tailrec_state {
+                            None => {
+                                // If this block is reached it means that a return has been detected
+                                // within a tail-recursive function before the recursive call has
+                                // been generated. Since we don't have the return target block at
+                                // this point we need to defer this return statement's generation.
+                                return Ok(StatementCompileResult::Deferred);
+                            }
+                            Some((depth_counter, recursion_target)) => {
+                                let location = Location::name(
                                     context,
-                                    IntegerAttribute::new(Type::index(context), 0),
+                                    &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
+                                    Location::new(
+                                        context,
+                                        "program.sierra",
+                                        sierra_stmt_start_offset + statement_idx.0,
+                                        0,
+                                    ),
+                                );
+
+                                // Perform tail recursion.
+                                let cont_block = region.insert_block_after(block, Block::new(&[]));
+
+                                let depth_counter_value = block.append_op_result(memref::load(
+                                    depth_counter,
+                                    &[],
                                     location,
-                                ))
-                                .result(0)?
-                                .into();
-                            let is_zero_depth = block
-                                .append_operation(index::cmp(
+                                ))?;
+                                let k0 = block.const_int_from_type(
+                                    context,
+                                    location,
+                                    0,
+                                    Type::index(context),
+                                )?;
+                                let is_zero_depth = block.append_op_result(index::cmp(
                                     context,
                                     CmpiPredicate::Eq,
                                     depth_counter_value,
                                     k0,
                                     location,
-                                ))
-                                .result(0)?
-                                .into();
+                                ))?;
 
-                            let k1 = block
-                                .append_operation(index::constant(
+                                let k1 = block.const_int_from_type(
                                     context,
-                                    IntegerAttribute::new(Type::index(context), 1),
                                     location,
-                                ))
-                                .result(0)?
-                                .into();
-                            let depth_counter_value = block
-                                .append_operation(index::sub(depth_counter_value, k1, location))
-                                .result(0)?
-                                .into();
-                            block.append_operation(memref::store(
-                                depth_counter_value,
-                                depth_counter,
-                                &[],
-                                location,
-                            ));
+                                    1,
+                                    Type::index(context),
+                                )?;
+                                let depth_counter_value = block.append_op_result(index::sub(
+                                    depth_counter_value,
+                                    k1,
+                                    location,
+                                ))?;
+                                block.append_operation(memref::store(
+                                    depth_counter_value,
+                                    depth_counter,
+                                    &[],
+                                    location,
+                                ));
 
-                            let recursive_values = match has_return_ptr {
-                                Some(true) => function
-                                    .signature
-                                    .ret_types
-                                    .iter()
-                                    .zip(&values)
-                                    .filter_map(|(type_id, value)| {
-                                        let type_info = registry.get_type(type_id).unwrap();
-                                        if type_info.is_zst(registry)
-                                            || type_info.is_memory_allocated(registry)
-                                        {
-                                            None
-                                        } else {
-                                            Some(*value)
-                                        }
-                                    })
-                                    .collect::<Vec<_>>(),
-                                Some(false) => function
-                                    .signature
-                                    .ret_types
-                                    .iter()
-                                    .zip(&values)
-                                    .filter_map(|(type_id, value)| {
-                                        let type_info = registry.get_type(type_id).unwrap();
-                                        if type_info.is_zst(registry) {
-                                            None
-                                        } else {
-                                            Some(*value)
-                                        }
-                                    })
-                                    .collect::<Vec<_>>(),
-                                None => todo!(),
-                            };
+                                let recursive_values = match has_return_ptr {
+                                    Some(true) => function
+                                        .signature
+                                        .ret_types
+                                        .iter()
+                                        .zip(&values)
+                                        .filter_map(|(type_id, value)| {
+                                            let type_info = match registry.get_type(type_id) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e.into())),
+                                            };
+                                            let is_zst = match type_info.is_zst(registry) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e)),
+                                            };
+                                            let is_memory_allocated =
+                                                match type_info.is_memory_allocated(registry) {
+                                                    Ok(x) => x,
+                                                    Err(e) => return Some(Err(e)),
+                                                };
 
-                            block.append_operation(cf::cond_br(
-                                context,
-                                is_zero_depth,
-                                &cont_block,
-                                &return_target,
-                                &[],
-                                &recursive_values,
-                                location,
-                            ));
+                                            if is_zst || is_memory_allocated {
+                                                None
+                                            } else {
+                                                Some(Ok(*value))
+                                            }
+                                        })
+                                        .collect::<Result<Vec<_>, _>>()?,
+                                    Some(false) => function
+                                        .signature
+                                        .ret_types
+                                        .iter()
+                                        .zip(&values)
+                                        .filter_map(|(type_id, value)| {
+                                            let type_info = match registry.get_type(type_id) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e.into())),
+                                            };
+                                            let is_zst = match type_info.is_zst(registry) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e)),
+                                            };
 
-                            block = cont_block;
+                                            if is_zst {
+                                                None
+                                            } else {
+                                                Some(Ok(*value))
+                                            }
+                                        })
+                                        .collect::<Result<Vec<_>, _>>()?,
+                                    None => todo!(),
+                                };
+
+                                block.append_operation(cf::cond_br(
+                                    context,
+                                    is_zero_depth,
+                                    &cont_block,
+                                    &recursion_target,
+                                    &[],
+                                    &recursive_values,
+                                    location,
+                                ));
+
+                                block = cont_block;
+                            }
                         }
                     }
 
                     // Remove ZST builtins from the return values.
                     for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
                         let type_info = registry.get_type(type_id)?;
-                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                        if type_info.is_builtin() && type_info.is_zst(registry)? {
                             values.remove(idx);
                         }
                     }
@@ -751,9 +801,26 @@ fn compile_func(
                         ));
                     }
 
-                    block.append_operation(func::r#return(&values, location));
+                    block.append_operation(llvm::r#return(
+                        Some({
+                            let res_ty = llvm::r#type::r#struct(context, &return_types, false);
+                            values.iter().enumerate().try_fold(
+                                block.append_op_result(llvm::undef(res_ty, location))?,
+                                |acc, (idx, x)| {
+                                    block.append_op_result(llvm::insert_value(
+                                        context,
+                                        acc,
+                                        DenseI64ArrayAttribute::new(context, &[idx as i64]),
+                                        *x,
+                                        location,
+                                    ))
+                                },
+                            )?
+                        }),
+                        location,
+                    ));
 
-                    Vec::new()
+                    StatementCompileResult::Processed(Vec::new())
                 }
             })
         },
@@ -770,13 +837,23 @@ fn compile_func(
                 registry
                     .get_type(type_id)
                     .map(|type_info| {
-                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                        let is_zst = match type_info.is_zst(registry) {
+                            Ok(x) => x,
+                            Err(e) => return Some(Err(e)),
+                        };
+
+                        if type_info.is_builtin() && is_zst {
                             None
                         } else {
-                            Some((type_id, type_info))
+                            Some(Ok((type_id, type_info)))
                         }
                     })
+                    .map_err(Error::from)
                     .transpose()
+                    .map(|x| match x {
+                        Ok(Ok(x)) => Ok(x),
+                        Ok(Err(e)) | Err(e) => Err(e),
+                    })
             })
             .enumerate()
         {
@@ -785,7 +862,7 @@ fn compile_func(
             let mut value = pre_entry_block
                 .argument((has_return_ptr == Some(true)) as usize + i)?
                 .into();
-            if type_info.is_memory_allocated(registry) {
+            if type_info.is_memory_allocated(registry)? {
                 value = pre_entry_block
                     .append_operation(llvm::load(
                         context,
@@ -807,20 +884,25 @@ fn compile_func(
         pre_entry_block.append_operation(cf::br(&entry_block, &arg_values, fn_location));
     }
 
-    module.body().append_operation(func::func(
+    let inner_function_name = format!("impl${function_name_for_inner}");
+    module.body().append_operation(llvm::func(
         context,
-        StringAttribute::new(context, &function_name),
-        TypeAttribute::new(FunctionType::new(context, &arg_types, &return_types).into()),
+        StringAttribute::new(context, &inner_function_name),
+        TypeAttribute::new(llvm::r#type::function(
+            llvm::r#type::r#struct(context, &return_types, false),
+            &arg_types,
+            false,
+        )),
         region,
         &[
             (
                 Identifier::new(context, "sym_visibility"),
                 StringAttribute::new(context, "public").into(),
             ),
-            (
-                Identifier::new(context, "llvm.emit_c_interface"),
-                Attribute::unit(context),
-            ),
+            // (
+            //     Identifier::new(context, "CConv"),
+            //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
+            // ),
         ],
         Location::fused(
             context,
@@ -833,6 +915,21 @@ fn compile_func(
             di_subprogram,
         ),
     ));
+
+    generate_entry_point_wrapper(
+        context,
+        module,
+        function_name.as_ref(),
+        &inner_function_name,
+        &pre_entry_block_args,
+        &return_types,
+        Location::new(
+            context,
+            "program.sierra",
+            sierra_stmt_start_offset + function.entry_point.0,
+            0,
+        ),
+    )?;
 
     tracing::debug!("Done generating function {}.", function.id);
     Ok(())
@@ -848,7 +945,7 @@ fn generate_function_structure<'c, 'a>(
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
     sierra_stmt_start_offset: usize,
-) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>), Error> {
+) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>, bool), Error> {
     let initial_state = edit_state::put_results::<Type>(
         OrderedHashMap::default(),
         function
@@ -869,6 +966,7 @@ fn generate_function_structure<'c, 'a>(
     let mut blocks = BTreeMap::new();
     let mut predecessors = HashMap::from([(function.entry_point, (initial_state.clone(), 0))]);
 
+    let mut num_tail_recursions = 0usize;
     foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
@@ -908,44 +1006,52 @@ fn generate_function_structure<'c, 'a>(
                     }
 
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
-                    invocation
-                        .branches
-                        .iter()
-                        .zip(libfunc.branch_signatures())
-                        .map(|(branch, branch_signature)| {
-                            let state = edit_state::put_results(
-                                state.clone(),
-                                branch.results.iter().zip(
-                                    branch_signature
-                                        .vars
-                                        .iter()
-                                        .map(|var_info| -> Result<_, Error> {
-                                            registry.get_type(&var_info.ty)?.build(
-                                                context,
-                                                module,
-                                                registry,
-                                                metadata_storage,
-                                                &var_info.ty,
-                                            )
-                                        })
-                                        .collect::<Result<Vec<_>, _>>()?,
-                                ),
-                            )?;
+                    if let CoreConcreteLibfunc::FunctionCall(info) = libfunc {
+                        if info.function.id == function.id && state.is_empty() {
+                            num_tail_recursions += 1;
+                        }
+                    }
 
-                            let (prev_state, pred_count) =
-                                match predecessors.entry(statement_idx.next(&branch.target)) {
-                                    Entry::Occupied(entry) => entry.into_mut(),
-                                    Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
-                                };
-                            assert!(
-                                prev_state.eq_unordered(&state),
-                                "Branch target states do not match."
-                            );
-                            *pred_count += 1;
+                    StatementCompileResult::Processed(
+                        invocation
+                            .branches
+                            .iter()
+                            .zip(libfunc.branch_signatures())
+                            .map(|(branch, branch_signature)| {
+                                let state = edit_state::put_results(
+                                    state.clone(),
+                                    branch.results.iter().zip(
+                                        branch_signature
+                                            .vars
+                                            .iter()
+                                            .map(|var_info| -> Result<_, Error> {
+                                                registry.get_type(&var_info.ty)?.build(
+                                                    context,
+                                                    module,
+                                                    registry,
+                                                    metadata_storage,
+                                                    &var_info.ty,
+                                                )
+                                            })
+                                            .collect::<Result<Vec<_>, _>>()?,
+                                    ),
+                                )?;
 
-                            Ok(state)
-                        })
-                        .collect::<Result<_, Error>>()?
+                                let (prev_state, pred_count) =
+                                    match predecessors.entry(statement_idx.next(&branch.target)) {
+                                        Entry::Occupied(entry) => entry.into_mut(),
+                                        Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
+                                    };
+                                assert!(
+                                    prev_state.eq_unordered(&state),
+                                    "Branch target states do not match."
+                                );
+                                *pred_count += 1;
+
+                                Ok(state)
+                            })
+                            .collect::<Result<_, Error>>()?,
+                    )
                 }
                 Statement::Return(var_ids) => {
                     tracing::trace!(
@@ -969,7 +1075,7 @@ fn generate_function_structure<'c, 'a>(
                         block.add_argument(ty, location);
                     }
 
-                    Vec::new()
+                    StatementCompileResult::Processed(Vec::new())
                 }
             })
         },
@@ -1061,6 +1167,7 @@ fn generate_function_structure<'c, 'a>(
                 )
             })
             .collect(),
+        num_tail_recursions == 1,
     ))
 }
 
@@ -1076,8 +1183,12 @@ fn extract_types<'c: 'a, 'a>(
             Ok(x) => x,
             Err(e) => return Some(Err(e.into())),
         };
+        let is_zst = match type_info.is_zst(registry) {
+            Ok(x) => x,
+            Err(e) => return Some(Err(e)),
+        };
 
-        if type_info.is_builtin() && type_info.is_zst(registry) {
+        if type_info.is_builtin() && is_zst {
             None
         } else {
             Some(type_info.build(context, module, registry, metadata_storage, id))
@@ -1089,7 +1200,7 @@ fn foreach_statement_in_function<S, E>(
     statements: &[Statement],
     entry_point: StatementIdx,
     initial_state: S,
-    mut closure: impl FnMut(StatementIdx, S) -> Result<Vec<S>, E>,
+    mut closure: impl FnMut(StatementIdx, S) -> Result<StatementCompileResult<Vec<S>>, E>,
 ) -> Result<(), E>
 where
     S: Clone,
@@ -1102,24 +1213,32 @@ where
             continue;
         }
 
-        let branch_states = closure(statement_idx, state)?;
+        match closure(statement_idx, state.clone())? {
+            StatementCompileResult::Processed(branch_states) => {
+                let branches = match &statements[statement_idx.0] {
+                    Statement::Invocation(x) => x.branches.as_slice(),
+                    Statement::Return(_) => &[],
+                };
+                assert_eq!(
+                    branches.len(),
+                    branch_states.len(),
+                    "Returned number of states must match the number of branches."
+                );
 
-        let branches = match &statements[statement_idx.0] {
-            Statement::Invocation(x) => x.branches.as_slice(),
-            Statement::Return(_) => &[],
-        };
-        assert_eq!(
-            branches.len(),
-            branch_states.len(),
-            "Returned number of states must match the number of branches."
-        );
+                queue.extend(
+                    branches
+                        .iter()
+                        .map(|branch| statement_idx.next(&branch.target))
+                        .zip(branch_states),
+                );
+            }
+            StatementCompileResult::Deferred => {
+                tracing::trace!("Statement {statement_idx}'s compilation has been deferred.");
 
-        queue.extend(
-            branches
-                .iter()
-                .map(|branch| statement_idx.next(&branch.target))
-                .zip(branch_states),
-        );
+                visited.remove(&statement_idx);
+                queue.insert(0, (statement_idx, state));
+            }
+        }
     }
 
     Ok(())
@@ -1180,4 +1299,83 @@ where
             }
         })
         .collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn generate_entry_point_wrapper<'c>(
+    context: &'c Context,
+    module: &Module<'c>,
+    public_symbol: &str,
+    private_symbol: &str,
+    arg_types: &[(Type<'c>, Location<'c>)],
+    ret_types: &[Type<'c>],
+    location: Location<'c>,
+) -> Result<(), Error> {
+    let region = Region::new();
+    let block = region.append_block(Block::new(arg_types));
+
+    let mut args = Vec::with_capacity(arg_types.len());
+    for i in 0..arg_types.len() {
+        args.push(block.argument(i)?.into());
+    }
+
+    let result = block.append_op_result(
+        OperationBuilder::new("llvm.call", location)
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(context, private_symbol).into(),
+                ),
+                // (
+                //     Identifier::new(context, "CConv"),
+                //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
+                // ),
+            ])
+            .add_operands(&args)
+            .add_results(&[llvm::r#type::r#struct(context, ret_types, false)])
+            .build()?,
+    )?;
+
+    let mut returns = Vec::with_capacity(ret_types.len());
+    for (i, ty) in ret_types.iter().enumerate() {
+        returns.push(block.extract_value(context, location, result, *ty, i)?);
+    }
+
+    block.append_operation(func::r#return(&returns, location));
+
+    module.body().append_operation(func::func(
+        context,
+        StringAttribute::new(context, public_symbol),
+        TypeAttribute::new(
+            FunctionType::new(
+                context,
+                &arg_types.iter().map(|x| x.0).collect::<Vec<_>>(),
+                ret_types,
+            )
+            .into(),
+        ),
+        region,
+        &[
+            (
+                Identifier::new(context, "sym_visibility"),
+                StringAttribute::new(context, "public").into(),
+            ),
+            (
+                Identifier::new(context, "llvm.emit_c_interface"),
+                Attribute::unit(context),
+            ),
+        ],
+        location,
+    ));
+    Ok(())
+}
+
+/// Return type for the closure in [`foreach_statement_in_function`] that determines whether the
+/// statement was processed successfully or needs to be processed again at the end.
+#[derive(Clone, Debug)]
+enum StatementCompileResult<T> {
+    /// The statement was processed successfully.
+    Processed(T),
+    /// The statement's processing has to be deferred until the end.
+    Deferred,
 }

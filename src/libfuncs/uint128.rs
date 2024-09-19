@@ -27,6 +27,7 @@ use melior::{
     },
     Context,
 };
+use num_bigint::BigUint;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -194,27 +195,27 @@ pub fn build_from_felt252<'ctx, 'this>(
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
-    let arg1 = entry.argument(1)?.into();
+    let value = entry.argument(1)?.into();
 
-    let k1 = entry.const_int(context, location, 1, 252)?;
     let k128 = entry.const_int(context, location, 128, 252)?;
+    let bound = BigUint::from(u128::MAX) + 1u32;
+    let k_u128_max_1 = entry.const_int(context, location, bound, 252)?;
 
-    let min_wide_val = entry.append_op_result(arith::shli(k1, k128, location))?;
     let is_wide = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
-        arg1,
-        min_wide_val,
+        value,
+        k_u128_max_1,
         location,
     ))?;
 
     let lsb_bits = entry.append_op_result(arith::trunci(
-        arg1,
+        value,
         IntegerType::new(context, 128).into(),
         location,
     ))?;
 
-    let msb_bits = entry.append_op_result(arith::shrui(arg1, k128, location))?;
+    let msb_bits = entry.append_op_result(arith::shrui(value, k128, location))?;
     let msb_bits = entry.append_op_result(arith::trunci(
         msb_bits,
         IntegerType::new(context, 128).into(),

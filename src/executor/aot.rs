@@ -139,7 +139,7 @@ impl AotNativeExecutor {
     }
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
-        let function_name = generate_function_name(function_id);
+        let function_name = generate_function_name(function_id, false);
         let function_name = format!("_mlir_ciface_{function_name}");
 
         // Arguments and return values are hardcoded since they'll be handled by the trampoline.
@@ -209,12 +209,15 @@ mod tests {
     }
 
     #[rstest]
-    fn test_invoke_dynamic(program: Program) {
+    #[case(OptLevel::None)]
+    #[case(OptLevel::Default)]
+    #[case(OptLevel::Aggressive)]
+    fn test_invoke_dynamic(program: Program, #[case] optlevel: OptLevel) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program)
+            .compile(&program, false)
             .expect("failed to compile context");
-        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = AotNativeExecutor::from_native_module(module, optlevel);
 
         // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
@@ -227,12 +230,15 @@ mod tests {
     }
 
     #[rstest]
-    fn test_invoke_dynamic_with_syscall_handler(program: Program) {
+    #[case(OptLevel::None)]
+    #[case(OptLevel::Default)]
+    #[case(OptLevel::Aggressive)]
+    fn test_invoke_dynamic_with_syscall_handler(program: Program, #[case] optlevel: OptLevel) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program)
+            .compile(&program, false)
             .expect("failed to compile context");
-        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = AotNativeExecutor::from_native_module(module, optlevel);
 
         // The second function in the program is `get_block_hash`.
         let entrypoint_function_id = &program.funcs.get(1).expect("should have a function").id;
@@ -263,12 +269,15 @@ mod tests {
     }
 
     #[rstest]
-    fn test_invoke_contract_dynamic(starknet_program: Program) {
+    #[case(OptLevel::None)]
+    #[case(OptLevel::Default)]
+    #[case(OptLevel::Aggressive)]
+    fn test_invoke_contract_dynamic(starknet_program: Program, #[case] optlevel: OptLevel) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&starknet_program)
+            .compile(&starknet_program, false)
             .expect("failed to compile context");
-        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = AotNativeExecutor::from_native_module(module, optlevel);
 
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program

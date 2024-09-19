@@ -1083,7 +1083,10 @@ fn build_euclidean_algorithm<'ctx, 'this>(
 mod test {
 
     use crate::{
-        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+        utils::{
+            felt252_str,
+            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+        },
         values::JitValue,
     };
     use cairo_lang_sierra::extensions::utils::Range;
@@ -1296,7 +1299,7 @@ mod test {
             &program,
             "main",
             &[],
-            jit_panic!(JitValue::felt_str(
+            jit_panic!(felt252_str(
                 "30828113188794245257250221355944970489240709081949230"
             )),
         );
@@ -1381,13 +1384,6 @@ mod test {
                 outputs.get_output(add2)
             }
         );
-
-        dbg!(Felt::from_raw([
-            576460752303419696,
-            18446744073709551615,
-            18446744073709551615,
-            18446744073709551393
-        ]));
 
         run_program_assert_output(
             &program,

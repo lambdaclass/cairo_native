@@ -2,11 +2,7 @@ mod utils;
 
 use anyhow::Context;
 use cairo_lang_compiler::{
-    compile_prepared_db,
-    db::RootDatabase,
-    diagnostics::DiagnosticsReporter,
-    project::{check_compiler_path, setup_project},
-    CompilerConfig,
+    compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_runner::short_string::as_cairo_short_string;
 use cairo_native::{
@@ -60,28 +56,11 @@ fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    // Check if args.path is a file or a directory.
-    check_compiler_path(args.single_file, &args.path)?;
-
-    let mut db_builder = RootDatabase::builder();
-    db_builder.detect_corelib();
-    if args.available_gas.is_none() {
-        db_builder.skip_auto_withdraw_gas();
-    }
-    let mut db = db_builder.build()?;
-
+    let mut db = RootDatabase::builder().detect_corelib().build()?;
     let main_crate_ids = setup_project(&mut db, &args.path)?;
 
-    let mut reporter = DiagnosticsReporter::stderr();
-    if args.allow_warnings {
-        reporter = reporter.allow_warnings();
-    }
-    if reporter.check(&db) {
-        anyhow::bail!("failed to compile: {}", args.path.display());
-    }
-
     let sierra_program = compile_prepared_db(
-        &mut db,
+        &db,
         main_crate_ids,
         CompilerConfig {
             replace_ids: true,
@@ -90,14 +69,10 @@ fn main() -> anyhow::Result<()> {
     )?
     .program;
 
-    if args.available_gas.is_none() && sierra_program.requires_gas_counter() {
-        anyhow::bail!("Program requires gas counter, please provide `--available-gas` argument.");
-    }
-
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context.compile(&sierra_program).unwrap();
+    let native_module = native_context.compile(&sierra_program, false).unwrap();
 
     let native_executor: NativeExecutor = match args.run_mode {
         RunMode::Aot => {

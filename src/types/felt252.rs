@@ -56,8 +56,7 @@ pub fn build<'ctx>(
     Ok(IntegerType::new(context, 252).into())
 }
 
-pub fn register_prime_modulo_meta(metadata: &mut MetadataStorage) -> &mut PrimeModuloMeta<Felt> {
+pub fn register_prime_modulo_meta(metadata: &mut MetadataStorage) -> &PrimeModuloMeta<Felt> {
     metadata
-        .insert(PrimeModuloMeta::<Felt>::new(PRIME.clone()))
-        .unwrap()
+        .get_or_insert_with::<PrimeModuloMeta<Felt>>(|| PrimeModuloMeta::<Felt>::new(PRIME.clone()))
 }

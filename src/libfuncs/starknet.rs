@@ -3,7 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     block_ext::BlockExt,
-    error::Result,
+    error::{Error, Result},
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
@@ -26,15 +26,17 @@ use melior::{
         llvm::{self, LoadStoreOptions},
     },
     ir::{
-        attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute, TypeAttribute},
+        attribute::{
+            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute,
+        },
         operation::OperationBuilder,
         r#type::IntegerType,
         Attribute, Block, Identifier, Location, Type, ValueLike,
     },
     Context,
 };
-use num_bigint::{Sign, ToBigUint};
-use std::alloc::Layout;
+use num_bigint::Sign;
+use std::{alloc::Layout, borrow::Cow};
 
 mod secp256;
 mod testing;
@@ -211,30 +213,33 @@ pub fn build_call_contract<'ctx, 'this>(
         IntegerType::new(context, 128).into(),
         get_integer_layout(128).align(),
     )?;
-    entry.store(
+    entry.append_operation(llvm::store(
         context,
-        location,
-        gas_builtin_ptr,
         entry.argument(0)?.into(),
-    )?;
+        gas_builtin_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
 
     // Allocate `address` argument and write the value.
     let address_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
-    entry.store(
+    entry.append_operation(llvm::store(
         context,
-        location,
-        address_arg_ptr,
         entry.argument(2)?.into(),
-    )?;
+        address_arg_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
 
     // Allocate `entry_point_selector` argument and write the value.
     let entry_point_selector_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
-    entry.store(
+    entry.append_operation(llvm::store(
         context,
-        location,
-        entry_point_selector_arg_ptr,
         entry.argument(3)?.into(),
-    )?;
+        entry_point_selector_arg_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
 
     // Allocate `calldata` argument and write the value.
     let calldata_arg_ty = llvm::r#type::r#struct(
@@ -393,13 +398,13 @@ pub fn build_class_hash_const<'ctx, 'this>(
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
     let value = match info.c.sign() {
-        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
-        _ => info.c.to_biguint().unwrap(),
+        Sign::Minus => Cow::Owned(&*PRIME - info.c.magnitude()),
+        _ => Cow::Borrowed(info.c.magnitude()),
     };
 
     let value = entry.append_op_result(arith::constant(
         context,
-        Attribute::parse(context, &format!("{value} : i252")).unwrap(),
+        Attribute::parse(context, &format!("{value} : i252")).ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
 
@@ -471,8 +476,8 @@ pub fn build_contract_address_const<'ctx, 'this>(
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
     let value = match info.c.sign() {
-        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
-        _ => info.c.to_biguint().unwrap(),
+        Sign::Minus => Cow::Owned(&*PRIME - info.c.magnitude()),
+        _ => Cow::Borrowed(info.c.magnitude()),
     };
 
     let value = entry.append_op_result(arith::constant(
@@ -933,8 +938,8 @@ pub fn build_storage_base_address_const<'ctx, 'this>(
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
     let value = match info.c.sign() {
-        Sign::Minus => PRIME.to_biguint().unwrap() - info.c.to_biguint().unwrap(),
-        _ => info.c.to_biguint().unwrap(),
+        Sign::Minus => Cow::Owned(&*PRIME - info.c.magnitude()),
+        _ => Cow::Borrowed(info.c.magnitude()),
     };
 
     let value = entry.append_op_result(arith::constant(

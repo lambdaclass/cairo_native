@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let program = load_program(Path::new(&args.input), args.starknet)?;
 
     // Compile the program.
-    let module = context.compile(&program)?;
+    let module = context.compile(&program, false)?;
 
     // Write the output.
     let output_str = module
@@ -57,7 +57,7 @@ fn load_program(path: &Path, is_contract: bool) -> Result<Program, Box<dyn std::
             let main_crate_ids = setup_project(&mut db, path)?;
 
             compile_prepared_db(
-                &mut db,
+                &db,
                 main_crate_ids,
                 CompilerConfig {
                     replace_ids: true,
