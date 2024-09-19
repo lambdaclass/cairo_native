@@ -43,10 +43,16 @@ pub const SHARED_LIBRARY_EXT: &str = "so";
 ///
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
 /// identifier number.
-pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
+pub fn generate_function_name(
+    function_id: &FunctionId,
+    is_for_contract_executor: bool,
+) -> Cow<str> {
     // Generic functions can omit their type in the debug_name, leading to multiple functions
     // having the same name, we solve this by adding the id number even if the function has a debug_name
-    if let Some(name) = function_id.debug_name.as_deref() {
+
+    if is_for_contract_executor {
+        Cow::Owned(format!("f{}", function_id.id))
+    } else if let Some(name) = function_id.debug_name.as_deref() {
         Cow::Owned(format!("{}(f{})", name, function_id.id))
     } else {
         Cow::Owned(format!("f{}", function_id.id))
@@ -679,7 +685,7 @@ pub mod test {
         let context = NativeContext::new();
 
         let module = context
-            .compile(program)
+            .compile(program, false)
             .expect("Could not compile test program to MLIR.");
 
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
@@ -1032,7 +1038,20 @@ pub mod test {
             debug_name: Some("function_name".into()),
         };
 
-        assert_eq!(generate_function_name(&function_id), "function_name(f123)");
+        assert_eq!(
+            generate_function_name(&function_id, false),
+            "function_name(f123)"
+        );
+    }
+
+    #[test]
+    fn test_generate_function_name_debug_name_for_contract_executor() {
+        let function_id = FunctionId {
+            id: 123,
+            debug_name: Some("function_name".into()),
+        };
+
+        assert_eq!(generate_function_name(&function_id, true), "f123");
     }
 
     #[test]
@@ -1042,7 +1061,7 @@ pub mod test {
             debug_name: None,
         };
 
-        assert_eq!(generate_function_name(&function_id), "f123");
+        assert_eq!(generate_function_name(&function_id, false), "f123");
     }
 
     #[test]

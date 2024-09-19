@@ -192,7 +192,7 @@ pub fn build<'ctx, 'this>(
                         Identifier::new(context, "callee"),
                         FlatSymbolRefAttribute::new(
                             context,
-                            &format!("impl${}", generate_function_name(&info.function.id)),
+                            &format!("impl${}", generate_function_name(&info.function.id, false)),
                         )
                         .into(),
                     ),
