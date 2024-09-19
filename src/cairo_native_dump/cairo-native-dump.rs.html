@@ -187,7 +187,7 @@
     <span class="kw">let </span>program = load_program(Path::new(<span class="kw-2">&amp;</span>args.input), args.starknet)<span class="question-mark">?</span>;
 
     <span class="comment">// Compile the program.
-    </span><span class="kw">let </span>module = context.compile(<span class="kw-2">&amp;</span>program)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>module = context.compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// Write the output.
     </span><span class="kw">let </span>output_str = module

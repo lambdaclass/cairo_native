@@ -195,7 +195,7 @@
     <span class="kw">let </span>native_context = NativeContext::new();
 
     <span class="comment">// Compile the sierra program into a MLIR module.
-    </span><span class="kw">let </span>native_module = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
+    </span><span class="kw">let </span>native_module = native_context.compile(<span class="kw-2">&amp;</span>sierra_program, <span class="bool-val">false</span>).unwrap();
 
     <span class="kw">let </span>native_executor: NativeExecutor = <span class="kw">match </span>args.run_mode {
         RunMode::Aot =&gt; {

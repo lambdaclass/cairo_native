@@ -493,7 +493,7 @@
                         Identifier::new(context, <span class="string">"callee"</span>),
                         FlatSymbolRefAttribute::new(
                             context,
-                            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"impl${}"</span>, generate_function_name(<span class="kw-2">&amp;</span>info.function.id)),
+                            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"impl${}"</span>, generate_function_name(<span class="kw-2">&amp;</span>info.function.id, <span class="bool-val">false</span>)),
                         )
                         .into(),
                     ),

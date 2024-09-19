@@ -108,6 +108,9 @@
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
     module::NativeModule, utils::SHARED_LIBRARY_EXT, OptLevel,
@@ -154,7 +157,10 @@
             module,
             registry,
             metadata,
-        } = <span class="self">self</span>.context.compile(program).expect(<span class="string">"should compile"</span>);
+        } = <span class="self">self
+            </span>.context
+            .compile(program, <span class="bool-val">false</span>)
+            .expect(<span class="string">"should compile"</span>);
 
         <span class="comment">// Compile module into an object.
         </span><span class="kw">let </span>object_data = <span class="kw">crate</span>::ffi::module_to_object(<span class="kw-2">&amp;</span>module, opt_level).unwrap();

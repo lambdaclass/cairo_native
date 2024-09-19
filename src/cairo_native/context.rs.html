@@ -237,6 +237,14 @@
 <a href="#237" id="237">237</a>
 <a href="#238" id="238">238</a>
 <a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::OnceLock;
 
 <span class="kw">use crate</span>::{
@@ -301,7 +309,14 @@
 
     <span class="doccomment">/// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
-    </span><span class="kw">pub fn </span>compile(<span class="kw-2">&amp;</span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>Program) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, Error&gt; {
+    ///
+    /// If `ignore_debug_names` is true then debug names will not be added to function names.
+    /// Mainly useful for the ContractExecutor.
+    </span><span class="kw">pub fn </span>compile(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        program: <span class="kw-2">&amp;</span>Program,
+        ignore_debug_names: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, Error&gt; {
         <span class="kw">static </span>INITIALIZED: OnceLock&lt;()&gt; = OnceLock::new();
         INITIALIZED.get_or_init(|| <span class="kw">unsafe </span>{
             LLVM_InitializeAllTargets();
@@ -409,6 +424,7 @@
             <span class="kw-2">&amp;</span>registry,
             <span class="kw-2">&amp;mut </span>metadata,
             <span class="kw">unsafe </span>{ Attribute::from_raw(di_unit_id) },
+            ignore_debug_names,
         )<span class="question-mark">?</span>;
 
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(x) = std::env::var(<span class="string">"NATIVE_DEBUG_DUMP"</span>) {

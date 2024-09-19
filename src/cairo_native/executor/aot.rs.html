@@ -439,7 +439,7 @@
     }
 
     <span class="kw">pub fn </span>find_function_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">*mut </span>c_void {
-        <span class="kw">let </span>function_name = generate_function_name(function_id);
+        <span class="kw">let </span>function_name = generate_function_name(function_id, <span class="bool-val">false</span>);
         <span class="kw">let </span>function_name = <span class="macro">format!</span>(<span class="string">"_mlir_ciface_{function_name}"</span>);
 
         <span class="comment">// Arguments and return values are hardcoded since they'll be handled by the trampoline.
@@ -515,7 +515,7 @@
     </span><span class="kw">fn </span>test_invoke_dynamic(program: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
         <span class="kw">let </span>native_context = NativeContext::new();
         <span class="kw">let </span>module = native_context
-            .compile(<span class="kw-2">&amp;</span>program)
+            .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile context"</span>);
         <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel);
 
@@ -536,7 +536,7 @@
     </span><span class="kw">fn </span>test_invoke_dynamic_with_syscall_handler(program: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
         <span class="kw">let </span>native_context = NativeContext::new();
         <span class="kw">let </span>module = native_context
-            .compile(<span class="kw-2">&amp;</span>program)
+            .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile context"</span>);
         <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel);
 
@@ -575,7 +575,7 @@
     </span><span class="kw">fn </span>test_invoke_contract_dynamic(starknet_program: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
         <span class="kw">let </span>native_context = NativeContext::new();
         <span class="kw">let </span>module = native_context
-            .compile(<span class="kw-2">&amp;</span>starknet_program)
+            .compile(<span class="kw-2">&amp;</span>starknet_program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile context"</span>);
         <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel);
 

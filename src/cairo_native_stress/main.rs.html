@@ -638,7 +638,7 @@ mod Contract {{
     ) -&gt; Arc&lt;AotNativeExecutor&gt; {
         <span class="kw">let </span>native_module = <span class="self">self
             </span>.context
-            .compile(program)
+            .compile(program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile program"</span>);
 
         <span class="kw">let </span>registry = ProgramRegistry::new(program).expect(<span class="string">"failed to get program registry"</span>);

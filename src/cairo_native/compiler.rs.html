@@ -1371,6 +1371,14 @@
 <a href="#1371" id="1371">1371</a>
 <a href="#1372" id="1372">1372</a>
 <a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
@@ -1500,6 +1508,7 @@
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     di_compile_unit_id: Attribute,
+    ignore_debug_names: bool,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
     <span class="kw">if let </span><span class="prelude-val">Ok</span>(x) = std::env::var(<span class="string">"NATIVE_DEBUG_DUMP"</span>) {
         <span class="kw">if </span>x == <span class="string">"1" </span>|| x == <span class="string">"true" </span>{
@@ -1528,6 +1537,7 @@
             metadata,
             di_compile_unit_id,
             sierra_stmt_start_offset,
+            ignore_debug_names,
         )<span class="question-mark">?</span>;
     }
 
@@ -1541,6 +1551,8 @@
 /// and name. Check out [compile](self::compile) for a description of the other arguments.
 ///
 /// The [module docs](self) contain more information about the compilation process.
+///
+/// If [`ignore_debug_names`] is true, then the function name will always be `f{id}` without any debug name info if it ever exists.
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">fn </span>compile_func(
     context: <span class="kw-2">&amp;</span>Context,
@@ -1551,6 +1563,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     di_compile_unit_id: Attribute,
     sierra_stmt_start_offset: usize,
+    ignore_debug_names: bool,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
     <span class="kw">let </span>fn_location = Location::new(
         context,
@@ -1651,7 +1664,10 @@
         <span class="prelude-val">None
     </span>};
 
-    <span class="kw">let </span>function_name = generate_function_name(<span class="kw-2">&amp;</span>function.id);
+    <span class="kw">let </span>function_name = generate_function_name(<span class="kw-2">&amp;</span>function.id, ignore_debug_names);
+    <span class="comment">// Don't care about whether it is for the contract executor for inner impls
+    // so we don't have to pass the boolean to the function call libfunc.
+    </span><span class="kw">let </span>function_name_for_inner = generate_function_name(<span class="kw-2">&amp;</span>function.id, <span class="bool-val">false</span>);
 
     <span class="kw">let </span>di_subprogram = <span class="kw">unsafe </span>{
         <span class="comment">// Various DWARF debug attributes for this function.
@@ -2249,7 +2265,7 @@
         pre_entry_block.append_operation(cf::br(<span class="kw-2">&amp;</span>entry_block, <span class="kw-2">&amp;</span>arg_values, fn_location));
     }
 
-    <span class="kw">let </span>inner_function_name = <span class="macro">format!</span>(<span class="string">"impl${function_name}"</span>);
+    <span class="kw">let </span>inner_function_name = <span class="macro">format!</span>(<span class="string">"impl${function_name_for_inner}"</span>);
     module.body().append_operation(llvm::func(
         context,
         StringAttribute::new(context, <span class="kw-2">&amp;</span>inner_function_name),

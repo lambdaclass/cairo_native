@@ -1091,6 +1091,25 @@
 <a href="#1091" id="1091">1091</a>
 <a href="#1092" id="1092">1092</a>
 <a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">use crate</span>::{
@@ -1136,10 +1155,16 @@
 ///
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
 /// identifier number.
-</span><span class="kw">pub fn </span>generate_function_name(function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; Cow&lt;str&gt; {
+</span><span class="kw">pub fn </span>generate_function_name(
+    function_id: <span class="kw-2">&amp;</span>FunctionId,
+    is_for_contract_executor: bool,
+) -&gt; Cow&lt;str&gt; {
     <span class="comment">// Generic functions can omit their type in the debug_name, leading to multiple functions
     // having the same name, we solve this by adding the id number even if the function has a debug_name
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(name) = function_id.debug_name.as_deref() {
+
+    </span><span class="kw">if </span>is_for_contract_executor {
+        Cow::Owned(<span class="macro">format!</span>(<span class="string">"f{}"</span>, function_id.id))
+    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(name) = function_id.debug_name.as_deref() {
         Cow::Owned(<span class="macro">format!</span>(<span class="string">"{}(f{})"</span>, name, function_id.id))
     } <span class="kw">else </span>{
         Cow::Owned(<span class="macro">format!</span>(<span class="string">"f{}"</span>, function_id.id))
@@ -1772,7 +1797,7 @@
         <span class="kw">let </span>context = NativeContext::new();
 
         <span class="kw">let </span>module = context
-            .compile(program)
+            .compile(program, <span class="bool-val">false</span>)
             .expect(<span class="string">"Could not compile test program to MLIR."</span>);
 
         <span class="comment">// FIXME: There are some bugs with non-zero LLVM optimization levels.
@@ -2125,7 +2150,20 @@
             debug_name: <span class="prelude-val">Some</span>(<span class="string">"function_name"</span>.into()),
         };
 
-        <span class="macro">assert_eq!</span>(generate_function_name(<span class="kw-2">&amp;</span>function_id), <span class="string">"function_name(f123)"</span>);
+        <span class="macro">assert_eq!</span>(
+            generate_function_name(<span class="kw-2">&amp;</span>function_id, <span class="bool-val">false</span>),
+            <span class="string">"function_name(f123)"
+        </span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_generate_function_name_debug_name_for_contract_executor() {
+        <span class="kw">let </span>function_id = FunctionId {
+            id: <span class="number">123</span>,
+            debug_name: <span class="prelude-val">Some</span>(<span class="string">"function_name"</span>.into()),
+        };
+
+        <span class="macro">assert_eq!</span>(generate_function_name(<span class="kw-2">&amp;</span>function_id, <span class="bool-val">true</span>), <span class="string">"f123"</span>);
     }
 
     <span class="attr">#[test]
@@ -2135,7 +2173,7 @@
             debug_name: <span class="prelude-val">None</span>,
         };
 
-        <span class="macro">assert_eq!</span>(generate_function_name(<span class="kw-2">&amp;</span>function_id), <span class="string">"f123"</span>);
+        <span class="macro">assert_eq!</span>(generate_function_name(<span class="kw-2">&amp;</span>function_id, <span class="bool-val">false</span>), <span class="string">"f123"</span>);
     }
 
     <span class="attr">#[test]
