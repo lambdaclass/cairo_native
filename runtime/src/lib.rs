@@ -492,7 +492,7 @@ pub mod trace_dump {
     use num_bigint::BigInt;
     use num_traits::One;
     use sierra_emu::{ProgramTrace, StateDump, Value};
-    use starknet_crypto::Felt;
+    use starknet_types_core::felt::Felt;
     use std::{
         alloc::Layout,
         collections::HashMap,
