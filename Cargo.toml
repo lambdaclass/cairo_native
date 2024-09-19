@@ -68,7 +68,7 @@ cairo-lang-diagnostics = "2.8.2"
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
 itertools = "0.13.0"
 lazy_static = "1.4"
-libc = "0.2.155"
+libc = "0.2.148"
 llvm-sys = "181.1.0"
 melior = { version = "0.18.4", features = ["ods-dialects"] }
 mlir-sys = "0.2.2"
@@ -112,7 +112,7 @@ sha2 = "0.10.8"                                                                 
 scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.2", optional = true }
 scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.2", optional = true }
 sec1 = "0.7.3"
-serde_json = { version = "1.0.125" }
+serde_json = { version = "1.0.116", optional = true }
 stats_alloc = "0.1.10"
 
 [dev-dependencies]
