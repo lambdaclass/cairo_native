@@ -69,11 +69,11 @@ educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/2
 itertools = "0.13.0"
 lazy_static = "1.4"
 libc = "0.2.155"
-llvm-sys = "191.0.0-rc1"
-melior = { git = "https://github.com/azteca1998/melior.git", branch = "update-llvm19", features = [
+llvm-sys = "191.0.0"
+melior = { git = "https://github.com/lambdaclass/melior.git", branch = "llvm19", features = [
   "ods-dialects",
 ] }
-mlir-sys = { git = "https://github.com/azteca1998/mlir-sys.git", branch = "update-llvm19" }
+mlir-sys = { git = "https://github.com/lambdaclass/mlir-sys.git", branch = "llvm19" }
 num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "0.1.5", default-features = false, features = [
@@ -131,7 +131,7 @@ walkdir = "2.5.0"
 serde_json = { version = "1.0.117" }
 
 [build-dependencies]
-cc = "1.1.14"
+cc = "1.1.21"
 
 [profile.optimized-dev]
 inherits = "dev"
