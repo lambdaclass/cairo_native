@@ -791,14 +791,13 @@
 <a href="#791" id="791">791</a>
 <a href="#792" id="792">792</a>
 <a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Debug utilities
 //!
 //! A collection of utilities to debug values in MLIR in execution.
 //!
 //! ## Example
 //!
-//! ```
+//! ```rust,ignore
 //! # use cairo_lang_sierra::{
 //! #     extensions::{
 //! #         core::{CoreLibfunc, CoreType},
@@ -878,9 +877,8 @@
 </span><span class="attr">#![cfg(feature = <span class="string">"with-debug-utils"</span>)]
 
 </span><span class="kw">use crate</span>::{
-    block_ext::BlockExt,
     error::{Error, <span class="prelude-ty">Result</span>},
-    utils::get_integer_layout,
+    utils::{get_integer_layout, BlockExt},
 };
 <span class="kw">use </span>melior::{
     dialect::{

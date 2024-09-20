@@ -135,13 +135,13 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::WithSelf;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt,
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
     types::TypeBuilder,
+    utils::BlockExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{

@@ -1005,11 +1005,15 @@
 <a href="#1005" id="1005">1005</a>
 <a href="#1006" id="1006">1006</a>
 <a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u128`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -1571,7 +1575,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
@@ -1660,11 +1664,11 @@
         };
     }
 
-    <span class="kw">fn </span>u256(value: BigUint) -&gt; JitValue {
+    <span class="kw">fn </span>u256(value: BigUint) -&gt; Value {
         <span class="macro">assert!</span>(value.bits() &lt;= <span class="number">256</span>);
         <span class="macro">jit_struct!</span>(
-            JitValue::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
-            JitValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+            Value::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+            Value::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
         )
     }
 
@@ -1699,7 +1703,7 @@
     </span><span class="kw">fn </span>u128_safe_divmod() {
         <span class="kw">let </span>program = <span class="kw-2">&amp;</span>U128_SAFE_DIVMOD;
         <span class="kw">let </span>max_value = <span class="number">0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128</span>;
-        <span class="kw">let </span>error = JitValue::Felt252(Felt::from_bytes_be_slice(<span class="string">b"Division by 0"</span>));
+        <span class="kw">let </span>error = Value::Felt252(Felt::from_bytes_be_slice(<span class="string">b"Division by 0"</span>));
 
         run_program_assert_output(
             program,
@@ -1863,7 +1867,7 @@
                         program,
                         <span class="string">"run_test"</span>,
                         <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
-                        <span class="macro">jit_panic!</span>(JitValue::Felt252(error)),
+                        <span class="macro">jit_panic!</span>(Value::Felt252(error)),
                     );
                 }
             }
@@ -1915,7 +1919,7 @@
                         program,
                         <span class="string">"run_test"</span>,
                         <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
-                        <span class="macro">jit_panic!</span>(JitValue::Felt252(error)),
+                        <span class="macro">jit_panic!</span>(Value::Felt252(error)),
                     );
                 }
             }

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["BuiltinType"],"struct":["ContractExecutor","EntryPointInfo"]};

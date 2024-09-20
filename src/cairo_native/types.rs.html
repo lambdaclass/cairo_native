@@ -1054,34 +1054,30 @@
 <a href="#1054" id="1054">1054</a>
 <a href="#1055" id="1055">1055</a>
 <a href="#1056" id="1056">1056</a>
-<a href="#1057" id="1057">1057</a>
-<a href="#1058" id="1058">1058</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
 </span><span class="kw">use crate</span>::{
-    block_ext::BlockExt,
     error::Error <span class="kw">as </span>CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
-    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt, RangeExt},
+    utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt, RangeExt, PRIME},
 };
-<span class="kw">use </span>cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete;
-<span class="kw">use </span>cairo_lang_sierra::extensions::utils::Range;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
+        utils::Range,
     },
     ids::{ConcreteTypeId, UserTypeId},
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
-<span class="kw">use </span>felt252::PRIME;
 <span class="kw">use </span>melior::{
     dialect::{
         llvm::{<span class="self">self</span>, r#type::pointer},
@@ -1090,43 +1086,43 @@
     ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
-<span class="kw">use </span>num_bigint::{BigInt, ToBigInt};
+<span class="kw">use </span>num_bigint::{BigInt, Sign};
 <span class="kw">use </span>num_traits::{Bounded, One};
 <span class="kw">use </span>std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
-<span class="kw">pub mod </span>array;
-<span class="kw">pub mod </span>bitwise;
-<span class="kw">pub mod </span>bounded_int;
-<span class="kw">pub mod </span>r#box;
-<span class="kw">pub mod </span>builtin_costs;
-<span class="kw">pub mod </span>bytes31;
-<span class="kw">pub mod </span>circuit;
-<span class="kw">pub mod </span>coupon;
-<span class="kw">pub mod </span>ec_op;
-<span class="kw">pub mod </span>ec_point;
-<span class="kw">pub mod </span>ec_state;
-<span class="kw">pub mod </span>r#enum;
-<span class="kw">pub mod </span>felt252;
-<span class="kw">pub mod </span>felt252_dict;
-<span class="kw">pub mod </span>felt252_dict_entry;
-<span class="kw">pub mod </span>gas_builtin;
-<span class="kw">pub mod </span>non_zero;
-<span class="kw">pub mod </span>nullable;
-<span class="kw">pub mod </span>pedersen;
-<span class="kw">pub mod </span>poseidon;
-<span class="kw">pub mod </span>range_check;
-<span class="kw">pub mod </span>segment_arena;
-<span class="kw">pub mod </span>snapshot;
-<span class="kw">pub mod </span>squashed_felt252_dict;
-<span class="kw">pub mod </span>starknet;
-<span class="kw">pub mod </span>r#struct;
-<span class="kw">pub mod </span>uint128;
-<span class="kw">pub mod </span>uint128_mul_guarantee;
-<span class="kw">pub mod </span>uint16;
-<span class="kw">pub mod </span>uint32;
-<span class="kw">pub mod </span>uint64;
-<span class="kw">pub mod </span>uint8;
-<span class="kw">pub mod </span>uninitialized;
+<span class="kw">mod </span>array;
+<span class="kw">mod </span>bitwise;
+<span class="kw">mod </span>bounded_int;
+<span class="kw">mod </span>r#box;
+<span class="kw">mod </span>builtin_costs;
+<span class="kw">mod </span>bytes31;
+<span class="kw">mod </span>circuit;
+<span class="kw">mod </span>coupon;
+<span class="kw">mod </span>ec_op;
+<span class="kw">mod </span>ec_point;
+<span class="kw">mod </span>ec_state;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>r#enum;
+<span class="kw">mod </span>felt252;
+<span class="kw">mod </span>felt252_dict;
+<span class="kw">mod </span>felt252_dict_entry;
+<span class="kw">mod </span>gas_builtin;
+<span class="kw">mod </span>non_zero;
+<span class="kw">mod </span>nullable;
+<span class="kw">mod </span>pedersen;
+<span class="kw">mod </span>poseidon;
+<span class="kw">mod </span>range_check;
+<span class="kw">mod </span>segment_arena;
+<span class="kw">mod </span>snapshot;
+<span class="kw">mod </span>squashed_felt252_dict;
+<span class="kw">mod </span>starknet;
+<span class="kw">mod </span>r#struct;
+<span class="kw">mod </span>uint128;
+<span class="kw">mod </span>uint128_mul_guarantee;
+<span class="kw">mod </span>uint16;
+<span class="kw">mod </span>uint32;
+<span class="kw">mod </span>uint64;
+<span class="kw">mod </span>uint8;
+<span class="kw">mod </span>uninitialized;
 
 <span class="doccomment">/// Generation of MLIR types from their Sierra counterparts.
 ///
@@ -1900,7 +1896,7 @@
             <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; range_of::&lt;u128&gt;(),
             <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; Range {
                 lower: BigInt::ZERO,
-                upper: PRIME.to_bigint().unwrap(),
+                upper: BigInt::from_biguint(Sign::Plus, PRIME.clone()),
             },
             <span class="self">Self</span>::Sint8(<span class="kw">_</span>) =&gt; range_of::&lt;i8&gt;(),
             <span class="self">Self</span>::Sint16(<span class="kw">_</span>) =&gt; range_of::&lt;i16&gt;(),

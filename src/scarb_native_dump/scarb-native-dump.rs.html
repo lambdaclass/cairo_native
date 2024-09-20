@@ -55,20 +55,16 @@
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-</pre></div><pre class="rust"><code><span class="kw">mod </span>utils;
-
-<span class="kw">use </span>std::{env, fs};
-
-<span class="kw">use </span>anyhow::Context;
+</pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_sierra::program::VersionedProgram;
 <span class="kw">use </span>cairo_native::context::NativeContext;
 <span class="kw">use </span>melior::ir::operation::OperationPrintingFlags;
 <span class="kw">use </span>scarb_metadata::{MetadataCommand, ScarbCommand};
+<span class="kw">use </span>std::{env, fs};
+
+<span class="kw">mod </span>utils;
 
 <span class="doccomment">/// Compiles all packages from a Scarb project on the current directory.
-
 </span><span class="kw">fn </span>main() -&gt; anyhow::Result&lt;()&gt; {
     <span class="kw">let </span>metadata = MetadataCommand::new().inherit_stderr().exec()<span class="question-mark">?</span>;
 

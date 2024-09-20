@@ -903,11 +903,15 @@
 <a href="#903" id="903">903</a>
 <a href="#904" id="904">904</a>
 <a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u32`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -1424,7 +1428,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo},
-        values::JitValue,
+        values::Value,
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
@@ -1563,7 +1567,7 @@
                         program,
                         <span class="string">"run_test"</span>,
                         <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
-                        <span class="macro">jit_panic!</span>(JitValue::Felt252(error)),
+                        <span class="macro">jit_panic!</span>(Value::Felt252(error)),
                     );
                 }
             }
@@ -1615,7 +1619,7 @@
                         program,
                         <span class="string">"run_test"</span>,
                         <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
-                        <span class="macro">jit_panic!</span>(JitValue::Felt252(error)),
+                        <span class="macro">jit_panic!</span>(Value::Felt252(error)),
                     );
                 }
             }

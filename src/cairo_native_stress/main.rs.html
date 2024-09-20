@@ -361,6 +361,11 @@
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A stress tester for Cairo Native
 //!
 //! See `StressTestCommand` for documentation on the CLI.
@@ -376,33 +381,38 @@
 //!
 //! For documentation on the specific cache used, see `NaiveAotCache`.
 
-</span><span class="kw">use </span>cairo_lang_sierra::ids::FunctionId;
-<span class="kw">use </span>cairo_lang_sierra::program::{GenericArg, Program};
-<span class="kw">use </span>cairo_lang_sierra::program_registry::ProgramRegistry;
-<span class="kw">use </span>cairo_lang_starknet::compile::compile_path;
-<span class="kw">use </span>cairo_native::metadata::gas::GasMetadata;
-<span class="kw">use </span>cairo_native::utils::SHARED_LIBRARY_EXT;
-<span class="kw">use </span>cairo_native::{
-    context::NativeContext, executor::AotNativeExecutor, starknet::DummySyscallHandler,
-    utils::find_entry_point_by_idx,
+</span><span class="kw">use </span>cairo_lang_sierra::{
+    ids::FunctionId,
+    program::{GenericArg, Program},
+    program_registry::ProgramRegistry,
 };
-<span class="kw">use </span>cairo_native::{module_to_object, object_to_shared_lib, OptLevel};
+<span class="kw">use </span>cairo_lang_starknet::compile::compile_path;
+<span class="kw">use </span>cairo_native::{
+    context::NativeContext,
+    executor::AotNativeExecutor,
+    metadata::gas::GasMetadata,
+    module_to_object, object_to_shared_lib,
+    starknet::DummySyscallHandler,
+    utils::{find_entry_point_by_idx, SHARED_LIBRARY_EXT},
+    OptLevel,
+};
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>libloading::Library;
 <span class="kw">use </span>num_bigint::BigInt;
 <span class="kw">use </span>stats_alloc::{Region, StatsAlloc, INSTRUMENTED_SYSTEM};
-<span class="kw">use </span>std::alloc::System;
-<span class="kw">use </span>std::fmt::{Debug, Display};
-<span class="kw">use </span>std::fs::{create_dir_all, read_dir, OpenOptions};
-<span class="kw">use </span>std::hash::Hash;
-<span class="kw">use </span>std::io;
-<span class="kw">use </span>std::path::{Path, PathBuf};
-<span class="kw">use </span>std::sync::Arc;
-<span class="kw">use </span>std::{collections::HashMap, fs, time::Instant};
+<span class="kw">use </span>std::{
+    alloc::System,
+    collections::HashMap,
+    fmt::{Debug, Display},
+    fs::{<span class="self">self</span>, create_dir_all, read_dir, OpenOptions},
+    hash::Hash,
+    io,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 <span class="kw">use </span>tracing::{debug, info, info_span, warn};
-<span class="kw">use </span>tracing_subscriber::layer::SubscriberExt;
-<span class="kw">use </span>tracing_subscriber::util::SubscriberInitExt;
-<span class="kw">use </span>tracing_subscriber::{EnvFilter, Layer};
+<span class="kw">use </span>tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 <span class="attr">#[global_allocator]
 </span><span class="kw">static </span>GLOBAL_ALLOC: <span class="kw-2">&amp;</span>StatsAlloc&lt;System&gt; = <span class="kw-2">&amp;</span>INSTRUMENTED_SYSTEM;

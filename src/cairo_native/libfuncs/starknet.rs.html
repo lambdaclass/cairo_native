@@ -3501,22 +3501,15 @@
 <a href="#3501" id="3501">3501</a>
 <a href="#3502" id="3502">3502</a>
 <a href="#3503" id="3503">3503</a>
-<a href="#3504" id="3504">3504</a>
-<a href="#3505" id="3505">3505</a>
-<a href="#3506" id="3506">3506</a>
-<a href="#3507" id="3507">3507</a>
-<a href="#3508" id="3508">3508</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Starknet libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt,
-    error::{Error, <span class="prelude-ty">Result</span>},
+    error::Result,
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    types::felt252::PRIME,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt, PRIME},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -3544,7 +3537,7 @@
     Context,
 };
 <span class="kw">use </span>num_bigint::Sign;
-<span class="kw">use </span>std::{alloc::Layout, borrow::Cow};
+<span class="kw">use </span>std::alloc::Layout;
 
 <span class="kw">mod </span>secp256;
 <span class="kw">mod </span>testing;
@@ -3905,16 +3898,15 @@
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureAndConstConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>value = <span class="kw">match </span>info.c.sign() {
-        Sign::Minus =&gt; Cow::Owned(<span class="kw-2">&amp;*</span>PRIME - info.c.magnitude()),
-        <span class="kw">_ </span>=&gt; Cow::Borrowed(info.c.magnitude()),
-    };
-
-    <span class="kw">let </span>value = entry.append_op_result(arith::constant(
+    <span class="kw">let </span>value = entry.const_int(
         context,
-        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : i252"</span>)).ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
         location,
-    ))<span class="question-mark">?</span>;
+        <span class="kw">match </span>info.c.sign() {
+            Sign::Minus =&gt; <span class="kw-2">&amp;*</span>PRIME - info.c.magnitude(),
+            <span class="kw">_ </span>=&gt; info.c.magnitude().clone(),
+        },
+        <span class="number">252</span>,
+    )<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
     <span class="prelude-val">Ok</span>(())
@@ -3983,16 +3975,15 @@
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureAndConstConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>value = <span class="kw">match </span>info.c.sign() {
-        Sign::Minus =&gt; Cow::Owned(<span class="kw-2">&amp;*</span>PRIME - info.c.magnitude()),
-        <span class="kw">_ </span>=&gt; Cow::Borrowed(info.c.magnitude()),
-    };
-
-    <span class="kw">let </span>value = entry.append_op_result(arith::constant(
+    <span class="kw">let </span>value = entry.const_int(
         context,
-        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : i252"</span>)).unwrap(),
         location,
-    ))<span class="question-mark">?</span>;
+        <span class="kw">match </span>info.c.sign() {
+            Sign::Minus =&gt; <span class="kw-2">&amp;*</span>PRIME - info.c.magnitude(),
+            <span class="kw">_ </span>=&gt; info.c.magnitude().clone(),
+        },
+        <span class="number">252</span>,
+    )<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
     <span class="prelude-val">Ok</span>(())
@@ -4445,16 +4436,15 @@
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureAndConstConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>value = <span class="kw">match </span>info.c.sign() {
-        Sign::Minus =&gt; Cow::Owned(<span class="kw-2">&amp;*</span>PRIME - info.c.magnitude()),
-        <span class="kw">_ </span>=&gt; Cow::Borrowed(info.c.magnitude()),
-    };
-
-    <span class="kw">let </span>value = entry.append_op_result(arith::constant(
+    <span class="kw">let </span>value = entry.const_int(
         context,
-        Attribute::parse(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{value} : i252"</span>)).unwrap(),
         location,
-    ))<span class="question-mark">?</span>;
+        <span class="kw">match </span>info.c.sign() {
+            Sign::Minus =&gt; <span class="kw-2">&amp;*</span>PRIME - info.c.magnitude(),
+            <span class="kw">_ </span>=&gt; info.c.magnitude().clone(),
+        },
+        <span class="number">252</span>,
+    )<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
     <span class="prelude-val">Ok</span>(())

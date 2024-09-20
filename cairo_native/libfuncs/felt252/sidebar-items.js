@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["build","build_binary_operation","build_const","build_is_zero"]};

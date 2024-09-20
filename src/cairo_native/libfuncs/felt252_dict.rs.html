@@ -303,10 +303,10 @@
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
-<span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
 <span class="kw">use crate</span>::{
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    utils::BlockExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -415,7 +415,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_dict, jit_enum, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
 
     <span class="attr">#[test]
@@ -531,7 +531,7 @@
                 <span class="number">5 </span>=&gt; <span class="number">6u32</span>,
             )],
             <span class="macro">jit_struct!</span>(
-                JitValue::Felt252(<span class="number">0</span>.into()),
+                Value::Felt252(<span class="number">0</span>.into()),
                 <span class="macro">jit_dict!</span>(
                     <span class="number">1 </span>=&gt; <span class="number">2u32</span>,
                     <span class="number">2 </span>=&gt; <span class="number">3u32</span>,

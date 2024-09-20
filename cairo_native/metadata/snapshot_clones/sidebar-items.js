@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["SnapshotClonesMeta"],"type":["CloneFn"]};
+window.SIDEBAR_ITEMS = {"struct":["SnapshotClonesMeta"]};

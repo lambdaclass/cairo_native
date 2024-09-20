@@ -532,7 +532,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
 
     <span class="attr">#[test]
@@ -548,7 +548,7 @@
             }
         };
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[], JitValue::Uint32(<span class="number">2</span>));
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[], Value::Uint32(<span class="number">2</span>));
     }
 
     <span class="attr">#[test]
@@ -564,7 +564,7 @@
             }
         };
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[], JitValue::Uint32(<span class="number">2</span>));
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[], Value::Uint32(<span class="number">2</span>));
     }
 
     <span class="attr">#[test]
@@ -586,9 +586,9 @@
             <span class="kw-2">&amp;</span>program,
             <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[],
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">0</span>,
-                value: Box::new(JitValue::Felt252(<span class="number">1234</span>.into())),
+                value: Box::new(Value::Felt252(<span class="number">1234</span>.into())),
                 debug_name: <span class="prelude-val">None</span>,
             },
         );
@@ -614,9 +614,9 @@
             <span class="kw-2">&amp;</span>program,
             <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[],
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">0</span>,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: Vec::new(),
                     debug_name: <span class="prelude-val">None</span>,
                 }),
@@ -645,9 +645,9 @@
             <span class="kw-2">&amp;</span>program,
             <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[],
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">1</span>,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: Vec::new(),
                     debug_name: <span class="prelude-val">None</span>,
                 }),
@@ -676,9 +676,9 @@
             <span class="kw-2">&amp;</span>program,
             <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[],
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">0</span>,
-                value: Box::new(JitValue::Felt252(<span class="number">1234</span>.into())),
+                value: Box::new(Value::Felt252(<span class="number">1234</span>.into())),
                 debug_name: <span class="prelude-val">None</span>,
             },
         );

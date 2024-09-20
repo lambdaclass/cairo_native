@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["build","build_into_box","build_unbox"]};

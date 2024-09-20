@@ -632,33 +632,13 @@
 <a href="#632" id="632">632</a>
 <a href="#633" id="633">633</a>
 <a href="#634" id="634">634</a>
-<a href="#635" id="635">635</a>
-<a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a>
-<a href="#638" id="638">638</a>
-<a href="#639" id="639">639</a>
-<a href="#640" id="640">640</a>
-<a href="#641" id="641">641</a>
-<a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
-<a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt,
-    error::{Error, <span class="prelude-ty">Result</span>},
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{BlockExt, ProgramRegistryExt, PRIME},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -680,8 +660,7 @@
     ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
-<span class="kw">use </span>num_bigint::{Sign, ToBigInt};
-<span class="kw">use </span>starknet_types_core::felt::Felt;
+<span class="kw">use </span>num_bigint::{BigInt, Sign};
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
@@ -730,11 +709,6 @@
     <span class="kw">let </span>i256 = IntegerType::new(context, <span class="number">256</span>).into();
     <span class="kw">let </span>i512 = IntegerType::new(context, <span class="number">512</span>).into();
 
-    <span class="kw">let </span>prime = metadata
-        .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-        .ok_or(Error::MissingMetadata)<span class="question-mark">?
-        </span>.prime();
-
     <span class="kw">let </span>(op, lhs, rhs) = <span class="kw">match </span>info {
         Felt252BinaryOperationConcrete::WithVar(operation) =&gt; (
             operation.operator,
@@ -743,16 +717,10 @@
         ),
         Felt252BinaryOperationConcrete::WithConst(operation) =&gt; {
             <span class="kw">let </span>value = <span class="kw">match </span>operation.c.sign() {
-                Sign::Minus =&gt; {
-                    <span class="kw">let </span>prime = metadata
-                        .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                        .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                        </span>.prime();
-                    (<span class="kw-2">&amp;</span>operation.c + prime.to_bigint().expect(<span class="string">"always is Some"</span>))
-                        .to_biguint()
-                        .expect(<span class="string">"always positive"</span>)
-                }
-                <span class="kw">_ </span>=&gt; operation.c.to_biguint().expect(<span class="string">"sign already checked"</span>),
+                Sign::Minus =&gt; (<span class="kw-2">&amp;</span>operation.c + BigInt::from_biguint(Sign::Minus, PRIME.clone()))
+                    .magnitude()
+                    .clone(),
+                <span class="kw">_ </span>=&gt; operation.c.magnitude().clone(),
             };
 
             <span class="comment">// TODO: Ensure that the constant is on the correct side of the operation.
@@ -768,7 +736,7 @@
             <span class="kw">let </span>rhs = entry.append_op_result(arith::extui(rhs, i256, location))<span class="question-mark">?</span>;
             <span class="kw">let </span>result = entry.append_op_result(arith::addi(lhs, rhs, location))<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>prime = entry.const_int_from_type(context, location, prime.clone(), i256)<span class="question-mark">?</span>;
+            <span class="kw">let </span>prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)<span class="question-mark">?</span>;
             <span class="kw">let </span>result_mod = entry.append_op_result(arith::subi(result, prime, location))<span class="question-mark">?</span>;
             <span class="kw">let </span>is_out_of_range = entry.append_op_result(arith::cmpi(
                 context,
@@ -791,7 +759,7 @@
             <span class="kw">let </span>rhs = entry.append_op_result(arith::extui(rhs, i256, location))<span class="question-mark">?</span>;
             <span class="kw">let </span>result = entry.append_op_result(arith::subi(lhs, rhs, location))<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>prime = entry.const_int_from_type(context, location, prime.clone(), i256)<span class="question-mark">?</span>;
+            <span class="kw">let </span>prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)<span class="question-mark">?</span>;
             <span class="kw">let </span>result_mod = entry.append_op_result(arith::addi(result, prime, location))<span class="question-mark">?</span>;
             <span class="kw">let </span>is_out_of_range = entry.append_op_result(arith::cmpi(
                 context,
@@ -814,7 +782,7 @@
             <span class="kw">let </span>rhs = entry.append_op_result(arith::extui(rhs, i512, location))<span class="question-mark">?</span>;
             <span class="kw">let </span>result = entry.append_op_result(arith::muli(lhs, rhs, location))<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>prime = entry.const_int_from_type(context, location, prime.clone(), i512)<span class="question-mark">?</span>;
+            <span class="kw">let </span>prime = entry.const_int_from_type(context, location, PRIME.clone(), i512)<span class="question-mark">?</span>;
             <span class="kw">let </span>result_mod = entry.append_op_result(arith::remui(result, prime, location))<span class="question-mark">?</span>;
             <span class="kw">let </span>is_out_of_range = entry.append_op_result(arith::cmpi(
                 context,
@@ -855,7 +823,7 @@
             // For the initial setup, r0 = PRIME, r1 = a
             // This order is chosen because if we reverse them, then the first iteration will just swap them
             </span><span class="kw">let </span>prev_remainder =
-                start_block.const_int_from_type(context, location, prime.clone(), i512)<span class="question-mark">?</span>;
+                start_block.const_int_from_type(context, location, PRIME.clone(), i512)<span class="question-mark">?</span>;
             <span class="kw">let </span>remainder = start_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
             <span class="comment">// Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
             </span><span class="kw">let </span>prev_inverse = start_block.const_int_from_type(context, location, <span class="number">0</span>, i512)<span class="question-mark">?</span>;
@@ -925,7 +893,7 @@
                 </span>.into();
             <span class="comment">// if the inverse is &lt; 0, add PRIME
             </span><span class="kw">let </span>prime =
-                negative_check_block.const_int_from_type(context, location, prime.clone(), i512)<span class="question-mark">?</span>;
+                negative_check_block.const_int_from_type(context, location, PRIME.clone(), i512)<span class="question-mark">?</span>;
             <span class="kw">let </span>wrapped_inverse =
                 negative_check_block.append_op_result(arith::addi(inverse, prime, location))<span class="question-mark">?</span>;
             <span class="kw">let </span>inverse = negative_check_block.append_op_result(arith::select(
@@ -992,16 +960,10 @@
     info: <span class="kw-2">&amp;</span>Felt252ConstConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>value = <span class="kw">match </span>info.c.sign() {
-        Sign::Minus =&gt; {
-            <span class="kw">let </span>prime = metadata
-                .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                </span>.prime();
-            (<span class="kw-2">&amp;</span>info.c + prime.to_bigint().expect(<span class="string">"always is Some"</span>))
-                .to_biguint()
-                .expect(<span class="string">"always is positive"</span>)
-        }
-        <span class="kw">_ </span>=&gt; info.c.to_biguint().expect(<span class="string">"sign already checked"</span>),
+        Sign::Minus =&gt; (<span class="kw-2">&amp;</span>info.c + BigInt::from_biguint(Sign::Minus, PRIME.clone()))
+            .magnitude()
+            .clone(),
+        <span class="kw">_ </span>=&gt; info.c.magnitude().clone(),
     };
 
     <span class="kw">let </span>felt252_ty = registry.build_type(
@@ -1041,7 +1003,7 @@
 </span><span class="kw">pub mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
@@ -1110,11 +1072,11 @@
             <span class="kw">match </span>run_program(
                 <span class="kw-2">&amp;</span>FELT252_ADD,
                 <span class="string">"run_test"</span>,
-                <span class="kw-2">&amp;</span>[JitValue::Felt252(lhs), JitValue::Felt252(rhs)],
+                <span class="kw-2">&amp;</span>[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
             .return_value
             {
-                JitValue::Felt252(x) =&gt; x,
+                Value::Felt252(x) =&gt; x,
                 <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"invalid return type"</span>),
             }
         }
@@ -1148,11 +1110,11 @@
             <span class="kw">match </span>run_program(
                 <span class="kw-2">&amp;</span>FELT252_SUB,
                 <span class="string">"run_test"</span>,
-                <span class="kw-2">&amp;</span>[JitValue::Felt252(lhs), JitValue::Felt252(rhs)],
+                <span class="kw-2">&amp;</span>[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
             .return_value
             {
-                JitValue::Felt252(x) =&gt; x,
+                Value::Felt252(x) =&gt; x,
                 <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"invalid return type"</span>),
             }
         }
@@ -1184,11 +1146,11 @@
             <span class="kw">match </span>run_program(
                 <span class="kw-2">&amp;</span>FELT252_MUL,
                 <span class="string">"run_test"</span>,
-                <span class="kw-2">&amp;</span>[JitValue::Felt252(lhs), JitValue::Felt252(rhs)],
+                <span class="kw-2">&amp;</span>[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
             .return_value
             {
-                JitValue::Felt252(x) =&gt; x,
+                Value::Felt252(x) =&gt; x,
                 <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"invalid return type"</span>),
             }
         }
@@ -1221,21 +1183,21 @@
             <span class="kw">match </span>run_program(
                 <span class="kw-2">&amp;</span>FELT252_DIV,
                 <span class="string">"run_test"</span>,
-                <span class="kw-2">&amp;</span>[JitValue::Felt252(lhs), JitValue::Felt252(rhs)],
+                <span class="kw-2">&amp;</span>[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
             .return_value
             {
-                JitValue::Enum { tag: <span class="number">0</span>, value, .. } =&gt; <span class="kw">match </span><span class="kw-2">*</span>value {
-                    JitValue::Struct { fields, .. } =&gt; {
+                Value::Enum { tag: <span class="number">0</span>, value, .. } =&gt; <span class="kw">match </span><span class="kw-2">*</span>value {
+                    Value::Struct { fields, .. } =&gt; {
                         <span class="macro">assert_eq!</span>(fields.len(), <span class="number">1</span>);
                         <span class="prelude-val">Some</span>(<span class="kw">match </span><span class="kw-2">&amp;</span>fields[<span class="number">0</span>] {
-                            JitValue::Felt252(x) =&gt; <span class="kw-2">*</span>x,
+                            Value::Felt252(x) =&gt; <span class="kw-2">*</span>x,
                             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"invalid return type payload"</span>),
                         })
                     }
                     <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"invalid return type"</span>),
                 },
-                JitValue::Enum { tag: <span class="number">1</span>, .. } =&gt; <span class="prelude-val">None</span>,
+                Value::Enum { tag: <span class="number">1</span>, .. } =&gt; <span class="prelude-val">None</span>,
                 <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"invalid return type"</span>),
             }
         }
@@ -1280,9 +1242,9 @@
     </span><span class="kw">fn </span>felt252_const() {
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>FELT252_CONST, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::Struct {
+            Value::Struct {
                 fields: [f(<span class="string">"0"</span>), f(<span class="string">"1"</span>), f(<span class="string">"-2"</span>), f(<span class="string">"-1"</span>)]
-                    .map(JitValue::Felt252)
+                    .map(Value::Felt252)
                     .to_vec(),
                 debug_name: <span class="prelude-val">None
             </span>}
@@ -1292,8 +1254,8 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>felt252_is_zero() {
         <span class="kw">fn </span>r(x: Felt) -&gt; bool {
-            <span class="kw">match </span>run_program(<span class="kw-2">&amp;</span>FELT252_IS_ZERO, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[JitValue::Felt252(x)]).return_value {
-                JitValue::Enum { tag, .. } =&gt; tag != <span class="number">0</span>,
+            <span class="kw">match </span>run_program(<span class="kw-2">&amp;</span>FELT252_IS_ZERO, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[Value::Felt252(x)]).return_value {
+                Value::Enum { tag, .. } =&gt; tag != <span class="number">0</span>,
                 <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"invalid return type"</span>),
             }
         }

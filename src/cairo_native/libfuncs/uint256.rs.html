@@ -2270,7 +2270,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
@@ -2316,11 +2316,11 @@
         };
     }
 
-    <span class="kw">fn </span>u256(value: BigUint) -&gt; JitValue {
+    <span class="kw">fn </span>u256(value: BigUint) -&gt; Value {
         <span class="macro">assert!</span>(value.bits() &lt;= <span class="number">256</span>);
         <span class="macro">jit_struct!</span>(
-            JitValue::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
-            JitValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+            Value::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+            Value::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
         )
     }
 
@@ -2355,7 +2355,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u256_safe_divmod() {
         <span class="attr">#[track_caller]
-        </span><span class="kw">fn </span>run(lhs: (u128, u128), rhs: (u128, u128), result: JitValue) {
+        </span><span class="kw">fn </span>run(lhs: (u128, u128), rhs: (u128, u128), result: Value) {
             run_program_assert_output(
                 <span class="kw-2">&amp;</span>U256_SAFE_DIVMOD,
                 <span class="string">"run_test"</span>,
@@ -2446,7 +2446,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u256_sqrt() {
         <span class="attr">#[track_caller]
-        </span><span class="kw">fn </span>run(value: (u128, u128), result: JitValue) {
+        </span><span class="kw">fn </span>run(value: (u128, u128), result: Value) {
             run_program_assert_output(
                 <span class="kw-2">&amp;</span>U256_SQRT,
                 <span class="string">"run_test"</span>,
@@ -2484,7 +2484,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u256_inv_mod_n() {
         <span class="attr">#[track_caller]
-        </span><span class="kw">fn </span>run(a: (u128, u128), n: (u128, u128), result: JitValue) {
+        </span><span class="kw">fn </span>run(a: (u128, u128), n: (u128, u128), result: Value) {
             run_program_assert_output(
                 <span class="kw-2">&amp;</span>U256_INV_MOD_N,
                 <span class="string">"run_test"</span>,

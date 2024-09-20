@@ -45,10 +45,10 @@
 </span><span class="kw">pub use </span><span class="self">self</span>::{
     compiler::compile,
     ffi::{module_to_object, object_to_shared_lib, OptLevel},
+    values::Value,
 };
 
 <span class="kw">mod </span>arch;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>block_ext;
 <span class="kw">pub mod </span>cache;
 <span class="kw">mod </span>compiler;
 <span class="kw">pub mod </span>context;
@@ -58,12 +58,12 @@
 <span class="kw">pub mod </span>execution_result;
 <span class="kw">pub mod </span>executor;
 <span class="kw">mod </span>ffi;
-<span class="kw">pub mod </span>libfuncs;
+<span class="kw">mod </span>libfuncs;
 <span class="kw">pub mod </span>metadata;
 <span class="kw">pub mod </span>module;
 <span class="kw">pub mod </span>starknet;
 <span class="kw">pub mod </span>starknet_stub;
-<span class="kw">pub mod </span>types;
+<span class="kw">mod </span>types;
 <span class="kw">pub mod </span>utils;
-<span class="kw">pub mod </span>values;
+<span class="kw">mod </span>values;
 </code></pre></div></section></main></body></html>

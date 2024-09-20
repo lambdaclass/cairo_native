@@ -305,7 +305,7 @@
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::generate_function_name,
-    values::JitValue,
+    values::Value,
     OptLevel,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -370,7 +370,7 @@
     <span class="kw">pub fn </span>invoke_dynamic(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
-        args: <span class="kw-2">&amp;</span>[JitValue],
+        args: <span class="kw-2">&amp;</span>[Value],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, Error&gt; {
         <span class="kw">let </span>available_gas = <span class="self">self
@@ -391,7 +391,7 @@
     <span class="kw">pub fn </span>invoke_dynamic_with_syscall_handler(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
-        args: <span class="kw-2">&amp;</span>[JitValue],
+        args: <span class="kw-2">&amp;</span>[Value],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
         syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, Error&gt; {
@@ -426,9 +426,9 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
             <span class="self">self</span>.extract_signature(function_id),
-            <span class="kw-2">&amp;</span>[JitValue::Struct {
-                fields: <span class="macro">vec!</span>[JitValue::Array(
-                    args.iter().cloned().map(JitValue::Felt252).collect(),
+            <span class="kw-2">&amp;</span>[Value::Struct {
+                fields: <span class="macro">vec!</span>[Value::Array(
+                    args.iter().cloned().map(Value::Felt252).collect(),
                 )],
                 <span class="comment">// TODO: Populate `debug_name`.
                 </span>debug_name: <span class="prelude-val">None</span>,
@@ -526,7 +526,7 @@
             .invoke_dynamic(entrypoint_function_id, <span class="kw-2">&amp;</span>[], <span class="prelude-val">Some</span>(u128::MAX))
             .unwrap();
 
-        <span class="macro">assert_eq!</span>(result.return_value, JitValue::Felt252(Felt::from(<span class="number">42</span>)));
+        <span class="macro">assert_eq!</span>(result.return_value, Value::Felt252(Felt::from(<span class="number">42</span>)));
     }
 
     <span class="attr">#[rstest]
@@ -556,10 +556,10 @@
             )
             .unwrap();
 
-        <span class="kw">let </span>expected_value = JitValue::Enum {
+        <span class="kw">let </span>expected_value = Value::Enum {
             tag: <span class="number">0</span>,
-            value: JitValue::Struct {
-                fields: <span class="macro">vec!</span>[JitValue::Felt252(expected_value)],
+            value: Value::Struct {
+                fields: <span class="macro">vec!</span>[Value::Felt252(expected_value)],
                 debug_name: <span class="prelude-val">Some</span>(<span class="string">"Tuple&lt;felt252&gt;"</span>.into()),
             }
             .into(),

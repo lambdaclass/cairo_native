@@ -121,16 +121,31 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
-</pre></div><pre class="rust"><code><span class="kw">mod </span>utils;
-
-<span class="kw">use </span>anyhow::Context;
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 <span class="kw">use </span>cairo_lang_runner::short_string::as_cairo_short_string;
 <span class="kw">use </span>cairo_native::{
     context::NativeContext,
-    executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
+    executor::{AotNativeExecutor, JitNativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
     starknet_stub::StubSyscallHandler,
 };
@@ -138,6 +153,8 @@
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>tracing_subscriber::{EnvFilter, FmtSubscriber};
 <span class="kw">use </span>utils::{find_function, result_to_runresult};
+
+<span class="kw">mod </span>utils;
 
 <span class="attr">#[derive(Clone, Debug, ValueEnum)]
 </span><span class="kw">enum </span>RunMode {
@@ -197,12 +214,30 @@
     <span class="comment">// Compile the sierra program into a MLIR module.
     </span><span class="kw">let </span>native_module = native_context.compile(<span class="kw-2">&amp;</span>sierra_program, <span class="bool-val">false</span>).unwrap();
 
-    <span class="kw">let </span>native_executor: NativeExecutor = <span class="kw">match </span>args.run_mode {
+    <span class="kw">let </span>native_executor: Box&lt;<span class="kw">dyn </span>Fn(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">&amp;mut </span>StubSyscallHandler) -&gt; <span class="kw">_</span>&gt; = <span class="kw">match </span>args.run_mode {
         RunMode::Aot =&gt; {
-            AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+            <span class="kw">let </span>executor =
+                AotNativeExecutor::from_native_module(native_module, args.opt_level.into());
+            Box::new(<span class="kw">move </span>|function_id, args, gas, syscall_handler| {
+                executor.invoke_dynamic_with_syscall_handler(
+                    function_id,
+                    args,
+                    gas,
+                    syscall_handler,
+                )
+            })
         }
         RunMode::Jit =&gt; {
-            JitNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+            <span class="kw">let </span>executor =
+                JitNativeExecutor::from_native_module(native_module, args.opt_level.into());
+            Box::new(<span class="kw">move </span>|function_id, args, gas, syscall_handler| {
+                executor.invoke_dynamic_with_syscall_handler(
+                    function_id,
+                    args,
+                    gas,
+                    syscall_handler,
+                )
+            })
         }
     };
 
@@ -217,8 +252,7 @@
 
     <span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = StubSyscallHandler::default();
 
-    <span class="kw">let </span>result = native_executor
-        .invoke_dynamic_with_syscall_handler(<span class="kw-2">&amp;</span>func.id, <span class="kw-2">&amp;</span>[], <span class="prelude-val">Some</span>(initial_gas), <span class="kw-2">&amp;mut </span>syscall_handler)
+    <span class="kw">let </span>result = native_executor(<span class="kw-2">&amp;</span>func.id, <span class="kw-2">&amp;</span>[], <span class="prelude-val">Some</span>(initial_gas), <span class="kw-2">&amp;mut </span>syscall_handler)
         .with_context(|| <span class="string">"Failed to run the function."</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>run_result = result_to_runresult(<span class="kw-2">&amp;</span>result)<span class="question-mark">?</span>;

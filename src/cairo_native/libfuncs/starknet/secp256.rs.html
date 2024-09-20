@@ -3099,14 +3099,12 @@
 <a href="#3099" id="3099">3099</a>
 <a href="#3100" id="3100">3100</a>
 <a href="#3101" id="3101">3101</a>
-<a href="#3102" id="3102">3102</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    block_ext::BlockExt,
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{

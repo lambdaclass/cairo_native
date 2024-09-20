@@ -787,36 +787,13 @@
 <a href="#787" id="787">787</a>
 <a href="#788" id="788">788</a>
 <a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `i32`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt,
-    error::{Error, <span class="prelude-ty">Result</span>},
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{BlockExt, ProgramRegistryExt, HALF_PRIME, PRIME},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -838,8 +815,6 @@
     ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
-<span class="kw">use </span>starknet_types_core::felt::Felt;
-<span class="kw">use </span>std::ops::Shr;
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
@@ -1134,16 +1109,8 @@
     <span class="comment">// make unsigned felt into signed felt
     // felt &gt; half prime = negative
     </span><span class="kw">let </span>value = {
-        <span class="kw">let </span>half_prime: melior::ir::Value = block.const_int_from_type(
-            context,
-            location,
-            metadata
-                .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                </span>.prime()
-                .shr(<span class="number">1</span>),
-            felt252_ty,
-        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>half_prime =
+            block.const_int_from_type(context, location, HALF_PRIME.clone(), felt252_ty)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>is_felt_neg = block.append_op_result(arith::cmpi(
             context,
@@ -1168,22 +1135,12 @@
         ));
 
         {
-            <span class="kw">let </span>prime = is_neg_block.const_int_from_type(
-                context,
-                location,
-                metadata
-                    .get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;()
-                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
-                    </span>.prime()
-                    .clone(),
-                felt252_ty,
-            )<span class="question-mark">?</span>;
-
-            <span class="kw">let </span><span class="kw-2">mut </span>src_value_is_neg: melior::ir::Value =
+            <span class="kw">let </span>prime =
+                is_neg_block.const_int_from_type(context, location, PRIME.clone(), felt252_ty)<span class="question-mark">?</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>src_value_is_neg =
                 is_neg_block.append_op_result(arith::subi(prime, value, location))<span class="question-mark">?</span>;
 
             <span class="kw">let </span>kneg1 = is_neg_block.const_int_from_type(context, location, -<span class="number">1</span>, felt252_ty)<span class="question-mark">?</span>;
-
             src_value_is_neg =
                 is_neg_block.append_op_result(arith::muli(src_value_is_neg, kneg1, location))<span class="question-mark">?</span>;
 
@@ -1193,7 +1150,6 @@
         is_not_neg_block.append_operation(cf::br(final_block, <span class="kw-2">&amp;</span>[value], location));
 
         block = final_block;
-
         block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()
     };
 
@@ -1272,7 +1228,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
@@ -1393,7 +1349,7 @@
                         program,
                         <span class="string">"run_test"</span>,
                         <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
-                        <span class="macro">jit_panic!</span>(JitValue::Felt252(error)),
+                        <span class="macro">jit_panic!</span>(Value::Felt252(error)),
                     );
                 }
             }
@@ -1445,7 +1401,7 @@
                         program,
                         <span class="string">"run_test"</span>,
                         <span class="kw-2">&amp;</span>[lhs.into(), rhs.into()],
-                        <span class="macro">jit_panic!</span>(JitValue::Felt252(error)),
+                        <span class="macro">jit_panic!</span>(Value::Felt252(error)),
                     );
                 }
             }

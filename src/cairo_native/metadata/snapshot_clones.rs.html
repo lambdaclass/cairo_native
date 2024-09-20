@@ -81,7 +81,7 @@
 };
 <span class="kw">use </span>std::{collections::HashMap, sync::Arc};
 
-<span class="kw">pub type </span>CloneFn&lt;P&gt; = <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt; <span class="kw">fn</span>(
+<span class="kw">type </span>CloneFn&lt;P&gt; = <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt; <span class="kw">fn</span>(
     <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
@@ -110,7 +110,7 @@
 }
 
 <span class="kw">impl </span>SnapshotClonesMeta {
-    <span class="kw">pub fn </span>register&lt;P&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: ConcreteTypeId, handler: CloneFn&lt;P&gt;, params: P)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>register&lt;P&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: ConcreteTypeId, handler: CloneFn&lt;P&gt;, params: P)
     <span class="kw">where
         </span>P: <span class="lifetime">'static</span>,
     {
@@ -134,7 +134,7 @@
         );
     }
 
-    <span class="kw">pub fn </span>wrap_invoke(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>ConcreteTypeId) -&gt; <span class="prelude-ty">Option</span>&lt;CloneFnWrapper&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>wrap_invoke(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>ConcreteTypeId) -&gt; <span class="prelude-ty">Option</span>&lt;CloneFnWrapper&gt; {
         <span class="self">self</span>.mappings.get(id).cloned()
     }
 }

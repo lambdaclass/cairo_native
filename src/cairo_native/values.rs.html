@@ -1591,26 +1591,14 @@
 <a href="#1591" id="1591">1591</a>
 <a href="#1592" id="1592">1592</a>
 <a href="#1593" id="1593">1593</a>
-<a href="#1594" id="1594">1594</a>
-<a href="#1595" id="1595">1595</a>
-<a href="#1596" id="1596">1596</a>
-<a href="#1597" id="1597">1597</a>
-<a href="#1598" id="1598">1598</a>
-<a href="#1599" id="1599">1599</a>
-<a href="#1600" id="1600">1600</a>
-<a href="#1601" id="1601">1601</a>
-<a href="#1602" id="1602">1602</a>
-<a href="#1603" id="1603">1603</a>
-<a href="#1604" id="1604">1604</a>
-<a href="#1605" id="1605">1605</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
 
 </span><span class="kw">use crate</span>::{
     error::{CompilerError, Error},
-    types::{felt252::PRIME, TypeBuilder},
-    utils::{felt252_bigint, get_integer_layout, layout_repeat, RangeExt},
+    types::TypeBuilder,
+    utils::{felt252_bigint, get_integer_layout, layout_repeat, RangeExt, PRIME},
 };
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -1638,7 +1626,7 @@
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
 </span><span class="attr">#[derive(Clone, Educe, serde::Serialize, serde::Deserialize)]
 #[educe(Debug, Eq, PartialEq)]
-</span><span class="kw">pub enum </span>JitValue {
+</span><span class="kw">pub enum </span>Value {
     Felt252(<span class="attr">#[educe(Debug(method(std::fmt::Display::fmt)))] </span>Felt),
     Bytes31([u8; <span class="number">31</span>]),
     <span class="doccomment">/// all elements need to be same type
@@ -1690,91 +1678,91 @@
 
 <span class="comment">// Conversions
 
-</span><span class="kw">impl </span>From&lt;Felt&gt; <span class="kw">for </span>JitValue {
+</span><span class="kw">impl </span>From&lt;Felt&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: Felt) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Felt252(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;u8&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl </span>From&lt;u8&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: u8) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Uint8(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;u16&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl </span>From&lt;u16&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: u16) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Uint16(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;u32&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl </span>From&lt;u32&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: u32) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Uint32(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;u64&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl </span>From&lt;u64&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: u64) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Uint64(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;u128&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl </span>From&lt;u128&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: u128) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Uint128(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;i8&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl </span>From&lt;i8&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: i8) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Sint8(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;i16&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl </span>From&lt;i16&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: i16) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Sint16(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;i32&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl </span>From&lt;i32&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: i32) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Sint32(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;i64&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl </span>From&lt;i64&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: i64) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Sint64(value)
     }
 }
 
-<span class="kw">impl </span>From&lt;i128&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl </span>From&lt;i128&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: i128) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Sint128(value)
     }
 }
 
-<span class="kw">impl</span>&lt;T: Into&lt;JitValue&gt; + Clone&gt; From&lt;<span class="kw-2">&amp;</span>[T]&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl</span>&lt;T: Into&lt;Value&gt; + Clone&gt; From&lt;<span class="kw-2">&amp;</span>[T]&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>[T]) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Array(value.iter().map(|x| x.clone().into()).collect())
     }
 }
 
-<span class="kw">impl</span>&lt;T: Into&lt;JitValue&gt;&gt; From&lt;Vec&lt;T&gt;&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl</span>&lt;T: Into&lt;Value&gt;&gt; From&lt;Vec&lt;T&gt;&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Array(value.into_iter().map(Into::into).collect())
     }
 }
 
-<span class="kw">impl</span>&lt;T: Into&lt;JitValue&gt;, <span class="kw">const </span>N: usize&gt; From&lt;[T; N]&gt; <span class="kw">for </span>JitValue {
+<span class="kw">impl</span>&lt;T: Into&lt;Value&gt;, <span class="kw">const </span>N: usize&gt; From&lt;[T; N]&gt; <span class="kw">for </span>Value {
     <span class="kw">fn </span>from(value: [T; N]) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Array(value.into_iter().map(Into::into).collect())
     }
 }
 
-<span class="kw">impl </span>JitValue {
+<span class="kw">impl </span>Value {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>resolve_type&lt;<span class="lifetime">'a</span>&gt;(
         ty: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CoreTypeConcrete,
         registry: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
@@ -2259,9 +2247,9 @@
                         NonNull::new(ptr.as_ptr().byte_add(tag_layout.extend(payload_layout)<span class="question-mark">?</span>.<span class="number">1</span>))
                             .unwrap();
                     <span class="kw">let </span>payload =
-                        JitValue::from_jit(payload_ptr, <span class="kw-2">&amp;</span>info.variants[tag_value], registry)<span class="question-mark">?</span>;
+                        Value::from_jit(payload_ptr, <span class="kw-2">&amp;</span>info.variants[tag_value], registry)<span class="question-mark">?</span>;
 
-                    JitValue::Enum {
+                    Value::Enum {
                         tag: tag_value,
                         value: Box::new(payload),
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
@@ -2288,7 +2276,7 @@
                         )<span class="question-mark">?</span>);
                     }
 
-                    JitValue::Struct {
+                    Value::Struct {
                         fields: members,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -2309,7 +2297,7 @@
                         libc::free(val_ptr.as_ptr());
                     }
 
-                    JitValue::Felt252Dict {
+                    Value::Felt252Dict {
                         value: output_map,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -2336,7 +2324,7 @@
                         <span class="comment">// felt values
                         </span><span class="kw">let </span>data = ptr.cast::&lt;[u8; <span class="number">32</span>]&gt;().as_ref();
                         <span class="kw">let </span>data = Felt::from_bytes_le(data);
-                        JitValue::Felt252(data)
+                        Value::Felt252(data)
                     }
                     StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; {
                         <span class="macro">unimplemented!</span>(<span class="string">"should be handled before"</span>)
@@ -2348,8 +2336,8 @@
                         <span class="kw">let </span>y = (data[<span class="number">1</span>][<span class="number">0</span>], data[<span class="number">1</span>][<span class="number">1</span>]);
 
                         <span class="kw">match </span>info {
-                            Secp256PointTypeConcrete::K1(<span class="kw">_</span>) =&gt; JitValue::Secp256K1Point { x, y },
-                            Secp256PointTypeConcrete::R1(<span class="kw">_</span>) =&gt; JitValue::Secp256R1Point { x, y },
+                            Secp256PointTypeConcrete::K1(<span class="kw">_</span>) =&gt; Value::Secp256K1Point { x, y },
+                            Secp256PointTypeConcrete::R1(<span class="kw">_</span>) =&gt; Value::Secp256R1Point { x, y },
                         }
                     }
                     StarkNetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
@@ -2400,119 +2388,107 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_felt() {
         <span class="kw">let </span>felt_value: Felt = <span class="number">42</span>.into();
-        <span class="kw">let </span>jit_value: JitValue = felt_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Felt252(Felt::from(<span class="number">42</span>)));
+        <span class="kw">let </span>jit_value: Value = felt_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Felt252(Felt::from(<span class="number">42</span>)));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_u8() {
         <span class="kw">let </span>u8_value: u8 = <span class="number">10</span>;
-        <span class="kw">let </span>jit_value: JitValue = u8_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Uint8(<span class="number">10</span>));
+        <span class="kw">let </span>jit_value: Value = u8_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Uint8(<span class="number">10</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_u16() {
         <span class="kw">let </span>u8_value: u16 = <span class="number">10</span>;
-        <span class="kw">let </span>jit_value: JitValue = u8_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Uint16(<span class="number">10</span>));
+        <span class="kw">let </span>jit_value: Value = u8_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Uint16(<span class="number">10</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_u32() {
         <span class="kw">let </span>u32_value: u32 = <span class="number">10</span>;
-        <span class="kw">let </span>jit_value: JitValue = u32_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Uint32(<span class="number">10</span>));
+        <span class="kw">let </span>jit_value: Value = u32_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Uint32(<span class="number">10</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_u64() {
         <span class="kw">let </span>u64_value: u64 = <span class="number">10</span>;
-        <span class="kw">let </span>jit_value: JitValue = u64_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Uint64(<span class="number">10</span>));
+        <span class="kw">let </span>jit_value: Value = u64_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Uint64(<span class="number">10</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_u128() {
         <span class="kw">let </span>u128_value: u128 = <span class="number">10</span>;
-        <span class="kw">let </span>jit_value: JitValue = u128_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Uint128(<span class="number">10</span>));
+        <span class="kw">let </span>jit_value: Value = u128_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Uint128(<span class="number">10</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_i8() {
         <span class="kw">let </span>i8_value: i8 = -<span class="number">10</span>;
-        <span class="kw">let </span>jit_value: JitValue = i8_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Sint8(-<span class="number">10</span>));
+        <span class="kw">let </span>jit_value: Value = i8_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Sint8(-<span class="number">10</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_i16() {
         <span class="kw">let </span>i16_value: i16 = -<span class="number">10</span>;
-        <span class="kw">let </span>jit_value: JitValue = i16_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Sint16(-<span class="number">10</span>));
+        <span class="kw">let </span>jit_value: Value = i16_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Sint16(-<span class="number">10</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_i32() {
         <span class="kw">let </span>i32_value: i32 = -<span class="number">10</span>;
-        <span class="kw">let </span>jit_value: JitValue = i32_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Sint32(-<span class="number">10</span>));
+        <span class="kw">let </span>jit_value: Value = i32_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Sint32(-<span class="number">10</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_i64() {
         <span class="kw">let </span>i64_value: i64 = -<span class="number">10</span>;
-        <span class="kw">let </span>jit_value: JitValue = i64_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Sint64(-<span class="number">10</span>));
+        <span class="kw">let </span>jit_value: Value = i64_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Sint64(-<span class="number">10</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_i128() {
         <span class="kw">let </span>i128_value: i128 = -<span class="number">10</span>;
-        <span class="kw">let </span>jit_value: JitValue = i128_value.into();
-        <span class="macro">assert_eq!</span>(jit_value, JitValue::Sint128(-<span class="number">10</span>));
+        <span class="kw">let </span>jit_value: Value = i128_value.into();
+        <span class="macro">assert_eq!</span>(jit_value, Value::Sint128(-<span class="number">10</span>));
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_array_from_slice() {
         <span class="kw">let </span>array_slice: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];
-        <span class="kw">let </span>jit_value: JitValue = array_slice.into();
+        <span class="kw">let </span>jit_value: Value = array_slice.into();
         <span class="macro">assert_eq!</span>(
             jit_value,
-            JitValue::Array(<span class="macro">vec!</span>[
-                JitValue::Uint8(<span class="number">1</span>),
-                JitValue::Uint8(<span class="number">2</span>),
-                JitValue::Uint8(<span class="number">3</span>)
-            ])
+            Value::Array(<span class="macro">vec!</span>[Value::Uint8(<span class="number">1</span>), Value::Uint8(<span class="number">2</span>), Value::Uint8(<span class="number">3</span>)])
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_array_from_vec() {
         <span class="kw">let </span>array_vec: Vec&lt;u8&gt; = <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];
-        <span class="kw">let </span>jit_value: JitValue = array_vec.into();
+        <span class="kw">let </span>jit_value: Value = array_vec.into();
         <span class="macro">assert_eq!</span>(
             jit_value,
-            JitValue::Array(<span class="macro">vec!</span>[
-                JitValue::Uint8(<span class="number">1</span>),
-                JitValue::Uint8(<span class="number">2</span>),
-                JitValue::Uint8(<span class="number">3</span>)
-            ])
+            Value::Array(<span class="macro">vec!</span>[Value::Uint8(<span class="number">1</span>), Value::Uint8(<span class="number">2</span>), Value::Uint8(<span class="number">3</span>)])
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jit_value_conversion_array_from_fixed_size_array() {
         <span class="kw">let </span>array_fixed: [u8; <span class="number">3</span>] = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];
-        <span class="kw">let </span>jit_value: JitValue = array_fixed.into();
+        <span class="kw">let </span>jit_value: Value = array_fixed.into();
         <span class="macro">assert_eq!</span>(
             jit_value,
-            JitValue::Array(<span class="macro">vec!</span>[
-                JitValue::Uint8(<span class="number">1</span>),
-                JitValue::Uint8(<span class="number">2</span>),
-                JitValue::Uint8(<span class="number">3</span>)
-            ])
+            Value::Array(<span class="macro">vec!</span>[Value::Uint8(<span class="number">1</span>), Value::Uint8(<span class="number">2</span>), Value::Uint8(<span class="number">3</span>)])
         );
     }
 
@@ -2549,7 +2525,7 @@
         <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 
         <span class="macro">assert_eq!</span>(
-            JitValue::resolve_type(<span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>registry)
+            Value::resolve_type(<span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>registry)
                 .unwrap()
                 .integer_range(<span class="kw-2">&amp;</span>registry)
                 .unwrap(),
@@ -2570,7 +2546,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Felt252(Felt::from(<span class="number">42</span>))
+                <span class="kw-2">*</span>Value::Felt252(Felt::from(<span class="number">42</span>))
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;[u32; <span class="number">8</span>]&gt;()
@@ -2581,7 +2557,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Felt252(Felt::MAX)
+                <span class="kw-2">*</span>Value::Felt252(Felt::MAX)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;[u32; <span class="number">8</span>]&gt;()
@@ -2593,7 +2569,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Felt252(Felt::MAX + Felt::ONE)
+                <span class="kw-2">*</span>Value::Felt252(Felt::MAX + Felt::ONE)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;[u32; <span class="number">8</span>]&gt;()
@@ -2611,7 +2587,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Uint8(<span class="number">9</span>)
+                <span class="kw-2">*</span>Value::Uint8(<span class="number">9</span>)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;u8&gt;()
@@ -2629,7 +2605,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Uint16(<span class="number">17</span>)
+                <span class="kw-2">*</span>Value::Uint16(<span class="number">17</span>)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;u16&gt;()
@@ -2647,7 +2623,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Uint32(<span class="number">33</span>)
+                <span class="kw-2">*</span>Value::Uint32(<span class="number">33</span>)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;u32&gt;()
@@ -2665,7 +2641,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Uint64(<span class="number">65</span>)
+                <span class="kw-2">*</span>Value::Uint64(<span class="number">65</span>)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;u64&gt;()
@@ -2683,7 +2659,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Uint128(<span class="number">129</span>)
+                <span class="kw-2">*</span>Value::Uint128(<span class="number">129</span>)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;u128&gt;()
@@ -2701,7 +2677,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Sint8(-<span class="number">9</span>)
+                <span class="kw-2">*</span>Value::Sint8(-<span class="number">9</span>)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;i8&gt;()
@@ -2719,7 +2695,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Sint16(-<span class="number">17</span>)
+                <span class="kw-2">*</span>Value::Sint16(-<span class="number">17</span>)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;i16&gt;()
@@ -2737,7 +2713,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Sint32(-<span class="number">33</span>)
+                <span class="kw-2">*</span>Value::Sint32(-<span class="number">33</span>)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;i32&gt;()
@@ -2755,7 +2731,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Sint64(-<span class="number">65</span>)
+                <span class="kw-2">*</span>Value::Sint64(-<span class="number">65</span>)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;i64&gt;()
@@ -2773,7 +2749,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::Sint128(-<span class="number">129</span>)
+                <span class="kw-2">*</span>Value::Sint128(-<span class="number">129</span>)
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;i128&gt;()
@@ -2793,7 +2769,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::EcPoint(Felt::from(<span class="number">1234</span>), Felt::from(<span class="number">4321</span>))
+                <span class="kw-2">*</span>Value::EcPoint(Felt::from(<span class="number">1234</span>), Felt::from(<span class="number">4321</span>))
                     .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)
                     .unwrap()
                     .cast::&lt;[[u32; <span class="number">8</span>]; <span class="number">2</span>]&gt;()
@@ -2813,7 +2789,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::EcState(
+                <span class="kw-2">*</span>Value::EcState(
                     Felt::from(<span class="number">1234</span>),
                     Felt::from(<span class="number">4321</span>),
                     Felt::from(<span class="number">3333</span>),
@@ -2847,9 +2823,9 @@
         </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 
         <span class="comment">// Call to_jit to get the value of the enum
-        </span><span class="kw">let </span>result = JitValue::Enum {
+        </span><span class="kw">let </span>result = Value::Enum {
             tag: <span class="number">0</span>,
-            value: Box::new(JitValue::Uint8(<span class="number">10</span>)),
+            value: Box::new(Value::Uint8(<span class="number">10</span>)),
             debug_name: <span class="prelude-val">None</span>,
         }
         .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">1</span>].id);
@@ -2874,7 +2850,7 @@
         <span class="comment">// Valid case
         </span><span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{
-                <span class="kw-2">*</span>JitValue::BoundedInt {
+                <span class="kw-2">*</span>Value::BoundedInt {
                     value: Felt::from(<span class="number">16</span>),
                     range: Range {
                         lower: BigInt::from(<span class="number">10</span>),
@@ -2904,7 +2880,7 @@
         </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 
         <span class="comment">// Error case: lower bound greater than upper bound
-        </span><span class="kw">let </span>result = JitValue::BoundedInt {
+        </span><span class="kw">let </span>result = Value::BoundedInt {
             value: Felt::from(<span class="number">16</span>),
             range: Range {
                 lower: BigInt::from(<span class="number">510</span>),
@@ -2933,7 +2909,7 @@
         </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 
         <span class="comment">// Error case: value less than lower bound
-        </span><span class="kw">let </span>result = JitValue::BoundedInt {
+        </span><span class="kw">let </span>result = Value::BoundedInt {
             value: Felt::from(<span class="number">9</span>),
             range: Range {
                 lower: BigInt::from(<span class="number">10</span>),
@@ -2962,7 +2938,7 @@
         </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 
         <span class="comment">// Error case: value greater than or equal to upper bound
-        </span><span class="kw">let </span>result = JitValue::BoundedInt {
+        </span><span class="kw">let </span>result = Value::BoundedInt {
             value: Felt::from(<span class="number">512</span>),
             range: Range {
                 lower: BigInt::from(<span class="number">10</span>),
@@ -2991,7 +2967,7 @@
         </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 
         <span class="comment">// Error case: value equals lower and upper bound (upper bound is exclusive)
-        </span><span class="kw">let </span>result = JitValue::BoundedInt {
+        </span><span class="kw">let </span>result = Value::BoundedInt {
             value: Felt::from(<span class="number">10</span>),
             range: Range {
                 lower: BigInt::from(<span class="number">10</span>),
@@ -3021,9 +2997,9 @@
         </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 
         <span class="comment">// Call to_jit to get the value of the enum with tag value out of range
-        </span><span class="kw">let _ </span>= JitValue::Enum {
+        </span><span class="kw">let _ </span>= Value::Enum {
             tag: <span class="number">2</span>,
-            value: Box::new(JitValue::Uint8(<span class="number">10</span>)),
+            value: Box::new(Value::Uint8(<span class="number">10</span>)),
             debug_name: <span class="prelude-val">None</span>,
         }
         .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">1</span>].id);
@@ -3041,9 +3017,9 @@
 
         <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 
-        <span class="kw">let _ </span>= JitValue::Enum {
+        <span class="kw">let _ </span>= Value::Enum {
             tag: <span class="number">0</span>,
-            value: Box::new(JitValue::Uint8(<span class="number">10</span>)),
+            value: Box::new(Value::Uint8(<span class="number">10</span>)),
             debug_name: <span class="prelude-val">None</span>,
         }
         .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">1</span>].id);
@@ -3064,10 +3040,10 @@
 
         <span class="comment">// Invoking to_jit method on a JitValue::Enum to convert it to a JIT representation.
         // Generating an error by providing an enum value instead of the expected type.
-        </span><span class="kw">let </span>result = JitValue::Enum {
+        </span><span class="kw">let </span>result = Value::Enum {
             tag: <span class="number">0</span>,
-            value: Box::new(JitValue::Struct {
-                fields: <span class="macro">vec!</span>[JitValue::from(<span class="number">2u32</span>)],
+            value: Box::new(Value::Struct {
+                fields: <span class="macro">vec!</span>[Value::from(<span class="number">2u32</span>)],
                 debug_name: <span class="prelude-val">None</span>,
             }),
             debug_name: <span class="prelude-val">None</span>,
@@ -3106,8 +3082,8 @@
 
         <span class="comment">// Invoking to_jit method on a JitValue::Struct to convert it to a JIT representation.
         // Generating an error by providing a struct value instead of the expected type.
-        </span><span class="kw">let </span>result = JitValue::Struct {
-            fields: <span class="macro">vec!</span>[JitValue::from(<span class="number">2u32</span>)],
+        </span><span class="kw">let </span>result = Value::Struct {
+            fields: <span class="macro">vec!</span>[Value::from(<span class="number">2u32</span>)],
             debug_name: <span class="prelude-val">None</span>,
         }
         .to_jit(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">0</span>].id)

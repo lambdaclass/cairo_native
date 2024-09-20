@@ -666,22 +666,14 @@
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
 <a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
-<a href="#670" id="670">670</a>
-<a href="#671" id="671">671</a>
-<a href="#672" id="672">672</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt,
     error::Result,
     metadata::MetadataStorage,
-    types::{
-        felt252::{HALF_PRIME, PRIME},
-        TypeBuilder,
-    },
-    utils::RangeExt,
+    types::TypeBuilder,
+    utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -758,8 +750,8 @@
             }
         } <span class="kw">else </span>{
             Range {
-                lower: -HALF_PRIME.clone(),
-                upper: HALF_PRIME.clone() + BigInt::one(),
+                lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
+                upper: BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()) + BigInt::one(),
             }
         }
     } <span class="kw">else </span>{
@@ -954,8 +946,8 @@
     <span class="macro">assert!</span>(
         <span class="kw">if </span>dst_ty.is_felt252(registry)<span class="question-mark">? </span>{
             <span class="kw">let </span>alt_range = Range {
-                lower: -HALF_PRIME.clone(),
-                upper: HALF_PRIME.clone() + BigInt::one(),
+                lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
+                upper: BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()) + BigInt::one(),
             };
 
             (dst_range.lower &lt;= src_range.lower &amp;&amp; dst_range.upper &gt;= src_range.upper)
@@ -1047,7 +1039,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
@@ -1147,7 +1139,7 @@
                 u32::MAX.into(),
                 u64::MAX.into(),
                 u128::MAX.into(),
-                JitValue::Bytes31([<span class="number">0xFF</span>; <span class="number">31</span>]),
+                Value::Bytes31([<span class="number">0xFF</span>; <span class="number">31</span>]),
             ],
             <span class="macro">jit_struct!</span>(
                 <span class="macro">jit_struct!</span>(u8::MAX.into()),
@@ -1171,7 +1163,7 @@
                     u128::MAX.into()
                 ),
                 <span class="macro">jit_struct!</span>(
-                    JitValue::Bytes31([
+                    Value::Bytes31([
                         u8::MAX,
                         <span class="number">0</span>,
                         <span class="number">0</span>,
@@ -1204,7 +1196,7 @@
                         <span class="number">0</span>,
                         <span class="number">0</span>,
                     ]),
-                    JitValue::Bytes31([
+                    Value::Bytes31([
                         u8::MAX,
                         u8::MAX,
                         <span class="number">0</span>,
@@ -1237,7 +1229,7 @@
                         <span class="number">0</span>,
                         <span class="number">0</span>,
                     ]),
-                    JitValue::Bytes31([
+                    Value::Bytes31([
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
@@ -1270,7 +1262,7 @@
                         <span class="number">0</span>,
                         <span class="number">0</span>,
                     ]),
-                    JitValue::Bytes31([
+                    Value::Bytes31([
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
@@ -1303,7 +1295,7 @@
                         <span class="number">0</span>,
                         <span class="number">0</span>,
                     ]),
-                    JitValue::Bytes31([
+                    Value::Bytes31([
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
@@ -1336,7 +1328,7 @@
                         <span class="number">0</span>,
                         <span class="number">0</span>,
                     ]),
-                    JitValue::Bytes31([u8::MAX; <span class="number">31</span>]),
+                    Value::Bytes31([u8::MAX; <span class="number">31</span>]),
                 ),
             ),
         );

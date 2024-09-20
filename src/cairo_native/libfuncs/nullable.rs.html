@@ -279,14 +279,12 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Nullable libfuncs
 //!
 //! Like a Box but it can be null.
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
-<span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
-<span class="kw">use crate</span>::{error::Result, metadata::MetadataStorage};
+<span class="kw">use crate</span>::{error::Result, metadata::MetadataStorage, utils::BlockExt};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -452,7 +450,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
 
     <span class="attr">#[test]
@@ -487,7 +485,7 @@
             }
         );
 
-        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[], JitValue::Null);
+        run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[], Value::Null);
     }
 
     <span class="attr">#[test]
@@ -547,14 +545,14 @@
             <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(
                 <span class="number">1</span>,
-                JitValue::Struct {
+                Value::Struct {
                     fields: Vec::new(),
                     debug_name: <span class="prelude-val">None
                 </span>}
             )],
             <span class="macro">jit_enum!</span>(
                 <span class="number">1</span>,
-                JitValue::Struct {
+                Value::Struct {
                     fields: Vec::new(),
                     debug_name: <span class="prelude-val">None
                 </span>}

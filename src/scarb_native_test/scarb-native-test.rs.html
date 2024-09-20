@@ -185,21 +185,19 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-</pre></div><pre class="rust"><code><span class="kw">mod </span>utils;
-
-<span class="kw">use </span>std::collections::HashSet;
-<span class="kw">use </span>std::path::Path;
-<span class="kw">use </span>std::{env, fs};
-
-<span class="kw">use </span>anyhow::Context;
+</pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_sierra::program::VersionedProgram;
 <span class="kw">use </span>cairo_lang_test_plugin::{TestCompilation, TestCompilationMetadata};
 <span class="kw">use </span>clap::{Parser, ValueEnum};
 <span class="kw">use </span>scarb_metadata::{Metadata, MetadataCommand, ScarbCommand};
 <span class="kw">use </span>scarb_ui::args::PackagesFilter;
-<span class="kw">use </span>utils::test::{display_tests_summary, filter_test_cases, find_testable_targets, run_tests};
-<span class="kw">use </span>utils::{RunArgs, RunMode};
+<span class="kw">use </span>std::{collections::HashSet, env, fs, path::Path};
+<span class="kw">use </span>utils::{
+    test::{display_tests_summary, filter_test_cases, find_testable_targets, run_tests},
+    RunArgs, RunMode,
+};
+
+<span class="kw">mod </span>utils;
 
 <span class="doccomment">/// Compiles all packages from a Scarb project matching `packages_filter` and
 /// runs all functions marked with `#[test]`. Exits with 1 if the compilation

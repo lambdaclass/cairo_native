@@ -2346,6 +2346,8 @@
 <a href="#2346" id="2346">2346</a>
 <a href="#2347" id="2347">2347</a>
 <a href="#2348" id="2348">2348</a>
+<a href="#2349" id="2349">2349</a>
+<a href="#2350" id="2350">2350</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="comment">// TODO: A future possible improvement would be to put the array behind a double pointer and a
@@ -2355,11 +2357,10 @@
 
 <span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt,
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -3747,8 +3748,11 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
-        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
-        values::JitValue,
+        utils::{
+            felt252_str,
+            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
+        },
+        values::Value,
     };
     <span class="kw">use </span>pretty_assertions_sorted::assert_eq;
     <span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -3764,7 +3768,7 @@
         );
         <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[[<span class="number">1u32</span>, <span class="number">2u32</span>].into()]).return_value;
 
-        <span class="macro">assert_eq!</span>(result, JitValue::from([<span class="number">1u32</span>, <span class="number">2u32</span>]));
+        <span class="macro">assert_eq!</span>(result, Value::from([<span class="number">1u32</span>, <span class="number">2u32</span>]));
     }
 
     <span class="attr">#[test]
@@ -3988,7 +3992,7 @@
                 <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="number">4u32</span>.into()),
                 <span class="macro">jit_enum!</span>(
                     <span class="number">1</span>,
-                    JitValue::Struct {
+                    Value::Struct {
                         fields: Vec::new(),
                         debug_name: <span class="prelude-val">None</span>,
                     }
@@ -4055,9 +4059,9 @@
 
         <span class="macro">assert_eq!</span>(
             result,
-            <span class="macro">jit_panic!</span>(
-                Felt::from_dec_str(<span class="string">"1637570914057682275393755530660268060279989363"</span>).unwrap()
-            )
+            <span class="macro">jit_panic!</span>(felt252_str(
+                <span class="string">"1637570914057682275393755530660268060279989363"
+            </span>))
         );
     }
 
@@ -4079,8 +4083,8 @@
             result,
             <span class="macro">jit_enum!</span>(
                 <span class="number">0</span>,
-                <span class="macro">jit_struct!</span>(JitValue::from([
-                    JitValue::Felt252(Felt::from(<span class="number">10</span>)),
+                <span class="macro">jit_struct!</span>(Value::from([
+                    Value::Felt252(Felt::from(<span class="number">10</span>)),
                     Felt::from(<span class="number">20</span>).into(),
                     Felt::from(<span class="number">30</span>).into()
                 ]))
@@ -4124,7 +4128,7 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::from([<span class="number">1u32</span>]),
+            Value::from([<span class="number">1u32</span>]),
         );
     }
 
@@ -4143,7 +4147,7 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::from([<span class="number">1u32</span>, <span class="number">2u32</span>]),
+            Value::from([<span class="number">1u32</span>, <span class="number">2u32</span>]),
         );
     }
 
@@ -4163,7 +4167,7 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::from([<span class="number">2u32</span>]),
+            Value::from([<span class="number">2u32</span>]),
         );
     }
 
@@ -4204,7 +4208,7 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::from([<span class="number">2u32</span>]),
+            Value::from([<span class="number">2u32</span>]),
         );
     }
 
@@ -4222,10 +4226,10 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">0</span>,
-                value: Box::new(JitValue::Struct {
-                    fields: <span class="macro">vec!</span>[JitValue::from(<span class="number">1u32</span>)],
+                value: Box::new(Value::Struct {
+                    fields: <span class="macro">vec!</span>[Value::from(<span class="number">1u32</span>)],
                     debug_name: <span class="prelude-val">None</span>,
                 }),
                 debug_name: <span class="prelude-val">None</span>,
@@ -4248,10 +4252,10 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">0</span>,
-                value: Box::new(JitValue::Struct {
-                    fields: <span class="macro">vec!</span>[JitValue::from(<span class="number">1u32</span>)],
+                value: Box::new(Value::Struct {
+                    fields: <span class="macro">vec!</span>[Value::from(<span class="number">1u32</span>)],
                     debug_name: <span class="prelude-val">None</span>,
                 }),
                 debug_name: <span class="prelude-val">None</span>,
@@ -4275,10 +4279,10 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">0</span>,
-                value: Box::new(JitValue::Struct {
-                    fields: <span class="macro">vec!</span>[JitValue::from(<span class="number">2u32</span>)],
+                value: Box::new(Value::Struct {
+                    fields: <span class="macro">vec!</span>[Value::from(<span class="number">2u32</span>)],
                     debug_name: <span class="prelude-val">None</span>,
                 }),
                 debug_name: <span class="prelude-val">None</span>,
@@ -4304,10 +4308,10 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">0</span>,
-                value: Box::new(JitValue::Struct {
-                    fields: <span class="macro">vec!</span>[JitValue::from(<span class="number">1u32</span>)],
+                value: Box::new(Value::Struct {
+                    fields: <span class="macro">vec!</span>[Value::from(<span class="number">1u32</span>)],
                     debug_name: <span class="prelude-val">None</span>,
                 }),
                 debug_name: <span class="prelude-val">None</span>,
@@ -4331,10 +4335,10 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">0</span>,
-                value: Box::new(JitValue::Struct {
-                    fields: <span class="macro">vec!</span>[JitValue::from(<span class="number">2u32</span>)],
+                value: Box::new(Value::Struct {
+                    fields: <span class="macro">vec!</span>[Value::from(<span class="number">2u32</span>)],
                     debug_name: <span class="prelude-val">None</span>,
                 }),
                 debug_name: <span class="prelude-val">None</span>,
@@ -4353,10 +4357,10 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">0</span>,
-                value: Box::new(JitValue::Struct {
-                    fields: <span class="macro">vec!</span>[JitValue::Array(<span class="macro">vec!</span>[])],
+                value: Box::new(Value::Struct {
+                    fields: <span class="macro">vec!</span>[Value::Array(<span class="macro">vec!</span>[])],
                     debug_name: <span class="prelude-val">None</span>,
                 }),
                 debug_name: <span class="prelude-val">None</span>,
@@ -4397,7 +4401,7 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            <span class="macro">jit_struct!</span>(JitValue::Array(<span class="macro">vec!</span>[])),
+            <span class="macro">jit_struct!</span>(Value::Array(<span class="macro">vec!</span>[])),
         );
     }
 
@@ -4443,7 +4447,7 @@
 
         <span class="macro">assert_eq!</span>(
             run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value,
-            JitValue::Array(<span class="macro">vec!</span>[<span class="number">1u64</span>.into(), <span class="number">2u64</span>.into()]),
+            Value::Array(<span class="macro">vec!</span>[<span class="number">1u64</span>.into(), <span class="number">2u64</span>.into()]),
         );
     }
 
@@ -4461,21 +4465,21 @@
             run_program(
                 <span class="kw-2">&amp;</span>program,
                 <span class="string">"run_test"</span>,
-                <span class="kw-2">&amp;</span>[JitValue::Array(<span class="macro">vec!</span>[
-                    JitValue::Felt252(<span class="number">1</span>.into()),
-                    JitValue::Felt252(<span class="number">2</span>.into()),
-                    JitValue::Felt252(<span class="number">3</span>.into()),
+                <span class="kw-2">&amp;</span>[Value::Array(<span class="macro">vec!</span>[
+                    Value::Felt252(<span class="number">1</span>.into()),
+                    Value::Felt252(<span class="number">2</span>.into()),
+                    Value::Felt252(<span class="number">3</span>.into()),
                 ])],
             )
             .return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: <span class="number">0</span>,
-                value: Box::new(JitValue::Struct {
-                    fields: <span class="macro">vec!</span>[JitValue::Struct {
+                value: Box::new(Value::Struct {
+                    fields: <span class="macro">vec!</span>[Value::Struct {
                         fields: <span class="macro">vec!</span>[
-                            JitValue::Felt252(<span class="number">1</span>.into()),
-                            JitValue::Felt252(<span class="number">2</span>.into()),
-                            JitValue::Felt252(<span class="number">3</span>.into()),
+                            Value::Felt252(<span class="number">1</span>.into()),
+                            Value::Felt252(<span class="number">2</span>.into()),
+                            Value::Felt252(<span class="number">3</span>.into()),
                         ],
                         debug_name: <span class="prelude-val">None
                     </span>}],
@@ -4500,9 +4504,9 @@
             run_program(
                 <span class="kw-2">&amp;</span>program,
                 <span class="string">"run_test"</span>,
-                <span class="kw-2">&amp;</span>[JitValue::Array(<span class="macro">vec!</span>[
-                    JitValue::Felt252(<span class="number">1</span>.into()),
-                    JitValue::Felt252(<span class="number">2</span>.into()),
+                <span class="kw-2">&amp;</span>[Value::Array(<span class="macro">vec!</span>[
+                    Value::Felt252(<span class="number">1</span>.into()),
+                    Value::Felt252(<span class="number">2</span>.into()),
                 ])],
             )
             .return_value,
@@ -4533,16 +4537,16 @@
                     <span class="comment">// Tuple
                     </span><span class="macro">jit_struct!</span>(
                         <span class="comment">// Span of original array
-                        </span><span class="macro">jit_struct!</span>(JitValue::Array(<span class="macro">vec!</span>[
-                            JitValue::Felt252(<span class="number">4</span>.into()),
-                            JitValue::Felt252(<span class="number">5</span>.into()),
-                            JitValue::Felt252(<span class="number">6</span>.into()),
+                        </span><span class="macro">jit_struct!</span>(Value::Array(<span class="macro">vec!</span>[
+                            Value::Felt252(<span class="number">4</span>.into()),
+                            Value::Felt252(<span class="number">5</span>.into()),
+                            Value::Felt252(<span class="number">6</span>.into()),
                         ])),
                         <span class="comment">// Box of fixed array
                         </span><span class="macro">jit_struct!</span>(
-                            JitValue::Felt252(<span class="number">1</span>.into()),
-                            JitValue::Felt252(<span class="number">2</span>.into()),
-                            JitValue::Felt252(<span class="number">3</span>.into())
+                            Value::Felt252(<span class="number">1</span>.into()),
+                            Value::Felt252(<span class="number">2</span>.into()),
+                            Value::Felt252(<span class="number">3</span>.into())
                         ),
                     )
                 )
@@ -4574,9 +4578,9 @@
                 <span class="number">0</span>,
                 <span class="macro">jit_struct!</span>(
                     <span class="comment">// Span of original array
-                    </span><span class="macro">jit_struct!</span>(JitValue::Array(<span class="macro">vec!</span>[
-                        JitValue::Felt252(<span class="number">1</span>.into()),
-                        JitValue::Felt252(<span class="number">2</span>.into()),
+                    </span><span class="macro">jit_struct!</span>(Value::Array(<span class="macro">vec!</span>[
+                        Value::Felt252(<span class="number">1</span>.into()),
+                        Value::Felt252(<span class="number">2</span>.into()),
                     ]),)
                 )
             )
@@ -4606,16 +4610,16 @@
                     <span class="comment">// Tuple
                     </span><span class="macro">jit_struct!</span>(
                         <span class="comment">// Span of original array
-                        </span><span class="macro">jit_struct!</span>(JitValue::Array(<span class="macro">vec!</span>[
-                            JitValue::Felt252(<span class="number">1</span>.into()),
-                            JitValue::Felt252(<span class="number">2</span>.into()),
-                            JitValue::Felt252(<span class="number">3</span>.into()),
+                        </span><span class="macro">jit_struct!</span>(Value::Array(<span class="macro">vec!</span>[
+                            Value::Felt252(<span class="number">1</span>.into()),
+                            Value::Felt252(<span class="number">2</span>.into()),
+                            Value::Felt252(<span class="number">3</span>.into()),
                         ])),
                         <span class="comment">// Box of fixed array
                         </span><span class="macro">jit_struct!</span>(
-                            JitValue::Felt252(<span class="number">4</span>.into()),
-                            JitValue::Felt252(<span class="number">5</span>.into()),
-                            JitValue::Felt252(<span class="number">6</span>.into())
+                            Value::Felt252(<span class="number">4</span>.into()),
+                            Value::Felt252(<span class="number">5</span>.into()),
+                            Value::Felt252(<span class="number">6</span>.into())
                         ),
                     )
                 )
@@ -4647,9 +4651,9 @@
                 <span class="number">0</span>,
                 <span class="macro">jit_struct!</span>(
                     <span class="comment">// Span of original array
-                    </span><span class="macro">jit_struct!</span>(JitValue::Array(<span class="macro">vec!</span>[
-                        JitValue::Felt252(<span class="number">1</span>.into()),
-                        JitValue::Felt252(<span class="number">2</span>.into()),
+                    </span><span class="macro">jit_struct!</span>(Value::Array(<span class="macro">vec!</span>[
+                        Value::Felt252(<span class="number">1</span>.into()),
+                        Value::Felt252(<span class="number">2</span>.into()),
                     ]),)
                 )
             )
@@ -4680,14 +4684,14 @@
                     <span class="comment">// Tuple
                     </span><span class="macro">jit_struct!</span>(
                         <span class="comment">// Span of original array
-                        </span><span class="macro">jit_struct!</span>(JitValue::Array(<span class="macro">vec!</span>[
-                            JitValue::Felt252(<span class="number">3</span>.into()),
-                            JitValue::Felt252(<span class="number">4</span>.into()),
+                        </span><span class="macro">jit_struct!</span>(Value::Array(<span class="macro">vec!</span>[
+                            Value::Felt252(<span class="number">3</span>.into()),
+                            Value::Felt252(<span class="number">4</span>.into()),
                         ])),
                         <span class="comment">// Box of fixed array
-                        </span><span class="macro">jit_struct!</span>(JitValue::Felt252(<span class="number">1</span>.into()), JitValue::Felt252(<span class="number">2</span>.into()),),
+                        </span><span class="macro">jit_struct!</span>(Value::Felt252(<span class="number">1</span>.into()), Value::Felt252(<span class="number">2</span>.into()),),
                         <span class="comment">// Box of fixed array
-                        </span><span class="macro">jit_struct!</span>(JitValue::Felt252(<span class="number">5</span>.into()), JitValue::Felt252(<span class="number">6</span>.into())),
+                        </span><span class="macro">jit_struct!</span>(Value::Felt252(<span class="number">5</span>.into()), Value::Felt252(<span class="number">6</span>.into())),
                     )
                 )
             )

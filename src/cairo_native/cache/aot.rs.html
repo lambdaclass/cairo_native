@@ -200,7 +200,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use crate</span>::{utils::test::load_cairo, values::JitValue};
+    <span class="kw">use crate</span>::{utils::test::load_cairo, values::Value};
     <span class="kw">use </span>starknet_types_core::felt::Felt;
 
     <span class="attr">#[test]
@@ -221,7 +221,7 @@
             .expect(<span class="string">"should run"</span>);
 
         <span class="comment">// After compiling and inserting the program, we should be able to run it.
-        </span><span class="macro">assert_eq!</span>(res.return_value, JitValue::Felt252(Felt::from(<span class="number">42</span>)));
+        </span><span class="macro">assert_eq!</span>(res.return_value, Value::Felt252(Felt::from(<span class="number">42</span>)));
     }
 }
 </code></pre></div></section></main></body></html>

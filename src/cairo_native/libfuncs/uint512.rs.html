@@ -309,11 +309,15 @@
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u512`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -495,7 +499,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
@@ -515,21 +519,21 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>u512_safe_divmod_by_u256() {
-        <span class="kw">fn </span>u512(value: BigUint) -&gt; JitValue {
+        <span class="kw">fn </span>u512(value: BigUint) -&gt; Value {
             <span class="macro">assert!</span>(value.bits() &lt;= <span class="number">512</span>);
             <span class="macro">jit_struct!</span>(
-                JitValue::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
-                JitValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
-                JitValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">256u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
-                JitValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">384u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+                Value::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+                Value::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+                Value::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">256u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+                Value::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">384u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
             )
         }
 
-        <span class="kw">fn </span>u256(value: BigUint) -&gt; JitValue {
+        <span class="kw">fn </span>u256(value: BigUint) -&gt; Value {
             <span class="macro">assert!</span>(value.bits() &lt;= <span class="number">256</span>);
             <span class="macro">jit_struct!</span>(
-                JitValue::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
-                JitValue::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+                Value::Uint128((<span class="kw-2">&amp;</span>value &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
+                Value::Uint128(((<span class="kw-2">&amp;</span>value &gt;&gt; <span class="number">128u32</span>) &amp; <span class="kw-2">&amp;</span>u128::MAX.into()).try_into().unwrap()),
             )
         }
 

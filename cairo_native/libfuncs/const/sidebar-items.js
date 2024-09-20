@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["build","build_const_as_box","build_const_as_immediate","build_const_type_value"]};

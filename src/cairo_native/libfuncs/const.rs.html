@@ -311,25 +311,19 @@
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Const libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
-<span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
-<span class="kw">use </span><span class="kw">crate</span>::types::felt252::PRIME;
-<span class="kw">use </span><span class="kw">crate</span>::utils::RangeExt;
 <span class="kw">use crate</span>::{
     error::{Error, <span class="prelude-ty">Result</span>},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    utils::{BlockExt, ProgramRegistryExt, RangeExt, PRIME},
 };
-<span class="kw">use </span>cairo_lang_sierra::extensions::bounded_int::BoundedIntConcreteType;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
+        bounded_int::BoundedIntConcreteType,
         const_type::{
             ConstAsBoxConcreteLibfunc, ConstAsImmediateConcreteLibfunc, ConstConcreteLibfunc,
             ConstConcreteType,
@@ -606,7 +600,7 @@
 </span><span class="kw">pub mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_struct, load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
 
     <span class="attr">#[test]
@@ -627,7 +621,7 @@
         );
 
         <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
-        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_struct!</span>(JitValue::Sint32(-<span class="number">2</span>)));
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_struct!</span>(Value::Sint32(-<span class="number">2</span>)));
     }
 }
 </code></pre></div></section></main></body></html>

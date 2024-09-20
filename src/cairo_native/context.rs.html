@@ -244,10 +244,7 @@
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::OnceLock;
-
-<span class="kw">use crate</span>::{
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     ffi::{
         get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet,
@@ -281,6 +278,7 @@
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
+<span class="kw">use </span>std::sync::OnceLock;
 
 <span class="doccomment">/// Context of IRs, dialects and passes for Cairo programs compilation.
 </span><span class="attr">#[derive(Debug, Eq, PartialEq)]

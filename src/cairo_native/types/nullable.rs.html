@@ -202,13 +202,13 @@
 //! `Box&lt;T&gt;` we can reuse its pointer, just leaving it null when there's no value.
 
 </span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
-<span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
 <span class="kw">use crate</span>::{
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
+    utils::BlockExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -354,7 +354,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
     <span class="kw">use </span>pretty_assertions_sorted::assert_eq;
 
@@ -381,10 +381,10 @@
             result,
             <span class="macro">jit_enum!</span>(
                 <span class="number">0</span>,
-                <span class="macro">jit_struct!</span>(JitValue::Array(<span class="macro">vec!</span>[
-                    JitValue::Felt252(<span class="number">1</span>.into()),
-                    JitValue::Felt252(<span class="number">2</span>.into()),
-                    JitValue::Felt252(<span class="number">3</span>.into()),
+                <span class="macro">jit_struct!</span>(Value::Array(<span class="macro">vec!</span>[
+                    Value::Felt252(<span class="number">1</span>.into()),
+                    Value::Felt252(<span class="number">2</span>.into()),
+                    Value::Felt252(<span class="number">3</span>.into()),
                 ]))
             ),
         );

@@ -374,12 +374,16 @@
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Boolean libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt, error::Result, metadata::MetadataStorage, types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -586,7 +590,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
 
     <span class="attr">#[test]
@@ -744,10 +748,10 @@
         );
 
         <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>())]).return_value;
-        <span class="macro">assert_eq!</span>(result, JitValue::Felt252(<span class="number">1</span>.into()));
+        <span class="macro">assert_eq!</span>(result, Value::Felt252(<span class="number">1</span>.into()));
 
         <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[<span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>())]).return_value;
-        <span class="macro">assert_eq!</span>(result, JitValue::Felt252(<span class="number">0</span>.into()));
+        <span class="macro">assert_eq!</span>(result, Value::Felt252(<span class="number">0</span>.into()));
     }
 }
 </code></pre></div></section></main></body></html>

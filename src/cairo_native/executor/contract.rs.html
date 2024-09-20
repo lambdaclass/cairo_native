@@ -543,8 +543,6 @@
 <a href="#543" id="543">543</a>
 <a href="#544" id="544">544</a>
 <a href="#545" id="545">545</a>
-<a href="#546" id="546">546</a>
-<a href="#547" id="547">547</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
@@ -578,15 +576,18 @@
 //! When loading, passing the "program.so" path will make it load the program and the "program.json" alongside it.
 //!
 
-</span><span class="kw">use </span>std::{
-    alloc::Layout,
-    collections::BTreeMap,
-    ffi::c_void,
-    path::{Path, PathBuf},
-    ptr::NonNull,
-    sync::Arc,
+</span><span class="kw">use crate</span>::{
+    arch::AbiArgument,
+    context::NativeContext,
+    error::Result,
+    execution_result::{BuiltinStats, ContractExecutionResult},
+    executor::invoke_trampoline,
+    module::NativeModule,
+    starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
+    types::TypeBuilder,
+    utils::{decode_error_message, generate_function_name, get_integer_layout},
+    OptLevel,
 };
-
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -600,25 +601,20 @@
 <span class="kw">use </span>libloading::Library;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>starknet_types_core::felt::Felt;
+<span class="kw">use </span>std::{
+    alloc::Layout,
+    collections::BTreeMap,
+    ffi::c_void,
+    path::{Path, PathBuf},
+    ptr::NonNull,
+    sync::Arc,
+};
 <span class="kw">use </span>tempfile::NamedTempFile;
 
-<span class="kw">use crate</span>::{
-    arch::AbiArgument,
-    context::NativeContext,
-    error::Result,
-    execution_result::{BuiltinStats, ContractExecutionResult},
-    executor::invoke_trampoline,
-    module::NativeModule,
-    starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
-    types::TypeBuilder,
-    utils::{decode_error_message, generate_function_name, get_integer_layout},
-    OptLevel,
-};
-
-<span class="doccomment">/// Please look at the module [`crate::executor::ce`] level docs.
+<span class="doccomment">/// Please look at the [module level docs](self).
 </span><span class="attr">#[derive(Educe, Clone)]
 #[educe(Debug)]
-</span><span class="kw">pub struct </span>ContractExecutor {
+</span><span class="kw">pub struct </span>AotContractExecutor {
     <span class="attr">#[educe(Debug(ignore))]
     </span>library: Arc&lt;Library&gt;,
     path: PathBuf,
@@ -627,12 +623,12 @@
 }
 
 <span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-</span><span class="kw">pub struct </span>EntryPointInfo {
-    <span class="kw">pub </span>builtins: Vec&lt;BuiltinType&gt;,
+</span><span class="kw">struct </span>EntryPointInfo {
+    builtins: Vec&lt;BuiltinType&gt;,
 }
 
 <span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-</span><span class="kw">pub enum </span>BuiltinType {
+</span><span class="kw">enum </span>BuiltinType {
     Bitwise,
     EcOp,
     RangeCheck,
@@ -646,7 +642,7 @@
     System,
 }
 
-<span class="kw">impl </span>ContractExecutor {
+<span class="kw">impl </span>AotContractExecutor {
     <span class="doccomment">/// Create the executor from a sierra program with the given optimization level.
     /// You can save the library on the desired location later using `save`.
     /// If not saved, the path is treated as
@@ -979,7 +975,7 @@
     }
 }
 
-<span class="kw">impl </span>Drop <span class="kw">for </span>ContractExecutor {
+<span class="kw">impl </span>Drop <span class="kw">for </span>AotContractExecutor {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if </span><span class="self">self</span>.is_temp_path {
             std::fs::remove_file(<span class="kw-2">&amp;</span><span class="self">self</span>.path).ok();
@@ -1046,7 +1042,7 @@
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
     </span><span class="kw">fn </span>test_contract_executor(starknet_program: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
-        <span class="kw">let </span>executor = ContractExecutor::new(<span class="kw-2">&amp;</span>starknet_program, optlevel).unwrap();
+        <span class="kw">let </span>executor = AotContractExecutor::new(<span class="kw-2">&amp;</span>starknet_program, optlevel).unwrap();
 
         <span class="comment">// The last function in the program is the `get` wrapper function.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>starknet_program
@@ -1071,7 +1067,7 @@
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
     </span><span class="kw">fn </span>test_contract_executor_empty(starknet_program_empty: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
-        <span class="kw">let </span>executor = ContractExecutor::new(<span class="kw-2">&amp;</span>starknet_program_empty, optlevel).unwrap();
+        <span class="kw">let </span>executor = AotContractExecutor::new(<span class="kw-2">&amp;</span>starknet_program_empty, optlevel).unwrap();
 
         <span class="comment">// The last function in the program is the `get` wrapper function.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>starknet_program_empty

@@ -119,12 +119,16 @@
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Struct-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
-<span class="kw">use </span><span class="kw">crate</span>::block_ext::BlockExt;
 <span class="kw">use crate</span>::{
-    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{

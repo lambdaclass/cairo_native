@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["build","build_pedersen"]};

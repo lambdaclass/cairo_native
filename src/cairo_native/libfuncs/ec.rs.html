@@ -829,36 +829,13 @@
 <a href="#829" id="829">829</a>
 <a href="#830" id="830">830</a>
 <a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
-<a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Elliptic curve libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    block_ext::BlockExt,
     error::{Error, <span class="prelude-ty">Result</span>},
-    metadata::{
-        prime_modulo::PrimeModuloMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
-    },
-    types::felt252::register_prime_modulo_meta,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt, PRIME},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -877,8 +854,6 @@
     ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location},
     Context,
 };
-<span class="kw">use </span>num_bigint::ToBigInt;
-<span class="kw">use </span>starknet_types_core::felt::Felt;
 
 <span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
@@ -965,7 +940,7 @@
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>y = entry.extract_value(
@@ -976,24 +951,13 @@
         <span class="number">1</span>,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>prime = <span class="kw">match </span>metadata.get::&lt;PrimeModuloMeta&lt;Felt&gt;&gt;() {
-        <span class="prelude-val">Some</span>(x) =&gt; x.prime(),
-        <span class="prelude-val">None </span>=&gt; {
-            <span class="comment">// Since the `EcPoint` type is external, there is no guarantee that
-            // `PrimeModuloMeta&lt;Felt252&gt;` will be available.
-            </span>register_prime_modulo_meta(metadata).prime()
-        }
-    };
-
-    <span class="kw">let </span>k_prime = entry.const_int(context, location, prime.to_bigint().unwrap(), <span class="number">252</span>)<span class="question-mark">?</span>;
-
+    <span class="kw">let </span>k_prime = entry.const_int(context, location, PRIME.clone(), <span class="number">252</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">252</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>y_is_zero =
         entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>y_neg = entry.append_op_result(arith::subi(k_prime, y, location))<span class="question-mark">?</span>;
-
     <span class="kw">let </span>y_neg = entry.append_op_result(
         OperationBuilder::new(<span class="string">"arith.select"</span>, location)
             .add_operands(<span class="kw-2">&amp;</span>[y_is_zero, k0, y_neg])
@@ -1368,7 +1332,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use crate</span>::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     <span class="kw">use </span>cairo_lang_sierra::program::Program;
     <span class="kw">use </span>lazy_static::lazy_static;
@@ -1457,45 +1421,43 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_point_is_zero() {
-        <span class="kw">let </span>r = |x, y| {
-            run_program(<span class="kw-2">&amp;</span>EC_POINT_IS_ZERO, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[JitValue::EcPoint(x, y)]).return_value
-        };
+        <span class="kw">let </span>r =
+            |x, y| run_program(<span class="kw-2">&amp;</span>EC_POINT_IS_ZERO, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[Value::EcPoint(x, y)]).return_value;
 
         <span class="macro">assert_eq!</span>(r(<span class="number">0</span>.into(), <span class="number">0</span>.into()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()));
         <span class="macro">assert_eq!</span>(
             r(<span class="number">0</span>.into(), <span class="number">1</span>.into()),
-            <span class="macro">jit_enum!</span>(<span class="number">1</span>, JitValue::EcPoint(<span class="number">0</span>.into(), <span class="number">1</span>.into()))
+            <span class="macro">jit_enum!</span>(<span class="number">1</span>, Value::EcPoint(<span class="number">0</span>.into(), <span class="number">1</span>.into()))
         );
         <span class="macro">assert_eq!</span>(r(<span class="number">1</span>.into(), <span class="number">0</span>.into()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>()));
         <span class="macro">assert_eq!</span>(
             r(<span class="number">1</span>.into(), <span class="number">1</span>.into()),
-            <span class="macro">jit_enum!</span>(<span class="number">1</span>, JitValue::EcPoint(<span class="number">1</span>.into(), <span class="number">1</span>.into()))
+            <span class="macro">jit_enum!</span>(<span class="number">1</span>, Value::EcPoint(<span class="number">1</span>.into(), <span class="number">1</span>.into()))
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_neg() {
-        <span class="kw">let </span>r = |x, y| run_program(<span class="kw-2">&amp;</span>EC_NEG, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[JitValue::EcPoint(x, y)]).return_value;
+        <span class="kw">let </span>r = |x, y| run_program(<span class="kw-2">&amp;</span>EC_NEG, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[Value::EcPoint(x, y)]).return_value;
 
-        <span class="macro">assert_eq!</span>(r(<span class="number">0</span>.into(), <span class="number">0</span>.into()), JitValue::EcPoint(<span class="number">0</span>.into(), <span class="number">0</span>.into()));
+        <span class="macro">assert_eq!</span>(r(<span class="number">0</span>.into(), <span class="number">0</span>.into()), Value::EcPoint(<span class="number">0</span>.into(), <span class="number">0</span>.into()));
         <span class="macro">assert_eq!</span>(
             r(<span class="number">0</span>.into(), <span class="number">1</span>.into()),
-            JitValue::EcPoint(<span class="number">0</span>.into(), Felt::from(-<span class="number">1</span>))
+            Value::EcPoint(<span class="number">0</span>.into(), Felt::from(-<span class="number">1</span>))
         );
-        <span class="macro">assert_eq!</span>(r(<span class="number">1</span>.into(), <span class="number">0</span>.into()), JitValue::EcPoint(<span class="number">1</span>.into(), <span class="number">0</span>.into()));
+        <span class="macro">assert_eq!</span>(r(<span class="number">1</span>.into(), <span class="number">0</span>.into()), Value::EcPoint(<span class="number">1</span>.into(), <span class="number">0</span>.into()));
         <span class="macro">assert_eq!</span>(
             r(<span class="number">1</span>.into(), <span class="number">1</span>.into()),
-            JitValue::EcPoint(<span class="number">1</span>.into(), Felt::from(-<span class="number">1</span>))
+            Value::EcPoint(<span class="number">1</span>.into(), Felt::from(-<span class="number">1</span>))
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_point_from_x() {
-        <span class="kw">let </span>r =
-            |x| run_program(<span class="kw-2">&amp;</span>EC_POINT_FROM_X_NZ, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[JitValue::Felt252(x)]).return_value;
+        <span class="kw">let </span>r = |x| run_program(<span class="kw-2">&amp;</span>EC_POINT_FROM_X_NZ, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[Value::Felt252(x)]).return_value;
 
         <span class="macro">assert_eq!</span>(r(<span class="number">0</span>.into()), <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()));
-        <span class="macro">assert_eq!</span>(r(<span class="number">1234</span>.into()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, JitValue::EcPoint(
+        <span class="macro">assert_eq!</span>(r(<span class="number">1234</span>.into()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, Value::EcPoint(
             Felt::from(<span class="number">1234</span>),
             Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
         )));
@@ -1504,18 +1466,18 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_state_add() {
         run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
             ),
-            JitValue::EcPoint(
+            Value::EcPoint(
                 Felt::from_dec_str(<span class="string">"1234"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
             )
         ],
-        JitValue::EcState(
+        Value::EcState(
             Felt::from_dec_str(<span class="string">"763975897824944497806946001227010133599886598340174017198031710397718335159"</span>).unwrap(),
             Felt::from_dec_str(<span class="string">"2805180267536471620369715068237762638204710971142209985448115065526708105983"</span>).unwrap(),
             Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
@@ -1526,19 +1488,19 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>ec_state_add_mul() {
         run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD_MUL, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
             ),
             Felt::ONE.into(), <span class="comment">// scalar
-            </span>JitValue::EcPoint(
+            </span>Value::EcPoint(
                 Felt::from_dec_str(<span class="string">"1234"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
             )
         ],
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str(<span class="string">"763975897824944497806946001227010133599886598340174017198031710397718335159"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"2805180267536471620369715068237762638204710971142209985448115065526708105983"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
@@ -1547,19 +1509,19 @@
         );
 
         run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_ADD_MUL, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
             ),
             Felt::from(<span class="number">2</span>).into(), <span class="comment">// scalar
-            </span>JitValue::EcPoint(
+            </span>Value::EcPoint(
                 Felt::from_dec_str(<span class="string">"1234"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
             )
         ],
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str(<span class="string">"3016674370847061744386893405108272070153695046160622325692702034987910716850"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"898133181809473419542838028331350248951548889944002871647069130998202992502"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
@@ -1573,7 +1535,7 @@
         run_program_assert_output(
             <span class="kw-2">&amp;</span>EC_STATE_FINALIZE,
             <span class="string">"run_test"</span>,
-            <span class="kw-2">&amp;</span>[JitValue::EcState(
+            <span class="kw-2">&amp;</span>[Value::EcState(
                 Felt::from_dec_str(
                     <span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>,
                 )
@@ -1594,14 +1556,14 @@
             <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
         );
         run_program_assert_output(<span class="kw-2">&amp;</span>EC_STATE_FINALIZE, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[
-            JitValue::EcState(
+            Value::EcState(
                 Felt::from_dec_str(<span class="string">"763975897824944497806946001227010133599886598340174017198031710397718335159"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"2805180267536471620369715068237762638204710971142209985448115065526708105983"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"3151312365169595090315724863753927489909436624354740709748557281394568342450"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"2835232394579952276045648147338966184268723952674536708929458753792035266179"</span>).unwrap()
             ),
         ],
-            <span class="macro">jit_enum!</span>(<span class="number">0</span>, JitValue::EcPoint(
+            <span class="macro">jit_enum!</span>(<span class="number">0</span>, Value::EcPoint(
                     Felt::from(<span class="number">1234</span>),
                     Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
                 )
@@ -1613,7 +1575,7 @@
     </span><span class="kw">fn </span>ec_state_init() {
         <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>EC_STATE_INIT, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]);
         <span class="comment">// cant match the values because the state init is a random point
-        </span><span class="macro">assert!</span>(<span class="macro">matches!</span>(result.return_value, JitValue::EcState(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)));
+        </span><span class="macro">assert!</span>(<span class="macro">matches!</span>(result.return_value, Value::EcState(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)));
     }
 
     <span class="attr">#[test]
@@ -1634,7 +1596,7 @@
                 Felt::from_dec_str(<span class="string">"1234"</span>).unwrap().into(),
                 Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap().into()
             ],
-                <span class="macro">jit_enum!</span>(<span class="number">0</span>, JitValue::EcPoint(
+                <span class="macro">jit_enum!</span>(<span class="number">0</span>, Value::EcPoint(
                     Felt::from_dec_str(<span class="string">"1234"</span>).unwrap(),
                     Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap()
                 ))
@@ -1646,7 +1608,7 @@
             <span class="kw-2">&amp;</span>[  Felt::from_dec_str(<span class="string">"1234"</span>).unwrap().into(),
                 Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap().neg().into()
                 ],
-                <span class="macro">jit_enum!</span>(<span class="number">0</span>, JitValue::EcPoint(
+                <span class="macro">jit_enum!</span>(<span class="number">0</span>, Value::EcPoint(
                     Felt::from_dec_str(<span class="string">"1234"</span>).unwrap(),
                     Felt::from_dec_str(<span class="string">"1301976514684871091717790968549291947487646995000837413367950573852273027507"</span>).unwrap().neg()
                 ))
@@ -1669,7 +1631,7 @@
             run_program_assert_output(
                 <span class="kw-2">&amp;</span>EC_POINT_UNWRAP,
                 <span class="string">"run_test"</span>,
-                <span class="kw-2">&amp;</span>[JitValue::EcPoint(parse(a), parse(b))],
+                <span class="kw-2">&amp;</span>[Value::EcPoint(parse(a), parse(b))],
                 <span class="macro">jit_struct!</span>(parse(ea).into(), parse(eb).into()),
             );
         }
@@ -1691,7 +1653,7 @@
             <span class="kw-2">&amp;</span>EC_POINT_ZERO,
             <span class="string">"run_test"</span>,
             <span class="kw-2">&amp;</span>[],
-            JitValue::EcPoint(
+            Value::EcPoint(
                 Felt::from_dec_str(<span class="string">"0"</span>).unwrap(),
                 Felt::from_dec_str(<span class="string">"0"</span>).unwrap().neg(),
             ),

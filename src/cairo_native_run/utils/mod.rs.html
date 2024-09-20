@@ -569,25 +569,19 @@
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
 </pre></div><pre class="rust"><code><span class="attr">#![cfg(feature = <span class="string">"build-cli"</span>)]
 #![allow(dead_code)]
 
-</span><span class="kw">pub mod </span>test;
-
-<span class="kw">use </span>anyhow::bail;
+</span><span class="kw">use </span>anyhow::bail;
 <span class="kw">use </span>cairo_lang_runner::{casm_run::format_next_item, RunResultValue};
 <span class="kw">use </span>cairo_lang_sierra::program::{Function, Program};
-<span class="kw">use </span>cairo_native::{execution_result::ExecutionResult, values::JitValue};
+<span class="kw">use </span>cairo_native::{execution_result::ExecutionResult, Value};
 <span class="kw">use </span>clap::ValueEnum;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::vec::IntoIter;
+
+<span class="kw">pub mod </span>test;
 
 <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span>RunArgs {
     <span class="kw">pub </span>run_mode: RunMode,
@@ -638,7 +632,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>felts: Vec&lt;Felt&gt; = Vec::new();
 
     <span class="kw">match </span><span class="kw-2">&amp;</span>result.return_value {
-        outer_value @ JitValue::Enum {
+        outer_value @ Value::Enum {
             tag,
             value,
             debug_name,
@@ -651,7 +645,7 @@
 
                 <span class="kw">if </span>!is_success {
                     <span class="kw">match </span><span class="kw-2">&amp;**</span>value {
-                        JitValue::Struct { fields, .. } =&gt; {
+                        Value::Struct { fields, .. } =&gt; {
                             <span class="kw">for </span>field <span class="kw">in </span>fields {
                                 <span class="kw">let </span>felt = jitvalue_to_felt(field);
                                 felts.extend(felt);
@@ -685,15 +679,15 @@
 }
 
 <span class="doccomment">/// Convert a JIT value to a felt.
-</span><span class="kw">fn </span>jitvalue_to_felt(value: <span class="kw-2">&amp;</span>JitValue) -&gt; Vec&lt;Felt&gt; {
+</span><span class="kw">fn </span>jitvalue_to_felt(value: <span class="kw-2">&amp;</span>Value) -&gt; Vec&lt;Felt&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>felts = Vec::new();
     <span class="kw">match </span>value {
-        JitValue::Felt252(felt) =&gt; <span class="macro">vec!</span>[<span class="kw-2">*</span>felt],
-        JitValue::BoundedInt { value, .. } =&gt; <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
-        JitValue::Array(fields) | JitValue::Struct { fields, .. } =&gt; {
+        Value::Felt252(felt) =&gt; <span class="macro">vec!</span>[<span class="kw-2">*</span>felt],
+        Value::BoundedInt { value, .. } =&gt; <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
+        Value::Array(fields) | Value::Struct { fields, .. } =&gt; {
             fields.iter().flat_map(jitvalue_to_felt).collect()
         }
-        JitValue::Enum {
+        Value::Enum {
             value,
             tag,
             debug_name,
@@ -710,7 +704,7 @@
                 <span class="macro">todo!</span>()
             }
         }
-        JitValue::Felt252Dict { value, .. } =&gt; {
+        Value::Felt252Dict { value, .. } =&gt; {
             <span class="kw">for </span>(key, value) <span class="kw">in </span>value {
                 felts.push(<span class="kw-2">*</span>key);
                 <span class="kw">let </span>felt = jitvalue_to_felt(value);
@@ -719,30 +713,30 @@
 
             felts
         }
-        JitValue::Uint8(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
-        JitValue::Uint16(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
-        JitValue::Uint32(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
-        JitValue::Uint64(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
-        JitValue::Uint128(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
-        JitValue::Sint8(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
-        JitValue::Sint16(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
-        JitValue::Sint32(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
-        JitValue::Sint64(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
-        JitValue::Sint128(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
-        JitValue::Bytes31(bytes) =&gt; <span class="macro">vec!</span>[Felt::from_bytes_le_slice(bytes)],
-        JitValue::EcPoint(x, y) =&gt; {
+        Value::Uint8(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        Value::Uint16(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        Value::Uint32(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        Value::Uint64(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        Value::Uint128(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        Value::Sint8(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        Value::Sint16(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        Value::Sint32(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        Value::Sint64(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        Value::Sint128(x) =&gt; <span class="macro">vec!</span>[(<span class="kw-2">*</span>x).into()],
+        Value::Bytes31(bytes) =&gt; <span class="macro">vec!</span>[Felt::from_bytes_le_slice(bytes)],
+        Value::EcPoint(x, y) =&gt; {
             <span class="macro">vec!</span>[<span class="kw-2">*</span>x, <span class="kw-2">*</span>y]
         }
-        JitValue::EcState(a, b, c, d) =&gt; {
+        Value::EcState(a, b, c, d) =&gt; {
             <span class="macro">vec!</span>[<span class="kw-2">*</span>a, <span class="kw-2">*</span>b, <span class="kw-2">*</span>c, <span class="kw-2">*</span>d]
         }
-        JitValue::Secp256K1Point { x, y } =&gt; {
+        Value::Secp256K1Point { x, y } =&gt; {
             <span class="macro">vec!</span>[x.<span class="number">0</span>.into(), x.<span class="number">1</span>.into(), y.<span class="number">0</span>.into(), y.<span class="number">1</span>.into()]
         }
-        JitValue::Secp256R1Point { x, y } =&gt; {
+        Value::Secp256R1Point { x, y } =&gt; {
             <span class="macro">vec!</span>[x.<span class="number">0</span>.into(), x.<span class="number">1</span>.into(), y.<span class="number">0</span>.into(), y.<span class="number">1</span>.into()]
         }
-        JitValue::Null =&gt; <span class="macro">vec!</span>[<span class="number">0</span>.into()],
+        Value::Null =&gt; <span class="macro">vec!</span>[<span class="number">0</span>.into()],
     }
 }
 
@@ -788,12 +782,12 @@
         </span><span class="macro">assert_eq!</span>(
             result_to_runresult(<span class="kw-2">&amp;</span>ExecutionResult {
                 remaining_gas: <span class="prelude-val">None</span>,
-                return_value: JitValue::Enum {
+                return_value: Value::Enum {
                     tag: <span class="number">34</span>,
-                    value: JitValue::Array(<span class="macro">vec!</span>[
-                        JitValue::Felt252(<span class="number">42</span>.into()),
-                        JitValue::Uint8(<span class="number">100</span>),
-                        JitValue::Uint128(<span class="number">1000</span>),
+                    value: Value::Array(<span class="macro">vec!</span>[
+                        Value::Felt252(<span class="number">42</span>.into()),
+                        Value::Uint8(<span class="number">100</span>),
+                        Value::Uint128(<span class="number">1000</span>),
                     ])
                     .into(),
                     debug_name: <span class="prelude-val">Some</span>(<span class="string">"debug_name"</span>.into()),
@@ -816,9 +810,9 @@
         </span><span class="macro">assert_eq!</span>(
             result_to_runresult(<span class="kw-2">&amp;</span>ExecutionResult {
                 remaining_gas: <span class="prelude-val">None</span>,
-                return_value: JitValue::Enum {
+                return_value: Value::Enum {
                     tag: <span class="number">0</span>,
-                    value: JitValue::Uint64(<span class="number">24</span>).into(),
+                    value: Value::Uint64(<span class="number">24</span>).into(),
                     debug_name: <span class="prelude-val">Some</span>(<span class="string">"core::panics::PanicResult::Test"</span>.into()),
                 },
                 builtin_stats: Default::default(),
@@ -834,9 +828,9 @@
         <span class="comment">// Tests the conversion with unsuported return value.
         </span><span class="kw">let _ </span>= result_to_runresult(<span class="kw-2">&amp;</span>ExecutionResult {
             remaining_gas: <span class="prelude-val">None</span>,
-            return_value: JitValue::Enum {
+            return_value: Value::Enum {
                 tag: <span class="number">10</span>,
-                value: JitValue::Uint64(<span class="number">24</span>).into(),
+                value: Value::Uint64(<span class="number">24</span>).into(),
                 debug_name: <span class="prelude-val">Some</span>(<span class="string">"core::panics::PanicResult::Test"</span>.into()),
             },
             builtin_stats: Default::default(),
@@ -850,9 +844,9 @@
         <span class="comment">// Tests the conversion with no debug name.
         </span><span class="kw">let _ </span>= result_to_runresult(<span class="kw-2">&amp;</span>ExecutionResult {
             remaining_gas: <span class="prelude-val">None</span>,
-            return_value: JitValue::Enum {
+            return_value: Value::Enum {
                 tag: <span class="number">10</span>,
-                value: JitValue::Uint64(<span class="number">24</span>).into(),
+                value: Value::Uint64(<span class="number">24</span>).into(),
                 debug_name: <span class="prelude-val">None</span>,
             },
             builtin_stats: Default::default(),
@@ -866,13 +860,13 @@
         </span><span class="macro">assert_eq!</span>(
             result_to_runresult(<span class="kw-2">&amp;</span>ExecutionResult {
                 remaining_gas: <span class="prelude-val">None</span>,
-                return_value: JitValue::Enum {
+                return_value: Value::Enum {
                     tag: <span class="number">10</span>,
-                    value: JitValue::Struct {
+                    value: Value::Struct {
                         fields: <span class="macro">vec!</span>[
-                            JitValue::Felt252(<span class="number">42</span>.into()),
-                            JitValue::Uint8(<span class="number">100</span>),
-                            JitValue::Uint128(<span class="number">1000</span>),
+                            Value::Felt252(<span class="number">42</span>.into()),
+                            Value::Uint8(<span class="number">100</span>),
+                            Value::Uint128(<span class="number">1000</span>),
                         ],
                         debug_name: <span class="prelude-val">Some</span>(<span class="string">"debug_name"</span>.into()),
                     }
@@ -892,7 +886,7 @@
         </span><span class="macro">assert_eq!</span>(
             result_to_runresult(<span class="kw-2">&amp;</span>ExecutionResult {
                 remaining_gas: <span class="prelude-val">None</span>,
-                return_value: JitValue::Uint8(<span class="number">10</span>),
+                return_value: Value::Uint8(<span class="number">10</span>),
                 builtin_stats: Default::default(),
             })
             .unwrap(),
@@ -905,7 +899,7 @@
         <span class="kw">let </span>felt_value: Felt = <span class="number">42</span>.into();
 
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Felt252(felt_value)),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Felt252(felt_value)),
             <span class="macro">vec!</span>[felt_value]
         );
     }
@@ -913,10 +907,10 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_array() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Array(<span class="macro">vec!</span>[
-                JitValue::Felt252(<span class="number">42</span>.into()),
-                JitValue::Uint8(<span class="number">100</span>),
-                JitValue::Uint128(<span class="number">1000</span>),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Array(<span class="macro">vec!</span>[
+                Value::Felt252(<span class="number">42</span>.into()),
+                Value::Uint8(<span class="number">100</span>),
+                Value::Uint128(<span class="number">1000</span>),
             ])),
             <span class="macro">vec!</span>[Felt::from(<span class="number">42</span>), Felt::from(<span class="number">100</span>), Felt::from(<span class="number">1000</span>)]
         );
@@ -925,11 +919,11 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_struct() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Struct {
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Struct {
                 fields: <span class="macro">vec!</span>[
-                    JitValue::Felt252(<span class="number">42</span>.into()),
-                    JitValue::Uint8(<span class="number">100</span>),
-                    JitValue::Uint128(<span class="number">1000</span>)
+                    Value::Felt252(<span class="number">42</span>.into()),
+                    Value::Uint8(<span class="number">100</span>),
+                    Value::Uint128(<span class="number">1000</span>)
                 ],
                 debug_name: <span class="prelude-val">Some</span>(<span class="string">"debug_name"</span>.into())
             }),
@@ -941,12 +935,12 @@
     </span><span class="kw">fn </span>test_jitvalue_to_felt_enum() {
         <span class="comment">// With debug name
         </span><span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Enum {
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Enum {
                 tag: <span class="number">34</span>,
-                value: JitValue::Array(<span class="macro">vec!</span>[
-                    JitValue::Felt252(<span class="number">42</span>.into()),
-                    JitValue::Uint8(<span class="number">100</span>),
-                    JitValue::Uint128(<span class="number">1000</span>),
+                value: Value::Array(<span class="macro">vec!</span>[
+                    Value::Felt252(<span class="number">42</span>.into()),
+                    Value::Uint8(<span class="number">100</span>),
+                    Value::Uint128(<span class="number">1000</span>),
                 ])
                 .into(),
                 debug_name: <span class="prelude-val">Some</span>(<span class="string">"debug_name"</span>.into())
@@ -961,9 +955,9 @@
 
         <span class="comment">// With core::bool debug name and tag 1
         </span><span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Enum {
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Enum {
                 tag: <span class="number">1</span>,
-                value: JitValue::Uint128(<span class="number">1000</span>).into(),
+                value: Value::Uint128(<span class="number">1000</span>).into(),
                 debug_name: <span class="prelude-val">Some</span>(<span class="string">"core::bool"</span>.into())
             }),
             <span class="macro">vec!</span>[Felt::ONE]
@@ -971,9 +965,9 @@
 
         <span class="comment">// With core::bool debug name and tag not 1
         </span><span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Enum {
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Enum {
                 tag: <span class="number">10</span>,
-                value: JitValue::Uint128(<span class="number">1000</span>).into(),
+                value: Value::Uint128(<span class="number">1000</span>).into(),
                 debug_name: <span class="prelude-val">Some</span>(<span class="string">"core::bool"</span>.into())
             }),
             <span class="macro">vec!</span>[Felt::ZERO]
@@ -982,21 +976,18 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_u8() {
-        <span class="macro">assert_eq!</span>(jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Uint8(<span class="number">10</span>)), <span class="macro">vec!</span>[Felt::from(<span class="number">10</span>)]);
+        <span class="macro">assert_eq!</span>(jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Uint8(<span class="number">10</span>)), <span class="macro">vec!</span>[Felt::from(<span class="number">10</span>)]);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_u16() {
-        <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Uint16(<span class="number">100</span>)),
-            <span class="macro">vec!</span>[Felt::from(<span class="number">100</span>)]
-        );
+        <span class="macro">assert_eq!</span>(jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Uint16(<span class="number">100</span>)), <span class="macro">vec!</span>[Felt::from(<span class="number">100</span>)]);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_u32() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Uint32(<span class="number">1000</span>)),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Uint32(<span class="number">1000</span>)),
             <span class="macro">vec!</span>[Felt::from(<span class="number">1000</span>)]
         );
     }
@@ -1004,7 +995,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_u64() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Uint64(<span class="number">10000</span>)),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Uint64(<span class="number">10000</span>)),
             <span class="macro">vec!</span>[Felt::from(<span class="number">10000</span>)]
         );
     }
@@ -1012,23 +1003,20 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_u128() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Uint128(<span class="number">100000</span>)),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Uint128(<span class="number">100000</span>)),
             <span class="macro">vec!</span>[Felt::from(<span class="number">100000</span>)]
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_sint8() {
-        <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Sint8(-<span class="number">10</span>)),
-            <span class="macro">vec!</span>[Felt::from(-<span class="number">10</span>)]
-        );
+        <span class="macro">assert_eq!</span>(jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Sint8(-<span class="number">10</span>)), <span class="macro">vec!</span>[Felt::from(-<span class="number">10</span>)]);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_sint16() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Sint16(-<span class="number">100</span>)),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Sint16(-<span class="number">100</span>)),
             <span class="macro">vec!</span>[Felt::from(-<span class="number">100</span>)]
         );
     }
@@ -1036,7 +1024,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_sint32() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Sint32(-<span class="number">1000</span>)),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Sint32(-<span class="number">1000</span>)),
             <span class="macro">vec!</span>[Felt::from(-<span class="number">1000</span>)]
         );
     }
@@ -1044,7 +1032,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_sint64() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Sint64(-<span class="number">10000</span>)),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Sint64(-<span class="number">10000</span>)),
             <span class="macro">vec!</span>[Felt::from(-<span class="number">10000</span>)]
         );
     }
@@ -1052,22 +1040,22 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_sint128() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Sint128(-<span class="number">100000</span>)),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Sint128(-<span class="number">100000</span>)),
             <span class="macro">vec!</span>[Felt::from(-<span class="number">100000</span>)]
         );
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_null() {
-        <span class="macro">assert_eq!</span>(jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Null), <span class="macro">vec!</span>[Felt::ZERO]);
+        <span class="macro">assert_eq!</span>(jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Null), <span class="macro">vec!</span>[Felt::ZERO]);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_felt252_dict() {
-        <span class="kw">let </span>result = jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Felt252Dict {
+        <span class="kw">let </span>result = jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Felt252Dict {
             value: HashMap::from([
-                (Felt::ONE, JitValue::Felt252(Felt::from(<span class="number">101</span>))),
-                (Felt::TWO, JitValue::Felt252(Felt::from(<span class="number">102</span>))),
+                (Felt::ONE, Value::Felt252(Felt::from(<span class="number">101</span>))),
+                (Felt::TWO, Value::Felt252(Felt::from(<span class="number">102</span>))),
             ]),
             debug_name: <span class="prelude-val">None</span>,
         });
@@ -1082,20 +1070,20 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_felt252_dict_with_array() {
-        <span class="kw">let </span>result = jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Felt252Dict {
+        <span class="kw">let </span>result = jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Felt252Dict {
             value: HashMap::from([
                 (
                     Felt::ONE,
-                    JitValue::Array(Vec::from([
-                        JitValue::Felt252(Felt::from(<span class="number">101</span>)),
-                        JitValue::Felt252(Felt::from(<span class="number">102</span>)),
+                    Value::Array(Vec::from([
+                        Value::Felt252(Felt::from(<span class="number">101</span>)),
+                        Value::Felt252(Felt::from(<span class="number">102</span>)),
                     ])),
                 ),
                 (
                     Felt::TWO,
-                    JitValue::Array(Vec::from([
-                        JitValue::Felt252(Felt::from(<span class="number">201</span>)),
-                        JitValue::Felt252(Felt::from(<span class="number">202</span>)),
+                    Value::Array(Vec::from([
+                        Value::Felt252(Felt::from(<span class="number">201</span>)),
+                        Value::Felt252(Felt::from(<span class="number">202</span>)),
                     ])),
                 ),
             ]),
@@ -1112,7 +1100,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_ec_point() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::EcPoint(Felt::ONE, Felt::TWO,)),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::EcPoint(Felt::ONE, Felt::TWO,)),
             <span class="macro">vec!</span>[Felt::ONE, Felt::TWO,]
         );
     }
@@ -1120,7 +1108,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_ec_state() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::EcState(
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::EcState(
                 Felt::ONE,
                 Felt::TWO,
                 Felt::THREE,
@@ -1133,7 +1121,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_secp256_k1_point() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Secp256K1Point {
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Secp256K1Point {
                 x: (<span class="number">1</span>, <span class="number">2</span>),
                 y: (<span class="number">3</span>, <span class="number">4</span>)
             }),
@@ -1144,7 +1132,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_secp256_r1_point() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>JitValue::Secp256R1Point {
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Secp256R1Point {
                 x: (<span class="number">1</span>, <span class="number">2</span>),
                 y: (<span class="number">3</span>, <span class="number">4</span>)
             }),

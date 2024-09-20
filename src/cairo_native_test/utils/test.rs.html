@@ -260,23 +260,36 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMode};
 <span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_runner::RunResultValue;
-<span class="kw">use </span>cairo_lang_sierra::program::Program;
-<span class="kw">use </span>cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId};
+<span class="kw">use </span>cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId, program::Program};
 <span class="kw">use </span>cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     TestConfig,
 };
 <span class="kw">use </span>cairo_lang_test_plugin::{TestCompilation, TestCompilationMetadata};
-<span class="kw">use </span>cairo_lang_utils::casts::IntoOrPanic;
-<span class="kw">use </span>cairo_lang_utils::ordered_hash_map::OrderedHashMap;
-<span class="kw">use </span>cairo_native::starknet_stub::StubSyscallHandler;
+<span class="kw">use </span>cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
 <span class="kw">use </span>cairo_native::{
     context::NativeContext,
-    executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
+    executor::{AotNativeExecutor, JitNativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
+    starknet_stub::StubSyscallHandler,
 };
 <span class="kw">use </span>colored::Colorize;
 <span class="kw">use </span>itertools::Itertools;
@@ -402,12 +415,30 @@
     <span class="comment">// Compile the sierra program into a MLIR module.
     </span><span class="kw">let </span>native_module = native_context.compile(<span class="kw-2">&amp;</span>sierra_program, <span class="bool-val">false</span>).unwrap();
 
-    <span class="kw">let </span>native_executor: NativeExecutor = <span class="kw">match </span>args.run_mode {
+    <span class="kw">let </span>native_executor: Box&lt;<span class="kw">dyn </span>Fn(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">&amp;mut </span>StubSyscallHandler) -&gt; <span class="kw">_</span>&gt; = <span class="kw">match </span>args.run_mode {
         RunMode::Aot =&gt; {
-            AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+            <span class="kw">let </span>executor =
+                AotNativeExecutor::from_native_module(native_module, args.opt_level.into());
+            Box::new(<span class="kw">move </span>|function_id, args, gas, syscall_handler| {
+                executor.invoke_dynamic_with_syscall_handler(
+                    function_id,
+                    args,
+                    gas,
+                    syscall_handler,
+                )
+            })
         }
         RunMode::Jit =&gt; {
-            JitNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+            <span class="kw">let </span>executor =
+                JitNativeExecutor::from_native_module(native_module, args.opt_level.into());
+            Box::new(<span class="kw">move </span>|function_id, args, gas, syscall_handler| {
+                executor.invoke_dynamic_with_syscall_handler(
+                    function_id,
+                    args,
+                    gas,
+                    syscall_handler,
+                )
+            })
         }
     };
 
@@ -441,14 +472,13 @@
 
                 <span class="kw">let </span>initial_gas = test.available_gas.map(|x| x.try_into().unwrap());
 
-                <span class="kw">let </span>result = native_executor
-                    .invoke_dynamic_with_syscall_handler(
-                        <span class="kw-2">&amp;</span>func.id,
-                        <span class="kw-2">&amp;</span>[],
-                        initial_gas,
-                        <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
-                    )
-                    .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to run the function `{}`."</span>, name.as_str()))<span class="question-mark">?</span>;
+                <span class="kw">let </span>result = native_executor(
+                    <span class="kw-2">&amp;</span>func.id,
+                    <span class="kw-2">&amp;</span>[],
+                    initial_gas,
+                    <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
+                )
+                .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to run the function `{}`."</span>, name.as_str()))<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>run_result = result_to_runresult(<span class="kw-2">&amp;</span>result)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>((

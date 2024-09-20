@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["build","build_byte_reverse","build_const","build_divmod","build_equal","build_from_felt252","build_guarantee_mul","build_guarantee_verify","build_is_zero","build_operation","build_square_root","build_to_felt252"]};
