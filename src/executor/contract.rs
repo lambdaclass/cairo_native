@@ -430,7 +430,7 @@ impl AotContractExecutor {
     }
 }
 
-impl Drop for ContractExecutor {
+impl Drop for AotContractExecutor {
     fn drop(&mut self) {
         if self.is_temp_path {
             std::fs::remove_file(&self.path).ok();
