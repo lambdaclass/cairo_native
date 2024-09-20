@@ -3,15 +3,15 @@
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
 //! of time. It also provides a cache to avoid recompiling previously compiled programs.
 
-pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
+pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNativeExecutor};
 use crate::{
     arch::{AbiArgument, JitValueWithInfoWrapper},
     error::Error,
-    execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
+    execution_result::{BuiltinStats, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::RangeExt,
-    values::JitValue,
+    values::Value,
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -21,23 +21,21 @@ use cairo_lang_sierra::{
         starknet::StarkNetTypeConcrete,
         ConcreteType,
     },
-    ids::{ConcreteTypeId, FunctionId},
+    ids::ConcreteTypeId,
     program::FunctionSignature,
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
 use num_bigint::BigInt;
 use num_traits::One;
-use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     arch::global_asm,
     ptr::{addr_of_mut, NonNull},
-    sync::Arc,
 };
 
 mod aot;
-pub mod contract;
+mod contract;
 mod jit;
 
 #[cfg(target_arch = "aarch64")]
@@ -59,86 +57,6 @@ extern "C" {
     );
 }
 
-/// The cairo native executor, either AOT or JIT based.
-#[derive(Debug, Clone)]
-pub enum NativeExecutor<'m> {
-    Aot(Arc<AotNativeExecutor>),
-    Jit(Arc<JitNativeExecutor<'m>>),
-}
-
-impl<'a> NativeExecutor<'a> {
-    /// Invoke the given function by its function id, with the given arguments and gas.
-    pub fn invoke_dynamic(
-        &self,
-        function_id: &FunctionId,
-        args: &[JitValue],
-        gas: Option<u128>,
-    ) -> Result<ExecutionResult, Error> {
-        match self {
-            NativeExecutor::Aot(executor) => executor.invoke_dynamic(function_id, args, gas),
-            NativeExecutor::Jit(executor) => executor.invoke_dynamic(function_id, args, gas),
-        }
-    }
-
-    /// Invoke the given function by its function id, with the given arguments and gas.
-    /// This should be used for programs which require a syscall handler, whose
-    /// implementation should be passed on.
-    pub fn invoke_dynamic_with_syscall_handler(
-        &self,
-        function_id: &FunctionId,
-        args: &[JitValue],
-        gas: Option<u128>,
-        syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ExecutionResult, Error> {
-        match self {
-            NativeExecutor::Aot(executor) => executor.invoke_dynamic_with_syscall_handler(
-                function_id,
-                args,
-                gas,
-                syscall_handler,
-            ),
-            NativeExecutor::Jit(executor) => executor.invoke_dynamic_with_syscall_handler(
-                function_id,
-                args,
-                gas,
-                syscall_handler,
-            ),
-        }
-    }
-
-    /// Invoke the given function by its function id, with the given arguments and gas.
-    /// This should be used for starknet contracts which require a syscall handler, whose
-    /// implementation should be passed on.
-    pub fn invoke_contract_dynamic(
-        &self,
-        function_id: &FunctionId,
-        args: &[Felt],
-        gas: Option<u128>,
-        syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult, Error> {
-        match self {
-            NativeExecutor::Aot(executor) => {
-                executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)
-            }
-            NativeExecutor::Jit(executor) => {
-                executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)
-            }
-        }
-    }
-}
-
-impl<'m> From<AotNativeExecutor> for NativeExecutor<'m> {
-    fn from(value: AotNativeExecutor) -> Self {
-        Self::Aot(Arc::new(value))
-    }
-}
-
-impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
-    fn from(value: JitNativeExecutor<'m>) -> Self {
-        Self::Jit(Arc::new(value))
-    }
-}
-
 /// Internal method.
 ///
 /// Invokes the given function by constructing the function call depending on the arguments given.
@@ -152,7 +70,7 @@ fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
     function_signature: &FunctionSignature,
-    args: &[JitValue],
+    args: &[Value],
     gas: u128,
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> Result<ExecutionResult, Error> {
@@ -375,7 +293,7 @@ fn invoke_dynamic(
             }
         })
         .transpose()?
-        .unwrap_or_else(|| JitValue::Struct {
+        .unwrap_or_else(|| Value::Struct {
             fields: vec![],
             debug_name: None,
         });
@@ -394,8 +312,8 @@ fn parse_result(
     mut return_ptr: Option<NonNull<()>>,
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
-) -> Result<JitValue, Error> {
-    let type_info = registry.get_type(type_id)?;
+) -> Result<Value, Error> {
+    let type_info = registry.get_type(type_id).unwrap();
     let debug_name = type_info.info().long_id.to_string();
 
     // Align the pointer to the actual return value.
@@ -414,17 +332,15 @@ fn parse_result(
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => {
-            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry)?)
-        }
+        CoreTypeConcrete::Array(_) => Ok(Value::from_jit(return_ptr.unwrap(), type_id, registry)?),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
-            let value = JitValue::from_jit(ptr, &info.ty, registry)?;
+            let value = Value::from_jit(ptr, &info.ty, registry)?;
             libc::free(ptr.cast().as_ptr());
             Ok(value)
         },
         CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
-            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry)?)
+            Ok(Value::from_jit(return_ptr.unwrap(), type_id, registry)?)
         }
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
@@ -433,7 +349,7 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_jit(return_ptr, type_id, registry)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -442,7 +358,7 @@ fn parse_result(
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
-                Ok(JitValue::Felt252(
+                Ok(Value::Felt252(
                     starknet_types_core::felt::Felt::from_bytes_le(unsafe {
                         std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
                     }),
@@ -450,7 +366,7 @@ fn parse_result(
             }
         },
         CoreTypeConcrete::Bytes31(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_jit(return_ptr, type_id, registry)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -459,13 +375,13 @@ fn parse_result(
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
-                Ok(JitValue::Bytes31(unsafe {
+                Ok(Value::Bytes31(unsafe {
                     *std::mem::transmute::<&[u64; 4], &[u8; 31]>(&ret_registers)
                 }))
             }
         },
         CoreTypeConcrete::BoundedInt(info) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_jit(return_ptr, type_id, registry)?),
             None => {
                 let mut data = if info.range.offset_bit_width() <= 64 {
                     BigInt::from(ret_registers[0])
@@ -476,53 +392,53 @@ fn parse_result(
                 data &= (BigInt::one() << info.range.offset_bit_width()) - BigInt::one();
                 data += &info.range.lower;
 
-                Ok(JitValue::BoundedInt {
+                Ok(Value::BoundedInt {
                     value: data.into(),
                     range: info.range.clone(),
                 })
             }
         },
         CoreTypeConcrete::Uint8(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint8(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Uint8(ret_registers[0] as u8)),
+            Some(return_ptr) => Ok(Value::Uint8(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Uint8(ret_registers[0] as u8)),
         },
         CoreTypeConcrete::Uint16(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint16(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Uint16(ret_registers[0] as u16)),
+            Some(return_ptr) => Ok(Value::Uint16(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Uint16(ret_registers[0] as u16)),
         },
         CoreTypeConcrete::Uint32(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint32(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Uint32(ret_registers[0] as u32)),
+            Some(return_ptr) => Ok(Value::Uint32(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Uint32(ret_registers[0] as u32)),
         },
         CoreTypeConcrete::Uint64(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint64(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Uint64(ret_registers[0])),
+            Some(return_ptr) => Ok(Value::Uint64(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Uint64(ret_registers[0])),
         },
         CoreTypeConcrete::Uint128(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Uint128(
+            Some(return_ptr) => Ok(Value::Uint128(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Uint128(
                 ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128,
             )),
         },
         CoreTypeConcrete::Sint8(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Sint8(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Sint8(ret_registers[0] as i8)),
+            Some(return_ptr) => Ok(Value::Sint8(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Sint8(ret_registers[0] as i8)),
         },
         CoreTypeConcrete::Sint16(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Sint16(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Sint16(ret_registers[0] as i16)),
+            Some(return_ptr) => Ok(Value::Sint16(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Sint16(ret_registers[0] as i16)),
         },
         CoreTypeConcrete::Sint32(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Sint32(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Sint32(ret_registers[0] as i32)),
+            Some(return_ptr) => Ok(Value::Sint32(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Sint32(ret_registers[0] as i32)),
         },
         CoreTypeConcrete::Sint64(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint64(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Sint64(ret_registers[0] as i64)),
+            Some(return_ptr) => Ok(Value::Uint64(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Sint64(ret_registers[0] as i64)),
         },
         CoreTypeConcrete::Sint128(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Sint128(
+            Some(return_ptr) => Ok(Value::Uint128(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Sint128(
                 ((ret_registers[1] as i128) << 64) | ret_registers[0] as i128,
             )),
         },
@@ -534,10 +450,10 @@ fn parse_result(
                 *x.cast::<*mut ()>().as_ref()
             });
             if ptr.is_null() {
-                Ok(JitValue::Null)
+                Ok(Value::Null)
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
-                let value = JitValue::from_jit(ptr, &info.ty, registry)?;
+                let value = Value::from_jit(ptr, &info.ty, registry)?;
                 libc::free(ptr.as_ptr().cast());
                 Ok(value)
             }
@@ -587,7 +503,7 @@ fn parse_result(
                 }
             };
             let value = match ptr {
-                Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)?),
+                Ok(ptr) => Box::new(Value::from_jit(ptr, &info.variants[tag], registry)?),
                 Err(offset) => {
                     ret_registers.copy_within(offset.., 0);
                     Box::new(parse_result(
@@ -599,7 +515,7 @@ fn parse_result(
                 }
             };
 
-            Ok(JitValue::Enum {
+            Ok(Value::Enum {
                 tag,
                 value,
                 debug_name: Some(debug_name),
@@ -607,19 +523,19 @@ fn parse_result(
         }
         CoreTypeConcrete::Struct(info) => {
             if info.members.is_empty() {
-                Ok(JitValue::Struct {
+                Ok(Value::Struct {
                     fields: Vec::new(),
                     debug_name: Some(debug_name),
                 })
             } else {
-                Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry)?)
+                Ok(Value::from_jit(return_ptr.unwrap(), type_id, registry)?)
             }
         }
         CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
                 addr_of_mut!(ret_registers[0]) as *mut ()
             ));
-            Ok(JitValue::from_jit(ptr, type_id, registry)?)
+            Ok(Value::from_jit(ptr, type_id, registry)?)
         },
 
         CoreTypeConcrete::Snapshot(info) => {
@@ -653,13 +569,13 @@ fn parse_result(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::context::NativeContext;
-    use crate::starknet_stub::StubSyscallHandler;
-    use crate::utils::test::load_cairo;
-    use crate::utils::test::load_starknet;
-    use crate::OptLevel;
+    use crate::{
+        context::NativeContext, starknet_stub::StubSyscallHandler, utils::test::load_cairo,
+        utils::test::load_starknet, OptLevel,
+    };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
+    use starknet_types_core::felt::Felt;
 
     #[fixture]
     fn program() -> Program {
@@ -709,16 +625,14 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let native_executor: NativeExecutor = executor.into();
-
         // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
-        let result = native_executor
+        let result = executor
             .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
             .unwrap();
 
-        assert_eq!(result.return_value, JitValue::Felt252(Felt::from(42)));
+        assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
     }
 
     #[rstest]
@@ -729,16 +643,14 @@ mod tests {
             .expect("failed to compile context");
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let native_executor: NativeExecutor = executor.into();
-
         // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
-        let result = native_executor
+        let result = executor
             .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
             .unwrap();
 
-        assert_eq!(result.return_value, JitValue::Felt252(Felt::from(42)));
+        assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
     }
 
     #[rstest]
@@ -749,8 +661,6 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let native_executor: NativeExecutor = executor.into();
-
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
@@ -758,7 +668,7 @@ mod tests {
             .expect("should have a function")
             .id;
 
-        let result = native_executor
+        let result = executor
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],
@@ -778,8 +688,6 @@ mod tests {
             .expect("failed to compile context");
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let native_executor: NativeExecutor = executor.into();
-
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
@@ -787,7 +695,7 @@ mod tests {
             .expect("should have a function")
             .id;
 
-        let result = native_executor
+        let result = executor
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],

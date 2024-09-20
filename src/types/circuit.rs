@@ -23,8 +23,6 @@ use melior::{
     Context,
 };
 
-pub const CIRCUIT_INPUT_SIZE: usize = 384;
-
 /// Build the MLIR type.
 ///
 /// Check out [the module](self) for more info.

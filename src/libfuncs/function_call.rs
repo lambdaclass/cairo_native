@@ -5,11 +5,10 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::generate_function_name,
+    utils::{generate_function_name, BlockExt},
 };
 use cairo_lang_sierra::{
     extensions::{

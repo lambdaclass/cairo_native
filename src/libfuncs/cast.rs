@@ -2,14 +2,10 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     metadata::MetadataStorage,
-    types::{
-        felt252::{HALF_PRIME, PRIME},
-        TypeBuilder,
-    },
-    utils::RangeExt,
+    types::TypeBuilder,
+    utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -86,8 +82,8 @@ pub fn build_downcast<'ctx, 'this>(
             }
         } else {
             Range {
-                lower: -HALF_PRIME.clone(),
-                upper: HALF_PRIME.clone() + BigInt::one(),
+                lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
+                upper: BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()) + BigInt::one(),
             }
         }
     } else {
@@ -282,8 +278,8 @@ pub fn build_upcast<'ctx, 'this>(
     assert!(
         if dst_ty.is_felt252(registry)? {
             let alt_range = Range {
-                lower: -HALF_PRIME.clone(),
-                upper: HALF_PRIME.clone() + BigInt::one(),
+                lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
+                upper: BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()) + BigInt::one(),
             };
 
             (dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper)
@@ -375,7 +371,7 @@ pub fn build_upcast<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -475,7 +471,7 @@ mod test {
                 u32::MAX.into(),
                 u64::MAX.into(),
                 u128::MAX.into(),
-                JitValue::Bytes31([0xFF; 31]),
+                Value::Bytes31([0xFF; 31]),
             ],
             jit_struct!(
                 jit_struct!(u8::MAX.into()),
@@ -499,7 +495,7 @@ mod test {
                     u128::MAX.into()
                 ),
                 jit_struct!(
-                    JitValue::Bytes31([
+                    Value::Bytes31([
                         u8::MAX,
                         0,
                         0,
@@ -532,7 +528,7 @@ mod test {
                         0,
                         0,
                     ]),
-                    JitValue::Bytes31([
+                    Value::Bytes31([
                         u8::MAX,
                         u8::MAX,
                         0,
@@ -565,7 +561,7 @@ mod test {
                         0,
                         0,
                     ]),
-                    JitValue::Bytes31([
+                    Value::Bytes31([
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
@@ -598,7 +594,7 @@ mod test {
                         0,
                         0,
                     ]),
-                    JitValue::Bytes31([
+                    Value::Bytes31([
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
@@ -631,7 +627,7 @@ mod test {
                         0,
                         0,
                     ]),
-                    JitValue::Bytes31([
+                    Value::Bytes31([
                         u8::MAX,
                         u8::MAX,
                         u8::MAX,
@@ -664,7 +660,7 @@ mod test {
                         0,
                         0,
                     ]),
-                    JitValue::Bytes31([u8::MAX; 31]),
+                    Value::Bytes31([u8::MAX; 31]),
                 ),
             ),
         );

@@ -2,13 +2,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
-    error::{Error, Result},
+    error::Result,
     ffi::get_struct_field_type_at,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    types::felt252::PRIME,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -36,7 +34,7 @@ use melior::{
     Context,
 };
 use num_bigint::Sign;
-use std::{alloc::Layout, borrow::Cow};
+use std::alloc::Layout;
 
 mod secp256;
 mod testing;
@@ -397,16 +395,15 @@ pub fn build_class_hash_const<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
-    let value = match info.c.sign() {
-        Sign::Minus => Cow::Owned(&*PRIME - info.c.magnitude()),
-        _ => Cow::Borrowed(info.c.magnitude()),
-    };
-
-    let value = entry.append_op_result(arith::constant(
+    let value = entry.const_int(
         context,
-        Attribute::parse(context, &format!("{value} : i252")).ok_or(Error::ParseAttributeError)?,
         location,
-    ))?;
+        match info.c.sign() {
+            Sign::Minus => &*PRIME - info.c.magnitude(),
+            _ => info.c.magnitude().clone(),
+        },
+        252,
+    )?;
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())
@@ -475,16 +472,15 @@ pub fn build_contract_address_const<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
-    let value = match info.c.sign() {
-        Sign::Minus => Cow::Owned(&*PRIME - info.c.magnitude()),
-        _ => Cow::Borrowed(info.c.magnitude()),
-    };
-
-    let value = entry.append_op_result(arith::constant(
+    let value = entry.const_int(
         context,
-        Attribute::parse(context, &format!("{value} : i252")).unwrap(),
         location,
-    ))?;
+        match info.c.sign() {
+            Sign::Minus => &*PRIME - info.c.magnitude(),
+            _ => info.c.magnitude().clone(),
+        },
+        252,
+    )?;
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())
@@ -937,16 +933,15 @@ pub fn build_storage_base_address_const<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
-    let value = match info.c.sign() {
-        Sign::Minus => Cow::Owned(&*PRIME - info.c.magnitude()),
-        _ => Cow::Borrowed(info.c.magnitude()),
-    };
-
-    let value = entry.append_op_result(arith::constant(
+    let value = entry.const_int(
         context,
-        Attribute::parse(context, &format!("{value} : i252")).unwrap(),
         location,
-    ))?;
+        match info.c.sign() {
+            Sign::Minus => &*PRIME - info.c.magnitude(),
+            _ => info.c.magnitude().clone(),
+        },
+        252,
+    )?;
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())

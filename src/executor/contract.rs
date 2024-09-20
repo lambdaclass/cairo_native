@@ -31,15 +31,18 @@
 //! When loading, passing the "program.so" path will make it load the program and the "program.json" alongside it.
 //!
 
-use std::{
-    alloc::Layout,
-    collections::BTreeMap,
-    ffi::c_void,
-    path::{Path, PathBuf},
-    ptr::NonNull,
-    sync::Arc,
+use crate::{
+    arch::AbiArgument,
+    context::NativeContext,
+    error::Result,
+    execution_result::{BuiltinStats, ContractExecutionResult},
+    executor::invoke_trampoline,
+    module::NativeModule,
+    starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
+    types::TypeBuilder,
+    utils::{decode_error_message, generate_function_name, get_integer_layout},
+    OptLevel,
 };
-
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
@@ -53,25 +56,20 @@ use educe::Educe;
 use libloading::Library;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
+use std::{
+    alloc::Layout,
+    collections::BTreeMap,
+    ffi::c_void,
+    path::{Path, PathBuf},
+    ptr::NonNull,
+    sync::Arc,
+};
 use tempfile::NamedTempFile;
 
-use crate::{
-    arch::AbiArgument,
-    context::NativeContext,
-    error::Result,
-    execution_result::{BuiltinStats, ContractExecutionResult},
-    executor::invoke_trampoline,
-    module::NativeModule,
-    starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
-    types::TypeBuilder,
-    utils::{decode_error_message, generate_function_name, get_integer_layout},
-    OptLevel,
-};
-
-/// Please look at the module [`crate::executor::ce`] level docs.
+/// Please look at the [module level docs](self).
 #[derive(Educe, Clone)]
 #[educe(Debug)]
-pub struct ContractExecutor {
+pub struct AotContractExecutor {
     #[educe(Debug(ignore))]
     library: Arc<Library>,
     path: PathBuf,
@@ -80,12 +78,12 @@ pub struct ContractExecutor {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub struct EntryPointInfo {
-    pub builtins: Vec<BuiltinType>,
+struct EntryPointInfo {
+    builtins: Vec<BuiltinType>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub enum BuiltinType {
+enum BuiltinType {
     Bitwise,
     EcOp,
     RangeCheck,
@@ -99,7 +97,7 @@ pub enum BuiltinType {
     System,
 }
 
-impl ContractExecutor {
+impl AotContractExecutor {
     /// Create the executor from a sierra program with the given optimization level.
     /// You can save the library on the desired location later using `save`.
     /// If not saved, the path is treated as
@@ -432,7 +430,7 @@ impl ContractExecutor {
     }
 }
 
-impl Drop for ContractExecutor {
+impl Drop for AotContractExecutor {
     fn drop(&mut self) {
         if self.is_temp_path {
             std::fs::remove_file(&self.path).ok();
@@ -499,7 +497,7 @@ mod tests {
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
     fn test_contract_executor(starknet_program: Program, #[case] optlevel: OptLevel) {
-        let executor = ContractExecutor::new(&starknet_program, optlevel).unwrap();
+        let executor = AotContractExecutor::new(&starknet_program, optlevel).unwrap();
 
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
@@ -524,7 +522,7 @@ mod tests {
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
     fn test_contract_executor_empty(starknet_program_empty: Program, #[case] optlevel: OptLevel) {
-        let executor = ContractExecutor::new(&starknet_program_empty, optlevel).unwrap();
+        let executor = AotContractExecutor::new(&starknet_program_empty, optlevel).unwrap();
 
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program_empty

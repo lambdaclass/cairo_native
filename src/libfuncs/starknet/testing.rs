@@ -1,11 +1,10 @@
 #![cfg(feature = "with-cheatcode")]
 
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{

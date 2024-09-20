@@ -1,7 +1,7 @@
 //! # Bitwise libfuncs
 
 use super::LibfuncHelper;
-use crate::{block_ext::BlockExt, error::Result, metadata::MetadataStorage};
+use crate::{error::Result, metadata::MetadataStorage, utils::BlockExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},

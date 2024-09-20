@@ -5,7 +5,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{

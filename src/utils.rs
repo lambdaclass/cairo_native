@@ -1,28 +1,22 @@
 //! # Various utilities
 
-use crate::{
-    metadata::MetadataStorage,
-    types::{felt252::PRIME, TypeBuilder},
-    OptLevel,
+pub(crate) use self::{
+    block_ext::BlockExt, program_registry_ext::ProgramRegistryExt, range_ext::RangeExt,
 };
+use crate::{metadata::MetadataStorage, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
-    extensions::{
-        core::{CoreLibfunc, CoreType},
-        utils::Range,
-    },
-    ids::{ConcreteTypeId, FunctionId},
+    ids::FunctionId,
     program::{GenFunction, Program, StatementIdx},
-    program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Module, Type},
+    ir::Module,
     pass::{self, PassManager},
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
-use num_traits::One;
 use starknet_types_core::felt::Felt;
+use std::sync::LazyLock;
 use std::{
     alloc::Layout,
     borrow::Cow,
@@ -34,10 +28,26 @@ use std::{
 };
 use thiserror::Error;
 
+mod block_ext;
+mod program_registry_ext;
+mod range_ext;
+
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
 #[cfg(target_os = "linux")]
 pub const SHARED_LIBRARY_EXT: &str = "so";
+
+/// The `felt252` prime modulo.
+pub static PRIME: LazyLock<BigUint> = LazyLock::new(|| {
+    "3618502788666131213697322783095070105623107215331596699973092056135872020481"
+        .parse()
+        .unwrap()
+});
+pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
+    "1809251394333065606848661391547535052811553607665798349986546028067936010240"
+        .parse()
+        .unwrap()
+});
 
 /// Generate a function name.
 ///
@@ -95,17 +105,10 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 64 {
         Layout::new::<u64>()
     } else if width <= 128 {
-        #[cfg(not(target_arch = "x86_64"))]
-        {
-            Layout::new::<u128>()
-        }
-        #[cfg(target_arch = "x86_64")]
-        {
-            Layout::new::<u128>().align_to(16).unwrap()
-        }
+        Layout::new::<u128>()
     } else {
-        let width = (width as usize).next_multiple_of(8);
-        Layout::from_size_align(width >> 3, 16).expect("align should be power of two")
+        // According to the docs this should never return an error.
+        Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16).unwrap()
     }
 }
 
@@ -453,105 +456,11 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
     Ok((layout, padded_size))
 }
 
-pub trait ProgramRegistryExt {
-    fn build_type<'ctx>(
-        &self,
-        context: &'ctx Context,
-        module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: &mut MetadataStorage,
-        id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, super::error::Error>;
-
-    fn build_type_with_layout<'ctx>(
-        &self,
-        context: &'ctx Context,
-        module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: &mut MetadataStorage,
-        id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), super::error::Error>;
-}
-
-impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
-    fn build_type<'ctx>(
-        &self,
-        context: &'ctx Context,
-        module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: &mut MetadataStorage,
-        id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, super::error::Error> {
-        registry
-            .get_type(id)?
-            .build(context, module, registry, metadata, id)
-    }
-
-    fn build_type_with_layout<'ctx>(
-        &self,
-        context: &'ctx Context,
-        module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: &mut MetadataStorage,
-        id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), super::error::Error> {
-        let concrete_type = registry.get_type(id)?;
-
-        Ok((
-            concrete_type.build(context, module, registry, metadata, id)?,
-            concrete_type.layout(registry)?,
-        ))
-    }
-}
-
-pub trait RangeExt {
-    /// Width in bits when the offset is zero (aka. the natural representation).
-    fn zero_based_bit_width(&self) -> u32;
-    /// Width in bits when the offset is not necessarily zero (aka. the compact representation).
-    fn offset_bit_width(&self) -> u32;
-}
-
-impl RangeExt for Range {
-    fn zero_based_bit_width(&self) -> u32 {
-        // Formula for unsigned integers:
-        //     x.bits()
-        //
-        // Formula for signed values:
-        //   - Positive: (x.magnitude() + BigUint::one()).bits()
-        //   - Negative: (x.magnitude() - BigUint::one()).bits() + 1
-        //   - Zero: 0
-
-        let width = if self.lower.sign() == Sign::Minus {
-            let lower_width = (self.lower.magnitude() - BigUint::one()).bits() + 1;
-            let upper_width = {
-                let upper = &self.upper - &BigInt::one();
-                match upper.sign() {
-                    Sign::Minus => (upper.magnitude() - BigUint::one()).bits() + 1,
-                    Sign::NoSign => 0,
-                    Sign::Plus => (upper.magnitude() + BigUint::one()).bits(),
-                }
-            };
-
-            lower_width.max(upper_width) as u32
-        } else {
-            (&self.upper - &BigInt::one()).bits() as u32
-        };
-
-        // FIXME: Workaround for segfault in canonicalization (including LLVM 19).
-        width.max(1)
-    }
-
-    fn offset_bit_width(&self) -> u32 {
-        // FIXME: Workaround for segfault in canonicalization (including LLVM 19).
-        ((self.size() - BigInt::one()).bits() as u32).max(1)
-    }
-}
-
 #[cfg(test)]
 pub mod test {
     use crate::{
         context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        starknet_stub::StubSyscallHandler, utils::*, values::JitValue,
+        starknet_stub::StubSyscallHandler, utils::*, values::Value,
     };
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
@@ -584,7 +493,7 @@ pub mod test {
     // Helper macros for faster testing.
     macro_rules! jit_struct {
         ($($y:expr),* $(,)? ) => {
-            crate::values::JitValue::Struct {
+            crate::values::Value::Struct {
                 fields: vec![$($y), *],
                 debug_name: None
             }
@@ -592,7 +501,7 @@ pub mod test {
     }
     macro_rules! jit_enum {
         ( $tag:expr, $value:expr ) => {
-            crate::values::JitValue::Enum {
+            crate::values::Value::Enum {
                 tag: $tag,
                 value: Box::new($value),
                 debug_name: None,
@@ -601,7 +510,7 @@ pub mod test {
     }
     macro_rules! jit_dict {
         ( $($key:expr $(=>)+ $value:expr),* $(,)? ) => {
-            crate::values::JitValue::Felt252Dict {
+            crate::values::Value::Felt252Dict {
                 value: {
                     let mut map = std::collections::HashMap::new();
                     $(map.insert($key.into(), $value.into());)*
@@ -670,7 +579,7 @@ pub mod test {
     pub fn run_program(
         program: &(String, Program),
         entry_point: &str,
-        args: &[JitValue],
+        args: &[Value],
     ) -> ExecutionResult {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
@@ -704,8 +613,8 @@ pub mod test {
     pub fn run_program_assert_output(
         program: &(String, Program),
         entry_point: &str,
-        args: &[JitValue],
-        output: JitValue,
+        args: &[Value],
+        output: Value,
     ) {
         let result = run_program(program, entry_point, args);
         assert_eq!(result.return_value, output);
