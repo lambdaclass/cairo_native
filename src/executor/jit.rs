@@ -138,7 +138,7 @@ impl<'m> JitNativeExecutor<'m> {
     }
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
-        let function_name = generate_function_name(function_id);
+        let function_name = generate_function_name(function_id, false);
         let function_name = format!("_mlir_ciface_{function_name}");
 
         // Arguments and return values are hardcoded since they'll be handled by the trampoline.

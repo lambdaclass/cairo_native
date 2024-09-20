@@ -14,7 +14,7 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
         }
     };
 
-    let module = context.compile(&program.1)?;
+    let module = context.compile(&program.1, false)?;
 
     let object = cairo_native::module_to_object(module.module(), Default::default())?;
 

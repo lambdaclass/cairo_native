@@ -126,6 +126,7 @@ pub fn compile(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
+    ignore_debug_names: bool,
 ) -> Result<(), Error> {
     if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
         if x == "1" || x == "true" {
@@ -154,6 +155,7 @@ pub fn compile(
             metadata,
             di_compile_unit_id,
             sierra_stmt_start_offset,
+            ignore_debug_names,
         )?;
     }
 
@@ -167,6 +169,8 @@ pub fn compile(
 /// and name. Check out [compile](self::compile) for a description of the other arguments.
 ///
 /// The [module docs](self) contain more information about the compilation process.
+///
+/// If [`ignore_debug_names`] is true, then the function name will always be `f{id}` without any debug name info if it ever exists.
 #[allow(clippy::too_many_arguments)]
 fn compile_func(
     context: &Context,
@@ -177,6 +181,7 @@ fn compile_func(
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
     sierra_stmt_start_offset: usize,
+    ignore_debug_names: bool,
 ) -> Result<(), Error> {
     let fn_location = Location::new(
         context,
@@ -277,7 +282,10 @@ fn compile_func(
         None
     };
 
-    let function_name = generate_function_name(&function.id);
+    let function_name = generate_function_name(&function.id, ignore_debug_names);
+    // Don't care about whether it is for the contract executor for inner impls
+    // so we don't have to pass the boolean to the function call libfunc.
+    let function_name_for_inner = generate_function_name(&function.id, false);
 
     let di_subprogram = unsafe {
         // Various DWARF debug attributes for this function.
@@ -875,7 +883,7 @@ fn compile_func(
         pre_entry_block.append_operation(cf::br(&entry_block, &arg_values, fn_location));
     }
 
-    let inner_function_name = format!("impl${function_name}");
+    let inner_function_name = format!("impl${function_name_for_inner}");
     module.body().append_operation(llvm::func(
         context,
         StringAttribute::new(context, &inner_function_name),

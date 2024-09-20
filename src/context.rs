@@ -61,7 +61,14 @@ impl NativeContext {
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
-    pub fn compile(&self, program: &Program) -> Result<NativeModule, Error> {
+    ///
+    /// If `ignore_debug_names` is true then debug names will not be added to function names.
+    /// Mainly useful for the ContractExecutor.
+    pub fn compile(
+        &self,
+        program: &Program,
+        ignore_debug_names: bool,
+    ) -> Result<NativeModule, Error> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
@@ -169,6 +176,7 @@ impl NativeContext {
             &registry,
             &mut metadata,
             unsafe { Attribute::from_raw(di_unit_id) },
+            ignore_debug_names,
         )?;
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {

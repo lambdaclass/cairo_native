@@ -53,14 +53,40 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
 ///
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
 /// identifier number.
-pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
+pub fn generate_function_name(
+    function_id: &FunctionId,
+    is_for_contract_executor: bool,
+) -> Cow<str> {
     // Generic functions can omit their type in the debug_name, leading to multiple functions
     // having the same name, we solve this by adding the id number even if the function has a debug_name
-    if let Some(name) = function_id.debug_name.as_deref() {
+
+    if is_for_contract_executor {
+        Cow::Owned(format!("f{}", function_id.id))
+    } else if let Some(name) = function_id.debug_name.as_deref() {
         Cow::Owned(format!("{}(f{})", name, function_id.id))
     } else {
         Cow::Owned(format!("f{}", function_id.id))
     }
+}
+
+/// Decode an UTF-8 error message replacing invalid bytes with their hexadecimal representation, as
+/// done by Python's `x.decode('utf-8', errors='backslashreplace')`.
+pub fn decode_error_message(data: &[u8]) -> String {
+    let mut pos = 0;
+    utf8_iter::ErrorReportingUtf8Chars::new(data).fold(String::new(), |mut acc, ch| {
+        match ch {
+            Ok(ch) => {
+                acc.push(ch);
+                pos += ch.len_utf8();
+            }
+            Err(_) => {
+                acc.push_str(&format!("\\x{:02x}", data[pos]));
+                pos += 1;
+            }
+        };
+
+        acc
+    })
 }
 
 /// Return the layout for an integer of arbitrary width.
@@ -568,7 +594,7 @@ pub mod test {
         let context = NativeContext::new();
 
         let module = context
-            .compile(program)
+            .compile(program, false)
             .expect("Could not compile test program to MLIR.");
 
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
@@ -769,6 +795,45 @@ pub mod test {
         assert_eq!(entry_point.unwrap().id.id, 15);
     }
 
+    #[test]
+    fn decode_error_message() {
+        // Checkout [issue 795](https://github.com/lambdaclass/cairo_native/issues/795) for context.
+        assert_eq!(
+            super::decode_error_message(&[
+                97, 114, 103, 101, 110, 116, 47, 109, 117, 108, 116, 105, 99, 97, 108, 108, 45,
+                102, 97, 105, 108, 101, 100, 3, 232, 78, 97, 116, 105, 118, 101, 32, 101, 120, 101,
+                99, 117, 116, 105, 111, 110, 32, 101, 114, 114, 111, 114, 58, 32, 69, 114, 114,
+                111, 114, 32, 97, 116, 32, 112, 99, 61, 48, 58, 49, 48, 52, 58, 10, 71, 111, 116,
+                32, 97, 110, 32, 101, 120, 99, 101, 112, 116, 105, 111, 110, 32, 119, 104, 105,
+                108, 101, 32, 101, 120, 101, 99, 117, 116, 105, 110, 103, 32, 97, 32, 104, 105,
+                110, 116, 58, 32, 69, 114, 114, 111, 114, 32, 97, 116, 32, 112, 99, 61, 48, 58, 49,
+                56, 52, 58, 10, 71, 111, 116, 32, 97, 110, 32, 101, 120, 99, 101, 112, 116, 105,
+                111, 110, 32, 119, 104, 105, 108, 101, 32, 101, 120, 101, 99, 117, 116, 105, 110,
+                103, 32, 97, 32, 104, 105, 110, 116, 58, 32, 69, 120, 99, 101, 101, 100, 101, 100,
+                32, 116, 104, 101, 32, 109, 97, 120, 105, 109, 117, 109, 32, 110, 117, 109, 98,
+                101, 114, 32, 111, 102, 32, 101, 118, 101, 110, 116, 115, 44, 32, 110, 117, 109,
+                98, 101, 114, 32, 101, 118, 101, 110, 116, 115, 58, 32, 49, 48, 48, 49, 44, 32,
+                109, 97, 120, 32, 110, 117, 109, 98, 101, 114, 32, 101, 118, 101, 110, 116, 115,
+                58, 32, 49, 48, 48, 48, 46, 10, 67, 97, 105, 114, 111, 32, 116, 114, 97, 99, 101,
+                98, 97, 99, 107, 32, 40, 109, 111, 115, 116, 32, 114, 101, 99, 101, 110, 116, 32,
+                99, 97, 108, 108, 32, 108, 97, 115, 116, 41, 58, 10, 85, 110, 107, 110, 111, 119,
+                110, 32, 108, 111, 99, 97, 116, 105, 111, 110, 32, 40, 112, 99, 61, 48, 58, 49, 52,
+                51, 52, 41, 10, 85, 110, 107, 110, 111, 119, 110, 32, 108, 111, 99, 97, 116, 105,
+                111, 110, 32, 40, 112, 99, 61, 48, 58, 49, 51, 57, 53, 41, 10, 85, 110, 107, 110,
+                111, 119, 110, 32, 108, 111, 99, 97, 116, 105, 111, 110, 32, 40, 112, 99, 61, 48,
+                58, 57, 53, 51, 41, 10, 85, 110, 107, 110, 111, 119, 110, 32, 108, 111, 99, 97,
+                116, 105, 111, 110, 32, 40, 112, 99, 61, 48, 58, 51, 51, 57, 41, 10, 10, 67, 97,
+                105, 114, 111, 32, 116, 114, 97, 99, 101, 98, 97, 99, 107, 32, 40, 109, 111, 115,
+                116, 32, 114, 101, 99, 101, 110, 116, 32, 99, 97, 108, 108, 32, 108, 97, 115, 116,
+                41, 58, 10, 85, 110, 107, 110, 111, 119, 110, 32, 108, 111, 99, 97, 116, 105, 111,
+                110, 32, 40, 112, 99, 61, 48, 58, 49, 54, 55, 56, 41, 10, 85, 110, 107, 110, 111,
+                119, 110, 32, 108, 111, 99, 97, 116, 105, 111, 110, 32, 40, 112, 99, 61, 48, 58,
+                49, 54, 54, 52, 41, 10
+            ]),
+            "argent/multicall-failed\x03\\xe8Native execution error: Error at pc=0:104:\nGot an exception while executing a hint: Error at pc=0:184:\nGot an exception while executing a hint: Exceeded the maximum number of events, number events: 1001, max number events: 1000.\nCairo traceback (most recent call last):\nUnknown location (pc=0:1434)\nUnknown location (pc=0:1395)\nUnknown location (pc=0:953)\nUnknown location (pc=0:339)\n\nCairo traceback (most recent call last):\nUnknown location (pc=0:1678)\nUnknown location (pc=0:1664)\n",
+        );
+    }
+
     // ==============================
     // == TESTS: felt252_str
     // ==============================
@@ -882,7 +947,20 @@ pub mod test {
             debug_name: Some("function_name".into()),
         };
 
-        assert_eq!(generate_function_name(&function_id), "function_name(f123)");
+        assert_eq!(
+            generate_function_name(&function_id, false),
+            "function_name(f123)"
+        );
+    }
+
+    #[test]
+    fn test_generate_function_name_debug_name_for_contract_executor() {
+        let function_id = FunctionId {
+            id: 123,
+            debug_name: Some("function_name".into()),
+        };
+
+        assert_eq!(generate_function_name(&function_id, true), "f123");
     }
 
     #[test]
@@ -892,7 +970,7 @@ pub mod test {
             debug_name: None,
         };
 
-        assert_eq!(generate_function_name(&function_id), "f123");
+        assert_eq!(generate_function_name(&function_id, false), "f123");
     }
 
     #[test]
