@@ -53,7 +53,7 @@ fn main() -> anyhow::Result<()> {
             }
 
             let contract_files = fs::read_dir(&target_dir)
-            .with_context(|| format!("failed to read directory: {}", target_dir.display()))?
+            .with_context(|| format!("failed to read directory: {}", target_dir))?
             .filter_map(Result::ok)
             .filter(|entry| entry.file_type().map(|ft| ft.is_file()).unwrap_or(false))
             .filter_map(|entry| {
@@ -71,9 +71,9 @@ fn main() -> anyhow::Result<()> {
             for contract_file_path in contract_files {
                 let sierra_contract_class: cairo_lang_starknet_classes::contract_class::ContractClass = serde_json::from_str(
                     &fs::read_to_string(&contract_file_path)
-                        .with_context(|| format!("failed to read file: {}", contract_file_path.display()))?,
+                        .with_context(|| format!("failed to read file: {}", contract_file_path))?,
                 )
-                .with_context(|| format!("failed to deserialize compiled file: {}", contract_file_path.display()))?;
+                .with_context(|| format!("failed to deserialize compiled file: {}", contract_file_path))?;
 
                 let sierra_program = sierra_contract_class.extract_sierra_program()?;
 
