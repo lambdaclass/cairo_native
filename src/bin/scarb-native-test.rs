@@ -1,17 +1,16 @@
-mod utils;
-
-use std::collections::HashSet;
-use std::path::Path;
-use std::{env, fs};
-
 use anyhow::Context;
 use cairo_lang_sierra::program::VersionedProgram;
 use cairo_lang_test_plugin::{TestCompilation, TestCompilationMetadata};
 use clap::{Parser, ValueEnum};
 use scarb_metadata::{Metadata, MetadataCommand, ScarbCommand};
 use scarb_ui::args::PackagesFilter;
-use utils::test::{display_tests_summary, filter_test_cases, find_testable_targets, run_tests};
-use utils::{RunArgs, RunMode};
+use std::{collections::HashSet, env, fs, path::Path};
+use utils::{
+    test::{display_tests_summary, filter_test_cases, find_testable_targets, run_tests},
+    RunArgs, RunMode,
+};
+
+mod utils;
 
 /// Compiles all packages from a Scarb project matching `packages_filter` and
 /// runs all functions marked with `#[test]`. Exits with 1 if the compilation

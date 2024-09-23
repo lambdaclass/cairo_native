@@ -3,27 +3,25 @@
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
 use crate::{
-    block_ext::BlockExt,
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
-    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt, RangeExt},
+    utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt, RangeExt, PRIME},
 };
-use cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete;
-use cairo_lang_sierra::extensions::utils::Range;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
+        utils::Range,
     },
     ids::{ConcreteTypeId, UserTypeId},
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
-use felt252::PRIME;
 use melior::{
     dialect::{
         llvm::{self, r#type::pointer},
@@ -32,43 +30,43 @@ use melior::{
     ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
-use num_bigint::{BigInt, ToBigInt};
+use num_bigint::{BigInt, Sign};
 use num_traits::{Bounded, One};
 use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
-pub mod array;
-pub mod bitwise;
-pub mod bounded_int;
-pub mod r#box;
-pub mod builtin_costs;
-pub mod bytes31;
-pub mod circuit;
-pub mod coupon;
-pub mod ec_op;
-pub mod ec_point;
-pub mod ec_state;
-pub mod r#enum;
-pub mod felt252;
-pub mod felt252_dict;
-pub mod felt252_dict_entry;
-pub mod gas_builtin;
-pub mod non_zero;
-pub mod nullable;
-pub mod pedersen;
-pub mod poseidon;
-pub mod range_check;
-pub mod segment_arena;
-pub mod snapshot;
-pub mod squashed_felt252_dict;
-pub mod starknet;
-pub mod r#struct;
-pub mod uint128;
-pub mod uint128_mul_guarantee;
-pub mod uint16;
-pub mod uint32;
-pub mod uint64;
-pub mod uint8;
-pub mod uninitialized;
+mod array;
+mod bitwise;
+mod bounded_int;
+mod r#box;
+mod builtin_costs;
+mod bytes31;
+mod circuit;
+mod coupon;
+mod ec_op;
+mod ec_point;
+mod ec_state;
+pub(crate) mod r#enum;
+mod felt252;
+mod felt252_dict;
+mod felt252_dict_entry;
+mod gas_builtin;
+mod non_zero;
+mod nullable;
+mod pedersen;
+mod poseidon;
+mod range_check;
+mod segment_arena;
+mod snapshot;
+mod squashed_felt252_dict;
+mod starknet;
+mod r#struct;
+mod uint128;
+mod uint128_mul_guarantee;
+mod uint16;
+mod uint32;
+mod uint64;
+mod uint8;
+mod uninitialized;
 
 /// Generation of MLIR types from their Sierra counterparts.
 ///
@@ -842,7 +840,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint128(_) => range_of::<u128>(),
             Self::Felt252(_) => Range {
                 lower: BigInt::ZERO,
-                upper: PRIME.to_bigint().unwrap(),
+                upper: BigInt::from_biguint(Sign::Plus, PRIME.clone()),
             },
             Self::Sint8(_) => range_of::<i8>(),
             Self::Sint16(_) => range_of::<i16>(),
