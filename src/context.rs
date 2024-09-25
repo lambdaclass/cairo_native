@@ -1,10 +1,6 @@
 use crate::{
     error::Error,
-    ffi::{
-        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet,
-        mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDistinctAttrCreate,
-        mlirModuleCleanup,
-    },
+    ffi::{get_data_layout_rep, get_target_triple},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -31,6 +27,11 @@ use melior::{
     },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
+};
+use mlir_sys::{
+    mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
+    mlirLLVMDIModuleAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
 use std::sync::OnceLock;
 
@@ -86,7 +87,7 @@ impl NativeContext {
 
         let di_unit_id = unsafe {
             let id = StringAttribute::new(&self.context, "compile_unit_id").to_raw();
-            mlirLLVMDistinctAttrCreate(id)
+            mlirDisctinctAttrCreate(id)
         };
 
         let op = OperationBuilder::new(
@@ -110,7 +111,8 @@ impl NativeContext {
                             file_attr.to_raw(),
                             StringAttribute::new(&self.context, "cairo-native").to_raw(),
                             false,
-                            crate::ffi::DiEmissionKind::Full,
+                            MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+                            MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
                         );
 
                         let context = &self.context;
@@ -201,10 +203,6 @@ impl NativeContext {
         }
 
         run_pass_manager(&self.context, &mut module)?;
-
-        unsafe {
-            mlirModuleCleanup(module.to_raw());
-        }
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {
