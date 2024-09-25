@@ -47,11 +47,6 @@
 use crate::{
     debug::libfunc_to_name,
     error::Error,
-    ffi::{
-        mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
-        mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet,
-        mlirLLVMDistinctAttrCreate,
-    },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
@@ -92,6 +87,12 @@ use melior::{
         Value,
     },
     Context,
+};
+use mlir_sys::{
+    mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
+    mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet,
+    mlirLLVMDISubroutineTypeAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
 use std::{
     cell::Cell,
@@ -304,7 +305,8 @@ fn compile_func(
                 file_attr.to_raw(),
                 StringAttribute::new(context, "cairo-native").to_raw(),
                 false,
-                crate::ffi::DiEmissionKind::Full,
+                MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+                MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
             ))
         };
 
@@ -323,7 +325,7 @@ fn compile_func(
         let module_scope = mlirLLVMDIModuleAttrGetScope(di_module);
 
         Attribute::from_raw({
-            let id = mlirLLVMDistinctAttrCreate(
+            let id = mlirDisctinctAttrCreate(
                 StringAttribute::new(context, &format!("fn_{}", function.id.id)).to_raw(),
             );
 
