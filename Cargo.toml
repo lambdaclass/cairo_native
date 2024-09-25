@@ -68,7 +68,7 @@ cairo-lang-diagnostics = "2.8.2"
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
 itertools = "0.13.0"
 lazy_static = "1.4"
-libc = "0.2.159"
+libc = "0.2"
 llvm-sys = "191.0.0"
 melior = { version = "0.19.0", features = [
   "ods-dialects",
