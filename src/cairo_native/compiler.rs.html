@@ -1378,6 +1378,8 @@
 <a href="#1378" id="1378">1378</a>
 <a href="#1379" id="1379">1379</a>
 <a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
@@ -1427,11 +1429,6 @@
 </span><span class="kw">use crate</span>::{
     debug::libfunc_to_name,
     error::Error,
-    ffi::{
-        mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
-        mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet,
-        mlirLLVMDistinctAttrCreate,
-    },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
@@ -1472,6 +1469,12 @@
         Value,
     },
     Context,
+};
+<span class="kw">use </span>mlir_sys::{
+    mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
+    mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet,
+    mlirLLVMDISubroutineTypeAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
 <span class="kw">use </span>std::{
     cell::Cell,
@@ -1684,7 +1687,8 @@
                 </span>file_attr.to_raw(),
                 StringAttribute::new(context, <span class="string">"cairo-native"</span>).to_raw(),
                 <span class="bool-val">false</span>,
-                <span class="kw">crate</span>::ffi::DiEmissionKind::Full,
+                MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+                MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
             ))
         };
 
@@ -1703,7 +1707,7 @@
         <span class="kw">let </span>module_scope = mlirLLVMDIModuleAttrGetScope(di_module);
 
         Attribute::from_raw({
-            <span class="kw">let </span>id = mlirLLVMDistinctAttrCreate(
+            <span class="kw">let </span>id = mlirDisctinctAttrCreate(
                 StringAttribute::new(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"fn_{}"</span>, function.id.id)).to_raw(),
             );
 

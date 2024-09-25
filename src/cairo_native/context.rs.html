@@ -242,15 +242,9 @@
 <a href="#242" id="242">242</a>
 <a href="#243" id="243">243</a>
 <a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
-    ffi::{
-        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet,
-        mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDistinctAttrCreate,
-        mlirModuleCleanup,
-    },
+    ffi::{get_data_layout_rep, get_target_triple},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -277,6 +271,11 @@
     },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
+};
+<span class="kw">use </span>mlir_sys::{
+    mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
+    mlirLLVMDIModuleAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
 <span class="kw">use </span>std::sync::OnceLock;
 
@@ -332,7 +331,7 @@
 
         <span class="kw">let </span>di_unit_id = <span class="kw">unsafe </span>{
             <span class="kw">let </span>id = StringAttribute::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">"compile_unit_id"</span>).to_raw();
-            mlirLLVMDistinctAttrCreate(id)
+            mlirDisctinctAttrCreate(id)
         };
 
         <span class="kw">let </span>op = OperationBuilder::new(
@@ -356,7 +355,8 @@
                             </span>file_attr.to_raw(),
                             StringAttribute::new(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="string">"cairo-native"</span>).to_raw(),
                             <span class="bool-val">false</span>,
-                            <span class="kw">crate</span>::ffi::DiEmissionKind::Full,
+                            MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+                            MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
                         );
 
                         <span class="kw">let </span>context = <span class="kw-2">&amp;</span><span class="self">self</span>.context;
@@ -447,10 +447,6 @@
         }
 
         run_pass_manager(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;mut </span>module)<span class="question-mark">?</span>;
-
-        <span class="kw">unsafe </span>{
-            mlirModuleCleanup(module.to_raw());
-        }
 
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(x) = std::env::var(<span class="string">"NATIVE_DEBUG_DUMP"</span>) {
             <span class="kw">if </span>x == <span class="string">"1" </span>|| x == <span class="string">"true" </span>{
