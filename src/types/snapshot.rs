@@ -15,7 +15,10 @@
 use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
-    metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
+    metadata::{
+        enum_snapshot_variants::EnumSnapshotVariantsMeta, snapshot_clones::SnapshotClonesMeta,
+        MetadataStorage,
+    },
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
@@ -43,13 +46,19 @@ pub fn build<'ctx>(
     // This type is like a `Cow<T>` that clones whenever the original type is modified to keep the
     // original data. Since implementing that is complicated we can just clone the entire value for
     // now.
-    match metadata.get_mut::<EnumSnapshotVariantsMeta>() {
-        Some(x) => x,
-        None => metadata
-            .insert(EnumSnapshotVariantsMeta::default())
-            .expect("should not fail because we checked there is no metadata beforehand"),
-    }
-    .set_mapping(info.self_ty, registry.get_type(&info.ty)?.variants());
 
-    registry.build_type(context, module, registry, metadata, &info.ty)
+    // Register enum variants for the snapshot.
+    if let Some(variants) = registry.get_type(&info.ty)?.variants() {
+        metadata
+            .get_or_insert_with(EnumSnapshotVariantsMeta::default)
+            .set_mapping(info.self_ty, variants);
+    }
+
+    // Ensure the inner type is built and register the snapshot clone logic builder.
+    let self_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+    if let Some(snapshot_clones_meta) = metadata.get_mut::<SnapshotClonesMeta>() {
+        snapshot_clones_meta.register_dup(info.self_ty.clone(), &info.ty);
+    }
+
+    Ok(self_ty)
 }
