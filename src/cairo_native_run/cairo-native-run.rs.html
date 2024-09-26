@@ -177,7 +177,7 @@
     </span>allow_warnings: bool,
     <span class="doccomment">/// In cases where gas is available, the amount of provided gas.
     </span><span class="attr">#[arg(long)]
-    </span>available_gas: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    </span>available_gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
     <span class="doccomment">/// Run with JIT or AOT (compiled).
     </span><span class="attr">#[arg(long, value_enum, default_value_t = RunMode::Jit)]
     </span>run_mode: RunMode,
@@ -247,7 +247,7 @@
     <span class="kw">let </span>func = find_function(<span class="kw-2">&amp;</span>sierra_program, <span class="string">"::main"</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>initial_gas = gas_metadata
-        .get_initial_available_gas(<span class="kw-2">&amp;</span>func.id, args.available_gas.map(|x| x.try_into().unwrap()))
+        .get_initial_available_gas(<span class="kw-2">&amp;</span>func.id, args.available_gas)
         .with_context(|| <span class="string">"not enough gas to run"</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = StubSyscallHandler::default();
