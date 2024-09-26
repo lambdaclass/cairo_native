@@ -216,6 +216,7 @@ jobs:
           cp programs/benches/*.cairo $OUTPUT_DIR
           for f in $OUTPUT_DIR/*.cairo; do
             hyperfine \
+            --show-output \
             --export-markdown "${f%.*}.md" \
             --export-json "${f%.*}.json" \
             --warmup 3 \
