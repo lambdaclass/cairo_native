@@ -163,6 +163,7 @@ pub trait TypeBuilder {
         helper: &LibfuncHelper<'ctx, 'this>,
         metadata: &mut MetadataStorage,
         self_ty: &ConcreteTypeId,
+        value: Value<'ctx, 'this>,
     ) -> Result<(), Self::Error>;
 }
 
@@ -957,6 +958,7 @@ impl TypeBuilder for CoreTypeConcrete {
         helper: &LibfuncHelper<'ctx, 'this>,
         metadata: &mut MetadataStorage,
         self_ty: &ConcreteTypeId,
+        value: Value<'ctx, 'this>,
     ) -> Result<(), Self::Error> {
         match self {
             CoreTypeConcrete::Array(_info) => {
@@ -967,27 +969,49 @@ impl TypeBuilder for CoreTypeConcrete {
                 let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
                 let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
 
-                let array_val = entry.argument(0)?.into();
-                let ptr = entry.extract_value(context, location, array_val, ptr_ty, 0)?;
+                // TODO: Drop the items.
 
+                let ptr = entry.extract_value(context, location, value, ptr_ty, 0)?;
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }
             CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
                 let runtime: &mut RuntimeBindingsMeta = metadata.get_mut().unwrap();
-                let ptr = entry.argument(0)?.into();
 
-                runtime.dict_alloc_free(context, helper, ptr, entry, location)?;
+                // TODO: Drop the entries.
+
+                runtime.dict_alloc_free(context, helper, value, entry, location)?;
             }
             CoreTypeConcrete::Box(_) | CoreTypeConcrete::Nullable(_) => {
                 if metadata.get::<ReallocBindingsMeta>().is_none() {
                     metadata.insert(ReallocBindingsMeta::new(context, helper));
                 }
 
-                let ptr = entry.argument(0)?.into();
-                entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
+                // TODO: Drop the values.
+
+                entry.append_operation(ReallocBindingsMeta::free(context, value, location));
             }
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.build_drop(
-                context, registry, entry, location, helper, metadata, &info.ty,
+                context, registry, entry, location, helper, metadata, &info.ty, value,
+            )?,
+            CoreTypeConcrete::Struct(info) => self::r#struct::build_drop(
+                context,
+                registry,
+                entry,
+                location,
+                helper,
+                metadata,
+                WithSelf::new(self_ty, info),
+                value,
+            )?,
+            CoreTypeConcrete::Enum(info) => self::r#enum::build_drop(
+                context,
+                registry,
+                entry,
+                location,
+                helper,
+                metadata,
+                WithSelf::new(self_ty, info),
+                value,
             )?,
             _ => {}
         };

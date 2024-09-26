@@ -404,6 +404,7 @@
 use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
+    libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
     utils::{get_integer_layout, ProgramRegistryExt},
 };
@@ -417,7 +418,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{r#type::IntegerType, Module, Type},
+    ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
 use std::alloc::Layout;
@@ -480,6 +481,33 @@ pub fn build<'ctx>(
             false,
         ),
     })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn snapshot_take<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<EnumConcreteType>,
+    src_value: Value<'ctx, 'this>,
+) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
+    todo!()
+}
+
+pub(crate) fn build_drop<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<EnumConcreteType>,
+    value: Value<'ctx, 'this>,
+) -> Result<()> {
+    todo!()
 }
 
 /// Extract layout for the default enum representation, its discriminant and all its payloads.
