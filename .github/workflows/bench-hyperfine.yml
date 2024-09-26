@@ -114,7 +114,7 @@ jobs:
           key: library-${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: check and free hdd space left
-        #if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
         run: |
           echo "Listing 20 largest packages"
           dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
@@ -135,11 +135,11 @@ jobs:
           df -h
 
       - name: Install Rust
-        #if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         uses: dtolnay/rust-toolchain@1.81.0
 
       - name: add llvm deb repository
-        #if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         uses: myci-actions/add-deb-repo@11
         with:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
@@ -147,21 +147,21 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
 
       - name: Install LLVM
-        #if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         run: sudo apt-get update && sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
 
       - name: Checkout base commit
-        #if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: Fetch Rust cache
-        #if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         uses: Swatinem/rust-cache@v2
 
       - name: Build binary
-        #if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         run: |
           make build
           mkdir lib bin
@@ -216,7 +216,6 @@ jobs:
           cp programs/benches/*.cairo $OUTPUT_DIR
           for f in $OUTPUT_DIR/*.cairo; do
             hyperfine \
-            --show-output \
             --export-markdown "${f%.*}.md" \
             --export-json "${f%.*}.json" \
             --warmup 3 \
