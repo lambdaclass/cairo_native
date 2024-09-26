@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native"
-version = "0.2.0"
+version = "0.2.0-alpha.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "A compiler to convert Cairo's intermediate representation Sierra code to MLIR."
@@ -93,7 +93,7 @@ cairo-lang-sierra-gas = "2.8.2"
 cairo-lang-starknet = "2.8.2"
 cairo-lang-utils = "2.8.2"
 cairo-lang-starknet-classes = "2.8.2"
-cairo-native-runtime = { version = "0.2.0", path = "runtime", optional = true }
+cairo-native-runtime = { version = "0.2.0-alpha.1", path = "runtime", optional = true }
 clap = { version = "4.5.18", features = ["derive"], optional = true }
 libloading = "0.8.3"
 tracing-subscriber = { version = "0.3.18", features = [
@@ -110,9 +110,9 @@ colored = { version = "2.1.0", optional = true }
 keccak = "0.1.5"
 k256 = "0.13.4"
 p256 = "0.13.2"
-sha2 = "0.10.8"                                                                                             # needed for the syscall handler stub
-scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.2", optional = true }
-scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.2", optional = true }
+sha2 = "0.10.8" # needed for the syscall handler stub
+scarb-metadata = { version = "1.12.0", optional = true }
+scarb-ui = { version = "0.1.5", optional = true }
 sec1 = "0.7.3"
 serde_json = { version = "1.0.125" }
 stats_alloc = "0.1.10"
