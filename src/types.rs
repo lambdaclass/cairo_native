@@ -986,6 +986,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 let ptr = entry.argument(0)?.into();
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }
+            CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.build_drop(
+                context, registry, entry, location, helper, metadata, &info.ty,
+            )?,
             _ => {}
         };
         Ok(())
