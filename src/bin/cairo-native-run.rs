@@ -37,7 +37,7 @@ struct Args {
     allow_warnings: bool,
     /// In cases where gas is available, the amount of provided gas.
     #[arg(long)]
-    available_gas: Option<usize>,
+    available_gas: Option<u128>,
     /// Run with JIT or AOT (compiled).
     #[arg(long, value_enum, default_value_t = RunMode::Jit)]
     run_mode: RunMode,
