@@ -53,6 +53,15 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Snapshot type
 //!
 //! The type snapshot for a given type `T`.
@@ -70,7 +79,10 @@
 </span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
 <span class="kw">use crate</span>::{
     error::Result,
-    metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
+    metadata::{
+        enum_snapshot_variants::EnumSnapshotVariantsMeta, snapshot_clones::SnapshotClonesMeta,
+        MetadataStorage,
+    },
     utils::ProgramRegistryExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -98,14 +110,20 @@
     <span class="comment">// This type is like a `Cow&lt;T&gt;` that clones whenever the original type is modified to keep the
     // original data. Since implementing that is complicated we can just clone the entire value for
     // now.
-    </span><span class="kw">match </span>metadata.get_mut::&lt;EnumSnapshotVariantsMeta&gt;() {
-        <span class="prelude-val">Some</span>(x) =&gt; x,
-        <span class="prelude-val">None </span>=&gt; metadata
-            .insert(EnumSnapshotVariantsMeta::default())
-            .expect(<span class="string">"should not fail because we checked there is no metadata beforehand"</span>),
-    }
-    .set_mapping(info.self_ty, registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.variants());
 
-    registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)
+    // Register enum variants for the snapshot.
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(variants) = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.variants() {
+        metadata
+            .get_or_insert_with(EnumSnapshotVariantsMeta::default)
+            .set_mapping(info.self_ty, variants);
+    }
+
+    <span class="comment">// Ensure the inner type is built and register the snapshot clone logic builder.
+    </span><span class="kw">let </span>self_ty = registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(snapshot_clones_meta) = metadata.get_mut::&lt;SnapshotClonesMeta&gt;() {
+        snapshot_clones_meta.register_dup(info.self_ty.clone(), <span class="kw-2">&amp;</span>info.ty);
+    }
+
+    <span class="prelude-val">Ok</span>(self_ty)
 }
 </code></pre></div></section></main></body></html>

@@ -65,9 +65,6 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # State value duplication libfunc
 //!
 //! Most types are trivial and don't need any clone (or rather, they will be cloned automatically by
@@ -111,6 +108,7 @@
         .and_then(|meta| meta.wrap_invoke(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty))
     {
         <span class="prelude-val">Some</span>(clone_fn) =&gt; {
+            <span class="kw">let </span>original_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
             <span class="kw">let </span>(entry, cloned_value) = clone_fn(
                 context,
                 registry,
@@ -118,14 +116,10 @@
                 location,
                 helper,
                 metadata,
-                entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                original_value,
             )<span class="question-mark">?</span>;
 
-            entry.append_operation(helper.br(
-                <span class="number">0</span>,
-                <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), cloned_value],
-                location,
-            ));
+            entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[original_value, cloned_value], location));
         }
         <span class="prelude-val">None </span>=&gt; {
             entry.append_operation(helper.br(
