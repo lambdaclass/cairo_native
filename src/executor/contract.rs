@@ -63,8 +63,10 @@ use std::{
     path::{Path, PathBuf},
     ptr::NonNull,
     sync::Arc,
+    time::Instant,
 };
 use tempfile::NamedTempFile;
+use tracing::info;
 
 /// Please look at the [module level docs](self).
 #[derive(Educe, Clone)]
@@ -104,8 +106,14 @@ impl AotContractExecutor {
     /// a temporary file an deleted when dropped.
     /// If you loaded a ContractExecutor using [`load`] then it will not be treated as a temp file.
     pub fn new(sierra_program: &Program, opt_level: OptLevel) -> Result<Self> {
+        info!("starting mlir compilation");
+        let pre_mlir_compilation_instant = Instant::now();
+
         let native_context = NativeContext::new();
         let module = native_context.compile(sierra_program, true)?;
+
+        let mlir_compilation_time = pre_mlir_compilation_instant.elapsed().as_millis();
+        info!(time = mlir_compilation_time, "mlir compilation finished");
 
         let NativeModule {
             module,
