@@ -89,12 +89,6 @@ pub fn build_downcast<'ctx, 'this>(
     } else {
         src_ty.integer_range(registry)?
     };
-    assert!(
-        dst_range.lower > src_range.lower || dst_range.upper < src_range.upper,
-        "invalid downcast `{}` into `{}`: target range contains the source range",
-        info.signature.param_signatures[1].ty,
-        info.signature.branch_signatures[0].vars[1].ty
-    );
 
     let src_width = if src_ty.is_bounded_int(registry)? {
         src_range.offset_bit_width()
@@ -218,7 +212,8 @@ pub fn build_downcast<'ctx, 'this>(
         }
         (Some(lower_check), None) => lower_check,
         (None, Some(upper_check)) => upper_check,
-        (None, None) => unreachable!(),
+        // its always in bounds since dst is larger than src (i.e no bounds checks needed)
+        (None, None) => entry.const_int(context, location, 1, 1)?,
     };
 
     let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
