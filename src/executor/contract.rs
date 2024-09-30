@@ -63,10 +63,8 @@ use std::{
     path::{Path, PathBuf},
     ptr::NonNull,
     sync::Arc,
-    time::Instant,
 };
 use tempfile::NamedTempFile;
-use tracing::info;
 
 /// Please look at the [module level docs](self).
 #[derive(Educe, Clone)]
@@ -106,12 +104,8 @@ impl AotContractExecutor {
     /// a temporary file an deleted when dropped.
     /// If you loaded a ContractExecutor using [`load`] then it will not be treated as a temp file.
     pub fn new(sierra_program: &Program, opt_level: OptLevel) -> Result<Self> {
-        info!("starting mlir compilation");
-        let pre_mlir_compilation_instant = Instant::now();
         let native_context = NativeContext::new();
         let module = native_context.compile(sierra_program, true)?;
-        let mlir_compilation_time = pre_mlir_compilation_instant.elapsed().as_millis();
-        info!(time = mlir_compilation_time, "mlir compilation finished");
 
         let NativeModule {
             module,
@@ -169,17 +163,8 @@ impl AotContractExecutor {
             .keep()
             .expect("can only fail on windows");
 
-        info!("starting llvm compilation");
-        let pre_llvm_compilation_instant = Instant::now();
         let object_data = crate::module_to_object(&module, opt_level)?;
-        let llvm_compilation_time = pre_llvm_compilation_instant.elapsed().as_millis();
-        info!(time = llvm_compilation_time, "llvm compilation finished");
-
-        info!("starting object linking");
-        let pre_object_linking_instant = Instant::now();
         crate::object_to_shared_lib(&object_data, &library_path)?;
-        let object_linking_time = pre_object_linking_instant.elapsed().as_millis();
-        info!(time = object_linking_time, "object linking finished");
 
         Ok(Self {
             library: Arc::new(unsafe { Library::new(&library_path)? }),
