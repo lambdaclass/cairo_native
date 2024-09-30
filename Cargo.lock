@@ -1014,8 +1014,10 @@ name = "cairo-native-runtime"
 version = "0.2.0-alpha.1"
 dependencies = [
  "cairo-lang-sierra-gas",
+ "itertools 0.13.0",
  "lazy_static",
  "libc",
+ "num-traits 0.2.19",
  "rand",
  "starknet-curve 0.5.1",
  "starknet-types-core",
