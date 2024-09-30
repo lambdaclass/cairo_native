@@ -485,27 +485,28 @@ pub fn build<'ctx>(
 
 #[allow(clippy::too_many_arguments)]
 fn snapshot_take<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: WithSelf<EnumConcreteType>,
-    src_value: Value<'ctx, 'this>,
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: WithSelf<EnumConcreteType>,
+    _src_value: Value<'ctx, 'this>,
 ) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
     todo!()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_drop<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: WithSelf<EnumConcreteType>,
-    value: Value<'ctx, 'this>,
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: WithSelf<EnumConcreteType>,
+    _value: Value<'ctx, 'this>,
 ) -> Result<()> {
     todo!()
 }

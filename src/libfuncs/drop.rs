@@ -40,6 +40,7 @@ pub fn build<'ctx, 'this>(
         helper,
         metadata,
         &info.signature.param_signatures[0].ty,
+        entry.argument(0)?.into(),
     )?;
 
     entry.append_operation(helper.br(0, &[], location));

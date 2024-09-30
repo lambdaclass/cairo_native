@@ -103,13 +103,14 @@ fn snapshot_take<'ctx, 'this>(
     let self_ty = registry.build_type(context, helper, registry, metadata, info.self_ty)?;
     let mut value = entry.append_op_result(llvm::undef(self_ty, location))?;
 
-    // The following unwrap is unreachable because we've already check that at least one of the
-    // struct's members have a custom clone implementation before registering this function.
-    let snapshot_clones_meta = metadata.get::<SnapshotClonesMeta>().unwrap();
     for (member_idx, member_id) in info.members.iter().enumerate() {
         let member_ty = registry.build_type(context, helper, registry, metadata, member_id)?;
         let member_val =
             entry.extract_value(context, location, src_value, member_ty, member_idx)?;
+
+        // The following unwrap is unreachable because we've already check that at least one of the
+        // struct's members have a custom clone implementation before registering this function.
+        let snapshot_clones_meta = metadata.get::<SnapshotClonesMeta>().unwrap();
 
         let cloned_member_val;
         (entry, cloned_member_val) = match snapshot_clones_meta.wrap_invoke(member_id) {
@@ -125,6 +126,7 @@ fn snapshot_take<'ctx, 'this>(
     Ok((entry, value))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_drop<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -135,8 +137,6 @@ pub(crate) fn build_drop<'ctx, 'this>(
     info: WithSelf<StructConcreteType>,
     value: Value<'ctx, 'this>,
 ) -> Result<()> {
-    let value = entry.argument(0)?.into();
-
     // Since we don't currently have a way to check if a type should implement drop or not we just
     // call `build_drop` for every member. The canonicalization pass should remove unnecessary
     // `extractvalue` operations.
