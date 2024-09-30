@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native-runtime"
-version = "0.2.0"
+version = "0.2.0-alpha.1"
 description = "A compiler to convert Cairo's intermediate representation Sierra code to MLIR."
 edition = "2021"
 license = "Apache-2.0"
@@ -17,3 +17,5 @@ libc = "0.2"
 starknet-curve = "0.5.0"
 lazy_static = "1.5.0"
 rand = "0.8.5"
+itertools = "0.13.0"
+num-traits = "0.2"

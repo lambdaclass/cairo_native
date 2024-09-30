@@ -37,7 +37,7 @@ struct Args {
     allow_warnings: bool,
     /// In cases where gas is available, the amount of provided gas.
     #[arg(long)]
-    available_gas: Option<usize>,
+    available_gas: Option<u128>,
     /// Run with JIT or AOT (compiled).
     #[arg(long, value_enum, default_value_t = RunMode::Jit)]
     run_mode: RunMode,
@@ -107,7 +107,7 @@ fn main() -> anyhow::Result<()> {
     let func = find_function(&sierra_program, "::main")?;
 
     let initial_gas = gas_metadata
-        .get_initial_available_gas(&func.id, args.available_gas.map(|x| x.try_into().unwrap()))
+        .get_initial_available_gas(&func.id, args.available_gas)
         .with_context(|| "not enough gas to run")?;
 
     let mut syscall_handler = StubSyscallHandler::default();
