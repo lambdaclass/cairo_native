@@ -362,6 +362,8 @@ pub(crate) fn build_drop<'ctx, 'this>(
                 payload_value,
             )?;
 
+            block.append_operation(scf::r#yield(&[], location));
+
             region
         },
         location,

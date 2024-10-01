@@ -558,6 +558,7 @@ fn snapshot_take<'ctx, 'this>(
                 layout.align(),
             )?;
 
+            entry.store(context, location, ptr, src_value)?;
             for (idx, (variant_ty, _)) in variant_tys.iter().copied().enumerate() {
                 // This unwrap is unreachable because of the first check in this function.
                 if let Some(snapshot_take) = metadata
@@ -568,7 +569,6 @@ fn snapshot_take<'ctx, 'this>(
                     let block = helper.append_block(Block::new(&[]));
                     variant_blocks.insert(idx, block);
 
-                    block.store(context, location, ptr, src_value)?;
                     let value = block.load(
                         context,
                         location,
@@ -582,13 +582,16 @@ fn snapshot_take<'ctx, 'this>(
                     )?;
 
                     let value = block.insert_value(context, location, value, payload, 1)?;
+                    block.store(context, location, ptr, value)?;
+                    let value = block.load(context, location, ptr, src_value.r#type())?;
+
                     block.append_operation(cf::br(final_block, &[value], location));
                 }
             }
 
             let default_block = helper.append_block(Block::new(&[]));
 
-            let tag_value = entry.extract_value(context, location, src_value, tag_ty, 0)?;
+            let tag_value = entry.load(context, location, ptr, tag_ty)?;
             entry.append_operation(cf::switch(
                 context,
                 &variant_blocks.keys().map(|&x| x as i64).collect::<Vec<_>>(),
@@ -656,11 +659,11 @@ pub(crate) fn build_drop<'ctx, 'this>(
                         layout.align(),
                     )?;
 
+                    block.store(context, location, ptr, value)?;
                     for (idx, (variant_ty, _)) in variant_tys.iter().copied().enumerate() {
                         let block = region.append_block(Block::new(&[]));
                         variant_blocks.push(block);
 
-                        block.store(context, location, ptr, value)?;
                         let value = block.load(
                             context,
                             location,
@@ -696,7 +699,7 @@ pub(crate) fn build_drop<'ctx, 'this>(
 
                     let default_block = helper.append_block(Block::new(&[]));
 
-                    let tag_value = entry.extract_value(context, location, value, tag_ty, 0)?;
+                    let tag_value = entry.load(context, location, ptr, tag_ty)?;
                     block.append_operation(cf::switch(
                         context,
                         &(0..info.variants.len())

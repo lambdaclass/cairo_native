@@ -491,6 +491,9 @@ pub fn build_get<'ctx, 'this>(
         // TODO: Support clone-only types (those that are not copy).
         valid_block.memcpy(context, location, elem_ptr, target_ptr, elem_size);
 
+        // TODO: Drop array values.
+        valid_block.append_operation(ReallocBindingsMeta::free(context, ptr, location));
+
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
     }
 
