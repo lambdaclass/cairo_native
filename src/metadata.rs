@@ -16,11 +16,11 @@ use std::{
 
 pub mod auto_breakpoint;
 pub mod debug_utils;
+pub mod dup_overrides;
 pub mod enum_snapshot_variants;
 pub mod gas;
 pub mod realloc_bindings;
 pub mod runtime_bindings;
-pub mod snapshot_clones;
 pub mod tail_recursion;
 
 /// Metadata container.

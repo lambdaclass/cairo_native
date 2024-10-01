@@ -16,7 +16,7 @@ use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
     metadata::{
-        enum_snapshot_variants::EnumSnapshotVariantsMeta, snapshot_clones::SnapshotClonesMeta,
+        dup_overrides::DupOverrideMeta, enum_snapshot_variants::EnumSnapshotVariantsMeta,
         MetadataStorage,
     },
     utils::ProgramRegistryExt,
@@ -56,9 +56,9 @@ pub fn build<'ctx>(
 
     // Ensure the inner type is built and register the snapshot clone logic builder.
     let self_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
-    if let Some(snapshot_clones_meta) = metadata.get_mut::<SnapshotClonesMeta>() {
-        if !snapshot_clones_meta.is_registered(info.self_ty()) {
-            snapshot_clones_meta.register_dup(info.self_ty().clone(), &info.ty);
+    if let Some(dup_override_meta) = metadata.get_mut::<DupOverrideMeta>() {
+        if !dup_override_meta.is_registered(info.self_ty()) {
+            dup_override_meta.register_dup(info.self_ty().clone(), &info.ty);
         }
     }
 

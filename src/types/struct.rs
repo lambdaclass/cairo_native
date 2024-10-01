@@ -36,7 +36,7 @@ use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
-    metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
+    metadata::{dup_overrides::DupOverrideMeta, MetadataStorage},
     utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -62,12 +62,12 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<StructConcreteType>,
 ) -> Result<Type<'ctx>> {
-    SnapshotClonesMeta::register_with(metadata, info.self_ty.clone(), |metadata| {
+    DupOverrideMeta::register_with(metadata, info.self_ty.clone(), |metadata| {
         let mut has_clone_impl = false;
         for member in &info.members {
             registry.build_type(context, module, registry, metadata, member)?;
             has_clone_impl |= metadata
-                .get::<SnapshotClonesMeta>()
+                .get::<DupOverrideMeta>()
                 .is_some_and(|x| x.is_registered(member));
         }
 
@@ -113,10 +113,10 @@ fn snapshot_take<'ctx, 'this>(
 
         // The following unwrap is unreachable because we've already check that at least one of the
         // struct's members have a custom clone implementation before registering this function.
-        let snapshot_clones_meta = metadata.get::<SnapshotClonesMeta>().unwrap();
+        let dup_override_meta = metadata.get::<DupOverrideMeta>().unwrap();
 
         let cloned_member_val;
-        (entry, cloned_member_val) = match snapshot_clones_meta.wrap_invoke(member_id) {
+        (entry, cloned_member_val) = match dup_override_meta.wrap_invoke(member_id) {
             Some(clone_fn) => clone_fn(
                 context, registry, entry, location, helper, metadata, member_val,
             )?,

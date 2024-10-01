@@ -405,7 +405,7 @@ use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
-    metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
+    metadata::{dup_overrides::DupOverrideMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -437,12 +437,12 @@ pub fn build<'ctx>(
     info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>> {
     // Register enum's clone impl (if required).
-    SnapshotClonesMeta::register_with(metadata, info.self_ty().clone(), |metadata| {
+    DupOverrideMeta::register_with(metadata, info.self_ty().clone(), |metadata| {
         let mut has_clone_impl = false;
         for variant in &info.variants {
             registry.build_type(context, module, registry, metadata, variant)?;
             has_clone_impl |= metadata
-                .get::<SnapshotClonesMeta>()
+                .get::<DupOverrideMeta>()
                 .is_some_and(|x| x.is_registered(variant));
         }
 
@@ -517,7 +517,7 @@ fn snapshot_take<'ctx, 'this>(
     info: WithSelf<EnumConcreteType>,
     src_value: Value<'ctx, 'this>,
 ) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
-    if metadata.get::<SnapshotClonesMeta>().is_none() {
+    if metadata.get::<DupOverrideMeta>().is_none() {
         return Ok((entry, src_value));
     }
 
@@ -534,7 +534,7 @@ fn snapshot_take<'ctx, 'this>(
         1 => {
             // This unwrap is unreachable because of the first check in this function.
             if let Some(snapshot_take) = metadata
-                .get::<SnapshotClonesMeta>()
+                .get::<DupOverrideMeta>()
                 .unwrap()
                 .wrap_invoke(&info.variants[0])
             {
@@ -560,7 +560,7 @@ fn snapshot_take<'ctx, 'this>(
             for (idx, (variant_ty, _)) in variant_tys.iter().copied().enumerate() {
                 // This unwrap is unreachable because of the first check in this function.
                 if let Some(snapshot_take) = metadata
-                    .get::<SnapshotClonesMeta>()
+                    .get::<DupOverrideMeta>()
                     .unwrap()
                     .wrap_invoke(&info.variants[idx])
                 {

@@ -3,7 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
+    metadata::{dup_overrides::DupOverrideMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -31,7 +31,7 @@ pub fn build<'ctx, 'this>(
     // original value otherwise.
     let original_value = entry.argument(0)?.into();
     let (entry, cloned_value) = match metadata
-        .get_mut::<SnapshotClonesMeta>()
+        .get_mut::<DupOverrideMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.signature.param_signatures[0].ty))
     {
         Some(invoke_fn) => invoke_fn(

@@ -1000,7 +1000,7 @@ impl TypeBuilder for CoreTypeConcrete {
                     metadata.insert(ReallocBindingsMeta::new(context, helper));
                 }
 
-                // TODO: Drop the values.
+                // self::r#box::build_drop();
 
                 entry.append_operation(ReallocBindingsMeta::free(context, value, location));
             }

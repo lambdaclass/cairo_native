@@ -8,7 +8,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
+    metadata::{dup_overrides::DupOverrideMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -37,7 +37,7 @@ pub fn build<'ctx, 'this>(
     //   That's why we need to check for clone implementations within the compiler.
 
     match metadata
-        .get::<SnapshotClonesMeta>()
+        .get::<DupOverrideMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.signature.param_signatures[0].ty))
     {
         Some(clone_fn) => {

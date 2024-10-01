@@ -17,7 +17,7 @@ use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
-        realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
+        dup_overrides::DupOverrideMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt},
@@ -48,7 +48,7 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    SnapshotClonesMeta::register_with(metadata, info.self_ty().clone(), |metadata| {
+    DupOverrideMeta::register_with(metadata, info.self_ty().clone(), |metadata| {
         registry.build_type(context, module, registry, metadata, &info.ty)?;
 
         Ok(Some((
@@ -79,7 +79,7 @@ fn snapshot_take<'ctx, 'this>(
     }
 
     let inner_snapshot_take = metadata
-        .get::<SnapshotClonesMeta>()
+        .get::<DupOverrideMeta>()
         .and_then(|meta| meta.wrap_invoke(&info.ty));
 
     let inner_type = registry.get_type(&info.ty)?;
