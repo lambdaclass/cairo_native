@@ -22,12 +22,13 @@ use cairo_lang_sierra::{
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
+use lambdaworks_math::elliptic_curve::short_weierstrass::curves::grumpkin::curve;
 use melior::{
     dialect::{
-        llvm::{self, r#type::pointer},
+        llvm::{self, get_element_ptr_dynamic, r#type::pointer},
         ods,
     },
-    ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
+    ir::{r#type::IntegerType, Block, Location, Module, Region, Type, TypeLike, Value},
     Context,
 };
 use num_bigint::{BigInt, Sign};
@@ -961,17 +962,67 @@ impl TypeBuilder for CoreTypeConcrete {
         value: Value<'ctx, 'this>,
     ) -> Result<(), Self::Error> {
         match self {
-            CoreTypeConcrete::Array(_info) => {
+            CoreTypeConcrete::Array(info) => {
                 if metadata.get::<ReallocBindingsMeta>().is_none() {
                     metadata.insert(ReallocBindingsMeta::new(context, helper));
                 }
 
                 let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
+                let payload_type = registry.get_type(&info.ty)?;
+                let payload_ty =
+                    registry.build_type(context, helper, registry, metadata, &info.ty)?;
                 let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
 
-                // TODO: Drop the items.
-
                 let ptr = entry.extract_value(context, location, value, ptr_ty, 0)?;
+
+                // only add complex freeing code if the payload type requires complex freeing
+                if payload_ty.is_llvm_struct_type() || payload_ty.is_llvm_pointer_type() {
+                    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+
+                    let start = entry.extract_value(context, location, value, len_ty, 1)?;
+                    let end = entry.extract_value(context, location, value, len_ty, 2)?;
+                    let step = entry.const_int_from_type(context, location, 1, len_ty)?;
+
+                    entry.append_operation({
+                        let region = Region::new();
+
+                        {
+                            let block = Block::new(&[(len_ty, location), (ptr_ty, location)]);
+
+                            let index: Value = block.argument(0)?.into();
+                            let array_ptr: Value = block.argument(1)?.into();
+
+                            let payload_ptr = block.append_op_result(get_element_ptr_dynamic(
+                                context,
+                                array_ptr,
+                                &[index],
+                                payload_ty,
+                                ptr_ty,
+                                location,
+                            ))?;
+
+                            let payload_value =
+                                block.load(context, location, payload_ptr, payload_ty)?;
+
+                            payload_type.build_drop(
+                                context,
+                                registry,
+                                &block,
+                                location,
+                                helper,
+                                metadata,
+                                &info.ty,
+                                payload_value,
+                            )?;
+
+                            region.append_block(block);
+                        }
+
+                        ods::scf::r#for(context, &[], start, end, step, &[ptr], region, location)
+                            .into()
+                    });
+                }
+
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }
             CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
