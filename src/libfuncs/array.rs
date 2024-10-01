@@ -1135,6 +1135,12 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         // load box
         entry.load(context, location, entry.argument(0)?.into(), struct_ty)?
     };
+    // TODO: Maybe reuse the pointer?
+    entry.append_operation(ReallocBindingsMeta::free(
+        context,
+        entry.argument(0)?.into(),
+        location,
+    ));
 
     let fields = struct_type_info.fields().expect("should have fields");
     let (field_ty, field_layout) =
