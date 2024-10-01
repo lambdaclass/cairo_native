@@ -42,7 +42,6 @@ pub fn build<'ctx, 'this>(
     {
         Some(clone_fn) => {
             let original_value = entry.argument(0)?.into();
-            dbg!(&info.signature.param_signatures[0].ty);
             let (entry, cloned_value) = clone_fn(
                 context,
                 registry,
