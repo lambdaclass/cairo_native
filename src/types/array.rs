@@ -298,6 +298,78 @@ fn snapshot_take<'ctx, 'this>(
     Ok((block_finish, dst_value))
 }
 
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn build_drop<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<InfoAndTypeConcreteType>,
+    value: Value<'ctx, 'this>,
+) -> Result<()> {
+    let payload_type = registry.get_type(&info.ty)?;
+    let payload_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+
+    let array_ty = registry.build_type(context, helper, registry, metadata, info.self_ty())?;
+    let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+
+    let ptr = entry.extract_value(context, location, value, ptr_ty, 0)?;
+
+    let start = entry.extract_value(context, location, value, len_ty, 1)?;
+    let end = entry.extract_value(context, location, value, len_ty, 2)?;
+    let step = entry.const_int_from_type(context, location, 1, len_ty)?;
+
+    entry.append_operation(scf::r#for(
+        start,
+        end,
+        step,
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[(len_ty, location)]));
+
+            let index = block.argument(0)?.into();
+            let payload_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
+                context,
+                ptr,
+                &[index],
+                payload_ty,
+                ptr_ty,
+                location,
+            ))?;
+
+            let payload_value = block.load(context, location, payload_ptr, payload_ty)?;
+
+            let helper = LibfuncHelper {
+                module: helper.module,
+                init_block: helper.init_block,
+                region: &region,
+                blocks_arena: helper.blocks_arena,
+                last_block: Cell::new(&block),
+                branches: Vec::new(),
+                results: Vec::new(),
+            };
+            payload_type.build_drop(
+                context,
+                registry,
+                &block,
+                location,
+                &helper,
+                metadata,
+                &info.ty,
+                payload_value,
+            )?;
+
+            region
+        },
+        location,
+    ));
+
+    todo!()
+}
+
 #[cfg(test)]
 mod test {
     use crate::{

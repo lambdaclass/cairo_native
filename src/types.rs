@@ -16,19 +16,16 @@ use cairo_lang_sierra::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
+        types::InfoAndTypeConcreteType,
         utils::Range,
     },
     ids::{ConcreteTypeId, UserTypeId},
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
-use lambdaworks_math::elliptic_curve::short_weierstrass::curves::grumpkin::curve;
 use melior::{
-    dialect::{
-        llvm::{self, get_element_ptr_dynamic, r#type::pointer},
-        ods,
-    },
-    ir::{r#type::IntegerType, Block, Location, Module, Region, Type, TypeLike, Value},
+    dialect::llvm,
+    ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
 use num_bigint::{BigInt, Sign};
@@ -938,9 +935,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 _ => unimplemented!("unsupported dict value type"),
             },
             Self::Felt252(_) => entry.const_int(context, location, 0, 252)?,
-            Self::Nullable(_) => entry.append_op_result(
-                ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
-            )?,
+            Self::Nullable(_) => {
+                entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?
+            }
             Self::Uint8(_) => entry.const_int(context, location, 0, 8)?,
             Self::Uint16(_) => entry.const_int(context, location, 0, 16)?,
             Self::Uint32(_) => entry.const_int(context, location, 0, 32)?,
@@ -967,61 +964,27 @@ impl TypeBuilder for CoreTypeConcrete {
                     metadata.insert(ReallocBindingsMeta::new(context, helper));
                 }
 
+                self::array::build_drop(
+                    context,
+                    registry,
+                    entry,
+                    location,
+                    helper,
+                    metadata,
+                    WithSelf::new(
+                        self_ty,
+                        &InfoAndTypeConcreteType {
+                            info: info.info.clone(),
+                            ty: info.ty.clone(),
+                        },
+                    ),
+                    value,
+                )?;
+
                 let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
-                let payload_type = registry.get_type(&info.ty)?;
-                let payload_ty =
-                    registry.build_type(context, helper, registry, metadata, &info.ty)?;
                 let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
 
                 let ptr = entry.extract_value(context, location, value, ptr_ty, 0)?;
-
-                // only add complex freeing code if the payload type requires complex freeing
-                if payload_ty.is_llvm_struct_type() || payload_ty.is_llvm_pointer_type() {
-                    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
-
-                    let start = entry.extract_value(context, location, value, len_ty, 1)?;
-                    let end = entry.extract_value(context, location, value, len_ty, 2)?;
-                    let step = entry.const_int_from_type(context, location, 1, len_ty)?;
-
-                    entry.append_operation({
-                        let region = Region::new();
-
-                        {
-                            let block = Block::new(&[(len_ty, location), (ptr_ty, location)]);
-
-                            let index: Value = block.argument(0)?.into();
-                            let array_ptr: Value = block.argument(1)?.into();
-
-                            let payload_ptr = block.append_op_result(get_element_ptr_dynamic(
-                                context,
-                                array_ptr,
-                                &[index],
-                                payload_ty,
-                                ptr_ty,
-                                location,
-                            ))?;
-
-                            let payload_value =
-                                block.load(context, location, payload_ptr, payload_ty)?;
-
-                            payload_type.build_drop(
-                                context,
-                                registry,
-                                &block,
-                                location,
-                                helper,
-                                metadata,
-                                &info.ty,
-                                payload_value,
-                            )?;
-
-                            region.append_block(block);
-                        }
-
-                        ods::scf::r#for(context, &[], start, end, step, &[ptr], region, location)
-                            .into()
-                    });
-                }
 
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }

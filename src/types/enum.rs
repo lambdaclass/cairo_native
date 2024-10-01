@@ -421,7 +421,7 @@ use melior::{
     ir::{r#type::IntegerType, Block, Location, Module, Region, Type, Value, ValueLike},
     Context,
 };
-use std::{alloc::Layout, collections::BTreeMap};
+use std::{alloc::Layout, cell::Cell, collections::BTreeMap};
 
 /// An MLIR type with its memory layout.
 pub type TypeLayout<'ctx> = (Type<'ctx>, Layout);
@@ -552,26 +552,25 @@ fn snapshot_take<'ctx, 'this>(
                 layout.align(),
             )?;
 
-            for idx in 0..info.variants.len() {
+            for (idx, (variant_ty, _)) in variant_tys.iter().copied().enumerate() {
                 // This unwrap is unreachable because of the first check in this function.
                 if let Some(snapshot_take) = metadata
                     .get::<SnapshotClonesMeta>()
                     .unwrap()
-                    .wrap_invoke(&info.variants[0])
+                    .wrap_invoke(&info.variants[idx])
                 {
                     let block = helper.append_block(Block::new(&[]));
                     variant_blocks.insert(idx, block);
 
-                    block.store(context, location, ptr, src_value);
+                    block.store(context, location, ptr, src_value)?;
                     let value = block.load(
                         context,
                         location,
                         ptr,
-                        llvm::r#type::r#struct(context, &[tag_ty, variant_tys[idx].0], false),
+                        llvm::r#type::r#struct(context, &[tag_ty, variant_ty], false),
                     )?;
 
-                    let payload =
-                        block.extract_value(context, location, value, variant_tys[idx].0, 1)?;
+                    let payload = block.extract_value(context, location, value, variant_ty, 1)?;
                     let (block, payload) = snapshot_take(
                         context, registry, block, location, helper, metadata, payload,
                     )?;
@@ -623,7 +622,7 @@ pub(crate) fn build_drop<'ctx, 'this>(
         &info.variants,
     )?;
 
-    Ok(match variant_tys.len() {
+    match variant_tys.len() {
         0 => panic!("attempt to drop a zero-variant enum"),
         1 => registry.get_type(&info.variants[0])?.build_drop(
             context,
@@ -640,7 +639,7 @@ pub(crate) fn build_drop<'ctx, 'this>(
                 &[],
                 {
                     let region = Region::new();
-                    let block = region.append_block(Block::new(&[]));
+                    let block = &*region.append_block(Block::new(&[]));
 
                     let mut variant_blocks = Vec::with_capacity(info.variants.len());
 
@@ -651,26 +650,36 @@ pub(crate) fn build_drop<'ctx, 'this>(
                         layout.align(),
                     )?;
 
-                    for idx in 0..info.variants.len() {
+                    for (idx, (variant_ty, _)) in variant_tys.iter().copied().enumerate() {
                         let block = region.append_block(Block::new(&[]));
-                        variant_blocks.push(&*block);
+                        variant_blocks.push(block);
 
-                        block.store(context, location, ptr, value);
+                        block.store(context, location, ptr, value)?;
                         let value = block.load(
                             context,
                             location,
                             ptr,
-                            llvm::r#type::r#struct(context, &[tag_ty, variant_tys[idx].0], false),
+                            llvm::r#type::r#struct(context, &[tag_ty, variant_ty], false),
                         )?;
 
                         let payload =
-                            block.extract_value(context, location, value, variant_tys[idx].0, 1)?;
+                            block.extract_value(context, location, value, variant_ty, 1)?;
+
+                        let helper = LibfuncHelper {
+                            module: helper.module,
+                            init_block: helper.init_block,
+                            region: &region,
+                            blocks_arena: helper.blocks_arena,
+                            last_block: Cell::new(&block),
+                            branches: Vec::new(),
+                            results: Vec::new(),
+                        };
                         registry.get_type(&info.variants[idx])?.build_drop(
                             context,
                             registry,
-                            entry,
+                            &block,
                             location,
-                            helper,
+                            &helper,
                             metadata,
                             &info.variants[idx],
                             payload,
@@ -691,8 +700,8 @@ pub(crate) fn build_drop<'ctx, 'this>(
                         tag_ty,
                         (default_block, &[]),
                         &variant_blocks
-                            .into_iter()
-                            .map(|x| (x, &[] as &[Value]))
+                            .iter()
+                            .map(|x| (x as &Block, &[] as &[Value]))
                             .collect::<Vec<_>>(),
                         location,
                     )?);
@@ -704,7 +713,8 @@ pub(crate) fn build_drop<'ctx, 'this>(
                 location,
             ));
         }
-    })
+    }
+    Ok(())
 }
 
 /// Extract layout for the default enum representation, its discriminant and all its payloads.
