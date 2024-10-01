@@ -405,8 +405,8 @@ use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
-    metadata::MetadataStorage,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -417,11 +417,11 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
-    ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
+    dialect::{cf, llvm},
+    ir::{r#type::IntegerType, Block, Location, Module, Type, Value, ValueLike},
     Context,
 };
-use std::alloc::Layout;
+use std::{alloc::Layout, collections::BTreeMap};
 
 /// An MLIR type with its memory layout.
 pub type TypeLayout<'ctx> = (Type<'ctx>, Layout);
@@ -436,6 +436,25 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>> {
+    // Register enum's clone impl (if required).
+    {
+        let snapshot_clones_meta = metadata.get_mut::<SnapshotClonesMeta>().unwrap();
+        if info
+            .variants
+            .iter()
+            .any(|ty| snapshot_clones_meta.wrap_invoke(ty).is_some())
+        {
+            snapshot_clones_meta.register(
+                info.self_ty().clone(),
+                snapshot_take,
+                EnumConcreteType {
+                    info: info.info.clone(),
+                    variants: info.variants.clone(),
+                },
+            );
+        }
+    }
+
     let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
 
     let tag_layout = get_integer_layout(tag_bits);
@@ -485,16 +504,96 @@ pub fn build<'ctx>(
 
 #[allow(clippy::too_many_arguments)]
 fn snapshot_take<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: WithSelf<EnumConcreteType>,
-    _src_value: Value<'ctx, 'this>,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<EnumConcreteType>,
+    src_value: Value<'ctx, 'this>,
 ) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
-    todo!()
+    if metadata.get::<SnapshotClonesMeta>().is_none() {
+        return Ok((entry, src_value));
+    };
+
+    let (_, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.variants,
+    )?;
+
+    Ok(match variant_tys.len() {
+        0 => panic!("attempt to drop a zero-variant enum"),
+        1 => {
+            // This unwrap is unreachable because of the first check in this function.
+            if let Some(snapshot_take) = metadata
+                .get::<SnapshotClonesMeta>()
+                .unwrap()
+                .wrap_invoke(&info.variants[0])
+            {
+                snapshot_take(
+                    context, registry, entry, location, helper, metadata, src_value,
+                )?
+            } else {
+                (entry, src_value)
+            }
+        }
+        _ => {
+            if {
+                let snapshot_clones_meta = metadata.get::<SnapshotClonesMeta>().unwrap();
+                info.variants
+                    .iter()
+                    .any(|ty| snapshot_clones_meta.wrap_invoke(ty).is_some())
+            } {
+                let mut variant_blocks = BTreeMap::new();
+                let final_block =
+                    helper.append_block(Block::new(&[(src_value.r#type(), location)]));
+
+                for idx in 0..info.variants.len() {
+                    // This unwrap is unreachable because of the first check in this function.
+                    if let Some(snapshot_take) = metadata
+                        .get::<SnapshotClonesMeta>()
+                        .unwrap()
+                        .wrap_invoke(&info.variants[0])
+                    {
+                        let block = helper.append_block(Block::new(&[]));
+                        variant_blocks.insert(idx, block);
+
+                        let (block, value) = snapshot_take(
+                            context, registry, block, location, helper, metadata, src_value,
+                        )?;
+
+                        block.append_operation(cf::br(final_block, &[value], location));
+                    }
+                }
+
+                let default_block = helper.append_block(Block::new(&[]));
+
+                let tag_value = entry.extract_value(context, location, src_value, tag_ty, 0)?;
+                entry.append_operation(cf::switch(
+                    context,
+                    &variant_blocks.keys().map(|&x| x as i64).collect::<Vec<_>>(),
+                    tag_value,
+                    tag_ty,
+                    (default_block, &[]),
+                    &variant_blocks
+                        .into_values()
+                        .map(|x| (x, &[] as &[Value]))
+                        .collect::<Vec<_>>(),
+                    location,
+                )?);
+
+                default_block.append_operation(cf::br(final_block, &[src_value], location));
+
+                (final_block, final_block.argument(0)?.into())
+            } else {
+                (entry, src_value)
+            }
+        }
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
