@@ -366,8 +366,6 @@ pub(crate) fn build_drop<'ctx, 'this>(
         },
         location,
     ));
-
-    todo!()
 }
 
 #[cfg(test)]
