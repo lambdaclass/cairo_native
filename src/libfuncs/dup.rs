@@ -42,16 +42,7 @@ pub fn build<'ctx, 'this>(
     {
         Some(clone_fn) => {
             let original_value = entry.argument(0)?.into();
-            metadata
-                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-                .unwrap()
-                .debug_print(
-                    context,
-                    helper,
-                    entry,
-                    &format!("cloning {}", info.signature.param_signatures[0].ty),
-                    location,
-                )?;
+            dbg!(&info.signature.param_signatures[0].ty);
             let (entry, cloned_value) = clone_fn(
                 context,
                 registry,
