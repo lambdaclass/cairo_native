@@ -666,6 +666,35 @@
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
 <a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -757,12 +786,6 @@
     } <span class="kw">else </span>{
         src_ty.integer_range(registry)<span class="question-mark">?
     </span>};
-    <span class="macro">assert!</span>(
-        dst_range.lower &gt; src_range.lower || dst_range.upper &lt; src_range.upper,
-        <span class="string">"invalid downcast `{}` into `{}`: target range contains the source range"</span>,
-        info.signature.param_signatures[<span class="number">1</span>].ty,
-        info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">1</span>].ty
-    );
 
     <span class="kw">let </span>src_width = <span class="kw">if </span>src_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         src_range.offset_bit_width()
@@ -837,86 +860,121 @@
         src_value
     };
 
-    <span class="kw">let </span>lower_check = <span class="kw">if </span>dst_range.lower &gt; src_range.lower {
-        <span class="kw">let </span>dst_lower = entry.const_int_from_type(
+    <span class="kw">if </span>!(dst_range.lower &gt; src_range.lower || dst_range.upper &lt; src_range.upper) {
+        <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; dst_range.lower != BigInt::ZERO {
+            <span class="kw">let </span>dst_offset = entry.const_int_from_type(
+                context,
+                location,
+                dst_range.lower.clone(),
+                src_value.r#type(),
+            )<span class="question-mark">?</span>;
+            entry.append_op_result(arith::subi(src_value, dst_offset, location))<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            src_value
+        };
+
+        <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_width &lt; compute_width {
+            entry.append_op_result(arith::trunci(
+                dst_value,
+                IntegerType::new(context, dst_width).into(),
+                location,
+            ))<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            dst_value
+        };
+
+        <span class="kw">let </span>is_in_bounds = entry.const_int(context, location, <span class="number">1</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
+
+        entry.append_operation(helper.cond_br(
             context,
+            is_in_bounds,
+            [<span class="number">0</span>, <span class="number">1</span>],
+            [<span class="kw-2">&amp;</span>[range_check, dst_value], <span class="kw-2">&amp;</span>[range_check]],
             location,
-            dst_range.lower.clone(),
-            src_value.r#type(),
-        )<span class="question-mark">?</span>;
-        <span class="prelude-val">Some</span>(entry.append_op_result(arith::cmpi(
-            context,
-            <span class="kw">if </span>!is_signed {
-                CmpiPredicate::Uge
-            } <span class="kw">else </span>{
-                CmpiPredicate::Sge
-            },
-            src_value,
-            dst_lower,
-            location,
-        ))<span class="question-mark">?</span>)
+        ));
     } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
-    <span class="kw">let </span>upper_check = <span class="kw">if </span>dst_range.upper &lt; src_range.upper {
-        <span class="kw">let </span>dst_upper = entry.const_int_from_type(
-            context,
-            location,
-            dst_range.upper.clone(),
-            src_value.r#type(),
-        )<span class="question-mark">?</span>;
-        <span class="prelude-val">Some</span>(entry.append_op_result(arith::cmpi(
-            context,
-            <span class="kw">if </span>!is_signed {
-                CmpiPredicate::Ult
-            } <span class="kw">else </span>{
-                CmpiPredicate::Slt
-            },
-            src_value,
-            dst_upper,
-            location,
-        ))<span class="question-mark">?</span>)
-    } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
+        <span class="kw">let </span>lower_check = <span class="kw">if </span>dst_range.lower &gt; src_range.lower {
+            <span class="kw">let </span>dst_lower = entry.const_int_from_type(
+                context,
+                location,
+                dst_range.lower.clone(),
+                src_value.r#type(),
+            )<span class="question-mark">?</span>;
+            <span class="prelude-val">Some</span>(entry.append_op_result(arith::cmpi(
+                context,
+                <span class="kw">if </span>!is_signed {
+                    CmpiPredicate::Uge
+                } <span class="kw">else </span>{
+                    CmpiPredicate::Sge
+                },
+                src_value,
+                dst_lower,
+                location,
+            ))<span class="question-mark">?</span>)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
+        <span class="kw">let </span>upper_check = <span class="kw">if </span>dst_range.upper &lt; src_range.upper {
+            <span class="kw">let </span>dst_upper = entry.const_int_from_type(
+                context,
+                location,
+                dst_range.upper.clone(),
+                src_value.r#type(),
+            )<span class="question-mark">?</span>;
+            <span class="prelude-val">Some</span>(entry.append_op_result(arith::cmpi(
+                context,
+                <span class="kw">if </span>!is_signed {
+                    CmpiPredicate::Ult
+                } <span class="kw">else </span>{
+                    CmpiPredicate::Slt
+                },
+                src_value,
+                dst_upper,
+                location,
+            ))<span class="question-mark">?</span>)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
 
-    <span class="kw">let </span>is_in_bounds = <span class="kw">match </span>(lower_check, upper_check) {
-        (<span class="prelude-val">Some</span>(lower_check), <span class="prelude-val">Some</span>(upper_check)) =&gt; {
-            entry.append_op_result(arith::andi(lower_check, upper_check, location))<span class="question-mark">?
-        </span>}
-        (<span class="prelude-val">Some</span>(lower_check), <span class="prelude-val">None</span>) =&gt; lower_check,
-        (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(upper_check)) =&gt; upper_check,
-        (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="macro">unreachable!</span>(),
-    };
+        <span class="kw">let </span>is_in_bounds = <span class="kw">match </span>(lower_check, upper_check) {
+            (<span class="prelude-val">Some</span>(lower_check), <span class="prelude-val">Some</span>(upper_check)) =&gt; {
+                entry.append_op_result(arith::andi(lower_check, upper_check, location))<span class="question-mark">?
+            </span>}
+            (<span class="prelude-val">Some</span>(lower_check), <span class="prelude-val">None</span>) =&gt; lower_check,
+            (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(upper_check)) =&gt; upper_check,
+            <span class="comment">// its always in bounds since dst is larger than src (i.e no bounds checks needed)
+            </span>(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="macro">unreachable!</span>(),
+        };
 
-    <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; dst_range.lower != BigInt::ZERO {
-        <span class="kw">let </span>dst_offset = entry.const_int_from_type(
+        <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; dst_range.lower != BigInt::ZERO {
+            <span class="kw">let </span>dst_offset = entry.const_int_from_type(
+                context,
+                location,
+                dst_range.lower.clone(),
+                src_value.r#type(),
+            )<span class="question-mark">?</span>;
+            entry.append_op_result(arith::subi(src_value, dst_offset, location))<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            src_value
+        };
+
+        <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_width &lt; compute_width {
+            entry.append_op_result(arith::trunci(
+                dst_value,
+                IntegerType::new(context, dst_width).into(),
+                location,
+            ))<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            dst_value
+        };
+        entry.append_operation(helper.cond_br(
             context,
+            is_in_bounds,
+            [<span class="number">0</span>, <span class="number">1</span>],
+            [<span class="kw-2">&amp;</span>[range_check, dst_value], <span class="kw-2">&amp;</span>[range_check]],
             location,
-            dst_range.lower.clone(),
-            src_value.r#type(),
-        )<span class="question-mark">?</span>;
-        entry.append_op_result(arith::subi(src_value, dst_offset, location))<span class="question-mark">?
-    </span>} <span class="kw">else </span>{
-        src_value
-    };
-
-    <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_width &lt; compute_width {
-        entry.append_op_result(arith::trunci(
-            dst_value,
-            IntegerType::new(context, dst_width).into(),
-            location,
-        ))<span class="question-mark">?
-    </span>} <span class="kw">else </span>{
-        dst_value
-    };
-    entry.append_operation(helper.cond_br(
-        context,
-        is_in_bounds,
-        [<span class="number">0</span>, <span class="number">1</span>],
-        [<span class="kw-2">&amp;</span>[range_check, dst_value], <span class="kw-2">&amp;</span>[range_check]],
-        location,
-    ));
+        ));
+    }
 
     <span class="prelude-val">Ok</span>(())
 }
