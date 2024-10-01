@@ -648,7 +648,7 @@ pub(crate) fn build_drop<'ctx, 'this>(
                 &[],
                 {
                     let region = Region::new();
-                    let block = &*region.append_block(Block::new(&[]));
+                    let block = region.append_block(Block::new(&[]));
 
                     let mut variant_blocks = Vec::with_capacity(info.variants.len());
 
@@ -697,7 +697,7 @@ pub(crate) fn build_drop<'ctx, 'this>(
                         block.append_operation(scf::r#yield(&[], location));
                     }
 
-                    let default_block = helper.append_block(Block::new(&[]));
+                    let default_block = region.append_block(Block::new(&[]));
 
                     let tag_value = entry.load(context, location, ptr, tag_ty)?;
                     block.append_operation(cf::switch(
@@ -707,7 +707,7 @@ pub(crate) fn build_drop<'ctx, 'this>(
                             .collect::<Vec<_>>(),
                         tag_value,
                         tag_ty,
-                        (default_block, &[]),
+                        (&default_block, &[]),
                         &variant_blocks
                             .iter()
                             .map(|x| (x as &Block, &[] as &[Value]))
