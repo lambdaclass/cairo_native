@@ -62,31 +62,34 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<StructConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let fields: Vec<_> = info
-        .members
-        .iter()
-        .map(|field| registry.build_type(context, module, registry, metadata, field))
-        .collect::<Result<_>>()?;
-    let struct_ty = llvm::r#type::r#struct(context, &fields, false);
+    SnapshotClonesMeta::register_with(metadata, info.self_ty.clone(), |metadata| {
+        let mut has_clone_impl = false;
+        for member in &info.members {
+            registry.build_type(context, module, registry, metadata, member)?;
+            has_clone_impl |= metadata
+                .get::<SnapshotClonesMeta>()
+                .is_some_and(|x| x.is_registered(member));
+        }
 
-    if let Some(snapshot_clones_meta) = metadata.get_mut::<SnapshotClonesMeta>() {
-        if info
-            .members
-            .iter()
-            .any(|ty| snapshot_clones_meta.wrap_invoke(ty).is_some())
-        {
-            snapshot_clones_meta.register(
-                info.self_ty.clone(),
+        Ok(if has_clone_impl {
+            Some((
                 snapshot_take,
                 StructConcreteType {
                     info: info.info.clone(),
                     members: info.members.clone(),
                 },
-            );
-        }
-    }
+            ))
+        } else {
+            None
+        })
+    })?;
 
-    Ok(struct_ty)
+    let members = info
+        .members
+        .iter()
+        .map(|member| registry.build_type(context, module, registry, metadata, member))
+        .collect::<Result<Vec<_>>>()?;
+    Ok(llvm::r#type::r#struct(context, &members, false))
 }
 
 #[allow(clippy::too_many_arguments)]

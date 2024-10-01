@@ -12,7 +12,7 @@ use crate::{
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
-    utils::BlockExt,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -36,23 +36,24 @@ use melior::{
 /// Check out [the module](self) for more info.
 pub fn build<'ctx>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    metadata
-        .get_or_insert_with::<SnapshotClonesMeta>(SnapshotClonesMeta::default)
-        .register(
-            info.self_ty().clone(),
+    SnapshotClonesMeta::register_with(metadata, info.self_ty().clone(), |metadata| {
+        registry.build_type(context, module, registry, metadata, &info.ty)?;
+
+        Ok(Some((
             snapshot_take,
             InfoAndTypeConcreteType {
                 info: info.info.clone(),
                 ty: info.ty.clone(),
             },
-        );
+        )))
+    })?;
 
-    // nullable is represented as a pointer, like a box, used to check if its null (when it can be null).
+    // A nullable is represented by a pointer (equivalent to a box). A null value means no value.
     Ok(llvm::r#type::pointer(context, 0))
 }
 

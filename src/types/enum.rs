@@ -437,29 +437,27 @@ pub fn build<'ctx>(
     info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>> {
     // Register enum's clone impl (if required).
-    {
-        // Ensure all variants have been built and therefore have their clone impl registered.
+    SnapshotClonesMeta::register_with(metadata, info.self_ty().clone(), |metadata| {
+        let mut has_clone_impl = false;
         for variant in &info.variants {
             registry.build_type(context, module, registry, metadata, variant)?;
+            has_clone_impl |= metadata
+                .get::<SnapshotClonesMeta>()
+                .is_some_and(|x| x.is_registered(variant));
         }
 
-        if let Some(snapshot_clones_meta) = metadata.get_mut::<SnapshotClonesMeta>() {
-            if info
-                .variants
-                .iter()
-                .any(|ty| snapshot_clones_meta.wrap_invoke(ty).is_some())
-            {
-                snapshot_clones_meta.register(
-                    info.self_ty().clone(),
-                    snapshot_take,
-                    EnumConcreteType {
-                        info: info.info.clone(),
-                        variants: info.variants.clone(),
-                    },
-                );
-            }
-        }
-    }
+        Ok(if has_clone_impl {
+            Some((
+                snapshot_take,
+                EnumConcreteType {
+                    info: info.info.clone(),
+                    variants: info.variants.clone(),
+                },
+            ))
+        } else {
+            None
+        })
+    })?;
 
     let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
 

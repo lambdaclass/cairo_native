@@ -54,21 +54,22 @@ use std::cell::Cell;
 /// Check out [the module](self) for more info.
 pub fn build<'ctx>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    metadata
-        .get_or_insert_with::<SnapshotClonesMeta>(SnapshotClonesMeta::default)
-        .register(
-            info.self_ty().clone(),
+    SnapshotClonesMeta::register_with(metadata, info.self_ty().clone(), |metadata| {
+        registry.build_type(context, module, registry, metadata, &info.ty)?;
+
+        Ok(Some((
             snapshot_take,
             InfoAndTypeConcreteType {
                 info: info.info.clone(),
                 ty: info.ty.clone(),
             },
-        );
+        )))
+    })?;
 
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();

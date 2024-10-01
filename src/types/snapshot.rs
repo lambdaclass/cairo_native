@@ -57,7 +57,9 @@ pub fn build<'ctx>(
     // Ensure the inner type is built and register the snapshot clone logic builder.
     let self_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
     if let Some(snapshot_clones_meta) = metadata.get_mut::<SnapshotClonesMeta>() {
-        snapshot_clones_meta.register_dup(info.self_ty.clone(), &info.ty);
+        if !snapshot_clones_meta.is_registered(info.self_ty()) {
+            snapshot_clones_meta.register_dup(info.self_ty().clone(), &info.ty);
+        }
     }
 
     Ok(self_ty)
