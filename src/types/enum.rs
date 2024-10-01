@@ -417,8 +417,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{cf, llvm},
-    ir::{r#type::IntegerType, Block, Location, Module, Type, Value, ValueLike},
+    dialect::{cf, llvm, scf},
+    ir::{r#type::IntegerType, Block, Location, Module, Region, Type, Value, ValueLike},
     Context,
 };
 use std::{alloc::Layout, collections::BTreeMap};
@@ -515,9 +515,9 @@ fn snapshot_take<'ctx, 'this>(
 ) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
     if metadata.get::<SnapshotClonesMeta>().is_none() {
         return Ok((entry, src_value));
-    };
+    }
 
-    let (_, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
+    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
         helper,
         registry,
@@ -526,7 +526,7 @@ fn snapshot_take<'ctx, 'this>(
     )?;
 
     Ok(match variant_tys.len() {
-        0 => panic!("attempt to drop a zero-variant enum"),
+        0 => panic!("attempt to clone a zero-variant enum"),
         1 => {
             // This unwrap is unreachable because of the first check in this function.
             if let Some(snapshot_take) = metadata
@@ -542,72 +542,169 @@ fn snapshot_take<'ctx, 'this>(
             }
         }
         _ => {
-            if {
-                let snapshot_clones_meta = metadata.get::<SnapshotClonesMeta>().unwrap();
-                info.variants
-                    .iter()
-                    .any(|ty| snapshot_clones_meta.wrap_invoke(ty).is_some())
-            } {
-                let mut variant_blocks = BTreeMap::new();
-                let final_block =
-                    helper.append_block(Block::new(&[(src_value.r#type(), location)]));
+            let mut variant_blocks = BTreeMap::new();
+            let final_block = helper.append_block(Block::new(&[(src_value.r#type(), location)]));
 
-                for idx in 0..info.variants.len() {
-                    // This unwrap is unreachable because of the first check in this function.
-                    if let Some(snapshot_take) = metadata
-                        .get::<SnapshotClonesMeta>()
-                        .unwrap()
-                        .wrap_invoke(&info.variants[0])
-                    {
-                        let block = helper.append_block(Block::new(&[]));
-                        variant_blocks.insert(idx, block);
+            let ptr = helper.init_block().alloca1(
+                context,
+                location,
+                src_value.r#type(),
+                layout.align(),
+            )?;
 
-                        let (block, value) = snapshot_take(
-                            context, registry, block, location, helper, metadata, src_value,
-                        )?;
+            for idx in 0..info.variants.len() {
+                // This unwrap is unreachable because of the first check in this function.
+                if let Some(snapshot_take) = metadata
+                    .get::<SnapshotClonesMeta>()
+                    .unwrap()
+                    .wrap_invoke(&info.variants[0])
+                {
+                    let block = helper.append_block(Block::new(&[]));
+                    variant_blocks.insert(idx, block);
 
-                        block.append_operation(cf::br(final_block, &[value], location));
-                    }
+                    block.store(context, location, ptr, src_value);
+                    let value = block.load(
+                        context,
+                        location,
+                        ptr,
+                        llvm::r#type::r#struct(context, &[tag_ty, variant_tys[idx].0], false),
+                    )?;
+
+                    let payload =
+                        block.extract_value(context, location, value, variant_tys[idx].0, 1)?;
+                    let (block, payload) = snapshot_take(
+                        context, registry, block, location, helper, metadata, payload,
+                    )?;
+
+                    let value = block.insert_value(context, location, value, payload, 1)?;
+                    block.append_operation(cf::br(final_block, &[value], location));
                 }
-
-                let default_block = helper.append_block(Block::new(&[]));
-
-                let tag_value = entry.extract_value(context, location, src_value, tag_ty, 0)?;
-                entry.append_operation(cf::switch(
-                    context,
-                    &variant_blocks.keys().map(|&x| x as i64).collect::<Vec<_>>(),
-                    tag_value,
-                    tag_ty,
-                    (default_block, &[]),
-                    &variant_blocks
-                        .into_values()
-                        .map(|x| (x, &[] as &[Value]))
-                        .collect::<Vec<_>>(),
-                    location,
-                )?);
-
-                default_block.append_operation(cf::br(final_block, &[src_value], location));
-
-                (final_block, final_block.argument(0)?.into())
-            } else {
-                (entry, src_value)
             }
+
+            let default_block = helper.append_block(Block::new(&[]));
+
+            let tag_value = entry.extract_value(context, location, src_value, tag_ty, 0)?;
+            entry.append_operation(cf::switch(
+                context,
+                &variant_blocks.keys().map(|&x| x as i64).collect::<Vec<_>>(),
+                tag_value,
+                tag_ty,
+                (default_block, &[]),
+                &variant_blocks
+                    .into_values()
+                    .map(|x| (x, &[] as &[Value]))
+                    .collect::<Vec<_>>(),
+                location,
+            )?);
+
+            default_block.append_operation(cf::br(final_block, &[src_value], location));
+
+            (final_block, final_block.argument(0)?.into())
         }
     })
 }
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build_drop<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: WithSelf<EnumConcreteType>,
-    _value: Value<'ctx, 'this>,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<EnumConcreteType>,
+    value: Value<'ctx, 'this>,
 ) -> Result<()> {
-    todo!()
+    let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.variants,
+    )?;
+
+    Ok(match variant_tys.len() {
+        0 => panic!("attempt to drop a zero-variant enum"),
+        1 => registry.get_type(&info.variants[0])?.build_drop(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            &info.variants[0],
+            value,
+        )?,
+        _ => {
+            entry.append_operation(scf::execute_region(
+                &[],
+                {
+                    let region = Region::new();
+                    let block = region.append_block(Block::new(&[]));
+
+                    let mut variant_blocks = Vec::with_capacity(info.variants.len());
+
+                    let ptr = helper.init_block().alloca1(
+                        context,
+                        location,
+                        value.r#type(),
+                        layout.align(),
+                    )?;
+
+                    for idx in 0..info.variants.len() {
+                        let block = region.append_block(Block::new(&[]));
+                        variant_blocks.push(&*block);
+
+                        block.store(context, location, ptr, value);
+                        let value = block.load(
+                            context,
+                            location,
+                            ptr,
+                            llvm::r#type::r#struct(context, &[tag_ty, variant_tys[idx].0], false),
+                        )?;
+
+                        let payload =
+                            block.extract_value(context, location, value, variant_tys[idx].0, 1)?;
+                        registry.get_type(&info.variants[idx])?.build_drop(
+                            context,
+                            registry,
+                            entry,
+                            location,
+                            helper,
+                            metadata,
+                            &info.variants[idx],
+                            payload,
+                        )?;
+
+                        block.append_operation(scf::r#yield(&[], location));
+                    }
+
+                    let default_block = helper.append_block(Block::new(&[]));
+
+                    let tag_value = entry.extract_value(context, location, value, tag_ty, 0)?;
+                    block.append_operation(cf::switch(
+                        context,
+                        &(0..info.variants.len())
+                            .map(|x| x as i64)
+                            .collect::<Vec<_>>(),
+                        tag_value,
+                        tag_ty,
+                        (default_block, &[]),
+                        &variant_blocks
+                            .into_iter()
+                            .map(|x| (x, &[] as &[Value]))
+                            .collect::<Vec<_>>(),
+                        location,
+                    )?);
+
+                    default_block.append_operation(scf::r#yield(&[], location));
+
+                    region
+                },
+                location,
+            ));
+        }
+    })
 }
 
 /// Extract layout for the default enum representation, its discriminant and all its payloads.
