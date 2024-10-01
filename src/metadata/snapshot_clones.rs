@@ -44,6 +44,11 @@ impl SnapshotClonesMeta {
     where
         P: 'static,
     {
+        assert!(
+            !self.mappings.contains_key(&id),
+            "attempt to register a custom clone that's already registered"
+        );
+
         let self_ty = id.clone();
         self.mappings.insert(
             id,

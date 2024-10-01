@@ -448,6 +448,7 @@ pub fn build<'ctx>(
                 .variants
                 .iter()
                 .any(|ty| snapshot_clones_meta.wrap_invoke(ty).is_some())
+                && snapshot_clones_meta.wrap_invoke(info.self_ty()).is_none()
             {
                 snapshot_clones_meta.register(
                     info.self_ty().clone(),
