@@ -9,7 +9,10 @@ use melior::{
     ir::{Block, Location, Value},
     Context,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 
 type CloneFn<P> = for<'ctx, 'this> fn(
     &'ctx Context,
@@ -44,29 +47,26 @@ impl SnapshotClonesMeta {
     where
         P: 'static,
     {
-        assert!(
-            !self.mappings.contains_key(&id),
-            "attempt to register a custom clone that's already registered"
-        );
-
-        let self_ty = id.clone();
-        self.mappings.insert(
-            id,
-            Arc::new(
-                move |context, registry, entry, location, helper, metadata, value| {
-                    handler(
-                        context,
-                        registry,
-                        entry,
-                        location,
-                        helper,
-                        metadata,
-                        WithSelf::new(&self_ty, &params),
-                        value,
-                    )
-                },
-            ),
-        );
+        match self.mappings.entry(id) {
+            Entry::Occupied(_) => {}
+            Entry::Vacant(map_entry) => {
+                let self_id = map_entry.key().clone();
+                map_entry.insert(Arc::new(
+                    move |context, registry, entry, location, helper, metadata, value| {
+                        handler(
+                            context,
+                            registry,
+                            entry,
+                            location,
+                            helper,
+                            metadata,
+                            WithSelf::new(&self_id, &params),
+                            value,
+                        )
+                    },
+                ));
+            }
+        }
     }
 
     pub(crate) fn register_dup(&mut self, id: ConcreteTypeId, from_id: &ConcreteTypeId) {
