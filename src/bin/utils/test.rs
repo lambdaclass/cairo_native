@@ -1,20 +1,18 @@
 use super::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMode};
 use anyhow::Context;
 use cairo_lang_runner::RunResultValue;
-use cairo_lang_sierra::program::Program;
-use cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId};
-use cairo_lang_test_plugin::TestCompilation;
+use cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId, program::Program};
 use cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     TestConfig,
 };
-use cairo_lang_utils::casts::IntoOrPanic;
-use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
-use cairo_native::starknet_stub::StubSyscallHandler;
+use cairo_lang_test_plugin::{TestCompilation, TestCompilationMetadata};
+use cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
 use cairo_native::{
     context::NativeContext,
-    executor::{AotNativeExecutor, JitNativeExecutor, NativeExecutor},
+    executor::{AotNativeExecutor, JitNativeExecutor},
     metadata::gas::{GasMetadata, MetadataComputationConfig},
+    starknet_stub::StubSyscallHandler,
 };
 use colored::Colorize;
 use itertools::Itertools;
@@ -70,8 +68,9 @@ pub fn filter_test_cases(
     ignored: bool,
     filter: String,
 ) -> (TestCompilation, usize) {
-    let total_tests_count = compiled.named_tests.len();
+    let total_tests_count = compiled.metadata.named_tests.len();
     let named_tests = compiled
+        .metadata
         .named_tests
         .into_iter()
         // Filtering unignored tests in `ignored` mode
@@ -87,7 +86,10 @@ pub fn filter_test_cases(
         .collect_vec();
     let filtered_out = total_tests_count - named_tests.len();
     let tests = TestCompilation {
-        named_tests,
+        metadata: TestCompilationMetadata {
+            named_tests,
+            ..compiled.metadata
+        },
         ..compiled
     };
     (tests, filtered_out)
@@ -134,23 +136,32 @@ pub fn run_tests(
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context
-        .compile_with_metadata(
-            &sierra_program,
-            MetadataComputationConfig {
-                function_set_costs: function_set_costs.clone(),
-                linear_ap_change_solver: true,
-                linear_gas_solver: true,
-            },
-        )
-        .unwrap();
+    let native_module = native_context.compile(&sierra_program, false).unwrap();
 
-    let native_executor: NativeExecutor = match args.run_mode {
+    let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> = match args.run_mode {
         RunMode::Aot => {
-            AotNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+            let executor =
+                AotNativeExecutor::from_native_module(native_module, args.opt_level.into());
+            Box::new(move |function_id, args, gas, syscall_handler| {
+                executor.invoke_dynamic_with_syscall_handler(
+                    function_id,
+                    args,
+                    gas,
+                    syscall_handler,
+                )
+            })
         }
         RunMode::Jit => {
-            JitNativeExecutor::from_native_module(native_module, args.opt_level.into()).into()
+            let executor =
+                JitNativeExecutor::from_native_module(native_module, args.opt_level.into());
+            Box::new(move |function_id, args, gas, syscall_handler| {
+                executor.invoke_dynamic_with_syscall_handler(
+                    function_id,
+                    args,
+                    gas,
+                    syscall_handler,
+                )
+            })
         }
     };
 
@@ -184,14 +195,13 @@ pub fn run_tests(
 
                 let initial_gas = test.available_gas.map(|x| x.try_into().unwrap());
 
-                let result = native_executor
-                    .invoke_dynamic_with_syscall_handler(
-                        &func.id,
-                        &[],
-                        initial_gas,
-                        &mut StubSyscallHandler::default(),
-                    )
-                    .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
+                let result = native_executor(
+                    &func.id,
+                    &[],
+                    initial_gas,
+                    &mut StubSyscallHandler::default(),
+                )
+                .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
 
                 let run_result = result_to_runresult(&result)?;
                 Ok((

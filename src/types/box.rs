@@ -14,13 +14,13 @@
 
 use super::WithSelf;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
     types::TypeBuilder,
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{

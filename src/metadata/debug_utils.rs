@@ -4,7 +4,7 @@
 //!
 //! ## Example
 //!
-//! ```
+//! ```rust,ignore
 //! # use cairo_lang_sierra::{
 //! #     extensions::{
 //! #         core::{CoreLibfunc, CoreType},
@@ -83,7 +83,10 @@
 
 #![cfg(feature = "with-debug-utils")]
 
-use crate::{block_ext::BlockExt, error::Result, utils::get_integer_layout};
+use crate::{
+    error::{Error, Result},
+    utils::{get_integer_layout, BlockExt},
+};
 use melior::{
     dialect::{
         arith, func,
@@ -121,16 +124,13 @@ pub struct DebugUtils {
 }
 
 impl DebugUtils {
-    pub fn breakpoint_marker<'c, 'a>(
+    pub fn breakpoint_marker(
         &mut self,
-        context: &'c Context,
+        context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+        block: &Block,
+        location: Location,
+    ) -> Result<()> {
         if self.active_map.insert(DebugBinding::BreakpointMarker) {
             module.body().append_operation(func::func(
                 context,
@@ -157,17 +157,14 @@ impl DebugUtils {
     }
 
     /// Prints the given &str.
-    pub fn debug_print<'c, 'a>(
+    pub fn debug_print(
         &mut self,
-        context: &'c Context,
+        context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
+        block: &Block,
         message: &str,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+        location: Location,
+    ) -> Result<()> {
         if self.active_map.insert(DebugBinding::DebugPrint) {
             module.body().append_operation(func::func(
                 context,
@@ -191,7 +188,10 @@ impl DebugUtils {
 
         let ty = llvm::r#type::array(
             IntegerType::new(context, 8).into(),
-            message.len().try_into().unwrap(),
+            message
+                .len()
+                .try_into()
+                .map_err(|_| Error::IntegerConversion)?,
         );
 
         let ptr = block.alloca1(context, location, ty, get_integer_layout(8).align())?;
@@ -202,7 +202,10 @@ impl DebugUtils {
                     context,
                     llvm::r#type::array(
                         IntegerType::new(context, 8).into(),
-                        message.len().try_into().unwrap(),
+                        message
+                            .len()
+                            .try_into()
+                            .map_err(|_| Error::IntegerConversion)?,
                     ),
                     StringAttribute::new(context, message).into(),
                     location,
@@ -217,7 +220,10 @@ impl DebugUtils {
                 context,
                 IntegerAttribute::new(
                     IntegerType::new(context, 64).into(),
-                    message.len().try_into().unwrap(),
+                    message
+                        .len()
+                        .try_into()
+                        .map_err(|_| Error::IntegerConversion)?,
                 )
                 .into(),
                 location,
@@ -236,29 +242,19 @@ impl DebugUtils {
         Ok(())
     }
 
-    pub fn debug_breakpoint_trap<'c, 'a>(
-        &mut self,
-        block: &'a Block<'c>,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+    pub fn debug_breakpoint_trap(&self, block: &Block, location: Location) -> Result<()> {
         block.append_operation(OperationBuilder::new("llvm.intr.debugtrap", location).build()?);
         Ok(())
     }
 
-    pub fn print_pointer<'c, 'a>(
+    pub fn print_pointer(
         &mut self,
-        context: &'c Context,
+        context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
-        value: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+        block: &Block,
+        value: Value,
+        location: Location,
+    ) -> Result<()> {
         if self.active_map.insert(DebugBinding::PrintPointer) {
             module.body().append_operation(func::func(
                 context,
@@ -284,17 +280,14 @@ impl DebugUtils {
         Ok(())
     }
 
-    pub fn print_i1<'c, 'a>(
+    pub fn print_i1(
         &mut self,
-        context: &'c Context,
+        context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
-        value: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+        block: &Block,
+        value: Value,
+        location: Location,
+    ) -> Result<()> {
         if self.active_map.insert(DebugBinding::PrintI1) {
             module.body().append_operation(func::func(
                 context,
@@ -322,17 +315,14 @@ impl DebugUtils {
         Ok(())
     }
 
-    pub fn print_felt252<'c, 'a>(
+    pub fn print_felt252(
         &mut self,
-        context: &'c Context,
+        context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
-        value: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+        block: &Block,
+        value: Value,
+        location: Location,
+    ) -> Result<()> {
         if self.active_map.insert(DebugBinding::PrintFelt252) {
             module.body().append_operation(func::func(
                 context,
@@ -362,7 +352,7 @@ impl DebugUtils {
         let k64 = block
             .append_operation(arith::constant(
                 context,
-                IntegerAttribute::new(IntegerType::new(context, 64).into(), 64).into(),
+                IntegerAttribute::new(IntegerType::new(context, 252).into(), 64).into(),
                 location,
             ))
             .result(0)?
@@ -424,17 +414,14 @@ impl DebugUtils {
         Ok(())
     }
 
-    pub fn print_i8<'c, 'a>(
+    pub fn print_i8(
         &mut self,
-        context: &'c Context,
+        context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
-        value: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+        block: &Block,
+        value: Value,
+        location: Location,
+    ) -> Result<()> {
         if self.active_map.insert(DebugBinding::PrintI8) {
             module.body().append_operation(func::func(
                 context,
@@ -462,17 +449,14 @@ impl DebugUtils {
         Ok(())
     }
 
-    pub fn print_i32<'c, 'a>(
+    pub fn print_i32(
         &mut self,
-        context: &'c Context,
+        context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
-        value: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+        block: &Block,
+        value: Value,
+        location: Location,
+    ) -> Result<()> {
         if self.active_map.insert(DebugBinding::PrintI32) {
             module.body().append_operation(func::func(
                 context,
@@ -500,17 +484,14 @@ impl DebugUtils {
         Ok(())
     }
 
-    pub fn print_i64<'c, 'a>(
+    pub fn print_i64(
         &mut self,
-        context: &'c Context,
+        context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
-        value: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+        block: &Block,
+        value: Value,
+        location: Location,
+    ) -> Result<()> {
         if self.active_map.insert(DebugBinding::PrintI64) {
             module.body().append_operation(func::func(
                 context,
@@ -538,17 +519,14 @@ impl DebugUtils {
         Ok(())
     }
 
-    pub fn print_i128<'c, 'a>(
+    pub fn print_i128(
         &mut self,
-        context: &'c Context,
+        context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
-        value: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+        block: &Block,
+        value: Value,
+        location: Location,
+    ) -> Result<()> {
         if self.active_map.insert(DebugBinding::PrintI128) {
             module.body().append_operation(func::func(
                 context,
@@ -610,18 +588,15 @@ impl DebugUtils {
     /// Dump a memory region at runtime.
     ///
     /// Requires the pointer (at runtime) and its length in bytes (at compile-time).
-    pub fn dump_mem<'c, 'a>(
+    pub fn dump_mem(
         &mut self,
-        context: &'c Context,
+        context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
-        ptr: Value<'c, '_>,
+        block: &Block,
+        ptr: Value,
         len: usize,
-        location: Location<'c>,
-    ) -> Result<()>
-    where
-        'c: 'a,
-    {
+        location: Location,
+    ) -> Result<()> {
         if self.active_map.insert(DebugBinding::DumpMemRegion) {
             module.body().append_operation(func::func(
                 context,

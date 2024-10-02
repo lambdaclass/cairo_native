@@ -1,27 +1,22 @@
 //! # Various utilities
 
-use crate::{
-    debug_info::{DebugInfo, DebugLocations},
-    metadata::MetadataStorage,
-    types::{felt252::PRIME, TypeBuilder},
-    OptLevel,
+pub(crate) use self::{
+    block_ext::BlockExt, program_registry_ext::ProgramRegistryExt, range_ext::RangeExt,
 };
-use cairo_lang_compiler::{
-    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-    project::setup_project, CompilerConfig,
-};
+use crate::{metadata::MetadataStorage, OptLevel};
+use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType},
-    ids::{ConcreteTypeId, FunctionId},
+    ids::FunctionId,
     program::{GenFunction, Program, StatementIdx},
-    program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Module, Type},
+    ir::Module,
     pass::{self, PassManager},
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
+use starknet_types_core::felt::Felt;
+use std::sync::LazyLock;
 use std::{
     alloc::Layout,
     borrow::Cow,
@@ -33,23 +28,65 @@ use std::{
 };
 use thiserror::Error;
 
+mod block_ext;
+mod program_registry_ext;
+mod range_ext;
+
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
 #[cfg(target_os = "linux")]
 pub const SHARED_LIBRARY_EXT: &str = "so";
 
+/// The `felt252` prime modulo.
+pub static PRIME: LazyLock<BigUint> = LazyLock::new(|| {
+    "3618502788666131213697322783095070105623107215331596699973092056135872020481"
+        .parse()
+        .unwrap()
+});
+pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
+    "1809251394333065606848661391547535052811553607665798349986546028067936010240"
+        .parse()
+        .unwrap()
+});
+
 /// Generate a function name.
 ///
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
 /// identifier number.
-pub fn generate_function_name(function_id: &FunctionId) -> Cow<str> {
+pub fn generate_function_name(
+    function_id: &FunctionId,
+    is_for_contract_executor: bool,
+) -> Cow<str> {
     // Generic functions can omit their type in the debug_name, leading to multiple functions
     // having the same name, we solve this by adding the id number even if the function has a debug_name
-    if let Some(name) = function_id.debug_name.as_deref() {
+
+    if is_for_contract_executor {
+        Cow::Owned(format!("f{}", function_id.id))
+    } else if let Some(name) = function_id.debug_name.as_deref() {
         Cow::Owned(format!("{}(f{})", name, function_id.id))
     } else {
         Cow::Owned(format!("f{}", function_id.id))
     }
+}
+
+/// Decode an UTF-8 error message replacing invalid bytes with their hexadecimal representation, as
+/// done by Python's `x.decode('utf-8', errors='backslashreplace')`.
+pub fn decode_error_message(data: &[u8]) -> String {
+    let mut pos = 0;
+    utf8_iter::ErrorReportingUtf8Chars::new(data).fold(String::new(), |mut acc, ch| {
+        match ch {
+            Ok(ch) => {
+                acc.push(ch);
+                pos += ch.len_utf8();
+            }
+            Err(_) => {
+                acc.push_str(&format!("\\x{:02x}", data[pos]));
+                pos += 1;
+            }
+        };
+
+        acc
+    })
 }
 
 /// Return the layout for an integer of arbitrary width.
@@ -68,17 +105,10 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else if width <= 64 {
         Layout::new::<u64>()
     } else if width <= 128 {
-        #[cfg(not(target_arch = "x86_64"))]
-        {
-            Layout::new::<u128>()
-        }
-        #[cfg(target_arch = "x86_64")]
-        {
-            Layout::new::<u128>().align_to(16).unwrap()
-        }
+        Layout::new::<u128>()
     } else {
-        let width = (width as usize).next_multiple_of(8).next_power_of_two();
-        Layout::from_size_align(width >> 3, (width >> 3).min(16)).unwrap()
+        // According to the docs this should never return an error.
+        Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16).unwrap()
     }
 }
 
@@ -111,37 +141,6 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
     }
 }
 
-pub fn cairo_to_sierra_with_debug_info<'ctx>(
-    context: &'ctx Context,
-    program: &Path,
-) -> Result<(Program, DebugLocations<'ctx>), crate::error::Error> {
-    let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
-    let main_crate_ids = setup_project(&mut db, program).unwrap();
-    let program = compile_prepared_db(
-        &mut db,
-        main_crate_ids,
-        CompilerConfig {
-            replace_ids: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-
-    let debug_locations = {
-        let debug_info = DebugInfo::extract(&db, &program)
-            .map_err(|_| {
-                let mut buffer = String::new();
-                assert!(DiagnosticsReporter::write_to_string(&mut buffer).check(&db));
-                buffer
-            })
-            .unwrap();
-
-        DebugLocations::extract(context, &db, &debug_info)
-    };
-
-    Ok((program, debug_locations))
-}
-
 /// Returns the given entry point if present.
 pub fn find_entry_point<'a>(
     program: &'a Program,
@@ -164,19 +163,19 @@ pub fn find_entry_point_by_idx(
         .find(|x| x.id.id == entry_point_idx as u64)
 }
 
-/// Given a string representing a function name, searches in the program for the id corresponding to said function, and returns a reference to it.
+/// Given a string representing a function name, searches in the program for the id corresponding
+/// to said function, and returns a reference to it.
 #[track_caller]
-pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> &'a FunctionId {
-    &program
+pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> Option<&'a FunctionId> {
+    program
         .funcs
         .iter()
         .find(|x| x.id.debug_name.as_deref() == Some(function_name))
-        .unwrap()
-        .id
+        .map(|func| &func.id)
 }
 
 /// Parse a numeric string into felt, wrapping negatives around the prime modulo.
-pub fn felt252_str(value: &str) -> [u32; 8] {
+pub fn felt252_str(value: &str) -> Felt {
     let value = value
         .parse::<BigInt>()
         .expect("value must be a digit number");
@@ -185,35 +184,29 @@ pub fn felt252_str(value: &str) -> [u32; 8] {
         _ => value.to_biguint().unwrap(),
     };
 
-    let mut u32_digits = value.to_u32_digits();
-    u32_digits.resize(8, 0);
-    u32_digits.try_into().unwrap()
+    value.into()
 }
 
 /// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
-pub fn felt252_bigint(value: impl Into<BigInt>) -> [u32; 8] {
+pub fn felt252_bigint(value: impl Into<BigInt>) -> Felt {
     let value: BigInt = value.into();
     let value = match value.sign() {
-        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-        _ => value.to_biguint().unwrap(),
+        Sign::Minus => Cow::Owned(&*PRIME - value.magnitude()),
+        _ => Cow::Borrowed(value.magnitude()),
     };
 
-    let mut u32_digits = value.to_u32_digits();
-    u32_digits.resize(8, 0);
-    u32_digits.try_into().unwrap()
+    value.as_ref().into()
 }
 
 /// Parse a short string into a felt that can be used in the cairo-native input.
-pub fn felt252_short_str(value: &str) -> [u32; 8] {
+pub fn felt252_short_str(value: &str) -> Felt {
     let values: Vec<_> = value
         .chars()
-        .filter(|&c| c.is_ascii())
-        .map(|c| c as u8)
+        .filter_map(|c| c.is_ascii().then_some(c as u8))
         .collect();
 
-    let mut digits = BigUint::from_bytes_be(&values).to_u32_digits();
-    digits.resize(8, 0);
-    digits.try_into().unwrap()
+    assert!(values.len() < 32);
+    Felt::from_bytes_be_slice(&values)
 }
 
 /// Creates the execution engine, with all symbols registered.
@@ -241,18 +234,15 @@ pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Er
     let pass_manager = PassManager::new(context);
     pass_manager.enable_verifier(true);
     pass_manager.add_pass(pass::transform::create_canonicalizer());
-    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow());
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_finalize_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+    pass_manager.add_pass(pass::conversion::create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
+    pass_manager.add_pass(pass::conversion::create_to_llvm());
     pass_manager.run(module)
 }
 
 #[cfg(feature = "with-runtime")]
 pub fn register_runtime_symbols(engine: &ExecutionEngine) {
+    use cairo_native_runtime::FeltDict;
+
     unsafe {
         engine.register_symbol(
             "cairo_native__libfunc__debug__print",
@@ -286,6 +276,12 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
         );
 
         engine.register_symbol(
+            "cairo_native__libfunc__ec__ec_state_init",
+            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_init
+                as *const fn(*mut [[u8; 32]; 4]) as *mut (),
+        );
+
+        engine.register_symbol(
             "cairo_native__libfunc__ec__ec_state_add_mul",
             cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul
                 as *const fn(*mut [[u8; 32]; 4], *const [u8; 32], *const [[u8; 32]; 2]) -> bool
@@ -307,20 +303,29 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
 
         engine.register_symbol(
             "cairo_native__alloc_dict",
-            cairo_native_runtime::cairo_native__alloc_dict as *const fn() -> *mut std::ffi::c_void
+            cairo_native_runtime::cairo_native__alloc_dict as *const fn() -> *mut FeltDict
                 as *mut (),
         );
 
         engine.register_symbol(
             "cairo_native__dict_free",
-            cairo_native_runtime::cairo_native__dict_free as *const fn(*mut std::ffi::c_void) -> ()
+            cairo_native_runtime::cairo_native__dict_free as *const fn(*mut FeltDict) -> ()
                 as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_values",
+            cairo_native_runtime::cairo_native__dict_values
+                as *const fn(
+                    *mut FeltDict,
+                    *mut u64,
+                ) -> *mut ([u8; 32], std::ptr::NonNull<libc::c_void>) as *mut (),
         );
 
         engine.register_symbol(
             "cairo_native__dict_get",
             cairo_native_runtime::cairo_native__dict_get
-                as *const fn(*mut std::ffi::c_void, &[u8; 32]) -> *mut std::ffi::c_void
+                as *const fn(*mut FeltDict, &[u8; 32]) -> *mut std::ffi::c_void
                 as *mut (),
         );
 
@@ -328,16 +333,16 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
             "cairo_native__dict_insert",
             cairo_native_runtime::cairo_native__dict_insert
                 as *const fn(
-                    *mut std::ffi::c_void,
+                    *mut FeltDict,
                     &[u8; 32],
                     NonNull<std::ffi::c_void>,
+                    usize,
                 ) -> *mut std::ffi::c_void as *mut (),
         );
 
         engine.register_symbol(
             "cairo_native__dict_gas_refund",
-            cairo_native_runtime::cairo_native__dict_gas_refund
-                as *const fn(*const std::ffi::c_void, NonNull<std::ffi::c_void>) -> u64
+            cairo_native_runtime::cairo_native__dict_gas_refund as *const fn(*const FeltDict) -> u64
                 as *mut (),
         );
 
@@ -370,24 +375,6 @@ where
     }
 
     FmtWrapper(fmt)
-}
-
-// POLYFILLS of nightly features
-
-#[inline]
-pub const fn next_multiple_of_usize(lhs: usize, rhs: usize) -> usize {
-    match lhs % rhs {
-        0 => lhs,
-        r => lhs + (rhs - r),
-    }
-}
-
-#[inline]
-pub const fn next_multiple_of_u32(lhs: u32, rhs: u32) -> u32 {
-    match lhs % rhs {
-        0 => lhs,
-        r => lhs + (rhs - r),
-    }
 }
 
 /// Edit: Copied from the std lib.
@@ -469,62 +456,11 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
     Ok((layout, padded_size))
 }
 
-pub trait ProgramRegistryExt {
-    fn build_type<'ctx>(
-        &self,
-        context: &'ctx Context,
-        module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: &mut MetadataStorage,
-        id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, super::error::Error>;
-
-    fn build_type_with_layout<'ctx>(
-        &self,
-        context: &'ctx Context,
-        module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: &mut MetadataStorage,
-        id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), super::error::Error>;
-}
-
-impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
-    fn build_type<'ctx>(
-        &self,
-        context: &'ctx Context,
-        module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: &mut MetadataStorage,
-        id: &ConcreteTypeId,
-    ) -> Result<Type<'ctx>, super::error::Error> {
-        registry
-            .get_type(id)?
-            .build(context, module, registry, metadata, id)
-    }
-
-    fn build_type_with_layout<'ctx>(
-        &self,
-        context: &'ctx Context,
-        module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        metadata: &mut MetadataStorage,
-        id: &ConcreteTypeId,
-    ) -> Result<(Type<'ctx>, Layout), super::error::Error> {
-        let concrete_type = registry.get_type(id)?;
-
-        Ok((
-            concrete_type.build(context, module, registry, metadata, id)?,
-            concrete_type.layout(registry)?,
-        ))
-    }
-}
-
 #[cfg(test)]
 pub mod test {
     use crate::{
         context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        starknet_stub::StubSyscallHandler, utils::*, values::JitValue,
+        starknet_stub::StubSyscallHandler, utils::*, values::Value,
     };
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
@@ -556,16 +492,16 @@ pub mod test {
 
     // Helper macros for faster testing.
     macro_rules! jit_struct {
-        ( $($x:expr),* $(,)? ) => {
-            crate::values::JitValue::Struct {
-                fields: vec![$($x), *],
+        ($($y:expr),* $(,)? ) => {
+            crate::values::Value::Struct {
+                fields: vec![$($y), *],
                 debug_name: None
             }
         };
     }
     macro_rules! jit_enum {
         ( $tag:expr, $value:expr ) => {
-            crate::values::JitValue::Enum {
+            crate::values::Value::Enum {
                 tag: $tag,
                 value: Box::new($value),
                 debug_name: None,
@@ -574,7 +510,7 @@ pub mod test {
     }
     macro_rules! jit_dict {
         ( $($key:expr $(=>)+ $value:expr),* $(,)? ) => {
-            crate::values::JitValue::Felt252Dict {
+            crate::values::Value::Felt252Dict {
                 value: {
                     let mut map = std::collections::HashMap::new();
                     $(map.insert($key.into(), $value.into());)*
@@ -624,8 +560,8 @@ pub mod test {
             Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
         );
         let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
-        let program = compile_prepared_db(
-            &mut db,
+        let sierra_program_with_dbg = compile_prepared_db(
+            &db,
             main_crate_ids,
             CompilerConfig {
                 diagnostics_reporter: DiagnosticsReporter::stderr(),
@@ -637,13 +573,13 @@ pub mod test {
 
         let module_name = program_file.path().with_extension("");
         let module_name = module_name.file_name().unwrap().to_str().unwrap();
-        (module_name.to_string(), program)
+        (module_name.to_string(), sierra_program_with_dbg.program)
     }
 
     pub fn run_program(
         program: &(String, Program),
         entry_point: &str,
-        args: &[JitValue],
+        args: &[Value],
     ) -> ExecutionResult {
         let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
         let program = &program.1;
@@ -658,7 +594,7 @@ pub mod test {
         let context = NativeContext::new();
 
         let module = context
-            .compile(program, None)
+            .compile(program, false)
             .expect("Could not compile test program to MLIR.");
 
         // FIXME: There are some bugs with non-zero LLVM optimization levels.
@@ -677,8 +613,8 @@ pub mod test {
     pub fn run_program_assert_output(
         program: &(String, Program),
         entry_point: &str,
-        args: &[JitValue],
-        output: JitValue,
+        args: &[Value],
+        output: Value,
     ) {
         let result = run_program(program, entry_point, args);
         assert_eq!(result.return_value, output);
@@ -859,6 +795,45 @@ pub mod test {
         assert_eq!(entry_point.unwrap().id.id, 15);
     }
 
+    #[test]
+    fn decode_error_message() {
+        // Checkout [issue 795](https://github.com/lambdaclass/cairo_native/issues/795) for context.
+        assert_eq!(
+            super::decode_error_message(&[
+                97, 114, 103, 101, 110, 116, 47, 109, 117, 108, 116, 105, 99, 97, 108, 108, 45,
+                102, 97, 105, 108, 101, 100, 3, 232, 78, 97, 116, 105, 118, 101, 32, 101, 120, 101,
+                99, 117, 116, 105, 111, 110, 32, 101, 114, 114, 111, 114, 58, 32, 69, 114, 114,
+                111, 114, 32, 97, 116, 32, 112, 99, 61, 48, 58, 49, 48, 52, 58, 10, 71, 111, 116,
+                32, 97, 110, 32, 101, 120, 99, 101, 112, 116, 105, 111, 110, 32, 119, 104, 105,
+                108, 101, 32, 101, 120, 101, 99, 117, 116, 105, 110, 103, 32, 97, 32, 104, 105,
+                110, 116, 58, 32, 69, 114, 114, 111, 114, 32, 97, 116, 32, 112, 99, 61, 48, 58, 49,
+                56, 52, 58, 10, 71, 111, 116, 32, 97, 110, 32, 101, 120, 99, 101, 112, 116, 105,
+                111, 110, 32, 119, 104, 105, 108, 101, 32, 101, 120, 101, 99, 117, 116, 105, 110,
+                103, 32, 97, 32, 104, 105, 110, 116, 58, 32, 69, 120, 99, 101, 101, 100, 101, 100,
+                32, 116, 104, 101, 32, 109, 97, 120, 105, 109, 117, 109, 32, 110, 117, 109, 98,
+                101, 114, 32, 111, 102, 32, 101, 118, 101, 110, 116, 115, 44, 32, 110, 117, 109,
+                98, 101, 114, 32, 101, 118, 101, 110, 116, 115, 58, 32, 49, 48, 48, 49, 44, 32,
+                109, 97, 120, 32, 110, 117, 109, 98, 101, 114, 32, 101, 118, 101, 110, 116, 115,
+                58, 32, 49, 48, 48, 48, 46, 10, 67, 97, 105, 114, 111, 32, 116, 114, 97, 99, 101,
+                98, 97, 99, 107, 32, 40, 109, 111, 115, 116, 32, 114, 101, 99, 101, 110, 116, 32,
+                99, 97, 108, 108, 32, 108, 97, 115, 116, 41, 58, 10, 85, 110, 107, 110, 111, 119,
+                110, 32, 108, 111, 99, 97, 116, 105, 111, 110, 32, 40, 112, 99, 61, 48, 58, 49, 52,
+                51, 52, 41, 10, 85, 110, 107, 110, 111, 119, 110, 32, 108, 111, 99, 97, 116, 105,
+                111, 110, 32, 40, 112, 99, 61, 48, 58, 49, 51, 57, 53, 41, 10, 85, 110, 107, 110,
+                111, 119, 110, 32, 108, 111, 99, 97, 116, 105, 111, 110, 32, 40, 112, 99, 61, 48,
+                58, 57, 53, 51, 41, 10, 85, 110, 107, 110, 111, 119, 110, 32, 108, 111, 99, 97,
+                116, 105, 111, 110, 32, 40, 112, 99, 61, 48, 58, 51, 51, 57, 41, 10, 10, 67, 97,
+                105, 114, 111, 32, 116, 114, 97, 99, 101, 98, 97, 99, 107, 32, 40, 109, 111, 115,
+                116, 32, 114, 101, 99, 101, 110, 116, 32, 99, 97, 108, 108, 32, 108, 97, 115, 116,
+                41, 58, 10, 85, 110, 107, 110, 111, 119, 110, 32, 108, 111, 99, 97, 116, 105, 111,
+                110, 32, 40, 112, 99, 61, 48, 58, 49, 54, 55, 56, 41, 10, 85, 110, 107, 110, 111,
+                119, 110, 32, 108, 111, 99, 97, 116, 105, 111, 110, 32, 40, 112, 99, 61, 48, 58,
+                49, 54, 54, 52, 41, 10
+            ]),
+            "argent/multicall-failed\x03\\xe8Native execution error: Error at pc=0:104:\nGot an exception while executing a hint: Error at pc=0:184:\nGot an exception while executing a hint: Exceeded the maximum number of events, number events: 1001, max number events: 1000.\nCairo traceback (most recent call last):\nUnknown location (pc=0:1434)\nUnknown location (pc=0:1395)\nUnknown location (pc=0:953)\nUnknown location (pc=0:339)\n\nCairo traceback (most recent call last):\nUnknown location (pc=0:1678)\nUnknown location (pc=0:1664)\n",
+        );
+    }
+
     // ==============================
     // == TESTS: felt252_str
     // ==============================
@@ -873,7 +848,7 @@ pub mod test {
     fn test_felt252_str_positive_number() {
         let value = "123";
         let result = felt252_str(value);
-        assert_eq!(result, [123, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 123.into());
     }
 
     #[test]
@@ -882,10 +857,10 @@ pub mod test {
         let result = felt252_str(value);
         assert_eq!(
             result,
-            [
-                4294967174, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 16,
-                134217728
-            ]
+            Felt::from_dec_str(
+                "3618502788666131213697322783095070105623107215331596699973092056135872020358"
+            )
+            .unwrap()
         );
     }
 
@@ -893,7 +868,7 @@ pub mod test {
     fn test_felt252_str_zero() {
         let value = "0";
         let result = felt252_str(value);
-        assert_eq!(result, [0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, Felt::ZERO);
     }
 
     // ==============================
@@ -903,41 +878,34 @@ pub mod test {
     fn test_felt252_short_str_short_numeric_string() {
         let value = "12345";
         let result = felt252_short_str(value);
-        assert_eq!(result, [842216501, 49, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 211295614005u64.into());
     }
 
     #[test]
     fn test_felt252_short_str_short_string_with_non_numeric_characters() {
         let value = "hello";
         let result = felt252_short_str(value);
-        assert_eq!(result, [1701604463, 104, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 448378203247u64.into());
     }
 
     #[test]
+    #[should_panic]
     fn test_felt252_short_str_long_numeric_string() {
-        let value = "1234567890123456789012345678901234567890";
-        let result = felt252_short_str(value);
-        assert_eq!(
-            result,
-            [
-                926431536, 859059510, 959459634, 892745528, 825373492, 926431536, 859059510,
-                959459634
-            ]
-        );
+        felt252_short_str("1234567890123456789012345678901234567890");
     }
 
     #[test]
     fn test_felt252_short_str_empty_string() {
         let value = "";
         let result = felt252_short_str(value);
-        assert_eq!(result, [0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, Felt::ZERO);
     }
 
     #[test]
     fn test_felt252_short_str_string_with_non_ascii_characters() {
         let value = "h€llø";
         let result = felt252_short_str(value);
-        assert_eq!(result, [6843500, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(result, 6843500.into());
     }
 
     // ==============================
@@ -979,7 +947,20 @@ pub mod test {
             debug_name: Some("function_name".into()),
         };
 
-        assert_eq!(generate_function_name(&function_id), "function_name(f123)");
+        assert_eq!(
+            generate_function_name(&function_id, false),
+            "function_name(f123)"
+        );
+    }
+
+    #[test]
+    fn test_generate_function_name_debug_name_for_contract_executor() {
+        let function_id = FunctionId {
+            id: 123,
+            debug_name: Some("function_name".into()),
+        };
+
+        assert_eq!(generate_function_name(&function_id, true), "f123");
     }
 
     #[test]
@@ -989,7 +970,7 @@ pub mod test {
             debug_name: None,
         };
 
-        assert_eq!(generate_function_name(&function_id), "f123");
+        assert_eq!(generate_function_name(&function_id, false), "f123");
     }
 
     #[test]
@@ -1002,7 +983,7 @@ pub mod test {
         // Define the entry point function for comparison.
         let entry_point = "hello::hello::greet";
         // Find the function ID of the entry point function in the sierra program.
-        let entry_point_id = find_function_id(&sierra_program, entry_point);
+        let entry_point_id = find_function_id(&sierra_program, entry_point).unwrap();
 
         // Assert that the debug name of the entry point function matches the expected value.
         assert_eq!(
@@ -1036,33 +1017,5 @@ pub mod test {
             sierra_program.type_declarations[0].id.debug_name,
             Some("u8".into())
         );
-    }
-
-    #[test]
-    fn test_cairo_to_sierra_with_debug_info() {
-        // Define the path to the cairo program.
-        let program_path = Path::new("programs/examples/hello.cairo");
-        // Create a new context.
-        let context = Context::new();
-        // Compile the cairo program to sierra, including debug information.
-        let sierra_program = cairo_to_sierra_with_debug_info(&context, program_path).unwrap();
-
-        // Define the name of the entry point function for comparison.
-        let entry_point = "hello::hello::greet";
-        // Find the function ID of the entry point function in the sierra program.
-        let entry_point_id = find_function_id(&sierra_program.0, entry_point);
-
-        // Assert that the debug name of the entry point function matches the expected value.
-        assert_eq!(
-            entry_point_id.debug_name,
-            Some("hello::hello::greet".into())
-        );
-
-        // Check if the sierra program contains a function with the specified debug name for the entry point function.
-        assert!(sierra_program
-            .1
-            .funcs
-            .keys()
-            .any(|func| func.debug_name == Some("hello::hello::greet".into())));
     }
 }

@@ -2,10 +2,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
-    error::{Error, Result},
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{BlockExt, ProgramRegistryExt, HALF_PRIME, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,8 +26,6 @@ use melior::{
     ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
-use starknet_types_core::felt::Felt;
-use std::ops::Shr;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -323,16 +320,8 @@ pub fn build_from_felt252<'ctx, 'this>(
     // make unsigned felt into signed felt
     // felt > half prime = negative
     let value = {
-        let half_prime: melior::ir::Value = block.const_int_from_type(
-            context,
-            location,
-            metadata
-                .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(Error::MissingMetadata)?
-                .prime()
-                .shr(1),
-            felt252_ty,
-        )?;
+        let half_prime =
+            block.const_int_from_type(context, location, HALF_PRIME.clone(), felt252_ty)?;
 
         let is_felt_neg = block.append_op_result(arith::cmpi(
             context,
@@ -357,22 +346,12 @@ pub fn build_from_felt252<'ctx, 'this>(
         ));
 
         {
-            let prime = is_neg_block.const_int_from_type(
-                context,
-                location,
-                metadata
-                    .get::<PrimeModuloMeta<Felt>>()
-                    .ok_or(Error::MissingMetadata)?
-                    .prime()
-                    .clone(),
-                felt252_ty,
-            )?;
-
-            let mut src_value_is_neg: melior::ir::Value =
+            let prime =
+                is_neg_block.const_int_from_type(context, location, PRIME.clone(), felt252_ty)?;
+            let mut src_value_is_neg =
                 is_neg_block.append_op_result(arith::subi(prime, value, location))?;
 
             let kneg1 = is_neg_block.const_int_from_type(context, location, -1, felt252_ty)?;
-
             src_value_is_neg =
                 is_neg_block.append_op_result(arith::muli(src_value_is_neg, kneg1, location))?;
 
@@ -382,7 +361,6 @@ pub fn build_from_felt252<'ctx, 'this>(
         is_not_neg_block.append_operation(cf::br(final_block, &[value], location));
 
         block = final_block;
-
         block.argument(0)?.into()
     };
 
@@ -461,7 +439,7 @@ pub fn build_diff<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -496,9 +474,9 @@ mod test {
             }
         };
         static ref I32_WIDEMUL: (String, Program) = load_cairo! {
-            use integer::i32_wide_mul;
+            use core::num::traits::WideMul;
             fn run_test(lhs: i32, rhs: i32) -> i64 {
-                i32_wide_mul(lhs, rhs)
+                WideMul::wide_mul(lhs,rhs)
             }
         };
     }
@@ -582,7 +560,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        jit_panic!(JitValue::Felt252(error)),
+                        jit_panic!(Value::Felt252(error)),
                     );
                 }
             }
@@ -634,7 +612,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        jit_panic!(JitValue::Felt252(error)),
+                        jit_panic!(Value::Felt252(error)),
                     );
                 }
             }

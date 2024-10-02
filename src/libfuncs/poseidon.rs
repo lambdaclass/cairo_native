@@ -3,10 +3,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -18,7 +17,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm, ods},
+    dialect::{arith, ods},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -91,13 +90,9 @@ pub fn build_hades_permutation<'ctx>(
     let op2_i256 =
         entry.append_op_result(ods::arith::extui(context, i256_ty, op2, location).into())?;
 
-    let op0_be = entry.append_op_result(llvm::intr_bswap(op0_i256, i256_ty, location))?;
-    let op1_be = entry.append_op_result(llvm::intr_bswap(op1_i256, i256_ty, location))?;
-    let op2_be = entry.append_op_result(llvm::intr_bswap(op2_i256, i256_ty, location))?;
-
-    entry.store(context, location, op0_ptr, op0_be)?;
-    entry.store(context, location, op1_ptr, op1_be)?;
-    entry.store(context, location, op2_ptr, op2_be)?;
+    entry.store(context, location, op0_ptr, op0_i256)?;
+    entry.store(context, location, op1_ptr, op1_i256)?;
+    entry.store(context, location, op2_ptr, op2_i256)?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -106,13 +101,9 @@ pub fn build_hades_permutation<'ctx>(
     runtime_bindings
         .libfunc_hades_permutation(context, helper, entry, op0_ptr, op1_ptr, op2_ptr, location)?;
 
-    let op0_be = entry.load(context, location, op0_ptr, i256_ty)?;
-    let op1_be = entry.load(context, location, op1_ptr, i256_ty)?;
-    let op2_be = entry.load(context, location, op2_ptr, i256_ty)?;
-
-    let op0_i256 = entry.append_op_result(llvm::intr_bswap(op0_be, i256_ty, location))?;
-    let op1_i256 = entry.append_op_result(llvm::intr_bswap(op1_be, i256_ty, location))?;
-    let op2_i256 = entry.append_op_result(llvm::intr_bswap(op2_be, i256_ty, location))?;
+    let op0_i256 = entry.load(context, location, op0_ptr, i256_ty)?;
+    let op1_i256 = entry.load(context, location, op1_ptr, i256_ty)?;
+    let op2_i256 = entry.load(context, location, op2_ptr, i256_ty)?;
 
     let op0 = entry.append_op_result(arith::trunci(op0_i256, felt252_ty, location))?;
     let op1 = entry.append_op_result(arith::trunci(op1_i256, felt252_ty, location))?;

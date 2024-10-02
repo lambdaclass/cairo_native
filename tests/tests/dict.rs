@@ -1,12 +1,12 @@
 use crate::common::{
     any_felt, compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS,
 };
-use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::{starknet::DummySyscallHandler, values::JitValue};
+use cairo_native::{starknet::DummySyscallHandler, Value};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
+use starknet_types_core::felt::Felt;
 
 lazy_static! {
     static ref DICT_GET_INSERT: (String, Program, SierraCasmRunner) = load_cairo! {
@@ -28,14 +28,14 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
+            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
         let result_native = run_native_program(
             program,
             "run_test",
-            &[JitValue::Felt252(a), JitValue::Felt252(b)],
+            &[Value::Felt252(a), Value::Felt252(b)],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );

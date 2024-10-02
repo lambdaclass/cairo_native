@@ -2,10 +2,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
-    error::{Error, Result},
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{BlockExt, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,8 +26,7 @@ use melior::{
     ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
-use num_bigint::{Sign, ToBigInt};
-use starknet_types_core::felt::Felt;
+use num_bigint::{BigInt, Sign};
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -77,11 +75,6 @@ pub fn build_binary_operation<'ctx, 'this>(
     let i256 = IntegerType::new(context, 256).into();
     let i512 = IntegerType::new(context, 512).into();
 
-    let prime = metadata
-        .get::<PrimeModuloMeta<Felt>>()
-        .ok_or(Error::MissingMetadata)?
-        .prime();
-
     let (op, lhs, rhs) = match info {
         Felt252BinaryOperationConcrete::WithVar(operation) => (
             operation.operator,
@@ -90,16 +83,10 @@ pub fn build_binary_operation<'ctx, 'this>(
         ),
         Felt252BinaryOperationConcrete::WithConst(operation) => {
             let value = match operation.c.sign() {
-                Sign::Minus => {
-                    let prime = metadata
-                        .get::<PrimeModuloMeta<Felt>>()
-                        .ok_or(Error::MissingMetadata)?
-                        .prime();
-                    (&operation.c + prime.to_bigint().expect("always is Some"))
-                        .to_biguint()
-                        .expect("always positive")
-                }
-                _ => operation.c.to_biguint().expect("sign already checked"),
+                Sign::Minus => (&operation.c + BigInt::from_biguint(Sign::Minus, PRIME.clone()))
+                    .magnitude()
+                    .clone(),
+                _ => operation.c.magnitude().clone(),
             };
 
             // TODO: Ensure that the constant is on the correct side of the operation.
@@ -115,7 +102,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let rhs = entry.append_op_result(arith::extui(rhs, i256, location))?;
             let result = entry.append_op_result(arith::addi(lhs, rhs, location))?;
 
-            let prime = entry.const_int_from_type(context, location, prime.clone(), i256)?;
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
             let result_mod = entry.append_op_result(arith::subi(result, prime, location))?;
             let is_out_of_range = entry.append_op_result(arith::cmpi(
                 context,
@@ -138,7 +125,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let rhs = entry.append_op_result(arith::extui(rhs, i256, location))?;
             let result = entry.append_op_result(arith::subi(lhs, rhs, location))?;
 
-            let prime = entry.const_int_from_type(context, location, prime.clone(), i256)?;
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
             let result_mod = entry.append_op_result(arith::addi(result, prime, location))?;
             let is_out_of_range = entry.append_op_result(arith::cmpi(
                 context,
@@ -161,7 +148,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let rhs = entry.append_op_result(arith::extui(rhs, i512, location))?;
             let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
 
-            let prime = entry.const_int_from_type(context, location, prime.clone(), i512)?;
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i512)?;
             let result_mod = entry.append_op_result(arith::remui(result, prime, location))?;
             let is_out_of_range = entry.append_op_result(arith::cmpi(
                 context,
@@ -202,7 +189,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             // For the initial setup, r0 = PRIME, r1 = a
             // This order is chosen because if we reverse them, then the first iteration will just swap them
             let prev_remainder =
-                start_block.const_int_from_type(context, location, prime.clone(), i512)?;
+                start_block.const_int_from_type(context, location, PRIME.clone(), i512)?;
             let remainder = start_block.argument(0)?.into();
             // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
             let prev_inverse = start_block.const_int_from_type(context, location, 0, i512)?;
@@ -272,7 +259,7 @@ pub fn build_binary_operation<'ctx, 'this>(
                 .into();
             // if the inverse is < 0, add PRIME
             let prime =
-                negative_check_block.const_int_from_type(context, location, prime.clone(), i512)?;
+                negative_check_block.const_int_from_type(context, location, PRIME.clone(), i512)?;
             let wrapped_inverse =
                 negative_check_block.append_op_result(arith::addi(inverse, prime, location))?;
             let inverse = negative_check_block.append_op_result(arith::select(
@@ -339,16 +326,10 @@ pub fn build_const<'ctx, 'this>(
     info: &Felt252ConstConcreteLibfunc,
 ) -> Result<()> {
     let value = match info.c.sign() {
-        Sign::Minus => {
-            let prime = metadata
-                .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(Error::MissingMetadata)?
-                .prime();
-            (&info.c + prime.to_bigint().expect("always is Some"))
-                .to_biguint()
-                .expect("always is positive")
-        }
-        _ => info.c.to_biguint().expect("sign already checked"),
+        Sign::Minus => (&info.c + BigInt::from_biguint(Sign::Minus, PRIME.clone()))
+            .magnitude()
+            .clone(),
+        _ => info.c.magnitude().clone(),
     };
 
     let felt252_ty = registry.build_type(
@@ -387,11 +368,12 @@ pub fn build_is_zero<'ctx, 'this>(
 #[cfg(test)]
 pub mod test {
     use crate::{
-        utils::test::{load_cairo, run_program, run_program_assert_output},
-        values::JitValue,
+        utils::test::{load_cairo, run_program},
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
+    use starknet_types_core::felt::Felt;
 
     lazy_static! {
         static ref FELT252_ADD: (String, Program) = load_cairo! {
@@ -437,352 +419,199 @@ pub mod test {
         };
 
         static ref FELT252_IS_ZERO: (String, Program) = load_cairo! {
-            fn run_test(x: felt252) -> felt252 {
+            fn run_test(x: felt252) -> bool {
                 match x {
-                    0 => 1,
-                    _ => 0,
+                    0 => true,
+                    _ => false,
                 }
             }
         };
     }
 
+    fn f(val: &str) -> Felt {
+        Felt::from_dec_str(val).unwrap()
+    }
+
     #[test]
     fn felt252_add() {
-        run_program_assert_output(
-            &FELT252_ADD,
-            "run_test",
-            &[JitValue::felt_str("0"), JitValue::felt_str("0")],
-            JitValue::felt_str("0"),
-        );
-        run_program_assert_output(
-            &FELT252_ADD,
-            "run_test",
-            &[JitValue::felt_str("1"), JitValue::felt_str("2")],
-            JitValue::felt_str("3"),
-        );
-
-        fn r(lhs: JitValue, rhs: JitValue) -> JitValue {
-            run_program(&FELT252_ADD, "run_test", &[lhs, rhs]).return_value
+        fn r(lhs: Felt, rhs: Felt) -> Felt {
+            match run_program(
+                &FELT252_ADD,
+                "run_test",
+                &[Value::Felt252(lhs), Value::Felt252(rhs)],
+            )
+            .return_value
+            {
+                Value::Felt252(x) => x,
+                _ => panic!("invalid return type"),
+            }
         }
 
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("1")),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-2")),
-            JitValue::felt_str("-2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-1")),
-            JitValue::felt_str("-1")
-        );
+        assert_eq!(r(f("0"), f("0")), f("0"));
+        assert_eq!(r(f("1"), f("2")), f("3"));
 
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("0")),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("1")),
-            JitValue::felt_str("2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("-1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("0")
-        );
+        assert_eq!(r(f("0"), f("1")), f("1"));
+        assert_eq!(r(f("0"), f("-2")), f("-2"));
+        assert_eq!(r(f("0"), f("-1")), f("-1"));
 
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("0")),
-            JitValue::felt_str("-2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("1")),
-            JitValue::felt_str("-1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-2")),
-            JitValue::felt_str("-4")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-1")),
-            JitValue::felt_str("-3")
-        );
+        assert_eq!(r(f("1"), f("0")), f("1"));
+        assert_eq!(r(f("1"), f("1")), f("2"));
+        assert_eq!(r(f("1"), f("-2")), f("-1"));
+        assert_eq!(r(f("1"), f("-1")), f("0"));
 
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("0")),
-            JitValue::felt_str("-1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("1")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("-3")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("-2")
-        );
+        assert_eq!(r(f("-2"), f("0")), f("-2"));
+        assert_eq!(r(f("-2"), f("1")), f("-1"));
+        assert_eq!(r(f("-2"), f("-2")), f("-4"));
+        assert_eq!(r(f("-2"), f("-1")), f("-3"));
+
+        assert_eq!(r(f("-1"), f("0")), f("-1"));
+        assert_eq!(r(f("-1"), f("1")), f("0"));
+        assert_eq!(r(f("-1"), f("-2")), f("-3"));
+        assert_eq!(r(f("-1"), f("-1")), f("-2"));
     }
 
     #[test]
     fn felt252_sub() {
-        let r = |lhs, rhs| run_program(&FELT252_SUB, "run_test", &[lhs, rhs]).return_value;
+        fn r(lhs: Felt, rhs: Felt) -> Felt {
+            match run_program(
+                &FELT252_SUB,
+                "run_test",
+                &[Value::Felt252(lhs), Value::Felt252(rhs)],
+            )
+            .return_value
+            {
+                Value::Felt252(x) => x,
+                _ => panic!("invalid return type"),
+            }
+        }
 
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("0")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("1")),
-            JitValue::felt_str("-1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-2")),
-            JitValue::felt_str("2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-1")),
-            JitValue::felt_str("1")
-        );
+        assert_eq!(r(f("0"), f("0")), f("0"));
+        assert_eq!(r(f("0"), f("1")), f("-1"));
+        assert_eq!(r(f("0"), f("-2")), f("2"));
+        assert_eq!(r(f("0"), f("-1")), f("1"));
 
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("0")),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("1")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("3")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("2")
-        );
+        assert_eq!(r(f("1"), f("0")), f("1"));
+        assert_eq!(r(f("1"), f("1")), f("0"));
+        assert_eq!(r(f("1"), f("-2")), f("3"));
+        assert_eq!(r(f("1"), f("-1")), f("2"));
 
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("0")),
-            JitValue::felt_str("-2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("1")),
-            JitValue::felt_str("-3")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-2")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-1")),
-            JitValue::felt_str("-1")
-        );
+        assert_eq!(r(f("-2"), f("0")), f("-2"));
+        assert_eq!(r(f("-2"), f("1")), f("-3"));
+        assert_eq!(r(f("-2"), f("-2")), f("0"));
+        assert_eq!(r(f("-2"), f("-1")), f("-1"));
 
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("0")),
-            JitValue::felt_str("-1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("1")),
-            JitValue::felt_str("-2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("0")
-        );
+        assert_eq!(r(f("-1"), f("0")), f("-1"));
+        assert_eq!(r(f("-1"), f("1")), f("-2"));
+        assert_eq!(r(f("-1"), f("-2")), f("1"));
+        assert_eq!(r(f("-1"), f("-1")), f("0"));
     }
 
     #[test]
     fn felt252_mul() {
-        let r = |lhs, rhs| run_program(&FELT252_MUL, "run_test", &[lhs, rhs]).return_value;
+        fn r(lhs: Felt, rhs: Felt) -> Felt {
+            match run_program(
+                &FELT252_MUL,
+                "run_test",
+                &[Value::Felt252(lhs), Value::Felt252(rhs)],
+            )
+            .return_value
+            {
+                Value::Felt252(x) => x,
+                _ => panic!("invalid return type"),
+            }
+        }
 
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("0")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("1")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-2")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("0"), JitValue::felt_str("-1")),
-            JitValue::felt_str("0")
-        );
+        assert_eq!(r(f("0"), f("0")), f("0"));
+        assert_eq!(r(f("0"), f("1")), f("0"));
+        assert_eq!(r(f("0"), f("-2")), f("0"));
+        assert_eq!(r(f("0"), f("-1")), f("0"));
 
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("0")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("1")),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("-2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("-1")
-        );
+        assert_eq!(r(f("1"), f("0")), f("0"));
+        assert_eq!(r(f("1"), f("1")), f("1"));
+        assert_eq!(r(f("1"), f("-2")), f("-2"));
+        assert_eq!(r(f("1"), f("-1")), f("-1"));
 
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("0")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("1")),
-            JitValue::felt_str("-2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-2")),
-            JitValue::felt_str("4")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-2"), JitValue::felt_str("-1")),
-            JitValue::felt_str("2")
-        );
+        assert_eq!(r(f("-2"), f("0")), f("0"));
+        assert_eq!(r(f("-2"), f("1")), f("-2"));
+        assert_eq!(r(f("-2"), f("-2")), f("4"));
+        assert_eq!(r(f("-2"), f("-1")), f("2"));
 
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("0")),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("1")),
-            JitValue::felt_str("-1")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-2")),
-            JitValue::felt_str("2")
-        );
-        assert_eq!(
-            r(JitValue::felt_str("-1"), JitValue::felt_str("-1")),
-            JitValue::felt_str("1")
-        );
+        assert_eq!(r(f("-1"), f("0")), f("0"));
+        assert_eq!(r(f("-1"), f("1")), f("-1"));
+        assert_eq!(r(f("-1"), f("-2")), f("2"));
+        assert_eq!(r(f("-1"), f("-1")), f("1"));
     }
 
     #[test]
     fn felt252_div() {
         // Helper function to run the test and extract the return value.
-        let run_test = |lhs, rhs| run_program(&FELT252_DIV, "run_test", &[lhs, rhs]).return_value;
-
-        // Helper function to extract the result struct field from the return value.
-        let extract_struct_field = |result| match result {
-            JitValue::Enum { value, .. } => match *value {
-                JitValue::Struct { fields, .. } => fields[0].clone(),
-                _ => panic!("Expected Struct"),
-            },
-            _ => panic!("Expected Enum"),
-        };
+        fn r(lhs: Felt, rhs: Felt) -> Option<Felt> {
+            match run_program(
+                &FELT252_DIV,
+                "run_test",
+                &[Value::Felt252(lhs), Value::Felt252(rhs)],
+            )
+            .return_value
+            {
+                Value::Enum { tag: 0, value, .. } => match *value {
+                    Value::Struct { fields, .. } => {
+                        assert_eq!(fields.len(), 1);
+                        Some(match &fields[0] {
+                            Value::Felt252(x) => *x,
+                            _ => panic!("invalid return type payload"),
+                        })
+                    }
+                    _ => panic!("invalid return type"),
+                },
+                Value::Enum { tag: 1, .. } => None,
+                _ => panic!("invalid return type"),
+            }
+        }
 
         // Helper function to assert that a division panics.
-        let assert_panics = |lhs, rhs| match run_test(lhs, rhs) {
-            JitValue::Enum { debug_name, .. } => {
-                assert_eq!(
-                    debug_name,
-                    Some("core::panics::PanicResult::<(core::felt252,)>".into())
-                );
-            }
-            _ => panic!("division by 0 is expected to panic"),
-        };
+        let assert_panics =
+            |lhs, rhs| assert!(r(lhs, rhs).is_none(), "division by 0 is expected to panic",);
 
         // Division by zero is expected to panic.
-        assert_panics(JitValue::felt_str("0"), JitValue::felt_str("0"));
-        assert_panics(JitValue::felt_str("1"), JitValue::felt_str("0"));
-        assert_panics(JitValue::felt_str("-2"), JitValue::felt_str("0"));
+        assert_panics(f("0"), f("0"));
+        assert_panics(f("1"), f("0"));
+        assert_panics(f("-2"), f("0"));
 
         // Test cases for valid division results.
+        assert_eq!(r(f("0"), f("1")), Some(f("0")));
+        assert_eq!(r(f("0"), f("-2")), Some(f("0")));
+        assert_eq!(r(f("0"), f("-1")), Some(f("0")));
+        assert_eq!(r(f("1"), f("1")), Some(f("1")));
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("0"), JitValue::felt_str("1"))),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("0"), JitValue::felt_str("-2"))),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("0"), JitValue::felt_str("-1"))),
-            JitValue::felt_str("0")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("1"), JitValue::felt_str("1"))),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("1"), JitValue::felt_str("-2"))),
-            JitValue::felt_str(
+            r(f("1"), f("-2")),
+            Some(f(
                 "1809251394333065606848661391547535052811553607665798349986546028067936010240"
-            )
+            ))
         );
+        assert_eq!(r(f("1"), f("-1")), Some(f("-1")));
+        assert_eq!(r(f("-2"), f("1")), Some(f("-2")));
+        assert_eq!(r(f("-2"), f("-2")), Some(f("1")));
+        assert_eq!(r(f("-2"), f("-1")), Some(f("2")));
+        assert_eq!(r(f("-1"), f("1")), Some(f("-1")));
         assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("1"), JitValue::felt_str("-1"))),
-            JitValue::felt_str("-1")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-2"), JitValue::felt_str("1"))),
-            JitValue::felt_str("-2")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-2"), JitValue::felt_str("-2"))),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-2"), JitValue::felt_str("-1"))),
-            JitValue::felt_str("2")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-1"), JitValue::felt_str("1"))),
-            JitValue::felt_str("-1")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-1"), JitValue::felt_str("-2"))),
-            JitValue::felt_str(
+            r(f("-1"), f("-2")),
+            Some(f(
                 "1809251394333065606848661391547535052811553607665798349986546028067936010241"
-            )
+            ))
         );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("-1"), JitValue::felt_str("-1"))),
-            JitValue::felt_str("1")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(JitValue::felt_str("6"), JitValue::felt_str("2"))),
-            JitValue::felt_str("3")
-        );
-        assert_eq!(
-            extract_struct_field(run_test(
-                JitValue::felt_str("1000"),
-                JitValue::felt_str("2")
-            )),
-            JitValue::felt_str("500")
-        );
+        assert_eq!(r(f("-1"), f("-1")), Some(f("1")));
+        assert_eq!(r(f("6"), f("2")), Some(f("3")));
+        assert_eq!(r(f("1000"), f("2")), Some(f("500")));
     }
 
     #[test]
     fn felt252_const() {
         assert_eq!(
             run_program(&FELT252_CONST, "run_test", &[]).return_value,
-            JitValue::Struct {
-                fields: vec![
-                    JitValue::felt_str("0"),
-                    JitValue::felt_str("1"),
-                    JitValue::felt_str("-2"),
-                    JitValue::felt_str("-1")
-                ],
+            Value::Struct {
+                fields: [f("0"), f("1"), f("-2"), f("-1")]
+                    .map(Value::Felt252)
+                    .to_vec(),
                 debug_name: None
             }
         );
@@ -790,11 +619,16 @@ pub mod test {
 
     #[test]
     fn felt252_is_zero() {
-        let r = |x| run_program(&FELT252_IS_ZERO, "run_test", &[x]).return_value;
+        fn r(x: Felt) -> bool {
+            match run_program(&FELT252_IS_ZERO, "run_test", &[Value::Felt252(x)]).return_value {
+                Value::Enum { tag, .. } => tag != 0,
+                _ => panic!("invalid return type"),
+            }
+        }
 
-        assert_eq!(r(JitValue::felt_str("0")), JitValue::felt_str("1"));
-        assert_eq!(r(JitValue::felt_str("1")), JitValue::felt_str("0"));
-        assert_eq!(r(JitValue::felt_str("-2")), JitValue::felt_str("0"));
-        assert_eq!(r(JitValue::felt_str("-1")), JitValue::felt_str("0"));
+        assert!(r(f("0")));
+        assert!(!r(f("1")));
+        assert!(!r(f("-2")));
+        assert!(!r(f("-1")));
     }
 }

@@ -3,13 +3,14 @@
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
 //! APIs that are missing from melior.
 
-use crate::error::Error as CompileError;
+use crate::error::{Error, Result};
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
         LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart,
     },
-    prelude::{LLVMContextRef, LLVMMemoryBufferRef, LLVMModuleRef},
+    error::LLVMGetErrorMessage,
+    prelude::LLVMMemoryBufferRef,
     target::{
         LLVM_InitializeAllAsmParsers, LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos,
         LLVM_InitializeAllTargetMCs, LLVM_InitializeAllTargets,
@@ -20,14 +21,15 @@ use llvm_sys::{
         LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode,
         LLVMTargetMachineEmitToMemoryBuffer, LLVMTargetRef,
     },
+    transforms::pass_builder::{
+        LLVMCreatePassBuilderOptions, LLVMDisposePassBuilderOptions, LLVMRunPasses,
+    },
 };
 use melior::ir::{Module, Type, TypeLike};
-use mlir_sys::MlirOperation;
+use mlir_sys::{mlirLLVMStructTypeGetElementType, mlirTranslateModuleToLLVMIR};
 use std::{
     borrow::Cow,
-    error::Error,
-    ffi::{c_void, CStr},
-    fmt::Display,
+    ffi::{CStr, CString},
     io::Write,
     mem::MaybeUninit,
     path::Path,
@@ -36,35 +38,14 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
-extern "C" {
-    fn LLVMStructType_getFieldTypeAt(ty_ptr: *const c_void, index: u32) -> *const c_void;
-
-    /// Translate operation that satisfies LLVM dialect module requirements into an LLVM IR module living in the given context.
-    /// This translates operations from any dilalect that has a registered implementation of LLVMTranslationDialectInterface.
-    fn mlirTranslateModuleToLLVMIR(
-        module_operation_ptr: MlirOperation,
-        llvm_context: LLVMContextRef,
-    ) -> LLVMModuleRef;
-}
-
 /// For any `!llvm.struct<...>` type, return the MLIR type of the field at the requested index.
 pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c> {
-    let mut ty_ptr = r#type.to_raw();
-
-    ty_ptr.ptr = unsafe { LLVMStructType_getFieldTypeAt(ty_ptr.ptr, index as u32) };
-    unsafe { Type::from_raw(ty_ptr) }
-}
-
-/// A error from the LLVM API.
-#[derive(Debug, Clone)]
-pub struct LLVMCompileError(String);
-
-impl Error for LLVMCompileError {}
-
-impl Display for LLVMCompileError {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
+    assert!(r#type.is_llvm_struct_type());
+    unsafe {
+        Type::from_raw(mlirLLVMStructTypeGetElementType(
+            r#type.to_raw(),
+            index as isize,
+        ))
     }
 }
 
@@ -112,10 +93,7 @@ impl From<u8> for OptLevel {
 }
 
 /// Converts a MLIR module to a compile object, that can be linked with a linker.
-pub fn module_to_object(
-    module: &Module<'_>,
-    opt_level: OptLevel,
-) -> Result<Vec<u8>, LLVMCompileError> {
+pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<u8>> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
     INITIALIZED.get_or_init(|| unsafe {
@@ -131,7 +109,7 @@ pub fn module_to_object(
 
         let op = module.as_operation().to_raw();
 
-        let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context);
+        let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context as *mut _) as *mut _;
 
         let mut null = null_mut();
         let mut error_buffer = addr_of_mut!(null);
@@ -146,7 +124,7 @@ pub fn module_to_object(
             let error = CStr::from_ptr(*error_buffer);
             let err = error.to_string_lossy().to_string();
             LLVMDisposeMessage(*error_buffer);
-            Err(LLVMCompileError(err))?;
+            Err(Error::LLVMCompileError(err))?;
         } else if !(*error_buffer).is_null() {
             LLVMDisposeMessage(*error_buffer);
             error_buffer = addr_of_mut!(null);
@@ -169,6 +147,24 @@ pub fn module_to_object(
             LLVMCodeModel::LLVMCodeModelDefault,
         );
 
+        let opts = LLVMCreatePassBuilderOptions();
+
+        let opt = match opt_level {
+            OptLevel::None => 0,
+            OptLevel::Less => 1,
+            OptLevel::Default => 1, // todo: change once slp-vectorizer pass is fixed on llvm
+            OptLevel::Aggressive => 1, // https://github.com/llvm/llvm-project/issues/107198
+        };
+        let passes = CString::new(format!("default<O{opt}>")).unwrap();
+        let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
+        if !error.is_null() {
+            let msg = LLVMGetErrorMessage(error);
+            let msg = CStr::from_ptr(msg);
+            Err(Error::LLVMCompileError(msg.to_string_lossy().into_owned()))?;
+        }
+
+        LLVMDisposePassBuilderOptions(opts);
+
         let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
 
         let ok = LLVMTargetMachineEmitToMemoryBuffer(
@@ -183,7 +179,7 @@ pub fn module_to_object(
             let error = CStr::from_ptr(*error_buffer);
             let err = error.to_string_lossy().to_string();
             LLVMDisposeMessage(*error_buffer);
-            Err(LLVMCompileError(err))?;
+            Err(Error::LLVMCompileError(err))?;
         } else if !(*error_buffer).is_null() {
             LLVMDisposeMessage(*error_buffer);
         }
@@ -206,7 +202,7 @@ pub fn module_to_object(
 }
 
 /// Links the passed object into a shared library, stored on the given path.
-pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(), std::io::Error> {
+pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()> {
     // linker seems to need a file and doesn't accept stdin
     let mut file = NamedTempFile::new()?;
     file.write_all(object)?;
@@ -214,6 +210,14 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<(),
 
     let file_path = file.display().to_string();
     let output_path = output_filename.display().to_string();
+    if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
+        if x == "1" || x == "true" {
+            // forget so the temp file is not deleted and the debugger can load it.
+            // its still in a temp file directory so eventually the OS will delete it, but just not instantly.
+            // todo: maybe remove it when exiting, for example using atexit.
+            std::mem::forget(file);
+        }
+    }
 
     let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]
@@ -296,7 +300,7 @@ pub fn get_target_triple() -> String {
 /// Gets the data layout reprrsentation as a string, to be given to the MLIR module.
 /// LLVM uses this to know the proper alignments for the given sizes, etc.
 /// This function gets the data layout of the host target triple.
-pub fn get_data_layout_rep() -> Result<String, CompileError> {
+pub fn get_data_layout_rep() -> Result<String> {
     unsafe {
         let mut null = null_mut();
         let error_buffer = addr_of_mut!(null);
@@ -314,7 +318,7 @@ pub fn get_data_layout_rep() -> Result<String, CompileError> {
             let err = error.to_string_lossy().to_string();
             tracing::error!("error getting target triple: {}", err);
             LLVMDisposeMessage(*error_buffer);
-            Err(CompileError::LLVMCompileError(err))?;
+            Err(Error::LLVMCompileError(err))?;
         }
         if !(*error_buffer).is_null() {
             LLVMDisposeMessage(*error_buffer);

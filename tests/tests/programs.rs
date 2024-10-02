@@ -1,13 +1,13 @@
 use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
 use crate::common::{compare_outputs, DEFAULT_GAS};
-use cairo_felt::Felt252 as DeprecatedFelt;
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::starknet::DummySyscallHandler;
-use cairo_native::values::JitValue;
+use cairo_native::utils::felt252_str;
+use cairo_native::Value;
 use lazy_static::lazy_static;
-use num_traits::Num;
 use proptest::prelude::*;
+use starknet_types_core::felt::Felt;
 
 lazy_static! {
     pub static ref FACTORIAL: (String, Program, SierraCasmRunner) = load_cairo! {
@@ -118,14 +118,14 @@ fn fib() {
     let result_vm = run_vm_program(
         &FIB,
         "run_test",
-        &[Arg::Value(DeprecatedFelt::from(10))],
+        &[Arg::Value(Felt::from(10))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
     let result_native = run_native_program(
         &FIB,
         "run_test",
-        &[JitValue::Felt252(10.into())],
+        &[Value::Felt252(10.into())],
         Some(DEFAULT_GAS as u128),
         Option::<DummySyscallHandler>::None,
     );
@@ -144,14 +144,14 @@ fn logistic_map() {
     let result_vm = run_vm_program(
         &LOGISTIC_MAP,
         "run_test",
-        &[Arg::Value(DeprecatedFelt::from(1000))],
+        &[Arg::Value(Felt::from(1000))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
     let result_native = run_native_program(
         &LOGISTIC_MAP,
         "run_test",
-        &[JitValue::Felt252(1000.into())],
+        &[Value::Felt252(1000.into())],
         Some(DEFAULT_GAS as u128),
         Option::<DummySyscallHandler>::None,
     );
@@ -172,16 +172,14 @@ fn pedersen() {
         "run_test",
         &[
             Arg::Value(
-                DeprecatedFelt::from_str_radix(
+                Felt::from_dec_str(
                     "2163739901324492107409690946633517860331020929182861814098856895601180685",
-                    10,
                 )
                 .unwrap(),
             ),
             Arg::Value(
-                DeprecatedFelt::from_str_radix(
+                Felt::from_dec_str(
                     "2392090257937917229310563411601744459500735555884672871108624696010915493156",
-                    10,
                 )
                 .unwrap(),
             ),
@@ -193,12 +191,12 @@ fn pedersen() {
         &PEDERSEN,
         "run_test",
         &[
-            JitValue::felt_str(
+            Value::Felt252(felt252_str(
                 "2163739901324492107409690946633517860331020929182861814098856895601180685",
-            ),
-            JitValue::felt_str(
+            )),
+            Value::Felt252(felt252_str(
                 "2392090257937917229310563411601744459500735555884672871108624696010915493156",
-            ),
+            )),
         ],
         Some(DEFAULT_GAS as u128),
         Option::<DummySyscallHandler>::None,
@@ -218,14 +216,14 @@ fn factorial() {
     let result_vm = run_vm_program(
         &FACTORIAL,
         "run_test",
-        &[Arg::Value(DeprecatedFelt::from(13))],
+        &[Arg::Value(Felt::from(13))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
     let result_native = run_native_program(
         &FACTORIAL,
         "run_test",
-        &[JitValue::Felt252(13.into())],
+        &[Value::Felt252(13.into())],
         Some(DEFAULT_GAS as u128),
         Option::<DummySyscallHandler>::None,
     );
@@ -245,14 +243,14 @@ proptest! {
         let result_vm = run_vm_program(
             &FIB,
             "run_test",
-            &[Arg::Value(DeprecatedFelt::from(n))],
+            &[Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
         let result_native = run_native_program(
             &FIB,
             "run_test",
-            &[JitValue::Felt252(n.into())],
+            &[Value::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -270,14 +268,14 @@ proptest! {
         let result_vm = run_vm_program(
             &LOGISTIC_MAP,
             "run_test",
-            &[Arg::Value(DeprecatedFelt::from(n))],
+            &[Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
         let result_native = run_native_program(
             &LOGISTIC_MAP,
             "run_test",
-            &[JitValue::Felt252(n.into())],
+            &[Value::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -295,14 +293,14 @@ proptest! {
         let result_vm = run_vm_program(
             &FACTORIAL,
             "run_test",
-            &[Arg::Value(DeprecatedFelt::from(n))],
+            &[Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
         let result_native = run_native_program(
             &FACTORIAL,
             "run_test",
-            &[JitValue::Felt252(n.into())],
+            &[Value::Felt252(n.into())],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -320,7 +318,7 @@ proptest! {
         let result_vm = run_vm_program(
             &PEDERSEN,
             "run_test",
-            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be()))],
+            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -328,7 +326,7 @@ proptest! {
         let result_native = run_native_program(
             &PEDERSEN,
             "run_test",
-            &[JitValue::Felt252(a), JitValue::Felt252(b)],
+            &[Value::Felt252(a), Value::Felt252(b)],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );
@@ -346,9 +344,9 @@ proptest! {
         let result_vm = run_vm_program(
             &POSEIDON,
             "run_test",
-            &[Arg::Value(DeprecatedFelt::from_bytes_be(&a.clone().to_bytes_be())),
-             Arg::Value(DeprecatedFelt::from_bytes_be(&b.clone().to_bytes_be())),
-            Arg::Value(DeprecatedFelt::from_bytes_be(&c.clone().to_bytes_be()))],
+            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())),
+             Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be())),
+            Arg::Value(Felt::from_bytes_be(&c.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -356,7 +354,7 @@ proptest! {
         let result_native = run_native_program(
             &POSEIDON,
             "run_test",
-            &[JitValue::Felt252(a), JitValue::Felt252(b), JitValue::Felt252(c)],
+            &[Value::Felt252(a), Value::Felt252(b), Value::Felt252(c)],
             Some(DEFAULT_GAS as u128),
             Option::<DummySyscallHandler>::None,
         );

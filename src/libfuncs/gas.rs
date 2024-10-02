@@ -2,10 +2,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     metadata::{gas::GasCost, MetadataStorage},
-    utils::ProgramRegistryExt,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -216,7 +215,7 @@ mod test {
         let result = run_program(&program, "run_test", &[]);
         assert_eq!(
             result.remaining_gas,
-            Some(340282366920938463463374607431768204835),
+            Some(340282366920938463463374607431768205035),
         );
     }
 }
