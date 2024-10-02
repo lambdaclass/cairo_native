@@ -144,6 +144,7 @@ fn build_dup<'ctx>(
         .into(),
     )?;
 
+    // The following unwrap is unreachable because the registration logic will always insert it.
     let value0 = entry.argument(0)?.into();
     let value1 = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -217,6 +218,7 @@ fn build_drop<'ctx>(
         None => None,
     };
 
+    // The following unwrap is unreachable because the registration logic will always insert it.
     let runtime_bindings_meta = metadata.get_mut::<RuntimeBindingsMeta>().unwrap();
     runtime_bindings_meta.dict_drop(
         context,
