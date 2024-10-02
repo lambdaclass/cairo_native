@@ -5,10 +5,7 @@
 use crate::{
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
-    metadata::{
-        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
-        MetadataStorage,
-    },
+    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
@@ -989,11 +986,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
             }
             CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
-                let runtime: &mut RuntimeBindingsMeta = metadata.get_mut().unwrap();
-
-                // TODO: Drop the entries.
-
-                runtime.dict_alloc_free(context, helper, value, entry, location)?;
+                // TODO: Drop the dictionary.
             }
             CoreTypeConcrete::Box(_) | CoreTypeConcrete::Nullable(_) => {
                 if metadata.get::<ReallocBindingsMeta>().is_none() {

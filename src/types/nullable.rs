@@ -8,11 +8,10 @@
 use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
-    libfuncs::LibfuncHelper,
     metadata::{
         dup_overrides::DupOverrideMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -21,13 +20,13 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
-use melior::dialect::cf;
 use melior::{
-    dialect::{
-        llvm::{self, r#type::pointer},
-        ods,
-    },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Type, Value},
+    dialect::{cf, func},
+    ir::Region,
+};
+use melior::{
+    dialect::{llvm, ods},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Type},
     Context,
 };
 
@@ -41,49 +40,49 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    DupOverrideMeta::register_with(metadata, info.self_ty().clone(), |metadata| {
-        registry.build_type(context, module, registry, metadata, &info.ty)?;
+    DupOverrideMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            // There's no need to build the type here because it'll always be built within
+            // `snapshot_take`.
 
-        Ok(Some((
-            snapshot_take,
-            InfoAndTypeConcreteType {
-                info: info.info.clone(),
-                ty: info.ty.clone(),
-            },
-        )))
-    })?;
+            Ok(Some(build_dup(context, module, registry, metadata, &info)?))
+        },
+    )?;
 
     // A nullable is represented by a pointer (equivalent to a box). A null value means no value.
     Ok(llvm::r#type::pointer(context, 0))
 }
 
-#[allow(clippy::too_many_arguments)]
-fn snapshot_take<'ctx, 'this>(
+fn build_dup<'ctx>(
     context: &'ctx Context,
+    module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: WithSelf<InfoAndTypeConcreteType>,
-    src_value: Value<'ctx, 'this>,
-) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
+    info: &WithSelf<InfoAndTypeConcreteType>,
+) -> Result<Region<'ctx>> {
+    let location = Location::unknown(context);
     if metadata.get::<ReallocBindingsMeta>().is_none() {
-        metadata.insert(ReallocBindingsMeta::new(context, helper));
+        metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let inner_snapshot_take = metadata
-        .get::<DupOverrideMeta>()
-        .and_then(|meta| meta.wrap_invoke(&info.ty));
+    let inner_ty = registry.get_type(&info.ty)?;
+    let inner_len = inner_ty.layout(registry)?.pad_to_align().size();
+    let inner_ty = inner_ty.build(context, module, registry, metadata, &info.ty)?;
 
-    let inner_type = registry.get_type(&info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
-    let inner_ty = inner_type.build(context, helper, registry, metadata, info.self_ty())?;
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
-    let null_ptr = entry
-        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
+    let null_ptr =
+        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+    let inner_len_val = entry.const_int(context, location, inner_len, 64)?;
 
-    let is_null = entry.append_op_result(
+    let src_value = entry.argument(0)?.into();
+    let src_is_null = entry.append_op_result(
         ods::llvm::icmp(
             context,
             IntegerType::new(context, 1).into(),
@@ -95,51 +94,50 @@ fn snapshot_take<'ctx, 'this>(
         .into(),
     )?;
 
-    let mut block_not_null = helper.append_block(Block::new(&[]));
-    let block_finish = helper.append_block(Block::new(&[(pointer(context, 0), location)]));
-
+    let block_realloc = region.append_block(Block::new(&[]));
+    let block_finish =
+        region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
     entry.append_operation(cf::cond_br(
         context,
-        is_null,
-        block_finish,
-        block_not_null,
+        src_is_null,
+        &block_finish,
+        &block_realloc,
         &[null_ptr],
         &[],
         location,
     ));
 
     {
-        let value_len =
-            block_not_null.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
-
-        let dst_ptr = block_not_null.append_op_result(ReallocBindingsMeta::realloc(
-            context, null_ptr, value_len, location,
+        let dst_value = block_realloc.append_op_result(ReallocBindingsMeta::realloc(
+            context,
+            null_ptr,
+            inner_len_val,
+            location,
         ))?;
 
-        match inner_snapshot_take {
-            Some(inner_snapshot_take) => {
-                let value = block_not_null.load(context, location, src_value, inner_ty)?;
-
-                let (next_block, value) = inner_snapshot_take(
+        match metadata.get::<DupOverrideMeta>() {
+            Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
+                let value = block_realloc.load(context, location, src_value, inner_ty)?;
+                let values = dup_override_meta.invoke_override(
                     context,
-                    registry,
-                    block_not_null,
+                    &block_realloc,
                     location,
-                    helper,
-                    metadata,
+                    &info.ty,
                     value,
                 )?;
-                block_not_null = next_block;
-
-                block_not_null.store(context, location, dst_ptr, value)?;
+                block_realloc.store(context, location, src_value, values.0)?;
+                block_realloc.store(context, location, dst_value, values.1)?;
             }
-            None => {
-                block_not_null.append_operation(
-                    ods::llvm::intr_memcpy(
+            _ => {
+                block_realloc.append_operation(
+                    ods::llvm::intr_memcpy_inline(
                         context,
-                        dst_ptr,
+                        dst_value,
                         src_value,
-                        value_len,
+                        IntegerAttribute::new(
+                            IntegerType::new(context, 64).into(),
+                            inner_len as i64,
+                        ),
                         IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                         location,
                     )
@@ -147,12 +145,15 @@ fn snapshot_take<'ctx, 'this>(
                 );
             }
         }
-        block_not_null.append_operation(cf::br(block_finish, &[dst_ptr], location));
+
+        block_realloc.append_operation(cf::br(&block_finish, &[dst_value], location));
     }
 
-    let value = block_finish.argument(0)?.into();
-
-    Ok((block_finish, value))
+    block_finish.append_operation(func::r#return(
+        &[src_value, block_finish.argument(0)?.into()],
+        location,
+    ));
+    Ok(region)
 }
 
 #[cfg(test)]

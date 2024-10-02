@@ -47,8 +47,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
-    ir::{Block, Location, Module, Type, Value},
+    dialect::{func, llvm},
+    ir::{Block, Location, Module, Region, Type, Value},
     Context,
 };
 
@@ -62,27 +62,33 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<StructConcreteType>,
 ) -> Result<Type<'ctx>> {
-    DupOverrideMeta::register_with(metadata, info.self_ty.clone(), |metadata| {
-        let mut has_clone_impl = false;
-        for member in &info.members {
-            registry.build_type(context, module, registry, metadata, member)?;
-            has_clone_impl |= metadata
-                .get::<DupOverrideMeta>()
-                .is_some_and(|x| x.is_registered(member));
-        }
+    DupOverrideMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            // The following unwrap is unreachable because `register_with` will always insert it
+            // before calling this closure.
+            let mut needs_clone_override = false;
+            for member in &info.members {
+                registry.build_type(context, module, registry, metadata, member)?;
+                if metadata
+                    .get::<DupOverrideMeta>()
+                    .unwrap()
+                    .is_overriden(member)
+                {
+                    needs_clone_override = true;
+                    break;
+                }
+            }
 
-        Ok(if has_clone_impl {
-            Some((
-                snapshot_take,
-                StructConcreteType {
-                    info: info.info.clone(),
-                    members: info.members.clone(),
-                },
-            ))
-        } else {
-            None
-        })
-    })?;
+            needs_clone_override
+                .then(|| build_dup(context, module, registry, metadata, &info))
+                .transpose()
+        },
+    )?;
 
     let members = info
         .members
@@ -92,41 +98,39 @@ pub fn build<'ctx>(
     Ok(llvm::r#type::r#struct(context, &members, false))
 }
 
-#[allow(clippy::too_many_arguments)]
-fn snapshot_take<'ctx, 'this>(
+fn build_dup<'ctx>(
     context: &'ctx Context,
+    module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    mut entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: WithSelf<StructConcreteType>,
-    src_value: Value<'ctx, 'this>,
-) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
-    let self_ty = registry.build_type(context, helper, registry, metadata, info.self_ty)?;
-    let mut value = entry.append_op_result(llvm::undef(self_ty, location))?;
+    info: &WithSelf<StructConcreteType>,
+) -> Result<Region<'ctx>> {
+    let location = Location::unknown(context);
 
-    for (member_idx, member_id) in info.members.iter().enumerate() {
-        let member_ty = registry.build_type(context, helper, registry, metadata, member_id)?;
-        let member_val =
-            entry.extract_value(context, location, src_value, member_ty, member_idx)?;
+    let self_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
 
-        // The following unwrap is unreachable because we've already check that at least one of the
-        // struct's members have a custom clone implementation before registering this function.
-        let dup_override_meta = metadata.get::<DupOverrideMeta>().unwrap();
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(self_ty, location)]));
 
-        let cloned_member_val;
-        (entry, cloned_member_val) = match dup_override_meta.wrap_invoke(member_id) {
-            Some(clone_fn) => clone_fn(
-                context, registry, entry, location, helper, metadata, member_val,
-            )?,
-            None => (entry, member_val),
-        };
+    let mut src_value = entry.argument(0)?.into();
+    let mut dst_value = entry.append_op_result(llvm::undef(self_ty, location))?;
 
-        value = entry.insert_value(context, location, value, cloned_member_val, member_idx)?;
+    for (idx, member_id) in info.members.iter().enumerate() {
+        let member_ty = registry.build_type(context, module, registry, metadata, member_id)?;
+        let member_val = entry.extract_value(context, location, src_value, member_ty, idx)?;
+
+        // The following unwrap is unreachable because the registration logic will always insert it.
+        let values = metadata
+            .get::<DupOverrideMeta>()
+            .unwrap()
+            .invoke_override(context, &entry, location, member_id, member_val)?;
+
+        src_value = entry.insert_value(context, location, src_value, values.0, idx)?;
+        dst_value = entry.insert_value(context, location, dst_value, values.1, idx)?;
     }
 
-    Ok((entry, value))
+    entry.append_operation(func::r#return(&[src_value, dst_value], location));
+    Ok(region)
 }
 
 #[allow(clippy::too_many_arguments)]

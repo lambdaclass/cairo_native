@@ -3,7 +3,7 @@
 //! This metadata ensures that the bindings to the runtime functions exist in the current
 //! compilation context.
 
-use crate::error::Result;
+use crate::{error::Result, utils::BlockExt};
 use melior::{
     dialect::{func, llvm},
     ir::{
@@ -29,8 +29,8 @@ enum RuntimeBinding {
     DictInsert,
     DictGet,
     DictGasRefund,
-    DictFree,
-    DictValues,
+    DictDrop,
+    DictDup,
     DebugPrint,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
@@ -466,7 +466,7 @@ impl RuntimeBindingsMeta {
     ///
     /// Returns a opaque pointer as the result.
     #[allow(clippy::too_many_arguments)]
-    pub fn dict_alloc_new<'c, 'a>(
+    pub fn dict_new<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -479,7 +479,7 @@ impl RuntimeBindingsMeta {
         if self.active_map.insert(RuntimeBinding::DictNew) {
             module.body().append_operation(func::func(
                 context,
-                StringAttribute::new(context, "cairo_native__alloc_dict"),
+                StringAttribute::new(context, "cairo_native__dict_new"),
                 TypeAttribute::new(
                     FunctionType::new(context, &[], &[llvm::r#type::pointer(context, 0)]).into(),
                 ),
@@ -494,7 +494,7 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(func::call(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__alloc_dict"),
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_new"),
             &[],
             &[llvm::r#type::pointer(context, 0)],
             location,
@@ -505,70 +505,30 @@ impl RuntimeBindingsMeta {
     ///
     /// Returns a opaque pointer as the result.
     #[allow(clippy::too_many_arguments)]
-    pub fn dict_alloc_free<'c, 'a>(
+    pub fn dict_drop<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
-        ptr: Value<'c, 'a>,
         block: &'a Block<'c>,
+        ptr: Value<'c, 'a>,
+        drop_fn: Option<Value<'c, 'a>>,
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::DictFree) {
+        if self.active_map.insert(RuntimeBinding::DictDrop) {
             module.body().append_operation(func::func(
                 context,
-                StringAttribute::new(context, "cairo_native__dict_free"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
-                ),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__dict_free"),
-            &[ptr],
-            &[],
-            location,
-        )))
-    }
-
-    /// Register if necessary, then invoke the `dict_clone()` function.
-    ///
-    /// Returns a opaque pointer as the result.
-    #[allow(clippy::too_many_arguments)]
-    pub fn dict_values<'c, 'a>(
-        &mut self,
-        context: &'c Context,
-        module: &Module,
-        ptr: Value<'c, 'a>,
-        len_ptr: Value<'c, 'a>,
-        block: &'a Block<'c>,
-        location: Location<'c>,
-    ) -> Result<OperationRef<'c, 'a>>
-    where
-        'c: 'a,
-    {
-        if self.active_map.insert(RuntimeBinding::DictValues) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__dict_values"),
+                StringAttribute::new(context, "cairo_native__dict_drop"),
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
                         &[
                             llvm::r#type::pointer(context, 0),
                             llvm::r#type::pointer(context, 0),
-                        ], // ptr to dict, out ptr to length
-                        &[llvm::r#type::pointer(context, 0)], // ptr to array of struct (key, value_ptr)
+                        ],
+                        &[],
                     )
                     .into(),
                 ),
@@ -581,13 +541,69 @@ impl RuntimeBindingsMeta {
             ));
         }
 
+        let drop_fn = match drop_fn {
+            Some(x) => x,
+            None => {
+                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?
+            }
+        };
+
         Ok(block.append_operation(func::call(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__dict_values"),
-            &[ptr, len_ptr],
-            &[llvm::r#type::pointer(context, 0)],
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_drop"),
+            &[ptr, drop_fn],
+            &[],
             location,
         )))
+    }
+
+    /// Register if necessary, then invoke the `dict_alloc_new()` function.
+    ///
+    /// Returns a opaque pointer as the result.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dict_dup<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        ptr: Value<'c, 'a>,
+        dup_fn: Value<'c, 'a>,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::DictDup) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__dict_dup"),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                        ],
+                        &[llvm::r#type::pointer(context, 0)],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                &[(
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "private").into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        block.append_op_result(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__dict_dup"),
+            &[ptr, dup_fn],
+            &[llvm::r#type::pointer(context, 0)],
+            location,
+        ))
     }
 
     /// Register if necessary, then invoke the `dict_get()` function.

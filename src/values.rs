@@ -404,7 +404,7 @@ impl Value {
                                 elem_layout.size(),
                             );
 
-                            value_map.0.insert(
+                            value_map.inner.insert(
                                 key,
                                 NonNull::new(value_malloc_ptr)
                                     .expect("allocation failure")
@@ -690,15 +690,15 @@ impl Value {
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
-                    let (map, _) = *Box::from_raw(
+                    let FeltDict { inner, .. } = *Box::from_raw(
                         ptr.cast::<NonNull<()>>()
                             .as_ref()
                             .cast::<FeltDict>()
                             .as_ptr(),
                     );
 
-                    let mut output_map = HashMap::with_capacity(map.len());
-                    for (key, val_ptr) in map.iter() {
+                    let mut output_map = HashMap::with_capacity(inner.len());
+                    for (key, val_ptr) in inner.iter() {
                         let key = Felt::from_bytes_le(key);
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry)?);
                         libc::free(val_ptr.as_ptr());

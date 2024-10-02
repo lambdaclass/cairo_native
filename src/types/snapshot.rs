@@ -29,7 +29,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Module, Type},
+    dialect::func,
+    ir::{Block, Location, Module, Region, Type},
     Context,
 };
 
@@ -54,13 +55,53 @@ pub fn build<'ctx>(
             .set_mapping(info.self_ty, variants);
     }
 
-    // Ensure the inner type is built and register the snapshot clone logic builder.
-    let self_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
-    if let Some(dup_override_meta) = metadata.get_mut::<DupOverrideMeta>() {
-        if !dup_override_meta.is_registered(info.self_ty()) {
-            dup_override_meta.register_dup(info.self_ty().clone(), &info.ty);
-        }
-    }
+    // Register clone override (if required).
+    DupOverrideMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            registry.build_type(context, module, registry, metadata, &info.ty)?;
 
-    Ok(self_ty)
+            // The following unwrap is unreachable because `register_with` will always insert it before
+            // calling this closure.
+            metadata
+                .get::<DupOverrideMeta>()
+                .unwrap()
+                .is_overriden(&info.ty)
+                .then(|| build_dup(context, module, registry, metadata, &info))
+                .transpose()
+        },
+    )?;
+
+    registry.build_type(context, module, registry, metadata, &info.ty)
+}
+
+fn build_dup<'ctx>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: &WithSelf<InfoAndTypeConcreteType>,
+) -> Result<Region<'ctx>> {
+    let location = Location::unknown(context);
+
+    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(inner_ty, location)]));
+
+    // The following unwrap is unreachable because the registration logic will always insert it.
+    let values = metadata.get::<DupOverrideMeta>().unwrap().invoke_override(
+        context,
+        &entry,
+        location,
+        &info.ty,
+        entry.argument(0)?.into(),
+    )?;
+
+    entry.append_operation(func::r#return(&[values.0, values.1], location));
+    Ok(region)
 }
