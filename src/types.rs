@@ -146,19 +146,6 @@ pub trait TypeBuilder {
         metadata: &mut MetadataStorage,
         self_ty: &ConcreteTypeId,
     ) -> Result<Value<'ctx, 'this>, Self::Error>;
-
-    // #[allow(clippy::too_many_arguments)]
-    // fn build_drop<'ctx, 'this>(
-    //     &self,
-    //     context: &'ctx Context,
-    //     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    //     entry: &'this Block<'ctx>,
-    //     location: Location<'ctx>,
-    //     helper: &LibfuncHelper<'ctx, 'this>,
-    //     metadata: &mut MetadataStorage,
-    //     self_ty: &ConcreteTypeId,
-    //     value: Value<'ctx, 'this>,
-    // ) -> Result<(), Self::Error>;
 }
 
 impl TypeBuilder for CoreTypeConcrete {
@@ -942,87 +929,6 @@ impl TypeBuilder for CoreTypeConcrete {
             _ => unimplemented!("unsupported dict value type"),
         })
     }
-
-    // fn build_drop<'ctx, 'this>(
-    //     &self,
-    //     context: &'ctx Context,
-    //     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    //     entry: &'this Block<'ctx>,
-    //     location: Location<'ctx>,
-    //     helper: &LibfuncHelper<'ctx, 'this>,
-    //     metadata: &mut MetadataStorage,
-    //     self_ty: &ConcreteTypeId,
-    //     value: Value<'ctx, 'this>,
-    // ) -> Result<(), Self::Error> {
-    //     match self {
-    //         CoreTypeConcrete::Array(info) => {
-    //             if metadata.get::<ReallocBindingsMeta>().is_none() {
-    //                 metadata.insert(ReallocBindingsMeta::new(context, helper));
-    //             }
-
-    //             self::array::build_drop(
-    //                 context,
-    //                 registry,
-    //                 entry,
-    //                 location,
-    //                 helper,
-    //                 metadata,
-    //                 WithSelf::new(
-    //                     self_ty,
-    //                     &InfoAndTypeConcreteType {
-    //                         info: info.info.clone(),
-    //                         ty: info.ty.clone(),
-    //                     },
-    //                 ),
-    //                 value,
-    //             )?;
-
-    //             let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
-    //             let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
-
-    //             let ptr = entry.extract_value(context, location, value, ptr_ty, 0)?;
-
-    //             entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
-    //         }
-    //         CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
-    //             // TODO: Drop the dictionary.
-    //         }
-    //         CoreTypeConcrete::Box(_) | CoreTypeConcrete::Nullable(_) => {
-    //             if metadata.get::<ReallocBindingsMeta>().is_none() {
-    //                 metadata.insert(ReallocBindingsMeta::new(context, helper));
-    //             }
-
-    //             // self::r#box::build_drop();
-
-    //             entry.append_operation(ReallocBindingsMeta::free(context, value, location));
-    //         }
-    //         CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.build_drop(
-    //             context, registry, entry, location, helper, metadata, &info.ty, value,
-    //         )?,
-    //         CoreTypeConcrete::Struct(info) => self::r#struct::build_drop(
-    //             context,
-    //             registry,
-    //             entry,
-    //             location,
-    //             helper,
-    //             metadata,
-    //             WithSelf::new(self_ty, info),
-    //             value,
-    //         )?,
-    //         CoreTypeConcrete::Enum(info) => self::r#enum::build_drop(
-    //             context,
-    //             registry,
-    //             entry,
-    //             location,
-    //             helper,
-    //             metadata,
-    //             WithSelf::new(self_ty, info),
-    //             value,
-    //         )?,
-    //         _ => {}
-    //     };
-    //     Ok(())
-    // }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
