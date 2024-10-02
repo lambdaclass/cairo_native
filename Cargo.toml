@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native"
-version = "0.2.0"
+version = "0.2.0-alpha.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "A compiler to convert Cairo's intermediate representation Sierra code to MLIR."
@@ -39,12 +39,12 @@ required-features = ["scarb"]
 [features]
 default = ["build-cli", "with-runtime"]
 build-cli = [
-    "dep:clap",
-    "dep:tracing-subscriber",
-    "dep:anyhow",
-    "dep:cairo-lang-test-plugin",
-    "dep:cairo-lang-runner",
-    "dep:colored",
+  "dep:clap",
+  "dep:tracing-subscriber",
+  "dep:anyhow",
+  "dep:cairo-lang-test-plugin",
+  "dep:cairo-lang-runner",
+  "dep:colored",
 ]
 scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
 with-debug-utils = []
@@ -68,19 +68,21 @@ cairo-lang-diagnostics = "2.8.2"
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
 itertools = "0.13.0"
 lazy_static = "1.4"
-libc = "0.2.155"
-llvm-sys = "181.1.0"
-melior = { version = "0.18.4", features = ["ods-dialects"] }
-mlir-sys = "0.2.2"
+libc = "0.2"
+llvm-sys = "191.0.0"
+melior = { version = "0.19.0", features = [
+  "ods-dialects",
+] }
+mlir-sys = { version = "0.3.0"}
 num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "0.1.5", default-features = false, features = [
-    "std",
-    "serde",
-    "num-traits",
+  "std",
+  "serde",
+  "num-traits",
 ] }
 tempfile = "3.6"
-thiserror = "1.0.59"
+thiserror = "1.0.64"
 tracing = "0.1"
 utf8_iter = "1.0.4"
 
@@ -91,13 +93,13 @@ cairo-lang-sierra-gas = "2.8.2"
 cairo-lang-starknet = "2.8.2"
 cairo-lang-utils = "2.8.2"
 cairo-lang-starknet-classes = "2.8.2"
-cairo-native-runtime = { version = "0.2.0", path = "runtime", optional = true }
-clap = { version = "4.5", features = ["derive"], optional = true }
+cairo-native-runtime = { version = "0.2.0-alpha.1", path = "runtime", optional = true }
+clap = { version = "4.5.18", features = ["derive"], optional = true }
 libloading = "0.8.3"
 tracing-subscriber = { version = "0.3.18", features = [
-    "env-filter",
-    "json",
-    "registry",
+  "env-filter",
+  "json",
+  "registry",
 ], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 anyhow = { version = "1.0", optional = true }
@@ -106,11 +108,11 @@ cairo-lang-runner = { version = "2.8.2", optional = true }
 colored = { version = "2.1.0", optional = true }
 # needed to interface with cairo-lang-*
 keccak = "0.1.5"
-k256 = "0.13.3"
+k256 = "0.13.4"
 p256 = "0.13.2"
-sha2 = "0.10.8"                                                                                             # needed for the syscall handler stub
-scarb-metadata = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.2", optional = true }
-scarb-ui = { git = "https://github.com/software-mansion/scarb.git", rev = "v2.8.2", optional = true }
+sha2 = "0.10.8" # needed for the syscall handler stub
+scarb-metadata = { version = "1.12.0", optional = true }
+scarb-ui = { version = "0.1.5", optional = true }
 sec1 = "0.7.3"
 serde_json = { version = "1.0.125" }
 stats_alloc = "0.1.10"
@@ -129,7 +131,7 @@ walkdir = "2.5.0"
 serde_json = { version = "1.0.117" }
 
 [build-dependencies]
-cc = "1.1.14"
+cc = "1.1.21"
 
 [profile.optimized-dev]
 inherits = "dev"

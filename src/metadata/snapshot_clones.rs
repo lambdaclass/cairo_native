@@ -64,6 +64,12 @@ impl SnapshotClonesMeta {
         );
     }
 
+    pub(crate) fn register_dup(&mut self, id: ConcreteTypeId, from_id: &ConcreteTypeId) {
+        if let Some(clone_fn) = self.mappings.get(from_id) {
+            self.mappings.insert(id, clone_fn.clone());
+        }
+    }
+
     pub(crate) fn wrap_invoke(&self, id: &ConcreteTypeId) -> Option<CloneFnWrapper> {
         self.mappings.get(id).cloned()
     }
