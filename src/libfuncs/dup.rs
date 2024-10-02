@@ -41,6 +41,7 @@ pub fn build<'ctx, 'this>(
         .and_then(|meta| meta.wrap_invoke(&info.signature.param_signatures[0].ty))
     {
         Some(clone_fn) => {
+            let original_value = entry.argument(0)?.into();
             let (entry, cloned_value) = clone_fn(
                 context,
                 registry,
@@ -48,14 +49,10 @@ pub fn build<'ctx, 'this>(
                 location,
                 helper,
                 metadata,
-                entry.argument(0)?.into(),
+                original_value,
             )?;
 
-            entry.append_operation(helper.br(
-                0,
-                &[entry.argument(0)?.into(), cloned_value],
-                location,
-            ));
+            entry.append_operation(helper.br(0, &[original_value, cloned_value], location));
         }
         None => {
             entry.append_operation(helper.br(

@@ -14,10 +14,10 @@ use std::{
     collections::{hash_map::Entry, HashMap},
 };
 
+pub mod auto_breakpoint;
 pub mod debug_utils;
 pub mod enum_snapshot_variants;
 pub mod gas;
-pub mod prime_modulo;
 pub mod realloc_bindings;
 pub mod runtime_bindings;
 pub mod snapshot_clones;
@@ -122,9 +122,31 @@ mod test {
 
     #[test]
     fn runtime_library_insert_works() {
+        // Create a new instance of MetadataStorage.
         let mut metadata = MetadataStorage::new();
+
+        // Insert a new instance of RuntimeBindingsMeta.
         let ret = metadata.insert(RuntimeBindingsMeta::default());
 
+        // Check that the insertion was successful by asserting that `ret` is not `None`.
         assert!(ret.is_some());
+    }
+
+    #[test]
+    fn runtime_library_insert_non_vacant() {
+        // Create a new instance of MetadataStorage.
+        let mut metadata = MetadataStorage::new();
+
+        // Insert a new instance of RuntimeBindingsMeta.
+        let ret_vacant = metadata.insert(RuntimeBindingsMeta::default());
+
+        // Check that the first insertion was successful.
+        assert!(ret_vacant.is_some());
+
+        // Attempt to insert another instance of RuntimeBindingsMeta.
+        let ret_non_vacant = metadata.insert(RuntimeBindingsMeta::default());
+
+        // Check that the second insertion failed because an instance of the same type already exists.
+        assert!(ret_non_vacant.is_none());
     }
 }

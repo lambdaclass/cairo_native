@@ -4,7 +4,7 @@ use std::{
     collections::HashMap,
     fmt::{self, Debug},
     hash::Hash,
-    rc::Rc,
+    sync::Arc,
 };
 
 /// A Cache for programs with the same context.
@@ -16,7 +16,7 @@ where
     // Since we already hold a reference to the Context, it doesn't make sense to use thread-safe
     // reference counting. Using a Arc<RwLock<T>> here is useless because NativeExecutor is neither
     // Send nor Sync.
-    cache: HashMap<K, Rc<JitNativeExecutor<'a>>>,
+    cache: HashMap<K, Arc<JitNativeExecutor<'a>>>,
 }
 
 impl<'a, K> JitProgramCache<'a, K>
@@ -35,7 +35,7 @@ where
         self.context
     }
 
-    pub fn get(&self, key: &K) -> Option<Rc<JitNativeExecutor<'a>>> {
+    pub fn get(&self, key: &K) -> Option<Arc<JitNativeExecutor<'a>>> {
         self.cache.get(key).cloned()
     }
 
@@ -44,11 +44,14 @@ where
         key: K,
         program: &Program,
         opt_level: OptLevel,
-    ) -> Rc<JitNativeExecutor<'a>> {
-        let module = self.context.compile(program, None).expect("should compile");
+    ) -> Arc<JitNativeExecutor<'a>> {
+        let module = self
+            .context
+            .compile(program, false)
+            .expect("should compile");
         let executor = JitNativeExecutor::from_native_module(module, opt_level);
 
-        let executor = Rc::new(executor);
+        let executor = Arc::new(executor);
         self.cache.insert(key, executor.clone());
 
         executor

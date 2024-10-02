@@ -122,6 +122,10 @@ pub fn build_unbox<'ctx, 'this>(
     let inner_ty = inner_type.build(context, helper, registry, metadata, &info.ty)?;
     let inner_layout = inner_type.layout(registry)?;
 
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
     // Load the boxed value from memory.
     let value = entry
         .append_operation(llvm::load(
@@ -185,7 +189,7 @@ fn build_forward_snapshot<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
 
     #[test]
@@ -201,7 +205,7 @@ mod test {
             }
         };
 
-        run_program_assert_output(&program, "run_test", &[], JitValue::Uint32(2));
+        run_program_assert_output(&program, "run_test", &[], Value::Uint32(2));
     }
 
     #[test]
@@ -217,7 +221,7 @@ mod test {
             }
         };
 
-        run_program_assert_output(&program, "run_test", &[], JitValue::Uint32(2));
+        run_program_assert_output(&program, "run_test", &[], Value::Uint32(2));
     }
 
     #[test]
@@ -239,9 +243,9 @@ mod test {
             &program,
             "run_test",
             &[],
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Felt252(1234.into())),
+                value: Box::new(Value::Felt252(1234.into())),
                 debug_name: None,
             },
         );
@@ -267,9 +271,9 @@ mod test {
             &program,
             "run_test",
             &[],
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: Vec::new(),
                     debug_name: None,
                 }),
@@ -298,9 +302,9 @@ mod test {
             &program,
             "run_test",
             &[],
-            JitValue::Enum {
+            Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: Vec::new(),
                     debug_name: None,
                 }),
@@ -329,9 +333,9 @@ mod test {
             &program,
             "run_test",
             &[],
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Felt252(1234.into())),
+                value: Box::new(Value::Felt252(1234.into())),
                 debug_name: None,
             },
         );

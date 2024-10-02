@@ -5,7 +5,7 @@ use crate::{
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{create_engine, generate_function_name},
-    values::JitValue,
+    values::Value,
     OptLevel,
 };
 use cairo_lang_sierra::{
@@ -27,6 +27,9 @@ pub struct JitNativeExecutor<'m> {
 
     gas_metadata: GasMetadata,
 }
+
+unsafe impl<'a> Send for JitNativeExecutor<'a> {}
+unsafe impl<'a> Sync for JitNativeExecutor<'a> {}
 
 impl std::fmt::Debug for JitNativeExecutor<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -62,12 +65,10 @@ impl<'m> JitNativeExecutor<'m> {
     }
 
     /// Execute a program with the given params.
-    ///
-    /// See [`cairo_native::jit_runner::execute`]
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
-        args: &[JitValue],
+        args: &[Value],
         gas: Option<u128>,
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
@@ -78,7 +79,7 @@ impl<'m> JitNativeExecutor<'m> {
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.extract_signature(function_id),
+            self.extract_signature(function_id).unwrap(),
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
@@ -86,12 +87,10 @@ impl<'m> JitNativeExecutor<'m> {
     }
 
     /// Execute a program with the given params.
-    ///
-    /// See [`cairo_native::jit_runner::execute`]
     pub fn invoke_dynamic_with_syscall_handler(
         &self,
         function_id: &FunctionId,
-        args: &[JitValue],
+        args: &[Value],
         gas: Option<u128>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ExecutionResult, Error> {
@@ -103,7 +102,7 @@ impl<'m> JitNativeExecutor<'m> {
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.extract_signature(function_id),
+            self.extract_signature(function_id).unwrap(),
             args,
             available_gas,
             Some(syscall_handler),
@@ -125,10 +124,10 @@ impl<'m> JitNativeExecutor<'m> {
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.extract_signature(function_id),
-            &[JitValue::Struct {
-                fields: vec![JitValue::Array(
-                    args.iter().cloned().map(JitValue::Felt252).collect(),
+            self.extract_signature(function_id).unwrap(),
+            &[Value::Struct {
+                fields: vec![Value::Array(
+                    args.iter().cloned().map(Value::Felt252).collect(),
                 )],
                 // TODO: Populate `debug_name`.
                 debug_name: None,
@@ -139,18 +138,17 @@ impl<'m> JitNativeExecutor<'m> {
     }
 
     pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
-        let function_name = generate_function_name(function_id);
+        let function_name = generate_function_name(function_id, false);
         let function_name = format!("_mlir_ciface_{function_name}");
 
         // Arguments and return values are hardcoded since they'll be handled by the trampoline.
         self.engine.lookup(&function_name) as *mut c_void
     }
 
-    fn extract_signature(&self, function_id: &FunctionId) -> &FunctionSignature {
-        &self
-            .program_registry()
+    fn extract_signature(&self, function_id: &FunctionId) -> Option<&FunctionSignature> {
+        self.program_registry()
             .get_function(function_id)
-            .unwrap()
-            .signature
+            .ok()
+            .map(|func| &func.signature)
     }
 }

@@ -3,8 +3,7 @@
 //! Like a Box but it can be null.
 
 use super::LibfuncHelper;
-use crate::block_ext::BlockExt;
-use crate::{error::Result, metadata::MetadataStorage};
+use crate::{error::Result, metadata::MetadataStorage, utils::BlockExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -127,7 +126,6 @@ fn build_match_nullable<'ctx, 'this>(
     ));
 
     block_is_null.append_operation(helper.br(0, &[], location));
-
     block_is_not_null.append_operation(helper.br(1, &[arg], location));
 
     Ok(())
@@ -171,7 +169,7 @@ fn build_forward_snapshot<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
 
     #[test]
@@ -206,7 +204,7 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], JitValue::Null);
+        run_program_assert_output(&program, "run_test", &[], Value::Null);
     }
 
     #[test]
@@ -266,14 +264,14 @@ mod test {
             "run_test",
             &[jit_enum!(
                 1,
-                JitValue::Struct {
+                Value::Struct {
                     fields: Vec::new(),
                     debug_name: None
                 }
             )],
             jit_enum!(
                 1,
-                JitValue::Struct {
+                Value::Struct {
                     fields: Vec::new(),
                     debug_name: None
                 }

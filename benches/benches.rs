@@ -31,10 +31,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     let jit_logistic_map =
         jit_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::None);
 
-    let factorial_function_id = find_function_id(&factorial, "factorial_2M::factorial_2M::main");
-    let fibonacci_function_id = find_function_id(&fibonacci, "fib_2M::fib_2M::main");
+    let factorial_function_id =
+        find_function_id(&factorial, "factorial_2M::factorial_2M::main").unwrap();
+    let fibonacci_function_id = find_function_id(&fibonacci, "fib_2M::fib_2M::main").unwrap();
     let logistic_map_function_id =
-        find_function_id(&logistic_map, "logistic_map::logistic_map::main");
+        find_function_id(&logistic_map, "logistic_map::logistic_map::main").unwrap();
 
     c.bench_function("Cached JIT factorial_2M", |b| {
         b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
@@ -134,15 +135,17 @@ fn criterion_benchmark(c: &mut Criterion) {
 fn load_contract(path: impl AsRef<Path>) -> Program {
     let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
     let main_crate_ids = setup_project(&mut db, path.as_ref()).unwrap();
-    compile_prepared_db(
-        &mut db,
+    let sirrra_program = compile_prepared_db(
+        &db,
         main_crate_ids,
         CompilerConfig {
             replace_ids: true,
             ..Default::default()
         },
     )
-    .unwrap()
+    .unwrap();
+
+    sirrra_program.program
 }
 
 criterion_group!(benches, criterion_benchmark);

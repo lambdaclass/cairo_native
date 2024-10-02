@@ -50,7 +50,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 |b, program| {
                     let native_context = NativeContext::new();
                     b.iter(|| {
-                        let module = native_context.compile(program, None).unwrap();
+                        let module = native_context.compile(program, false).unwrap();
                         // pass manager internally verifies the MLIR output is correct.
                         let native_executor =
                             JitNativeExecutor::from_native_module(module, Default::default());
@@ -69,7 +69,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 program,
                 |b, program| {
                     let native_context = NativeContext::new();
-                    let module = native_context.compile(program, None).unwrap();
+                    let module = native_context.compile(program, false).unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                     let native_executor =
                         JitNativeExecutor::from_native_module(module, Default::default());

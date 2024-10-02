@@ -2,7 +2,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt, error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,6 +29,7 @@ use melior::{
     },
     Context,
 };
+use num_bigint::BigUint;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -194,27 +197,27 @@ pub fn build_from_felt252<'ctx, 'this>(
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
-    let arg1 = entry.argument(1)?.into();
+    let value = entry.argument(1)?.into();
 
-    let k1 = entry.const_int(context, location, 1, 252)?;
     let k128 = entry.const_int(context, location, 128, 252)?;
+    let bound = BigUint::from(u128::MAX) + 1u32;
+    let k_u128_max_1 = entry.const_int(context, location, bound, 252)?;
 
-    let min_wide_val = entry.append_op_result(arith::shli(k1, k128, location))?;
     let is_wide = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
-        arg1,
-        min_wide_val,
+        value,
+        k_u128_max_1,
         location,
     ))?;
 
     let lsb_bits = entry.append_op_result(arith::trunci(
-        arg1,
+        value,
         IntegerType::new(context, 128).into(),
         location,
     ))?;
 
-    let msb_bits = entry.append_op_result(arith::shrui(arg1, k128, location))?;
+    let msb_bits = entry.append_op_result(arith::shrui(value, k128, location))?;
     let msb_bits = entry.append_op_result(arith::trunci(
         msb_bits,
         IntegerType::new(context, 128).into(),
@@ -563,7 +566,7 @@ pub fn build_guarantee_verify<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -632,9 +635,9 @@ mod test {
             }
         };
         static ref U128_WIDEMUL: (String, Program) = load_cairo! {
-            use integer::u128_wide_mul;
-            fn run_test(lhs: u128, rhs: u128) -> (u128, u128) {
-                u128_wide_mul(lhs, rhs)
+            use core::num::traits::WideMul;
+            fn run_test(lhs: u128, rhs: u128) -> u256 {
+                WideMul::wide_mul(lhs,rhs)
             }
         };
         static ref U128_TO_FELT252: (String, Program) = load_cairo! {
@@ -645,12 +648,19 @@ mod test {
             }
         };
         static ref U128_SQRT: (String, Program) = load_cairo! {
-            use core::integer::u128_sqrt;
-
+            use core::num::traits::Sqrt;
             fn run_test(value: u128) -> u64 {
-                u128_sqrt(value)
+                value.sqrt()
             }
         };
+    }
+
+    fn u256(value: BigUint) -> Value {
+        assert!(value.bits() <= 256);
+        jit_struct!(
+            Value::Uint128((&value & &u128::MAX.into()).try_into().unwrap()),
+            Value::Uint128(((&value >> 128u32) & &u128::MAX.into()).try_into().unwrap()),
+        )
     }
 
     #[test]
@@ -684,7 +694,7 @@ mod test {
     fn u128_safe_divmod() {
         let program = &U128_SAFE_DIVMOD;
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
-        let error = JitValue::Felt252(Felt::from_bytes_be_slice(b"Division by 0"));
+        let error = Value::Felt252(Felt::from_bytes_be_slice(b"Division by 0"));
 
         run_program_assert_output(
             program,
@@ -848,7 +858,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        jit_panic!(JitValue::Felt252(error)),
+                        jit_panic!(Value::Felt252(error)),
                     );
                 }
             }
@@ -900,7 +910,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        jit_panic!(JitValue::Felt252(error)),
+                        jit_panic!(Value::Felt252(error)),
                     );
                 }
             }
@@ -969,31 +979,31 @@ mod test {
             program,
             "run_test",
             &[0u128.into(), 0u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[0u128.into(), 1u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 0u128.into()],
-            jit_struct!(0u128.into(), 0u128.into()),
+            u256(0u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[1u128.into(), 1u128.into()],
-            jit_struct!(0u128.into(), 1u128.into()),
+            u256(1u32.into()),
         );
         run_program_assert_output(
             program,
             "run_test",
             &[u128::MAX.into(), u128::MAX.into()],
-            jit_struct!((u128::MAX - 1).into(), 1u128.into()),
+            u256(BigUint::from(u128::MAX) * BigUint::from(u128::MAX)),
         );
     }
 }

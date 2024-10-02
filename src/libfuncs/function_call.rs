@@ -5,11 +5,10 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::generate_function_name,
+    utils::{generate_function_name, BlockExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -19,11 +18,12 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{cf, func, index, llvm, memref},
+    dialect::{cf, index, llvm, memref},
     ir::{
-        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute},
+        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
+        operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Location, Type, Value,
+        Block, Identifier, Location, Type, Value,
     },
     Context,
 };
@@ -45,9 +45,9 @@ pub fn build<'ctx, 'this>(
     for (idx, type_id) in info.function.signature.param_types.iter().enumerate() {
         let type_info = registry.get_type(type_id)?;
 
-        if !(type_info.is_builtin() && type_info.is_zst(registry)) {
+        if !(type_info.is_builtin() && type_info.is_zst(registry)?) {
             arguments.push(
-                if tailrec_meta.is_none() && type_info.is_memory_allocated(registry) {
+                if tailrec_meta.is_none() && type_info.is_memory_allocated(registry)? {
                     let elem_ty = type_info.build(context, helper, registry, metadata, type_id)?;
                     let stack_ptr = helper.init_block().alloca1(
                         context,
@@ -70,17 +70,10 @@ pub fn build<'ctx, 'this>(
         let depth_counter =
             entry.append_op_result(memref::load(tailrec_meta.depth_counter(), &[], location))?;
 
-        let index1 = entry.append_op_result(index::constant(
-            context,
-            IntegerAttribute::new(Type::index(context), 1),
-            location,
-        ))?;
-
-        let depth_counter_plus_1 =
-            entry.append_op_result(index::add(depth_counter, index1, location))?;
-
+        let k1 = entry.const_int_from_type(context, location, 1, Type::index(context))?;
+        let new_depth_counter = entry.append_op_result(index::add(depth_counter, k1, location))?;
         entry.append_operation(memref::store(
-            depth_counter_plus_1,
+            new_depth_counter,
             tailrec_meta.depth_counter(),
             &[],
             location,
@@ -99,16 +92,14 @@ pub fn build<'ctx, 'this>(
                 .ret_types
                 .iter()
                 .map(|ty| {
-                    (
+                    Ok((
                         registry
-                            .get_type(ty)
-                            .unwrap()
-                            .build(context, helper, registry, metadata, ty)
-                            .unwrap(),
+                            .get_type(ty)?
+                            .build(context, helper, registry, metadata, ty)?,
                         location,
-                    )
+                    ))
                 })
-                .collect::<Vec<_>>(),
+                .collect::<Result<Vec<_>>>()?,
         ));
         tailrec_meta.set_return_target(cont_block);
 
@@ -117,7 +108,7 @@ pub fn build<'ctx, 'this>(
         for var_info in &info.signature.branch_signatures[0].vars {
             let type_info = registry.get_type(&var_info.ty)?;
 
-            if type_info.is_builtin() && type_info.is_zst(registry) {
+            if type_info.is_builtin() && type_info.is_zst(registry)? {
                 results.push(cont_block.append_op_result(llvm::undef(
                     type_info.build(context, helper, registry, metadata, &var_info.ty)?,
                     location,
@@ -139,14 +130,18 @@ pub fn build<'ctx, 'this>(
             .ret_types
             .iter()
             .filter_map(|type_id| {
-                let type_info = registry.get_type(type_id).unwrap();
-                if type_info.is_builtin() && type_info.is_zst(registry) {
-                    None
-                } else {
-                    Some((type_id, type_info))
-                }
+                let type_info = match registry.get_type(type_id) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e.into())),
+                };
+                let is_zst = match type_info.is_zst(registry) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e)),
+                };
+
+                (!(type_info.is_builtin() && is_zst)).then_some(Ok((type_id, type_info)))
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
         // A function has a return pointer if either:
         //   - There are multiple return values.
         //   - The return value is memory allocated.
@@ -163,7 +158,9 @@ pub fn build<'ctx, 'this>(
             Some(false)
         } else if return_types
             .first()
-            .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
+            .map(|(_, type_info)| type_info.is_memory_allocated(registry))
+            .transpose()?
+            == Some(true)
         {
             let (type_id, type_info) = return_types[0];
             let layout = type_info.layout(registry)?;
@@ -187,13 +184,26 @@ pub fn build<'ctx, 'this>(
             None
         };
 
-        let function_call_result = entry.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, &generate_function_name(&info.function.id)),
-            &arguments,
-            &result_types,
-            location,
-        ));
+        let function_call_result = entry.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "callee"),
+                        FlatSymbolRefAttribute::new(
+                            context,
+                            &format!("impl${}", generate_function_name(&info.function.id, false)),
+                        )
+                        .into(),
+                    ),
+                    // (
+                    //     Identifier::new(context, "CConv"),
+                    //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
+                    // ),
+                ])
+                .add_operands(&arguments)
+                .add_results(&[llvm::r#type::r#struct(context, &result_types, false)])
+                .build()?,
+        )?;
 
         let mut results = Vec::new();
         match has_return_ptr {
@@ -204,7 +214,7 @@ pub fn build<'ctx, 'this>(
                 for (idx, type_id) in info.function.signature.ret_types.iter().enumerate() {
                     let type_info = registry.get_type(type_id)?;
 
-                    if type_info.is_builtin() && type_info.is_zst(registry) {
+                    if type_info.is_builtin() && type_info.is_zst(registry)? {
                         results.push(entry.argument(idx)?.into());
                     } else {
                         let val = arguments[0];
@@ -235,15 +245,19 @@ pub fn build<'ctx, 'this>(
                 // Complex return type. Just extract the values from the struct, since LLVM will
                 // handle the rest.
 
-                let mut count = 0;
                 for (idx, type_id) in info.function.signature.ret_types.iter().enumerate() {
                     let type_info = registry.get_type(type_id)?;
 
-                    if type_info.is_builtin() && type_info.is_zst(registry) {
+                    if type_info.is_builtin() && type_info.is_zst(registry)? {
                         results.push(entry.argument(idx)?.into());
                     } else {
-                        let val = function_call_result.result(count)?.into();
-                        count += 1;
+                        let val = entry.extract_value(
+                            context,
+                            location,
+                            function_call_result,
+                            result_types[idx],
+                            idx,
+                        )?;
 
                         results.push(val);
                     }
@@ -255,12 +269,18 @@ pub fn build<'ctx, 'this>(
                 let mut count = 0;
                 for (idx, type_id) in info.function.signature.ret_types.iter().enumerate() {
                     let type_info = registry.get_type(type_id)?;
-                    assert!(!type_info.is_memory_allocated(registry));
+                    assert!(!type_info.is_memory_allocated(registry)?);
 
-                    if type_info.is_builtin() && type_info.is_zst(registry) {
+                    if type_info.is_builtin() && type_info.is_zst(registry)? {
                         results.push(entry.argument(idx)?.into());
                     } else {
-                        let value = function_call_result.result(count)?.into();
+                        let value = entry.extract_value(
+                            context,
+                            location,
+                            function_call_result,
+                            result_types[count],
+                            count,
+                        )?;
                         count += 1;
 
                         results.push(value);

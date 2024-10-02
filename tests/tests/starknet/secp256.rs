@@ -3,7 +3,7 @@ use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use cairo_native::{
     starknet::{Secp256k1Point, Secp256r1Point, StarknetSyscallHandler, SyscallResult, U256},
-    values::JitValue,
+    Value,
 };
 use lazy_static::lazy_static;
 use pretty_assertions_sorted::assert_eq;
@@ -247,6 +247,15 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         args.push_back(p);
         Ok(rets.pop_front().unwrap())
     }
+
+    fn sha256_process_block(
+        &mut self,
+        _prev_state: &[u32; 8],
+        _current_block: &[u32; 16],
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<[u32; 8]> {
+        unimplemented!()
+    }
 }
 
 lazy_static! {
@@ -284,12 +293,12 @@ fn secp256k1_new() {
         &SECP256_PROGRAM,
         "secp256k1_new",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(0)],
                 debug_name: None,
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -298,11 +307,11 @@ fn secp256k1_new() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None
                 }),
@@ -316,12 +325,12 @@ fn secp256k1_new() {
         &SECP256_PROGRAM,
         "secp256k1_new",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -330,11 +339,11 @@ fn secp256k1_new() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256K1Point {
+                value: Box::new(Value::Secp256K1Point {
                     x: (0, 0),
                     y: (0, 0),
                 }),
@@ -348,12 +357,12 @@ fn secp256k1_new() {
         &SECP256_PROGRAM,
         "secp256k1_new",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
         ],
@@ -362,11 +371,11 @@ fn secp256k1_new() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256K1Point {
+                value: Box::new(Value::Secp256K1Point {
                     x: (u128::MAX, u128::MAX),
                     y: (u128::MAX, u128::MAX),
                 }),
@@ -444,11 +453,11 @@ fn secp256k1_add() {
         &SECP256_PROGRAM,
         "secp256k1_add",
         &[
-            JitValue::Secp256K1Point {
+            Value::Secp256K1Point {
                 x: (0, 0),
                 y: (0, 0),
             },
-            JitValue::Secp256K1Point {
+            Value::Secp256K1Point {
                 x: (0, 0),
                 y: (0, 0),
             },
@@ -458,9 +467,9 @@ fn secp256k1_add() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: Box::new(Value::Secp256K1Point {
                 x: (0, 0),
                 y: (0, 0),
             }),
@@ -472,11 +481,11 @@ fn secp256k1_add() {
         &SECP256_PROGRAM,
         "secp256k1_add",
         &[
-            JitValue::Secp256K1Point {
+            Value::Secp256K1Point {
                 x: (0, u128::MAX),
                 y: (u128::MAX, 0),
             },
-            JitValue::Secp256K1Point {
+            Value::Secp256K1Point {
                 x: (u128::MAX, 0),
                 y: (0, u128::MAX),
             },
@@ -486,9 +495,9 @@ fn secp256k1_add() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: Box::new(Value::Secp256K1Point {
                 x: (u128::MAX, 0),
                 y: (0, u128::MAX),
             }),
@@ -500,11 +509,11 @@ fn secp256k1_add() {
         &SECP256_PROGRAM,
         "secp256k1_add",
         &[
-            JitValue::Secp256K1Point {
+            Value::Secp256K1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
             },
-            JitValue::Secp256K1Point {
+            Value::Secp256K1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
             },
@@ -514,9 +523,9 @@ fn secp256k1_add() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: Box::new(Value::Secp256K1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
             }),
@@ -625,12 +634,12 @@ fn secp256k1_mul() {
         &SECP256_PROGRAM,
         "secp256k1_mul",
         &[
-            JitValue::Secp256K1Point {
+            Value::Secp256K1Point {
                 x: (0, 0),
                 y: (0, 0),
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -639,9 +648,9 @@ fn secp256k1_mul() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: Box::new(Value::Secp256K1Point {
                 x: (0, 0),
                 y: (0, 0),
             }),
@@ -653,12 +662,12 @@ fn secp256k1_mul() {
         &SECP256_PROGRAM,
         "secp256k1_mul",
         &[
-            JitValue::Secp256K1Point {
+            Value::Secp256K1Point {
                 x: (u128::MAX, 0),
                 y: (0, u128::MAX),
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -667,9 +676,9 @@ fn secp256k1_mul() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: Box::new(Value::Secp256K1Point {
                 x: (0, u128::MAX),
                 y: (u128::MAX, 0),
             }),
@@ -681,12 +690,12 @@ fn secp256k1_mul() {
         &SECP256_PROGRAM,
         "secp256k1_mul",
         &[
-            JitValue::Secp256K1Point {
+            Value::Secp256K1Point {
                 x: (u128::MAX, 0),
                 y: (0, u128::MAX),
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -695,9 +704,9 @@ fn secp256k1_mul() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256K1Point {
+            value: Box::new(Value::Secp256K1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
             }),
@@ -792,13 +801,13 @@ fn secp256k1_get_point_from_x() {
         &SECP256_PROGRAM,
         "secp256k1_get_point_from_x",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(0)],
                 debug_name: None,
             },
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None,
                 }),
@@ -810,11 +819,11 @@ fn secp256k1_get_point_from_x() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None,
                 }),
@@ -828,13 +837,13 @@ fn secp256k1_get_point_from_x() {
         &SECP256_PROGRAM,
         "secp256k1_get_point_from_x",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
-            JitValue::Enum {
+            Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None,
                 }),
@@ -846,11 +855,11 @@ fn secp256k1_get_point_from_x() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256K1Point {
+                value: Box::new(Value::Secp256K1Point {
                     x: (0, 0),
                     y: (0, 0),
                 }),
@@ -864,13 +873,13 @@ fn secp256k1_get_point_from_x() {
         &SECP256_PROGRAM,
         "secp256k1_get_point_from_x",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                 debug_name: None,
             },
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None,
                 }),
@@ -882,11 +891,11 @@ fn secp256k1_get_point_from_x() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256K1Point {
+                value: Box::new(Value::Secp256K1Point {
                     x: (u128::MAX, 0),
                     y: (0, u128::MAX),
                 }),
@@ -900,13 +909,13 @@ fn secp256k1_get_point_from_x() {
         &SECP256_PROGRAM,
         "secp256k1_get_point_from_x",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
-            JitValue::Enum {
+            Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None,
                 }),
@@ -918,11 +927,11 @@ fn secp256k1_get_point_from_x() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256K1Point {
+                value: Box::new(Value::Secp256K1Point {
                     x: (0, u128::MAX),
                     y: (u128::MAX, 0),
                 }),
@@ -1007,7 +1016,7 @@ fn secp256k1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256k1_get_xy",
-        &[JitValue::Secp256K1Point {
+        &[Value::Secp256K1Point {
             x: (0, 0),
             y: (0, 0),
         }],
@@ -1016,16 +1025,16 @@ fn secp256k1_get_xy() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(0), Value::Uint128(0)],
                         debug_name: None,
                     },
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(0), Value::Uint128(0)],
                         debug_name: None,
                     },
                 ],
@@ -1038,7 +1047,7 @@ fn secp256k1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256k1_get_xy",
-        &[JitValue::Secp256K1Point {
+        &[Value::Secp256K1Point {
             x: (0, u128::MAX),
             y: (u128::MAX, 0),
         }],
@@ -1047,16 +1056,16 @@ fn secp256k1_get_xy() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                         debug_name: None,
                     },
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(0), Value::Uint128(u128::MAX)],
                         debug_name: None,
                     },
                 ],
@@ -1069,7 +1078,7 @@ fn secp256k1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256k1_get_xy",
-        &[JitValue::Secp256K1Point {
+        &[Value::Secp256K1Point {
             x: (u128::MAX, 0),
             y: (0, u128::MAX),
         }],
@@ -1078,16 +1087,16 @@ fn secp256k1_get_xy() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(0), Value::Uint128(u128::MAX)],
                         debug_name: None,
                     },
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                         debug_name: None,
                     },
                 ],
@@ -1100,7 +1109,7 @@ fn secp256k1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256k1_get_xy",
-        &[JitValue::Secp256K1Point {
+        &[Value::Secp256K1Point {
             x: (u128::MAX, u128::MAX),
             y: (u128::MAX, u128::MAX),
         }],
@@ -1109,16 +1118,16 @@ fn secp256k1_get_xy() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(u128::MAX), Value::Uint128(u128::MAX)],
                         debug_name: None,
                     },
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(u128::MAX), Value::Uint128(u128::MAX)],
                         debug_name: None,
                     },
                 ],
@@ -1200,12 +1209,12 @@ fn secp256r1_new() {
         &SECP256_PROGRAM,
         "secp256r1_new",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(0)],
                 debug_name: None,
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -1214,11 +1223,11 @@ fn secp256r1_new() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None
                 }),
@@ -1232,12 +1241,12 @@ fn secp256r1_new() {
         &SECP256_PROGRAM,
         "secp256r1_new",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -1246,11 +1255,11 @@ fn secp256r1_new() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256R1Point {
+                value: Box::new(Value::Secp256R1Point {
                     x: (0, 0),
                     y: (0, 0),
                 }),
@@ -1264,12 +1273,12 @@ fn secp256r1_new() {
         &SECP256_PROGRAM,
         "secp256r1_new",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
         ],
@@ -1278,11 +1287,11 @@ fn secp256r1_new() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256R1Point {
+                value: Box::new(Value::Secp256R1Point {
                     x: (u128::MAX, u128::MAX),
                     y: (u128::MAX, u128::MAX),
                 }),
@@ -1360,11 +1369,11 @@ fn secp256r1_add() {
         &SECP256_PROGRAM,
         "secp256r1_add",
         &[
-            JitValue::Secp256R1Point {
+            Value::Secp256R1Point {
                 x: (0, 0),
                 y: (0, 0),
             },
-            JitValue::Secp256R1Point {
+            Value::Secp256R1Point {
                 x: (0, 0),
                 y: (0, 0),
             },
@@ -1374,9 +1383,9 @@ fn secp256r1_add() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: Box::new(Value::Secp256R1Point {
                 x: (0, 0),
                 y: (0, 0),
             }),
@@ -1388,11 +1397,11 @@ fn secp256r1_add() {
         &SECP256_PROGRAM,
         "secp256r1_add",
         &[
-            JitValue::Secp256R1Point {
+            Value::Secp256R1Point {
                 x: (u128::MAX, 0),
                 y: (0, u128::MAX),
             },
-            JitValue::Secp256R1Point {
+            Value::Secp256R1Point {
                 x: (0, u128::MAX),
                 y: (u128::MAX, 0),
             },
@@ -1402,9 +1411,9 @@ fn secp256r1_add() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: Box::new(Value::Secp256R1Point {
                 x: (0, u128::MAX),
                 y: (u128::MAX, 0),
             }),
@@ -1416,11 +1425,11 @@ fn secp256r1_add() {
         &SECP256_PROGRAM,
         "secp256r1_add",
         &[
-            JitValue::Secp256R1Point {
+            Value::Secp256R1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
             },
-            JitValue::Secp256R1Point {
+            Value::Secp256R1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
             },
@@ -1430,9 +1439,9 @@ fn secp256r1_add() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: Box::new(Value::Secp256R1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
             }),
@@ -1541,12 +1550,12 @@ fn secp256r1_mul() {
         &SECP256_PROGRAM,
         "secp256r1_mul",
         &[
-            JitValue::Secp256R1Point {
+            Value::Secp256R1Point {
                 x: (0, 0),
                 y: (0, 0),
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -1555,9 +1564,9 @@ fn secp256r1_mul() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: Box::new(Value::Secp256R1Point {
                 x: (0, 0),
                 y: (0, 0),
             }),
@@ -1569,12 +1578,12 @@ fn secp256r1_mul() {
         &SECP256_PROGRAM,
         "secp256r1_mul",
         &[
-            JitValue::Secp256R1Point {
+            Value::Secp256R1Point {
                 x: (u128::MAX, 0),
                 y: (0, u128::MAX),
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
@@ -1583,9 +1592,9 @@ fn secp256r1_mul() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: Box::new(Value::Secp256R1Point {
                 x: (0, u128::MAX),
                 y: (u128::MAX, 0),
             }),
@@ -1597,12 +1606,12 @@ fn secp256r1_mul() {
         &SECP256_PROGRAM,
         "secp256r1_mul",
         &[
-            JitValue::Secp256R1Point {
+            Value::Secp256R1Point {
                 x: (0, u128::MAX),
                 y: (u128::MAX, 0),
             },
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
         ],
@@ -1611,9 +1620,9 @@ fn secp256r1_mul() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Secp256R1Point {
+            value: Box::new(Value::Secp256R1Point {
                 x: (u128::MAX, u128::MAX),
                 y: (u128::MAX, u128::MAX),
             }),
@@ -1708,13 +1717,13 @@ fn secp256r1_get_point_from_x() {
         &SECP256_PROGRAM,
         "secp256r1_get_point_from_x",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(0)],
                 debug_name: None,
             },
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None,
                 }),
@@ -1726,11 +1735,11 @@ fn secp256r1_get_point_from_x() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None,
                 }),
@@ -1744,13 +1753,13 @@ fn secp256r1_get_point_from_x() {
         &SECP256_PROGRAM,
         "secp256r1_get_point_from_x",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(0), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
-            JitValue::Enum {
+            Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None,
                 }),
@@ -1762,11 +1771,11 @@ fn secp256r1_get_point_from_x() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256R1Point {
+                value: Box::new(Value::Secp256R1Point {
                     x: (0, 0),
                     y: (0, 0),
                 }),
@@ -1780,13 +1789,13 @@ fn secp256r1_get_point_from_x() {
         &SECP256_PROGRAM,
         "secp256r1_get_point_from_x",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                 debug_name: None,
             },
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None,
                 }),
@@ -1798,11 +1807,11 @@ fn secp256r1_get_point_from_x() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256R1Point {
+                value: Box::new(Value::Secp256R1Point {
                     x: (u128::MAX, 0),
                     y: (0, u128::MAX),
                 }),
@@ -1816,13 +1825,13 @@ fn secp256r1_get_point_from_x() {
         &SECP256_PROGRAM,
         "secp256r1_get_point_from_x",
         &[
-            JitValue::Struct {
-                fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
+            Value::Struct {
+                fields: vec![Value::Uint128(u128::MAX), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
-            JitValue::Enum {
+            Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: vec![],
                     debug_name: None,
                 }),
@@ -1834,11 +1843,11 @@ fn secp256r1_get_point_from_x() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Enum {
+            value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Secp256R1Point {
+                value: Box::new(Value::Secp256R1Point {
                     x: (0, u128::MAX),
                     y: (u128::MAX, 0),
                 }),
@@ -1923,7 +1932,7 @@ fn secp256r1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256r1_get_xy",
-        &[JitValue::Secp256R1Point {
+        &[Value::Secp256R1Point {
             x: (0, 0),
             y: (0, 0),
         }],
@@ -1932,16 +1941,16 @@ fn secp256r1_get_xy() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(0), Value::Uint128(0)],
                         debug_name: None,
                     },
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(0)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(0), Value::Uint128(0)],
                         debug_name: None,
                     },
                 ],
@@ -1954,7 +1963,7 @@ fn secp256r1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256r1_get_xy",
-        &[JitValue::Secp256R1Point {
+        &[Value::Secp256R1Point {
             x: (0, u128::MAX),
             y: (u128::MAX, 0),
         }],
@@ -1963,16 +1972,16 @@ fn secp256r1_get_xy() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                         debug_name: None,
                     },
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(0), Value::Uint128(u128::MAX)],
                         debug_name: None,
                     },
                 ],
@@ -1985,7 +1994,7 @@ fn secp256r1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256r1_get_xy",
-        &[JitValue::Secp256R1Point {
+        &[Value::Secp256R1Point {
             x: (u128::MAX, 0),
             y: (0, u128::MAX),
         }],
@@ -1994,16 +2003,16 @@ fn secp256r1_get_xy() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(0), JitValue::Uint128(u128::MAX)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(0), Value::Uint128(u128::MAX)],
                         debug_name: None,
                     },
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(0)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                         debug_name: None,
                     },
                 ],
@@ -2016,7 +2025,7 @@ fn secp256r1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256r1_get_xy",
-        &[JitValue::Secp256R1Point {
+        &[Value::Secp256R1Point {
             x: (u128::MAX, u128::MAX),
             y: (u128::MAX, u128::MAX),
         }],
@@ -2025,16 +2034,16 @@ fn secp256r1_get_xy() {
     );
     assert_eq!(
         result.return_value,
-        JitValue::Enum {
+        Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(u128::MAX), Value::Uint128(u128::MAX)],
                         debug_name: None,
                     },
-                    JitValue::Struct {
-                        fields: vec![JitValue::Uint128(u128::MAX), JitValue::Uint128(u128::MAX)],
+                    Value::Struct {
+                        fields: vec![Value::Uint128(u128::MAX), Value::Uint128(u128::MAX)],
                         debug_name: None,
                     },
                 ],

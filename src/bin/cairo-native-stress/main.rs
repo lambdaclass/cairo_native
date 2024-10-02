@@ -13,33 +13,38 @@
 //!
 //! For documentation on the specific cache used, see `NaiveAotCache`.
 
-use std::alloc::System;
-use std::fmt::{Debug, Display};
-use std::fs::{create_dir_all, read_dir, OpenOptions};
-use std::hash::Hash;
-use std::io;
-use std::path::{Path, PathBuf};
-use std::{collections::HashMap, fs, rc::Rc, time::Instant};
-
-use cairo_lang_sierra::ids::FunctionId;
-use cairo_lang_sierra::program::{GenericArg, Program};
-use cairo_lang_sierra::program_registry::ProgramRegistry;
-use cairo_lang_starknet::compile::compile_path;
-use cairo_native::metadata::gas::GasMetadata;
-use cairo_native::utils::SHARED_LIBRARY_EXT;
-use cairo_native::{
-    context::NativeContext, executor::AotNativeExecutor, starknet::DummySyscallHandler,
-    utils::find_entry_point_by_idx,
+use cairo_lang_sierra::{
+    ids::FunctionId,
+    program::{GenericArg, Program},
+    program_registry::ProgramRegistry,
 };
-use cairo_native::{module_to_object, object_to_shared_lib, OptLevel};
+use cairo_lang_starknet::compile::compile_path;
+use cairo_native::{
+    context::NativeContext,
+    executor::AotNativeExecutor,
+    metadata::gas::GasMetadata,
+    module_to_object, object_to_shared_lib,
+    starknet::DummySyscallHandler,
+    utils::{find_entry_point_by_idx, SHARED_LIBRARY_EXT},
+    OptLevel,
+};
 use clap::Parser;
 use libloading::Library;
 use num_bigint::BigInt;
 use stats_alloc::{Region, StatsAlloc, INSTRUMENTED_SYSTEM};
+use std::{
+    alloc::System,
+    collections::HashMap,
+    fmt::{Debug, Display},
+    fs::{self, create_dir_all, read_dir, OpenOptions},
+    hash::Hash,
+    io,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 use tracing::{debug, info, info_span, warn};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, Layer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 #[global_allocator]
 static GLOBAL_ALLOC: &StatsAlloc<System> = &INSTRUMENTED_SYSTEM;
@@ -246,7 +251,7 @@ where
     K: PartialEq + Eq + Hash + Display,
 {
     context: &'a NativeContext,
-    cache: HashMap<K, Rc<AotNativeExecutor>>,
+    cache: HashMap<K, Arc<AotNativeExecutor>>,
 }
 
 impl<'a, K> NaiveAotCache<'a, K>
@@ -260,7 +265,7 @@ where
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<Rc<AotNativeExecutor>> {
+    pub fn get(&self, key: &K) -> Option<Arc<AotNativeExecutor>> {
         self.cache.get(key).cloned()
     }
 
@@ -272,10 +277,10 @@ where
         key: K,
         program: &Program,
         opt_level: OptLevel,
-    ) -> Rc<AotNativeExecutor> {
+    ) -> Arc<AotNativeExecutor> {
         let native_module = self
             .context
-            .compile(program, None)
+            .compile(program, false)
             .expect("failed to compile program");
 
         let registry = ProgramRegistry::new(program).expect("failed to get program registry");
@@ -303,7 +308,7 @@ where
         };
 
         let executor = AotNativeExecutor::new(shared_library, registry, metadata);
-        let executor = Rc::new(executor);
+        let executor = Arc::new(executor);
 
         self.cache.insert(key, executor.clone());
 

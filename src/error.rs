@@ -4,6 +4,7 @@ use cairo_lang_sierra::extensions::modules::utils::Range;
 use cairo_lang_sierra::{
     edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
 };
+use num_bigint::BigInt;
 use std::{alloc::LayoutError, num::TryFromIntError};
 use thiserror::Error;
 
@@ -42,10 +43,10 @@ pub enum Error {
     MissingMetadata,
 
     #[error(transparent)]
-    SierraAssert(SierraAssertError),
+    SierraAssert(#[from] SierraAssertError),
 
-    #[error("a compiler related error happened: {0}")]
-    Error(String),
+    #[error(transparent)]
+    Compiler(#[from] CompilerError),
 
     #[error(transparent)]
     EditStateError(#[from] EditStateError),
@@ -58,6 +59,21 @@ pub enum Error {
 
     #[error("cairo const data mismatch")]
     ConstDataMismatch,
+
+    #[error("expected an integer-like type")]
+    IntegerLikeTypeExpected,
+
+    #[error("integer conversion failed")]
+    IntegerConversion,
+
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    LibraryLoadError(#[from] libloading::Error),
+
+    #[error(transparent)]
+    SerdeJsonError(#[from] serde_json::Error),
 }
 
 impl Error {
@@ -77,6 +93,21 @@ pub enum SierraAssertError {
     Cast,
     #[error("range should always intersect, from {:?} to {:?}", ranges.0, ranges.1)]
     Range { ranges: Box<(Range, Range)> },
+    #[error("type {:?} should never be initialized", .0)]
+    BadTypeInit(ConcreteTypeId),
+    #[error("expected type information was missing")]
+    BadTypeInfo,
+    #[error("circuit cannot be evaluated")]
+    ImpossibleCircuit,
+}
+
+#[derive(Error, Debug)]
+pub enum CompilerError {
+    #[error("BoundedInt value is out of range: {:?} not within [{:?}, {:?})", value, range.0, range.1)]
+    BoundedIntOutOfRange {
+        value: Box<BigInt>,
+        range: Box<(BigInt, BigInt)>,
+    },
 }
 
 #[cfg(test)]

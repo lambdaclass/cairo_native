@@ -2,10 +2,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::{Error, Result},
     metadata::MetadataStorage,
-    utils::ProgramRegistryExt,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -551,7 +550,7 @@ pub fn build_from_felt252<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_panic, jit_struct, load_cairo},
-        values::JitValue,
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -595,16 +594,15 @@ mod test {
             }
         };
         static ref U16_SQRT: (String, Program) = load_cairo! {
-            use core::integer::u16_sqrt;
-
+            use core::num::traits::Sqrt;
             fn run_test(value: u16) -> u8 {
-                u16_sqrt(value)
+                value.sqrt()
             }
         };
         static ref U16_WIDEMUL: (String, Program) = load_cairo! {
-            use integer::u16_wide_mul;
+            use core::num::traits::WideMul;
             fn run_test(lhs: u16, rhs: u16) -> u32 {
-                u16_wide_mul(lhs, rhs)
+                WideMul::wide_mul(lhs,rhs)
             }
         };
     }
@@ -687,7 +685,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        jit_panic!(JitValue::Felt252(error)),
+                        jit_panic!(Value::Felt252(error)),
                     );
                 }
             }
@@ -739,7 +737,7 @@ mod test {
                         program,
                         "run_test",
                         &[lhs.into(), rhs.into()],
-                        jit_panic!(JitValue::Felt252(error)),
+                        jit_panic!(Value::Felt252(error)),
                     );
                 }
             }

@@ -1,17 +1,16 @@
 #![cfg(feature = "build-cli")]
 #![allow(dead_code)]
 
-pub mod test;
-
 use anyhow::bail;
-use cairo_felt::Felt252;
 use cairo_lang_runner::{casm_run::format_next_item, RunResultValue};
 use cairo_lang_sierra::program::{Function, Program};
-use cairo_native::{execution_result::ExecutionResult, values::JitValue};
+use cairo_native::{execution_result::ExecutionResult, Value};
 use clap::ValueEnum;
 use itertools::Itertools;
 use starknet_types_core::felt::Felt;
 use std::vec::IntoIter;
+
+pub mod test;
 
 pub(super) struct RunArgs {
     pub run_mode: RunMode,
@@ -43,7 +42,7 @@ pub fn find_function<'a>(
 }
 
 /// Formats the given felts as a panic string.
-pub fn format_for_panic(mut felts: IntoIter<Felt252>) -> String {
+pub fn format_for_panic(mut felts: IntoIter<Felt>) -> String {
     let mut items = Vec::new();
     while let Some(item) = format_next_item(&mut felts) {
         items.push(item.quote_if_string());
@@ -62,21 +61,20 @@ pub fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResult
     let mut felts: Vec<Felt> = Vec::new();
 
     match &result.return_value {
-        outer_value @ JitValue::Enum {
+        outer_value @ Value::Enum {
             tag,
             value,
             debug_name,
         } => {
-            if debug_name
-                .as_ref()
-                .expect("missing debug name")
-                .starts_with("core::panics::PanicResult::")
+            let debug_name = debug_name.as_ref().expect("missing debug name");
+            if debug_name.starts_with("core::panics::PanicResult::")
+                || debug_name.starts_with("Enum<ut@core::panics::PanicResult::")
             {
                 is_success = *tag == 0;
 
                 if !is_success {
                     match &**value {
-                        JitValue::Struct { fields, .. } => {
+                        Value::Struct { fields, .. } => {
                             for field in fields {
                                 let felt = jitvalue_to_felt(field);
                                 felts.extend(felt);
@@ -110,15 +108,15 @@ pub fn result_to_runresult(result: &ExecutionResult) -> anyhow::Result<RunResult
 }
 
 /// Convert a JIT value to a felt.
-fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
+fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
     let mut felts = Vec::new();
     match value {
-        JitValue::Felt252(felt) => vec![*felt],
-        JitValue::BoundedInt { value, .. } => vec![*value],
-        JitValue::Array(fields) | JitValue::Struct { fields, .. } => {
+        Value::Felt252(felt) => vec![*felt],
+        Value::BoundedInt { value, .. } => vec![*value],
+        Value::Array(fields) | Value::Struct { fields, .. } => {
             fields.iter().flat_map(jitvalue_to_felt).collect()
         }
-        JitValue::Enum {
+        Value::Enum {
             value,
             tag,
             debug_name,
@@ -135,7 +133,7 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
                 todo!()
             }
         }
-        JitValue::Felt252Dict { value, .. } => {
+        Value::Felt252Dict { value, .. } => {
             for (key, value) in value {
                 felts.push(*key);
                 let felt = jitvalue_to_felt(value);
@@ -144,37 +142,36 @@ fn jitvalue_to_felt(value: &JitValue) -> Vec<Felt> {
 
             felts
         }
-        JitValue::Uint8(x) => vec![(*x).into()],
-        JitValue::Uint16(x) => vec![(*x).into()],
-        JitValue::Uint32(x) => vec![(*x).into()],
-        JitValue::Uint64(x) => vec![(*x).into()],
-        JitValue::Uint128(x) => vec![(*x).into()],
-        JitValue::Sint8(x) => vec![(*x).into()],
-        JitValue::Sint16(x) => vec![(*x).into()],
-        JitValue::Sint32(x) => vec![(*x).into()],
-        JitValue::Sint64(x) => vec![(*x).into()],
-        JitValue::Sint128(x) => vec![(*x).into()],
-        JitValue::Bytes31(bytes) => vec![Felt::from_bytes_le_slice(bytes)],
-        JitValue::EcPoint(x, y) => {
+        Value::Uint8(x) => vec![(*x).into()],
+        Value::Uint16(x) => vec![(*x).into()],
+        Value::Uint32(x) => vec![(*x).into()],
+        Value::Uint64(x) => vec![(*x).into()],
+        Value::Uint128(x) => vec![(*x).into()],
+        Value::Sint8(x) => vec![(*x).into()],
+        Value::Sint16(x) => vec![(*x).into()],
+        Value::Sint32(x) => vec![(*x).into()],
+        Value::Sint64(x) => vec![(*x).into()],
+        Value::Sint128(x) => vec![(*x).into()],
+        Value::Bytes31(bytes) => vec![Felt::from_bytes_le_slice(bytes)],
+        Value::EcPoint(x, y) => {
             vec![*x, *y]
         }
-        JitValue::EcState(a, b, c, d) => {
+        Value::EcState(a, b, c, d) => {
             vec![*a, *b, *c, *d]
         }
-        JitValue::Secp256K1Point { x, y } => {
+        Value::Secp256K1Point { x, y } => {
             vec![x.0.into(), x.1.into(), y.0.into(), y.1.into()]
         }
-        JitValue::Secp256R1Point { x, y } => {
+        Value::Secp256R1Point { x, y } => {
             vec![x.0.into(), x.1.into(), y.0.into(), y.1.into()]
         }
-        JitValue::Null => vec![0.into()],
+        Value::Null => vec![0.into()],
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cairo_felt::Felt252;
     use cairo_lang_sierra::ProgramParser;
     use std::collections::HashMap;
 
@@ -214,12 +211,12 @@ mod tests {
         assert_eq!(
             result_to_runresult(&ExecutionResult {
                 remaining_gas: None,
-                return_value: JitValue::Enum {
+                return_value: Value::Enum {
                     tag: 34,
-                    value: JitValue::Array(vec![
-                        JitValue::Felt252(42.into()),
-                        JitValue::Uint8(100),
-                        JitValue::Uint128(1000),
+                    value: Value::Array(vec![
+                        Value::Felt252(42.into()),
+                        Value::Uint8(100),
+                        Value::Uint128(1000),
                     ])
                     .into(),
                     debug_name: Some("debug_name".into()),
@@ -228,10 +225,10 @@ mod tests {
             })
             .unwrap(),
             RunResultValue::Success(vec![
-                Felt252::from(34),
-                Felt252::from(42),
-                Felt252::from(100),
-                Felt252::from(1000)
+                Felt::from(34),
+                Felt::from(42),
+                Felt::from(100),
+                Felt::from(1000)
             ])
         );
     }
@@ -242,15 +239,15 @@ mod tests {
         assert_eq!(
             result_to_runresult(&ExecutionResult {
                 remaining_gas: None,
-                return_value: JitValue::Enum {
+                return_value: Value::Enum {
                     tag: 0,
-                    value: JitValue::Uint64(24).into(),
+                    value: Value::Uint64(24).into(),
                     debug_name: Some("core::panics::PanicResult::Test".into()),
                 },
                 builtin_stats: Default::default(),
             })
             .unwrap(),
-            RunResultValue::Success(vec![Felt252::from(24)])
+            RunResultValue::Success(vec![Felt::from(24)])
         );
     }
 
@@ -260,9 +257,9 @@ mod tests {
         // Tests the conversion with unsuported return value.
         let _ = result_to_runresult(&ExecutionResult {
             remaining_gas: None,
-            return_value: JitValue::Enum {
+            return_value: Value::Enum {
                 tag: 10,
-                value: JitValue::Uint64(24).into(),
+                value: Value::Uint64(24).into(),
                 debug_name: Some("core::panics::PanicResult::Test".into()),
             },
             builtin_stats: Default::default(),
@@ -276,9 +273,9 @@ mod tests {
         // Tests the conversion with no debug name.
         let _ = result_to_runresult(&ExecutionResult {
             remaining_gas: None,
-            return_value: JitValue::Enum {
+            return_value: Value::Enum {
                 tag: 10,
-                value: JitValue::Uint64(24).into(),
+                value: Value::Uint64(24).into(),
                 debug_name: None,
             },
             builtin_stats: Default::default(),
@@ -292,13 +289,13 @@ mod tests {
         assert_eq!(
             result_to_runresult(&ExecutionResult {
                 remaining_gas: None,
-                return_value: JitValue::Enum {
+                return_value: Value::Enum {
                     tag: 10,
-                    value: JitValue::Struct {
+                    value: Value::Struct {
                         fields: vec![
-                            JitValue::Felt252(42.into()),
-                            JitValue::Uint8(100),
-                            JitValue::Uint128(1000),
+                            Value::Felt252(42.into()),
+                            Value::Uint8(100),
+                            Value::Uint128(1000),
                         ],
                         debug_name: Some("debug_name".into()),
                     }
@@ -308,11 +305,7 @@ mod tests {
                 builtin_stats: Default::default(),
             })
             .unwrap(),
-            RunResultValue::Panic(vec![
-                Felt252::from(42),
-                Felt252::from(100),
-                Felt252::from(1000)
-            ])
+            RunResultValue::Panic(vec![Felt::from(42), Felt::from(100), Felt::from(1000)])
         );
     }
 
@@ -322,11 +315,11 @@ mod tests {
         assert_eq!(
             result_to_runresult(&ExecutionResult {
                 remaining_gas: None,
-                return_value: JitValue::Uint8(10),
+                return_value: Value::Uint8(10),
                 builtin_stats: Default::default(),
             })
             .unwrap(),
-            RunResultValue::Success(vec![Felt252::from(10)])
+            RunResultValue::Success(vec![Felt::from(10)])
         );
     }
 
@@ -335,7 +328,7 @@ mod tests {
         let felt_value: Felt = 42.into();
 
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Felt252(felt_value)),
+            jitvalue_to_felt(&Value::Felt252(felt_value)),
             vec![felt_value]
         );
     }
@@ -343,10 +336,10 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_array() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Array(vec![
-                JitValue::Felt252(42.into()),
-                JitValue::Uint8(100),
-                JitValue::Uint128(1000),
+            jitvalue_to_felt(&Value::Array(vec![
+                Value::Felt252(42.into()),
+                Value::Uint8(100),
+                Value::Uint128(1000),
             ])),
             vec![Felt::from(42), Felt::from(100), Felt::from(1000)]
         );
@@ -355,11 +348,11 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_struct() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Struct {
+            jitvalue_to_felt(&Value::Struct {
                 fields: vec![
-                    JitValue::Felt252(42.into()),
-                    JitValue::Uint8(100),
-                    JitValue::Uint128(1000)
+                    Value::Felt252(42.into()),
+                    Value::Uint8(100),
+                    Value::Uint128(1000)
                 ],
                 debug_name: Some("debug_name".into())
             }),
@@ -371,12 +364,12 @@ mod tests {
     fn test_jitvalue_to_felt_enum() {
         // With debug name
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Enum {
+            jitvalue_to_felt(&Value::Enum {
                 tag: 34,
-                value: JitValue::Array(vec![
-                    JitValue::Felt252(42.into()),
-                    JitValue::Uint8(100),
-                    JitValue::Uint128(1000),
+                value: Value::Array(vec![
+                    Value::Felt252(42.into()),
+                    Value::Uint8(100),
+                    Value::Uint128(1000),
                 ])
                 .into(),
                 debug_name: Some("debug_name".into())
@@ -391,9 +384,9 @@ mod tests {
 
         // With core::bool debug name and tag 1
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Enum {
+            jitvalue_to_felt(&Value::Enum {
                 tag: 1,
-                value: JitValue::Uint128(1000).into(),
+                value: Value::Uint128(1000).into(),
                 debug_name: Some("core::bool".into())
             }),
             vec![Felt::ONE]
@@ -401,9 +394,9 @@ mod tests {
 
         // With core::bool debug name and tag not 1
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Enum {
+            jitvalue_to_felt(&Value::Enum {
                 tag: 10,
-                value: JitValue::Uint128(1000).into(),
+                value: Value::Uint128(1000).into(),
                 debug_name: Some("core::bool".into())
             }),
             vec![Felt::ZERO]
@@ -412,21 +405,18 @@ mod tests {
 
     #[test]
     fn test_jitvalue_to_felt_u8() {
-        assert_eq!(jitvalue_to_felt(&JitValue::Uint8(10)), vec![Felt::from(10)]);
+        assert_eq!(jitvalue_to_felt(&Value::Uint8(10)), vec![Felt::from(10)]);
     }
 
     #[test]
     fn test_jitvalue_to_felt_u16() {
-        assert_eq!(
-            jitvalue_to_felt(&JitValue::Uint16(100)),
-            vec![Felt::from(100)]
-        );
+        assert_eq!(jitvalue_to_felt(&Value::Uint16(100)), vec![Felt::from(100)]);
     }
 
     #[test]
     fn test_jitvalue_to_felt_u32() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Uint32(1000)),
+            jitvalue_to_felt(&Value::Uint32(1000)),
             vec![Felt::from(1000)]
         );
     }
@@ -434,7 +424,7 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_u64() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Uint64(10000)),
+            jitvalue_to_felt(&Value::Uint64(10000)),
             vec![Felt::from(10000)]
         );
     }
@@ -442,23 +432,20 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_u128() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Uint128(100000)),
+            jitvalue_to_felt(&Value::Uint128(100000)),
             vec![Felt::from(100000)]
         );
     }
 
     #[test]
     fn test_jitvalue_to_felt_sint8() {
-        assert_eq!(
-            jitvalue_to_felt(&JitValue::Sint8(-10)),
-            vec![Felt::from(-10)]
-        );
+        assert_eq!(jitvalue_to_felt(&Value::Sint8(-10)), vec![Felt::from(-10)]);
     }
 
     #[test]
     fn test_jitvalue_to_felt_sint16() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Sint16(-100)),
+            jitvalue_to_felt(&Value::Sint16(-100)),
             vec![Felt::from(-100)]
         );
     }
@@ -466,7 +453,7 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_sint32() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Sint32(-1000)),
+            jitvalue_to_felt(&Value::Sint32(-1000)),
             vec![Felt::from(-1000)]
         );
     }
@@ -474,7 +461,7 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_sint64() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Sint64(-10000)),
+            jitvalue_to_felt(&Value::Sint64(-10000)),
             vec![Felt::from(-10000)]
         );
     }
@@ -482,22 +469,22 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_sint128() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Sint128(-100000)),
+            jitvalue_to_felt(&Value::Sint128(-100000)),
             vec![Felt::from(-100000)]
         );
     }
 
     #[test]
     fn test_jitvalue_to_felt_null() {
-        assert_eq!(jitvalue_to_felt(&JitValue::Null), vec![Felt::ZERO]);
+        assert_eq!(jitvalue_to_felt(&Value::Null), vec![Felt::ZERO]);
     }
 
     #[test]
     fn test_jitvalue_to_felt_felt252_dict() {
-        let result = jitvalue_to_felt(&JitValue::Felt252Dict {
+        let result = jitvalue_to_felt(&Value::Felt252Dict {
             value: HashMap::from([
-                (Felt::ONE, JitValue::Felt252(Felt::from(101))),
-                (Felt::TWO, JitValue::Felt252(Felt::from(102))),
+                (Felt::ONE, Value::Felt252(Felt::from(101))),
+                (Felt::TWO, Value::Felt252(Felt::from(102))),
             ]),
             debug_name: None,
         });
@@ -512,20 +499,20 @@ mod tests {
 
     #[test]
     fn test_jitvalue_to_felt_felt252_dict_with_array() {
-        let result = jitvalue_to_felt(&JitValue::Felt252Dict {
+        let result = jitvalue_to_felt(&Value::Felt252Dict {
             value: HashMap::from([
                 (
                     Felt::ONE,
-                    JitValue::Array(Vec::from([
-                        JitValue::Felt252(Felt::from(101)),
-                        JitValue::Felt252(Felt::from(102)),
+                    Value::Array(Vec::from([
+                        Value::Felt252(Felt::from(101)),
+                        Value::Felt252(Felt::from(102)),
                     ])),
                 ),
                 (
                     Felt::TWO,
-                    JitValue::Array(Vec::from([
-                        JitValue::Felt252(Felt::from(201)),
-                        JitValue::Felt252(Felt::from(202)),
+                    Value::Array(Vec::from([
+                        Value::Felt252(Felt::from(201)),
+                        Value::Felt252(Felt::from(202)),
                     ])),
                 ),
             ]),
@@ -542,7 +529,7 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_ec_point() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::EcPoint(Felt::ONE, Felt::TWO,)),
+            jitvalue_to_felt(&Value::EcPoint(Felt::ONE, Felt::TWO,)),
             vec![Felt::ONE, Felt::TWO,]
         );
     }
@@ -550,7 +537,7 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_ec_state() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::EcState(
+            jitvalue_to_felt(&Value::EcState(
                 Felt::ONE,
                 Felt::TWO,
                 Felt::THREE,
@@ -563,7 +550,7 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_secp256_k1_point() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Secp256K1Point {
+            jitvalue_to_felt(&Value::Secp256K1Point {
                 x: (1, 2),
                 y: (3, 4)
             }),
@@ -574,7 +561,7 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_secp256_r1_point() {
         assert_eq!(
-            jitvalue_to_felt(&JitValue::Secp256R1Point {
+            jitvalue_to_felt(&Value::Secp256R1Point {
                 x: (1, 2),
                 y: (3, 4)
             }),

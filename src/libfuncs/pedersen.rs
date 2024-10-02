@@ -3,10 +3,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -18,7 +17,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, ods},
+    dialect::arith,
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -85,13 +84,8 @@ pub fn build_pedersen<'ctx>(
     let lhs_i256 = entry.append_op_result(arith::extui(lhs, i256_ty, location))?;
     let rhs_i256 = entry.append_op_result(arith::extui(rhs, i256_ty, location))?;
 
-    let lhs_be =
-        entry.append_op_result(ods::llvm::intr_bswap(context, lhs_i256, location).into())?;
-    let rhs_be =
-        entry.append_op_result(ods::llvm::intr_bswap(context, rhs_i256, location).into())?;
-
-    entry.store(context, location, lhs_ptr, lhs_be)?;
-    entry.store(context, location, rhs_ptr, rhs_be)?;
+    entry.store(context, location, lhs_ptr, lhs_i256)?;
+    entry.store(context, location, rhs_ptr, rhs_i256)?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -100,9 +94,8 @@ pub fn build_pedersen<'ctx>(
     runtime_bindings
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)?;
 
-    let result_be = entry.load(context, location, dst_ptr, i256_ty)?;
-    let op = entry.append_op_result(ods::llvm::intr_bswap(context, result_be, location).into())?;
-    let result = entry.append_op_result(arith::trunci(op, felt252_ty, location))?;
+    let result = entry.load(context, location, dst_ptr, i256_ty)?;
+    let result = entry.append_op_result(arith::trunci(result, felt252_ty, location))?;
 
     entry.append_operation(helper.br(0, &[pedersen_builtin, result], location));
     Ok(())

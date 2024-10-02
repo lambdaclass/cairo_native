@@ -3,35 +3,39 @@
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
 //! of time. It also provides a cache to avoid recompiling previously compiled programs.
 
-pub use self::{aot::AotNativeExecutor, jit::JitNativeExecutor};
+pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNativeExecutor};
 use crate::{
+    arch::{AbiArgument, JitValueWithInfoWrapper},
     error::Error,
-    execution_result::{BuiltinStats, ContractExecutionResult, ExecutionResult},
+    execution_result::{BuiltinStats, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::get_integer_layout,
-    values::JitValue,
+    utils::RangeExt,
+    values::Value,
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarkNetTypeConcrete,
+        ConcreteType,
     },
-    ids::{ConcreteTypeId, FunctionId},
+    ids::ConcreteTypeId,
     program::FunctionSignature,
-    program_registry::{ProgramRegistry, ProgramRegistryError},
+    program_registry::ProgramRegistry,
 };
 use libc::c_void;
-use starknet_types_core::felt::Felt;
+use num_bigint::BigInt;
+use num_traits::One;
 use std::{
     alloc::Layout,
     arch::global_asm,
-    ptr::{addr_of_mut, null_mut, NonNull},
-    rc::Rc,
+    ptr::{addr_of_mut, NonNull},
 };
 
 mod aot;
+mod contract;
 mod jit;
 
 #[cfg(target_arch = "aarch64")]
@@ -53,86 +57,6 @@ extern "C" {
     );
 }
 
-/// The cairo native executor, either AOT or JIT based.
-#[derive(Debug, Clone)]
-pub enum NativeExecutor<'m> {
-    Aot(Rc<AotNativeExecutor>),
-    Jit(Rc<JitNativeExecutor<'m>>),
-}
-
-impl<'a> NativeExecutor<'a> {
-    /// Invoke the given function by its function id, with the given arguments and gas.
-    pub fn invoke_dynamic(
-        &self,
-        function_id: &FunctionId,
-        args: &[JitValue],
-        gas: Option<u128>,
-    ) -> Result<ExecutionResult, Error> {
-        match self {
-            NativeExecutor::Aot(executor) => executor.invoke_dynamic(function_id, args, gas),
-            NativeExecutor::Jit(executor) => executor.invoke_dynamic(function_id, args, gas),
-        }
-    }
-
-    /// Invoke the given function by its function id, with the given arguments and gas.
-    /// This should be used for programs which require a syscall handler, whose
-    /// implementation should be passed on.
-    pub fn invoke_dynamic_with_syscall_handler(
-        &self,
-        function_id: &FunctionId,
-        args: &[JitValue],
-        gas: Option<u128>,
-        syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ExecutionResult, Error> {
-        match self {
-            NativeExecutor::Aot(executor) => executor.invoke_dynamic_with_syscall_handler(
-                function_id,
-                args,
-                gas,
-                syscall_handler,
-            ),
-            NativeExecutor::Jit(executor) => executor.invoke_dynamic_with_syscall_handler(
-                function_id,
-                args,
-                gas,
-                syscall_handler,
-            ),
-        }
-    }
-
-    /// Invoke the given function by its function id, with the given arguments and gas.
-    /// This should be used for starknet contracts which require a syscall handler, whose
-    /// implementation should be passed on.
-    pub fn invoke_contract_dynamic(
-        &self,
-        function_id: &FunctionId,
-        args: &[Felt],
-        gas: Option<u128>,
-        syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult, Error> {
-        match self {
-            NativeExecutor::Aot(executor) => {
-                executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)
-            }
-            NativeExecutor::Jit(executor) => {
-                executor.invoke_contract_dynamic(function_id, args, gas, syscall_handler)
-            }
-        }
-    }
-}
-
-impl<'m> From<AotNativeExecutor> for NativeExecutor<'m> {
-    fn from(value: AotNativeExecutor) -> Self {
-        Self::Aot(Rc::new(value))
-    }
-}
-
-impl<'m> From<JitNativeExecutor<'m>> for NativeExecutor<'m> {
-    fn from(value: JitNativeExecutor<'m>) -> Self {
-        Self::Jit(Rc::new(value))
-    }
-}
-
 /// Internal method.
 ///
 /// Invokes the given function by constructing the function call depending on the arguments given.
@@ -146,13 +70,13 @@ fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
     function_signature: &FunctionSignature,
-    args: &[JitValue],
+    args: &[Value],
     gas: u128,
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
     let arena = Bump::new();
-    let mut invoke_data = ArgumentMapper::new(&arena, registry);
+    let mut invoke_data = Vec::<u8>::new();
 
     // Generate return pointer (if necessary).
     //
@@ -164,31 +88,37 @@ fn invoke_dynamic(
     let mut ret_types_iter = function_signature
         .ret_types
         .iter()
-        .filter(|id| {
-            let info = registry.get_type(id).unwrap();
-            !(info.is_builtin() && info.is_zst(registry))
+        .filter_map(|id| {
+            let type_info = match registry.get_type(id) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e.into())),
+            };
+            let is_zst = match type_info.is_zst(registry) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e)),
+            };
+
+            Ok((!(type_info.is_builtin() && is_zst)).then_some(id)).transpose()
         })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
         .peekable();
 
     let num_return_args = ret_types_iter.clone().count();
     let mut return_ptr = if num_return_args > 1
         || ret_types_iter
             .peek()
-            .is_some_and(|id| registry.get_type(id).unwrap().is_complex(registry))
+            .map(|id| registry.get_type(id)?.is_complex(registry))
+            .transpose()?
+            == Some(true)
     {
-        let layout = ret_types_iter.fold(Layout::new::<()>(), |layout, id| {
-            let type_info = registry.get_type(id).unwrap();
-            layout
-                .extend(type_info.layout(registry).unwrap())
-                .unwrap()
-                .0
-        });
+        let layout = ret_types_iter.try_fold(Layout::new::<()>(), |layout, id| {
+            let type_info = registry.get_type(id)?;
+            Result::<_, Error>::Ok(layout.extend(type_info.layout(registry)?)?.0)
+        })?;
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
-        invoke_data.push_aligned(
-            get_integer_layout(64).align(),
-            &[return_ptr.as_ptr() as u64],
-        );
+        return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
 
         Some(return_ptr)
     } else {
@@ -213,38 +143,52 @@ fn invoke_dynamic(
 
     // Generate argument list.
     let mut iter = args.iter();
-    for type_id in function_signature.param_types.iter().filter(|id| {
-        let info = registry.get_type(id).unwrap();
-        !info.is_zst(registry)
+    for item in function_signature.param_types.iter().filter_map(|type_id| {
+        let type_info = match registry.get_type(type_id) {
+            Ok(x) => x,
+            Err(e) => return Some(Err(e.into())),
+        };
+        match type_info.is_zst(registry) {
+            Ok(x) => (!x).then_some(Ok((type_id, type_info))),
+            Err(e) => Some(Err(e)),
+        }
     }) {
+        let (type_id, type_info) = item?;
+
         // Process gas requirements and syscall handler.
-        match registry.get_type(type_id).unwrap() {
-            CoreTypeConcrete::GasBuiltin(_) => invoke_data.push_aligned(
-                get_integer_layout(128).align(),
-                &[gas as u64, (gas >> 64) as u64],
-            ),
+        match type_info {
+            CoreTypeConcrete::GasBuiltin(_) => gas.to_bytes(&mut invoke_data)?,
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
                     .expect("syscall handler is required");
 
-                invoke_data.push_aligned(
-                    get_integer_layout(64).align(),
-                    &[syscall_handler as *mut _ as u64],
-                );
+                (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
+                    .to_bytes(&mut invoke_data)?;
             }
-            type_info => invoke_data
-                .push(
-                    type_id,
-                    type_info,
-                    if type_info.is_builtin() {
-                        &JitValue::Uint64(0)
-                    } else {
-                        iter.next().unwrap()
-                    },
-                )
-                .unwrap(),
+            type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
+            type_info => JitValueWithInfoWrapper {
+                value: iter.next().unwrap(),
+                type_id,
+                info: type_info,
+
+                arena: &arena,
+                registry,
+            }
+            .to_bytes(&mut invoke_data)?,
         }
+    }
+
+    // Pad invoke data to the 16 byte boundary avoid segfaults.
+    #[cfg(target_arch = "aarch64")]
+    const REGISTER_BYTES: usize = 64;
+    #[cfg(target_arch = "x86_64")]
+    const REGISTER_BYTES: usize = 48;
+    if invoke_data.len() > REGISTER_BYTES {
+        invoke_data.resize(
+            REGISTER_BYTES + (invoke_data.len() - REGISTER_BYTES).next_multiple_of(16),
+            0,
+        );
     }
 
     // Invoke the trampoline.
@@ -256,8 +200,8 @@ fn invoke_dynamic(
     unsafe {
         invoke_trampoline(
             function_ptr,
-            invoke_data.invoke_data().as_ptr(),
-            invoke_data.invoke_data().len(),
+            invoke_data.as_ptr().cast(),
+            invoke_data.len() >> 3,
             ret_registers.as_mut_ptr(),
         );
     }
@@ -284,7 +228,7 @@ fn invoke_dynamic(
     let mut remaining_gas = None;
     let mut builtin_stats = BuiltinStats::default();
     for type_id in &function_signature.ret_types {
-        let type_info = registry.get_type(type_id).unwrap();
+        let type_info = registry.get_type(type_id)?;
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => {
                 remaining_gas = Some(match &mut return_ptr {
@@ -304,7 +248,7 @@ fn invoke_dynamic(
                 None => {}
             },
             _ if type_info.is_builtin() => {
-                if !type_info.is_zst(registry) {
+                if !type_info.is_zst(registry)? {
                     let value = match &mut return_ptr {
                         Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
                         None => ret_registers[0],
@@ -317,6 +261,13 @@ fn invoke_dynamic(
                         CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
                         CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
                         CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
+                        CoreTypeConcrete::RangeCheck96(_) => builtin_stats.range_check_96 = value,
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                            builtin_stats.circuit_add = value
+                        }
+                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                            builtin_stats.circuit_mul = value
+                        }
                         _ => unreachable!("{type_id:?}"),
                     }
                 }
@@ -330,297 +281,28 @@ fn invoke_dynamic(
         .ret_types
         .last()
         .and_then(|ret_type| {
-            let type_info = registry.get_type(ret_type).unwrap();
+            let type_info = match registry.get_type(ret_type) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e.into())),
+            };
+
             if type_info.is_builtin() {
                 None
             } else {
-                Some(parse_result(
-                    ret_type,
-                    registry,
-                    return_ptr,
-                    ret_registers,
-                    // TODO: Consider returning an Option<JitValue> as return_value instead
-                    // As cairo functions can not have a return value
-                ))
+                Some(parse_result(ret_type, registry, return_ptr, ret_registers))
             }
         })
-        .unwrap_or_else(|| {
-            Ok(JitValue::Struct {
-                fields: vec![],
-                debug_name: None,
-            })
-        })?;
+        .transpose()?
+        .unwrap_or_else(|| Value::Struct {
+            fields: vec![],
+            debug_name: None,
+        });
 
     Ok(ExecutionResult {
         remaining_gas,
         return_value,
         builtin_stats,
     })
-}
-
-pub struct ArgumentMapper<'a> {
-    arena: &'a Bump,
-    registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
-
-    invoke_data: Vec<u64>,
-}
-
-impl<'a> ArgumentMapper<'a> {
-    pub fn new(arena: &'a Bump, registry: &'a ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
-        Self {
-            arena,
-            registry,
-            invoke_data: Vec::new(),
-        }
-    }
-
-    pub fn invoke_data(&self) -> &[u64] {
-        &self.invoke_data
-    }
-
-    pub fn push_aligned(&mut self, align: usize, mut values: &[u64]) {
-        assert!(align.is_power_of_two());
-        assert!(align <= 16);
-
-        #[cfg(target_arch = "x86_64")]
-        const NUM_REGISTER_ARGS: usize = 6;
-        #[cfg(target_arch = "aarch64")]
-        const NUM_REGISTER_ARGS: usize = 8;
-
-        if align == 16 {
-            // This works because on both aarch64 and x86_64 the stack is already aligned to
-            // 16 bytes when the trampoline starts pushing values.
-
-            // Whenever a value spans across multiple registers, if it's in a position where it would be split between
-            // registers and the stack it must be padded so that the entire value is stored within the stack.
-            if self.invoke_data.len() >= NUM_REGISTER_ARGS {
-                if self.invoke_data.len() & 1 != 0 {
-                    self.invoke_data.push(0);
-                }
-            } else if self.invoke_data.len() + 1 >= NUM_REGISTER_ARGS {
-                self.invoke_data.push(0);
-            } else {
-                let new_len = self.invoke_data.len() + values.len();
-                if new_len >= NUM_REGISTER_ARGS && new_len % 2 != 0 {
-                    let chunk;
-                    (chunk, values) = if values.len() >= 4 {
-                        values.split_at(4)
-                    } else {
-                        (values, [].as_slice())
-                    };
-                    self.invoke_data.extend(chunk);
-                    self.invoke_data.push(0);
-                }
-            }
-        }
-
-        self.invoke_data.extend(values);
-    }
-
-    pub fn push(
-        &mut self,
-        type_id: &ConcreteTypeId,
-        type_info: &CoreTypeConcrete,
-        value: &JitValue,
-    ) -> Result<(), Box<ProgramRegistryError>> {
-        match (type_info, value) {
-            (CoreTypeConcrete::Array(info), JitValue::Array(values)) => {
-                // TODO: Assert that `info.ty` matches all the values' types.
-
-                let type_info = self.registry.get_type(&info.ty)?;
-                let type_layout = type_info.layout(self.registry).unwrap().pad_to_align();
-
-                // This needs to be a heap-allocated pointer because it's the actual array data.
-                let ptr = if values.is_empty() {
-                    null_mut()
-                } else {
-                    unsafe { libc::realloc(null_mut(), type_layout.size() * values.len()) }
-                };
-
-                for (idx, value) in values.iter().enumerate() {
-                    unsafe {
-                        std::ptr::copy_nonoverlapping(
-                            value
-                                .to_jit(self.arena, self.registry, &info.ty)
-                                .unwrap()
-                                .cast()
-                                .as_ptr(),
-                            (ptr as usize + type_layout.size() * idx) as *mut u8,
-                            type_layout.size(),
-                        );
-                    }
-                }
-
-                self.push_aligned(
-                    get_integer_layout(64).align(),
-                    &[ptr as u64, 0, values.len() as u64, values.len() as u64],
-                );
-            }
-            (CoreTypeConcrete::EcPoint(_), JitValue::EcPoint(a, b)) => {
-                let align = get_integer_layout(252).align();
-                self.push_aligned(align, &a.to_le_digits());
-                self.push_aligned(align, &b.to_le_digits());
-            }
-            (CoreTypeConcrete::EcState(_), JitValue::EcState(a, b, c, d)) => {
-                let align = get_integer_layout(252).align();
-                self.push_aligned(align, &a.to_le_digits());
-                self.push_aligned(align, &b.to_le_digits());
-                self.push_aligned(align, &c.to_le_digits());
-                self.push_aligned(align, &d.to_le_digits());
-            }
-            (CoreTypeConcrete::Enum(info), JitValue::Enum { tag, value, .. }) => {
-                if type_info.is_memory_allocated(self.registry) {
-                    let (layout, tag_layout, variant_layouts) =
-                        crate::types::r#enum::get_layout_for_variants(
-                            self.registry,
-                            &info.variants,
-                        )
-                        .unwrap();
-
-                    let ptr = self.arena.alloc_layout(layout);
-                    unsafe {
-                        match tag_layout.size() {
-                            0 => {}
-                            1 => *ptr.cast::<u8>().as_mut() = *tag as u8,
-                            2 => *ptr.cast::<u16>().as_mut() = *tag as u16,
-                            4 => *ptr.cast::<u32>().as_mut() = *tag as u32,
-                            8 => *ptr.cast::<u64>().as_mut() = *tag as u64,
-                            _ => unreachable!(),
-                        }
-                    }
-
-                    let offset = tag_layout.extend(variant_layouts[*tag]).unwrap().1;
-                    let payload_ptr = value
-                        .to_jit(self.arena, self.registry, &info.variants[*tag])
-                        .unwrap();
-                    unsafe {
-                        std::ptr::copy_nonoverlapping(
-                            payload_ptr.cast::<u8>().as_ptr(),
-                            ptr.cast::<u8>().as_ptr().add(offset),
-                            variant_layouts[*tag].size(),
-                        );
-                    }
-
-                    self.invoke_data.push(ptr.as_ptr() as u64);
-                } else {
-                    // Write the tag.
-                    match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
-                        0 => {}
-                        _ => self.invoke_data.push(*tag as u64),
-                    }
-
-                    // Write the payload.
-                    let type_info = self.registry.get_type(&info.variants[*tag]).unwrap();
-                    self.push(&info.variants[*tag], type_info, value)?;
-                }
-            }
-            (
-                CoreTypeConcrete::Felt252(_)
-                | CoreTypeConcrete::StarkNet(
-                    StarkNetTypeConcrete::ClassHash(_)
-                    | StarkNetTypeConcrete::ContractAddress(_)
-                    | StarkNetTypeConcrete::StorageAddress(_)
-                    | StarkNetTypeConcrete::StorageBaseAddress(_),
-                ),
-                JitValue::Felt252(value),
-            ) => {
-                self.push_aligned(get_integer_layout(252).align(), &value.to_le_digits());
-            }
-            (CoreTypeConcrete::Bytes31(_), JitValue::Bytes31(value)) => {
-                self.push_aligned(
-                    get_integer_layout(248).align(),
-                    &Felt::from_bytes_be_slice(value).to_le_digits(),
-                );
-            }
-            (CoreTypeConcrete::Felt252Dict(_), JitValue::Felt252Dict { .. }) => {
-                #[cfg(not(feature = "with-runtime"))]
-                unimplemented!("enable the `with-runtime` feature to use felt252 dicts");
-
-                // TODO: Assert that `info.ty` matches all the values' types.
-
-                self.invoke_data.push(
-                    value
-                        .to_jit(self.arena, self.registry, type_id)
-                        .unwrap()
-                        .as_ptr() as u64,
-                );
-            }
-            (CoreTypeConcrete::Struct(info), JitValue::Struct { fields, .. }) => {
-                for (field_type_id, field_value) in info.members.iter().zip(fields) {
-                    self.push(
-                        field_type_id,
-                        self.registry.get_type(field_type_id)?,
-                        field_value,
-                    )?;
-                }
-            }
-            (CoreTypeConcrete::Uint128(_), JitValue::Uint128(value)) => self.push_aligned(
-                get_integer_layout(128).align(),
-                &[*value as u64, (value >> 64) as u64],
-            ),
-            (CoreTypeConcrete::Uint64(_), JitValue::Uint64(value)) => {
-                self.push_aligned(get_integer_layout(64).align(), &[*value]);
-            }
-            (CoreTypeConcrete::Uint32(_), JitValue::Uint32(value)) => {
-                self.push_aligned(get_integer_layout(32).align(), &[*value as u64]);
-            }
-            (CoreTypeConcrete::Uint16(_), JitValue::Uint16(value)) => {
-                self.push_aligned(get_integer_layout(16).align(), &[*value as u64]);
-            }
-            (CoreTypeConcrete::Uint8(_), JitValue::Uint8(value)) => {
-                self.push_aligned(get_integer_layout(8).align(), &[*value as u64]);
-            }
-            (CoreTypeConcrete::Sint128(_), JitValue::Sint128(value)) => {
-                self.push_aligned(
-                    get_integer_layout(128).align(),
-                    &[*value as u64, (value >> 64) as u64],
-                );
-            }
-            (CoreTypeConcrete::Sint64(_), JitValue::Sint64(value)) => {
-                self.push_aligned(get_integer_layout(64).align(), &[*value as u64]);
-            }
-            (CoreTypeConcrete::Sint32(_), JitValue::Sint32(value)) => {
-                self.push_aligned(get_integer_layout(32).align(), &[*value as u64]);
-            }
-            (CoreTypeConcrete::Sint16(_), JitValue::Sint16(value)) => {
-                self.push_aligned(get_integer_layout(16).align(), &[*value as u64]);
-            }
-            (CoreTypeConcrete::Sint8(_), JitValue::Sint8(value)) => {
-                self.push_aligned(get_integer_layout(8).align(), &[*value as u64]);
-            }
-            (CoreTypeConcrete::NonZero(info), _) => {
-                // TODO: Check that the value is indeed non-zero.
-                let type_info = self.registry.get_type(&info.ty)?;
-                self.push(&info.ty, type_info, value)?;
-            }
-            (CoreTypeConcrete::Snapshot(info), _) => {
-                let type_info = self.registry.get_type(&info.ty)?;
-                self.push(&info.ty, type_info, value)?;
-            }
-            (
-                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_)),
-                JitValue::Secp256K1Point { x, y } | JitValue::Secp256R1Point { x, y },
-            ) => {
-                let x_data = unsafe { std::mem::transmute::<[u128; 2], [u64; 4]>([x.0, x.1]) };
-                let y_data = unsafe { std::mem::transmute::<[u128; 2], [u64; 4]>([y.0, y.1]) };
-
-                self.push_aligned(get_integer_layout(252).align(), &x_data);
-                self.push_aligned(get_integer_layout(252).align(), &y_data);
-            }
-            (CoreTypeConcrete::Bitwise(_), JitValue::Uint64(value))
-            | (CoreTypeConcrete::BuiltinCosts(_), JitValue::Uint64(value))
-            | (CoreTypeConcrete::EcOp(_), JitValue::Uint64(value))
-            | (CoreTypeConcrete::Pedersen(_), JitValue::Uint64(value))
-            | (CoreTypeConcrete::Poseidon(_), JitValue::Uint64(value))
-            | (CoreTypeConcrete::RangeCheck(_), JitValue::Uint64(value))
-            | (CoreTypeConcrete::SegmentArena(_), JitValue::Uint64(value)) => {
-                self.push_aligned(get_integer_layout(64).align(), &[*value])
-            }
-            (_, _) => todo!(),
-        }
-
-        Ok(())
-    }
 }
 
 /// Parses the result by reading from the return ptr the given type.
@@ -630,12 +312,13 @@ fn parse_result(
     mut return_ptr: Option<NonNull<()>>,
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
-) -> Result<JitValue, Error> {
+) -> Result<Value, Error> {
     let type_info = registry.get_type(type_id).unwrap();
+    let debug_name = type_info.info().long_id.to_string();
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
-        let layout = type_info.layout(registry).unwrap();
+        let layout = type_info.layout(registry)?;
         let align_offset = return_ptr
             .cast::<u8>()
             .as_ptr()
@@ -649,17 +332,15 @@ fn parse_result(
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => {
-            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
-        }
+        CoreTypeConcrete::Array(_) => Ok(Value::from_jit(return_ptr.unwrap(), type_id, registry)?),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
-            let value = JitValue::from_jit(ptr, &info.ty, registry);
+            let value = Value::from_jit(ptr, &info.ty, registry)?;
             libc::free(ptr.cast().as_ptr());
             Ok(value)
         },
         CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
-            Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+            Ok(Value::from_jit(return_ptr.unwrap(), type_id, registry)?)
         }
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
@@ -668,7 +349,7 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)),
+            Some(return_ptr) => Ok(Value::from_jit(return_ptr, type_id, registry)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -677,7 +358,7 @@ fn parse_result(
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
-                Ok(JitValue::Felt252(
+                Ok(Value::Felt252(
                     starknet_types_core::felt::Felt::from_bytes_le(unsafe {
                         std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
                     }),
@@ -685,7 +366,7 @@ fn parse_result(
             }
         },
         CoreTypeConcrete::Bytes31(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::from_jit(return_ptr, type_id, registry)),
+            Some(return_ptr) => Ok(Value::from_jit(return_ptr, type_id, registry)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -694,52 +375,70 @@ fn parse_result(
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
-                Ok(JitValue::Bytes31(unsafe {
+                Ok(Value::Bytes31(unsafe {
                     *std::mem::transmute::<&[u64; 4], &[u8; 31]>(&ret_registers)
                 }))
             }
         },
+        CoreTypeConcrete::BoundedInt(info) => match return_ptr {
+            Some(return_ptr) => Ok(Value::from_jit(return_ptr, type_id, registry)?),
+            None => {
+                let mut data = if info.range.offset_bit_width() <= 64 {
+                    BigInt::from(ret_registers[0])
+                } else {
+                    BigInt::from(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
+                };
+
+                data &= (BigInt::one() << info.range.offset_bit_width()) - BigInt::one();
+                data += &info.range.lower;
+
+                Ok(Value::BoundedInt {
+                    value: data.into(),
+                    range: info.range.clone(),
+                })
+            }
+        },
         CoreTypeConcrete::Uint8(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint8(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Uint8(ret_registers[0] as u8)),
+            Some(return_ptr) => Ok(Value::Uint8(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Uint8(ret_registers[0] as u8)),
         },
         CoreTypeConcrete::Uint16(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint16(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Uint16(ret_registers[0] as u16)),
+            Some(return_ptr) => Ok(Value::Uint16(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Uint16(ret_registers[0] as u16)),
         },
         CoreTypeConcrete::Uint32(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint32(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Uint32(ret_registers[0] as u32)),
+            Some(return_ptr) => Ok(Value::Uint32(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Uint32(ret_registers[0] as u32)),
         },
         CoreTypeConcrete::Uint64(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint64(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Uint64(ret_registers[0])),
+            Some(return_ptr) => Ok(Value::Uint64(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Uint64(ret_registers[0])),
         },
         CoreTypeConcrete::Uint128(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Uint128(
+            Some(return_ptr) => Ok(Value::Uint128(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Uint128(
                 ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128,
             )),
         },
         CoreTypeConcrete::Sint8(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Sint8(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Sint8(ret_registers[0] as i8)),
+            Some(return_ptr) => Ok(Value::Sint8(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Sint8(ret_registers[0] as i8)),
         },
         CoreTypeConcrete::Sint16(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Sint16(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Sint16(ret_registers[0] as i16)),
+            Some(return_ptr) => Ok(Value::Sint16(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Sint16(ret_registers[0] as i16)),
         },
         CoreTypeConcrete::Sint32(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Sint32(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Sint32(ret_registers[0] as i32)),
+            Some(return_ptr) => Ok(Value::Sint32(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Sint32(ret_registers[0] as i32)),
         },
         CoreTypeConcrete::Sint64(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint64(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Sint64(ret_registers[0] as i64)),
+            Some(return_ptr) => Ok(Value::Uint64(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Sint64(ret_registers[0] as i64)),
         },
         CoreTypeConcrete::Sint128(_) => match return_ptr {
-            Some(return_ptr) => Ok(JitValue::Uint128(unsafe { *return_ptr.cast().as_ref() })),
-            None => Ok(JitValue::Sint128(
+            Some(return_ptr) => Ok(Value::Uint128(unsafe { *return_ptr.cast().as_ref() })),
+            None => Ok(Value::Sint128(
                 ((ret_registers[1] as i128) << 64) | ret_registers[0] as i128,
             )),
         },
@@ -751,19 +450,19 @@ fn parse_result(
                 *x.cast::<*mut ()>().as_ref()
             });
             if ptr.is_null() {
-                Ok(JitValue::Null)
+                Ok(Value::Null)
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
-                let value = JitValue::from_jit(ptr, &info.ty, registry);
+                let value = Value::from_jit(ptr, &info.ty, registry)?;
                 libc::free(ptr.as_ptr().cast());
                 Ok(value)
             }
         },
         CoreTypeConcrete::Enum(info) => {
             let (_, tag_layout, variant_layouts) =
-                crate::types::r#enum::get_layout_for_variants(registry, &info.variants).unwrap();
+                crate::types::r#enum::get_layout_for_variants(registry, &info.variants)?;
 
-            let (tag, ptr) = if type_info.is_memory_allocated(registry) || return_ptr.is_some() {
+            let (tag, ptr) = if type_info.is_memory_allocated(registry)? || return_ptr.is_some() {
                 let ptr = return_ptr.unwrap();
 
                 let tag = unsafe {
@@ -783,7 +482,7 @@ fn parse_result(
                         NonNull::new_unchecked(
                             ptr.cast::<u8>()
                                 .as_ptr()
-                                .add(tag_layout.extend(variant_layouts[tag]).unwrap().1),
+                                .add(tag_layout.extend(variant_layouts[tag])?.1),
                         )
                         .cast()
                     }),
@@ -803,9 +502,8 @@ fn parse_result(
                     ),
                 }
             };
-
             let value = match ptr {
-                Ok(ptr) => Box::new(JitValue::from_jit(ptr, &info.variants[tag], registry)),
+                Ok(ptr) => Box::new(Value::from_jit(ptr, &info.variants[tag], registry)?),
                 Err(offset) => {
                     ret_registers.copy_within(offset.., 0);
                     Box::new(parse_result(
@@ -817,28 +515,27 @@ fn parse_result(
                 }
             };
 
-            Ok(JitValue::Enum {
+            Ok(Value::Enum {
                 tag,
                 value,
-                debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+                debug_name: Some(debug_name),
             })
         }
         CoreTypeConcrete::Struct(info) => {
             if info.members.is_empty() {
-                Ok(JitValue::Struct {
+                Ok(Value::Struct {
                     fields: Vec::new(),
-                    debug_name: type_id.debug_name.as_deref().map(ToString::to_string),
+                    debug_name: Some(debug_name),
                 })
             } else {
-                Ok(JitValue::from_jit(return_ptr.unwrap(), type_id, registry))
+                Ok(Value::from_jit(return_ptr.unwrap(), type_id, registry)?)
             }
         }
         CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
                 addr_of_mut!(ret_registers[0]) as *mut ()
             ));
-            let value = JitValue::from_jit(ptr, type_id, registry);
-            Ok(value)
+            Ok(Value::from_jit(ptr, type_id, registry)?)
         },
 
         CoreTypeConcrete::Snapshot(info) => {
@@ -860,386 +557,153 @@ fn parse_result(
 
         CoreTypeConcrete::Felt252DictEntry(_)
         | CoreTypeConcrete::Span(_)
-        | CoreTypeConcrete::BoundedInt(_)
         | CoreTypeConcrete::Uninitialized(_)
         | CoreTypeConcrete::Coupon(_)
         | CoreTypeConcrete::StarkNet(_)
-        | CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+        | CoreTypeConcrete::Uint128MulGuarantee(_)
+        | CoreTypeConcrete::Circuit(_)
+        | CoreTypeConcrete::RangeCheck96(_) => todo!(),
     }
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
-    use cairo_lang_sierra::extensions::types::InfoOnlyConcreteType;
-    use cairo_lang_sierra::extensions::types::TypeInfo;
-    use cairo_lang_sierra::program::ConcreteTypeLongId;
-    use cairo_lang_sierra::ProgramParser;
+    use crate::{
+        context::NativeContext, starknet_stub::StubSyscallHandler, utils::test::load_cairo,
+        utils::test::load_starknet, OptLevel,
+    };
+    use cairo_lang_sierra::program::Program;
+    use rstest::*;
+    use starknet_types_core::felt::Felt;
 
-    #[test]
-    fn test_argument_mapper_push_sint8() {
-        let program = ProgramParser::new().parse("").unwrap();
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
-        let bump = Bump::new();
-        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+    #[fixture]
+    fn program() -> Program {
+        let (_, program) = load_cairo! {
+            use core::starknet::{SyscallResultTrait, get_block_hash_syscall};
 
-        let type_id = ConcreteTypeId {
-            debug_name: None,
-            id: 10,
+            fn run_test() -> felt252 {
+                42
+            }
+
+            fn get_block_hash() -> felt252 {
+                get_block_hash_syscall(1).unwrap_syscall()
+            }
         };
-
-        let type_info = CoreTypeConcrete::Sint8(InfoOnlyConcreteType {
-            info: TypeInfo {
-                long_id: ConcreteTypeLongId {
-                    generic_id: "generic_type_id".into(),
-                    generic_args: vec![],
-                },
-                storable: false,
-                droppable: false,
-                duplicatable: false,
-                zero_sized: false,
-            },
-        });
-
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint8(12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint8(0));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint8(-12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint8(i8::MIN));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint8(i8::MAX));
-
-        assert_eq!(
-            argument_mapper.invoke_data,
-            vec![12, 0, (-12_i8) as u64, i8::MIN as u64, i8::MAX as u64]
-        );
+        program
     }
 
-    #[test]
-    fn test_argument_mapper_push_sint16() {
-        let program = ProgramParser::new().parse("").unwrap();
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
-        let bump = Bump::new();
-        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+    #[fixture]
+    fn starknet_program() -> Program {
+        let (_, program) = load_starknet! {
+            #[starknet::interface]
+            trait ISimpleStorage<TContractState> {
+                fn get(self: @TContractState) -> u128;
+            }
 
-        let type_id = ConcreteTypeId {
-            debug_name: None,
-            id: 10,
+            #[starknet::contract]
+            mod contract {
+                #[storage]
+                struct Storage {}
+
+                #[abi(embed_v0)]
+                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
+                    fn get(self: @ContractState) -> u128 {
+                        42
+                    }
+                }
+            }
         };
-
-        let type_info = CoreTypeConcrete::Sint16(InfoOnlyConcreteType {
-            info: TypeInfo {
-                long_id: ConcreteTypeLongId {
-                    generic_id: "generic_type_id".into(),
-                    generic_args: vec![],
-                },
-                storable: false,
-                droppable: false,
-                duplicatable: false,
-                zero_sized: false,
-            },
-        });
-
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint16(12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint16(0));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint16(-12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint16(i16::MIN));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint16(i16::MAX));
-
-        assert_eq!(
-            argument_mapper.invoke_data,
-            vec![12, 0, (-12_i16) as u64, i16::MIN as u64, i16::MAX as u64]
-        );
+        program
     }
 
-    #[test]
-    fn test_argument_mapper_push_sint32() {
-        let program = ProgramParser::new().parse("").unwrap();
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
-        let bump = Bump::new();
-        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+    #[rstest]
+    fn test_invoke_dynamic_aot_native_executor(program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&program, false)
+            .expect("failed to compile context");
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let type_id = ConcreteTypeId {
-            debug_name: None,
-            id: 10,
-        };
+        // The first function in the program is `run_test`.
+        let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
-        let type_info = CoreTypeConcrete::Sint32(InfoOnlyConcreteType {
-            info: TypeInfo {
-                long_id: ConcreteTypeLongId {
-                    generic_id: "generic_type_id".into(),
-                    generic_args: vec![],
-                },
-                storable: false,
-                droppable: false,
-                duplicatable: false,
-                zero_sized: false,
-            },
-        });
+        let result = executor
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .unwrap();
 
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint32(12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint32(0));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint32(-12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint32(i32::MIN));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint32(i32::MAX));
-
-        assert_eq!(
-            argument_mapper.invoke_data,
-            vec![12, 0, (-12_i32) as u64, i32::MIN as u64, i32::MAX as u64]
-        );
+        assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
     }
 
-    #[test]
-    fn test_argument_mapper_push_sint64() {
-        let program = ProgramParser::new().parse("").unwrap();
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
-        let bump = Bump::new();
-        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+    #[rstest]
+    fn test_invoke_dynamic_jit_native_executor(program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&program, false)
+            .expect("failed to compile context");
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let type_id = ConcreteTypeId {
-            debug_name: None,
-            id: 10,
-        };
+        // The first function in the program is `run_test`.
+        let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
-        let type_info = CoreTypeConcrete::Sint64(InfoOnlyConcreteType {
-            info: TypeInfo {
-                long_id: ConcreteTypeLongId {
-                    generic_id: "generic_type_id".into(),
-                    generic_args: vec![],
-                },
-                storable: false,
-                droppable: false,
-                duplicatable: false,
-                zero_sized: false,
-            },
-        });
+        let result = executor
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .unwrap();
 
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint64(12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint64(0));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint64(-12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint64(i64::MIN));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint64(i64::MAX));
-
-        assert_eq!(
-            argument_mapper.invoke_data,
-            vec![12, 0, (-12_i64) as u64, i64::MIN as u64, i64::MAX as u64]
-        );
+        assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
     }
 
-    #[test]
-    fn test_argument_mapper_push_sint128() {
-        let program = ProgramParser::new().parse("").unwrap();
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
-        let bump = Bump::new();
-        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+    #[rstest]
+    fn test_invoke_contract_dynamic_aot(starknet_program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&starknet_program, false)
+            .expect("failed to compile context");
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let type_id = ConcreteTypeId {
-            debug_name: None,
-            id: 10,
-        };
+        // The last function in the program is the `get` wrapper function.
+        let entrypoint_function_id = &starknet_program
+            .funcs
+            .last()
+            .expect("should have a function")
+            .id;
 
-        let type_info = CoreTypeConcrete::Sint128(InfoOnlyConcreteType {
-            info: TypeInfo {
-                long_id: ConcreteTypeLongId {
-                    generic_id: "generic_type_id".into(),
-                    generic_args: vec![],
-                },
-                storable: false,
-                droppable: false,
-                duplicatable: false,
-                zero_sized: false,
-            },
-        });
+        let result = executor
+            .invoke_contract_dynamic(
+                entrypoint_function_id,
+                &[],
+                Some(u128::MAX),
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap();
 
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint128(12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint128(0));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint128(-12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint128(i128::MIN));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Sint128(i128::MAX));
-
-        assert_eq!(
-            argument_mapper.invoke_data,
-            vec![
-                12,
-                0,
-                0,
-                0,
-                (-12_i128) as u64,
-                ((-12_i128) as u128 >> 64) as u64,
-                i128::MIN as u64,
-                (i128::MIN as u128 >> 64) as u64,
-                i128::MAX as u64,
-                (i128::MAX as u128 >> 64) as u64,
-            ]
-        );
+        assert_eq!(result.return_values, vec![Felt::from(42)]);
     }
 
-    #[test]
-    fn test_argument_mapper_push_uint8() {
-        let program = ProgramParser::new().parse("").unwrap();
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
-        let bump = Bump::new();
-        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
+    #[rstest]
+    fn test_invoke_contract_dynamic_jit(starknet_program: Program) {
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&starknet_program, false)
+            .expect("failed to compile context");
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
 
-        let type_id = ConcreteTypeId {
-            debug_name: None,
-            id: 10,
-        };
+        // The last function in the program is the `get` wrapper function.
+        let entrypoint_function_id = &starknet_program
+            .funcs
+            .last()
+            .expect("should have a function")
+            .id;
 
-        let type_info = CoreTypeConcrete::Uint8(InfoOnlyConcreteType {
-            info: TypeInfo {
-                long_id: ConcreteTypeLongId {
-                    generic_id: "generic_type_id".into(),
-                    generic_args: vec![],
-                },
-                storable: false,
-                droppable: false,
-                duplicatable: false,
-                zero_sized: false,
-            },
-        });
+        let result = executor
+            .invoke_contract_dynamic(
+                entrypoint_function_id,
+                &[],
+                Some(u128::MAX),
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap();
 
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint8(12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint8(0));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint8(u8::MIN));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint8(u8::MAX));
-
-        assert_eq!(argument_mapper.invoke_data, vec![12, 0, 0, 0xFF]);
-    }
-
-    #[test]
-    fn test_argument_mapper_push_uint16() {
-        let program = ProgramParser::new().parse("").unwrap();
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
-        let bump = Bump::new();
-        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
-
-        let type_id = ConcreteTypeId {
-            debug_name: None,
-            id: 10,
-        };
-
-        let type_info = CoreTypeConcrete::Uint16(InfoOnlyConcreteType {
-            info: TypeInfo {
-                long_id: ConcreteTypeLongId {
-                    generic_id: "generic_type_id".into(),
-                    generic_args: vec![],
-                },
-                storable: false,
-                droppable: false,
-                duplicatable: false,
-                zero_sized: false,
-            },
-        });
-
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(0));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(u16::MIN));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint16(u16::MAX));
-
-        assert_eq!(argument_mapper.invoke_data, vec![12, 0, 0, 0xFFFF]);
-    }
-
-    #[test]
-    fn test_argument_mapper_push_uint32() {
-        let program = ProgramParser::new().parse("").unwrap();
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
-        let bump = Bump::new();
-        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
-
-        let type_id = ConcreteTypeId {
-            debug_name: None,
-            id: 10,
-        };
-
-        let type_info = CoreTypeConcrete::Uint32(InfoOnlyConcreteType {
-            info: TypeInfo {
-                long_id: ConcreteTypeLongId {
-                    generic_id: "generic_type_id".into(),
-                    generic_args: vec![],
-                },
-                storable: false,
-                droppable: false,
-                duplicatable: false,
-                zero_sized: false,
-            },
-        });
-
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(0));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(u32::MIN));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint32(u32::MAX));
-
-        assert_eq!(argument_mapper.invoke_data, vec![12, 0, 0, 0xFFFFFFFF]);
-    }
-
-    #[test]
-    fn test_argument_mapper_push_uint64() {
-        let program = ProgramParser::new().parse("").unwrap();
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
-        let bump = Bump::new();
-        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
-
-        let type_id = ConcreteTypeId {
-            debug_name: None,
-            id: 10,
-        };
-
-        let type_info = CoreTypeConcrete::Uint64(InfoOnlyConcreteType {
-            info: TypeInfo {
-                long_id: ConcreteTypeLongId {
-                    generic_id: "generic_type_id".into(),
-                    generic_args: vec![],
-                },
-                storable: false,
-                droppable: false,
-                duplicatable: false,
-                zero_sized: false,
-            },
-        });
-
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(0));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(u64::MIN));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint64(u64::MAX));
-
-        assert_eq!(
-            argument_mapper.invoke_data,
-            vec![12, 0, 0, 0xFFFFFFFFFFFFFFFF]
-        );
-    }
-
-    #[test]
-    fn test_argument_mapper_push_uint128() {
-        let program = ProgramParser::new().parse("").unwrap();
-        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
-        let bump = Bump::new();
-        let mut argument_mapper = ArgumentMapper::new(&bump, &registry);
-
-        let type_id = ConcreteTypeId {
-            debug_name: None,
-            id: 10,
-        };
-
-        let type_info = CoreTypeConcrete::Uint128(InfoOnlyConcreteType {
-            info: TypeInfo {
-                long_id: ConcreteTypeLongId {
-                    generic_id: "generic_type_id".into(),
-                    generic_args: vec![],
-                },
-                storable: false,
-                droppable: false,
-                duplicatable: false,
-                zero_sized: false,
-            },
-        });
-
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(12));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(0));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(u128::MIN));
-        let _ = argument_mapper.push(&type_id, &type_info, &JitValue::Uint128(u128::MAX));
-
-        assert_eq!(
-            argument_mapper.invoke_data,
-            vec![12, 0, 0, 0, 0, 0, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF]
-        );
+        assert_eq!(result.return_values, vec![Felt::from(42)]);
     }
 }
