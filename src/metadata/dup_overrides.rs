@@ -8,7 +8,7 @@
 //! ## Clone implementations
 //!
 //! The clone logic is implemented as a function for each type that requires it. It has to be a
-//! function to allow self-referencing types. If we inlined the drop implementations,
+//! function to allow self-referencing types. If we inlined the clone implementations,
 //! self-referencing types would generate infinite code thus overflowing the stack when generating
 //! code.
 //!
@@ -58,7 +58,7 @@ impl DupOverridesMeta {
     /// would cause stack overflow when registering themselves.
     ///
     /// The callback serves two purposes:
-    ///   - To generate the drop implementation, if necessary.
+    ///   - To generate the dup implementation, if necessary.
     ///   - To check if we need to generate the implementation (for example, in structs and enums).
     pub(crate) fn register_with<'ctx>(
         context: &'ctx Context,
@@ -101,12 +101,12 @@ impl DupOverridesMeta {
         Ok(())
     }
 
-    /// Returns whether a type has a registered clone implementation.
+    /// Returns whether a type has a registered dup implementation.
     pub(crate) fn is_overriden(&self, id: &ConcreteTypeId) -> bool {
         self.overriden_types.contains(id)
     }
 
-    /// Generates code to invoke a clone implementation for a type, or just returns the same value
+    /// Generates code to invoke a dup implementation for a type, or just returns the same value
     /// twice if no implementation was registered.
     pub(crate) fn invoke_override<'ctx, 'this>(
         &self,
