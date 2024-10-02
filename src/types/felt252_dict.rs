@@ -10,7 +10,7 @@ use super::WithSelf;
 use crate::{
     error::Result,
     metadata::{
-        dup_overrides::DupOverrideMeta, realloc_bindings::ReallocBindingsMeta,
+        dup_overrides::DupOverridesMeta, realloc_bindings::ReallocBindingsMeta,
         runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
@@ -42,7 +42,7 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    DupOverrideMeta::register_with(
+    DupOverridesMeta::register_with(
         context,
         module,
         registry,
@@ -93,7 +93,7 @@ fn build_dup<'ctx>(
 
         let value = entry.load(context, location, old_ptr, inner_ty)?;
         let values = metadata
-            .get_or_insert_with(DupOverrideMeta::default)
+            .get_or_insert_with(DupOverridesMeta::default)
             .invoke_override(context, &entry, location, &info.ty, value)?;
 
         entry.store(context, location, old_ptr, values.0)?;

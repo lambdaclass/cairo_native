@@ -8,7 +8,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::{dup_overrides::DupOverrideMeta, MetadataStorage},
+    metadata::{dup_overrides::DupOverridesMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -37,7 +37,7 @@ pub fn build<'ctx, 'this>(
     //   That's why we need to check for clone implementations within the compiler.
 
     let values = metadata
-        .get_or_insert_with(DupOverrideMeta::default)
+        .get_or_insert_with(DupOverridesMeta::default)
         .invoke_override(
             context,
             entry,

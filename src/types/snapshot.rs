@@ -16,7 +16,7 @@ use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
     metadata::{
-        dup_overrides::DupOverrideMeta, enum_snapshot_variants::EnumSnapshotVariantsMeta,
+        dup_overrides::DupOverridesMeta, enum_snapshot_variants::EnumSnapshotVariantsMeta,
         MetadataStorage,
     },
     utils::ProgramRegistryExt,
@@ -56,7 +56,7 @@ pub fn build<'ctx>(
     }
 
     // Register clone override (if required).
-    DupOverrideMeta::register_with(
+    DupOverridesMeta::register_with(
         context,
         module,
         registry,
@@ -68,7 +68,7 @@ pub fn build<'ctx>(
             // The following unwrap is unreachable because `register_with` will always insert it before
             // calling this closure.
             metadata
-                .get::<DupOverrideMeta>()
+                .get::<DupOverridesMeta>()
                 .unwrap()
                 .is_overriden(&info.ty)
                 .then(|| build_dup(context, module, registry, metadata, &info))
@@ -94,13 +94,16 @@ fn build_dup<'ctx>(
     let entry = region.append_block(Block::new(&[(inner_ty, location)]));
 
     // The following unwrap is unreachable because the registration logic will always insert it.
-    let values = metadata.get::<DupOverrideMeta>().unwrap().invoke_override(
-        context,
-        &entry,
-        location,
-        &info.ty,
-        entry.argument(0)?.into(),
-    )?;
+    let values = metadata
+        .get::<DupOverridesMeta>()
+        .unwrap()
+        .invoke_override(
+            context,
+            &entry,
+            location,
+            &info.ty,
+            entry.argument(0)?.into(),
+        )?;
 
     entry.append_operation(func::r#return(&[values.0, values.1], location));
     Ok(region)

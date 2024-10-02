@@ -1,3 +1,23 @@
+//! # Duplication logic overrides
+//!
+//! By default, values are copied (aka. `memcpy`'d), but some cases (like arrays, boxes, nullables,
+//! dictionaries and some structs and enums) need a clone implementation instad. This metadata is
+//! a register of types that require a clone implementation as well as the logic to register and
+//! invoke those implementations.
+//!
+//! ## Clone implementations
+//!
+//! The clone logic is implemented as a function for each type that requires it. It has to be a
+//! function to allow self-referencing types. If we inlined the drop implementations,
+//! self-referencing types would generate infinite code thus overflowing the stack when generating
+//! code.
+//!
+//! The generated functions are not public (they are internal) and follow this naming convention:
+//!
+//!     dup${type id}
+//!
+//! where `{type id}` is the numeric value of the `ConcreteTypeId`.
+
 use super::MetadataStorage;
 use crate::{error::Result, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
@@ -17,11 +37,23 @@ use melior::{
 use std::collections::HashSet;
 
 #[derive(Debug, Default)]
-pub struct DupOverrideMeta {
+pub struct DupOverridesMeta {
     overriden_types: HashSet<ConcreteTypeId>,
 }
 
-impl DupOverrideMeta {
+impl DupOverridesMeta {
+    /// Register a dup override using a closure.
+    ///
+    /// This function does several things:
+    ///   - Registers `DupOverrideMeta` if it wasn't already present.
+    ///   - If the type id was already registered it returns and does nothing.
+    ///   - Registers the type (without it being actually registered yet).
+    ///   - Calls the closure, which returns an `Option<Region>`.
+    ///   - If the closure returns a region, generates the function implementation.
+    ///   - If the closure returns `None`, it removes the registry entry for the type.
+    ///
+    /// The type need to be registered before calling the closure, otherwise self-referencing types
+    /// would cause stack overflow when registering themselves.
     pub(crate) fn register_with<'ctx>(
         context: &'ctx Context,
         module: &Module<'ctx>,
@@ -63,10 +95,13 @@ impl DupOverrideMeta {
         Ok(())
     }
 
+    /// Returns whether a type has a registered clone implementation.
     pub(crate) fn is_overriden(&self, id: &ConcreteTypeId) -> bool {
         self.overriden_types.contains(id)
     }
 
+    /// Generates code to invoke a clone implementation for a type, or just returns the same value
+    /// twice if no implementation was registered.
     pub(crate) fn invoke_override<'ctx, 'this>(
         &self,
         context: &'ctx Context,
@@ -90,114 +125,3 @@ impl DupOverrideMeta {
         })
     }
 }
-
-// use super::MetadataStorage;
-// use crate::{error::Result, libfuncs::LibfuncHelper, types::WithSelf};
-// use cairo_lang_sierra::{
-//     extensions::core::{CoreLibfunc, CoreType},
-//     ids::ConcreteTypeId,
-//     program_registry::ProgramRegistry,
-// };
-// use melior::{
-//     ir::{Block, Location, Value},
-//     Context,
-// };
-// use std::{collections::HashMap, sync::Arc};
-//
-// type DupFn<P> = for<'ctx, 'this> fn(
-//     &'ctx Context,
-//     &ProgramRegistry<CoreType, CoreLibfunc>,
-//     &'this Block<'ctx>,
-//     Location<'ctx>,
-//     &LibfuncHelper<'ctx, 'this>,
-//     &mut MetadataStorage,
-//     WithSelf<P>,
-//     Value<'ctx, 'this>,
-// ) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)>;
-//
-// type DupFnWrapper = Arc<
-//     dyn for<'ctx, 'this> Fn(
-//         &'ctx Context,
-//         &ProgramRegistry<CoreType, CoreLibfunc>,
-//         &'this Block<'ctx>,
-//         Location<'ctx>,
-//         &LibfuncHelper<'ctx, 'this>,
-//         &mut MetadataStorage,
-//         Value<'this, 'ctx>,
-//     ) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)>,
-// >;
-
-// #[derive(Default)]
-// pub struct DupOverrideMeta {
-//     mappings: HashMap<ConcreteTypeId, DupFnWrapper>,
-//     partials: Vec<ConcreteTypeId>,
-// }
-
-// impl DupOverrideMeta {
-//     pub(crate) fn register_with<P>(
-//         metadata: &mut MetadataStorage,
-//         id: ConcreteTypeId,
-//         f: impl FnOnce(&mut MetadataStorage) -> Result<Option<(DupFn<P>, P)>>,
-//     ) -> Result<()>
-//     where
-//         P: 'static,
-//     {
-//         {
-//             let dup_override_meta = metadata.get_or_insert_with(Self::default);
-//             if dup_override_meta.is_registered(&id) {
-//                 return Ok(());
-//             }
-
-//             dup_override_meta.partials.push(id);
-//         }
-
-//         let result = f(metadata)?;
-//         {
-//             // This unwrap is unreachble because the meta was created just before if it wasn't
-//             // already present.
-//             let dup_override_meta = metadata.get_mut::<Self>().unwrap();
-
-//             let self_id = dup_override_meta.partials.pop().unwrap();
-//             if let Some((clone_fn, params)) = result {
-//                 dup_override_meta.mappings.insert(
-//                     self_id.clone(),
-//                     Arc::new(
-//                         move |context, registry, entry, location, helper, metadata, value| {
-//                             clone_fn(
-//                                 context,
-//                                 registry,
-//                                 entry,
-//                                 location,
-//                                 helper,
-//                                 metadata,
-//                                 WithSelf::new(&self_id, &params),
-//                                 value,
-//                             )
-//                         },
-//                     ),
-//                 );
-//             }
-//         }
-
-//         Ok(())
-//     }
-
-//     pub(crate) fn register_dup(&mut self, id: ConcreteTypeId, from_id: &ConcreteTypeId) {
-//         assert!(
-//             !self.is_registered(&id),
-//             "attempting to register a clone impl that is already registered",
-//         );
-
-//         if let Some(clone_fn) = self.mappings.get(from_id) {
-//             self.mappings.insert(id, clone_fn.clone());
-//         }
-//     }
-
-//     pub(crate) fn is_registered(&self, id: &ConcreteTypeId) -> bool {
-//         self.mappings.contains_key(id) || self.partials.contains(id)
-//     }
-
-//     pub(crate) fn wrap_invoke(&self, id: &ConcreteTypeId) -> Option<DupFnWrapper> {
-//         self.mappings.get(id).cloned()
-//     }
-// }

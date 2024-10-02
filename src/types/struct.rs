@@ -36,7 +36,7 @@ use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
-    metadata::{dup_overrides::DupOverrideMeta, MetadataStorage},
+    metadata::{dup_overrides::DupOverridesMeta, MetadataStorage},
     utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -62,7 +62,7 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<StructConcreteType>,
 ) -> Result<Type<'ctx>> {
-    DupOverrideMeta::register_with(
+    DupOverridesMeta::register_with(
         context,
         module,
         registry,
@@ -75,7 +75,7 @@ pub fn build<'ctx>(
             for member in &info.members {
                 registry.build_type(context, module, registry, metadata, member)?;
                 if metadata
-                    .get::<DupOverrideMeta>()
+                    .get::<DupOverridesMeta>()
                     .unwrap()
                     .is_overriden(member)
                 {
@@ -121,7 +121,7 @@ fn build_dup<'ctx>(
 
         // The following unwrap is unreachable because the registration logic will always insert it.
         let values = metadata
-            .get::<DupOverrideMeta>()
+            .get::<DupOverridesMeta>()
             .unwrap()
             .invoke_override(context, &entry, location, member_id, member_val)?;
 

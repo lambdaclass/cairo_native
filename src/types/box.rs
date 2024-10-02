@@ -16,7 +16,7 @@ use super::WithSelf;
 use crate::{
     error::Result,
     metadata::{
-        dup_overrides::DupOverrideMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        dup_overrides::DupOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
     utils::BlockExt,
@@ -44,7 +44,7 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    DupOverrideMeta::register_with(
+    DupOverridesMeta::register_with(
         context,
         module,
         registry,
@@ -92,7 +92,7 @@ fn build_dup<'ctx>(
         location,
     ))?;
 
-    match metadata.get::<DupOverrideMeta>() {
+    match metadata.get::<DupOverridesMeta>() {
         Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
             let value = entry.load(context, location, src_value, inner_ty)?;
             let values =

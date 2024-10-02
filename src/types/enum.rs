@@ -405,7 +405,7 @@ use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
-    metadata::{dup_overrides::DupOverrideMeta, MetadataStorage},
+    metadata::{dup_overrides::DupOverridesMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -441,7 +441,7 @@ pub fn build<'ctx>(
     info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>> {
     // Register enum's clone impl (if required).
-    DupOverrideMeta::register_with(
+    DupOverridesMeta::register_with(
         context,
         module,
         registry,
@@ -454,7 +454,7 @@ pub fn build<'ctx>(
             for variant in &info.variants {
                 registry.build_type(context, module, registry, metadata, variant)?;
                 if metadata
-                    .get::<DupOverrideMeta>()
+                    .get::<DupOverridesMeta>()
                     .unwrap()
                     .is_overriden(variant)
                 {
@@ -543,13 +543,16 @@ fn build_dup<'ctx>(
         1 => {
             // The following unwrap is unreachable because the registration logic will always insert
             // it.
-            let values = metadata.get::<DupOverrideMeta>().unwrap().invoke_override(
-                context,
-                &entry,
-                location,
-                &info.variants[0],
-                entry.argument(0)?.into(),
-            )?;
+            let values = metadata
+                .get::<DupOverridesMeta>()
+                .unwrap()
+                .invoke_override(
+                    context,
+                    &entry,
+                    location,
+                    &info.variants[0],
+                    entry.argument(0)?.into(),
+                )?;
 
             entry.append_operation(func::r#return(&[values.0, values.1], location));
         }
@@ -577,7 +580,7 @@ fn build_dup<'ctx>(
                     // The following unwrap is unreachable because the registration logic will
                     // always insert it.
                     let values = metadata
-                        .get::<DupOverrideMeta>()
+                        .get::<DupOverridesMeta>()
                         .unwrap()
                         .invoke_override(context, block, location, variant_id, value)?;
 

@@ -22,7 +22,7 @@ use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
-        dup_overrides::DupOverrideMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        dup_overrides::DupOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     utils::{BlockExt, ProgramRegistryExt},
 };
@@ -52,7 +52,7 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    DupOverrideMeta::register_with(
+    DupOverridesMeta::register_with(
         context,
         module,
         registry,
@@ -186,7 +186,7 @@ fn build_dup<'ctx>(
             ))?
         };
 
-        match metadata.get::<DupOverrideMeta>() {
+        match metadata.get::<DupOverridesMeta>() {
             Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
                 let k0 = block_realloc.const_int(context, location, 0, 64)?;
                 block_realloc.append_operation(scf::r#for(
