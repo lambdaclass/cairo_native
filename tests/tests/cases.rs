@@ -145,6 +145,8 @@ use test_case::test_case;
 #[test_case("tests/cases/cairo_vm/programs/struct_span_return.cairo")]
 #[test_case("tests/cases/cairo_vm/programs/tensor_new.cairo")]
 #[test_case("tests/cases/brainfuck.cairo")]
+// EVM related
+#[test_case("tests/cases/stack.cairo")]
 fn test_program_cases(program_path: &str) {
     compare_inputless_program(program_path)
 }

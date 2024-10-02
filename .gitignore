@@ -34,3 +34,5 @@ cairo-*.tar
 
 *.ipynb
 cairo-native-stress-logs.jsonl
+ 
+.DS_Store

@@ -11,7 +11,7 @@ use melior::{
 };
 use std::{collections::HashMap, sync::Arc};
 
-pub type CloneFn<P> = for<'ctx, 'this> fn(
+type CloneFn<P> = for<'ctx, 'this> fn(
     &'ctx Context,
     &ProgramRegistry<CoreType, CoreLibfunc>,
     &'this Block<'ctx>,
@@ -40,7 +40,7 @@ pub struct SnapshotClonesMeta {
 }
 
 impl SnapshotClonesMeta {
-    pub fn register<P>(&mut self, id: ConcreteTypeId, handler: CloneFn<P>, params: P)
+    pub(crate) fn register<P>(&mut self, id: ConcreteTypeId, handler: CloneFn<P>, params: P)
     where
         P: 'static,
     {
@@ -64,7 +64,13 @@ impl SnapshotClonesMeta {
         );
     }
 
-    pub fn wrap_invoke(&self, id: &ConcreteTypeId) -> Option<CloneFnWrapper> {
+    pub(crate) fn register_dup(&mut self, id: ConcreteTypeId, from_id: &ConcreteTypeId) {
+        if let Some(clone_fn) = self.mappings.get(from_id) {
+            self.mappings.insert(id, clone_fn.clone());
+        }
+    }
+
+    pub(crate) fn wrap_invoke(&self, id: &ConcreteTypeId) -> Option<CloneFnWrapper> {
         self.mappings.get(id).cloned()
     }
 }

@@ -6,13 +6,13 @@
 //! `Box<T>` we can reuse its pointer, just leaving it null when there's no value.
 
 use super::{TypeBuilder, WithSelf};
-use crate::block_ext::BlockExt;
 use crate::{
     error::Result,
     libfuncs::LibfuncHelper,
     metadata::{
         realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
     },
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -158,7 +158,7 @@ fn snapshot_take<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_enum, jit_struct, load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
 
@@ -185,10 +185,10 @@ mod test {
             result,
             jit_enum!(
                 0,
-                jit_struct!(JitValue::Array(vec![
-                    JitValue::Felt252(1.into()),
-                    JitValue::Felt252(2.into()),
-                    JitValue::Felt252(3.into()),
+                jit_struct!(Value::Array(vec![
+                    Value::Felt252(1.into()),
+                    Value::Felt252(2.into()),
+                    Value::Felt252(3.into()),
                 ]))
             ),
         );

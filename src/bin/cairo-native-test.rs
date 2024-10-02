@@ -1,5 +1,3 @@
-mod utils;
-
 use anyhow::bail;
 use cairo_lang_compiler::{
     db::RootDatabase,
@@ -16,6 +14,8 @@ use utils::{
     test::{display_tests_summary, filter_test_cases, run_tests},
     RunArgs, RunMode,
 };
+
+mod utils;
 
 /// Compiles a Cairo project and runs all the functions marked as `#[test]`.
 /// Exits with 1 if the compilation or run fails, otherwise 0.

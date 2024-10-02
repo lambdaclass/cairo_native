@@ -2,12 +2,11 @@
 
 use super::{increment_builtin_counter, increment_builtin_counter_by, LibfuncHelper};
 use crate::{
-    block_ext::BlockExt,
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
+    utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -1083,15 +1082,18 @@ fn build_euclidean_algorithm<'ctx, 'this>(
 mod test {
 
     use crate::{
-        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        utils::{
+            felt252_str,
+            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+        },
+        values::Value,
     };
     use cairo_lang_sierra::extensions::utils::Range;
     use num_bigint::BigUint;
     use num_traits::Num;
     use starknet_types_core::felt::Felt;
 
-    fn u384(limbs: [&str; 4]) -> JitValue {
+    fn u384(limbs: [&str; 4]) -> Value {
         fn u96_range() -> Range {
             Range {
                 lower: BigUint::from_str_radix("0", 16).unwrap().into(),
@@ -1101,21 +1103,21 @@ mod test {
             }
         }
 
-        JitValue::Struct {
+        Value::Struct {
             fields: vec![
-                JitValue::BoundedInt {
+                Value::BoundedInt {
                     value: Felt::from_hex_unchecked(limbs[0]),
                     range: u96_range(),
                 },
-                JitValue::BoundedInt {
+                Value::BoundedInt {
                     value: Felt::from_hex_unchecked(limbs[1]),
                     range: u96_range(),
                 },
-                JitValue::BoundedInt {
+                Value::BoundedInt {
                     value: Felt::from_hex_unchecked(limbs[2]),
                     range: u96_range(),
                 },
-                JitValue::BoundedInt {
+                Value::BoundedInt {
                     value: Felt::from_hex_unchecked(limbs[3]),
                     range: u96_range(),
                 },
@@ -1296,7 +1298,7 @@ mod test {
             &program,
             "main",
             &[],
-            jit_panic!(JitValue::felt_str(
+            jit_panic!(felt252_str(
                 "30828113188794245257250221355944970489240709081949230"
             )),
         );

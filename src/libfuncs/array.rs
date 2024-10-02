@@ -7,11 +7,10 @@ use std::ops::Deref;
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -1399,8 +1398,11 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
-        values::JitValue,
+        utils::{
+            felt252_str,
+            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
+        },
+        values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
@@ -1416,7 +1418,7 @@ mod test {
         );
         let result = run_program(&program, "run_test", &[[1u32, 2u32].into()]).return_value;
 
-        assert_eq!(result, JitValue::from([1u32, 2u32]));
+        assert_eq!(result, Value::from([1u32, 2u32]));
     }
 
     #[test]
@@ -1640,7 +1642,7 @@ mod test {
                 jit_enum!(0, 4u32.into()),
                 jit_enum!(
                     1,
-                    JitValue::Struct {
+                    Value::Struct {
                         fields: Vec::new(),
                         debug_name: None,
                     }
@@ -1707,7 +1709,7 @@ mod test {
 
         assert_eq!(
             result,
-            jit_panic!(JitValue::felt_str(
+            jit_panic!(felt252_str(
                 "1637570914057682275393755530660268060279989363"
             ))
         );
@@ -1731,8 +1733,8 @@ mod test {
             result,
             jit_enum!(
                 0,
-                jit_struct!(JitValue::from([
-                    JitValue::Felt252(Felt::from(10)),
+                jit_struct!(Value::from([
+                    Value::Felt252(Felt::from(10)),
                     Felt::from(20).into(),
                     Felt::from(30).into()
                 ]))
@@ -1776,7 +1778,7 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::from([1u32]),
+            Value::from([1u32]),
         );
     }
 
@@ -1795,7 +1797,7 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::from([1u32, 2u32]),
+            Value::from([1u32, 2u32]),
         );
     }
 
@@ -1815,7 +1817,7 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::from([2u32]),
+            Value::from([2u32]),
         );
     }
 
@@ -1856,7 +1858,7 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::from([2u32]),
+            Value::from([2u32]),
         );
     }
 
@@ -1874,10 +1876,10 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
-                    fields: vec![JitValue::from(1u32)],
+                value: Box::new(Value::Struct {
+                    fields: vec![Value::from(1u32)],
                     debug_name: None,
                 }),
                 debug_name: None,
@@ -1900,10 +1902,10 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
-                    fields: vec![JitValue::from(1u32)],
+                value: Box::new(Value::Struct {
+                    fields: vec![Value::from(1u32)],
                     debug_name: None,
                 }),
                 debug_name: None,
@@ -1927,10 +1929,10 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
-                    fields: vec![JitValue::from(2u32)],
+                value: Box::new(Value::Struct {
+                    fields: vec![Value::from(2u32)],
                     debug_name: None,
                 }),
                 debug_name: None,
@@ -1956,10 +1958,10 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
-                    fields: vec![JitValue::from(1u32)],
+                value: Box::new(Value::Struct {
+                    fields: vec![Value::from(1u32)],
                     debug_name: None,
                 }),
                 debug_name: None,
@@ -1983,10 +1985,10 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
-                    fields: vec![JitValue::from(2u32)],
+                value: Box::new(Value::Struct {
+                    fields: vec![Value::from(2u32)],
                     debug_name: None,
                 }),
                 debug_name: None,
@@ -2005,10 +2007,10 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
-                    fields: vec![JitValue::Array(vec![])],
+                value: Box::new(Value::Struct {
+                    fields: vec![Value::Array(vec![])],
                     debug_name: None,
                 }),
                 debug_name: None,
@@ -2049,7 +2051,7 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            jit_struct!(JitValue::Array(vec![])),
+            jit_struct!(Value::Array(vec![])),
         );
     }
 
@@ -2095,7 +2097,7 @@ mod test {
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
-            JitValue::Array(vec![1u64.into(), 2u64.into()]),
+            Value::Array(vec![1u64.into(), 2u64.into()]),
         );
     }
 
@@ -2113,21 +2115,21 @@ mod test {
             run_program(
                 &program,
                 "run_test",
-                &[JitValue::Array(vec![
-                    JitValue::Felt252(1.into()),
-                    JitValue::Felt252(2.into()),
-                    JitValue::Felt252(3.into()),
+                &[Value::Array(vec![
+                    Value::Felt252(1.into()),
+                    Value::Felt252(2.into()),
+                    Value::Felt252(3.into()),
                 ])],
             )
             .return_value,
-            JitValue::Enum {
+            Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Struct {
-                    fields: vec![JitValue::Struct {
+                value: Box::new(Value::Struct {
+                    fields: vec![Value::Struct {
                         fields: vec![
-                            JitValue::Felt252(1.into()),
-                            JitValue::Felt252(2.into()),
-                            JitValue::Felt252(3.into()),
+                            Value::Felt252(1.into()),
+                            Value::Felt252(2.into()),
+                            Value::Felt252(3.into()),
                         ],
                         debug_name: None
                     }],
@@ -2152,9 +2154,9 @@ mod test {
             run_program(
                 &program,
                 "run_test",
-                &[JitValue::Array(vec![
-                    JitValue::Felt252(1.into()),
-                    JitValue::Felt252(2.into()),
+                &[Value::Array(vec![
+                    Value::Felt252(1.into()),
+                    Value::Felt252(2.into()),
                 ])],
             )
             .return_value,
@@ -2185,16 +2187,16 @@ mod test {
                     // Tuple
                     jit_struct!(
                         // Span of original array
-                        jit_struct!(JitValue::Array(vec![
-                            JitValue::Felt252(4.into()),
-                            JitValue::Felt252(5.into()),
-                            JitValue::Felt252(6.into()),
+                        jit_struct!(Value::Array(vec![
+                            Value::Felt252(4.into()),
+                            Value::Felt252(5.into()),
+                            Value::Felt252(6.into()),
                         ])),
                         // Box of fixed array
                         jit_struct!(
-                            JitValue::Felt252(1.into()),
-                            JitValue::Felt252(2.into()),
-                            JitValue::Felt252(3.into())
+                            Value::Felt252(1.into()),
+                            Value::Felt252(2.into()),
+                            Value::Felt252(3.into())
                         ),
                     )
                 )
@@ -2226,9 +2228,9 @@ mod test {
                 0,
                 jit_struct!(
                     // Span of original array
-                    jit_struct!(JitValue::Array(vec![
-                        JitValue::Felt252(1.into()),
-                        JitValue::Felt252(2.into()),
+                    jit_struct!(Value::Array(vec![
+                        Value::Felt252(1.into()),
+                        Value::Felt252(2.into()),
                     ]),)
                 )
             )
@@ -2258,16 +2260,16 @@ mod test {
                     // Tuple
                     jit_struct!(
                         // Span of original array
-                        jit_struct!(JitValue::Array(vec![
-                            JitValue::Felt252(1.into()),
-                            JitValue::Felt252(2.into()),
-                            JitValue::Felt252(3.into()),
+                        jit_struct!(Value::Array(vec![
+                            Value::Felt252(1.into()),
+                            Value::Felt252(2.into()),
+                            Value::Felt252(3.into()),
                         ])),
                         // Box of fixed array
                         jit_struct!(
-                            JitValue::Felt252(4.into()),
-                            JitValue::Felt252(5.into()),
-                            JitValue::Felt252(6.into())
+                            Value::Felt252(4.into()),
+                            Value::Felt252(5.into()),
+                            Value::Felt252(6.into())
                         ),
                     )
                 )
@@ -2299,9 +2301,9 @@ mod test {
                 0,
                 jit_struct!(
                     // Span of original array
-                    jit_struct!(JitValue::Array(vec![
-                        JitValue::Felt252(1.into()),
-                        JitValue::Felt252(2.into()),
+                    jit_struct!(Value::Array(vec![
+                        Value::Felt252(1.into()),
+                        Value::Felt252(2.into()),
                     ]),)
                 )
             )
@@ -2332,14 +2334,14 @@ mod test {
                     // Tuple
                     jit_struct!(
                         // Span of original array
-                        jit_struct!(JitValue::Array(vec![
-                            JitValue::Felt252(3.into()),
-                            JitValue::Felt252(4.into()),
+                        jit_struct!(Value::Array(vec![
+                            Value::Felt252(3.into()),
+                            Value::Felt252(4.into()),
                         ])),
                         // Box of fixed array
-                        jit_struct!(JitValue::Felt252(1.into()), JitValue::Felt252(2.into()),),
+                        jit_struct!(Value::Felt252(1.into()), Value::Felt252(2.into()),),
                         // Box of fixed array
-                        jit_struct!(JitValue::Felt252(5.into()), JitValue::Felt252(6.into())),
+                        jit_struct!(Value::Felt252(5.into()), Value::Felt252(6.into())),
                     )
                 )
             )

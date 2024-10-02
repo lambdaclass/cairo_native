@@ -1,9 +1,11 @@
 //! # Struct-related libfuncs
 
 use super::LibfuncHelper;
-use crate::block_ext::BlockExt;
 use crate::{
-    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -55,7 +57,7 @@ pub fn build_construct<'ctx, 'this>(
     let mut fields = Vec::new();
 
     for (i, _) in info.param_signatures().iter().enumerate() {
-        fields.push(entry.argument(i).unwrap().into());
+        fields.push(entry.argument(i)?.into());
     }
 
     let value = build_struct_value(

@@ -4,10 +4,10 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -78,7 +78,7 @@ pub fn build_init<'ctx, 'this>(
                 type_id: info.signature.branch_signatures[0].vars[0].ty.clone(),
                 variant_idx: info.index,
             },
-        )
+        )?;
     }
 
     let val = build_enum_value(
@@ -130,7 +130,7 @@ pub fn build_enum_value<'ctx, 'this>(
                 context,
                 &[
                     tag_ty,
-                    if payload_type_info.is_zst(registry) {
+                    if payload_type_info.is_zst(registry)? {
                         llvm::r#type::array(IntegerType::new(context, 8).into(), 0)
                     } else {
                         variant_tys[variant_index].0
@@ -157,13 +157,13 @@ pub fn build_enum_value<'ctx, 'this>(
             let val = entry.append_op_result(llvm::undef(enum_ty, location))?;
             let val = entry.insert_value(context, location, val, tag_val, 0)?;
 
-            let mut val = if payload_type_info.is_zst(registry) {
+            let mut val = if payload_type_info.is_zst(registry)? {
                 val
             } else {
                 entry.insert_value(context, location, val, payload_value, 1)?
             };
 
-            if type_info.is_memory_allocated(registry) {
+            if type_info.is_memory_allocated(registry)? {
                 let stack_ptr = helper.init_block().alloca1(
                     context,
                     location,
@@ -208,7 +208,7 @@ pub fn build_from_bounded_int<'ctx, 'this>(
         .try_into()?;
     let enum_type = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
     // we assume its never memory allocated since its always a enum with only a tag
-    assert!(!enum_type.is_memory_allocated(registry));
+    assert!(!enum_type.is_memory_allocated(registry)?);
 
     let enum_ty = enum_type.build(
         context,
@@ -286,7 +286,7 @@ pub fn build_match<'ctx, 'this>(
                 variant_ids,
             )?;
 
-            let (stack_ptr, tag_val) = if type_info.is_memory_allocated(registry) {
+            let (stack_ptr, tag_val) = if type_info.is_memory_allocated(registry)? {
                 let stack_ptr = helper.init_block().alloca1(
                     context,
                     location,
@@ -380,7 +380,7 @@ pub fn build_match<'ctx, 'this>(
                         if variant_ids.len() == 1 {
                             entry.argument(0)?.into()
                         } else {
-                            assert!(registry.get_type(&variant_ids[i])?.is_zst(registry));
+                            assert!(registry.get_type(&variant_ids[i])?.is_zst(registry)?);
                             block
                                 .append_operation(llvm::undef(payload_ty, location))
                                 .result(0)?
@@ -444,7 +444,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
                 &variant_ids,
             )?;
 
-            let (stack_ptr, tag_val) = if type_info.is_memory_allocated(registry) {
+            let (stack_ptr, tag_val) = if type_info.is_memory_allocated(registry)? {
                 let stack_ptr = helper.init_block().alloca1(
                     context,
                     location,
@@ -523,7 +523,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
                         if variant_ids.len() == 1 {
                             entry.argument(0)?.into()
                         } else {
-                            assert!(registry.get_type(&variant_ids[i])?.is_zst(registry));
+                            assert!(registry.get_type(&variant_ids[i])?.is_zst(registry)?);
                             block.append_op_result(llvm::undef(payload_ty, location))?
                         }
                     }
@@ -639,6 +639,6 @@ mod test {
         };
 
         let native_context = NativeContext::new();
-        native_context.compile(&program).unwrap();
+        native_context.compile(&program, false).unwrap();
     }
 }

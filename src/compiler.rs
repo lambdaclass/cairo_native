@@ -45,14 +45,8 @@
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
-    block_ext::BlockExt,
     debug::libfunc_to_name,
     error::Error,
-    ffi::{
-        mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
-        mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet,
-        mlirLLVMDistinctAttrCreate,
-    },
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
@@ -60,7 +54,7 @@ use crate::{
         MetadataStorage,
     },
     types::TypeBuilder,
-    utils::generate_function_name,
+    utils::{generate_function_name, BlockExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -94,12 +88,17 @@ use melior::{
     },
     Context,
 };
+use mlir_sys::{
+    mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
+    mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet,
+    mlirLLVMDISubroutineTypeAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
+};
 use std::{
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
 };
-use tracing::trace;
 
 /// The [BlockStorage] type is used to map each statement into its own entry block (on the right),
 /// and its landing block (on the left) if required.
@@ -128,6 +127,7 @@ pub fn compile(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
+    ignore_debug_names: bool,
 ) -> Result<(), Error> {
     if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
         if x == "1" || x == "true" {
@@ -156,6 +156,7 @@ pub fn compile(
             metadata,
             di_compile_unit_id,
             sierra_stmt_start_offset,
+            ignore_debug_names,
         )?;
     }
 
@@ -169,6 +170,8 @@ pub fn compile(
 /// and name. Check out [compile](self::compile) for a description of the other arguments.
 ///
 /// The [module docs](self) contain more information about the compilation process.
+///
+/// If [`ignore_debug_names`] is true, then the function name will always be `f{id}` without any debug name info if it ever exists.
 #[allow(clippy::too_many_arguments)]
 fn compile_func(
     context: &Context,
@@ -179,6 +182,7 @@ fn compile_func(
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
     sierra_stmt_start_offset: usize,
+    ignore_debug_names: bool,
 ) -> Result<(), Error> {
     let fn_location = Location::new(
         context,
@@ -212,15 +216,24 @@ fn compile_func(
         arg_types
             .iter_mut()
             .zip(function.signature.param_types.iter().filter_map(|type_id| {
-                let type_info = registry.get_type(type_id).unwrap();
-                if type_info.is_builtin() && type_info.is_zst(registry) {
+                let type_info = match registry.get_type(type_id) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e.into())),
+                };
+                let is_zst = match type_info.is_zst(registry) {
+                    Ok(x) => x,
+                    Err(e) => return Some(Err(e)),
+                };
+
+                if type_info.is_builtin() && is_zst {
                     None
                 } else {
-                    Some(type_info)
+                    Some(Ok(type_info))
                 }
             }))
     {
-        if type_info.is_memory_allocated(registry) {
+        let type_info = type_info?;
+        if type_info.is_memory_allocated(registry)? {
             *ty = llvm::r#type::pointer(context, 0);
         }
     }
@@ -232,14 +245,22 @@ fn compile_func(
         .ret_types
         .iter()
         .filter_map(|type_id| {
-            let type_info = registry.get_type(type_id).unwrap();
-            if type_info.is_builtin() && type_info.is_zst(registry) {
+            let type_info = match registry.get_type(type_id) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e.into())),
+            };
+            let is_zst = match type_info.is_zst(registry) {
+                Ok(x) => x,
+                Err(e) => return Some(Err(e)),
+            };
+
+            if type_info.is_builtin() && is_zst {
                 None
             } else {
-                Some((type_id, type_info))
+                Some(Ok((type_id, type_info)))
             }
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()?;
     // Possible values:
     //   None        => Doesn't return anything.
     //   Some(false) => Has a complex return type.
@@ -248,7 +269,9 @@ fn compile_func(
         Some(false)
     } else if return_type_infos
         .first()
-        .is_some_and(|(_, type_info)| type_info.is_memory_allocated(registry))
+        .map(|(_, type_info)| type_info.is_memory_allocated(registry))
+        .transpose()?
+        == Some(true)
     {
         assert_eq!(return_types.len(), 1);
 
@@ -260,7 +283,10 @@ fn compile_func(
         None
     };
 
-    let function_name = generate_function_name(&function.id);
+    let function_name = generate_function_name(&function.id, ignore_debug_names);
+    // Don't care about whether it is for the contract executor for inner impls
+    // so we don't have to pass the boolean to the function call libfunc.
+    let function_name_for_inner = generate_function_name(&function.id, false);
 
     let di_subprogram = unsafe {
         // Various DWARF debug attributes for this function.
@@ -279,7 +305,8 @@ fn compile_func(
                 file_attr.to_raw(),
                 StringAttribute::new(context, "cairo-native").to_raw(),
                 false,
-                crate::ffi::DiEmissionKind::Full,
+                MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+                MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
             ))
         };
 
@@ -298,7 +325,7 @@ fn compile_func(
         let module_scope = mlirLLVMDIModuleAttrGetScope(di_module);
 
         Attribute::from_raw({
-            let id = mlirLLVMDistinctAttrCreate(
+            let id = mlirDisctinctAttrCreate(
                 StringAttribute::new(context, &format!("fn_{}", function.id.id)).to_raw(),
             );
 
@@ -372,7 +399,7 @@ fn compile_func(
 
             values.push((
                 &param.id,
-                if type_info.is_builtin() && type_info.is_zst(registry) {
+                if type_info.is_builtin() && type_info.is_zst(registry)? {
                     pre_entry_block
                         .append_operation(llvm::undef(
                             type_info.build(context, module, registry, metadata, &param.ty)?,
@@ -688,30 +715,49 @@ fn compile_func(
                                         .iter()
                                         .zip(&values)
                                         .filter_map(|(type_id, value)| {
-                                            let type_info = registry.get_type(type_id).unwrap();
-                                            if type_info.is_zst(registry)
-                                                || type_info.is_memory_allocated(registry)
-                                            {
+                                            let type_info = match registry.get_type(type_id) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e.into())),
+                                            };
+                                            let is_zst = match type_info.is_zst(registry) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e)),
+                                            };
+                                            let is_memory_allocated =
+                                                match type_info.is_memory_allocated(registry) {
+                                                    Ok(x) => x,
+                                                    Err(e) => return Some(Err(e)),
+                                                };
+
+                                            if is_zst || is_memory_allocated {
                                                 None
                                             } else {
-                                                Some(*value)
+                                                Some(Ok(*value))
                                             }
                                         })
-                                        .collect::<Vec<_>>(),
+                                        .collect::<Result<Vec<_>, _>>()?,
                                     Some(false) => function
                                         .signature
                                         .ret_types
                                         .iter()
                                         .zip(&values)
                                         .filter_map(|(type_id, value)| {
-                                            let type_info = registry.get_type(type_id).unwrap();
-                                            if type_info.is_zst(registry) {
+                                            let type_info = match registry.get_type(type_id) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e.into())),
+                                            };
+                                            let is_zst = match type_info.is_zst(registry) {
+                                                Ok(x) => x,
+                                                Err(e) => return Some(Err(e)),
+                                            };
+
+                                            if is_zst {
                                                 None
                                             } else {
-                                                Some(*value)
+                                                Some(Ok(*value))
                                             }
                                         })
-                                        .collect::<Vec<_>>(),
+                                        .collect::<Result<Vec<_>, _>>()?,
                                     None => todo!(),
                                 };
 
@@ -733,7 +779,7 @@ fn compile_func(
                     // Remove ZST builtins from the return values.
                     for (idx, type_id) in function.signature.ret_types.iter().enumerate().rev() {
                         let type_info = registry.get_type(type_id)?;
-                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                        if type_info.is_builtin() && type_info.is_zst(registry)? {
                             values.remove(idx);
                         }
                     }
@@ -792,13 +838,23 @@ fn compile_func(
                 registry
                     .get_type(type_id)
                     .map(|type_info| {
-                        if type_info.is_builtin() && type_info.is_zst(registry) {
+                        let is_zst = match type_info.is_zst(registry) {
+                            Ok(x) => x,
+                            Err(e) => return Some(Err(e)),
+                        };
+
+                        if type_info.is_builtin() && is_zst {
                             None
                         } else {
-                            Some((type_id, type_info))
+                            Some(Ok((type_id, type_info)))
                         }
                     })
+                    .map_err(Error::from)
                     .transpose()
+                    .map(|x| match x {
+                        Ok(Ok(x)) => Ok(x),
+                        Ok(Err(e)) | Err(e) => Err(e),
+                    })
             })
             .enumerate()
         {
@@ -807,7 +863,7 @@ fn compile_func(
             let mut value = pre_entry_block
                 .argument((has_return_ptr == Some(true)) as usize + i)?
                 .into();
-            if type_info.is_memory_allocated(registry) {
+            if type_info.is_memory_allocated(registry)? {
                 value = pre_entry_block
                     .append_operation(llvm::load(
                         context,
@@ -829,7 +885,7 @@ fn compile_func(
         pre_entry_block.append_operation(cf::br(&entry_block, &arg_values, fn_location));
     }
 
-    let inner_function_name = format!("impl${function_name}");
+    let inner_function_name = format!("impl${function_name_for_inner}");
     module.body().append_operation(llvm::func(
         context,
         StringAttribute::new(context, &inner_function_name),
@@ -1128,8 +1184,12 @@ fn extract_types<'c: 'a, 'a>(
             Ok(x) => x,
             Err(e) => return Some(Err(e.into())),
         };
+        let is_zst = match type_info.is_zst(registry) {
+            Ok(x) => x,
+            Err(e) => return Some(Err(e)),
+        };
 
-        if type_info.is_builtin() && type_info.is_zst(registry) {
+        if type_info.is_builtin() && is_zst {
             None
         } else {
             Some(type_info.build(context, module, registry, metadata_storage, id))
@@ -1174,7 +1234,7 @@ where
                 );
             }
             StatementCompileResult::Deferred => {
-                trace!("Statement {statement_idx}'s compilation has been deferred.");
+                tracing::trace!("Statement {statement_idx}'s compilation has been deferred.");
 
                 visited.remove(&statement_idx);
                 queue.insert(0, (statement_idx, state));

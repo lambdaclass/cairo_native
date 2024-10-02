@@ -4,7 +4,7 @@
 //!
 //! ## Example
 //!
-//! ```
+//! ```rust,ignore
 //! # use cairo_lang_sierra::{
 //! #     extensions::{
 //! #         core::{CoreLibfunc, CoreType},
@@ -83,7 +83,10 @@
 
 #![cfg(feature = "with-debug-utils")]
 
-use crate::{block_ext::BlockExt, error::Result, utils::get_integer_layout};
+use crate::{
+    error::{Error, Result},
+    utils::{get_integer_layout, BlockExt},
+};
 use melior::{
     dialect::{
         arith, func,
@@ -185,7 +188,10 @@ impl DebugUtils {
 
         let ty = llvm::r#type::array(
             IntegerType::new(context, 8).into(),
-            message.len().try_into().unwrap(),
+            message
+                .len()
+                .try_into()
+                .map_err(|_| Error::IntegerConversion)?,
         );
 
         let ptr = block.alloca1(context, location, ty, get_integer_layout(8).align())?;
@@ -196,7 +202,10 @@ impl DebugUtils {
                     context,
                     llvm::r#type::array(
                         IntegerType::new(context, 8).into(),
-                        message.len().try_into().unwrap(),
+                        message
+                            .len()
+                            .try_into()
+                            .map_err(|_| Error::IntegerConversion)?,
                     ),
                     StringAttribute::new(context, message).into(),
                     location,
@@ -211,7 +220,10 @@ impl DebugUtils {
                 context,
                 IntegerAttribute::new(
                     IntegerType::new(context, 64).into(),
-                    message.len().try_into().unwrap(),
+                    message
+                        .len()
+                        .try_into()
+                        .map_err(|_| Error::IntegerConversion)?,
                 )
                 .into(),
                 location,

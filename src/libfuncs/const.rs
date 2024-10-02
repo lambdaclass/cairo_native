@@ -1,19 +1,16 @@
 //! # Const libfuncs
 
 use super::LibfuncHelper;
-use crate::block_ext::BlockExt;
-use crate::types::felt252::PRIME;
-use crate::utils::RangeExt;
 use crate::{
     error::{Error, Result},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    utils::{BlockExt, ProgramRegistryExt, RangeExt, PRIME},
 };
-use cairo_lang_sierra::extensions::bounded_int::BoundedIntConcreteType;
 use cairo_lang_sierra::{
     extensions::{
+        bounded_int::BoundedIntConcreteType,
         const_type::{
             ConstAsBoxConcreteLibfunc, ConstAsImmediateConcreteLibfunc, ConstConcreteLibfunc,
             ConstConcreteType,
@@ -207,7 +204,9 @@ pub fn build_const_type_value<'ctx, 'this>(
                     payload_value,
                     &info.inner_ty,
                     payload_ty,
-                    variant_index.try_into().unwrap(),
+                    variant_index
+                        .try_into()
+                        .map_err(|_| Error::IntegerConversion)?,
                 )
             }
             _ => Err(Error::ConstDataMismatch),
@@ -247,10 +246,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 context,
                 location,
                 value,
-                inner_type
-                    .integer_range(registry)
-                    .unwrap()
-                    .offset_bit_width(),
+                inner_type.integer_range(registry)?.offset_bit_width(),
             )
         }
         CoreTypeConcrete::Felt252(_) => {
@@ -291,7 +287,7 @@ pub fn build_const_type_value<'ctx, 'this>(
 pub mod test {
     use crate::{
         utils::test::{jit_struct, load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
 
     #[test]
@@ -312,6 +308,6 @@ pub mod test {
         );
 
         let result = run_program(&program, "run_test", &[]).return_value;
-        assert_eq!(result, jit_struct!(JitValue::Sint32(-2)));
+        assert_eq!(result, jit_struct!(Value::Sint32(-2)));
     }
 }
