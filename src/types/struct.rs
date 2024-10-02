@@ -32,11 +32,12 @@
 //! won't waste a single byte in padding; unless we're creating an array, in which case we'd waste
 //! only a single byte per element.
 
-use super::{TypeBuilder, WithSelf};
+use super::WithSelf;
 use crate::{
     error::Result,
-    libfuncs::LibfuncHelper,
-    metadata::{dup_overrides::DupOverridesMeta, MetadataStorage},
+    metadata::{
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
+    },
     utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -48,7 +49,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm},
-    ir::{Block, Location, Module, Region, Type, Value},
+    ir::{Block, Location, Module, Region, Type},
     Context,
 };
 
@@ -71,7 +72,7 @@ pub fn build<'ctx>(
         |metadata| {
             // The following unwrap is unreachable because `register_with` will always insert it
             // before calling this closure.
-            let mut needs_clone_override = false;
+            let mut needs_override = false;
             for member in &info.members {
                 registry.build_type(context, module, registry, metadata, member)?;
                 if metadata
@@ -79,13 +80,40 @@ pub fn build<'ctx>(
                     .unwrap()
                     .is_overriden(member)
                 {
-                    needs_clone_override = true;
+                    needs_override = true;
                     break;
                 }
             }
 
-            needs_clone_override
+            needs_override
                 .then(|| build_dup(context, module, registry, metadata, &info))
+                .transpose()
+        },
+    )?;
+    DropOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            // The following unwrap is unreachable because `register_with` will always insert it
+            // before calling this closure.
+            let mut needs_override = false;
+            for member in &info.members {
+                registry.build_type(context, module, registry, metadata, member)?;
+                if metadata
+                    .get::<DropOverridesMeta>()
+                    .unwrap()
+                    .is_overriden(member)
+                {
+                    needs_override = true;
+                    break;
+                }
+            }
+
+            needs_override
+                .then(|| build_drop(context, module, registry, metadata, &info))
                 .transpose()
         },
     )?;
@@ -133,28 +161,32 @@ fn build_dup<'ctx>(
     Ok(region)
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn build_drop<'ctx, 'this>(
+fn build_drop<'ctx>(
     context: &'ctx Context,
+    module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: WithSelf<StructConcreteType>,
-    value: Value<'ctx, 'this>,
-) -> Result<()> {
-    // Since we don't currently have a way to check if a type should implement drop or not we just
-    // call `build_drop` for every member. The canonicalization pass should remove unnecessary
-    // `extractvalue` operations.
-    for (member_idx, member_id) in info.members.iter().enumerate() {
-        let member_ty = registry.build_type(context, helper, registry, metadata, member_id)?;
-        let member_val = entry.extract_value(context, location, value, member_ty, member_idx)?;
+    info: &WithSelf<StructConcreteType>,
+) -> Result<Region<'ctx>> {
+    let location = Location::unknown(context);
 
-        registry.get_type(member_id)?.build_drop(
-            context, registry, entry, location, helper, metadata, member_id, member_val,
-        )?;
+    let self_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(self_ty, location)]));
+
+    let value = entry.argument(0)?.into();
+    for (idx, member_id) in info.members.iter().enumerate() {
+        let member_ty = registry.build_type(context, module, registry, metadata, member_id)?;
+        let member_val = entry.extract_value(context, location, value, member_ty, idx)?;
+
+        // The following unwrap is unreachable because the registration logic will always insert it.
+        metadata
+            .get::<DropOverridesMeta>()
+            .unwrap()
+            .invoke_override(context, &entry, location, member_id, member_val)?;
     }
 
-    Ok(())
+    entry.append_operation(func::r#return(&[], location));
+    Ok(region)
 }

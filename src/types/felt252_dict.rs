@@ -10,8 +10,9 @@ use super::WithSelf;
 use crate::{
     error::Result,
     metadata::{
-        dup_overrides::DupOverridesMeta, realloc_bindings::ReallocBindingsMeta,
-        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
     },
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt},
@@ -50,9 +51,24 @@ pub fn build<'ctx>(
         info.self_ty(),
         |metadata| {
             // There's no need to build the type here because it'll always be built within
-            // `snapshot_take`.
+            // `build_dup`.
 
             Ok(Some(build_dup(context, module, registry, metadata, &info)?))
+        },
+    )?;
+    DropOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            // There's no need to build the type here because it'll always be built within
+            // `build_drop`.
+
+            Ok(Some(build_drop(
+                context, module, registry, metadata, &info,
+            )?))
         },
     )?;
 
@@ -128,12 +144,90 @@ fn build_dup<'ctx>(
         .into(),
     )?;
 
-    let runtime_bindings_meta = metadata.get_mut::<RuntimeBindingsMeta>().unwrap();
     let value0 = entry.argument(0)?.into();
-    let value1 =
-        runtime_bindings_meta.dict_dup(context, module, &entry, value0, dup_fn, location)?;
+    let value1 = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .unwrap()
+        .dict_dup(context, module, &entry, value0, dup_fn, location)?;
 
     entry.append_operation(func::r#return(&[value0, value1], location));
+    Ok(region)
+}
+
+fn build_drop<'ctx>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: &WithSelf<InfoAndTypeConcreteType>,
+) -> Result<Region<'ctx>> {
+    let location = Location::unknown(context);
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, module));
+    }
+
+    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+
+    let drop_fn_symbol = match metadata.get::<DropOverridesMeta>() {
+        Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
+            let region = Region::new();
+            let entry =
+                region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
+
+            let value = entry.load(context, location, entry.argument(0)?.into(), inner_ty)?;
+            drop_overrides_meta.invoke_override(context, &entry, location, &info.ty, value)?;
+
+            entry.append_operation(llvm::r#return(None, location));
+
+            let drop_fn_symbol = format!("drop${}$item", info.self_ty().id);
+            module.body().append_operation(llvm::func(
+                context,
+                StringAttribute::new(context, &drop_fn_symbol),
+                TypeAttribute::new(llvm::r#type::function(
+                    llvm::r#type::void(context),
+                    &[llvm::r#type::pointer(context, 0)],
+                    false,
+                )),
+                region,
+                &[],
+                location,
+            ));
+
+            Some(drop_fn_symbol)
+        }
+        _ => None,
+    };
+
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(value_ty, location)]));
+
+    let drop_fn = match drop_fn_symbol {
+        Some(drop_fn_symbol) => Some(
+            entry.append_op_result(
+                ods::llvm::mlir_addressof(
+                    context,
+                    llvm::r#type::pointer(context, 0),
+                    FlatSymbolRefAttribute::new(context, &drop_fn_symbol),
+                    location,
+                )
+                .into(),
+            )?,
+        ),
+        None => None,
+    };
+
+    let runtime_bindings_meta = metadata.get_mut::<RuntimeBindingsMeta>().unwrap();
+    runtime_bindings_meta.dict_drop(
+        context,
+        module,
+        &entry,
+        entry.argument(0)?.into(),
+        drop_fn,
+        location,
+    )?;
+
+    entry.append_operation(func::r#return(&[], location));
     Ok(region)
 }
 

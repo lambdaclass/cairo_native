@@ -16,8 +16,8 @@ use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
     metadata::{
-        dup_overrides::DupOverridesMeta, enum_snapshot_variants::EnumSnapshotVariantsMeta,
-        MetadataStorage,
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage,
     },
     utils::ProgramRegistryExt,
 };
@@ -75,6 +75,26 @@ pub fn build<'ctx>(
                 .transpose()
         },
     )?;
+    // Register clone override (if required).
+    DropOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            registry.build_type(context, module, registry, metadata, &info.ty)?;
+
+            // The following unwrap is unreachable because `register_with` will always insert it before
+            // calling this closure.
+            metadata
+                .get::<DropOverridesMeta>()
+                .unwrap()
+                .is_overriden(&info.ty)
+                .then(|| build_drop(context, module, registry, metadata, &info))
+                .transpose()
+        },
+    )?;
 
     registry.build_type(context, module, registry, metadata, &info.ty)
 }
@@ -106,5 +126,35 @@ fn build_dup<'ctx>(
         )?;
 
     entry.append_operation(func::r#return(&[values.0, values.1], location));
+    Ok(region)
+}
+
+fn build_drop<'ctx>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: &WithSelf<InfoAndTypeConcreteType>,
+) -> Result<Region<'ctx>> {
+    let location = Location::unknown(context);
+
+    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(inner_ty, location)]));
+
+    // The following unwrap is unreachable because the registration logic will always insert it.
+    metadata
+        .get::<DropOverridesMeta>()
+        .unwrap()
+        .invoke_override(
+            context,
+            &entry,
+            location,
+            &info.ty,
+            entry.argument(0)?.into(),
+        )?;
+
+    entry.append_operation(func::r#return(&[], location));
     Ok(region)
 }

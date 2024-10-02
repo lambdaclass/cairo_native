@@ -369,7 +369,6 @@ proptest! {
 }
 
 #[test]
-#[ignore = "stack overflow (fixed by refactoring drop implementations)"]
 fn self_referencing_struct() {
     let result_vm = run_vm_program(
         &SELF_REFERENCING,

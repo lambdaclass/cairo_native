@@ -20,9 +20,9 @@
 use super::{TypeBuilder, WithSelf};
 use crate::{
     error::Result,
-    libfuncs::LibfuncHelper,
     metadata::{
-        dup_overrides::DupOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     utils::{BlockExt, ProgramRegistryExt},
 };
@@ -37,10 +37,9 @@ use melior::dialect::{arith::CmpiPredicate, func, scf};
 use melior::ir::Region;
 use melior::{
     dialect::{arith, cf, llvm, ods},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Type, Value},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Type},
     Context,
 };
-use std::cell::Cell;
 
 /// Build the MLIR type.
 ///
@@ -60,9 +59,24 @@ pub fn build<'ctx>(
         info.self_ty(),
         |metadata| {
             // There's no need to build the type here because it'll always be built within
-            // `snapshot_take`.
+            // `build_dup`.
 
             Ok(Some(build_dup(context, module, registry, metadata, &info)?))
+        },
+    )?;
+    DropOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            // There's no need to build the type here because it'll always be built within
+            // `build_drop`.
+
+            Ok(Some(build_drop(
+                context, module, registry, metadata, &info,
+            )?))
         },
     )?;
 
@@ -266,78 +280,106 @@ fn build_dup<'ctx>(
     Ok(region)
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn build_drop<'ctx, 'this>(
+fn build_drop<'ctx>(
     context: &'ctx Context,
+    module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: WithSelf<InfoAndTypeConcreteType>,
-    value: Value<'ctx, 'this>,
-) -> Result<()> {
-    let payload_type = registry.get_type(&info.ty)?;
-    let payload_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    info: &WithSelf<InfoAndTypeConcreteType>,
+) -> Result<Region<'ctx>> {
+    let location = Location::unknown(context);
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, module));
+    }
 
-    let array_ty = registry.build_type(context, helper, registry, metadata, info.self_ty())?;
-    let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
-    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let elem_ty = registry.get_type(&info.ty)?;
+    let elem_stride = elem_ty.layout(registry)?.pad_to_align().size();
+    let elem_ty = elem_ty.build(context, module, registry, metadata, &info.ty)?;
 
-    let ptr = entry.extract_value(context, location, value, ptr_ty, 0)?;
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    let start = entry.extract_value(context, location, value, len_ty, 1)?;
-    let end = entry.extract_value(context, location, value, len_ty, 2)?;
-    let step = entry.const_int_from_type(context, location, 1, len_ty)?;
+    let src_value = entry.argument(0)?.into();
+    let value_ptr = entry.extract_value(
+        context,
+        location,
+        src_value,
+        llvm::r#type::pointer(context, 0),
+        0,
+    )?;
 
-    entry.append_operation(scf::r#for(
-        start,
-        end,
-        step,
-        {
-            let region = Region::new();
-            let block = region.append_block(Block::new(&[(len_ty, location)]));
-
-            let index = block.argument(0)?.into();
-            let payload_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
+    match metadata.get::<DropOverridesMeta>() {
+        Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
+            let value_start = entry.extract_value(
                 context,
-                ptr,
-                &[index],
-                payload_ty,
-                ptr_ty,
+                location,
+                src_value,
+                IntegerType::new(context, 32).into(),
+                1,
+            )?;
+            let value_end = entry.extract_value(
+                context,
+                location,
+                src_value,
+                IntegerType::new(context, 32).into(),
+                2,
+            )?;
+
+            let value_start = entry.append_op_result(arith::extui(
+                value_start,
+                IntegerType::new(context, 64).into(),
+                location,
+            ))?;
+            let value_end = entry.append_op_result(arith::extui(
+                value_end,
+                IntegerType::new(context, 64).into(),
                 location,
             ))?;
 
-            let payload_value = block.load(context, location, payload_ptr, payload_ty)?;
+            let elem_stride = entry.const_int(context, location, elem_stride, 64)?;
+            let offset_start =
+                entry.append_op_result(arith::muli(value_start, elem_stride, location))?;
+            let offset_end =
+                entry.append_op_result(arith::muli(value_end, elem_stride, location))?;
 
-            let helper = LibfuncHelper {
-                module: helper.module,
-                init_block: helper.init_block,
-                region: &region,
-                blocks_arena: helper.blocks_arena,
-                last_block: Cell::new(&block),
-                branches: Vec::new(),
-                results: Vec::new(),
-            };
-            payload_type.build_drop(
-                context,
-                registry,
-                &block,
+            entry.append_operation(scf::r#for(
+                offset_start,
+                offset_end,
+                elem_stride,
+                {
+                    let region = Region::new();
+                    let block = region.append_block(Block::new(&[(
+                        IntegerType::new(context, 64).into(),
+                        location,
+                    )]));
+
+                    let elem_offset = block.argument(0)?.into();
+                    let elem_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
+                        context,
+                        value_ptr,
+                        &[elem_offset],
+                        IntegerType::new(context, 8).into(),
+                        llvm::r#type::pointer(context, 0),
+                        location,
+                    ))?;
+                    let elem_val = block.load(context, location, elem_ptr, elem_ty)?;
+
+                    drop_overrides_meta
+                        .invoke_override(context, &block, location, &info.ty, elem_val)?;
+
+                    block.append_operation(scf::r#yield(&[], location));
+                    region
+                },
                 location,
-                &helper,
-                metadata,
-                &info.ty,
-                payload_value,
-            )?;
+            ));
+        }
+        _ => {}
+    }
 
-            block.append_operation(scf::r#yield(&[], location));
-
-            region
-        },
-        location,
-    ));
-
-    Ok(())
+    entry.append_operation(ReallocBindingsMeta::free(context, value_ptr, location));
+    entry.append_operation(func::r#return(&[], location));
+    Ok(region)
 }
 
 #[cfg(test)]

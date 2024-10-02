@@ -16,10 +16,11 @@ use super::WithSelf;
 use crate::{
     error::Result,
     metadata::{
-        dup_overrides::DupOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
-    utils::BlockExt,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -52,9 +53,24 @@ pub fn build<'ctx>(
         info.self_ty(),
         |metadata| {
             // There's no need to build the type here because it'll always be built within
-            // `snapshot_take`.
+            // `build_dup`.
 
             Ok(Some(build_dup(context, module, registry, metadata, &info)?))
+        },
+    )?;
+    DropOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            // There's no need to build the type here because it'll always be built within
+            // `build_drop`.
+
+            Ok(Some(build_drop(
+                context, module, registry, metadata, &info,
+            )?))
         },
     )?;
 
@@ -116,5 +132,36 @@ fn build_dup<'ctx>(
     }
 
     entry.append_operation(func::r#return(&[src_value, dst_value], location));
+    Ok(region)
+}
+
+fn build_drop<'ctx>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: &WithSelf<InfoAndTypeConcreteType>,
+) -> Result<Region<'ctx>> {
+    let location = Location::unknown(context);
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, module));
+    }
+
+    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
+
+    let value = entry.argument(0)?.into();
+    match metadata.get::<DropOverridesMeta>() {
+        Some(drop_override_meta) if drop_override_meta.is_overriden(&info.ty) => {
+            let value = entry.load(context, location, value, inner_ty)?;
+            drop_override_meta.invoke_override(context, &entry, location, &info.ty, value)?;
+        }
+        _ => {}
+    }
+
+    entry.append_operation(ReallocBindingsMeta::free(context, value, location));
+    entry.append_operation(func::r#return(&[], location));
     Ok(region)
 }

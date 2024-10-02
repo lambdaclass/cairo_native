@@ -14,7 +14,9 @@
 //!
 //! The generated functions are not public (they are internal) and follow this naming convention:
 //!
-//!     dup${type id}
+//! ```text
+//! dup${type id}
+//! ```
 //!
 //! where `{type id}` is the numeric value of the `ConcreteTypeId`.
 
@@ -54,6 +56,10 @@ impl DupOverridesMeta {
     ///
     /// The type need to be registered before calling the closure, otherwise self-referencing types
     /// would cause stack overflow when registering themselves.
+    ///
+    /// The callback serves two purposes:
+    ///   - To generate the drop implementation, if necessary.
+    ///   - To check if we need to generate the implementation (for example, in structs and enums).
     pub(crate) fn register_with<'ctx>(
         context: &'ctx Context,
         module: &Module<'ctx>,
