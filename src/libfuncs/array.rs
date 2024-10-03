@@ -7,8 +7,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{
-        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
-        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt},
