@@ -157,6 +157,9 @@ pub unsafe extern "C" fn cairo_native__dict_new() -> *mut FeltDict {
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
+// Note: Using `Option<extern "C" fn(*mut std::ffi::c_void)>` is ffi-safe thanks to Option's null
+//   pointer optimization. Check out
+//   https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization for more info.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_drop(
     ptr: *mut FeltDict,
