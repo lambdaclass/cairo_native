@@ -3,12 +3,13 @@
 // TODO: A future possible improvement would be to put the array behind a double pointer and a
 //   reference counter, to avoid unnecessary clones.
 
-use std::ops::Deref;
-
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    metadata::{
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+    },
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt},
 };
@@ -35,6 +36,7 @@ use melior::{
     },
     Context,
 };
+use std::ops::Deref;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -411,6 +413,7 @@ pub fn build_get<'ctx, 'this>(
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_layout = elem_ty.layout(registry)?;
     let elem_stride = elem_layout.pad_to_align().size();
+    let elem_ty = elem_ty.build(context, helper, registry, metadata, &info.ty)?;
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
@@ -445,12 +448,12 @@ pub fn build_get<'ctx, 'this>(
     {
         let ptr = valid_block.extract_value(context, location, value, ptr_ty, 0)?;
 
+        let array_start = valid_block.append_op_result(arith::extui(
+            array_start,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
         let index = {
-            let array_start = valid_block.append_op_result(arith::extui(
-                array_start,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
             let index = valid_block.append_op_result(arith::extui(
                 index,
                 IntegerType::new(context, 64).into(),
@@ -488,10 +491,89 @@ pub fn build_get<'ctx, 'this>(
             "realloc returned nullptr",
         )?;
 
-        // TODO: Support clone-only types (those that are not copy).
+        // There's no need to clone it since we're moving it out of the array.
         valid_block.memcpy(context, location, elem_ptr, target_ptr, elem_size);
 
-        // TODO: Drop array values.
+        match metadata.get::<DropOverridesMeta>() {
+            Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
+                let array_end = valid_block.append_op_result(arith::extui(
+                    array_end,
+                    IntegerType::new(context, 64).into(),
+                    location,
+                ))?;
+
+                let array_start = valid_block.append_op_result(arith::muli(
+                    array_start,
+                    elem_stride,
+                    location,
+                ))?;
+                let array_end =
+                    valid_block.append_op_result(arith::muli(array_end, elem_stride, location))?;
+
+                valid_block.append_operation(scf::r#for(
+                    array_start,
+                    array_end,
+                    elem_stride,
+                    {
+                        let region = Region::new();
+                        let block = region.append_block(Block::new(&[(
+                            IntegerType::new(context, 64).into(),
+                            location,
+                        )]));
+
+                        let value_ptr = block.append_operation(llvm::get_element_ptr_dynamic(
+                            context,
+                            ptr,
+                            &[block.argument(0)?.into()],
+                            IntegerType::new(context, 8).into(),
+                            llvm::r#type::pointer(context, 0),
+                            location,
+                        ))?;
+
+                        let is_target_element = block.append_op_result(
+                            ods::llvm::icmp(
+                                context,
+                                IntegerType::new(context, 0).into(),
+                                value_ptr,
+                                elem_ptr,
+                                IntegerAttribute::new(IntegerType::new(context, 64).into(), 0)
+                                    .into(),
+                                location,
+                            )
+                            .into(),
+                        )?;
+                        block.append_operation(scf::r#if(
+                            is_target_element,
+                            &[],
+                            {
+                                let region = Region::new();
+                                let block = region.append_block(Block::new(&[]));
+
+                                let value = block.load(context, location, value_ptr, elem_ty)?;
+                                drop_overrides_meta
+                                    .invoke_override(context, &block, location, &info.ty, value)?;
+
+                                block.append_operation(scf::r#yield(&[], location));
+                                region
+                            },
+                            {
+                                let region = Region::new();
+                                let block = region.append_block(Block::new(&[]));
+
+                                block.append_operation(scf::r#yield(&[], location));
+                                region
+                            },
+                            location,
+                        ));
+
+                        block.append_operation(scf::r#yield(&[], location));
+                        region
+                    },
+                    location,
+                ));
+            }
+            _ => {}
+        }
         valid_block.append_operation(ReallocBindingsMeta::free(context, ptr, location));
 
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));

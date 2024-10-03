@@ -101,7 +101,7 @@ fn build_dup<'ctx>(
     let src_is_null = entry.append_op_result(
         ods::llvm::icmp(
             context,
-            IntegerType::new(context, 1).into(),
+            IntegerType::new(context, 0).into(),
             src_value,
             null_ptr,
             IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
@@ -196,7 +196,7 @@ fn build_drop<'ctx>(
     let is_null = entry.append_op_result(
         ods::llvm::icmp(
             context,
-            IntegerType::new(context, 1).into(),
+            IntegerType::new(context, 0).into(),
             value,
             null_ptr,
             IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
