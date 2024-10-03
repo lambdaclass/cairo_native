@@ -804,12 +804,28 @@
 <a href="#804" id="804">804</a>
 <a href="#805" id="805">805</a>
 <a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Runtime library bindings
 //!
 //! This metadata ensures that the bindings to the runtime functions exist in the current
 //! compilation context.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::error::Result;
+</span><span class="kw">use crate</span>::{error::Result, utils::BlockExt};
 <span class="kw">use </span>melior::{
     dialect::{func, llvm},
     ir::{
@@ -835,8 +851,8 @@
     DictInsert,
     DictGet,
     DictGasRefund,
-    DictFree,
-    DictValues,
+    DictDrop,
+    DictDup,
     DebugPrint,
     <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
     </span>VtableCheatcode,
@@ -1272,7 +1288,7 @@
     ///
     /// Returns a opaque pointer as the result.
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>dict_alloc_new&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    </span><span class="kw">pub fn </span>dict_new&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
         module: <span class="kw-2">&amp;</span>Module,
@@ -1285,7 +1301,7 @@
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(RuntimeBinding::DictNew) {
             module.body().append_operation(func::func(
                 context,
-                StringAttribute::new(context, <span class="string">"cairo_native__alloc_dict"</span>),
+                StringAttribute::new(context, <span class="string">"cairo_native__dict_new"</span>),
                 TypeAttribute::new(
                     FunctionType::new(context, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)]).into(),
                 ),
@@ -1300,7 +1316,7 @@
 
         <span class="prelude-val">Ok</span>(block.append_operation(func::call(
             context,
-            FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__alloc_dict"</span>),
+            FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_new"</span>),
             <span class="kw-2">&amp;</span>[],
             <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
             location,
@@ -1311,71 +1327,31 @@
     ///
     /// Returns a opaque pointer as the result.
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>dict_alloc_free&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    </span><span class="kw">pub fn </span>dict_drop&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
         module: <span class="kw-2">&amp;</span>Module,
-        ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
         block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
+        ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
+        drop_fn: <span class="prelude-ty">Option</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;,
         location: Location&lt;<span class="lifetime">'c</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;
     <span class="kw">where
         </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
     {
-        <span class="kw">if </span><span class="self">self</span>.active_map.insert(RuntimeBinding::DictFree) {
+        <span class="kw">if </span><span class="self">self</span>.active_map.insert(RuntimeBinding::DictDrop) {
             module.body().append_operation(func::func(
                 context,
-                StringAttribute::new(context, <span class="string">"cairo_native__dict_free"</span>),
-                TypeAttribute::new(
-                    FunctionType::new(context, <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)], <span class="kw-2">&amp;</span>[]).into(),
-                ),
-                Region::new(),
-                <span class="kw-2">&amp;</span>[(
-                    Identifier::new(context, <span class="string">"sym_visibility"</span>),
-                    StringAttribute::new(context, <span class="string">"private"</span>).into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
-
-        <span class="prelude-val">Ok</span>(block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_free"</span>),
-            <span class="kw-2">&amp;</span>[ptr],
-            <span class="kw-2">&amp;</span>[],
-            location,
-        )))
-    }
-
-    <span class="doccomment">/// Register if necessary, then invoke the `dict_clone()` function.
-    ///
-    /// Returns a opaque pointer as the result.
-    </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>dict_values&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
-        module: <span class="kw-2">&amp;</span>Module,
-        ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
-        len_ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
-        <span class="kw">if </span><span class="self">self</span>.active_map.insert(RuntimeBinding::DictValues) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, <span class="string">"cairo_native__dict_values"</span>),
+                StringAttribute::new(context, <span class="string">"cairo_native__dict_drop"</span>),
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
                         <span class="kw-2">&amp;</span>[
                             llvm::r#type::pointer(context, <span class="number">0</span>),
                             llvm::r#type::pointer(context, <span class="number">0</span>),
-                        ], <span class="comment">// ptr to dict, out ptr to length
-                        </span><span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)], <span class="comment">// ptr to array of struct (key, value_ptr)
-                    </span>)
+                        ],
+                        <span class="kw-2">&amp;</span>[],
+                    )
                     .into(),
                 ),
                 Region::new(),
@@ -1387,13 +1363,69 @@
             ));
         }
 
+        <span class="kw">let </span>drop_fn = <span class="kw">match </span>drop_fn {
+            <span class="prelude-val">Some</span>(x) =&gt; x,
+            <span class="prelude-val">None </span>=&gt; {
+                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?
+            </span>}
+        };
+
         <span class="prelude-val">Ok</span>(block.append_operation(func::call(
             context,
-            FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_values"</span>),
-            <span class="kw-2">&amp;</span>[ptr, len_ptr],
-            <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
+            FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_drop"</span>),
+            <span class="kw-2">&amp;</span>[ptr, drop_fn],
+            <span class="kw-2">&amp;</span>[],
             location,
         )))
+    }
+
+    <span class="doccomment">/// Register if necessary, then invoke the `dict_alloc_new()` function.
+    ///
+    /// Returns a opaque pointer as the result.
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">pub fn </span>dict_dup&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
+        module: <span class="kw-2">&amp;</span>Module,
+        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
+        ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
+        dup_fn: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
+        location: Location&lt;<span class="lifetime">'c</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;
+    <span class="kw">where
+        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
+    {
+        <span class="kw">if </span><span class="self">self</span>.active_map.insert(RuntimeBinding::DictDup) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, <span class="string">"cairo_native__dict_dup"</span>),
+                TypeAttribute::new(
+                    FunctionType::new(
+                        context,
+                        <span class="kw-2">&amp;</span>[
+                            llvm::r#type::pointer(context, <span class="number">0</span>),
+                            llvm::r#type::pointer(context, <span class="number">0</span>),
+                        ],
+                        <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
+                    )
+                    .into(),
+                ),
+                Region::new(),
+                <span class="kw-2">&amp;</span>[(
+                    Identifier::new(context, <span class="string">"sym_visibility"</span>),
+                    StringAttribute::new(context, <span class="string">"private"</span>).into(),
+                )],
+                Location::unknown(context),
+            ));
+        }
+
+        block.append_op_result(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_dup"</span>),
+            <span class="kw-2">&amp;</span>[ptr, dup_fn],
+            <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
+            location,
+        ))
     }
 
     <span class="doccomment">/// Register if necessary, then invoke the `dict_get()` function.

@@ -150,6 +150,7 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Code generation metadata
 //!
 //! The metadata is used for various stuff that would be otherwise difficult or plain impossible
@@ -168,11 +169,12 @@
 
 <span class="kw">pub mod </span>auto_breakpoint;
 <span class="kw">pub mod </span>debug_utils;
+<span class="kw">pub mod </span>drop_overrides;
+<span class="kw">pub mod </span>dup_overrides;
 <span class="kw">pub mod </span>enum_snapshot_variants;
 <span class="kw">pub mod </span>gas;
 <span class="kw">pub mod </span>realloc_bindings;
 <span class="kw">pub mod </span>runtime_bindings;
-<span class="kw">pub mod </span>snapshot_clones;
 <span class="kw">pub mod </span>tail_recursion;
 
 <span class="doccomment">/// Metadata container.

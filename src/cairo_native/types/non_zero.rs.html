@@ -38,6 +38,7 @@
 <a href="#38" id="38">38</a>
 <a href="#39" id="39">39</a>
 <a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Non-zero type
 //!
 //! The non-zero generic type guarantees that whatever value it has is not zero.
@@ -76,6 +77,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;InfoAndTypeConcreteType&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
-    registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)
+    <span class="comment">// TODO: Can its inner type require dup or drop?
+    </span>registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)
 }
 </code></pre></div></section></main></body></html>

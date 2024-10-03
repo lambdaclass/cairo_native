@@ -119,6 +119,52 @@
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Box type
 //!
 //! The type box for a given type `T`.
@@ -136,12 +182,12 @@
 </span><span class="kw">use </span><span class="kw">super</span>::WithSelf;
 <span class="kw">use crate</span>::{
     error::Result,
-    libfuncs::LibfuncHelper,
     metadata::{
-        realloc_bindings::ReallocBindingsMeta, snapshot_clones::SnapshotClonesMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
-    utils::BlockExt,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -151,11 +197,8 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{
-        llvm::{<span class="self">self</span>, r#type::pointer},
-        ods,
-    },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Type, Value},
+    dialect::{func, llvm, ods},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Region, Type},
     Context,
 };
 
@@ -164,72 +207,89 @@
 /// Check out [the module](self) for more info.
 </span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    _module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'ctx</span>&gt;,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'ctx</span>&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: WithSelf&lt;InfoAndTypeConcreteType&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
-    metadata
-        .get_or_insert_with::&lt;SnapshotClonesMeta&gt;(SnapshotClonesMeta::default)
-        .register(
-            info.self_ty().clone(),
-            snapshot_take,
-            InfoAndTypeConcreteType {
-                info: info.info.clone(),
-                ty: info.ty.clone(),
-            },
-        );
+    DupOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            <span class="comment">// There's no need to build the type here because it'll always be built within
+            // `build_dup`.
+
+            </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(build_dup(context, module, registry, metadata, <span class="kw-2">&amp;</span>info)<span class="question-mark">?</span>))
+        },
+    )<span class="question-mark">?</span>;
+    DropOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            <span class="comment">// There's no need to build the type here because it'll always be built within
+            // `build_drop`.
+
+            </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(build_drop(
+                context, module, registry, metadata, <span class="kw-2">&amp;</span>info,
+            )<span class="question-mark">?</span>))
+        },
+    )<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(llvm::r#type::pointer(context, <span class="number">0</span>))
 }
 
-<span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">fn </span>snapshot_take&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+<span class="kw">fn </span>build_dup&lt;<span class="lifetime">'ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+    module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'ctx</span>&gt;,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    info: WithSelf&lt;InfoAndTypeConcreteType&gt;,
-    src_value: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;, Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;)&gt; {
+    info: <span class="kw-2">&amp;</span>WithSelf&lt;InfoAndTypeConcreteType&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
+    <span class="kw">let </span>location = Location::unknown(context);
     <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
-        metadata.insert(ReallocBindingsMeta::new(context, helper));
+        metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    <span class="kw">let </span>inner_snapshot_take = metadata
-        .get::&lt;SnapshotClonesMeta&gt;()
-        .and_then(|meta| meta.wrap_invoke(<span class="kw-2">&amp;</span>info.ty));
+    <span class="kw">let </span>inner_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>inner_len = inner_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align().size();
+    <span class="kw">let </span>inner_ty = inner_ty.build(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>inner_type = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>inner_layout = inner_type.layout(registry)<span class="question-mark">?</span>;
-    <span class="kw">let </span>inner_ty = inner_type.build(context, helper, registry, metadata, info.self_ty())<span class="question-mark">?</span>;
+    <span class="kw">let </span>region = Region::new();
+    <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
 
-    <span class="kw">let </span>value_len = entry.const_int(context, location, inner_layout.pad_to_align().size(), <span class="number">64</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>null_ptr =
+        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>inner_len_val = entry.const_int(context, location, inner_len, <span class="number">64</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>ptr = entry
-        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, <span class="number">0</span>), location).into())<span class="question-mark">?</span>;
-    <span class="kw">let </span>dst_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
-        context, ptr, value_len, location,
+    <span class="kw">let </span>src_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>dst_value = entry.append_op_result(ReallocBindingsMeta::realloc(
+        context,
+        null_ptr,
+        inner_len_val,
+        location,
     ))<span class="question-mark">?</span>;
 
-    <span class="kw">match </span>inner_snapshot_take {
-        <span class="prelude-val">Some</span>(inner_snapshot_take) =&gt; {
+    <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
+        <span class="prelude-val">Some</span>(dup_override_meta) <span class="kw">if </span>dup_override_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
             <span class="kw">let </span>value = entry.load(context, location, src_value, inner_ty)<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>(entry, value) =
-                inner_snapshot_take(context, registry, entry, location, helper, metadata, value)<span class="question-mark">?</span>;
-
-            entry.store(context, location, dst_ptr, value)<span class="question-mark">?</span>;
+            <span class="kw">let </span>values =
+                dup_override_meta.invoke_override(context, <span class="kw-2">&amp;</span>entry, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
+            entry.store(context, location, src_value, values.<span class="number">0</span>)<span class="question-mark">?</span>;
+            entry.store(context, location, dst_value, values.<span class="number">1</span>)<span class="question-mark">?</span>;
         }
-        <span class="prelude-val">None </span>=&gt; {
+        <span class="kw">_ </span>=&gt; {
             entry.append_operation(
-                ods::llvm::intr_memcpy(
+                ods::llvm::intr_memcpy_inline(
                     context,
-                    dst_ptr,
+                    dst_value,
                     src_value,
-                    value_len,
+                    IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), inner_len <span class="kw">as </span>i64),
                     IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
                     location,
                 )
@@ -238,6 +298,38 @@
         }
     }
 
-    <span class="prelude-val">Ok</span>((entry, dst_ptr))
+    entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[src_value, dst_value], location));
+    <span class="prelude-val">Ok</span>(region)
+}
+
+<span class="kw">fn </span>build_drop&lt;<span class="lifetime">'ctx</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+    module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'ctx</span>&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    info: <span class="kw-2">&amp;</span>WithSelf&lt;InfoAndTypeConcreteType&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
+    <span class="kw">let </span>location = Location::unknown(context);
+    <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, module));
+    }
+
+    <span class="kw">let </span>inner_ty = registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>region = Region::new();
+    <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
+
+    <span class="kw">let </span>value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">match </span>metadata.get::&lt;DropOverridesMeta&gt;() {
+        <span class="prelude-val">Some</span>(drop_override_meta) <span class="kw">if </span>drop_override_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
+            <span class="kw">let </span>value = entry.load(context, location, value, inner_ty)<span class="question-mark">?</span>;
+            drop_override_meta.invoke_override(context, <span class="kw-2">&amp;</span>entry, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
+        }
+        <span class="kw">_ </span>=&gt; {}
+    }
+
+    entry.append_operation(ReallocBindingsMeta::free(context, value, location));
+    entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
+    <span class="prelude-val">Ok</span>(region)
 }
 </code></pre></div></section></main></body></html>

@@ -764,73 +764,75 @@
 }
 
 <span class="doccomment">/// Felt252 type used in cairo native runtime
-</span><span class="kw">pub type </span>FeltDict = (HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;, u64);
+</span><span class="attr">#[derive(Debug, Default)]
+</span><span class="kw">pub struct </span>FeltDict {
+    <span class="kw">pub </span>inner: HashMap&lt;[u8; <span class="number">32</span>], NonNull&lt;std::ffi::c_void&gt;&gt;,
+    <span class="kw">pub </span>count: u64,
+}
 
-<span class="doccomment">/// Allocates a new dictionary. Internally a rust hashmap: `HashMap&lt;[u8; 32], NonNull&lt;()&gt;`
+<span class="doccomment">/// Allocate a new dictionary.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
-</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__alloc_dict() -&gt; <span class="kw-2">*mut </span>std::ffi::c_void {
-    Box::into_raw(Box::&lt;FeltDict&gt;::default()) <span class="kw">as _
-</span>}
+</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_new() -&gt; <span class="kw-2">*mut </span>FeltDict {
+    Box::into_raw(Box::&lt;FeltDict&gt;::default())
+}
 
-<span class="doccomment">/// Frees the dictionary.
+<span class="doccomment">/// Free a dictionary using an optional callback to drop each element.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
+</span><span class="comment">// Note: Using `Option&lt;extern "C" fn(*mut std::ffi::c_void)&gt;` is ffi-safe thanks to Option's null
+//   pointer optimization. Check out
+//   https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization for more info.
 </span><span class="attr">#[no_mangle]
-</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_free(ptr: <span class="kw-2">*mut </span>FeltDict) {
-    <span class="kw">let </span><span class="kw-2">mut </span>map = Box::from_raw(ptr);
+</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_drop(
+    ptr: <span class="kw-2">*mut </span>FeltDict,
+    drop_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>std::ffi::c_void)&gt;,
+) {
+    <span class="kw">let </span>map = Box::from_raw(ptr);
 
     <span class="comment">// Free the entries manually.
-    </span><span class="kw">for </span>(<span class="kw">_</span>, entry) <span class="kw">in </span>map.as_mut().<span class="number">0</span>.drain() {
-        libc::free(entry.as_ptr().cast());
+    </span><span class="kw">for </span>entry <span class="kw">in </span>map.inner.into_values() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(drop_fn) = drop_fn {
+            drop_fn(entry.as_ptr());
+        }
+
+        libc::free(entry.as_ptr());
     }
 }
 
-<span class="doccomment">/// Needed for the correct alignment,
-/// since the key [u8; 32] in rust has 8 byte alignment but its a felt,
-/// so in reality it has 16.
-</span><span class="attr">#[repr(C, align(<span class="number">16</span>))]
-</span><span class="kw">pub struct </span>DictValuesArrayAbi {
-    <span class="kw">pub </span>key: [u8; <span class="number">32</span>],
-    <span class="kw">pub </span>value: std::ptr::NonNull&lt;libc::c_void&gt;,
-}
-
-<span class="doccomment">/// Returns a array over the values of the dict, used for deep cloning.
+<span class="doccomment">/// Duplicate a dictionary using a provided callback to clone each element.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
-</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_values(
+</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_dup(
     ptr: <span class="kw-2">*mut </span>FeltDict,
-    len: <span class="kw-2">*mut </span>u64,
-) -&gt; <span class="kw-2">*mut </span>DictValuesArrayAbi {
-    <span class="kw">let </span>dict: <span class="kw-2">&amp;mut </span>FeltDict = <span class="kw-2">&amp;mut *</span>ptr;
+    dup_fn: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>std::ffi::c_void) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void,
+) -&gt; <span class="kw-2">*mut </span>FeltDict {
+    <span class="kw">let </span>old_dict = <span class="kw-2">&amp;*</span>ptr;
+    <span class="kw">let </span><span class="kw-2">mut </span>new_dict = Box::&lt;FeltDict&gt;::default();
 
-    <span class="kw">let </span>values: Vec&lt;<span class="kw">_</span>&gt; = dict
-        .<span class="number">0
-        </span>.clone()
-        .into_iter()
-        <span class="comment">// make it ffi safe for use within MLIR.
-        </span>.map(|x| DictValuesArrayAbi {
-            key: x.<span class="number">0</span>,
-            value: x.<span class="number">1</span>,
-        })
-        .collect();
-    <span class="kw-2">*</span>len = values.len() <span class="kw">as </span>u64;
-    values.leak::&lt;<span class="lifetime">'static</span>&gt;().as_mut_ptr()
+    new_dict.inner.extend(
+        old_dict
+            .inner
+            .iter()
+            .map(|(<span class="kw-2">&amp;</span>k, <span class="kw-2">&amp;</span>v)| (k, NonNull::new(dup_fn(v.as_ptr())).unwrap())),
+    );
+
+    Box::into_raw(new_dict)
 }
 
-<span class="doccomment">/// Gets the value for a given key, the returned pointer is null if not found.
-/// Increments the access count.
+<span class="doccomment">/// Return the value (reference) for a given key, or null if not present. Increment the access
+/// count.
 ///
 /// # Safety
 ///
@@ -842,13 +844,11 @@
     key: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
 ) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void {
     <span class="kw">let </span>dict: <span class="kw-2">&amp;mut </span>FeltDict = <span class="kw-2">&amp;mut *</span>ptr;
-    <span class="kw">let </span>map = <span class="kw-2">&amp;</span>dict.<span class="number">0</span>;
-    dict.<span class="number">1 </span>+= <span class="number">1</span>;
+    dict.count += <span class="number">1</span>;
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = map.get(key) {
-        v.as_ptr()
-    } <span class="kw">else </span>{
-        std::ptr::null_mut()
+    <span class="kw">match </span>dict.inner.get(key) {
+        <span class="prelude-val">Some</span>(v) =&gt; v.as_ptr(),
+        <span class="prelude-val">None </span>=&gt; std::ptr::null_mut(),
     }
 }
 
@@ -865,7 +865,7 @@
     value: NonNull&lt;std::ffi::c_void&gt;,
 ) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void {
     <span class="kw">let </span>dict = <span class="kw-2">&amp;mut *</span>ptr;
-    <span class="kw">let </span>old_ptr = dict.<span class="number">0</span>.insert(<span class="kw-2">*</span>key, value);
+    <span class="kw">let </span>old_ptr = dict.inner.insert(<span class="kw-2">*</span>key, value);
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = old_ptr {
         v.as_ptr()
@@ -883,7 +883,7 @@
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_gas_refund(ptr: <span class="kw-2">*const </span>FeltDict) -&gt; u64 {
     <span class="kw">let </span>dict = <span class="kw-2">&amp;*</span>ptr;
-    (dict.<span class="number">1 </span>- dict.<span class="number">0</span>.len() <span class="kw">as </span>u64) * <span class="kw-2">*</span>DICT_GAS_REFUND_PER_ACCESS
+    (dict.count - dict.inner.len() <span class="kw">as </span>u64) * <span class="kw-2">*</span>DICT_GAS_REFUND_PER_ACCESS
 }
 
 <span class="doccomment">/// Compute `ec_point_from_x_nz(x)` and store it.
