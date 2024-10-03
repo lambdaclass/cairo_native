@@ -134,73 +134,75 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 }
 
 /// Felt252 type used in cairo native runtime
-pub type FeltDict = (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64);
-
-/// Allocates a new dictionary. Internally a rust hashmap: `HashMap<[u8; 32], NonNull<()>`
-///
-/// # Safety
-///
-/// This function is intended to be called from MLIR, deals with pointers, and is therefore
-/// definitely unsafe to use manually.
-#[no_mangle]
-pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
-    Box::into_raw(Box::<FeltDict>::default()) as _
+#[derive(Debug, Default)]
+pub struct FeltDict {
+    pub inner: HashMap<[u8; 32], NonNull<std::ffi::c_void>>,
+    pub count: u64,
 }
 
-/// Frees the dictionary.
+/// Allocate a new dictionary.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_free(ptr: *mut FeltDict) {
-    let mut map = Box::from_raw(ptr);
+pub unsafe extern "C" fn cairo_native__dict_new() -> *mut FeltDict {
+    Box::into_raw(Box::<FeltDict>::default())
+}
+
+/// Free a dictionary using an optional callback to drop each element.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+// Note: Using `Option<extern "C" fn(*mut std::ffi::c_void)>` is ffi-safe thanks to Option's null
+//   pointer optimization. Check out
+//   https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization for more info.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__dict_drop(
+    ptr: *mut FeltDict,
+    drop_fn: Option<extern "C" fn(*mut std::ffi::c_void)>,
+) {
+    let map = Box::from_raw(ptr);
 
     // Free the entries manually.
-    for (_, entry) in map.as_mut().0.drain() {
-        libc::free(entry.as_ptr().cast());
+    for entry in map.inner.into_values() {
+        if let Some(drop_fn) = drop_fn {
+            drop_fn(entry.as_ptr());
+        }
+
+        libc::free(entry.as_ptr());
     }
 }
 
-/// Needed for the correct alignment,
-/// since the key [u8; 32] in rust has 8 byte alignment but its a felt,
-/// so in reality it has 16.
-#[repr(C, align(16))]
-pub struct DictValuesArrayAbi {
-    pub key: [u8; 32],
-    pub value: std::ptr::NonNull<libc::c_void>,
-}
-
-/// Returns a array over the values of the dict, used for deep cloning.
+/// Duplicate a dictionary using a provided callback to clone each element.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_values(
+pub unsafe extern "C" fn cairo_native__dict_dup(
     ptr: *mut FeltDict,
-    len: *mut u64,
-) -> *mut DictValuesArrayAbi {
-    let dict: &mut FeltDict = &mut *ptr;
+    dup_fn: extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
+) -> *mut FeltDict {
+    let old_dict = &*ptr;
+    let mut new_dict = Box::<FeltDict>::default();
 
-    let values: Vec<_> = dict
-        .0
-        .clone()
-        .into_iter()
-        // make it ffi safe for use within MLIR.
-        .map(|x| DictValuesArrayAbi {
-            key: x.0,
-            value: x.1,
-        })
-        .collect();
-    *len = values.len() as u64;
-    values.leak::<'static>().as_mut_ptr()
+    new_dict.inner.extend(
+        old_dict
+            .inner
+            .iter()
+            .map(|(&k, &v)| (k, NonNull::new(dup_fn(v.as_ptr())).unwrap())),
+    );
+
+    Box::into_raw(new_dict)
 }
 
-/// Gets the value for a given key, the returned pointer is null if not found.
-/// Increments the access count.
+/// Return the value (reference) for a given key, or null if not present. Increment the access
+/// count.
 ///
 /// # Safety
 ///
@@ -212,13 +214,11 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     key: &[u8; 32],
 ) -> *mut std::ffi::c_void {
     let dict: &mut FeltDict = &mut *ptr;
-    let map = &dict.0;
-    dict.1 += 1;
+    dict.count += 1;
 
-    if let Some(v) = map.get(key) {
-        v.as_ptr()
-    } else {
-        std::ptr::null_mut()
+    match dict.inner.get(key) {
+        Some(v) => v.as_ptr(),
+        None => std::ptr::null_mut(),
     }
 }
 
@@ -235,7 +235,7 @@ pub unsafe extern "C" fn cairo_native__dict_insert(
     value: NonNull<std::ffi::c_void>,
 ) -> *mut std::ffi::c_void {
     let dict = &mut *ptr;
-    let old_ptr = dict.0.insert(*key, value);
+    let old_ptr = dict.inner.insert(*key, value);
 
     if let Some(v) = old_ptr {
         v.as_ptr()
@@ -253,7 +253,7 @@ pub unsafe extern "C" fn cairo_native__dict_insert(
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> u64 {
     let dict = &*ptr;
-    (dict.1 - dict.0.len() as u64) * *DICT_GAS_REFUND_PER_ACCESS
+    (dict.count - dict.inner.len() as u64) * *DICT_GAS_REFUND_PER_ACCESS
 }
 
 /// Compute `ec_point_from_x_nz(x)` and store it.

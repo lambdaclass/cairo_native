@@ -39,12 +39,12 @@ required-features = ["scarb"]
 [features]
 default = ["build-cli", "with-runtime"]
 build-cli = [
-  "dep:clap",
-  "dep:tracing-subscriber",
-  "dep:anyhow",
-  "dep:cairo-lang-test-plugin",
-  "dep:cairo-lang-runner",
-  "dep:colored",
+    "dep:clap",
+    "dep:tracing-subscriber",
+    "dep:anyhow",
+    "dep:cairo-lang-test-plugin",
+    "dep:cairo-lang-runner",
+    "dep:colored",
 ]
 scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
 with-debug-utils = []
@@ -70,16 +70,14 @@ itertools = "0.13.0"
 lazy_static = "1.4"
 libc = "0.2"
 llvm-sys = "191.0.0"
-melior = { version = "0.19.0", features = [
-  "ods-dialects",
-] }
-mlir-sys = { version = "0.3.0"}
+melior = { version = "0.19.0", features = ["ods-dialects"] }
+mlir-sys = { version = "0.3.0" }
 num-bigint = "0.4.4"
 num-traits = "0.2"
 starknet-types-core = { version = "0.1.5", default-features = false, features = [
-  "std",
-  "serde",
-  "num-traits",
+    "std",
+    "serde",
+    "num-traits",
 ] }
 tempfile = "3.6"
 thiserror = "1.0.64"
@@ -97,9 +95,9 @@ cairo-native-runtime = { version = "0.2.0-alpha.2", path = "runtime", optional =
 clap = { version = "4.5.18", features = ["derive"], optional = true }
 libloading = "0.8.3"
 tracing-subscriber = { version = "0.3.18", features = [
-  "env-filter",
-  "json",
-  "registry",
+    "env-filter",
+    "json",
+    "registry",
 ], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 anyhow = { version = "1.0", optional = true }
@@ -110,7 +108,7 @@ colored = { version = "2.1.0", optional = true }
 keccak = "0.1.5"
 k256 = "0.13.4"
 p256 = "0.13.2"
-sha2 = "0.10.8" # needed for the syscall handler stub
+sha2 = "0.10.8"                                          # needed for the syscall handler stub
 scarb-metadata = { version = "1.12.0", optional = true }
 scarb-ui = { version = "0.1.5", optional = true }
 sec1 = "0.7.3"

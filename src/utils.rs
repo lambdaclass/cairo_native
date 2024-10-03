@@ -302,24 +302,24 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
         );
 
         engine.register_symbol(
-            "cairo_native__alloc_dict",
-            cairo_native_runtime::cairo_native__alloc_dict as *const fn() -> *mut FeltDict
+            "cairo_native__dict_new",
+            cairo_native_runtime::cairo_native__dict_new as *const fn() -> *mut FeltDict as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_drop",
+            cairo_native_runtime::cairo_native__dict_drop
+                as *const fn(*mut FeltDict, Option<extern "C" fn(*mut std::ffi::c_void)>) -> ()
                 as *mut (),
         );
 
         engine.register_symbol(
-            "cairo_native__dict_free",
-            cairo_native_runtime::cairo_native__dict_free as *const fn(*mut FeltDict) -> ()
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_values",
-            cairo_native_runtime::cairo_native__dict_values
+            "cairo_native__dict_dup",
+            cairo_native_runtime::cairo_native__dict_dup
                 as *const fn(
                     *mut FeltDict,
-                    *mut u64,
-                ) -> *mut ([u8; 32], std::ptr::NonNull<libc::c_void>) as *mut (),
+                    extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
+                ) -> *mut FeltDict as *mut (),
         );
 
         engine.register_symbol(
@@ -336,7 +336,6 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
                     *mut FeltDict,
                     &[u8; 32],
                     NonNull<std::ffi::c_void>,
-                    usize,
                 ) -> *mut std::ffi::c_void as *mut (),
         );
 

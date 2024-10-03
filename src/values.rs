@@ -404,7 +404,7 @@ impl Value {
                                 elem_layout.size(),
                             );
 
-                            value_map.0.insert(
+                            value_map.inner.insert(
                                 key,
                                 NonNull::new(value_malloc_ptr)
                                     .expect("allocation failure")
@@ -653,10 +653,9 @@ impl Value {
                     let payload_ptr =
                         NonNull::new(ptr.as_ptr().byte_add(tag_layout.extend(payload_layout)?.1))
                             .unwrap();
-                    let payload =
-                        Value::from_jit(payload_ptr, &info.variants[tag_value], registry)?;
+                    let payload = Self::from_jit(payload_ptr, &info.variants[tag_value], registry)?;
 
-                    Value::Enum {
+                    Self::Enum {
                         tag: tag_value,
                         value: Box::new(payload),
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
@@ -683,28 +682,28 @@ impl Value {
                         )?);
                     }
 
-                    Value::Struct {
+                    Self::Struct {
                         fields: members,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
-                    let (map, _) = *Box::from_raw(
+                    let FeltDict { inner, .. } = *Box::from_raw(
                         ptr.cast::<NonNull<()>>()
                             .as_ref()
                             .cast::<FeltDict>()
                             .as_ptr(),
                     );
 
-                    let mut output_map = HashMap::with_capacity(map.len());
-                    for (key, val_ptr) in map.iter() {
+                    let mut output_map = HashMap::with_capacity(inner.len());
+                    for (key, val_ptr) in inner.iter() {
                         let key = Felt::from_bytes_le(key);
                         output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry)?);
                         libc::free(val_ptr.as_ptr());
                     }
 
-                    Value::Felt252Dict {
+                    Self::Felt252Dict {
                         value: output_map,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
@@ -731,7 +730,7 @@ impl Value {
                         // felt values
                         let data = ptr.cast::<[u8; 32]>().as_ref();
                         let data = Felt::from_bytes_le(data);
-                        Value::Felt252(data)
+                        Self::Felt252(data)
                     }
                     StarkNetTypeConcrete::System(_) => {
                         unimplemented!("should be handled before")
@@ -743,8 +742,8 @@ impl Value {
                         let y = (data[1][0], data[1][1]);
 
                         match info {
-                            Secp256PointTypeConcrete::K1(_) => Value::Secp256K1Point { x, y },
-                            Secp256PointTypeConcrete::R1(_) => Value::Secp256R1Point { x, y },
+                            Secp256PointTypeConcrete::K1(_) => Self::Secp256K1Point { x, y },
+                            Secp256PointTypeConcrete::R1(_) => Self::Secp256R1Point { x, y },
                         }
                     }
                     StarkNetTypeConcrete::Sha256StateHandle(_) => todo!(),

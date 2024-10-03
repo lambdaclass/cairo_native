@@ -5,11 +5,8 @@
 use crate::{
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
-    metadata::{
-        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
-        MetadataStorage,
-    },
-    utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt, RangeExt, PRIME},
+    metadata::MetadataStorage,
+    utils::{get_integer_layout, layout_repeat, BlockExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -23,10 +20,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        llvm::{self, r#type::pointer},
-        ods,
-    },
+    dialect::llvm,
     ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
@@ -152,18 +146,6 @@ pub trait TypeBuilder {
         metadata: &mut MetadataStorage,
         self_ty: &ConcreteTypeId,
     ) -> Result<Value<'ctx, 'this>, Self::Error>;
-
-    #[allow(clippy::too_many_arguments)]
-    fn build_drop<'ctx, 'this>(
-        &self,
-        context: &'ctx Context,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        entry: &'this Block<'ctx>,
-        location: Location<'ctx>,
-        helper: &LibfuncHelper<'ctx, 'this>,
-        metadata: &mut MetadataStorage,
-        self_ty: &ConcreteTypeId,
-    ) -> Result<(), Self::Error>;
 }
 
 impl TypeBuilder for CoreTypeConcrete {
@@ -936,9 +918,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 _ => unimplemented!("unsupported dict value type"),
             },
             Self::Felt252(_) => entry.const_int(context, location, 0, 252)?,
-            Self::Nullable(_) => entry.append_op_result(
-                ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
-            )?,
+            Self::Nullable(_) => {
+                entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?
+            }
             Self::Uint8(_) => entry.const_int(context, location, 0, 8)?,
             Self::Uint16(_) => entry.const_int(context, location, 0, 16)?,
             Self::Uint32(_) => entry.const_int(context, location, 0, 32)?,
@@ -946,49 +928,6 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint128(_) => entry.const_int(context, location, 0, 128)?,
             _ => unimplemented!("unsupported dict value type"),
         })
-    }
-
-    fn build_drop<'ctx, 'this>(
-        &self,
-        context: &'ctx Context,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        entry: &'this Block<'ctx>,
-        location: Location<'ctx>,
-        helper: &LibfuncHelper<'ctx, 'this>,
-        metadata: &mut MetadataStorage,
-        self_ty: &ConcreteTypeId,
-    ) -> Result<(), Self::Error> {
-        match self {
-            CoreTypeConcrete::Array(_info) => {
-                if metadata.get::<ReallocBindingsMeta>().is_none() {
-                    metadata.insert(ReallocBindingsMeta::new(context, helper));
-                }
-
-                let array_ty = registry.build_type(context, helper, registry, metadata, self_ty)?;
-                let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
-
-                let array_val = entry.argument(0)?.into();
-                let ptr = entry.extract_value(context, location, array_val, ptr_ty, 0)?;
-
-                entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
-            }
-            CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
-                let runtime: &mut RuntimeBindingsMeta = metadata.get_mut().unwrap();
-                let ptr = entry.argument(0)?.into();
-
-                runtime.dict_alloc_free(context, helper, ptr, entry, location)?;
-            }
-            CoreTypeConcrete::Box(_) | CoreTypeConcrete::Nullable(_) => {
-                if metadata.get::<ReallocBindingsMeta>().is_none() {
-                    metadata.insert(ReallocBindingsMeta::new(context, helper));
-                }
-
-                let ptr = entry.argument(0)?.into();
-                entry.append_operation(ReallocBindingsMeta::free(context, ptr, location));
-            }
-            _ => {}
-        };
-        Ok(())
     }
 }
 
