@@ -3,7 +3,6 @@
 use std::{
     collections::{HashMap, VecDeque},
     iter::once,
-    str::FromStr,
 };
 
 use crate::starknet::{
@@ -581,6 +580,21 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256r1Point> {
         tracing::debug!("called");
+
+        if p0.is_infinity || p1.is_infinity {
+            if p1.is_infinity {
+                return Ok(p0);
+            } else if p0.is_infinity {
+                return Ok(p1);
+            } else {
+                return Ok(Secp256r1Point {
+                    x: U256 { hi: 0, lo: 0 },
+                    y: U256 { hi: 0, lo: 0 },
+                    is_infinity: true,
+                });
+            }
+        }
+
         // The inner unwraps should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwraps depend on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
@@ -693,8 +707,9 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
 
         let p = p * m;
         let p = p.to_encoded_point(false);
-        let (x, y) = match p.coordinates() {
-            Coordinates::Uncompressed { x, y } => (x, y),
+        let (x, y, is_infinity) = match p.coordinates() {
+            Coordinates::Uncompressed { x, y } => (x.as_slice(), y.as_slice(), false),
+            Coordinates::Identity => ([0u8; 32].as_slice(), [0; 32].as_slice(), true),
             _ => {
                 // This should be unreachable because we explicitly asked for the uncompressed
                 // encoding.
@@ -704,8 +719,8 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
 
         // The following two unwraps should be safe because the array always has 32 bytes. The other
         // four are definitely safe because the slicing guarantees its length to be the right one.
-        let x: [u8; 32] = x.as_slice().try_into().unwrap();
-        let y: [u8; 32] = y.as_slice().try_into().unwrap();
+        let x: [u8; 32] = x.try_into().unwrap();
+        let y: [u8; 32] = y.try_into().unwrap();
         Ok(Secp256r1Point {
             x: U256 {
                 hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
@@ -715,7 +730,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
                 lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
-            is_infinity: false,
+            is_infinity,
         })
     }
 
