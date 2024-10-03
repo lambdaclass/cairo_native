@@ -169,6 +169,7 @@ pub fn build_secp256_point<'ctx>(
                 &[
                     IntegerType::new(context, 128).into(),
                     IntegerType::new(context, 128).into(),
+                    IntegerType::new(context, 128).into(),
                 ],
                 false,
             ),
@@ -180,6 +181,7 @@ pub fn build_secp256_point<'ctx>(
                 ],
                 false,
             ),
+            IntegerType::new(context, 1).into(),
         ],
         false,
     ))

@@ -3,6 +3,7 @@
 use std::{
     collections::{HashMap, VecDeque},
     iter::once,
+    str::FromStr,
 };
 
 use crate::starknet::{
@@ -288,7 +289,11 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         );
 
         if bool::from(point.is_some()) {
-            Ok(Some(Secp256k1Point { x, y }))
+            Ok(Some(Secp256k1Point {
+                x,
+                y,
+                is_infinity: false,
+            }))
         } else {
             Ok(None)
         }
@@ -302,6 +307,21 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256k1Point> {
         tracing::debug!("called");
+
+        if p0.is_infinity || p1.is_infinity {
+            if p1.is_infinity {
+                return Ok(p0);
+            } else if p0.is_infinity {
+                return Ok(p1);
+            } else {
+                return Ok(Secp256k1Point {
+                    x: U256 { hi: 0, lo: 0 },
+                    y: U256 { hi: 0, lo: 0 },
+                    is_infinity: true,
+                });
+            }
+        }
+
         // The inner unwraps should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwraps depend on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
@@ -349,8 +369,9 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         let p = p0 + p1;
 
         let p = p.to_encoded_point(false);
-        let (x, y) = match p.coordinates() {
-            Coordinates::Uncompressed { x, y } => (x, y),
+        let (x, y, is_infinity) = match p.coordinates() {
+            Coordinates::Uncompressed { x, y } => (x.as_slice(), y.as_slice(), false),
+            Coordinates::Identity => ([0u8; 32].as_slice(), [0; 32].as_slice(), true),
             _ => {
                 // This should be unreachable because we explicitly asked for the uncompressed
                 // encoding.
@@ -360,8 +381,8 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
 
         // The following two unwraps should be safe because the array always has 32 bytes. The other
         // four are definitely safe because the slicing guarantees its length to be the right one.
-        let x: [u8; 32] = x.as_slice().try_into().unwrap();
-        let y: [u8; 32] = y.as_slice().try_into().unwrap();
+        let x: [u8; 32] = x.try_into().unwrap();
+        let y: [u8; 32] = y.try_into().unwrap();
         Ok(Secp256k1Point {
             x: U256 {
                 hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
@@ -371,27 +392,39 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
                 lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
+            is_infinity,
         })
     }
 
     #[instrument(skip(self))]
     fn secp256k1_mul(
         &mut self,
-        p: Secp256k1Point,
+        p_arg: Secp256k1Point,
         m: U256,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256k1Point> {
         // The inner unwrap should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwrap depends on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
+
         let p = k256::ProjectivePoint::from_encoded_point(
             &k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p.x.hi.to_be_bytes().into_iter().chain(p.x.lo.to_be_bytes()),
+                    p_arg
+                        .x
+                        .hi
+                        .to_be_bytes()
+                        .into_iter()
+                        .chain(p_arg.x.lo.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p.y.hi.to_be_bytes().into_iter().chain(p.y.lo.to_be_bytes()),
+                    p_arg
+                        .y
+                        .hi
+                        .to_be_bytes()
+                        .into_iter()
+                        .chain(p_arg.y.lo.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
@@ -414,8 +447,9 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         let p = p * m;
 
         let p = p.to_encoded_point(false);
-        let (x, y) = match p.coordinates() {
-            Coordinates::Uncompressed { x, y } => (x, y),
+        let (x, y, is_infinity) = match p.coordinates() {
+            Coordinates::Uncompressed { x, y } => (x.as_slice(), y.as_slice(), false),
+            Coordinates::Identity => ([0u8; 32].as_slice(), [0; 32].as_slice(), true),
             _ => {
                 // This should be unreachable because we explicitly asked for the uncompressed
                 // encoding.
@@ -425,8 +459,8 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
 
         // The following two unwraps should be safe because the array always has 32 bytes. The other
         // four are definitely safe because the slicing guarantees its length to be the right one.
-        let x: [u8; 32] = x.as_slice().try_into().unwrap();
-        let y: [u8; 32] = y.as_slice().try_into().unwrap();
+        let x: [u8; 32] = x.try_into().unwrap();
+        let y: [u8; 32] = y.try_into().unwrap();
         Ok(Secp256k1Point {
             x: U256 {
                 hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
@@ -436,6 +470,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
                 lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
+            is_infinity,
         })
     }
 
@@ -486,6 +521,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                     hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
                     lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
                 },
+                is_infinity: false,
             }))
         } else {
             Ok(None)
@@ -527,7 +563,11 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         );
 
         if bool::from(point.is_some()) {
-            Ok(Some(Secp256r1Point { x, y }))
+            Ok(Some(Secp256r1Point {
+                x,
+                y,
+                is_infinity: false,
+            }))
         } else {
             Ok(None)
         }
@@ -610,6 +650,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
                 lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
+            is_infinity: false,
         })
     }
 
@@ -674,6 +715,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
                 lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
             },
+            is_infinity: false,
         })
     }
 
@@ -712,6 +754,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                     hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
                     lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
                 },
+                is_infinity: false,
             }))
         } else {
             Ok(None)
@@ -853,6 +896,7 @@ mod tests {
                 hi: 75181762170223969696219813306313470806,
                 lo: 134255467439736302886468555755295925874,
             },
+            is_infinity: false,
         };
 
         let mut test_syscall_handler = StubSyscallHandler::default();
@@ -889,7 +933,11 @@ mod tests {
 
         assert_eq!(
             test_syscall_handler.secp256k1_new(x, y, &mut 10).unwrap(),
-            Some(Secp256k1Point { x, y })
+            Some(Secp256k1Point {
+                x,
+                y,
+                is_infinity: false
+            })
         );
     }
 
@@ -924,6 +972,7 @@ mod tests {
                 lo: 336417762351022071123394393598455764152,
                 hi: 96009999919712310848645357523629574312,
             },
+            is_infinity: false,
         };
 
         let p2 = p1;
@@ -940,6 +989,7 @@ mod tests {
                 lo: 329597642124196932058042157271922763050,
                 hi: 35730324229579385338853513728577301230,
             },
+            is_infinity: false,
         };
         assert_eq!(p3, p1_double);
         assert_eq!(
@@ -959,6 +1009,7 @@ mod tests {
                 lo: 134255467439736302886468555755295925874,
                 hi: 75181762170223969696219813306313470806,
             },
+            is_infinity: false,
         };
         assert_eq!(
             test_syscall_handler.secp256k1_add(p1, p3, &mut 10).unwrap(),
@@ -998,6 +1049,7 @@ mod tests {
                     lo: 68974579539311638391577168388077592842,
                     hi: 26163136114030451075775058782541084873,
                 },
+                is_infinity: false
             }
         );
     }
@@ -1028,6 +1080,7 @@ mod tests {
                     lo: 271307787381626825071797439039395650341,
                     hi: 314119230806908012387599548649227126582,
                 },
+                is_infinity: false
             }
         );
     }
@@ -1062,7 +1115,11 @@ mod tests {
                 .secp256r1_new(x, y, &mut 10)
                 .unwrap()
                 .unwrap(),
-            Secp256r1Point { x, y }
+            Secp256r1Point {
+                x,
+                y,
+                is_infinity: false
+            }
         );
     }
 
@@ -1094,6 +1151,7 @@ mod tests {
                 lo: 111045440647474106186537215379882575585,
                 hi: 118910939004298029402109603132816090461,
             },
+            is_infinity: false,
         };
 
         let p2 = p1;
@@ -1110,6 +1168,7 @@ mod tests {
                 lo: 231570843221643745062297421862629788481,
                 hi: 84249534056490759701994051847937833933,
             },
+            is_infinity: false,
         };
         assert_eq!(p3, p1_double);
         assert_eq!(
@@ -1129,6 +1188,7 @@ mod tests {
                 lo: 282344931843342117515389970197013120959,
                 hi: 178681203065513270100417145499857169664,
             },
+            is_infinity: false,
         };
         assert_eq!(
             test_syscall_handler.secp256r1_add(p1, p3, &mut 10).unwrap(),
@@ -1162,7 +1222,11 @@ mod tests {
                 .secp256r1_get_point_from_x(x, true, &mut 10)
                 .unwrap()
                 .unwrap(),
-            Secp256r1Point { x, y }
+            Secp256r1Point {
+                x,
+                y,
+                is_infinity: false
+            }
         );
     }
 
@@ -1186,7 +1250,11 @@ mod tests {
                 .secp256r1_get_point_from_x(x, false, &mut 10)
                 .unwrap()
                 .unwrap(),
-            Secp256r1Point { x, y }
+            Secp256r1Point {
+                x,
+                y,
+                is_infinity: false
+            }
         );
     }
 
@@ -1214,6 +1282,7 @@ mod tests {
                 lo: 221371427837412271565447410779117722274,
                 hi: 229236926352692519791101729645429586206,
             },
+            is_infinity: false,
         };
 
         let mut test_syscall_handler = StubSyscallHandler::default();

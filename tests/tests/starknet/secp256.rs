@@ -273,6 +273,7 @@ fn secp256k1_new() {
                 Some(Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 }),
                 Some(Secp256k1Point {
                     x: U256 {
@@ -283,6 +284,7 @@ fn secp256k1_new() {
                         hi: u128::MAX,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 }),
             ]),
         ),
@@ -423,6 +425,7 @@ fn secp256k1_add() {
                 Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -433,6 +436,7 @@ fn secp256k1_add() {
                         lo: 0,
                         hi: u128::MAX,
                     },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -443,6 +447,7 @@ fn secp256k1_add() {
                         lo: u128::MAX,
                         hi: u128::MAX,
                     },
+                    is_infinity: false,
                 },
             ]),
         ),
@@ -540,10 +545,12 @@ fn secp256k1_add() {
                 Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false
                 },
                 Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false
                 },
             ),
             (
@@ -556,6 +563,7 @@ fn secp256k1_add() {
                         hi: 0,
                         lo: u128::MAX
                     },
+                    is_infinity: false
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -566,6 +574,7 @@ fn secp256k1_add() {
                         hi: u128::MAX,
                         lo: 0
                     },
+                    is_infinity: false
                 },
             ),
             (
@@ -578,6 +587,7 @@ fn secp256k1_add() {
                         lo: u128::MAX,
                         hi: u128::MAX
                     },
+                    is_infinity: false
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -588,6 +598,7 @@ fn secp256k1_add() {
                         lo: u128::MAX,
                         hi: u128::MAX
                     },
+                    is_infinity: false
                 },
             ),
         ],
@@ -604,6 +615,7 @@ fn secp256k1_mul() {
                 Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -614,6 +626,7 @@ fn secp256k1_mul() {
                         hi: 0,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -624,6 +637,7 @@ fn secp256k1_mul() {
                         hi: u128::MAX,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
             ]),
         ),
@@ -721,6 +735,7 @@ fn secp256k1_mul() {
                 Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false
                 },
                 U256 { hi: 0, lo: 0 },
             ),
@@ -734,6 +749,7 @@ fn secp256k1_mul() {
                         lo: 0,
                         hi: u128::MAX,
                     },
+                    is_infinity: false
                 },
                 U256 {
                     lo: u128::MAX,
@@ -750,6 +766,7 @@ fn secp256k1_mul() {
                         hi: u128::MAX,
                         lo: 0,
                     },
+                    is_infinity: false
                 },
                 U256 {
                     hi: 0,
@@ -771,6 +788,7 @@ fn secp256k1_get_point_from_x() {
                 Some(Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 }),
                 Some(Secp256k1Point {
                     x: U256 {
@@ -781,6 +799,7 @@ fn secp256k1_get_point_from_x() {
                         hi: u128::MAX,
                         lo: 0,
                     },
+                    is_infinity: false,
                 }),
                 Some(Secp256k1Point {
                     x: U256 {
@@ -791,6 +810,7 @@ fn secp256k1_get_point_from_x() {
                         hi: 0,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 }),
             ]),
         ),
@@ -1143,6 +1163,7 @@ fn secp256k1_get_xy() {
             Secp256k1Point {
                 x: U256 { hi: 0, lo: 0 },
                 y: U256 { hi: 0, lo: 0 },
+                is_infinity: false
             },
             Secp256k1Point {
                 x: U256 {
@@ -1153,6 +1174,7 @@ fn secp256k1_get_xy() {
                     lo: u128::MAX,
                     hi: 0,
                 },
+                is_infinity: false
             },
             Secp256k1Point {
                 x: U256 {
@@ -1163,6 +1185,7 @@ fn secp256k1_get_xy() {
                     lo: 0,
                     hi: u128::MAX,
                 },
+                is_infinity: false
             },
             Secp256k1Point {
                 x: U256 {
@@ -1173,6 +1196,7 @@ fn secp256k1_get_xy() {
                     hi: u128::MAX,
                     lo: u128::MAX,
                 },
+                is_infinity: false
             },
         ],
     );
@@ -1189,6 +1213,7 @@ fn secp256r1_new() {
                 Some(Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 }),
                 Some(Secp256r1Point {
                     x: U256 {
@@ -1199,6 +1224,7 @@ fn secp256r1_new() {
                         hi: u128::MAX,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 }),
             ]),
         ),
@@ -1339,6 +1365,7 @@ fn secp256r1_add() {
                 Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 },
                 Secp256r1Point {
                     x: U256 {
@@ -1349,6 +1376,7 @@ fn secp256r1_add() {
                         hi: 0,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
                 Secp256r1Point {
                     x: U256 {
@@ -1359,6 +1387,7 @@ fn secp256r1_add() {
                         hi: u128::MAX,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
             ]),
         ),
@@ -1456,10 +1485,12 @@ fn secp256r1_add() {
                 Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false
                 },
                 Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false
                 },
             ),
             (
@@ -1472,6 +1503,7 @@ fn secp256r1_add() {
                         lo: 0,
                         hi: u128::MAX
                     },
+                    is_infinity: false
                 },
                 Secp256r1Point {
                     x: U256 {
@@ -1482,6 +1514,7 @@ fn secp256r1_add() {
                         lo: u128::MAX,
                         hi: 0
                     },
+                    is_infinity: false
                 },
             ),
             (
@@ -1494,6 +1527,7 @@ fn secp256r1_add() {
                         hi: u128::MAX,
                         lo: u128::MAX
                     },
+                    is_infinity: false
                 },
                 Secp256r1Point {
                     x: U256 {
@@ -1504,6 +1538,7 @@ fn secp256r1_add() {
                         hi: u128::MAX,
                         lo: u128::MAX
                     },
+                    is_infinity: false
                 },
             ),
         ],
@@ -1520,6 +1555,7 @@ fn secp256r1_mul() {
                 Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 },
                 Secp256r1Point {
                     x: U256 {
@@ -1530,6 +1566,7 @@ fn secp256r1_mul() {
                         hi: 0,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
                 Secp256r1Point {
                     x: U256 {
@@ -1540,6 +1577,7 @@ fn secp256r1_mul() {
                         hi: u128::MAX,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
             ]),
         ),
@@ -1637,6 +1675,7 @@ fn secp256r1_mul() {
                 Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false
                 },
                 U256 { hi: 0, lo: 0 },
             ),
@@ -1650,6 +1689,7 @@ fn secp256r1_mul() {
                         lo: 0,
                         hi: u128::MAX,
                     },
+                    is_infinity: false
                 },
                 U256 {
                     lo: u128::MAX,
@@ -1666,6 +1706,7 @@ fn secp256r1_mul() {
                         lo: u128::MAX,
                         hi: 0,
                     },
+                    is_infinity: false
                 },
                 U256 {
                     lo: 0,
@@ -1687,6 +1728,7 @@ fn secp256r1_get_point_from_x() {
                 Some(Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 }),
                 Some(Secp256r1Point {
                     x: U256 {
@@ -1697,6 +1739,7 @@ fn secp256r1_get_point_from_x() {
                         hi: u128::MAX,
                         lo: 0,
                     },
+                    is_infinity: false,
                 }),
                 Some(Secp256r1Point {
                     x: U256 {
@@ -1707,6 +1750,7 @@ fn secp256r1_get_point_from_x() {
                         hi: 0,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 }),
             ]),
         ),
@@ -2059,6 +2103,7 @@ fn secp256r1_get_xy() {
             Secp256r1Point {
                 x: U256 { hi: 0, lo: 0 },
                 y: U256 { hi: 0, lo: 0 },
+                is_infinity: false
             },
             Secp256r1Point {
                 x: U256 {
@@ -2069,6 +2114,7 @@ fn secp256r1_get_xy() {
                     lo: u128::MAX,
                     hi: 0,
                 },
+                is_infinity: false
             },
             Secp256r1Point {
                 x: U256 {
@@ -2079,6 +2125,7 @@ fn secp256r1_get_xy() {
                     lo: 0,
                     hi: u128::MAX,
                 },
+                is_infinity: false
             },
             Secp256r1Point {
                 x: U256 {
@@ -2089,6 +2136,7 @@ fn secp256r1_get_xy() {
                     hi: u128::MAX,
                     lo: u128::MAX,
                 },
+                is_infinity: false
             },
         ],
     );

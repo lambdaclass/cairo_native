@@ -101,15 +101,19 @@ pub struct TxInfo {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[repr(C, align(16))]
 pub struct Secp256k1Point {
     pub x: U256,
     pub y: U256,
+    pub is_infinity: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[repr(C, align(16))]
 pub struct Secp256r1Point {
     pub x: U256,
     pub y: U256,
+    pub is_infinity: bool,
 }
 
 pub trait StarknetSyscallHandler {
