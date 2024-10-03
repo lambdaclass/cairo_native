@@ -521,7 +521,7 @@ pub fn build_get<'ctx, 'this>(
                             location,
                         )]));
 
-                        let value_ptr = block.append_operation(llvm::get_element_ptr_dynamic(
+                        let value_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
                             context,
                             ptr,
                             &[block.argument(0)?.into()],
@@ -533,7 +533,7 @@ pub fn build_get<'ctx, 'this>(
                         let is_target_element = block.append_op_result(
                             ods::llvm::icmp(
                                 context,
-                                IntegerType::new(context, 0).into(),
+                                IntegerType::new(context, 1).into(),
                                 value_ptr,
                                 elem_ptr,
                                 IntegerAttribute::new(IntegerType::new(context, 64).into(), 0)
