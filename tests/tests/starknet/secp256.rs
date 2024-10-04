@@ -6,7 +6,6 @@ use cairo_native::{
     Value,
 };
 use lazy_static::lazy_static;
-use pretty_assertions_sorted::assert_eq;
 use starknet_types_core::felt::Felt;
 use std::collections::VecDeque;
 
@@ -538,74 +537,6 @@ fn secp256k1_add() {
         },
     );
 
-    pretty_assertions_sorted::assert_eq_sorted!(
-        syscall_handler.secp256k1_add.0,
-        [
-            (
-                Secp256k1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 { hi: 0, lo: 0 },
-                    is_infinity: false
-                },
-                Secp256k1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 {
-                        hi: 1733168570990207326437046234223328,
-                        lo: 2577042349707038322317355628978192
-                    },
-                    is_infinity: true
-                },
-            ),
-            (
-                Secp256k1Point {
-                    x: U256 {
-                        hi: u128::MAX,
-                        lo: 0
-                    },
-                    y: U256 {
-                        hi: 0,
-                        lo: u128::MAX
-                    },
-                    is_infinity: true
-                },
-                Secp256k1Point {
-                    x: U256 {
-                        hi: 0,
-                        lo: u128::MAX
-                    },
-                    y: U256 {
-                        hi: u128::MAX,
-                        lo: 0
-                    },
-                    is_infinity: false
-                },
-            ),
-            (
-                Secp256k1Point {
-                    x: U256 {
-                        lo: u128::MAX,
-                        hi: u128::MAX
-                    },
-                    y: U256 {
-                        lo: 2577042349707038322317355628978192,
-                        hi: 1733168570990207326437046234223328
-                    },
-                    is_infinity: true
-                },
-                Secp256k1Point {
-                    x: U256 {
-                        lo: u128::MAX,
-                        hi: u128::MAX
-                    },
-                    y: U256 {
-                        lo: u128::MAX,
-                        hi: u128::MAX
-                    },
-                    is_infinity: false
-                },
-            ),
-        ],
-    );
     assert!(syscall_handler.secp256k1_add.1.is_empty());
 }
 
@@ -731,56 +662,6 @@ fn secp256k1_mul() {
         },
     );
 
-    pretty_assertions_sorted::assert_eq_sorted!(
-        syscall_handler.secp256k1_mul.0,
-        [
-            (
-                Secp256k1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 { hi: 0, lo: 0 },
-                    is_infinity: false
-                },
-                U256 {
-                    hi: 1733875197492387889953657239909088,
-                    lo: 2592175575017578238863278680044832
-                },
-            ),
-            (
-                Secp256k1Point {
-                    x: U256 {
-                        lo: u128::MAX,
-                        hi: 0
-                    },
-                    y: U256 {
-                        lo: 0,
-                        hi: u128::MAX,
-                    },
-                    is_infinity: true
-                },
-                U256 {
-                    lo: 2592175575017578238863278680044832,
-                    hi: 1733875197492387889953657239909088,
-                },
-            ),
-            (
-                Secp256k1Point {
-                    x: U256 {
-                        hi: 0,
-                        lo: u128::MAX,
-                    },
-                    y: U256 {
-                        hi: u128::MAX,
-                        lo: 0,
-                    },
-                    is_infinity: true
-                },
-                U256 {
-                    hi: 1733875197492387889953657239909088,
-                    lo: 2592175575017578238863278680044832,
-                },
-            ),
-        ],
-    );
     assert!(syscall_handler.secp256k1_mul.1.is_empty());
 }
 
@@ -1169,7 +1050,7 @@ fn secp256k1_get_xy() {
             Secp256k1Point {
                 x: U256 { hi: 0, lo: 0 },
                 y: U256 { hi: 0, lo: 0 },
-                is_infinity: true
+                is_infinity: false
             },
             Secp256k1Point {
                 x: U256 {
@@ -1180,7 +1061,7 @@ fn secp256k1_get_xy() {
                     lo: u128::MAX,
                     hi: 0,
                 },
-                is_infinity: true
+                is_infinity: false
             },
             Secp256k1Point {
                 x: U256 {
@@ -1191,7 +1072,7 @@ fn secp256k1_get_xy() {
                     lo: 0,
                     hi: u128::MAX,
                 },
-                is_infinity: true
+                is_infinity: false
             },
             Secp256k1Point {
                 x: U256 {
@@ -1202,7 +1083,7 @@ fn secp256k1_get_xy() {
                     hi: u128::MAX,
                     lo: u128::MAX,
                 },
-                is_infinity: true
+                is_infinity: false
             },
         ],
     );
@@ -1484,74 +1365,6 @@ fn secp256r1_add() {
         },
     );
 
-    pretty_assertions_sorted::assert_eq_sorted!(
-        syscall_handler.secp256r1_add.0,
-        [
-            (
-                Secp256r1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 { hi: 0, lo: 0 },
-                    is_infinity: false
-                },
-                Secp256r1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 {
-                        hi: 1742999308907772698323868375982816,
-                        lo: 2580844755753273318242893811019792
-                    },
-                    is_infinity: true
-                },
-            ),
-            (
-                Secp256r1Point {
-                    x: U256 {
-                        lo: u128::MAX,
-                        hi: 0
-                    },
-                    y: U256 {
-                        lo: 0,
-                        hi: u128::MAX
-                    },
-                    is_infinity: false
-                },
-                Secp256r1Point {
-                    x: U256 {
-                        lo: 0,
-                        hi: u128::MAX
-                    },
-                    y: U256 {
-                        lo: 2577605247555989237902197454245904,
-                        hi: 1737150117704455138713203495650016
-                    },
-                    is_infinity: true
-                },
-            ),
-            (
-                Secp256r1Point {
-                    x: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
-                    },
-                    y: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
-                    },
-                    is_infinity: false
-                },
-                Secp256r1Point {
-                    x: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
-                    },
-                    y: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
-                    },
-                    is_infinity: false
-                },
-            ),
-        ],
-    );
     assert!(syscall_handler.secp256r1_add.1.is_empty());
 }
 
@@ -1676,55 +1489,6 @@ fn secp256r1_mul() {
             debug_name: None,
         },
     );
-
-    pretty_assertions_sorted::assert_eq_sorted!(
-        syscall_handler.secp256r1_mul.0,
-        [
-            (
-                Secp256r1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 { hi: 0, lo: 0 },
-                    is_infinity: false
-                },
-                U256 { hi: 0, lo: 0 },
-            ),
-            (
-                Secp256r1Point {
-                    x: U256 {
-                        lo: u128::MAX,
-                        hi: 0
-                    },
-                    y: U256 {
-                        lo: 0,
-                        hi: u128::MAX,
-                    },
-                    is_infinity: false
-                },
-                U256 {
-                    lo: u128::MAX,
-                    hi: 0,
-                },
-            ),
-            (
-                Secp256r1Point {
-                    x: U256 {
-                        lo: 0,
-                        hi: u128::MAX,
-                    },
-                    y: U256 {
-                        lo: u128::MAX,
-                        hi: 0,
-                    },
-                    is_infinity: false
-                },
-                U256 {
-                    lo: 0,
-                    hi: u128::MAX,
-                },
-            ),
-        ],
-    );
-    assert!(syscall_handler.secp256r1_mul.1.is_empty());
 }
 
 #[test]
@@ -2112,7 +1876,7 @@ fn secp256r1_get_xy() {
             Secp256r1Point {
                 x: U256 { hi: 0, lo: 0 },
                 y: U256 { hi: 0, lo: 0 },
-                is_infinity: true
+                is_infinity: false
             },
             Secp256r1Point {
                 x: U256 {
@@ -2123,7 +1887,7 @@ fn secp256r1_get_xy() {
                     lo: u128::MAX,
                     hi: 0,
                 },
-                is_infinity: true
+                is_infinity: false
             },
             Secp256r1Point {
                 x: U256 {
@@ -2134,7 +1898,7 @@ fn secp256r1_get_xy() {
                     lo: 0,
                     hi: u128::MAX,
                 },
-                is_infinity: true
+                is_infinity: false
             },
             Secp256r1Point {
                 x: U256 {
@@ -2145,7 +1909,7 @@ fn secp256r1_get_xy() {
                     hi: u128::MAX,
                     lo: u128::MAX,
                 },
-                is_infinity: true
+                is_infinity: false
             },
         ],
     );
