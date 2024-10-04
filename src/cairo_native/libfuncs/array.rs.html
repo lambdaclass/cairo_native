@@ -2438,6 +2438,24 @@
 <a href="#2438" id="2438">2438</a>
 <a href="#2439" id="2439">2439</a>
 <a href="#2440" id="2440">2440</a>
+<a href="#2441" id="2441">2441</a>
+<a href="#2442" id="2442">2442</a>
+<a href="#2443" id="2443">2443</a>
+<a href="#2444" id="2444">2444</a>
+<a href="#2445" id="2445">2445</a>
+<a href="#2446" id="2446">2446</a>
+<a href="#2447" id="2447">2447</a>
+<a href="#2448" id="2448">2448</a>
+<a href="#2449" id="2449">2449</a>
+<a href="#2450" id="2450">2450</a>
+<a href="#2451" id="2451">2451</a>
+<a href="#2452" id="2452">2452</a>
+<a href="#2453" id="2453">2453</a>
+<a href="#2454" id="2454">2454</a>
+<a href="#2455" id="2455">2455</a>
+<a href="#2456" id="2456">2456</a>
+<a href="#2457" id="2457">2457</a>
+<a href="#2458" id="2458">2458</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="comment">// TODO: A future possible improvement would be to put the array behind a double pointer and a
@@ -2988,16 +3006,16 @@
                                 <span class="kw">let </span>region = Region::new();
                                 <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
-                                <span class="kw">let </span>value = block.load(context, location, value_ptr, elem_ty)<span class="question-mark">?</span>;
-                                drop_overrides_meta
-                                    .invoke_override(context, <span class="kw-2">&amp;</span>block, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
-
                                 block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
                                 region
                             },
                             {
                                 <span class="kw">let </span>region = Region::new();
                                 <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+
+                                <span class="kw">let </span>value = block.load(context, location, value_ptr, elem_ty)<span class="question-mark">?</span>;
+                                drop_overrides_meta
+                                    .invoke_override(context, <span class="kw-2">&amp;</span>block, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
 
                                 block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
                                 region
@@ -4876,6 +4894,24 @@
                 )
             )
         );
+    }
+
+    <span class="doccomment">/// Test to ensure that the returned element in `array_get` does NOT get dropped.
+    </span><span class="attr">#[test]
+    </span><span class="kw">fn </span>array_get_avoid_dropping_element() {
+        <span class="kw">let </span>program = <span class="macro">load_cairo!</span> {
+            <span class="kw">use </span>core::{array::{array_append, array_at, array_new}, <span class="kw">box</span>::{into_box, unbox}};
+
+            <span class="kw">fn </span>run_test() -&gt; @Box&lt;felt252&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>x: Array&lt;Box&lt;felt252&gt;&gt; = array_new();
+                array_append(<span class="kw-2">ref </span>x, into_box(<span class="number">42</span>));
+
+                unbox(array_at(@x, <span class="number">0</span>))
+            }
+        };
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
+
+        <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(Value::Felt252(<span class="number">42</span>.into()))));
     }
 }
 </code></pre></div></section></main></body></html>
