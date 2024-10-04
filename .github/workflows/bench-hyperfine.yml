@@ -228,7 +228,7 @@ jobs:
       - name: Print tables
         run: |
           {
-            echo "Benchmark results Main vs HEAD"
+            echo "${bold}Benchmark results Main vs HEAD.${normal}"
             for f in $OUTPUT_DIR/*.md; do
               echo
               cat $f
@@ -242,7 +242,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: "github-actions[bot]"
-          body-includes: Benchmarking
+          body-includes: Benchmark results Main vs HEAD
 
       - name: Create or update bench comment
         continue-on-error: true
