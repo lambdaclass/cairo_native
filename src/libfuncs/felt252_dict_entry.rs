@@ -4,11 +4,11 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{
-        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
-        MetadataStorage,
+        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta,
+        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
-    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -20,11 +20,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{cf, llvm},
-    ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Identifier, Location, Value, ValueLike,
-    },
+    dialect::{cf, llvm, ods},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -57,10 +54,6 @@ pub fn build_get<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    if metadata.get::<ReallocBindingsMeta>().is_none() {
-        metadata.insert(ReallocBindingsMeta::new(context, helper));
-    }
-
     let (key_ty, key_layout) = registry.build_type_with_layout(
         context,
         helper,
@@ -68,7 +61,6 @@ pub fn build_get<'ctx, 'this>(
         metadata,
         &info.param_signatures()[1].ty,
     )?;
-
     let entry_ty = registry.build_type(
         context,
         helper,
@@ -76,8 +68,7 @@ pub fn build_get<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
-
-    let (value_ty, value_layout) = registry.build_type_with_layout(
+    let value_ty = registry.build_type(
         context,
         helper,
         registry,
@@ -86,159 +77,192 @@ pub fn build_get<'ctx, 'this>(
     )?;
 
     let dict_ptr = entry.argument(0)?.into();
-    let key_value = entry.argument(1)?.into();
+    let entry_key = entry.argument(1)?.into();
 
-    let key_ptr = helper
-        .init_block()
-        .alloca1(context, location, key_ty, key_layout.align())?;
+    let entry_key_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, key_ty, key_layout.align())?;
+    entry.store(context, location, entry_key_ptr, entry_key)?;
 
-    entry.store(context, location, key_ptr, key_value)?;
-
-    let runtime_bindings = metadata
+    // Double pointer. Avoid allocating an element on a dict getter.
+    let entry_value_ptr_ptr = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
-
-    let op = runtime_bindings.dict_get(context, helper, entry, dict_ptr, key_ptr, location)?;
-    let result_ptr: Value = op.result(0)?.into();
-
-    let null_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.mlir.zero", location)
-            .add_results(&[result_ptr.r#type()])
-            .build()?,
+        .unwrap()
+        .dict_get(context, helper, entry, dict_ptr, entry_key_ptr, location)?;
+    let entry_value_ptr = entry.load(
+        context,
+        location,
+        entry_value_ptr_ptr,
+        llvm::r#type::pointer(context, 0),
     )?;
 
-    // need llvm instead of arith to compare pointers
-    let is_null_ptr = entry.append_op_result(
-        OperationBuilder::new("llvm.icmp", location)
-            .add_operands(&[result_ptr, null_ptr])
-            .add_attributes(&[(
-                Identifier::new(context, "predicate"),
-                IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
-            )])
-            .add_results(&[IntegerType::new(context, 1).into()])
-            .build()?,
+    let null_ptr =
+        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+    let is_vacant = entry.append_op_result(
+        ods::llvm::icmp(
+            context,
+            IntegerType::new(context, 1).into(),
+            entry_value_ptr,
+            null_ptr,
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
+            location,
+        )
+        .into(),
     )?;
 
-    let block_is_null = helper.append_block(Block::new(&[]));
-    let block_is_found = helper.append_block(Block::new(&[]));
-    let block_final = helper.append_block(Block::new(&[
-        (llvm::r#type::pointer(context, 0), location),
-        (value_ty, location),
-    ]));
-
+    let block_occupied = helper.append_block(Block::new(&[]));
+    let block_vacant = helper.append_block(Block::new(&[]));
+    let block_final = helper.append_block(Block::new(&[(value_ty, location)]));
     entry.append_operation(cf::cond_br(
         context,
-        is_null_ptr,
-        block_is_null,
-        block_is_found,
+        is_vacant,
+        block_vacant,
+        block_occupied,
         &[],
         &[],
         location,
     ));
 
-    // null block
     {
-        let alloc_size = block_is_null.const_int(context, location, value_layout.size(), 64)?;
+        let value = block_occupied.load(context, location, entry_value_ptr, value_ty)?;
+        block_occupied.append_operation(cf::br(block_final, &[value], location));
+    }
 
-        let value_ptr = block_is_null.append_op_result(ReallocBindingsMeta::realloc(
-            context, result_ptr, alloc_size, location,
-        ))?;
-
-        let default_value = registry
+    {
+        let value = registry
             .get_type(&info.branch_signatures()[0].vars[1].ty)?
             .build_default(
                 context,
                 registry,
-                block_is_null,
+                block_vacant,
                 location,
                 helper,
                 metadata,
                 &info.branch_signatures()[0].vars[1].ty,
             )?;
-
-        block_is_null.append_operation(cf::br(block_final, &[value_ptr, default_value], location));
+        block_vacant.append_operation(cf::br(block_final, &[value], location));
     }
 
-    // found block
-    {
-        let loaded_val_ptr = block_is_found.load(context, location, result_ptr, value_ty)?;
-        block_is_found.append_operation(cf::br(
-            block_final,
-            &[result_ptr, loaded_val_ptr],
-            location,
-        ));
-    }
+    let entry = block_final.append_op_result(llvm::undef(entry_ty, location))?;
+    let entry =
+        block_final.insert_values(context, location, entry, &[dict_ptr, entry_value_ptr_ptr])?;
 
-    // construct the struct
-
-    let entry_value = block_final.append_op_result(llvm::undef(entry_ty, location))?;
-
-    let value_ptr = block_final.argument(0)?.into();
-    let value = block_final.argument(1)?.into();
-
-    let entry_value = block_final.insert_value(context, location, entry_value, key_value, 0)?;
-
-    let entry_value = block_final.insert_value(context, location, entry_value, value_ptr, 1)?;
-
-    let entry_value = block_final.insert_value(context, location, entry_value, dict_ptr, 2)?;
-
-    block_final.append_operation(helper.br(0, &[entry_value, value], location));
-
+    block_final.append_operation(helper.br(0, &[entry, block_final.argument(0)?.into()], location));
     Ok(())
 }
 
 pub fn build_finalize<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    _info: &SignatureAndTypeConcreteLibfunc,
+    info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let key_ty = IntegerType::new(context, 252).into();
-    let key_layout = get_integer_layout(252);
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
 
-    let entry_value = entry.argument(0)?.into();
-    let new_value = entry.argument(1)?.into();
-
-    let key_value = entry.extract_value(context, location, entry_value, key_ty, 0)?;
-
-    let value_ptr = entry.extract_value(
+    let (value_ty, value_layout) = registry.build_type_with_layout(
         context,
-        location,
-        entry_value,
-        llvm::r#type::pointer(context, 0),
-        1,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[1].ty,
     )?;
+
+    let dict_entry = entry.argument(0)?.into();
+    let entry_value = entry.argument(1)?.into();
 
     let dict_ptr = entry.extract_value(
         context,
         location,
-        entry_value,
+        dict_entry,
         llvm::r#type::pointer(context, 0),
-        2,
+        0,
+    )?;
+    let value_ptr_ptr = entry.extract_value(
+        context,
+        location,
+        dict_entry,
+        llvm::r#type::pointer(context, 0),
+        1,
     )?;
 
-    entry.store(context, location, value_ptr, new_value)?;
-
-    let key_ptr = helper
-        .init_block()
-        .alloca1(context, location, key_ty, key_layout.align())?;
-
-    entry.store(context, location, key_ptr, key_value)?;
-
-    // call insert
-
-    let runtime_bindings = metadata
-        .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
-
-    runtime_bindings.dict_insert(
-        context, helper, entry, dict_ptr, key_ptr, value_ptr, location,
+    let value_ptr = entry.load(
+        context,
+        location,
+        value_ptr_ptr,
+        llvm::r#type::pointer(context, 0),
     )?;
 
-    entry.append_operation(helper.br(0, &[dict_ptr], location));
+    let null_ptr =
+        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+    let is_vacant = entry.append_op_result(
+        ods::llvm::icmp(
+            context,
+            IntegerType::new(context, 1).into(),
+            value_ptr,
+            null_ptr,
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
+            location,
+        )
+        .into(),
+    )?;
+
+    let block_occupied = helper.append_block(Block::new(&[]));
+    let block_vacant = helper.append_block(Block::new(&[]));
+    let block_final =
+        helper.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
+    entry.append_operation(cf::cond_br(
+        context,
+        is_vacant,
+        block_vacant,
+        block_occupied,
+        &[],
+        &[],
+        location,
+    ));
+
+    {
+        match metadata.get::<DropOverridesMeta>() {
+            Some(drop_overrides_meta)
+                if drop_overrides_meta.is_overriden(&info.signature.param_signatures[1].ty) =>
+            {
+                let value = block_occupied.load(context, location, value_ptr, value_ty)?;
+                drop_overrides_meta.invoke_override(
+                    context,
+                    block_occupied,
+                    location,
+                    &info.signature.param_signatures[1].ty,
+                    value,
+                )?;
+            }
+            _ => {}
+        }
+
+        block_occupied.append_operation(cf::br(block_final, &[value_ptr], location));
+    }
+
+    {
+        let value_len = block_vacant.const_int(context, location, value_layout.size(), 64)?;
+        let value_ptr = block_vacant.append_op_result(ReallocBindingsMeta::realloc(
+            context, null_ptr, value_len, location,
+        ))?;
+
+        block_vacant.store(context, location, value_ptr_ptr, value_ptr)?;
+        block_vacant.append_operation(cf::br(block_final, &[value_ptr], location));
+    }
+
+    block_final.store(
+        context,
+        location,
+        block_final.argument(0)?.into(),
+        entry_value,
+    )?;
+    block_final.append_operation(helper.br(0, &[dict_ptr], location));
 
     Ok(())
 }

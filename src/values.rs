@@ -1,5 +1,5 @@
 //! # JIT params and return values de/serialization
-
+//!
 //! A Rusty interface to provide parameters to JIT calls.
 
 use crate::{
@@ -390,7 +390,11 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let mut value_map = Box::<FeltDict>::default();
+                        let mut value_map = Box::new(FeltDict {
+                            inner: HashMap::default(),
+                            count: 0,
+                            free_fn: crate::utils::libc_free,
+                        });
 
                         // next key must be called before next_value
 
@@ -399,19 +403,13 @@ impl Value {
                             let value = value.to_jit(arena, registry, &info.ty)?;
 
                             let value_malloc_ptr = libc_malloc(elem_layout.size());
-
                             std::ptr::copy_nonoverlapping(
                                 value.cast::<u8>().as_ptr(),
                                 value_malloc_ptr.cast(),
                                 elem_layout.size(),
                             );
 
-                            value_map.inner.insert(
-                                key,
-                                NonNull::new(value_malloc_ptr)
-                                    .expect("allocation failure")
-                                    .cast(),
-                            );
+                            value_map.inner.insert(key, value_malloc_ptr);
                         }
 
                         NonNull::new_unchecked(Box::into_raw(value_map)).cast()
@@ -700,9 +698,20 @@ impl Value {
 
                     let mut output_map = HashMap::with_capacity(inner.len());
                     for (key, val_ptr) in inner.iter() {
+                        if val_ptr.is_null() {
+                            continue;
+                        }
+
                         let key = Felt::from_bytes_le(key);
-                        output_map.insert(key, Self::from_jit(val_ptr.cast(), &info.ty, registry)?);
-                        libc_free(val_ptr.as_ptr());
+                        output_map.insert(
+                            key,
+                            Self::from_jit(
+                                NonNull::new(*val_ptr).unwrap().cast(),
+                                &info.ty,
+                                registry,
+                            )?,
+                        );
+                        libc_free(*val_ptr);
                     }
 
                     Self::Felt252Dict {

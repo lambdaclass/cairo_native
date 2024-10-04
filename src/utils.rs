@@ -23,7 +23,6 @@ use std::{
     fmt::{self, Display},
     ops::Neg,
     path::Path,
-    ptr::NonNull,
     sync::Arc,
 };
 use thiserror::Error;
@@ -340,16 +339,6 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
             cairo_native_runtime::cairo_native__dict_get
                 as *const fn(*mut FeltDict, &[u8; 32]) -> *mut std::ffi::c_void
                 as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_insert",
-            cairo_native_runtime::cairo_native__dict_insert
-                as *const fn(
-                    *mut FeltDict,
-                    &[u8; 32],
-                    NonNull<std::ffi::c_void>,
-                ) -> *mut std::ffi::c_void as *mut (),
         );
 
         engine.register_symbol(

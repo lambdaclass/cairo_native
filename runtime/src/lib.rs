@@ -13,7 +13,7 @@ use starknet_types_core::{
     felt::Felt,
     hash::StarkHash,
 };
-use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
+use std::{collections::HashMap, ffi::c_void, fs::File, io::Write, os::fd::FromRawFd, slice};
 use std::{ops::Mul, vec::IntoIter};
 
 lazy_static! {
@@ -134,10 +134,12 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 }
 
 /// Felt252 type used in cairo native runtime
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct FeltDict {
-    pub inner: HashMap<[u8; 32], NonNull<std::ffi::c_void>>,
+    pub inner: HashMap<[u8; 32], *mut c_void>,
     pub count: u64,
+
+    pub free_fn: unsafe extern "C" fn(*mut c_void),
 }
 
 /// Allocate a new dictionary.
@@ -147,8 +149,14 @@ pub struct FeltDict {
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_new() -> *mut FeltDict {
-    Box::into_raw(Box::<FeltDict>::default())
+pub unsafe extern "C" fn cairo_native__dict_new(
+    free_fn: extern "C" fn(*mut c_void),
+) -> *mut FeltDict {
+    Box::into_raw(Box::new(FeltDict {
+        inner: HashMap::default(),
+        count: 0,
+        free_fn,
+    }))
 }
 
 /// Free a dictionary using an optional callback to drop each element.
@@ -157,23 +165,26 @@ pub unsafe extern "C" fn cairo_native__dict_new() -> *mut FeltDict {
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-// Note: Using `Option<extern "C" fn(*mut std::ffi::c_void)>` is ffi-safe thanks to Option's null
+// Note: Using `Option<extern "C" fn(*mut c_void)>` is ffi-safe thanks to Option's null
 //   pointer optimization. Check out
 //   https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization for more info.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_drop(
     ptr: *mut FeltDict,
-    drop_fn: Option<extern "C" fn(*mut std::ffi::c_void)>,
+    drop_fn: Option<extern "C" fn(*mut c_void)>,
 ) {
-    let map = Box::from_raw(ptr);
+    let dict = Box::from_raw(ptr);
 
     // Free the entries manually.
-    for entry in map.inner.into_values() {
-        if let Some(drop_fn) = drop_fn {
-            drop_fn(entry.as_ptr());
-        }
+    for entry in dict.inner.into_values() {
+        if !entry.is_null() {
+            if let Some(drop_fn) = drop_fn {
+                drop_fn(entry);
+            }
 
-        libc::free(entry.as_ptr());
+            // TODO: Use the mem tracing subsystem (avoid false memory leaks).
+            (dict.free_fn)(entry);
+        }
     }
 }
 
@@ -186,23 +197,30 @@ pub unsafe extern "C" fn cairo_native__dict_drop(
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_dup(
     ptr: *mut FeltDict,
-    dup_fn: extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
+    dup_fn: extern "C" fn(*mut c_void) -> *mut c_void,
 ) -> *mut FeltDict {
     let old_dict = &*ptr;
-    let mut new_dict = Box::<FeltDict>::default();
+    let mut new_dict = Box::new(FeltDict {
+        inner: HashMap::default(),
+        count: 0,
+        free_fn: old_dict.free_fn,
+    });
 
     new_dict.inner.extend(
         old_dict
             .inner
             .iter()
-            .map(|(&k, &v)| (k, NonNull::new(dup_fn(v.as_ptr())).unwrap())),
+            .filter_map(|(&k, &v)| (!v.is_null()).then_some((k, dup_fn(v)))),
     );
 
     Box::into_raw(new_dict)
 }
 
-/// Return the value (reference) for a given key, or null if not present. Increment the access
-/// count.
+/// Return a pointer to the entry's value pointer for a given key, inserting a null pointer if not
+/// present. Increment the access count.
+///
+/// The null pointer will be either updated by `felt252_dict_entry_finalize` or removed (along with
+/// everything else in the dict) by the entry's drop implementation.
 ///
 /// # Safety
 ///
@@ -210,38 +228,11 @@ pub unsafe extern "C" fn cairo_native__dict_dup(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_get(
-    ptr: *mut FeltDict,
+    dict: &mut FeltDict,
     key: &[u8; 32],
-) -> *mut std::ffi::c_void {
-    let dict: &mut FeltDict = &mut *ptr;
+) -> *mut c_void {
     dict.count += 1;
-
-    match dict.inner.get(key) {
-        Some(v) => v.as_ptr(),
-        None => std::ptr::null_mut(),
-    }
-}
-
-/// Inserts the provided key value. Returning the old one or nullptr if there was none.
-///
-/// # Safety
-///
-/// This function is intended to be called from MLIR, deals with pointers, and is therefore
-/// definitely unsafe to use manually.
-#[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_insert(
-    ptr: *mut FeltDict,
-    key: &[u8; 32],
-    value: NonNull<std::ffi::c_void>,
-) -> *mut std::ffi::c_void {
-    let dict = &mut *ptr;
-    let old_ptr = dict.inner.insert(*key, value);
-
-    if let Some(v) = old_ptr {
-        v.as_ptr()
-    } else {
-        std::ptr::null_mut()
-    }
+    dict.inner.entry(*key).or_insert(std::ptr::null_mut()) as *mut _ as *mut c_void
 }
 
 /// Compute the total gas refund for the dictionary at squash time.
@@ -268,9 +259,9 @@ pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> 
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
-    mut point_ptr: NonNull<[[u8; 32]; 2]>,
+    point_ptr: &mut [[u8; 32]; 2],
 ) -> bool {
-    let x = Felt::from_bytes_le(&point_ptr.as_ref()[0]);
+    let x = Felt::from_bytes_le(&point_ptr[0]);
 
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L63
 
@@ -305,15 +296,15 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
-    mut point_ptr: NonNull<[[u8; 32]; 2]>,
+    point_ptr: &mut [[u8; 32]; 2],
 ) -> bool {
-    let x = Felt::from_bytes_le(&point_ptr.as_ref()[0]);
-    let y = Felt::from_bytes_le(&point_ptr.as_ref()[1]);
+    let x = Felt::from_bytes_le(&point_ptr[0]);
+    let y = Felt::from_bytes_le(&point_ptr[1]);
 
     match AffinePoint::new(x, y) {
         Ok(point) => {
-            point_ptr.as_mut()[0].copy_from_slice(&point.x().to_bytes_le());
-            point_ptr.as_mut()[1].copy_from_slice(&point.y().to_bytes_le());
+            point_ptr[0].copy_from_slice(&point.x().to_bytes_le());
+            point_ptr[1].copy_from_slice(&point.y().to_bytes_le());
             true
         }
         Err(_) => false,
@@ -327,9 +318,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(
-    mut state_ptr: NonNull<[[u8; 32]; 4]>,
-) {
+pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(state_ptr: &mut [[u8; 32]; 4]) {
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-runner/src/casm_run/mod.rs#L1802
     let mut rng = rand::thread_rng();
     let (random_x, random_y) = loop {
@@ -345,10 +334,10 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(
     // We already made sure its a valid point.
     let state = AffinePoint::new_unchecked(random_x, random_y);
 
-    state_ptr.as_mut()[0].copy_from_slice(&state.x().to_bytes_le());
-    state_ptr.as_mut()[1].copy_from_slice(&state.y().to_bytes_le());
-    state_ptr.as_mut()[2].copy_from_slice(&state.x().to_bytes_le());
-    state_ptr.as_mut()[3].copy_from_slice(&state.y().to_bytes_le());
+    state_ptr[0].copy_from_slice(&state.x().to_bytes_le());
+    state_ptr[1].copy_from_slice(&state.y().to_bytes_le());
+    state_ptr[2].copy_from_slice(&state.x().to_bytes_le());
+    state_ptr[3].copy_from_slice(&state.y().to_bytes_le());
 }
 
 /// Compute `ec_state_add(state, point)` and store the state back.
@@ -363,24 +352,24 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
-    mut state_ptr: NonNull<[[u8; 32]; 4]>,
-    point_ptr: NonNull<[[u8; 32]; 2]>,
+    state_ptr: &mut [[u8; 32]; 4],
+    point_ptr: &[[u8; 32]; 2],
 ) {
     // We use unchecked methods because the inputs must already be valid points.
     let mut state = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr.as_ref()[0]),
-        Felt::from_bytes_le(&state_ptr.as_ref()[1]),
+        Felt::from_bytes_le(&state_ptr[0]),
+        Felt::from_bytes_le(&state_ptr[1]),
     );
     let point = AffinePoint::new_unchecked(
-        Felt::from_bytes_le(&point_ptr.as_ref()[0]),
-        Felt::from_bytes_le(&point_ptr.as_ref()[1]),
+        Felt::from_bytes_le(&point_ptr[0]),
+        Felt::from_bytes_le(&point_ptr[1]),
     );
 
     state += &point;
     let state = state.to_affine().unwrap();
 
-    state_ptr.as_mut()[0].copy_from_slice(&state.x().to_bytes_le());
-    state_ptr.as_mut()[1].copy_from_slice(&state.y().to_bytes_le());
+    state_ptr[0].copy_from_slice(&state.x().to_bytes_le());
+    state_ptr[1].copy_from_slice(&state.y().to_bytes_le());
 }
 
 /// Compute `ec_state_add_mul(state, scalar, point)` and store the state back.
@@ -395,26 +384,26 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
-    mut state_ptr: NonNull<[[u8; 32]; 4]>,
-    scalar_ptr: NonNull<[u8; 32]>,
-    point_ptr: NonNull<[[u8; 32]; 2]>,
+    state_ptr: &mut [[u8; 32]; 4],
+    scalar_ptr: &[u8; 32],
+    point_ptr: &[[u8; 32]; 2],
 ) {
     // Here the points should already be checked as valid, so we can use unchecked.
     let mut state = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr.as_ref()[0]),
-        Felt::from_bytes_le(&state_ptr.as_ref()[1]),
+        Felt::from_bytes_le(&state_ptr[0]),
+        Felt::from_bytes_le(&state_ptr[1]),
     );
     let point = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&point_ptr.as_ref()[0]),
-        Felt::from_bytes_le(&point_ptr.as_ref()[1]),
+        Felt::from_bytes_le(&point_ptr[0]),
+        Felt::from_bytes_le(&point_ptr[1]),
     );
-    let scalar = Felt::from_bytes_le(scalar_ptr.as_ref());
+    let scalar = Felt::from_bytes_le(scalar_ptr);
 
     state += &point.mul(scalar);
     let state = state.to_affine().unwrap();
 
-    state_ptr.as_mut()[0].copy_from_slice(&state.x().to_bytes_le());
-    state_ptr.as_mut()[1].copy_from_slice(&state.y().to_bytes_le());
+    state_ptr[0].copy_from_slice(&state.x().to_bytes_le());
+    state_ptr[1].copy_from_slice(&state.y().to_bytes_le());
 }
 
 /// Compute `ec_state_try_finalize_nz(state)` and store the result.
@@ -429,17 +418,17 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
-    mut point_ptr: NonNull<[[u8; 32]; 2]>,
-    state_ptr: NonNull<[[u8; 32]; 4]>,
+    point_ptr: &mut [[u8; 32]; 2],
+    state_ptr: &[[u8; 32]; 4],
 ) -> bool {
     // We use unchecked methods because the inputs must already be valid points.
     let state = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr.as_ref()[0]),
-        Felt::from_bytes_le(&state_ptr.as_ref()[1]),
+        Felt::from_bytes_le(&state_ptr[0]),
+        Felt::from_bytes_le(&state_ptr[1]),
     );
     let random = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr.as_ref()[2]),
-        Felt::from_bytes_le(&state_ptr.as_ref()[3]),
+        Felt::from_bytes_le(&state_ptr[2]),
+        Felt::from_bytes_le(&state_ptr[3]),
     );
 
     if state.x() == random.x() && state.y() == random.y() {
@@ -448,8 +437,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
         let point = &state - &random;
         let point = point.to_affine().unwrap();
 
-        point_ptr.as_mut()[0].copy_from_slice(&point.x().to_bytes_le());
-        point_ptr.as_mut()[1].copy_from_slice(&point.y().to_bytes_le());
+        point_ptr[0].copy_from_slice(&point.x().to_bytes_le());
+        point_ptr[1].copy_from_slice(&point.y().to_bytes_le());
 
         true
     }
