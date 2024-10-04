@@ -2,6 +2,7 @@ use crate::{
     error,
     starknet::{ArrayAbi, U256},
     types::TypeBuilder,
+    utils::libc_malloc,
     values::Value,
 };
 use bumpalo::Bump;
@@ -63,7 +64,7 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
 
                 let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
                 let heap_ptr = unsafe {
-                    let heap_ptr = libc::malloc(layout.size());
+                    let heap_ptr = libc_malloc(layout.size());
                     libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
                     heap_ptr
                 };
@@ -78,7 +79,7 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
 
                     let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
                     let heap_ptr = unsafe {
-                        let heap_ptr = libc::malloc(layout.size());
+                        let heap_ptr = libc_malloc(layout.size());
                         libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
                         heap_ptr
                     };

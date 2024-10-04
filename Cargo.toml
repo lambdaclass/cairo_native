@@ -47,9 +47,10 @@ build-cli = [
     "dep:colored",
 ]
 scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
-with-debug-utils = []
-with-runtime = ["dep:cairo-native-runtime"]
 with-cheatcode = []
+with-debug-utils = []
+with-mem-tracing = []
+with-runtime = ["dep:cairo-native-runtime"]
 
 # the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
 [package.metadata.cargo-udeps.ignore]

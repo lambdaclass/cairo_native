@@ -29,6 +29,7 @@ use std::{
 use thiserror::Error;
 
 mod block_ext;
+pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
 
@@ -48,6 +49,15 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
         .parse()
         .unwrap()
 });
+
+#[cfg(feature = "with-mem-tracing")]
+#[allow(unused_imports)]
+pub(crate) use self::mem_tracing::{
+    _wrapped_free as libc_free, _wrapped_malloc as libc_malloc, _wrapped_realloc as libc_realloc,
+};
+#[cfg(not(feature = "with-mem-tracing"))]
+#[allow(unused_imports)]
+pub(crate) use libc::{free as libc_free, malloc as libc_malloc, realloc as libc_realloc};
 
 /// Generate a function name.
 ///
@@ -226,6 +236,9 @@ pub fn create_engine(
         .get::<crate::metadata::debug_utils::DebugUtils>()
         .unwrap()
         .register_impls(&engine);
+
+    #[cfg(feature = "with-mem-tracing")]
+    self::mem_tracing::register_bindings(&engine);
 
     engine
 }

@@ -461,6 +461,7 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
+    use crate::utils::libc_malloc;
     use std::{
         alloc::Layout,
         fmt::Debug,
@@ -818,8 +819,7 @@ pub(crate) mod handler {
                     capacity: 0,
                 },
                 _ => {
-                    let ptr =
-                        libc::malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
+                    let ptr = libc_malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
 
                     let len: u32 = data.len().try_into().unwrap();
                     for (i, val) in data.iter().enumerate() {
@@ -907,20 +907,19 @@ pub(crate) mod handler {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
                         payload: unsafe {
-                            let mut block_info_ptr =
-                                NonNull::new(
-                                    libc::malloc(size_of::<BlockInfoAbi>()) as *mut BlockInfoAbi
-                                )
-                                .unwrap();
+                            let mut block_info_ptr = NonNull::new(libc_malloc(
+                                size_of::<BlockInfoAbi>(),
+                            )
+                                as *mut BlockInfoAbi)
+                            .unwrap();
                             block_info_ptr.as_mut().block_number = x.block_info.block_number;
                             block_info_ptr.as_mut().block_timestamp = x.block_info.block_timestamp;
                             block_info_ptr.as_mut().sequencer_address =
                                 Felt252Abi(x.block_info.sequencer_address.to_bytes_le());
 
-                            let mut tx_info_ptr = NonNull::new(
-                                libc::malloc(size_of::<TxInfoAbi>()) as *mut TxInfoAbi,
-                            )
-                            .unwrap();
+                            let mut tx_info_ptr =
+                                NonNull::new(libc_malloc(size_of::<TxInfoAbi>()) as *mut TxInfoAbi)
+                                    .unwrap();
                             tx_info_ptr.as_mut().version =
                                 Felt252Abi(x.tx_info.version.to_bytes_le());
                             tx_info_ptr.as_mut().account_contract_address =
@@ -940,7 +939,7 @@ pub(crate) mod handler {
                             tx_info_ptr.as_mut().nonce = Felt252Abi(x.tx_info.nonce.to_bytes_le());
 
                             let mut execution_info_ptr =
-                                NonNull::new(libc::malloc(size_of::<ExecutionInfoAbi>())
+                                NonNull::new(libc_malloc(size_of::<ExecutionInfoAbi>())
                                     as *mut ExecutionInfoAbi)
                                 .unwrap();
                             execution_info_ptr.as_mut().block_info = block_info_ptr;
@@ -973,22 +972,22 @@ pub(crate) mod handler {
                         tag: 0u8,
                         payload: unsafe {
                             let mut execution_info_ptr =
-                                NonNull::new(libc::malloc(size_of::<ExecutionInfoV2Abi>())
+                                NonNull::new(libc_malloc(size_of::<ExecutionInfoV2Abi>())
                                     as *mut ExecutionInfoV2Abi)
                                 .unwrap();
 
-                            let mut block_info_ptr =
-                                NonNull::new(
-                                    libc::malloc(size_of::<BlockInfoAbi>()) as *mut BlockInfoAbi
-                                )
-                                .unwrap();
+                            let mut block_info_ptr = NonNull::new(libc_malloc(
+                                size_of::<BlockInfoAbi>(),
+                            )
+                                as *mut BlockInfoAbi)
+                            .unwrap();
                             block_info_ptr.as_mut().block_number = x.block_info.block_number;
                             block_info_ptr.as_mut().block_timestamp = x.block_info.block_timestamp;
                             block_info_ptr.as_mut().sequencer_address =
                                 Felt252Abi(x.block_info.sequencer_address.to_bytes_le());
 
                             let mut tx_info_ptr = NonNull::new(
-                                libc::malloc(size_of::<TxInfoV2Abi>()) as *mut TxInfoV2Abi,
+                                libc_malloc(size_of::<TxInfoV2Abi>()) as *mut TxInfoV2Abi,
                             )
                             .unwrap();
                             tx_info_ptr.as_mut().version =
@@ -1692,7 +1691,7 @@ pub(crate) mod handler {
                         tag: 0u8,
                         payload: ManuallyDrop::new({
                             unsafe {
-                                let data = libc::malloc(std::mem::size_of_val(&x)).cast();
+                                let data = libc_malloc(std::mem::size_of_val(&x)).cast();
                                 std::ptr::copy_nonoverlapping::<u32>(
                                     x.as_ptr().cast(),
                                     data,
