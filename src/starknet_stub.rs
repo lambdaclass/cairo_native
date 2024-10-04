@@ -324,8 +324,11 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         // The inner unwraps should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwraps depend on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
-        let p0 = k256::ProjectivePoint::from_encoded_point(
-            &k256::EncodedPoint::from_affine_coordinates(
+
+        let p0 = k256::ProjectivePoint::from_encoded_point(&if p0.is_infinity {
+            k256::EncodedPoint::identity()
+        } else {
+            k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
                     p0.x.hi
                         .to_be_bytes()
@@ -341,11 +344,13 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 )
                 .unwrap(),
                 false,
-            ),
-        )
+            )
+        })
         .unwrap();
-        let p1 = k256::ProjectivePoint::from_encoded_point(
-            &k256::EncodedPoint::from_affine_coordinates(
+        let p1 = k256::ProjectivePoint::from_encoded_point(&if p1.is_infinity {
+            k256::EncodedPoint::identity()
+        } else {
+            k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
                     p1.x.hi
                         .to_be_bytes()
@@ -361,8 +366,8 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 )
                 .unwrap(),
                 false,
-            ),
-        )
+            )
+        })
         .unwrap();
 
         let p = p0 + p1;
@@ -406,8 +411,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         // number of bytes. The outer unwrap depends on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
 
-        let p = k256::ProjectivePoint::from_encoded_point(
-            &k256::EncodedPoint::from_affine_coordinates(
+        let p = k256::ProjectivePoint::from_encoded_point(&if p_arg.is_infinity {
+            k256::EncodedPoint::identity()
+        } else {
+            k256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
                     p_arg
                         .x
@@ -427,9 +434,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 )
                 .unwrap(),
                 false,
-            ),
-        )
+            )
+        })
         .unwrap();
+
         let m: k256::Scalar = k256::elliptic_curve::ScalarPrimitive::from_slice(&{
             let mut buf = [0u8; 32];
             buf[0..16].copy_from_slice(&m.hi.to_be_bytes());
@@ -598,8 +606,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         // The inner unwraps should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwraps depend on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
-        let p0 = p256::ProjectivePoint::from_encoded_point(
-            &p256::EncodedPoint::from_affine_coordinates(
+        let p0 = p256::ProjectivePoint::from_encoded_point(&if p0.is_infinity {
+            p256::EncodedPoint::identity()
+        } else {
+            p256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
                     p0.x.hi
                         .to_be_bytes()
@@ -615,11 +625,13 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 )
                 .unwrap(),
                 false,
-            ),
-        )
+            )
+        })
         .unwrap();
-        let p1 = p256::ProjectivePoint::from_encoded_point(
-            &p256::EncodedPoint::from_affine_coordinates(
+        let p1 = p256::ProjectivePoint::from_encoded_point(&if p1.is_infinity {
+            p256::EncodedPoint::identity()
+        } else {
+            p256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
                     p1.x.hi
                         .to_be_bytes()
@@ -635,8 +647,8 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 )
                 .unwrap(),
                 false,
-            ),
-        )
+            )
+        })
         .unwrap();
 
         let p = p0 + p1;
@@ -671,27 +683,41 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     #[instrument(skip(self))]
     fn secp256r1_mul(
         &mut self,
-        p: Secp256r1Point,
+        p_arg: Secp256r1Point,
         m: U256,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256r1Point> {
         // The inner unwrap should be unreachable because the iterator we provide has the expected
         // number of bytes. The outer unwrap depends on the felt values, which should be valid since
         // they'll be provided by secp256 syscalls.
-        let p = p256::ProjectivePoint::from_encoded_point(
-            &p256::EncodedPoint::from_affine_coordinates(
+
+        let p = p256::ProjectivePoint::from_encoded_point(&if p_arg.is_infinity {
+            p256::EncodedPoint::identity()
+        } else {
+            p256::EncodedPoint::from_affine_coordinates(
                 &GenericArray::from_exact_iter(
-                    p.x.hi.to_be_bytes().into_iter().chain(p.x.lo.to_be_bytes()),
+                    p_arg
+                        .x
+                        .hi
+                        .to_be_bytes()
+                        .into_iter()
+                        .chain(p_arg.x.lo.to_be_bytes()),
                 )
                 .unwrap(),
                 &GenericArray::from_exact_iter(
-                    p.y.hi.to_be_bytes().into_iter().chain(p.y.lo.to_be_bytes()),
+                    p_arg
+                        .y
+                        .hi
+                        .to_be_bytes()
+                        .into_iter()
+                        .chain(p_arg.y.lo.to_be_bytes()),
                 )
                 .unwrap(),
                 false,
-            ),
-        )
+            )
+        })
         .unwrap();
+
         let m: p256::Scalar = p256::elliptic_curve::ScalarPrimitive::from_slice(&{
             let mut buf = [0u8; 32];
             buf[0..16].copy_from_slice(&m.hi.to_be_bytes());
