@@ -548,16 +548,16 @@ pub fn build_get<'ctx, 'this>(
                                 let region = Region::new();
                                 let block = region.append_block(Block::new(&[]));
 
-                                let value = block.load(context, location, value_ptr, elem_ty)?;
-                                drop_overrides_meta
-                                    .invoke_override(context, &block, location, &info.ty, value)?;
-
                                 block.append_operation(scf::r#yield(&[], location));
                                 region
                             },
                             {
                                 let region = Region::new();
                                 let block = region.append_block(Block::new(&[]));
+
+                                let value = block.load(context, location, value_ptr, elem_ty)?;
+                                drop_overrides_meta
+                                    .invoke_override(context, &block, location, &info.ty, value)?;
 
                                 block.append_operation(scf::r#yield(&[], location));
                                 region
