@@ -893,17 +893,20 @@ mod tests {
     }
 
     #[test]
-    fn test_secp256r1_new_none() {
+    fn test_secp256r1_new_infinity() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
 
         let x = U256 { hi: 0, lo: 0 };
         let y = U256 { hi: 0, lo: 0 };
 
-        assert!(test_syscall_handler
-            .secp256r1_new(x, y, &mut 10)
-            .unwrap()
-            .is_none());
+        assert!(
+            test_syscall_handler
+                .secp256r1_new(x, y, &mut 10)
+                .unwrap()
+                .unwrap()
+                .is_infinity
+        );
     }
 
     #[test]
