@@ -6,6 +6,7 @@ use cairo_native::{
     Value,
 };
 use lazy_static::lazy_static;
+use pretty_assertions_sorted::assert_eq;
 use starknet_types_core::felt::Felt;
 use std::collections::VecDeque;
 
@@ -306,7 +307,7 @@ fn secp256k1_new() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -338,7 +339,7 @@ fn secp256k1_new() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -370,7 +371,7 @@ fn secp256k1_new() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -386,7 +387,7 @@ fn secp256k1_new() {
         },
     );
 
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         syscall_handler.secp256k1_new.0,
         [
             (U256 { hi: 0, lo: 0 }, U256 { hi: 0, lo: 0 }),
@@ -469,7 +470,7 @@ fn secp256k1_add() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -497,7 +498,7 @@ fn secp256k1_add() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -525,7 +526,7 @@ fn secp256k1_add() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -594,7 +595,7 @@ fn secp256k1_mul() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -622,7 +623,7 @@ fn secp256k1_mul() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -650,7 +651,7 @@ fn secp256k1_mul() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -724,7 +725,7 @@ fn secp256k1_get_point_from_x() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -760,7 +761,7 @@ fn secp256k1_get_point_from_x() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -796,7 +797,7 @@ fn secp256k1_get_point_from_x() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -832,7 +833,7 @@ fn secp256k1_get_point_from_x() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -848,7 +849,7 @@ fn secp256k1_get_point_from_x() {
         },
     );
 
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         syscall_handler.secp256k1_get_point_from_x.0,
         [
             (U256 { hi: 0, lo: 0 }, false),
@@ -930,7 +931,7 @@ fn secp256k1_get_xy() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -961,7 +962,7 @@ fn secp256k1_get_xy() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -992,7 +993,7 @@ fn secp256k1_get_xy() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1023,7 +1024,7 @@ fn secp256k1_get_xy() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1044,7 +1045,7 @@ fn secp256k1_get_xy() {
         }
     );
 
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         syscall_handler.secp256k1_get_xy.0,
         [
             Secp256k1Point {
@@ -1134,7 +1135,7 @@ fn secp256r1_new() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1166,7 +1167,7 @@ fn secp256r1_new() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1198,7 +1199,7 @@ fn secp256r1_new() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1214,7 +1215,7 @@ fn secp256r1_new() {
         },
     );
 
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         syscall_handler.secp256r1_new.0,
         [
             (U256 { hi: 0, lo: 0 }, U256 { hi: 0, lo: 0 }),
@@ -1297,7 +1298,7 @@ fn secp256r1_add() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1325,7 +1326,7 @@ fn secp256r1_add() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1353,7 +1354,7 @@ fn secp256r1_add() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1422,7 +1423,7 @@ fn secp256r1_mul() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1450,7 +1451,7 @@ fn secp256r1_mul() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1478,7 +1479,7 @@ fn secp256r1_mul() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1550,7 +1551,7 @@ fn secp256r1_get_point_from_x() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1586,7 +1587,7 @@ fn secp256r1_get_point_from_x() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1622,7 +1623,7 @@ fn secp256r1_get_point_from_x() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1658,7 +1659,7 @@ fn secp256r1_get_point_from_x() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1674,7 +1675,7 @@ fn secp256r1_get_point_from_x() {
         },
     );
 
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         syscall_handler.secp256r1_get_point_from_x.0,
         [
             (U256 { hi: 0, lo: 0 }, false),
@@ -1756,7 +1757,7 @@ fn secp256r1_get_xy() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1787,7 +1788,7 @@ fn secp256r1_get_xy() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1818,7 +1819,7 @@ fn secp256r1_get_xy() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1849,7 +1850,7 @@ fn secp256r1_get_xy() {
         Some(u128::MAX),
         Some(&mut syscall_handler),
     );
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
@@ -1870,7 +1871,7 @@ fn secp256r1_get_xy() {
         }
     );
 
-    pretty_assertions_sorted::assert_eq_sorted!(
+    assert_eq!(
         syscall_handler.secp256r1_get_xy.0,
         [
             Secp256r1Point {
