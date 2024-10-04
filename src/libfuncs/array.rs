@@ -1101,6 +1101,8 @@ pub fn build_slice<'ctx, 'this>(
     let slice_len = entry.argument(3)?.into();
     let slice_end = entry.append_op_result(arith::addi(slice_start, slice_len, location))?;
 
+    let slice_start = entry.append_op_result(arith::addi(array_start, slice_start, location))?;
+    let slice_end = entry.append_op_result(arith::addi(array_start, slice_end, location))?;
     let lhs_bound = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
