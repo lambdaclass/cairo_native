@@ -2,8 +2,7 @@
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-use crate::block_ext::BlockExt;
-use crate::{error::Error as CoreLibfuncBuilderError, metadata::MetadataStorage};
+use crate::{error::Error as CoreLibfuncBuilderError, metadata::MetadataStorage, utils::BlockExt};
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
@@ -12,55 +11,55 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf},
-    ir::{Block, BlockRef, Location, Module, Operation, Region, Value, ValueLike},
+    ir::{Block, BlockRef, Location, Module, Operation, Region, Value},
     Context,
 };
 use num_bigint::BigInt;
-use std::{borrow::Cow, cell::Cell, error::Error, ops::Deref};
+use std::{cell::Cell, error::Error, ops::Deref};
 
-pub mod ap_tracking;
-pub mod array;
-pub mod bitwise;
-pub mod r#bool;
-pub mod bounded_int;
-pub mod r#box;
-pub mod branch_align;
-pub mod bytes31;
-pub mod cast;
-pub mod circuit;
-pub mod r#const;
-pub mod coupon;
-pub mod debug;
-pub mod drop;
-pub mod dup;
-pub mod ec;
-pub mod r#enum;
-pub mod felt252;
-pub mod felt252_dict;
-pub mod felt252_dict_entry;
-pub mod function_call;
-pub mod gas;
-pub mod mem;
-pub mod nullable;
-pub mod pedersen;
-pub mod poseidon;
-pub mod sint128;
-pub mod sint16;
-pub mod sint32;
-pub mod sint64;
-pub mod sint8;
-pub mod snapshot_take;
-pub mod starknet;
-pub mod r#struct;
-pub mod uint128;
-pub mod uint16;
-pub mod uint256;
-pub mod uint32;
-pub mod uint512;
-pub mod uint64;
-pub mod uint8;
-pub mod unconditional_jump;
-pub mod unwrap_non_zero;
+mod ap_tracking;
+mod array;
+mod bitwise;
+mod r#bool;
+mod bounded_int;
+mod r#box;
+mod branch_align;
+mod bytes31;
+mod cast;
+mod circuit;
+mod r#const;
+mod coupon;
+mod debug;
+mod drop;
+mod dup;
+mod ec;
+mod r#enum;
+mod felt252;
+mod felt252_dict;
+mod felt252_dict_entry;
+mod function_call;
+mod gas;
+mod mem;
+mod nullable;
+mod pedersen;
+mod poseidon;
+mod sint128;
+mod sint16;
+mod sint32;
+mod sint64;
+mod sint8;
+mod snapshot_take;
+mod starknet;
+mod r#struct;
+mod uint128;
+mod uint16;
+mod uint256;
+mod uint32;
+mod uint512;
+mod uint64;
+mod uint8;
+mod unconditional_jump;
+mod unwrap_non_zero;
 
 /// Generation of MLIR operations from their Sierra counterparts.
 ///
@@ -246,7 +245,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
 /// next statements.
 ///
 /// Each branch index should be present in exactly one call a branching method (either
-/// [`br`](#method.br), [`cond_br`](#method.cond_br) or [`switch`](#method.switch)).
+/// [`br`](#method.br) or [`cond_br`](#method.cond_br)).
 ///
 /// This helper is necessary because the statement following the current one may not have the same
 /// arguments as the results returned by the current statement. Because of that, a direct jump
@@ -255,21 +254,22 @@ pub struct LibfuncHelper<'ctx, 'this>
 where
     'this: 'ctx,
 {
-    pub(crate) module: &'this Module<'ctx>,
-    pub(crate) init_block: &'this BlockRef<'ctx, 'this>,
+    pub module: &'this Module<'ctx>,
+    pub init_block: &'this BlockRef<'ctx, 'this>,
 
-    pub(crate) region: &'this Region<'ctx>,
-    pub(crate) blocks_arena: &'this Bump,
-    pub(crate) last_block: Cell<&'this BlockRef<'ctx, 'this>>,
+    pub region: &'this Region<'ctx>,
+    pub blocks_arena: &'this Bump,
+    pub last_block: Cell<&'this BlockRef<'ctx, 'this>>,
 
-    pub(crate) branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
-    pub(crate) results: Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>,
+    pub branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
+    pub results: Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>,
 }
 
 impl<'ctx, 'this> LibfuncHelper<'ctx, 'this>
 where
     'this: 'ctx,
 {
+    #[doc(hidden)]
     pub(crate) fn results(self) -> impl Iterator<Item = Vec<Value<'ctx, 'this>>> {
         self.results.into_iter().enumerate().map(|(branch_idx, x)| {
             x.into_iter()
@@ -308,7 +308,7 @@ where
     ///
     /// This method will also store the returned values so that they can be moved into the state and
     /// used later on when required.
-    pub fn br(
+    fn br(
         &self,
         branch: usize,
         results: &[Value<'ctx, 'this>],
@@ -341,7 +341,7 @@ where
     /// This method will also store the returned values so that they can be moved into the state and
     /// used later on when required.
     // TODO: Allow one block to be libfunc-internal.
-    pub fn cond_br(
+    fn cond_br(
         &self,
         context: &'ctx Context,
         condition: Value<'ctx, 'this>,
@@ -397,86 +397,6 @@ where
             location,
         )
     }
-
-    /// Creates a conditional multi-branching operation, potentially jumping out of the libfunc and
-    /// into the next statement.
-    ///
-    /// While generating a `switch` that doesn't jump out of the libfunc is possible, it should be
-    /// avoided whenever possible. In those cases just use [melior::dialect::cf::switch].
-    ///
-    /// This method will also store the returned values so that they can be moved into the state and
-    /// used later on when required.
-    pub fn switch(
-        &self,
-        context: &'ctx Context,
-        flag: Value<'ctx, 'this>,
-        default: (BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>]),
-        branches: &[(i64, BranchTarget<'ctx, '_>, &[Value<'ctx, 'this>])],
-        location: Location<'ctx>,
-    ) -> Result<Operation<'ctx>, CoreLibfuncBuilderError> {
-        let default_destination = match default.0 {
-            BranchTarget::Jump(x) => (x, Cow::Borrowed(default.1)),
-            BranchTarget::Return(i) => {
-                let (successor, operands) = &self.branches[i];
-
-                for (dst, src) in self.results[i].iter().zip(default.1) {
-                    dst.replace(Some(*src));
-                }
-
-                let destination_operands = operands
-                    .iter()
-                    .copied()
-                    .map(|op| match op {
-                        BranchArg::External(x) => x,
-                        BranchArg::Returned(i) => default.1[i],
-                    })
-                    .collect();
-
-                (*successor, Cow::Owned(destination_operands))
-            }
-        };
-
-        let mut case_values = Vec::with_capacity(branches.len());
-        let mut case_destinations = Vec::with_capacity(branches.len());
-        for (flag, successor, operands) in branches {
-            case_values.push(*flag);
-
-            case_destinations.push(match *successor {
-                BranchTarget::Jump(x) => (x, Cow::Borrowed(*operands)),
-                BranchTarget::Return(i) => {
-                    let (successor, operands) = &self.branches[i];
-
-                    for (dst, src) in self.results[i].iter().zip(default.1) {
-                        dst.replace(Some(*src));
-                    }
-
-                    let destination_operands = operands
-                        .iter()
-                        .copied()
-                        .map(|op| match op {
-                            BranchArg::External(x) => x,
-                            BranchArg::Returned(i) => default.1[i],
-                        })
-                        .collect();
-
-                    (*successor, Cow::Owned(destination_operands))
-                }
-            });
-        }
-
-        Ok(cf::switch(
-            context,
-            &case_values,
-            flag,
-            flag.r#type(),
-            (default_destination.0, &default_destination.1),
-            &case_destinations
-                .iter()
-                .map(|(x, y)| (*x, y.as_ref()))
-                .collect::<Vec<_>>(),
-            location,
-        )?)
-    }
 }
 
 impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
@@ -488,24 +408,12 @@ impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum BranchArg<'ctx, 'this> {
+pub enum BranchArg<'ctx, 'this> {
     External(Value<'ctx, 'this>),
     Returned(usize),
 }
 
-/// A libfunc branching target.
-///
-/// May point to either a block within the same libfunc using [BranchTarget::Jump] or to one of the
-/// statement's branches using [BranchTarget::Return] with the branch index.
-#[derive(Clone, Copy, Debug)]
-pub enum BranchTarget<'ctx, 'a> {
-    /// A block within the current libfunc.
-    Jump(&'a Block<'ctx>),
-    /// A statement's branch target by its index.
-    Return(usize),
-}
-
-pub fn increment_builtin_counter<'ctx: 'a, 'a>(
+fn increment_builtin_counter<'ctx: 'a, 'a>(
     context: &'ctx Context,
     block: &'ctx Block<'ctx>,
     location: Location<'ctx>,
@@ -514,7 +422,7 @@ pub fn increment_builtin_counter<'ctx: 'a, 'a>(
     increment_builtin_counter_by(context, block, location, value, 1)
 }
 
-pub fn increment_builtin_counter_by<'ctx: 'a, 'a>(
+fn increment_builtin_counter_by<'ctx: 'a, 'a>(
     context: &'ctx Context,
     block: &'ctx Block<'ctx>,
     location: Location<'ctx>,
@@ -526,229 +434,4 @@ pub fn increment_builtin_counter_by<'ctx: 'a, 'a>(
         block.const_int(context, location, amount, 64)?,
         location,
     ))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::context::NativeContext;
-    use melior::ir::r#type::IntegerType;
-    use melior::ir::Type;
-
-    #[test]
-    fn switch_branch_arg_external_test() {
-        // Create a new context for MLIR operations
-        let native_context = NativeContext::new();
-        let context = native_context.context();
-
-        // Create an unknown location in the context
-        let location = Location::unknown(context);
-        // Create a new MLIR module with the unknown location
-        let module = Module::new(location);
-
-        // Create a new MLIR block and obtain its reference
-        let region = Region::new();
-        let last_block = region.append_block(Block::new(&[]));
-
-        // Initialize the LibfuncHelper struct with various parameters
-        let mut lib_func_helper = LibfuncHelper {
-            module: &module,
-            init_block: &last_block,
-            region: &region,
-            blocks_arena: &Bump::new(),
-            last_block: Cell::new(&last_block),
-            branches: Vec::new(),
-            results: Vec::new(),
-        };
-
-        // Create an integer type with 32 bits
-        let i32_type: Type = IntegerType::new(context, 32).into();
-        // Create a default block with the integer type and the unknown location
-        let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
-
-        // Create a new MLIR block
-        let block = lib_func_helper.append_block(Block::new(&[]));
-
-        // Append a constant arithmetic operation to the block and obtain its result operand
-        let operand = block
-            .const_int_from_type(context, location, 1, i32_type)
-            .unwrap();
-
-        // Loop to add branches and results to the LibfuncHelper struct
-        for _ in 0..20 {
-            // Push a default block and external operand to the branches vector
-            lib_func_helper
-                .branches
-                .push((default_block, vec![BranchArg::External(operand)]));
-
-            // Push a new vector of result cells to the results vector
-            lib_func_helper.results.push([Cell::new(None)].into());
-        }
-
-        // Call the `switch` method of the LibfuncHelper struct and obtain the result
-        let cf_switch = block.append_operation(
-            lib_func_helper
-                .switch(
-                    context,
-                    operand,
-                    (BranchTarget::Return(10), &[]),
-                    &[
-                        (0, BranchTarget::Return(10), &[]),
-                        (1, BranchTarget::Return(10), &[]),
-                    ],
-                    location,
-                )
-                .unwrap(),
-        );
-
-        // Assert that the switch operation is valid
-        assert!(cf_switch.verify());
-    }
-
-    #[test]
-    fn switch_branch_arg_returned_test() {
-        // Create a new context for MLIR operations
-        let native_context = NativeContext::new();
-        let context = native_context.context();
-
-        // Create an unknown location in the context
-        let location = Location::unknown(context);
-        // Create a new MLIR module with the unknown location
-        let module = Module::new(location);
-
-        // Create a new MLIR block and obtain its reference
-        let region = Region::new();
-        let last_block = region.append_block(Block::new(&[]));
-
-        // Initialize the LibfuncHelper struct with various parameters
-        let mut lib_func_helper = LibfuncHelper {
-            module: &module,
-            init_block: &last_block,
-            region: &region,
-            blocks_arena: &Bump::new(),
-            last_block: Cell::new(&last_block),
-            branches: Vec::new(),
-            results: Vec::new(),
-        };
-
-        // Create an integer type with 32 bits
-        let i32_type: Type = IntegerType::new(context, 32).into();
-        // Create a default block with the integer type and the unknown location
-        let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
-
-        // Create a new MLIR block
-        let block = lib_func_helper.append_block(Block::new(&[]));
-
-        // Append a constant arithmetic operation to the block and obtain its result operand
-        let operand = block
-            .const_int_from_type(context, location, 1, i32_type)
-            .unwrap();
-
-        // Loop to add branches and results to the LibfuncHelper struct
-        for _ in 0..20 {
-            // Push a default block and a returned operand index to the branches vector
-            lib_func_helper
-                .branches
-                .push((default_block, vec![BranchArg::Returned(3)]));
-
-            // Push a new vector of result cells to the results vector
-            lib_func_helper.results.push([Cell::new(None)].into());
-        }
-
-        // Call the `switch` method of the LibfuncHelper struct and obtain the result
-        let cf_switch = block.append_operation(
-            lib_func_helper
-                .switch(
-                    context,
-                    operand,
-                    (
-                        BranchTarget::Return(10),
-                        &[operand, operand, operand, operand],
-                    ),
-                    &[
-                        (0, BranchTarget::Return(10), &[]),
-                        (1, BranchTarget::Return(10), &[]),
-                    ],
-                    location,
-                )
-                .unwrap(),
-        );
-
-        // Assert that the switch operation is valid
-        assert!(cf_switch.verify());
-
-        // Assert that the result in the LibfuncHelper at index 10 contains the expected operand
-        assert_eq!(lib_func_helper.results[10][0], Cell::new(Some(operand)));
-
-        // Assert that the length of the results vector at index 10 is 1
-        assert_eq!(lib_func_helper.results[10].len(), 1);
-    }
-
-    #[test]
-    fn switch_branch_target_jump_test() {
-        // Create a new context for MLIR operations
-        let native_context = NativeContext::new();
-        let context = native_context.context();
-
-        // Create an unknown location in the context
-        let location = Location::unknown(context);
-        // Create a new MLIR module with the unknown location
-        let module = Module::new(location);
-
-        // Create a new MLIR block and obtain its reference
-        let region = Region::new();
-        let last_block = region.append_block(Block::new(&[]));
-
-        // Initialize the LibfuncHelper struct with various parameters
-        let mut lib_func_helper = LibfuncHelper {
-            module: &module,
-            init_block: &last_block,
-            region: &region,
-            blocks_arena: &Bump::new(),
-            last_block: Cell::new(&last_block),
-            branches: Vec::new(),
-            results: Vec::new(),
-        };
-
-        // Create an integer type with 32 bits
-        let i32_type: Type = IntegerType::new(context, 32).into();
-        // Create a default block with the integer type and the unknown location
-        let default_block = lib_func_helper.append_block(Block::new(&[(i32_type, location)]));
-
-        // Create a new MLIR block
-        let block = lib_func_helper.append_block(Block::new(&[]));
-
-        // Append a constant arithmetic operation to the block and obtain its result operand
-        let operand = block
-            .const_int_from_type(context, location, 1, i32_type)
-            .unwrap();
-
-        // Loop to add branches and results to the LibfuncHelper struct
-        for _ in 0..20 {
-            // Push a default block and an empty vector of operands to the branches vector
-            lib_func_helper.branches.push((default_block, Vec::new()));
-
-            // Push a new vector of result cells to the results vector
-            lib_func_helper.results.push([Cell::new(None)].into());
-        }
-
-        // Call the `switch` method of the LibfuncHelper struct and obtain the result
-        let cf_switch = block.append_operation(
-            lib_func_helper
-                .switch(
-                    context,
-                    operand,
-                    (BranchTarget::Jump(default_block), &[operand]),
-                    &[
-                        (0, BranchTarget::Jump(default_block), &[operand]),
-                        (1, BranchTarget::Jump(default_block), &[operand]),
-                    ],
-                    location,
-                )
-                .unwrap(),
-        );
-
-        // Assert that the switch operation is valid
-        assert!(cf_switch.verify());
-    }
 }

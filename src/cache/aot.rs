@@ -44,7 +44,10 @@ where
             module,
             registry,
             metadata,
-        } = self.context.compile(program).expect("should compile");
+        } = self
+            .context
+            .compile(program, false)
+            .expect("should compile");
 
         // Compile module into an object.
         let object_data = crate::ffi::module_to_object(&module, opt_level).unwrap();
@@ -84,7 +87,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{utils::test::load_cairo, values::JitValue};
+    use crate::{utils::test::load_cairo, values::Value};
     use starknet_types_core::felt::Felt;
 
     #[test]
@@ -105,6 +108,6 @@ mod tests {
             .expect("should run");
 
         // After compiling and inserting the program, we should be able to run it.
-        assert_eq!(res.return_value, JitValue::Felt252(Felt::from(42)));
+        assert_eq!(res.return_value, Value::Felt252(Felt::from(42)));
     }
 }

@@ -12,7 +12,9 @@ use cairo_lang_runner::{
 };
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        starknet::StarkNetTypeConcrete,
         ConcreteType,
     },
     ids::{ConcreteTypeId, FunctionId},
@@ -31,13 +33,8 @@ use cairo_native::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::JitNativeExecutor,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
-    types::{
-        felt252::{HALF_PRIME, PRIME},
-        TypeBuilder,
-    },
-    utils::find_entry_point_by_idx,
-    values::JitValue,
-    OptLevel,
+    utils::{find_entry_point_by_idx, HALF_PRIME, PRIME},
+    OptLevel, Value,
 };
 use cairo_vm::{
     hint_processor::cairo_1_hint_processor::hint_processor::Cairo1HintProcessor,
@@ -213,7 +210,7 @@ pub fn load_cairo_contract_path(path: &str) -> ContractClass {
 pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
-    args: &[JitValue],
+    args: &[Value],
     gas: Option<u128>,
     syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> ExecutionResult {
@@ -230,7 +227,7 @@ pub fn run_native_program(
     let context = NativeContext::new();
 
     let module = context
-        .compile(program)
+        .compile(program, false)
         .expect("Could not compile test program to MLIR.");
 
     assert!(
@@ -426,7 +423,7 @@ pub fn run_native_starknet_contract(
 ) -> ContractExecutionResult {
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(sierra_program).unwrap();
+    let native_program = native_context.compile(sierra_program, false).unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
@@ -508,7 +505,7 @@ pub fn compare_outputs(
         memory: &[Option<Felt>],
         mut values: &[Felt],
         ty: &ConcreteTypeId,
-    ) -> JitValue {
+    ) -> Value {
         match registry.get_type(ty).unwrap() {
             CoreTypeConcrete::Array(info) => {
                 assert_eq!(values.len(), 2);
@@ -519,7 +516,7 @@ pub fn compare_outputs(
                 let elem_size = map_vm_sizes(size_cache, registry, &info.ty);
                 assert_eq!(total_len % elem_size, 0);
 
-                JitValue::Array(
+                Value::Array(
                     memory[since_ptr..until_ptr]
                         .chunks(elem_size)
                         .map(|data| data.iter().cloned().map(Option::unwrap).collect::<Vec<_>>())
@@ -528,48 +525,46 @@ pub fn compare_outputs(
                 )
             }
             CoreTypeConcrete::Felt252(_) => {
-                JitValue::Felt252(Felt::from_bytes_le(&values[0].to_bytes_le()))
+                Value::Felt252(Felt::from_bytes_le(&values[0].to_bytes_le()))
             }
-            CoreTypeConcrete::Uint128(_) => JitValue::Uint128(values[0].to_u128().unwrap()),
-            CoreTypeConcrete::Uint64(_) => JitValue::Uint64(values[0].to_u64().unwrap()),
-            CoreTypeConcrete::Uint32(_) => JitValue::Uint32(values[0].to_u32().unwrap()),
-            CoreTypeConcrete::Uint16(_) => JitValue::Uint16(values[0].to_u16().unwrap()),
-            CoreTypeConcrete::Uint8(_) => JitValue::Uint8(values[0].to_u8().unwrap()),
+            CoreTypeConcrete::Uint128(_) => Value::Uint128(values[0].to_u128().unwrap()),
+            CoreTypeConcrete::Uint64(_) => Value::Uint64(values[0].to_u64().unwrap()),
+            CoreTypeConcrete::Uint32(_) => Value::Uint32(values[0].to_u32().unwrap()),
+            CoreTypeConcrete::Uint16(_) => Value::Uint16(values[0].to_u16().unwrap()),
+            CoreTypeConcrete::Uint8(_) => Value::Uint8(values[0].to_u8().unwrap()),
             CoreTypeConcrete::Sint128(_) => {
-                JitValue::Sint128(if values[0].to_bigint() >= *HALF_PRIME {
+                Value::Sint128(if values[0].to_biguint() >= *HALF_PRIME {
                     -(&*PRIME - &values[0].to_biguint()).to_i128().unwrap()
                 } else {
                     values[0].to_biguint().to_i128().unwrap()
                 })
             }
             CoreTypeConcrete::Sint64(_) => {
-                JitValue::Sint64(if values[0].to_bigint() >= *HALF_PRIME {
+                Value::Sint64(if values[0].to_biguint() >= *HALF_PRIME {
                     -(&*PRIME - &values[0].to_biguint()).to_i64().unwrap()
                 } else {
                     values[0].to_biguint().to_i64().unwrap()
                 })
             }
             CoreTypeConcrete::Sint32(_) => {
-                JitValue::Sint32(if values[0].to_bigint() >= *HALF_PRIME {
+                Value::Sint32(if values[0].to_biguint() >= *HALF_PRIME {
                     -(&*PRIME - &values[0].to_biguint()).to_i32().unwrap()
                 } else {
                     values[0].to_biguint().to_i32().unwrap()
                 })
             }
             CoreTypeConcrete::Sint16(_) => {
-                JitValue::Sint16(if values[0].to_bigint() >= *HALF_PRIME {
+                Value::Sint16(if values[0].to_biguint() >= *HALF_PRIME {
                     -(&*PRIME - &values[0].to_biguint()).to_i16().unwrap()
                 } else {
                     values[0].to_biguint().to_i16().unwrap()
                 })
             }
-            CoreTypeConcrete::Sint8(_) => {
-                JitValue::Sint8(if values[0].to_bigint() >= *HALF_PRIME {
-                    -(&*PRIME - &values[0].to_biguint()).to_i8().unwrap()
-                } else {
-                    values[0].to_biguint().to_i8().unwrap()
-                })
-            }
+            CoreTypeConcrete::Sint8(_) => Value::Sint8(if values[0].to_biguint() >= *HALF_PRIME {
+                -(&*PRIME - &values[0].to_biguint()).to_i8().unwrap()
+            } else {
+                values[0].to_biguint().to_i8().unwrap()
+            }),
             CoreTypeConcrete::Enum(info) => {
                 let enum_size = map_vm_sizes(size_cache, registry, ty);
                 assert_eq!(values.len(), enum_size);
@@ -584,7 +579,7 @@ pub fn compare_outputs(
                 assert!(tag <= info.variants.len());
                 data = &values[enum_size - size_cache[&info.variants[tag]] - 1..];
 
-                JitValue::Enum {
+                Value::Enum {
                     tag,
                     value: Box::new(map_vm_values(
                         size_cache,
@@ -596,7 +591,7 @@ pub fn compare_outputs(
                     debug_name: ty.debug_name.as_deref().map(String::from),
                 }
             }
-            CoreTypeConcrete::Struct(info) => JitValue::Struct {
+            CoreTypeConcrete::Struct(info) => Value::Struct {
                 fields: info
                     .members
                     .iter()
@@ -610,7 +605,7 @@ pub fn compare_outputs(
                     .collect(),
                 debug_name: ty.debug_name.as_deref().map(String::from),
             },
-            CoreTypeConcrete::SquashedFelt252Dict(info) => JitValue::Felt252Dict {
+            CoreTypeConcrete::SquashedFelt252Dict(info) => Value::Felt252Dict {
                 value: (values[0].to_usize().unwrap()..values[1].to_usize().unwrap())
                     .step_by(3)
                     .map(|index| {
@@ -639,7 +634,7 @@ pub fn compare_outputs(
 
                 let ty_size = map_vm_sizes(size_cache, registry, &info.ty);
                 match values[0].to_usize().unwrap() {
-                    0 => JitValue::Null,
+                    0 => Value::Null,
                     ptr if ty_size == 0 => {
                         assert_eq!(ptr, 1);
                         map_vm_values(size_cache, registry, memory, &[], &info.ty)
@@ -685,7 +680,7 @@ pub fn compare_outputs(
             CoreTypeConcrete::EcPoint(_) => {
                 assert_eq!(values.len(), 2);
 
-                JitValue::EcPoint(
+                Value::EcPoint(
                     Felt::from_bytes_le(&values[0].to_bytes_le()),
                     Felt::from_bytes_le(&values[1].to_bytes_le()),
                 )
@@ -693,7 +688,7 @@ pub fn compare_outputs(
             CoreTypeConcrete::EcState(_) => {
                 assert_eq!(values.len(), 4);
 
-                JitValue::EcState(
+                Value::EcState(
                     Felt::from_bytes_le(&values[0].to_bytes_le()),
                     Felt::from_bytes_le(&values[1].to_bytes_le()),
                     Felt::from_bytes_le(&values[2].to_bytes_le()),
@@ -703,7 +698,7 @@ pub fn compare_outputs(
             CoreTypeConcrete::Bytes31(_) => {
                 let mut bytes = values[0].to_bytes_le().to_vec();
                 bytes.pop();
-                JitValue::Bytes31(bytes.try_into().unwrap())
+                Value::Bytes31(bytes.try_into().unwrap())
             }
             CoreTypeConcrete::Coupon(_) => todo!(),
             CoreTypeConcrete::Bitwise(_) => unreachable!(),
@@ -724,7 +719,24 @@ pub fn compare_outputs(
 
     let mut size_cache = HashMap::new();
     let ty = function.signature.ret_types.last();
-    let is_builtin = ty.map_or(false, |ty| registry.get_type(ty).unwrap().is_builtin());
+    let is_builtin = ty.map_or(false, |ty| {
+        matches!(
+            registry.get_type(ty).unwrap(),
+            CoreTypeConcrete::Bitwise(_)
+                | CoreTypeConcrete::EcOp(_)
+                | CoreTypeConcrete::GasBuiltin(_)
+                | CoreTypeConcrete::BuiltinCosts(_)
+                | CoreTypeConcrete::RangeCheck(_)
+                | CoreTypeConcrete::RangeCheck96(_)
+                | CoreTypeConcrete::Pedersen(_)
+                | CoreTypeConcrete::Poseidon(_)
+                | CoreTypeConcrete::Coupon(_)
+                | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+                | CoreTypeConcrete::SegmentArena(_)
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_))
+                | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
+        )
+    });
     let returns_panic = ty.map_or(false, |ty| {
         ty.debug_name
             .as_ref()
@@ -743,7 +755,7 @@ pub fn compare_outputs(
                     CoreTypeConcrete::Enum(info) => &info.variants[0],
                     _ => unreachable!(),
                 };
-                JitValue::Enum {
+                Value::Enum {
                     tag: 0,
                     value: Box::new(map_vm_values(
                         &mut size_cache,
@@ -763,25 +775,25 @@ pub fn compare_outputs(
                     ty.unwrap(),
                 )
             } else {
-                JitValue::Struct {
+                Value::Struct {
                     fields: Vec::new(),
                     debug_name: None,
                 }
             }
         }
-        RunResultValue::Panic(values) => JitValue::Enum {
+        RunResultValue::Panic(values) => Value::Enum {
             tag: 1,
-            value: Box::new(JitValue::Struct {
+            value: Box::new(Value::Struct {
                 fields: vec![
-                    JitValue::Struct {
+                    Value::Struct {
                         fields: Vec::new(),
                         debug_name: None,
                     },
-                    JitValue::Array(
+                    Value::Array(
                         values
                             .iter()
                             .map(|value| Felt::from_bytes_le(&value.to_bytes_le()))
-                            .map(JitValue::Felt252)
+                            .map(Value::Felt252)
                             .collect(),
                     ),
                 ],
@@ -789,7 +801,7 @@ pub fn compare_outputs(
             }),
             debug_name: None,
         },
-        _ => JitValue::Struct {
+        _ => Value::Struct {
             fields: vec![],
             debug_name: None,
         },

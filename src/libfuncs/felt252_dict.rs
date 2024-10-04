@@ -1,10 +1,10 @@
 //! # `Felt` dictionary libfuncs
 
 use super::LibfuncHelper;
-use crate::block_ext::BlockExt;
 use crate::{
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -56,7 +56,7 @@ pub fn build_new<'ctx, 'this>(
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
-    let op = runtime_bindings.dict_alloc_new(context, helper, entry, location)?;
+    let op = runtime_bindings.dict_new(context, helper, entry, location)?;
     let dict_ptr = op.result(0)?.into();
 
     entry.append_operation(helper.br(0, &[segment_arena, dict_ptr], location));
@@ -113,7 +113,7 @@ pub fn build_squash<'ctx, 'this>(
 mod test {
     use crate::{
         utils::test::{jit_dict, jit_enum, jit_struct, load_cairo, run_program_assert_output},
-        values::JitValue,
+        values::Value,
     };
 
     #[test]
@@ -229,7 +229,7 @@ mod test {
                 5 => 6u32,
             )],
             jit_struct!(
-                JitValue::Felt252(0.into()),
+                Value::Felt252(0.into()),
                 jit_dict!(
                     1 => 2u32,
                     2 => 3u32,

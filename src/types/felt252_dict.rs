@@ -6,18 +6,16 @@
 //! used to count accesses to the dictionary. The type is interacted through the runtime functions to
 //! insert, get elements and increment the access counter.
 
-use std::cell::Cell;
-
 use super::WithSelf;
 use crate::{
-    block_ext::BlockExt,
     error::Result,
-    libfuncs::LibfuncHelper,
     metadata::{
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
-        snapshot_clones::SnapshotClonesMeta, MetadataStorage,
+        MetadataStorage,
     },
     types::TypeBuilder,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,13 +25,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        llvm::{self, r#type::pointer},
-        ods, scf,
-    },
+    dialect::{func, llvm, ods},
     ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Region, Type,
-        Value,
+        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        Block, Location, Module, Region, Type,
     },
     Context,
 };
@@ -43,222 +38,206 @@ use melior::{
 /// Check out [the module](self) for more info.
 pub fn build<'ctx>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    metadata
-        .get_or_insert_with::<SnapshotClonesMeta>(SnapshotClonesMeta::default)
-        .register(
-            info.self_ty().clone(),
-            snapshot_take,
-            InfoAndTypeConcreteType {
-                info: info.info.clone(),
-                ty: info.ty.clone(),
-            },
-        );
+    DupOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            // There's no need to build the type here because it'll always be built within
+            // `build_dup`.
+
+            Ok(Some(build_dup(context, module, registry, metadata, &info)?))
+        },
+    )?;
+    DropOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            // There's no need to build the type here because it'll always be built within
+            // `build_drop`.
+
+            Ok(Some(build_drop(
+                context, module, registry, metadata, &info,
+            )?))
+        },
+    )?;
 
     Ok(llvm::r#type::pointer(context, 0))
 }
 
-#[allow(clippy::too_many_arguments)]
-fn snapshot_take<'ctx, 'this>(
+fn build_dup<'ctx>(
     context: &'ctx Context,
+    module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: WithSelf<InfoAndTypeConcreteType>,
-    src_value: Value<'ctx, 'this>,
-) -> Result<(&'this Block<'ctx>, Value<'ctx, 'this>)> {
+    info: &WithSelf<InfoAndTypeConcreteType>,
+) -> Result<Region<'ctx>> {
+    let location = Location::unknown(context);
     if metadata.get::<ReallocBindingsMeta>().is_none() {
-        metadata.insert(ReallocBindingsMeta::new(context, helper));
+        metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let elem_snapshot_take = metadata
-        .get::<SnapshotClonesMeta>()
-        .and_then(|meta| meta.wrap_invoke(&info.ty));
+    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let inner_ty = registry.get_type(&info.ty)?;
+    let inner_len = inner_ty.layout(registry)?.pad_to_align().size();
+    let inner_ty = inner_ty.build(context, module, registry, metadata, &info.ty)?;
 
-    let elem_ty = registry.get_type(&info.ty)?;
-    let elem_layout = elem_ty.layout(registry)?;
-    let elem_ty = elem_ty.build(context, helper, registry, metadata, &info.ty)?;
+    let dup_fn_symbol = format!("dup${}$item", info.self_ty().id);
+    {
+        let region = Region::new();
+        let entry =
+            region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
-    let location = Location::name(context, "dict_snapshot_clone", location);
+        let null_ptr =
+            entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+        let inner_len = entry.const_int(context, location, inner_len, 64)?;
 
-    let runtime_bindings = metadata
+        let old_ptr = entry.argument(0)?.into();
+        let new_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+            context, null_ptr, inner_len, location,
+        ))?;
+
+        let value = entry.load(context, location, old_ptr, inner_ty)?;
+        let values = metadata
+            .get_or_insert_with(DupOverridesMeta::default)
+            .invoke_override(context, &entry, location, &info.ty, value)?;
+
+        entry.store(context, location, old_ptr, values.0)?;
+        entry.store(context, location, new_ptr, values.1)?;
+
+        entry.append_operation(llvm::r#return(Some(new_ptr), location));
+
+        module.body().append_operation(llvm::func(
+            context,
+            StringAttribute::new(context, &dup_fn_symbol),
+            TypeAttribute::new(llvm::r#type::function(
+                llvm::r#type::pointer(context, 0),
+                &[llvm::r#type::pointer(context, 0)],
+                false,
+            )),
+            region,
+            &[],
+            location,
+        ));
+    }
+
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(value_ty, location)]));
+
+    let dup_fn = entry.append_op_result(
+        ods::llvm::mlir_addressof(
+            context,
+            llvm::r#type::pointer(context, 0),
+            FlatSymbolRefAttribute::new(context, &dup_fn_symbol),
+            location,
+        )
+        .into(),
+    )?;
+
+    // The following unwrap is unreachable because the registration logic will always insert it.
+    let value0 = entry.argument(0)?.into();
+    let value1 = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .unwrap()
+        .dict_dup(context, module, &entry, value0, dup_fn, location)?;
 
-    let len_ptr = helper.init_block().alloca_int(context, location, 64)?;
-    let u64_ty = IntegerType::new(context, 64).into();
+    entry.append_operation(func::r#return(&[value0, value1], location));
+    Ok(region)
+}
 
-    let entry_values_type = llvm::r#type::r#struct(
-        context,
-        &[IntegerType::new(context, 252).into(), pointer(context, 0)], // key, value ptr
-        false,
-    );
+fn build_drop<'ctx>(
+    context: &'ctx Context,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: &WithSelf<InfoAndTypeConcreteType>,
+) -> Result<Region<'ctx>> {
+    let location = Location::unknown(context);
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, module));
+    }
 
-    // ptr to array of entry_values_type
-    let entries_ptr = runtime_bindings
-        .dict_values(context, helper, src_value, len_ptr, entry, location)?
-        .result(0)?
-        .into();
+    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
 
-    let array_len = entry.load(context, location, len_ptr, u64_ty)?;
-
-    let k0 = entry.const_int(context, location, 0, 64)?;
-    let k1 = entry.const_int(context, location, 1, 64)?;
-    let elem_stride_bytes =
-        entry.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
-    let nullptr = entry.append_op_result(llvm::zero(pointer(context, 0), location))?;
-
-    let cloned_dict_ptr = runtime_bindings
-        .dict_alloc_new(context, helper, entry, location)?
-        .result(0)?
-        .into();
-
-    entry.append_operation(scf::r#for(
-        k0,
-        array_len,
-        k1,
-        {
+    let drop_fn_symbol = match metadata.get::<DropOverridesMeta>() {
+        Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
             let region = Region::new();
-            let block = region.append_block(Block::new(&[(
-                IntegerType::new(context, 64).into(),
-                location,
-            )]));
+            let entry =
+                region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
-            let i = block.argument(0)?.into();
-            block.append_operation(scf::execute_region(
+            let value = entry.load(context, location, entry.argument(0)?.into(), inner_ty)?;
+            drop_overrides_meta.invoke_override(context, &entry, location, &info.ty, value)?;
+
+            entry.append_operation(llvm::r#return(None, location));
+
+            let drop_fn_symbol = format!("drop${}$item", info.self_ty().id);
+            module.body().append_operation(llvm::func(
+                context,
+                StringAttribute::new(context, &drop_fn_symbol),
+                TypeAttribute::new(llvm::r#type::function(
+                    llvm::r#type::void(context),
+                    &[llvm::r#type::pointer(context, 0)],
+                    false,
+                )),
+                region,
                 &[],
-                {
-                    let region = Region::new();
-                    let block = region.append_block(Block::new(&[]));
-
-                    let entry_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
-                        context,
-                        entries_ptr,
-                        &[i],
-                        entry_values_type,
-                        llvm::r#type::pointer(context, 0),
-                        location,
-                    ))?;
-
-                    let helper = LibfuncHelper {
-                        module: helper.module,
-                        init_block: helper.init_block,
-                        region: &region,
-                        blocks_arena: helper.blocks_arena,
-                        last_block: Cell::new(&block),
-                        branches: Vec::new(),
-                        results: Vec::new(),
-                    };
-
-                    let entry_value =
-                        block.load(context, location, entry_ptr, entry_values_type)?;
-
-                    let key = block.extract_value(
-                        context,
-                        location,
-                        entry_value,
-                        IntegerType::new(context, 252).into(),
-                        0,
-                    )?;
-                    let key_ptr = helper.init_block().alloca_int(context, location, 252)?;
-                    block.store(context, location, key_ptr, key)?;
-                    let value_ptr = block.extract_value(
-                        context,
-                        location,
-                        entry_value,
-                        pointer(context, 0),
-                        1,
-                    )?;
-
-                    match elem_snapshot_take {
-                        Some(elem_snapshot_take) => {
-                            let value = block.load(context, location, value_ptr, elem_ty)?;
-                            let (block, cloned_value) = elem_snapshot_take(
-                                context, registry, &block, location, &helper, metadata, value,
-                            )?;
-
-                            let cloned_value_ptr =
-                                block.append_op_result(ReallocBindingsMeta::realloc(
-                                    context,
-                                    nullptr,
-                                    elem_stride_bytes,
-                                    location,
-                                ))?;
-
-                            block.store(context, location, cloned_value_ptr, cloned_value)?;
-
-                            // needed due to mut borrow
-                            let runtime_bindings = metadata
-                                .get_mut::<RuntimeBindingsMeta>()
-                                .expect("Runtime library not available.");
-                            runtime_bindings.dict_insert(
-                                context,
-                                &helper,
-                                block,
-                                cloned_dict_ptr,
-                                key_ptr,
-                                cloned_value_ptr,
-                                location,
-                            )?;
-                            block.append_operation(scf::r#yield(&[], location));
-                        }
-                        None => {
-                            let cloned_value_ptr =
-                                block.append_op_result(ReallocBindingsMeta::realloc(
-                                    context,
-                                    nullptr,
-                                    elem_stride_bytes,
-                                    location,
-                                ))?;
-                            block.append_operation(
-                                ods::llvm::intr_memcpy(
-                                    context,
-                                    cloned_value_ptr,
-                                    value_ptr,
-                                    elem_stride_bytes,
-                                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                                    location,
-                                )
-                                .into(),
-                            );
-                            runtime_bindings.dict_insert(
-                                context,
-                                &helper,
-                                &block,
-                                cloned_dict_ptr,
-                                key_ptr,
-                                cloned_value_ptr,
-                                location,
-                            )?;
-                            block.append_operation(scf::r#yield(&[], location));
-                        }
-                    }
-
-                    region
-                },
                 location,
             ));
 
-            block.append_operation(scf::r#yield(&[], location));
-            region
-        },
-        location,
-    ));
+            Some(drop_fn_symbol)
+        }
+        _ => None,
+    };
 
-    Ok((entry, cloned_dict_ptr))
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(value_ty, location)]));
+
+    let drop_fn = match drop_fn_symbol {
+        Some(drop_fn_symbol) => Some(
+            entry.append_op_result(
+                ods::llvm::mlir_addressof(
+                    context,
+                    llvm::r#type::pointer(context, 0),
+                    FlatSymbolRefAttribute::new(context, &drop_fn_symbol),
+                    location,
+                )
+                .into(),
+            )?,
+        ),
+        None => None,
+    };
+
+    // The following unwrap is unreachable because the registration logic will always insert it.
+    let runtime_bindings_meta = metadata.get_mut::<RuntimeBindingsMeta>().unwrap();
+    runtime_bindings_meta.dict_drop(
+        context,
+        module,
+        &entry,
+        entry.argument(0)?.into(),
+        drop_fn,
+        location,
+    )?;
+
+    entry.append_operation(func::r#return(&[], location));
+    Ok(region)
 }
 
 #[cfg(test)]
 mod test {
     use crate::{
         utils::test::{jit_dict, load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
@@ -300,7 +279,7 @@ mod test {
         assert_eq!(
             result,
             jit_dict!(
-                2 => JitValue::Array(vec![3u32.into(), 4u32.into()])
+                2 => Value::Array(vec![3u32.into(), 4u32.into()])
             ),
         );
     }
@@ -346,13 +325,13 @@ mod test {
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
             result.return_value,
-            JitValue::Felt252Dict {
+            Value::Felt252Dict {
                 value: HashMap::from([
                     (
                         Felt::ZERO,
-                        JitValue::Enum {
+                        Value::Enum {
                             tag: 0,
-                            value: Box::new(JitValue::Struct {
+                            value: Box::new(Value::Struct {
                                 fields: Vec::new(),
                                 debug_name: None
                             }),
@@ -361,9 +340,9 @@ mod test {
                     ),
                     (
                         Felt::ONE,
-                        JitValue::Enum {
+                        Value::Enum {
                             tag: 1,
-                            value: Box::new(JitValue::Struct {
+                            value: Box::new(Value::Struct {
                                 fields: Vec::new(),
                                 debug_name: None
                             }),
@@ -393,12 +372,12 @@ mod test {
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
             result.return_value,
-            JitValue::Felt252Dict {
+            Value::Felt252Dict {
                 value: HashMap::from([
-                    (Felt::ZERO, JitValue::Felt252(Felt::ZERO)),
-                    (Felt::ONE, JitValue::Felt252(Felt::ONE)),
-                    (Felt::TWO, JitValue::Felt252(Felt::TWO)),
-                    (Felt::THREE, JitValue::Felt252(Felt::THREE)),
+                    (Felt::ZERO, Value::Felt252(Felt::ZERO)),
+                    (Felt::ONE, Value::Felt252(Felt::ONE)),
+                    (Felt::TWO, Value::Felt252(Felt::TWO)),
+                    (Felt::THREE, Value::Felt252(Felt::THREE)),
                 ]),
                 debug_name: None,
             },
@@ -429,38 +408,38 @@ mod test {
         let result = run_program(&program, "run_program", &[]);
         pretty_assertions_sorted::assert_eq_sorted!(
             result.return_value,
-            JitValue::Felt252Dict {
+            Value::Felt252Dict {
                 value: HashMap::from([
-                    (Felt::ZERO, JitValue::Null),
+                    (Felt::ZERO, Value::Null),
                     (
                         Felt::ONE,
-                        JitValue::Struct {
+                        Value::Struct {
                             fields: Vec::from([
-                                JitValue::Uint8(0),
-                                JitValue::Sint16(1),
-                                JitValue::Felt252(2.into()),
+                                Value::Uint8(0),
+                                Value::Sint16(1),
+                                Value::Felt252(2.into()),
                             ]),
                             debug_name: None,
                         },
                     ),
                     (
                         Felt::TWO,
-                        JitValue::Struct {
+                        Value::Struct {
                             fields: Vec::from([
-                                JitValue::Uint8(1),
-                                JitValue::Sint16(-2),
-                                JitValue::Felt252(3.into()),
+                                Value::Uint8(1),
+                                Value::Sint16(-2),
+                                Value::Felt252(3.into()),
                             ]),
                             debug_name: None,
                         },
                     ),
                     (
                         Felt::THREE,
-                        JitValue::Struct {
+                        Value::Struct {
                             fields: Vec::from([
-                                JitValue::Uint8(2),
-                                JitValue::Sint16(3),
-                                JitValue::Felt252(4.into()),
+                                Value::Uint8(2),
+                                Value::Sint16(3),
+                                Value::Felt252(4.into()),
                             ]),
                             debug_name: None,
                         },
@@ -488,12 +467,12 @@ mod test {
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
             result.return_value,
-            JitValue::Felt252Dict {
+            Value::Felt252Dict {
                 value: HashMap::from([
-                    (Felt::ZERO, JitValue::Uint128(0)),
-                    (Felt::ONE, JitValue::Uint128(1)),
-                    (Felt::TWO, JitValue::Uint128(2)),
-                    (Felt::THREE, JitValue::Uint128(3)),
+                    (Felt::ZERO, Value::Uint128(0)),
+                    (Felt::ONE, Value::Uint128(1)),
+                    (Felt::TWO, Value::Uint128(2)),
+                    (Felt::THREE, Value::Uint128(3)),
                 ]),
                 debug_name: None,
             },

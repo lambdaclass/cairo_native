@@ -6,7 +6,11 @@
 //! However, types like an array need manual dropping.
 
 use super::LibfuncHelper;
-use crate::{error::Result, metadata::MetadataStorage, types::TypeBuilder};
+use crate::{
+    error::Result,
+    metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
+    utils::ProgramRegistryExt,
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -29,20 +33,24 @@ pub fn build<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    // Note: Complex types implement drop within the type itself (in `build_drop`).
-
-    let ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
-    ty.build_drop(
+    registry.build_type(
         context,
-        registry,
-        entry,
-        location,
         helper,
+        registry,
         metadata,
         &info.signature.param_signatures[0].ty,
     )?;
 
-    entry.append_operation(helper.br(0, &[], location));
+    if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
+        drop_overrides_meta.invoke_override(
+            context,
+            entry,
+            location,
+            &info.signature.param_signatures[0].ty,
+            entry.argument(0)?.into(),
+        )?;
+    }
 
+    entry.append_operation(helper.br(0, &[], location));
     Ok(())
 }

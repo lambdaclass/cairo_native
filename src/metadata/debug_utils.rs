@@ -4,7 +4,7 @@
 //!
 //! ## Example
 //!
-//! ```
+//! ```rust,ignore
 //! # use cairo_lang_sierra::{
 //! #     extensions::{
 //! #         core::{CoreLibfunc, CoreType},
@@ -84,9 +84,8 @@
 #![cfg(feature = "with-debug-utils")]
 
 use crate::{
-    block_ext::BlockExt,
     error::{Error, Result},
-    utils::get_integer_layout,
+    utils::{get_integer_layout, BlockExt},
 };
 use melior::{
     dialect::{

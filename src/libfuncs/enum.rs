@@ -4,10 +4,10 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
     error::{Error, Result},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -639,6 +639,6 @@ mod test {
         };
 
         let native_context = NativeContext::new();
-        native_context.compile(&program).unwrap();
+        native_context.compile(&program, false).unwrap();
     }
 }

@@ -1,12 +1,6 @@
-use std::sync::OnceLock;
-
 use crate::{
     error::Error,
-    ffi::{
-        get_data_layout_rep, get_target_triple, mlirLLVMDICompileUnitAttrGet,
-        mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDistinctAttrCreate,
-        mlirModuleCleanup,
-    },
+    ffi::{get_data_layout_rep, get_target_triple},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
         runtime_bindings::RuntimeBindingsMeta,
@@ -34,6 +28,12 @@ use melior::{
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,
 };
+use mlir_sys::{
+    mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
+    mlirLLVMDIModuleAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
+};
+use std::sync::OnceLock;
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -62,7 +62,14 @@ impl NativeContext {
 
     /// Compiles a sierra program into MLIR and then lowers to LLVM.
     /// Returns the corresponding NativeModule struct.
-    pub fn compile(&self, program: &Program) -> Result<NativeModule, Error> {
+    ///
+    /// If `ignore_debug_names` is true then debug names will not be added to function names.
+    /// Mainly useful for the ContractExecutor.
+    pub fn compile(
+        &self,
+        program: &Program,
+        ignore_debug_names: bool,
+    ) -> Result<NativeModule, Error> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
@@ -80,7 +87,7 @@ impl NativeContext {
 
         let di_unit_id = unsafe {
             let id = StringAttribute::new(&self.context, "compile_unit_id").to_raw();
-            mlirLLVMDistinctAttrCreate(id)
+            mlirDisctinctAttrCreate(id)
         };
 
         let op = OperationBuilder::new(
@@ -104,7 +111,8 @@ impl NativeContext {
                             file_attr.to_raw(),
                             StringAttribute::new(&self.context, "cairo-native").to_raw(),
                             false,
-                            crate::ffi::DiEmissionKind::Full,
+                            MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+                            MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
                         );
 
                         let context = &self.context;
@@ -170,6 +178,7 @@ impl NativeContext {
             &registry,
             &mut metadata,
             unsafe { Attribute::from_raw(di_unit_id) },
+            ignore_debug_names,
         )?;
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
@@ -194,10 +203,6 @@ impl NativeContext {
         }
 
         run_pass_manager(&self.context, &mut module)?;
-
-        unsafe {
-            mlirModuleCleanup(module.to_raw());
-        }
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {

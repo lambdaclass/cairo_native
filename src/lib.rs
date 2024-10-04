@@ -11,13 +11,13 @@
 pub use self::{
     compiler::compile,
     ffi::{module_to_object, object_to_shared_lib, OptLevel},
+    values::Value,
 };
 
 #[cfg(feature = "with-trace-dump")]
 pub use cairo_native_runtime as runtime;
 
 mod arch;
-pub(crate) mod block_ext;
 pub mod cache;
 mod compiler;
 pub mod context;
@@ -34,4 +34,4 @@ pub mod starknet;
 pub mod starknet_stub;
 pub mod types;
 pub mod utils;
-pub mod values;
+mod values;

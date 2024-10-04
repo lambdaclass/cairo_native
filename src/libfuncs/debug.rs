@@ -10,10 +10,10 @@
 //         U+0020 SPACE
 
 use super::LibfuncHelper;
-use crate::block_ext::BlockExt;
 use crate::{
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{

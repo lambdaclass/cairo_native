@@ -3,7 +3,9 @@
 use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
+use itertools::Itertools;
 use lazy_static::lazy_static;
+use num_traits::{ToPrimitive, Zero};
 use rand::Rng;
 use starknet_curve::curve_params::BETA;
 use starknet_types_core::{
@@ -11,8 +13,8 @@ use starknet_types_core::{
     felt::Felt,
     hash::StarkHash,
 };
-use std::ops::Mul;
 use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
+use std::{ops::Mul, vec::IntoIter};
 
 lazy_static! {
     pub static ref HALF_PRIME: Felt = Felt::from_dec_str(
@@ -39,43 +41,20 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
 ) -> i32 {
     let mut target = File::from_raw_fd(target_fd);
 
+    let mut items = Vec::with_capacity(len as usize);
+
     for i in 0..len as usize {
         let data = *data.add(i);
 
         let value = Felt::from_bytes_le(&data);
-        if write!(target, "[DEBUG]\t0x{value:x}",).is_err() {
-            return 1;
-        };
-
-        if data[..32]
-            .iter()
-            .copied()
-            .all(|ch| ch == 0 || ch.is_ascii_graphic() || ch.is_ascii_whitespace())
-        {
-            let mut buf = [0; 31];
-            let mut len = 31;
-            for &ch in data.iter().take(31) {
-                if ch != 0 {
-                    len -= 1;
-                    buf[len] = ch;
-                }
-            }
-
-            if write!(
-                target,
-                " ('{}')",
-                std::str::from_utf8_unchecked(&buf[len..])
-            )
-            .is_err()
-            {
-                return 1;
-            }
-        }
-
-        if writeln!(target).is_err() {
-            return 1;
-        };
+        items.push(value);
     }
+
+    let value = format_for_debug(items.into_iter());
+
+    if write!(target, "{}", value).is_err() {
+        return 1;
+    };
 
     // Avoid closing `stdout`.
     std::mem::forget(target);
@@ -155,73 +134,75 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 }
 
 /// Felt252 type used in cairo native runtime
-pub type FeltDict = (HashMap<[u8; 32], NonNull<std::ffi::c_void>>, u64);
-
-/// Allocates a new dictionary. Internally a rust hashmap: `HashMap<[u8; 32], NonNull<()>`
-///
-/// # Safety
-///
-/// This function is intended to be called from MLIR, deals with pointers, and is therefore
-/// definitely unsafe to use manually.
-#[no_mangle]
-pub unsafe extern "C" fn cairo_native__alloc_dict() -> *mut std::ffi::c_void {
-    Box::into_raw(Box::<FeltDict>::default()) as _
+#[derive(Debug, Default)]
+pub struct FeltDict {
+    pub inner: HashMap<[u8; 32], NonNull<std::ffi::c_void>>,
+    pub count: u64,
 }
 
-/// Frees the dictionary.
+/// Allocate a new dictionary.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_free(ptr: *mut FeltDict) {
-    let mut map = Box::from_raw(ptr);
+pub unsafe extern "C" fn cairo_native__dict_new() -> *mut FeltDict {
+    Box::into_raw(Box::<FeltDict>::default())
+}
+
+/// Free a dictionary using an optional callback to drop each element.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+// Note: Using `Option<extern "C" fn(*mut std::ffi::c_void)>` is ffi-safe thanks to Option's null
+//   pointer optimization. Check out
+//   https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization for more info.
+#[no_mangle]
+pub unsafe extern "C" fn cairo_native__dict_drop(
+    ptr: *mut FeltDict,
+    drop_fn: Option<extern "C" fn(*mut std::ffi::c_void)>,
+) {
+    let map = Box::from_raw(ptr);
 
     // Free the entries manually.
-    for (_, entry) in map.as_mut().0.drain() {
-        libc::free(entry.as_ptr().cast());
+    for entry in map.inner.into_values() {
+        if let Some(drop_fn) = drop_fn {
+            drop_fn(entry.as_ptr());
+        }
+
+        libc::free(entry.as_ptr());
     }
 }
 
-/// Needed for the correct alignment,
-/// since the key [u8; 32] in rust has 8 byte alignment but its a felt,
-/// so in reality it has 16.
-#[repr(C, align(16))]
-pub struct DictValuesArrayAbi {
-    pub key: [u8; 32],
-    pub value: std::ptr::NonNull<libc::c_void>,
-}
-
-/// Returns a array over the values of the dict, used for deep cloning.
+/// Duplicate a dictionary using a provided callback to clone each element.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_values(
+pub unsafe extern "C" fn cairo_native__dict_dup(
     ptr: *mut FeltDict,
-    len: *mut u64,
-) -> *mut DictValuesArrayAbi {
-    let dict: &mut FeltDict = &mut *ptr;
+    dup_fn: extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
+) -> *mut FeltDict {
+    let old_dict = &*ptr;
+    let mut new_dict = Box::<FeltDict>::default();
 
-    let values: Vec<_> = dict
-        .0
-        .clone()
-        .into_iter()
-        // make it ffi safe for use within MLIR.
-        .map(|x| DictValuesArrayAbi {
-            key: x.0,
-            value: x.1,
-        })
-        .collect();
-    *len = values.len() as u64;
-    values.leak::<'static>().as_mut_ptr()
+    new_dict.inner.extend(
+        old_dict
+            .inner
+            .iter()
+            .map(|(&k, &v)| (k, NonNull::new(dup_fn(v.as_ptr())).unwrap())),
+    );
+
+    Box::into_raw(new_dict)
 }
 
-/// Gets the value for a given key, the returned pointer is null if not found.
-/// Increments the access count.
+/// Return the value (reference) for a given key, or null if not present. Increment the access
+/// count.
 ///
 /// # Safety
 ///
@@ -233,13 +214,11 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     key: &[u8; 32],
 ) -> *mut std::ffi::c_void {
     let dict: &mut FeltDict = &mut *ptr;
-    let map = &dict.0;
-    dict.1 += 1;
+    dict.count += 1;
 
-    if let Some(v) = map.get(key) {
-        v.as_ptr()
-    } else {
-        std::ptr::null_mut()
+    match dict.inner.get(key) {
+        Some(v) => v.as_ptr(),
+        None => std::ptr::null_mut(),
     }
 }
 
@@ -256,7 +235,7 @@ pub unsafe extern "C" fn cairo_native__dict_insert(
     value: NonNull<std::ffi::c_void>,
 ) -> *mut std::ffi::c_void {
     let dict = &mut *ptr;
-    let old_ptr = dict.0.insert(*key, value);
+    let old_ptr = dict.inner.insert(*key, value);
 
     if let Some(v) = old_ptr {
         v.as_ptr()
@@ -274,7 +253,7 @@ pub unsafe extern "C" fn cairo_native__dict_insert(
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> u64 {
     let dict = &*ptr;
-    (dict.1 - dict.0.len() as u64) * *DICT_GAS_REFUND_PER_ACCESS
+    (dict.count - dict.inner.len() as u64) * *DICT_GAS_REFUND_PER_ACCESS
 }
 
 /// Compute `ec_point_from_x_nz(x)` and store it.
@@ -814,4 +793,178 @@ pub mod trace_dump {
             CoreTypeConcrete::Bytes31(_) => todo!("CoreTypeConcrete::Bytes31"),
         }
     }
+}
+
+/// Utility methods for the print runtime function
+
+/// Formats the given felts as a debug string.
+fn format_for_debug(mut felts: IntoIter<Felt>) -> String {
+    let mut items = Vec::new();
+    while let Some(item) = format_next_item(&mut felts) {
+        items.push(item);
+    }
+    if let [item] = &items[..] {
+        if item.is_string {
+            return item.item.clone();
+        }
+    }
+    items
+        .into_iter()
+        .map(|item| {
+            if item.is_string {
+                format!("{}\n", item.item)
+            } else {
+                format!("[DEBUG]\t{}\n", item.item)
+            }
+        })
+        .join("")
+}
+
+/// A formatted string representation of anything formattable (e.g. ByteArray, felt, short-string).
+pub struct FormattedItem {
+    /// The formatted string representing the item.
+    item: String,
+    /// Whether the item is a string.
+    is_string: bool,
+}
+impl FormattedItem {
+    /// Returns the formatted item as is.
+    pub fn get(self) -> String {
+        self.item
+    }
+    /// Wraps the formatted item with quote, if it's a string. Otherwise returns it as is.
+    pub fn quote_if_string(self) -> String {
+        if self.is_string {
+            format!("\"{}\"", self.item)
+        } else {
+            self.item
+        }
+    }
+}
+
+pub const BYTE_ARRAY_MAGIC: &str =
+    "46a6158a16a947e5916b2a2ca68501a45e93d7110e81aa2d6438b1c57c879a3";
+pub const BYTES_IN_WORD: usize = 31;
+
+/// Formats a string or a short string / `felt252`. Returns the formatted string and a boolean
+/// indicating whether it's a string. If can't format the item, returns None.
+pub fn format_next_item<T>(values: &mut T) -> Option<FormattedItem>
+where
+    T: Iterator<Item = Felt> + Clone,
+{
+    let first_felt = values.next()?;
+
+    if first_felt == Felt::from_hex(BYTE_ARRAY_MAGIC).unwrap() {
+        if let Some(string) = try_format_string(values) {
+            return Some(FormattedItem {
+                item: string,
+                is_string: true,
+            });
+        }
+    }
+    Some(FormattedItem {
+        item: format_short_string(&first_felt),
+        is_string: false,
+    })
+}
+
+/// Formats a `Felt252`, as a short string if possible.
+fn format_short_string(value: &Felt) -> String {
+    let hex_value = value.to_biguint();
+    match as_cairo_short_string(value) {
+        Some(as_string) => format!("{hex_value:#x} ('{as_string}')"),
+        None => format!("{hex_value:#x}"),
+    }
+}
+
+/// Tries to format a string, represented as a sequence of `Felt252`s.
+/// If the sequence is not a valid serialization of a ByteArray, returns None and doesn't change the
+/// given iterator (`values`).
+fn try_format_string<T>(values: &mut T) -> Option<String>
+where
+    T: Iterator<Item = Felt> + Clone,
+{
+    // Clone the iterator and work with the clone. If the extraction of the string is successful,
+    // change the original iterator to the one we worked with. If not, continue with the
+    // original iterator at the original point.
+    let mut cloned_values_iter = values.clone();
+
+    let num_full_words = cloned_values_iter.next()?.to_usize()?;
+    let full_words = cloned_values_iter
+        .by_ref()
+        .take(num_full_words)
+        .collect_vec();
+    let pending_word = cloned_values_iter.next()?;
+    let pending_word_len = cloned_values_iter.next()?.to_usize()?;
+
+    let full_words_string = full_words
+        .into_iter()
+        .map(|word| as_cairo_short_string_ex(&word, BYTES_IN_WORD))
+        .collect::<Option<Vec<String>>>()?
+        .join("");
+    let pending_word_string = as_cairo_short_string_ex(&pending_word, pending_word_len)?;
+
+    // Extraction was successful, change the original iterator to the one we worked with.
+    *values = cloned_values_iter;
+
+    Some(format!("{full_words_string}{pending_word_string}"))
+}
+
+/// Converts a bigint representing a felt252 to a Cairo short-string.
+pub fn as_cairo_short_string(value: &Felt) -> Option<String> {
+    let mut as_string = String::default();
+    let mut is_end = false;
+    for byte in value.to_biguint().to_bytes_be() {
+        if byte == 0 {
+            is_end = true;
+        } else if is_end {
+            return None;
+        } else if byte.is_ascii_graphic() || byte.is_ascii_whitespace() {
+            as_string.push(byte as char);
+        } else {
+            return None;
+        }
+    }
+    Some(as_string)
+}
+
+/// Converts a bigint representing a felt252 to a Cairo short-string of the given length.
+/// Nulls are allowed and length must be <= 31.
+pub fn as_cairo_short_string_ex(value: &Felt, length: usize) -> Option<String> {
+    if length == 0 {
+        return if value.is_zero() {
+            Some("".to_string())
+        } else {
+            None
+        };
+    }
+    if length > 31 {
+        // A short string can't be longer than 31 bytes.
+        return None;
+    }
+
+    // We pass through biguint as felt252.to_bytes_be() does not trim leading zeros.
+    let bytes = value.to_biguint().to_bytes_be();
+    let bytes_len = bytes.len();
+    if bytes_len > length {
+        // `value` has more bytes than expected.
+        return None;
+    }
+
+    let mut as_string = "".to_string();
+    for byte in bytes {
+        if byte == 0 {
+            as_string.push_str(r"\0");
+        } else if byte.is_ascii_graphic() || byte.is_ascii_whitespace() {
+            as_string.push(byte as char);
+        } else {
+            as_string.push_str(format!(r"\x{:02x}", byte).as_str());
+        }
+    }
+
+    // `to_bytes_be` misses starting nulls. Prepend them as needed.
+    let missing_nulls = length - bytes_len;
+    as_string.insert_str(0, &r"\0".repeat(missing_nulls));
+
+    Some(as_string)
 }
