@@ -481,6 +481,8 @@ pub mod trace_dump {
         sync::{LazyLock, Mutex},
     };
 
+    use crate::FeltDict;
+
     pub static TRACE_DUMP: LazyLock<Mutex<HashMap<u64, TraceDump>>> =
         LazyLock::new(|| Mutex::new(HashMap::new()));
 
@@ -775,7 +777,24 @@ pub mod trace_dump {
             CoreTypeConcrete::Sint128(_) => todo!("CoreTypeConcrete::Sint128"),
             CoreTypeConcrete::Nullable(_) => todo!("CoreTypeConcrete::Nullable"),
             CoreTypeConcrete::RangeCheck96(_) => todo!("CoreTypeConcrete::RangeCheck96"),
-            CoreTypeConcrete::Felt252Dict(_) => todo!("CoreTypeConcrete::Felt252Dict"),
+            CoreTypeConcrete::Felt252Dict(info) => {
+                let value = value_ptr.cast::<FeltDict>().as_ref();
+
+                let data = value
+                    .inner
+                    .iter()
+                    .map(|(k, v)| {
+                        let k = Felt::from_bytes_le(k);
+                        let v = read_value_ptr(registry, &info.ty, v.cast(), get_layout);
+                        (k, v)
+                    })
+                    .collect::<HashMap<Felt, Value>>();
+
+                Value::FeltDict {
+                    ty: info.ty.clone(),
+                    data,
+                }
+            }
             CoreTypeConcrete::Felt252DictEntry(_) => todo!("CoreTypeConcrete::Felt252DictEntry"),
             CoreTypeConcrete::SquashedFelt252Dict(_) => {
                 todo!("CoreTypeConcrete::SquashedFelt252Dict")
