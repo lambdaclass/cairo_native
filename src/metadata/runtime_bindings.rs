@@ -507,13 +507,13 @@ impl RuntimeBindingsMeta {
             .into(),
         )?;
 
-        Ok(block.append_op_result(func::call(
+        block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_new"),
             &[free_fn],
             &[llvm::r#type::pointer(context, 0)],
             location,
-        ))?)
+        ))
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
@@ -663,13 +663,13 @@ impl RuntimeBindingsMeta {
             ));
         }
 
-        Ok(block.append_op_result(func::call(
+        block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_get"),
             &[dict_ptr, key_ptr],
             &[llvm::r#type::pointer(context, 0)],
             location,
-        ))?)
+        ))
     }
 
     /// Register if necessary, then invoke the `dict_insert()` function.

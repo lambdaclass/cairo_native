@@ -46,10 +46,13 @@ impl MemTracing {
     }
 
     pub fn finish(&mut self, ptr: *mut c_void) {
-        if let Ok(pos) = self.pending.binary_search_by_key(&ptr, |x| x.ptr) {
-            let trace = self.pending.remove(pos);
-            self.finished.push(trace);
-        };
+        match self.pending.binary_search_by_key(&ptr, |x| x.ptr) {
+            Ok(pos) => {
+                let trace = self.pending.remove(pos);
+                self.finished.push(trace);
+            }
+            Err(_) => unreachable!(),
+        }
     }
 }
 

@@ -241,7 +241,10 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let ptr: *mut () = libc_malloc(elem_layout.size() * data.len()).cast();
+                        let ptr: *mut () = match elem_layout.size() * data.len() {
+                            0 => std::ptr::null_mut(),
+                            len => libc_malloc(len).cast(),
+                        };
                         let len: u32 = data
                             .len()
                             .try_into()
