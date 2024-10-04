@@ -46,6 +46,10 @@ impl MemTracing {
     }
 
     pub fn finish(&mut self, ptr: *mut c_void) {
+        if ptr.is_null() {
+            return;
+        }
+
         match self.pending.binary_search_by_key(&ptr, |x| x.ptr) {
             Ok(pos) => {
                 let trace = self.pending.remove(pos);
@@ -78,18 +82,18 @@ pub(crate) fn register_bindings(engine: &ExecutionEngine) {
 
 pub fn report_stats() {
     unsafe {
-        // println!();
-        // println!("[MemTracing] Stats:");
-        // println!(
-        //     "[MemTracing]   Freed allocations: {}",
-        //     MEM_TRACING.finished.len()
-        // );
-        // println!("[MemTracing]   Pending allocations:");
-        // for AllocTrace { ptr, len } in &MEM_TRACING.pending {
-        //     println!("[MemTracing]     - {ptr:?} ({len} bytes)");
-        // }
-
         MEM_TRACING.with(|x| {
+            println!();
+            println!("[MemTracing] Stats:");
+            println!(
+                "[MemTracing]   Freed allocations: {}",
+                (*x.get()).finished.len()
+            );
+            println!("[MemTracing]   Pending allocations:");
+            for AllocTrace { ptr, len } in &(*x.get()).pending {
+                println!("[MemTracing]     - {ptr:?} ({len} bytes)");
+            }
+
             assert!((*x.get()).pending.is_empty());
             *x.get() = MemTracing::new();
         });
