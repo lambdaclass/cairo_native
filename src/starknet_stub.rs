@@ -2,18 +2,18 @@
 
 use std::{
     collections::{HashMap, VecDeque},
-    iter::once,
+    fmt,
 };
 
 use crate::starknet::{
     BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
     StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
 };
-use k256::elliptic_curve::{
-    generic_array::GenericArray,
-    sec1::{FromEncodedPoint, ToEncodedPoint},
-};
-use sec1::point::Coordinates;
+use ark_ec::short_weierstrass::{Affine, Projective, SWCurveConfig};
+use ark_ff::{BigInt, PrimeField};
+use itertools::Itertools;
+use num_bigint::BigUint;
+use num_traits::Zero;
 use starknet_types_core::felt::Felt;
 use tracing::instrument;
 
@@ -77,6 +77,191 @@ pub struct ContractLogs {
 }
 
 type L2ToL1Message = (Felt, Vec<Felt>);
+
+#[derive(PartialEq, Clone, Copy)]
+struct Secp256Point<Curve: SWCurveConfig>(Affine<Curve>);
+
+impl<Curve: SWCurveConfig> fmt::Debug for Secp256Point<Curve> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Secp256Point").field(&self.0).finish()
+    }
+}
+
+impl From<Secp256Point<ark_secp256k1::Config>> for Secp256k1Point {
+    fn from(Secp256Point(Affine { x, y, infinity }): Secp256Point<ark_secp256k1::Config>) -> Self {
+        Secp256k1Point {
+            x: big4int_to_u256(x.into()),
+            y: big4int_to_u256(y.into()),
+            is_infinity: infinity,
+        }
+    }
+}
+
+impl From<Secp256Point<ark_secp256r1::Config>> for Secp256r1Point {
+    fn from(Secp256Point(Affine { x, y, infinity }): Secp256Point<ark_secp256r1::Config>) -> Self {
+        Secp256r1Point {
+            x: big4int_to_u256(x.into()),
+            y: big4int_to_u256(y.into()),
+            is_infinity: infinity,
+        }
+    }
+}
+
+impl From<Secp256k1Point> for Secp256Point<ark_secp256k1::Config> {
+    fn from(p: Secp256k1Point) -> Self {
+        Secp256Point(Affine {
+            x: u256_to_biguint(p.x).into(),
+            y: u256_to_biguint(p.y).into(),
+            infinity: p.is_infinity,
+        })
+    }
+}
+
+impl From<Secp256r1Point> for Secp256Point<ark_secp256r1::Config> {
+    fn from(p: Secp256r1Point) -> Self {
+        Secp256Point(Affine {
+            x: u256_to_biguint(p.x).into(),
+            y: u256_to_biguint(p.y).into(),
+            infinity: p.is_infinity,
+        })
+    }
+}
+
+pub fn u256_to_biguint(u256: U256) -> BigUint {
+    let lo = BigUint::from(u256.lo);
+    let hi = BigUint::from(u256.hi);
+
+    (hi << 128) + lo
+}
+
+pub fn big4int_to_u256(b_int: BigInt<4>) -> U256 {
+    let [a, b, c, d] = b_int.0;
+
+    let lo = u128::from(a) | (u128::from(b) << 64);
+    let hi = u128::from(c) | (u128::from(d) << 64);
+
+    U256 { lo, hi }
+}
+
+pub fn encode_str_as_felts(msg: &str) -> Vec<Felt> {
+    const CHUNK_SIZE: usize = 32;
+
+    let data = msg.as_bytes().chunks(CHUNK_SIZE - 1);
+    let mut encoding = vec![Felt::default(); data.len()];
+    for (i, data_chunk) in data.enumerate() {
+        let mut chunk = [0_u8; CHUNK_SIZE];
+        chunk[1..data_chunk.len() + 1].copy_from_slice(data_chunk);
+        encoding[i] = Felt::from_bytes_be(&chunk);
+    }
+    encoding
+}
+
+pub fn decode_felts_as_str(encoding: &[Felt]) -> String {
+    let bytes_err: Vec<_> = encoding
+        .iter()
+        .flat_map(|felt| felt.to_bytes_be()[1..32].to_vec())
+        .collect();
+
+    match String::from_utf8(bytes_err) {
+        Ok(s) => s.trim_matches('\0').to_owned(),
+        Err(_) => {
+            let err_msgs = encoding
+                .iter()
+                .map(
+                    |felt| match String::from_utf8(felt.to_bytes_be()[1..32].to_vec()) {
+                        Ok(s) => format!("{} ({})", s.trim_matches('\0'), felt),
+                        Err(_) => felt.to_string(),
+                    },
+                )
+                .join(", ");
+            format!("[{}]", err_msgs)
+        }
+    }
+}
+
+impl<Curve: SWCurveConfig> Secp256Point<Curve>
+where
+    Curve::BaseField: PrimeField, // constraint for get_point_by_id
+{
+    // Given a (x,y) pair it will
+    // - return the point at infinity for (0,0)
+    // - Err if either x or y is outside of the modulus
+    // - Ok(None) if (x,y) are within the modules but not on the curve
+    // - Ok(Some(Point)) if (x,y) are on the curve
+    fn new(x: U256, y: U256) -> Result<Option<Self>, Vec<Felt>> {
+        let x = u256_to_biguint(x);
+        let y = u256_to_biguint(y);
+        let modulos = Curve::BaseField::MODULUS.into();
+
+        if x >= modulos || y >= modulos {
+            let error = Felt::from_hex(
+                "0x00000000000000000000000000000000496e76616c696420617267756d656e74",
+            ) // INVALID_ARGUMENT
+            .map_err(|err| encode_str_as_felts(&err.to_string()))?;
+
+            return Err(vec![error]);
+        }
+
+        Ok(maybe_affine(x.into(), y.into()))
+    }
+
+    fn add(p0: Self, p1: Self) -> Self {
+        let result: Projective<Curve> = p0.0 + p1.0;
+        Secp256Point(result.into())
+    }
+
+    fn mul(p: Self, m: U256) -> Self {
+        let result = p.0 * Curve::ScalarField::from(u256_to_biguint(m));
+        Secp256Point(result.into())
+    }
+
+    fn get_point_from_x(x: U256, y_parity: bool) -> Result<Option<Self>, Vec<Felt>> {
+        let modulos = Curve::BaseField::MODULUS.into();
+        let x = u256_to_biguint(x);
+
+        if x >= modulos {
+            let error = Felt::from_hex(
+                "0x00000000000000000000000000000000496e76616c696420617267756d656e74",
+            ) // INVALID_ARGUMENT
+            .map_err(|err| encode_str_as_felts(&err.to_string()))?;
+
+            return Err(vec![error]);
+        }
+
+        let x = x.into();
+        let maybe_ec_point = Affine::<Curve>::get_ys_from_x_unchecked(x)
+            .map(|(smaller, greater)| {
+                // Return the correct y coordinate based on the parity.
+                if ark_ff::BigInteger::is_odd(&smaller.into_bigint()) == y_parity {
+                    smaller
+                } else {
+                    greater
+                }
+            })
+            .map(|y| Affine::<Curve>::new_unchecked(x, y))
+            .filter(|p| p.is_in_correct_subgroup_assuming_on_curve());
+
+        Ok(maybe_ec_point.map(Secp256Point))
+    }
+}
+
+/// Variation on [`Affine<Curve>::new`] that doesn't panic and maps (x,y) = (0,0) -> infinity
+fn maybe_affine<Curve: SWCurveConfig>(
+    x: Curve::BaseField,
+    y: Curve::BaseField,
+) -> Option<Secp256Point<Curve>> {
+    let ec_point = if x.is_zero() && y.is_zero() {
+        Affine::<Curve>::identity()
+    } else {
+        Affine::<Curve>::new_unchecked(x, y)
+    };
+
+    if ec_point.is_on_curve() && ec_point.is_in_correct_subgroup_assuming_on_curve() {
+        Some(Secp256Point(ec_point))
+    } else {
+        None
+    }
+}
 
 impl StarknetSyscallHandler for &mut StubSyscallHandler {
     #[instrument(skip(self))]
@@ -228,38 +413,30 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
 
     #[instrument(skip(self))]
     fn keccak(&mut self, input: &[u64], gas: &mut u128) -> SyscallResult<U256> {
-        tracing::debug!("called");
-        let length = input.len();
+        const KECCAK_FULL_RATE_IN_WORDS: usize = 17;
 
-        if length % 17 != 0 {
-            let error_msg = b"Invalid keccak input size";
-            let felt_error = Felt::from_bytes_be_slice(error_msg);
-            return Err(vec![felt_error]);
+        let length = input.len();
+        let (_n_rounds, remainder) = num_integer::div_rem(length, KECCAK_FULL_RATE_IN_WORDS);
+
+        if remainder != 0 {
+            // In VM this error is wrapped into `SyscallExecutionError::SyscallError`
+            return Err(vec![Felt::from_hex(
+                "0x000000000000000000000000496e76616c696420696e707574206c656e677468",
+            )
+            .unwrap()]);
         }
 
-        let n_chunks = length / 17;
         let mut state = [0u64; 25];
-
-        for i in 0..n_chunks {
-            if *gas < KECCAK_ROUND_COST {
-                let error_msg = b"Syscall out of gas";
-                let felt_error = Felt::from_bytes_be_slice(error_msg);
-                return Err(vec![felt_error]);
-            }
-            const KECCAK_ROUND_COST: u128 = 180000;
-            *gas -= KECCAK_ROUND_COST;
-            let chunk = &input[i * 17..(i + 1) * 17]; //(request.input_start + i * 17)?;
+        for chunk in input.chunks(KECCAK_FULL_RATE_IN_WORDS) {
             for (i, val) in chunk.iter().enumerate() {
                 state[i] ^= val;
             }
             keccak::f1600(&mut state)
         }
 
-        // state[0] and state[1] conform the hash_high (u128)
-        // state[2] and state[3] conform the hash_low (u128)
-        SyscallResult::Ok(U256 {
-            lo: state[0] as u128 | ((state[1] as u128) << 64),
-            hi: state[2] as u128 | ((state[3] as u128) << 64),
+        Ok(U256 {
+            hi: u128::from(state[2]) | (u128::from(state[3]) << 64),
+            lo: u128::from(state[0]) | (u128::from(state[1]) << 64),
         })
     }
 
@@ -270,32 +447,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         y: U256,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256k1Point>> {
-        tracing::debug!("called");
-        // The following unwraps should be unreachable because the iterator we provide has the
-        // expected number of bytes.
-        let point = k256::ProjectivePoint::from_encoded_point(
-            &k256::EncodedPoint::from_affine_coordinates(
-                &GenericArray::from_exact_iter(
-                    x.hi.to_be_bytes().into_iter().chain(x.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                &GenericArray::from_exact_iter(
-                    y.hi.to_be_bytes().into_iter().chain(y.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                false,
-            ),
-        );
-
-        if bool::from(point.is_some()) {
-            Ok(Some(Secp256k1Point {
-                x,
-                y,
-                is_infinity: false,
-            }))
-        } else {
-            Ok(None)
-        }
+        Secp256Point::new(x, y).map(|op| op.map(|p| p.into()))
     }
 
     #[instrument(skip(self))]
@@ -307,178 +459,17 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     ) -> SyscallResult<Secp256k1Point> {
         tracing::debug!("called");
 
-        if p0.is_infinity || p1.is_infinity {
-            if p1.is_infinity {
-                return Ok(p0);
-            } else if p0.is_infinity {
-                return Ok(p1);
-            } else {
-                return Ok(Secp256k1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 { hi: 0, lo: 0 },
-                    is_infinity: true,
-                });
-            }
-        }
-
-        // The inner unwraps should be unreachable because the iterator we provide has the expected
-        // number of bytes. The outer unwraps depend on the felt values, which should be valid since
-        // they'll be provided by secp256 syscalls.
-
-        let p0 = k256::ProjectivePoint::from_encoded_point(&if p0.is_infinity {
-            k256::EncodedPoint::identity()
-        } else {
-            k256::EncodedPoint::from_affine_coordinates(
-                &GenericArray::from_exact_iter(
-                    p0.x.hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p0.x.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                &GenericArray::from_exact_iter(
-                    p0.y.hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p0.y.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                false,
-            )
-        })
-        .unwrap();
-        let p1 = k256::ProjectivePoint::from_encoded_point(&if p1.is_infinity {
-            k256::EncodedPoint::identity()
-        } else {
-            k256::EncodedPoint::from_affine_coordinates(
-                &GenericArray::from_exact_iter(
-                    p1.x.hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p1.x.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                &GenericArray::from_exact_iter(
-                    p1.y.hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p1.y.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                false,
-            )
-        })
-        .unwrap();
-
-        let p = p0 + p1;
-
-        let p = p.to_encoded_point(false);
-        let (x, y, is_infinity) = match p.coordinates() {
-            Coordinates::Uncompressed { x, y } => (x.as_slice(), y.as_slice(), false),
-            Coordinates::Identity => ([0u8; 32].as_slice(), [0; 32].as_slice(), true),
-            _ => {
-                // This should be unreachable because we explicitly asked for the uncompressed
-                // encoding.
-                unreachable!()
-            }
-        };
-
-        // The following two unwraps should be safe because the array always has 32 bytes. The other
-        // four are definitely safe because the slicing guarantees its length to be the right one.
-        let x: [u8; 32] = x.try_into().unwrap();
-        let y: [u8; 32] = y.try_into().unwrap();
-        Ok(Secp256k1Point {
-            x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
-            },
-            y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
-            },
-            is_infinity,
-        })
+        Ok(Secp256Point::add(p0.into(), p1.into()).into())
     }
 
     #[instrument(skip(self))]
     fn secp256k1_mul(
         &mut self,
-        p_arg: Secp256k1Point,
+        p: Secp256k1Point,
         m: U256,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256k1Point> {
-        // The inner unwrap should be unreachable because the iterator we provide has the expected
-        // number of bytes. The outer unwrap depends on the felt values, which should be valid since
-        // they'll be provided by secp256 syscalls.
-
-        let p = k256::ProjectivePoint::from_encoded_point(&if p_arg.is_infinity {
-            k256::EncodedPoint::identity()
-        } else {
-            k256::EncodedPoint::from_affine_coordinates(
-                &GenericArray::from_exact_iter(
-                    p_arg
-                        .x
-                        .hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p_arg.x.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                &GenericArray::from_exact_iter(
-                    p_arg
-                        .y
-                        .hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p_arg.y.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                false,
-            )
-        })
-        .unwrap();
-
-        let m: k256::Scalar = k256::elliptic_curve::ScalarPrimitive::from_slice(&{
-            let mut buf = [0u8; 32];
-            buf[0..16].copy_from_slice(&m.hi.to_be_bytes());
-            buf[16..32].copy_from_slice(&m.lo.to_be_bytes());
-            buf
-        })
-        .map_err(|_| {
-            vec![Felt::from_bytes_be(
-                b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0invalid scalar",
-            )]
-        })?
-        .into();
-
-        let p = p * m;
-
-        let p = p.to_encoded_point(false);
-        let (x, y, is_infinity) = match p.coordinates() {
-            Coordinates::Uncompressed { x, y } => (x.as_slice(), y.as_slice(), false),
-            Coordinates::Identity => ([0u8; 32].as_slice(), [0; 32].as_slice(), true),
-            _ => {
-                // This should be unreachable because we explicitly asked for the uncompressed
-                // encoding.
-                unreachable!()
-            }
-        };
-
-        // The following two unwraps should be safe because the array always has 32 bytes. The other
-        // four are definitely safe because the slicing guarantees its length to be the right one.
-        let x: [u8; 32] = x.try_into().unwrap();
-        let y: [u8; 32] = y.try_into().unwrap();
-        Ok(Secp256k1Point {
-            x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
-            },
-            y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
-            },
-            is_infinity,
-        })
+        Ok(Secp256Point::mul(p.into(), m).into())
     }
 
     #[instrument(skip(self))]
@@ -488,51 +479,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         y_parity: bool,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256k1Point>> {
-        tracing::debug!("called");
-        // The inner unwrap should be unreachable because the iterator we provide has the expected
-        // number of bytes. The outer unwrap depends on the encoding format, which should be valid
-        // since it's hardcoded..
-        let point = k256::ProjectivePoint::from_encoded_point(
-            &k256::EncodedPoint::from_bytes(
-                k256::CompressedPoint::from_exact_iter(
-                    once(0x02 | y_parity as u8)
-                        .chain(x.hi.to_be_bytes())
-                        .chain(x.lo.to_be_bytes()),
-                )
-                .unwrap(),
-            )
-            .unwrap(),
-        );
-
-        if bool::from(point.is_some()) {
-            // This unwrap has already been checked in the `if` expression's condition.
-            let p = point.unwrap();
-
-            let p = p.to_encoded_point(false);
-            let y = match p.coordinates() {
-                Coordinates::Uncompressed { y, .. } => y,
-                _ => {
-                    // This should be unreachable because we explicitly asked for the uncompressed
-                    // encoding.
-                    unreachable!()
-                }
-            };
-
-            // The following unwrap should be safe because the array always has 32 bytes. The other
-            // two are definitely safe because the slicing guarantees its length to be the right
-            // one.
-            let y: [u8; 32] = y.as_slice().try_into().unwrap();
-            Ok(Some(Secp256k1Point {
-                x,
-                y: U256 {
-                    hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                    lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
-                },
-                is_infinity: false,
-            }))
-        } else {
-            Ok(None)
-        }
+        Secp256Point::get_point_from_x(x, y_parity).map(|op| op.map(|p| p.into()))
     }
 
     #[instrument(skip(self))]
@@ -541,7 +488,6 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         p: Secp256k1Point,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)> {
-        tracing::debug!("called");
         Ok((p.x, p.y))
     }
 
@@ -552,32 +498,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         y: U256,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256r1Point>> {
-        tracing::debug!("called");
-        // The following unwraps should be unreachable because the iterator we provide has the
-        // expected number of bytes.
-        let point = p256::ProjectivePoint::from_encoded_point(
-            &k256::EncodedPoint::from_affine_coordinates(
-                &GenericArray::from_exact_iter(
-                    x.hi.to_be_bytes().into_iter().chain(x.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                &GenericArray::from_exact_iter(
-                    y.hi.to_be_bytes().into_iter().chain(y.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                false,
-            ),
-        );
-
-        if bool::from(point.is_some()) {
-            Ok(Some(Secp256r1Point {
-                x,
-                y,
-                is_infinity: false,
-            }))
-        } else {
-            Ok(None)
-        }
+        Secp256Point::new(x, y).map(|op| op.map(|p| p.into()))
     }
 
     #[instrument(skip(self))]
@@ -587,177 +508,17 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         p1: Secp256r1Point,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256r1Point> {
-        tracing::debug!("called");
-
-        if p0.is_infinity || p1.is_infinity {
-            if p1.is_infinity {
-                return Ok(p0);
-            } else if p0.is_infinity {
-                return Ok(p1);
-            } else {
-                return Ok(Secp256r1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 { hi: 0, lo: 0 },
-                    is_infinity: true,
-                });
-            }
-        }
-
-        // The inner unwraps should be unreachable because the iterator we provide has the expected
-        // number of bytes. The outer unwraps depend on the felt values, which should be valid since
-        // they'll be provided by secp256 syscalls.
-        let p0 = p256::ProjectivePoint::from_encoded_point(&if p0.is_infinity {
-            p256::EncodedPoint::identity()
-        } else {
-            p256::EncodedPoint::from_affine_coordinates(
-                &GenericArray::from_exact_iter(
-                    p0.x.hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p0.x.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                &GenericArray::from_exact_iter(
-                    p0.y.hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p0.y.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                false,
-            )
-        })
-        .unwrap();
-        let p1 = p256::ProjectivePoint::from_encoded_point(&if p1.is_infinity {
-            p256::EncodedPoint::identity()
-        } else {
-            p256::EncodedPoint::from_affine_coordinates(
-                &GenericArray::from_exact_iter(
-                    p1.x.hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p1.x.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                &GenericArray::from_exact_iter(
-                    p1.y.hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p1.y.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                false,
-            )
-        })
-        .unwrap();
-
-        let p = p0 + p1;
-
-        let p = p.to_encoded_point(false);
-        let (x, y) = match p.coordinates() {
-            Coordinates::Uncompressed { x, y } => (x, y),
-            _ => {
-                // This should be unreachable because we explicitly asked for the uncompressed
-                // encoding.
-                unreachable!()
-            }
-        };
-
-        // The following two unwraps should be safe because the array always has 32 bytes. The other
-        // four are definitely safe because the slicing guarantees its length to be the right one.
-        let x: [u8; 32] = x.as_slice().try_into().unwrap();
-        let y: [u8; 32] = y.as_slice().try_into().unwrap();
-        Ok(Secp256r1Point {
-            x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
-            },
-            y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
-            },
-            is_infinity: false,
-        })
+        Ok(Secp256Point::add(p0.into(), p1.into()).into())
     }
 
     #[instrument(skip(self))]
     fn secp256r1_mul(
         &mut self,
-        p_arg: Secp256r1Point,
+        p: Secp256r1Point,
         m: U256,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Secp256r1Point> {
-        // The inner unwrap should be unreachable because the iterator we provide has the expected
-        // number of bytes. The outer unwrap depends on the felt values, which should be valid since
-        // they'll be provided by secp256 syscalls.
-
-        let p = p256::ProjectivePoint::from_encoded_point(&if p_arg.is_infinity {
-            p256::EncodedPoint::identity()
-        } else {
-            p256::EncodedPoint::from_affine_coordinates(
-                &GenericArray::from_exact_iter(
-                    p_arg
-                        .x
-                        .hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p_arg.x.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                &GenericArray::from_exact_iter(
-                    p_arg
-                        .y
-                        .hi
-                        .to_be_bytes()
-                        .into_iter()
-                        .chain(p_arg.y.lo.to_be_bytes()),
-                )
-                .unwrap(),
-                false,
-            )
-        })
-        .unwrap();
-
-        let m: p256::Scalar = p256::elliptic_curve::ScalarPrimitive::from_slice(&{
-            let mut buf = [0u8; 32];
-            buf[0..16].copy_from_slice(&m.hi.to_be_bytes());
-            buf[16..32].copy_from_slice(&m.lo.to_be_bytes());
-            buf
-        })
-        .map_err(|_| {
-            vec![Felt::from_bytes_be(
-                b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0invalid scalar",
-            )]
-        })?
-        .into();
-
-        let p = p * m;
-        let p = p.to_encoded_point(false);
-        let (x, y, is_infinity) = match p.coordinates() {
-            Coordinates::Uncompressed { x, y } => (x.as_slice(), y.as_slice(), false),
-            Coordinates::Identity => ([0u8; 32].as_slice(), [0; 32].as_slice(), true),
-            _ => {
-                // This should be unreachable because we explicitly asked for the uncompressed
-                // encoding.
-                unreachable!()
-            }
-        };
-
-        // The following two unwraps should be safe because the array always has 32 bytes. The other
-        // four are definitely safe because the slicing guarantees its length to be the right one.
-        let x: [u8; 32] = x.try_into().unwrap();
-        let y: [u8; 32] = y.try_into().unwrap();
-        Ok(Secp256r1Point {
-            x: U256 {
-                hi: u128::from_be_bytes(x[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(x[16..32].try_into().unwrap()),
-            },
-            y: U256 {
-                hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
-            },
-            is_infinity,
-        })
+        Ok(Secp256Point::mul(p.into(), m).into())
     }
 
     #[instrument(skip(self))]
@@ -767,39 +528,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         y_parity: bool,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<Option<Secp256r1Point>> {
-        let point = p256::ProjectivePoint::from_encoded_point(
-            &p256::EncodedPoint::from_bytes(
-                p256::CompressedPoint::from_exact_iter(
-                    once(0x02 | y_parity as u8)
-                        .chain(x.hi.to_be_bytes())
-                        .chain(x.lo.to_be_bytes()),
-                )
-                .unwrap(),
-            )
-            .unwrap(),
-        );
-
-        if bool::from(point.is_some()) {
-            let p = point.unwrap();
-
-            let p = p.to_encoded_point(false);
-            let y = match p.coordinates() {
-                Coordinates::Uncompressed { y, .. } => y,
-                _ => unreachable!(),
-            };
-
-            let y: [u8; 32] = y.as_slice().try_into().unwrap();
-            Ok(Some(Secp256r1Point {
-                x,
-                y: U256 {
-                    hi: u128::from_be_bytes(y[0..16].try_into().unwrap()),
-                    lo: u128::from_be_bytes(y[16..32].try_into().unwrap()),
-                },
-                is_infinity: false,
-            }))
-        } else {
-            Ok(None)
-        }
+        Secp256Point::get_point_from_x(x, y_parity).map(|op| op.map(|p| p.into()))
     }
 
     #[instrument(skip(self))]
@@ -808,7 +537,6 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         p: Secp256r1Point,
         _remaining_gas: &mut u128,
     ) -> SyscallResult<(U256, U256)> {
-        tracing::debug!("called");
         Ok((p.x, p.y))
     }
 
