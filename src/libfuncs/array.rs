@@ -548,16 +548,16 @@ pub fn build_get<'ctx, 'this>(
                                 let region = Region::new();
                                 let block = region.append_block(Block::new(&[]));
 
-                                let value = block.load(context, location, value_ptr, elem_ty)?;
-                                drop_overrides_meta
-                                    .invoke_override(context, &block, location, &info.ty, value)?;
-
                                 block.append_operation(scf::r#yield(&[], location));
                                 region
                             },
                             {
                                 let region = Region::new();
                                 let block = region.append_block(Block::new(&[]));
+
+                                let value = block.load(context, location, value_ptr, elem_ty)?;
+                                drop_overrides_meta
+                                    .invoke_override(context, &block, location, &info.ty, value)?;
 
                                 block.append_operation(scf::r#yield(&[], location));
                                 region
@@ -2436,5 +2436,23 @@ mod test {
                 )
             )
         );
+    }
+
+    /// Test to ensure that the returned element in `array_get` does NOT get dropped.
+    #[test]
+    fn array_get_avoid_dropping_element() {
+        let program = load_cairo! {
+            use core::{array::{array_append, array_at, array_new}, box::{into_box, unbox}};
+
+            fn run_test() -> @Box<felt252> {
+                let mut x: Array<Box<felt252>> = array_new();
+                array_append(ref x, into_box(42));
+
+                unbox(array_at(@x, 0))
+            }
+        };
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(result, jit_enum!(0, jit_struct!(Value::Felt252(42.into()))));
     }
 }
