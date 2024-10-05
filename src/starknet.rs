@@ -461,9 +461,10 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
-    use crate::utils::libc_malloc;
+    use crate::utils::{libc_free, libc_malloc};
     use std::{
         alloc::Layout,
+        ffi::c_void,
         fmt::Debug,
         mem::{size_of, ManuallyDrop, MaybeUninit},
         ptr::{null_mut, NonNull},
@@ -874,7 +875,8 @@ pub(crate) mod handler {
             selector: &Felt252Abi,
             input: &ArrayAbi<Felt252Abi>,
         ) {
-            let input: Vec<_> = unsafe {
+            let selector = Felt::from_bytes_le(&selector.0);
+            let input_vec: Vec<_> = unsafe {
                 let since_offset = input.since as usize;
                 let until_offset = input.until as usize;
                 debug_assert!(since_offset <= until_offset);
@@ -884,10 +886,13 @@ pub(crate) mod handler {
             .iter()
             .map(|x| Felt::from_bytes_le(&x.0))
             .collect();
-            let selector = Felt::from_bytes_le(&selector.0);
+
+            unsafe {
+                libc_free(input.ptr as *mut c_void);
+            }
 
             let result = ptr
-                .cheatcode(selector, &input)
+                .cheatcode(selector, &input_vec)
                 .into_iter()
                 .map(|x| Felt252Abi(x.to_bytes_le()))
                 .collect::<Vec<_>>();
@@ -1077,7 +1082,7 @@ pub(crate) mod handler {
                 data
             });
 
-            let calldata: Vec<_> = unsafe {
+            let calldata_vec: Vec<_> = unsafe {
                 let since_offset = calldata.since as usize;
                 let until_offset = calldata.until as usize;
                 debug_assert!(since_offset <= until_offset);
@@ -1097,10 +1102,14 @@ pub(crate) mod handler {
             })
             .collect();
 
+            unsafe {
+                libc_free(calldata.ptr as *mut c_void);
+            }
+
             let result = ptr.deploy(
                 class_hash,
                 contract_address_salt,
-                &calldata,
+                &calldata_vec,
                 deploy_from_zero,
                 gas,
             );
@@ -1163,7 +1172,7 @@ pub(crate) mod handler {
                 data
             });
 
-            let calldata: Vec<_> = unsafe {
+            let calldata_vec: Vec<_> = unsafe {
                 let since_offset = calldata.since as usize;
                 let until_offset = calldata.until as usize;
                 debug_assert!(since_offset <= until_offset);
@@ -1183,7 +1192,11 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.library_call(class_hash, function_selector, &calldata, gas);
+            unsafe {
+                libc_free(calldata.ptr as *mut c_void);
+            }
+
+            let result = ptr.library_call(class_hash, function_selector, &calldata_vec, gas);
 
             *result_ptr = match result {
                 Ok(x) => {
@@ -1219,7 +1232,7 @@ pub(crate) mod handler {
                 data
             });
 
-            let calldata: Vec<_> = unsafe {
+            let calldata_vec: Vec<_> = unsafe {
                 let since_offset = calldata.since as usize;
                 let until_offset = calldata.until as usize;
                 debug_assert!(since_offset <= until_offset);
@@ -1239,7 +1252,11 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.call_contract(address, entry_point_selector, &calldata, gas);
+            unsafe {
+                libc_free(calldata.ptr as *mut c_void);
+            }
+
+            let result = ptr.call_contract(address, entry_point_selector, &calldata_vec, gas);
 
             *result_ptr = match result {
                 Ok(x) => {
@@ -1319,7 +1336,7 @@ pub(crate) mod handler {
             keys: &ArrayAbi<Felt252Abi>,
             data: &ArrayAbi<Felt252Abi>,
         ) {
-            let keys: Vec<_> = unsafe {
+            let keys_vec: Vec<_> = unsafe {
                 let since_offset = keys.since as usize;
                 let until_offset = keys.until as usize;
                 debug_assert!(since_offset <= until_offset);
@@ -1339,7 +1356,11 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let data: Vec<_> = unsafe {
+            unsafe {
+                libc_free(keys.ptr as *mut c_void);
+            }
+
+            let data_vec: Vec<_> = unsafe {
                 let since_offset = data.since as usize;
                 let until_offset = data.until as usize;
                 debug_assert!(since_offset <= until_offset);
@@ -1359,7 +1380,11 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.emit_event(&keys, &data, gas);
+            unsafe {
+                libc_free(data.ptr as *mut c_void);
+            }
+
+            let result = ptr.emit_event(&keys_vec, &data_vec, gas);
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1384,7 +1409,7 @@ pub(crate) mod handler {
                 data.reverse();
                 data
             });
-            let payload: Vec<_> = unsafe {
+            let payload_vec: Vec<_> = unsafe {
                 let since_offset = payload.since as usize;
                 let until_offset = payload.until as usize;
                 debug_assert!(since_offset <= until_offset);
@@ -1404,7 +1429,11 @@ pub(crate) mod handler {
             })
             .collect();
 
-            let result = ptr.send_message_to_l1(to_address, &payload, gas);
+            unsafe {
+                libc_free(payload.ptr as *mut c_void);
+            }
+
+            let result = ptr.send_message_to_l1(to_address, &payload_vec, gas);
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1423,7 +1452,7 @@ pub(crate) mod handler {
             gas: &mut u128,
             input: &ArrayAbi<u64>,
         ) {
-            let input = unsafe {
+            let input_vec = unsafe {
                 let since_offset = input.since as usize;
                 let until_offset = input.until as usize;
                 debug_assert!(since_offset <= until_offset);
@@ -1434,7 +1463,11 @@ pub(crate) mod handler {
                 }
             };
 
-            let result = ptr.keccak(input, gas);
+            unsafe {
+                libc_free(input.ptr as *mut c_void);
+            }
+
+            let result = ptr.keccak(input_vec, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {

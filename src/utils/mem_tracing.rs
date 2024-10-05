@@ -121,6 +121,8 @@ pub(crate) unsafe extern "C" fn _wrapped_realloc(ptr: *mut c_void, len: size_t) 
 pub(crate) unsafe extern "C" fn _wrapped_free(ptr: *mut c_void) {
     libc::free(ptr);
 
-    println!("[MemTracing] Freeing {ptr:?}.");
-    MEM_TRACING.with(|x| (*x.get()).finish(ptr));
+    if !ptr.is_null() {
+        println!("[MemTracing] Freeing {ptr:?}.");
+        MEM_TRACING.with(|x| (*x.get()).finish(ptr));
+    }
 }
