@@ -1463,11 +1463,10 @@ pub(crate) mod handler {
                 }
             };
 
+            let result = ptr.keccak(input_vec, gas);
             unsafe {
                 libc_free(input.ptr as *mut c_void);
             }
-
-            let result = ptr.keccak(input_vec, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
