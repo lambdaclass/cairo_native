@@ -63,7 +63,7 @@ check: check-llvm
 
 .PHONY: test
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --all-features
+	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
@@ -71,20 +71,20 @@ test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --all-features proptest
+	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
 
 .PHONY: test-cli
 test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --all-features
+	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: proptest-cli
 proptest-ci: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --all-features proptest
+	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
 
 .PHONY: coverage
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
 .PHONY: doc
 doc: check-llvm
@@ -100,7 +100,7 @@ bench: build needs-cairo2 runtime
 
 .PHONY: bench-ci
 bench-ci: check-llvm needs-cairo2 runtime
-	cargo criterion --all-features
+	cargo criterion --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: stress-test
 stress-test: check-llvm
@@ -116,7 +116,7 @@ stress-clean:
 
 .PHONY: install
 install: check-llvm
-	RUSTFLAGS="-C target-cpu=native" cargo install --all-features --locked --path .
+	RUSTFLAGS="-C target-cpu=native" cargo install --features=scarb,with-cheatcode --locked --path .
 
 .PHONY: clean
 clean: stress-clean

@@ -592,7 +592,18 @@ pub fn build_get<'ctx, 'this>(
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
     }
 
+    metadata
+        .get::<DropOverridesMeta>()
+        .unwrap()
+        .invoke_override(
+            context,
+            error_block,
+            location,
+            &info.param_signatures()[1].ty,
+            value,
+        )?;
     error_block.append_operation(helper.br(1, &[range_check], location));
+
     Ok(())
 }
 
@@ -706,8 +717,105 @@ pub fn build_pop_front_consume<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    // Equivalent to `array_pop_front_consume` for our purposes.
-    build_pop_front(context, registry, entry, location, helper, metadata, info)
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
+
+    let array_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
+
+    let elem_ty = registry.get_type(&info.ty)?;
+    let elem_layout = elem_ty.layout(registry)?;
+
+    let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
+    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
+
+    let value = entry.argument(0)?.into();
+
+    let array_start = entry.extract_value(context, location, value, len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
+
+    let is_empty = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        array_start,
+        array_end,
+        location,
+    ))?;
+
+    let valid_block = helper.append_block(Block::new(&[]));
+    let empty_block = helper.append_block(Block::new(&[]));
+    entry.append_operation(cf::cond_br(
+        context,
+        is_empty,
+        empty_block,
+        valid_block,
+        &[],
+        &[],
+        location,
+    ));
+
+    {
+        let ptr = valid_block.extract_value(context, location, value, ptr_ty, 0)?;
+
+        let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
+        let elem_offset = valid_block.append_op_result(arith::extui(
+            array_start,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
+        let elem_offset =
+            valid_block.append_op_result(arith::muli(elem_offset, elem_size, location))?;
+        let ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
+            context,
+            ptr,
+            &[elem_offset],
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
+
+        let target_ptr = valid_block.append_op_result(
+            ods::llvm::mlir_zero(context, pointer(context, 0), location).into(),
+        )?;
+        let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
+            context, target_ptr, elem_size, location,
+        ))?;
+        assert_nonnull(
+            context,
+            valid_block,
+            location,
+            target_ptr,
+            "realloc returned nullptr",
+        )?;
+
+        valid_block.memcpy(context, location, ptr, target_ptr, elem_size);
+
+        let k1 = valid_block.const_int(context, location, 1, 32)?;
+        let new_start = valid_block.append_op_result(arith::addi(array_start, k1, location))?;
+        let value = valid_block.insert_value(context, location, value, new_start, 1)?;
+
+        valid_block.append_operation(helper.br(0, &[value, target_ptr], location));
+    }
+
+    metadata
+        .get::<DropOverridesMeta>()
+        .unwrap()
+        .invoke_override(
+            context,
+            empty_block,
+            location,
+            &info.param_signatures()[0].ty,
+            value,
+        )?;
+    empty_block.append_operation(helper.br(1, &[], location));
+
+    Ok(())
 }
 
 /// Generate MLIR operations for the `array_snapshot_pop_front` libfunc.
@@ -1247,6 +1355,8 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     // tuple to array span (t,t,t) -> &[t,t,t]
+
+    // TODO: Reuse the pointer.
 
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));

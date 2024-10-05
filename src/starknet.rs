@@ -251,10 +251,10 @@ pub trait StarknetSyscallHandler {
 
     fn sha256_process_block(
         &mut self,
-        prev_state: &[u32; 8],
-        current_block: &[u32; 16],
+        state: &mut [u32; 8],
+        block: &[u32; 16],
         remaining_gas: &mut u128,
-    ) -> SyscallResult<[u32; 8]>;
+    ) -> SyscallResult<()>;
 
     #[cfg(feature = "with-cheatcode")]
     fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
@@ -450,10 +450,10 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 
     fn sha256_process_block(
         &mut self,
-        _prev_state: &[u32; 8],
-        _current_block: &[u32; 16],
+        _state: &mut [u32; 8],
+        _block: &[u32; 16],
         _remaining_gas: &mut u128,
-    ) -> SyscallResult<[u32; 8]> {
+    ) -> SyscallResult<()> {
         unimplemented!()
     }
 }
@@ -729,8 +729,8 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<*mut [u32; 8]>,
             ptr: &mut T,
             gas: &mut u128,
-            prev_state: &[u32; 8],
-            current_block: &[u32; 16],
+            state: *mut [u32; 8],
+            block: &[u32; 16],
         ),
         // testing syscalls
         #[cfg(feature = "with-cheatcode")]
@@ -1712,26 +1712,16 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<*mut [u32; 8]>,
             ptr: &mut T,
             gas: &mut u128,
-            prev_state: &[u32; 8],
-            current_block: &[u32; 16],
+            state: *mut [u32; 8],
+            block: &[u32; 16],
         ) {
-            let result = ptr.sha256_process_block(prev_state, current_block, gas);
+            let result = ptr.sha256_process_block(unsafe { &mut *state }, block, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
-                        payload: ManuallyDrop::new({
-                            unsafe {
-                                let data = libc_malloc(std::mem::size_of_val(&x)).cast();
-                                std::ptr::copy_nonoverlapping::<u32>(
-                                    x.as_ptr().cast(),
-                                    data,
-                                    x.len(),
-                                );
-                                data.cast()
-                            }
-                        }),
+                        payload: ManuallyDrop::new(state),
                     }),
                 },
                 Err(e) => Self::wrap_error(&e),
