@@ -4,8 +4,9 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{
-        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta,
-        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
     },
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt},
@@ -68,13 +69,7 @@ pub fn build_get<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
-    let value_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.branch_signatures()[0].vars[1].ty,
-    )?;
+    let value_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
 
     let dict_ptr = entry.argument(0)?.into();
     let entry_key = entry.argument(1)?.into();
@@ -126,7 +121,21 @@ pub fn build_get<'ctx, 'this>(
 
     {
         let value = block_occupied.load(context, location, entry_value_ptr, value_ty)?;
-        block_occupied.append_operation(cf::br(block_final, &[value], location));
+        let values = match metadata.get::<DupOverridesMeta>() {
+            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
+                dup_overrides_meta.invoke_override(
+                    context,
+                    block_occupied,
+                    location,
+                    &info.ty,
+                    value,
+                )?
+            }
+            _ => (value, value),
+        };
+
+        block_occupied.store(context, location, entry_value_ptr, values.0)?;
+        block_occupied.append_operation(cf::br(block_final, &[values.1], location));
     }
 
     {
