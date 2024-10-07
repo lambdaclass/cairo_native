@@ -1355,9 +1355,6 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     // tuple to array span (t,t,t) -> &[t,t,t]
-
-    // TODO: Reuse the pointer.
-
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
@@ -1589,7 +1586,6 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         ));
 
         {
-            // TODO: Realloc.
             let elem_stride =
                 block_clone.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
             let tuple_len = block_clone.append_op_result(arith::extui(
@@ -1606,7 +1602,6 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 context, box_ptr, tuple_len, location,
             ))?;
 
-            // TODO: Memcpy.
             let elem_offset = block_clone.append_op_result(arith::extui(
                 array_start,
                 IntegerType::new(context, 64).into(),
@@ -1638,10 +1633,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 .into(),
             );
 
-            // TODO: Free.
             block_clone.append_operation(ReallocBindingsMeta::free(context, array_ptr, location));
-
-            // TODO: Branch.
             block_clone.append_operation(helper.br(0, &[box_ptr], location));
         }
 
