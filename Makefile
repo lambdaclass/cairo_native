@@ -46,15 +46,15 @@ endif
 
 .PHONY: build
 build: check-llvm runtime
-	cargo build --release --all-features
+	cargo build --release --features=scarb
 
 .PHONY: build-natives
 build-native: check-llvm runtime
-	RUSTFLAGS="-C target-cpu=native" cargo build --release --all-features
+	RUSTFLAGS="-C target-cpu=native" cargo build --release --features=scarb
 
 .PHONY: build-dev
 build-dev: check-llvm
-	cargo build --profile optimized-dev --all-features
+	cargo build --profile optimized-dev --features=scarb
 
 .PHONY: check
 check: check-llvm
