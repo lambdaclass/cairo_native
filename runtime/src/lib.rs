@@ -774,7 +774,7 @@ pub mod trace_dump {
             CoreTypeConcrete::Sint16(_) => Value::Sint16(value_ptr.cast().read()),
             CoreTypeConcrete::Sint32(_) => Value::Sint32(value_ptr.cast().read()),
             CoreTypeConcrete::Sint64(_) => Value::Sint64(value_ptr.cast().read()),
-            CoreTypeConcrete::Sint128(_) =>Value::Sint128(value_ptr.cast().read()),
+            CoreTypeConcrete::Sint128(_) => Value::Sint128(value_ptr.cast().read()),
             CoreTypeConcrete::Nullable(info) => {
                 let value_ptr = value_ptr.cast::<*mut ()>().read();
 
