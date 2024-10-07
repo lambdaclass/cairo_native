@@ -455,7 +455,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
     }
 }
 
-#[cfg(feature = "with-trace-dump")]
+//#[cfg(feature = "with-trace-dump")]
 pub mod trace_dump {
     use cairo_lang_sierra::{
         extensions::{
@@ -770,11 +770,11 @@ pub mod trace_dump {
             CoreTypeConcrete::Coupon(_) => todo!("CoreTypeConcrete::Coupon"),
             CoreTypeConcrete::Circuit(_) => todo!("CoreTypeConcrete::Circuit"),
             CoreTypeConcrete::Const(_) => todo!("CoreTypeConcrete::Const"),
-            CoreTypeConcrete::Sint8(_) => todo!("CoreTypeConcrete::Sint8"),
-            CoreTypeConcrete::Sint16(_) => todo!("CoreTypeConcrete::Sint16"),
-            CoreTypeConcrete::Sint32(_) => todo!("CoreTypeConcrete::Sint32"),
-            CoreTypeConcrete::Sint64(_) => todo!("CoreTypeConcrete::Sint64"),
-            CoreTypeConcrete::Sint128(_) => todo!("CoreTypeConcrete::Sint128"),
+            CoreTypeConcrete::Sint8(_) => Value::Sint8(value_ptr.cast().read()),
+            CoreTypeConcrete::Sint16(_) => Value::Sint16(value_ptr.cast().read()),
+            CoreTypeConcrete::Sint32(_) => Value::Sint32(value_ptr.cast().read()),
+            CoreTypeConcrete::Sint64(_) => Value::Sint64(value_ptr.cast().read()),
+            CoreTypeConcrete::Sint128(_) =>Value::Sint128(value_ptr.cast().read()),
             CoreTypeConcrete::Nullable(info) => {
                 let value_ptr = value_ptr.cast::<*mut ()>().read();
 
