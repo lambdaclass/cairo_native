@@ -455,7 +455,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
     }
 }
 
-//#[cfg(feature = "with-trace-dump")]
+#[cfg(feature = "with-trace-dump")]
 pub mod trace_dump {
     use cairo_lang_sierra::{
         extensions::{
