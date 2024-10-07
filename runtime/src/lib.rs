@@ -775,7 +775,22 @@ pub mod trace_dump {
             CoreTypeConcrete::Sint32(_) => todo!("CoreTypeConcrete::Sint32"),
             CoreTypeConcrete::Sint64(_) => todo!("CoreTypeConcrete::Sint64"),
             CoreTypeConcrete::Sint128(_) => todo!("CoreTypeConcrete::Sint128"),
-            CoreTypeConcrete::Nullable(_) => todo!("CoreTypeConcrete::Nullable"),
+            CoreTypeConcrete::Nullable(info) => {
+                let value_ptr = value_ptr.cast::<*mut ()>().read();
+
+                match NonNull::new(value_ptr) {
+                    Some(value_ptr) => read_value_ptr(
+                        registry,
+                        &info.ty,
+                        value_ptr.cast::<NonNull<()>>().read(),
+                        get_layout,
+                    ),
+                    None => Value::Uninitialized {
+                        ty: info.ty.clone(),
+                    },
+                }
+            }
+
             CoreTypeConcrete::RangeCheck96(_) => todo!("CoreTypeConcrete::RangeCheck96"),
             CoreTypeConcrete::Felt252Dict(info) => {
                 let value = value_ptr.cast::<FeltDict>().as_ref();
