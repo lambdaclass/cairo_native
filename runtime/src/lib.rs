@@ -554,7 +554,6 @@ pub mod trace_dump {
         value_ptr: NonNull<()>,
         get_layout: fn(&CoreTypeConcrete, &ProgramRegistry<CoreType, CoreLibfunc>) -> Layout,
     ) -> Value {
-        println!("{:#?}", type_id);
         let type_info = registry.get_type(type_id).unwrap();
         match type_info {
             CoreTypeConcrete::Felt252(_)
