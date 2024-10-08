@@ -46,24 +46,24 @@ endif
 
 .PHONY: build
 build: check-llvm runtime
-	cargo build --release --all-features
+	cargo build --release --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: build-natives
 build-native: check-llvm runtime
-	RUSTFLAGS="-C target-cpu=native" cargo build --release --all-features
+	RUSTFLAGS="-C target-cpu=native" cargo build --release --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: build-dev
 build-dev: check-llvm
-	cargo build --profile optimized-dev --all-features
+	cargo build --profile optimized-dev --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: check
 check: check-llvm
 	cargo fmt --all -- --check
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo clippy --all-targets --features build-cli,with-cheatcode,with-runtime -- -D warnings
 
 .PHONY: test
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --all-features
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
@@ -71,28 +71,28 @@ test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --all-features proptest
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime proptest
 
 .PHONY: test-cli
 test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --all-features
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: proptest-cli
 proptest-ci: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --all-features proptest
+	cargo test --profile ci --features build-cli,with-cheatcode,with-runtime proptest
 
 .PHONY: coverage
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+	cargo llvm-cov --verbose --profile ci --features build-cli,with-cheatcode,with-runtime --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile ci --features build-cli,with-cheatcode,with-runtime --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
 .PHONY: doc
 doc: check-llvm
-	cargo doc --all-features --no-deps --workspace
+	cargo doc --features build-cli,with-cheatcode,with-runtime --no-deps --workspace
 
 .PHONY: doc-open
 doc-open: check-llvm
-	cargo doc --all-features --no-deps --workspace --open
+	cargo doc --features build-cli,with-cheatcode,with-runtime --no-deps --workspace --open
 
 .PHONY: bench
 bench: build needs-cairo2 runtime
@@ -100,7 +100,7 @@ bench: build needs-cairo2 runtime
 
 .PHONY: bench-ci
 bench-ci: check-llvm needs-cairo2 runtime
-	cargo criterion --all-features
+	cargo criterion --features build-cli,with-cheatcode,with-runtime
 
 .PHONY: stress-test
 stress-test: check-llvm
@@ -116,7 +116,7 @@ stress-clean:
 
 .PHONY: install
 install: check-llvm
-	RUSTFLAGS="-C target-cpu=native" cargo install --all-features --locked --path .
+	RUSTFLAGS="-C target-cpu=native" cargo install --features build-cli,with-cheatcode,with-runtime --locked --path .
 
 .PHONY: clean
 clean: stress-clean
@@ -177,8 +177,11 @@ build-alexandria:
 
 .PHONY: runtime
 runtime:
-	cargo b --release --all-features -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
+	cargo b --release -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
+
+runtime-with-trace-dump:
+	cargo b --release -p cairo-native-runtime --features=with-trace-dump && cp target/release/libcairo_native_runtime.a .
 
 .PHONY: runtime-ci
 runtime-ci:
-	cargo b --profile ci --all-features -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .
+	cargo b --profile ci -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .

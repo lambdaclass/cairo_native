@@ -1013,12 +1013,16 @@ dependencies = [
 name = "cairo-native-runtime"
 version = "0.2.0-alpha.3"
 dependencies = [
+ "cairo-lang-sierra",
  "cairo-lang-sierra-gas",
+ "cairo-lang-utils",
  "itertools 0.13.0",
  "lazy_static",
  "libc",
+ "num-bigint",
  "num-traits 0.2.19",
  "rand",
+ "sierra-emu",
  "starknet-curve 0.5.1",
  "starknet-types-core",
 ]
@@ -1053,7 +1057,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "sha3",
- "starknet-crypto",
+ "starknet-crypto 0.6.2",
  "starknet-types-core",
  "thiserror-no-std",
  "zip",
@@ -3430,6 +3434,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "sierra-emu"
+version = "0.1.0"
+source = "git+https://github.com/lambdaclass/sierra-emu#40ee99489effa22fd806d0ccabe4ed8c3bb87629"
+dependencies = [
+ "cairo-lang-compiler",
+ "cairo-lang-filesystem",
+ "cairo-lang-sierra",
+ "cairo-lang-sierra-ap-change",
+ "cairo-lang-sierra-gas",
+ "cairo-lang-utils",
+ "clap",
+ "k256",
+ "keccak",
+ "num-bigint",
+ "num-traits 0.2.19",
+ "p256",
+ "rand",
+ "sec1",
+ "serde",
+ "serde_json",
+ "sha2",
+ "smallvec",
+ "starknet-crypto 0.7.2",
+ "starknet-curve 0.5.1",
+ "starknet-types-core",
+ "tempfile",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "signature"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3529,6 +3565,25 @@ dependencies = [
  "starknet-crypto-codegen",
  "starknet-curve 0.4.2",
  "starknet-ff",
+ "zeroize",
+]
+
+[[package]]
+name = "starknet-crypto"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60a5064173a8e8d2675e67744fd07f310de44573924b6b7af225a6bdd8102913"
+dependencies = [
+ "crypto-bigint",
+ "hex",
+ "hmac",
+ "num-bigint",
+ "num-integer",
+ "num-traits 0.2.19",
+ "rfc6979",
+ "sha2",
+ "starknet-curve 0.5.1",
+ "starknet-types-core",
  "zeroize",
 ]
 

@@ -24,11 +24,11 @@ use tempfile::NamedTempFile;
 #[educe(Debug)]
 pub struct AotNativeExecutor {
     #[educe(Debug(ignore))]
-    library: Library,
+    pub library: Library,
     #[educe(Debug(ignore))]
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
 
-    gas_metadata: GasMetadata,
+    pub gas_metadata: GasMetadata,
 }
 
 unsafe impl Send for AotNativeExecutor {}
