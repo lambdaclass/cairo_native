@@ -342,12 +342,12 @@ impl AotContractExecutor {
                 BuiltinType::System => {
                     let ptr = return_ptr.cast::<*mut ()>();
                     *return_ptr = unsafe { NonNull::new_unchecked(ptr.as_ptr().add(1)).cast() };
-                },
+                }
                 BuiltinType::BuiltinCosts => {
                     let ptr = return_ptr.cast::<*mut ()>();
                     *return_ptr = unsafe { NonNull::new_unchecked(ptr.as_ptr().add(1)).cast() };
                     // ptr holds the builtin costs, but they dont change, so its of no use, but we read to advance the ptr.
-                },
+                }
                 x => {
                     let value = unsafe { *read_value::<u64>(return_ptr) } as usize;
 

@@ -554,8 +554,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::BuiltinCosts(_) => false,
 
             // Other builtins:
-            CoreTypeConcrete::Uint128MulGuarantee(_)
-            | CoreTypeConcrete::Coupon(_) => true,
+            CoreTypeConcrete::Uint128MulGuarantee(_) | CoreTypeConcrete::Coupon(_) => true,
 
             // Normal types:
             CoreTypeConcrete::Array(_)

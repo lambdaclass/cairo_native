@@ -84,15 +84,16 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
     let current_gas = entry.argument(1)?.into();
 
-    let (cost, token_type) = metadata.get::<GasCost>().and_then(|x| x.0).unwrap_or((0, 0));
+    let (cost, token_type) = metadata
+        .get::<GasCost>()
+        .and_then(|x| x.0)
+        .unwrap_or((0, 0));
 
     let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
 
-    let gas_cost_val =
-        entry.const_int_from_type(context, location, cost, u128_type)?;
-    let token_type_val =
-        entry.const_int_from_type(context, location, token_type, u64_type)?;
+    let gas_cost_val = entry.const_int_from_type(context, location, cost, u128_type)?;
+    let token_type_val = entry.const_int_from_type(context, location, token_type, u64_type)?;
 
     let is_enough = entry.append_op_result(arith::cmpi(
         context,
