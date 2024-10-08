@@ -15,7 +15,7 @@ pub use self::{
 };
 
 #[cfg(feature = "with-trace-dump")]
-pub use cairo_native_runtime as runtime;
+pub use {self::types::TypeBuilder, cairo_native_runtime as runtime};
 
 mod arch;
 pub mod cache;

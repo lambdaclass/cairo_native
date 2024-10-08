@@ -108,7 +108,7 @@ fn main() -> anyhow::Result<()> {
     #[cfg(feature = "with-trace-dump")]
     {
         use cairo_lang_sierra::program_registry::ProgramRegistry;
-        use cairo_native::types::TypeBuilder;
+        use cairo_native::TypeBuilder;
         use cairo_native_runtime::trace_dump::{TraceDump, TRACE_DUMP};
 
         TRACE_DUMP.lock().unwrap().insert(

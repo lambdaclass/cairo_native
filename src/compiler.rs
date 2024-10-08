@@ -1430,7 +1430,7 @@ enum StatementCompileResult<T> {
 
 #[cfg(feature = "with-trace-dump")]
 mod trace_dump {
-    use crate::{block_ext::BlockExt, metadata::trace_dump::TraceDumpMeta, types::TypeBuilder};
+    use crate::{metadata::trace_dump::TraceDumpMeta, types::TypeBuilder, utils::BlockExt};
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         ids::{ConcreteTypeId, VarId},
