@@ -20,9 +20,9 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{
-        ods::math,
         arith::{self, CmpiPredicate},
         cf, llvm,
+        ods::math,
     },
     ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
@@ -245,8 +245,7 @@ pub fn build_to_felt252<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
-    let prime =
-        entry.const_int_from_type(context, location, PRIME.clone(), felt252_ty)?;
+    let prime = entry.const_int_from_type(context, location, PRIME.clone(), felt252_ty)?;
 
     let value: Value = entry.argument(0)?.into();
     let value_type = value.r#type();
@@ -265,7 +264,12 @@ pub fn build_to_felt252<'ctx, 'this>(
 
     let prime_minus_result = entry.append_op_result(arith::subi(prime, result, location))?;
 
-    let final_result = entry.append_op_result(arith::select(is_negative, prime_minus_result, result, location))?;
+    let final_result = entry.append_op_result(arith::select(
+        is_negative,
+        prime_minus_result,
+        result,
+        location,
+    ))?;
 
     entry.append_operation(helper.br(0, &[final_result], location));
 
@@ -507,7 +511,12 @@ mod test {
                 -396372399979_i128.into()
             }
         );
-        run_program_assert_output(&program, "run_test", &[], Felt::from(-396372399979_i128).into());
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            Felt::from(-396372399979_i128).into(),
+        );
     }
 
     #[test]
