@@ -1,5 +1,6 @@
 //! Starknet related code for `cairo_native`
 
+use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
@@ -20,7 +21,17 @@ pub struct Felt252Abi(pub [u8; 32]);
 /// Binary representation of a `u256` (in MLIR).
 // TODO: This shouldn't need to be public.
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    Default,
 )]
 #[repr(C, align(16))]
 pub struct U256 {
@@ -100,7 +111,7 @@ pub struct TxInfo {
     pub nonce: Felt,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize, Default)]
 #[repr(C, align(16))]
 pub struct Secp256k1Point {
     pub x: U256,
@@ -108,12 +119,32 @@ pub struct Secp256k1Point {
     pub is_infinity: bool,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+impl Secp256k1Point {
+    pub fn new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -> Self {
+        Self {
+            x: U256 { lo: x_lo, hi: x_hi },
+            y: U256 { lo: y_lo, hi: y_hi },
+            is_infinity,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize, Default)]
 #[repr(C, align(16))]
 pub struct Secp256r1Point {
     pub x: U256,
     pub y: U256,
     pub is_infinity: bool,
+}
+
+impl Secp256r1Point {
+    pub fn new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -> Self {
+        Self {
+            x: U256 { lo: x_lo, hi: x_hi },
+            y: U256 { lo: y_lo, hi: y_hi },
+            is_infinity,
+        }
+    }
 }
 
 pub trait StarknetSyscallHandler {

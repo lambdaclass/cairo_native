@@ -4,6 +4,7 @@
 
 use crate::{
     error::{CompilerError, Error},
+    starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::{felt252_bigint, get_integer_layout, layout_repeat, RangeExt, PRIME},
 };
@@ -66,14 +67,8 @@ pub enum Value {
     Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
-    Secp256K1Point {
-        x: (u128, u128),
-        y: (u128, u128),
-    },
-    Secp256R1Point {
-        x: (u128, u128),
-        y: (u128, u128),
-    },
+    Secp256K1Point(Secp256k1Point),
+    Secp256R1Point(Secp256r1Point),
     BoundedInt {
         value: Felt,
         #[serde(with = "range_serde")]
@@ -735,17 +730,16 @@ impl Value {
                     StarkNetTypeConcrete::System(_) => {
                         unimplemented!("should be handled before")
                     }
-                    StarkNetTypeConcrete::Secp256Point(info) => {
-                        let data = ptr.cast::<[[u128; 2]; 2]>().as_ref();
-
-                        let x = (data[0][0], data[0][1]);
-                        let y = (data[1][0], data[1][1]);
-
-                        match info {
-                            Secp256PointTypeConcrete::K1(_) => Self::Secp256K1Point { x, y },
-                            Secp256PointTypeConcrete::R1(_) => Self::Secp256R1Point { x, y },
+                    StarkNetTypeConcrete::Secp256Point(info) => match info {
+                        Secp256PointTypeConcrete::K1(_) => {
+                            let data = ptr.cast::<Secp256k1Point>().as_ref();
+                            Self::Secp256K1Point(*data)
                         }
-                    }
+                        Secp256PointTypeConcrete::R1(_) => {
+                            let data = ptr.cast::<Secp256r1Point>().as_ref();
+                            Self::Secp256R1Point(*data)
+                        }
+                    },
                     StarkNetTypeConcrete::Sha256StateHandle(_) => todo!(),
                 },
                 CoreTypeConcrete::Span(_) => todo!("implement span from_jit"),

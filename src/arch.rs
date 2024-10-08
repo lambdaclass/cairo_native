@@ -1,6 +1,6 @@
 use crate::{
     error,
-    starknet::{ArrayAbi, U256},
+    starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     values::Value,
 };
@@ -150,22 +150,20 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
                     .to_bytes(buffer)?
             }
             (
-                Value::Secp256K1Point { x, y },
+                Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),
                 CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
                     Secp256PointTypeConcrete::K1(_),
                 )),
             )
             | (
-                Value::Secp256R1Point { x, y },
+                Value::Secp256R1Point(Secp256r1Point { x, y, is_infinity }),
                 CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
                     Secp256PointTypeConcrete::R1(_),
                 )),
             ) => {
-                let x = U256 { lo: x.0, hi: x.1 };
-                let y = U256 { lo: y.0, hi: y.1 };
-
                 x.to_bytes(buffer)?;
                 y.to_bytes(buffer)?;
+                is_infinity.to_bytes(buffer)?;
             }
             (Value::Sint128(value), CoreTypeConcrete::Sint128(_)) => value.to_bytes(buffer)?,
             (Value::Sint16(value), CoreTypeConcrete::Sint16(_)) => value.to_bytes(buffer)?,
