@@ -255,7 +255,7 @@
     <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), error::Error&gt; {
         <span class="kw">match </span>(<span class="self">self</span>.value, <span class="self">self</span>.info) {
             (value, CoreTypeConcrete::Box(info)) =&gt; {
-                <span class="kw">let </span>ptr = value.to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
+                <span class="kw">let </span>ptr = value.to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>layout = <span class="self">self</span>.registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(<span class="self">self</span>.registry)<span class="question-mark">?</span>;
                 <span class="kw">let </span>heap_ptr = <span class="kw">unsafe </span>{
@@ -270,7 +270,7 @@
                 <span class="kw">if </span><span class="macro">matches!</span>(value, Value::Null) {
                     null::&lt;()&gt;().to_bytes(buffer)<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>ptr = value.to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>ptr = value.to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>layout = <span class="self">self</span>.registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(<span class="self">self</span>.registry)<span class="question-mark">?</span>;
                     <span class="kw">let </span>heap_ptr = <span class="kw">unsafe </span>{
@@ -289,7 +289,7 @@
             (Value::Array(<span class="kw">_</span>), CoreTypeConcrete::Array(<span class="kw">_</span>)) =&gt; {
                 <span class="comment">// TODO: Assert that `info.ty` matches all the values' types.
 
-                </span><span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
                 <span class="kw">let </span>abi = <span class="kw">unsafe </span>{ abi_ptr.cast::&lt;ArrayAbi&lt;()&gt;&gt;().as_ref() };
 
                 abi.ptr.to_bytes(buffer)<span class="question-mark">?</span>;
@@ -311,7 +311,7 @@
             }
             (Value::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.info.is_memory_allocated(<span class="self">self</span>.registry)<span class="question-mark">? </span>{
-                    <span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>abi_ptr = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>abi_ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ref() };
                     abi_ptr.as_ptr().to_bytes(buffer)<span class="question-mark">?</span>;
@@ -341,7 +341,7 @@
                 <span class="comment">// TODO: Assert that `info.ty` matches all the values' types.
 
                 </span><span class="self">self</span>.value
-                    .to_jit(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?
+                    .to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?
                     </span>.as_ptr()
                     .to_bytes(buffer)<span class="question-mark">?
             </span>}

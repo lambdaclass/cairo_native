@@ -1041,15 +1041,15 @@
     }
 
     <span class="kw">match </span>type_info {
-        CoreTypeConcrete::Array(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(Value::from_jit(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>),
+        CoreTypeConcrete::Array(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(Value::from_ptr(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>),
         CoreTypeConcrete::Box(info) =&gt; <span class="kw">unsafe </span>{
             <span class="kw">let </span>ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[<span class="number">0</span>] <span class="kw">as </span><span class="kw-2">*mut </span>()));
-            <span class="kw">let </span>value = Value::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
+            <span class="kw">let </span>value = Value::from_ptr(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
             libc::free(ptr.cast().as_ptr());
             <span class="prelude-val">Ok</span>(value)
         },
         CoreTypeConcrete::EcPoint(<span class="kw">_</span>) | CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; {
-            <span class="prelude-val">Ok</span>(Value::from_jit(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>)
+            <span class="prelude-val">Ok</span>(Value::from_ptr(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>)
         }
         CoreTypeConcrete::Felt252(<span class="kw">_</span>)
         | CoreTypeConcrete::StarkNet(
@@ -1058,7 +1058,7 @@
             | StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>)
             | StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>),
         ) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(Value::from_jit(return_ptr, type_id, registry)<span class="question-mark">?</span>),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(Value::from_ptr(return_ptr, type_id, registry)<span class="question-mark">?</span>),
             <span class="prelude-val">None </span>=&gt; {
                 <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
                 </span><span class="comment">// Since x86_64's return values hold at most two different 64bit registers,
@@ -1075,7 +1075,7 @@
             }
         },
         CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(Value::from_jit(return_ptr, type_id, registry)<span class="question-mark">?</span>),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(Value::from_ptr(return_ptr, type_id, registry)<span class="question-mark">?</span>),
             <span class="prelude-val">None </span>=&gt; {
                 <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
                 </span><span class="comment">// Since x86_64's return values hold at most two different 64bit registers,
@@ -1090,7 +1090,7 @@
             }
         },
         CoreTypeConcrete::BoundedInt(info) =&gt; <span class="kw">match </span>return_ptr {
-            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(Value::from_jit(return_ptr, type_id, registry)<span class="question-mark">?</span>),
+            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(Value::from_ptr(return_ptr, type_id, registry)<span class="question-mark">?</span>),
             <span class="prelude-val">None </span>=&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="kw">if </span>info.range.offset_bit_width() &lt;= <span class="number">64 </span>{
                     BigInt::from(ret_registers[<span class="number">0</span>])
@@ -1162,7 +1162,7 @@
                 <span class="prelude-val">Ok</span>(Value::Null)
             } <span class="kw">else </span>{
                 <span class="kw">let </span>ptr = NonNull::new_unchecked(ptr);
-                <span class="kw">let </span>value = Value::from_jit(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
+                <span class="kw">let </span>value = Value::from_ptr(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
                 libc::free(ptr.as_ptr().cast());
                 <span class="prelude-val">Ok</span>(value)
             }
@@ -1212,7 +1212,7 @@
                 }
             };
             <span class="kw">let </span>value = <span class="kw">match </span>ptr {
-                <span class="prelude-val">Ok</span>(ptr) =&gt; Box::new(Value::from_jit(ptr, <span class="kw-2">&amp;</span>info.variants[tag], registry)<span class="question-mark">?</span>),
+                <span class="prelude-val">Ok</span>(ptr) =&gt; Box::new(Value::from_ptr(ptr, <span class="kw-2">&amp;</span>info.variants[tag], registry)<span class="question-mark">?</span>),
                 <span class="prelude-val">Err</span>(offset) =&gt; {
                     ret_registers.copy_within(offset.., <span class="number">0</span>);
                     Box::new(parse_result(
@@ -1237,14 +1237,14 @@
                     debug_name: <span class="prelude-val">Some</span>(debug_name),
                 })
             } <span class="kw">else </span>{
-                <span class="prelude-val">Ok</span>(Value::from_jit(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>)
+                <span class="prelude-val">Ok</span>(Value::from_ptr(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>)
             }
         }
         CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) | CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; <span class="kw">unsafe </span>{
             <span class="kw">let </span>ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
                 <span class="macro">addr_of_mut!</span>(ret_registers[<span class="number">0</span>]) <span class="kw">as </span><span class="kw-2">*mut </span>()
             ));
-            <span class="prelude-val">Ok</span>(Value::from_jit(ptr, type_id, registry)<span class="question-mark">?</span>)
+            <span class="prelude-val">Ok</span>(Value::from_ptr(ptr, type_id, registry)<span class="question-mark">?</span>)
         },
 
         CoreTypeConcrete::Snapshot(info) =&gt; {
