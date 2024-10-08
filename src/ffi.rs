@@ -268,7 +268,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 "-o".into(),
                 Cow::from(output_path),
                 "-lc".into(),
-                //"-lcairo_native_runtime".into(),
                 Cow::from(file_path),
             ]);
 
@@ -292,7 +291,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
         Ok(())
     } else {
         let msg = String::from_utf8_lossy(&proc.stderr);
-        panic!("error linking:\n{}", msg);
+        Err(Error::LinkError(msg.to_string()))
     }
 }
 
