@@ -691,7 +691,11 @@ impl TypeBuilder for CoreTypeConcrete {
                 StarkNetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
                 StarkNetTypeConcrete::Secp256Point(_) => {
-                    get_integer_layout(256).extend(get_integer_layout(256))?.0
+                    get_integer_layout(256)
+                        .extend(get_integer_layout(256))?
+                        .0
+                        .extend(get_integer_layout(1))?
+                        .0
                 }
                 StarkNetTypeConcrete::Sha256StateHandle(_) => Layout::new::<*mut ()>(),
             },
