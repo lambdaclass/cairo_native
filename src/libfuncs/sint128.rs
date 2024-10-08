@@ -495,7 +495,6 @@ mod test {
                 2_i128.into()
             }
         );
-        dbg!(Felt::from(-396372399979_i128));
         run_program_assert_output(&program, "run_test", &[], Felt::from(2_i128).into());
     }
 
