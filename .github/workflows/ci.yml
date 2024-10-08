@@ -206,7 +206,6 @@ jobs:
           - partition: 4
             output: lcov-4.info
     env:
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
       TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
@@ -257,7 +256,7 @@ jobs:
       - name: Build runtime and alexandria
         run: make runtime && make check-llvm && make needs-cairo2 && make build-alexandria
       - name: Build cairo-native-runtime library.
-        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && cargo build --profile=ci --package=cairo-native-runtime
+        run: cargo build --profile=ci --package=cairo-native-runtime
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
         run: cargo llvm-cov nextest --verbose --all-features --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
