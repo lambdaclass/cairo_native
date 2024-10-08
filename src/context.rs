@@ -202,9 +202,7 @@ impl NativeContext {
             }
         }
 
-        tracing::info!("Running pass manager");
         run_pass_manager(&self.context, &mut module)?;
-        tracing::info!("Finished running pass manager");
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {

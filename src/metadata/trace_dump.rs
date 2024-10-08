@@ -1,6 +1,6 @@
 #![cfg(feature = "with-trace-dump")]
 
-use crate::{error::Result, utils::BlockExt};
+use crate::{block_ext::BlockExt, error::Result};
 use cairo_lang_sierra::{
     ids::{ConcreteTypeId, VarId},
     program::StatementIdx,

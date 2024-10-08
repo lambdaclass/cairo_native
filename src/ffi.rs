@@ -109,9 +109,7 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 
         let op = module.as_operation().to_raw();
 
-        tracing::info!("Translating to LLVM IR");
         let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context as *mut _) as *mut _;
-        tracing::info!("Finished translating to LLVM IR");
 
         let mut null = null_mut();
         let mut error_buffer = addr_of_mut!(null);
@@ -151,8 +149,6 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 
         let opts = LLVMCreatePassBuilderOptions();
 
-        tracing::info!("Running LLVM passes");
-
         let opt = match opt_level {
             OptLevel::None => 0,
             OptLevel::Less => 1,
@@ -167,13 +163,10 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
             Err(Error::LLVMCompileError(msg.to_string_lossy().into_owned()))?;
         }
 
-        tracing::info!("Finished running LLVM passes");
-
         LLVMDisposePassBuilderOptions(opts);
 
         let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
 
-        tracing::info!("Emitting machine code");
         let ok = LLVMTargetMachineEmitToMemoryBuffer(
             machine,
             llvm_module,
@@ -181,7 +174,6 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
             error_buffer,
             out_buf.as_mut_ptr(),
         );
-        tracing::info!("Finished emitting machine code");
 
         if ok != 0 {
             let error = CStr::from_ptr(*error_buffer);

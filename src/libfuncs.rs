@@ -250,7 +250,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
 /// This helper is necessary because the statement following the current one may not have the same
 /// arguments as the results returned by the current statement. Because of that, a direct jump
 /// cannot be made and some processing is required.
-pub struct LibfuncHelper<'ctx, 'this>
+pub(crate) struct LibfuncHelper<'ctx, 'this>
 where
     'this: 'ctx,
 {
@@ -408,7 +408,7 @@ impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum BranchArg<'ctx, 'this> {
+pub(crate) enum BranchArg<'ctx, 'this> {
     External(Value<'ctx, 'this>),
     Returned(usize),
 }
