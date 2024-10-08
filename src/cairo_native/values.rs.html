@@ -1584,18 +1584,13 @@
 <a href="#1584" id="1584">1584</a>
 <a href="#1585" id="1585">1585</a>
 <a href="#1586" id="1586">1586</a>
-<a href="#1587" id="1587">1587</a>
-<a href="#1588" id="1588">1588</a>
-<a href="#1589" id="1589">1589</a>
-<a href="#1590" id="1590">1590</a>
-<a href="#1591" id="1591">1591</a>
-<a href="#1592" id="1592">1592</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
 
 //! A Rusty interface to provide parameters to JIT calls.
 
 </span><span class="kw">use crate</span>::{
     error::{CompilerError, Error},
+    starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::{felt252_bigint, get_integer_layout, layout_repeat, RangeExt, PRIME},
 };
@@ -1658,14 +1653,8 @@
     Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
-    Secp256K1Point {
-        x: (u128, u128),
-        y: (u128, u128),
-    },
-    Secp256R1Point {
-        x: (u128, u128),
-        y: (u128, u128),
-    },
+    Secp256K1Point(Secp256k1Point),
+    Secp256R1Point(Secp256r1Point),
     BoundedInt {
         value: Felt,
         <span class="attr">#[serde(with = <span class="string">"range_serde"</span>)]
@@ -2327,17 +2316,16 @@
                     StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; {
                         <span class="macro">unreachable!</span>(<span class="string">"should be handled before"</span>)
                     }
-                    StarkNetTypeConcrete::Secp256Point(info) =&gt; {
-                        <span class="kw">let </span>data = ptr.cast::&lt;[[u128; <span class="number">2</span>]; <span class="number">2</span>]&gt;().as_ref();
-
-                        <span class="kw">let </span>x = (data[<span class="number">0</span>][<span class="number">0</span>], data[<span class="number">0</span>][<span class="number">1</span>]);
-                        <span class="kw">let </span>y = (data[<span class="number">1</span>][<span class="number">0</span>], data[<span class="number">1</span>][<span class="number">1</span>]);
-
-                        <span class="kw">match </span>info {
-                            Secp256PointTypeConcrete::K1(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Secp256K1Point { x, y },
-                            Secp256PointTypeConcrete::R1(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Secp256R1Point { x, y },
+                    StarkNetTypeConcrete::Secp256Point(info) =&gt; <span class="kw">match </span>info {
+                        Secp256PointTypeConcrete::K1(<span class="kw">_</span>) =&gt; {
+                            <span class="kw">let </span>data = ptr.cast::&lt;Secp256k1Point&gt;().as_ref();
+                            <span class="self">Self</span>::Secp256K1Point(<span class="kw-2">*</span>data)
                         }
-                    }
+                        Secp256PointTypeConcrete::R1(<span class="kw">_</span>) =&gt; {
+                            <span class="kw">let </span>data = ptr.cast::&lt;Secp256r1Point&gt;().as_ref();
+                            <span class="self">Self</span>::Secp256R1Point(<span class="kw-2">*</span>data)
+                        }
+                    },
                     StarkNetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 },
                 CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">"implement span from_ptr"</span>),

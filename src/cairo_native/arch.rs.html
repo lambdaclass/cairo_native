@@ -192,11 +192,9 @@
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error,
-    starknet::{ArrayAbi, U256},
+    starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     values::Value,
 };
@@ -346,22 +344,20 @@
                     .to_bytes(buffer)<span class="question-mark">?
             </span>}
             (
-                Value::Secp256K1Point { x, y },
+                Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),
                 CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
                     Secp256PointTypeConcrete::K1(<span class="kw">_</span>),
                 )),
             )
             | (
-                Value::Secp256R1Point { x, y },
+                Value::Secp256R1Point(Secp256r1Point { x, y, is_infinity }),
                 CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
                     Secp256PointTypeConcrete::R1(<span class="kw">_</span>),
                 )),
             ) =&gt; {
-                <span class="kw">let </span>x = U256 { lo: x.<span class="number">0</span>, hi: x.<span class="number">1 </span>};
-                <span class="kw">let </span>y = U256 { lo: y.<span class="number">0</span>, hi: y.<span class="number">1 </span>};
-
                 x.to_bytes(buffer)<span class="question-mark">?</span>;
                 y.to_bytes(buffer)<span class="question-mark">?</span>;
+                is_infinity.to_bytes(buffer)<span class="question-mark">?</span>;
             }
             (Value::Sint128(value), CoreTypeConcrete::Sint128(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
             (Value::Sint16(value), CoreTypeConcrete::Sint16(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,

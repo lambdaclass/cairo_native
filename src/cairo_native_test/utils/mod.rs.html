@@ -569,13 +569,27 @@
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
 </pre></div><pre class="rust"><code><span class="attr">#![cfg(feature = <span class="string">"build-cli"</span>)]
 #![allow(dead_code)]
 
 </span><span class="kw">use </span>anyhow::bail;
 <span class="kw">use </span>cairo_lang_runner::{casm_run::format_next_item, RunResultValue};
 <span class="kw">use </span>cairo_lang_sierra::program::{Function, Program};
-<span class="kw">use </span>cairo_native::{execution_result::ExecutionResult, Value};
+<span class="kw">use </span>cairo_native::{
+    execution_result::ExecutionResult,
+    starknet::{Secp256k1Point, Secp256r1Point},
+    Value,
+};
 <span class="kw">use </span>clap::ValueEnum;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -730,11 +744,19 @@
         Value::EcState(a, b, c, d) =&gt; {
             <span class="macro">vec!</span>[<span class="kw-2">*</span>a, <span class="kw-2">*</span>b, <span class="kw-2">*</span>c, <span class="kw-2">*</span>d]
         }
-        Value::Secp256K1Point { x, y } =&gt; {
-            <span class="macro">vec!</span>[x.<span class="number">0</span>.into(), x.<span class="number">1</span>.into(), y.<span class="number">0</span>.into(), y.<span class="number">1</span>.into()]
+        Value::Secp256K1Point(Secp256k1Point {
+            x,
+            y,
+            is_infinity: <span class="kw">_</span>,
+        }) =&gt; {
+            <span class="macro">vec!</span>[x.lo.into(), x.hi.into(), y.lo.into(), y.hi.into()]
         }
-        Value::Secp256R1Point { x, y } =&gt; {
-            <span class="macro">vec!</span>[x.<span class="number">0</span>.into(), x.<span class="number">1</span>.into(), y.<span class="number">0</span>.into(), y.<span class="number">1</span>.into()]
+        Value::Secp256R1Point(Secp256r1Point {
+            x,
+            y,
+            is_infinity: <span class="kw">_</span>,
+        }) =&gt; {
+            <span class="macro">vec!</span>[x.lo.into(), x.hi.into(), y.lo.into(), y.hi.into()]
         }
         Value::Null =&gt; <span class="macro">vec!</span>[<span class="number">0</span>.into()],
     }
@@ -1121,10 +1143,9 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_secp256_k1_point() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Secp256K1Point {
-                x: (<span class="number">1</span>, <span class="number">2</span>),
-                y: (<span class="number">3</span>, <span class="number">4</span>)
-            }),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Secp256K1Point(Secp256k1Point::new(
+                <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="bool-val">false
+            </span>))),
             <span class="macro">vec!</span>[Felt::ONE, Felt::TWO, Felt::THREE, Felt::from(<span class="number">4</span>)]
         );
     }
@@ -1132,10 +1153,9 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_jitvalue_to_felt_secp256_r1_point() {
         <span class="macro">assert_eq!</span>(
-            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Secp256R1Point {
-                x: (<span class="number">1</span>, <span class="number">2</span>),
-                y: (<span class="number">3</span>, <span class="number">4</span>)
-            }),
+            jitvalue_to_felt(<span class="kw-2">&amp;</span>Value::Secp256R1Point(Secp256r1Point::new(
+                <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="bool-val">false
+            </span>))),
             <span class="macro">vec!</span>[Felt::ONE, Felt::TWO, Felt::THREE, Felt::from(<span class="number">4</span>)]
         );
     }

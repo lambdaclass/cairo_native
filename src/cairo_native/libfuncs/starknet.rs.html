@@ -3500,7 +3500,6 @@
 <a href="#3500" id="3500">3500</a>
 <a href="#3501" id="3501">3501</a>
 <a href="#3502" id="3502">3502</a>
-<a href="#3503" id="3503">3503</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Starknet libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -6484,8 +6483,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="comment">// todo: do
-    // Extract self pointer.
+    <span class="comment">// Extract self pointer.
     </span><span class="kw">let </span>ptr = entry
         .append_operation(llvm::load(
             context,
