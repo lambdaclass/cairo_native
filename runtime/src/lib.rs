@@ -973,8 +973,19 @@ pub mod trace_dump {
                     .inner
                     .iter()
                     .map(|(k, v)| {
+                        let p = v.as_ptr();
+                        let v = match NonNull::new(p) {
+                            Some(value_ptr) => read_value_ptr(
+                                registry,
+                                &info.ty,
+                                value_ptr.cast::<NonNull<()>>().read(),
+                                get_layout,
+                            ),
+                            None => Value::Uninitialized {
+                                ty: info.ty.clone(),
+                            },
+                        };
                         let k = Felt::from_bytes_le(k);
-                        let v = read_value_ptr(registry, &info.ty, v.cast(), get_layout);
                         (k, v)
                     })
                     .collect::<HashMap<Felt, Value>>();
