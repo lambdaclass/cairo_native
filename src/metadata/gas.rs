@@ -20,8 +20,9 @@ pub struct GasMetadata {
     pub gas_info: GasInfo,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct GasCost(pub Option<u128>);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// Cost, token type (index into builtin costs).
+pub struct GasCost(pub Option<(u128, CostTokenType)>);
 
 /// Configuration for metadata computation.
 #[derive(Debug, Clone)]
@@ -102,13 +103,14 @@ impl GasMetadata {
         )
     }
 
-    pub fn get_gas_cost_for_statement(&self, idx: StatementIdx) -> Option<u128> {
+    pub fn get_gas_cost_for_statement(&self, idx: StatementIdx) -> Option<(u128, CostTokenType)> {
         let mut cost = None;
         for cost_type in CostTokenType::iter_casm_tokens() {
             if let Some(amount) =
                 self.get_gas_cost_for_statement_and_cost_token_type(idx, *cost_type)
             {
-                *cost.get_or_insert(0) += amount * token_gas_cost(*cost_type) as u128;
+                let c = cost.get_or_insert((0, *cost_type));
+                c.0 += amount;
             }
         }
         cost

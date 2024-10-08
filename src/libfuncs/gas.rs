@@ -18,9 +18,10 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm, ods,
+        llvm::r#type::pointer,
+        ods,
     },
-    ir::{r#type::IntegerType, Block, Location},
+    ir::{attribute::FlatSymbolRefAttribute, r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -83,11 +84,15 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
     let current_gas = entry.argument(1)?.into();
 
-    let cost = metadata.get::<GasCost>().and_then(|x| x.0);
+    let (cost, token_type) = metadata.get::<GasCost>().and_then(|x| x.0).unwrap_or((0, 0));
 
     let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
+    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
+
     let gas_cost_val =
-        entry.const_int_from_type(context, location, cost.unwrap_or(0), u128_type)?;
+        entry.const_int_from_type(context, location, cost, u128_type)?;
+    let token_type_val =
+        entry.const_int_from_type(context, location, token_type, u64_type)?;
 
     let is_enough = entry.append_op_result(arith::cmpi(
         context,
@@ -173,10 +178,20 @@ pub fn build_get_builtin_costs<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    // TODO: Implement libfunc.
-    let op0 = entry.append_op_result(llvm::undef(builtin_costs_ty, location))?;
+    // Get the ptr to the global, holding a ptr to the list.
+    let builtin_ptr_ptr = entry.append_op_result(
+        ods::llvm::mlir_addressof(
+            context,
+            pointer(context, 0),
+            FlatSymbolRefAttribute::new(context, "builtin_costs"),
+            location,
+        )
+        .into(),
+    )?;
 
-    entry.append_operation(helper.br(0, &[op0], location));
+    let builtin_ptr = entry.load(context, location, builtin_ptr_ptr, builtin_costs_ty)?;
+
+    entry.append_operation(helper.br(0, &[builtin_ptr], location));
 
     Ok(())
 }
