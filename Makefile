@@ -180,7 +180,7 @@ runtime:
 	cargo b --release -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
 
 runtime-with-trace-dump:
-	cargo b --release -p cairo-native-runtime --features=with-trace-dump && cp target/release/libcairo_native_runtime.a .
+	cargo b -p cairo-native-runtime --features=with-trace-dump && cp target/debug/libcairo_native_runtime.a .
 
 .PHONY: runtime-ci
 runtime-ci:
