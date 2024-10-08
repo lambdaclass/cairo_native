@@ -14,10 +14,12 @@ use crate::{
     values::Value,
 };
 use bumpalo::Bump;
+use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        gas::CostTokenType,
         starknet::StarkNetTypeConcrete,
         ConcreteType,
     },
@@ -141,6 +143,17 @@ fn invoke_dynamic(
         previous_syscall_handler
     });
 
+    // Order matters, from
+    // https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
+    let builin_costs: &[u64] = &[
+        token_gas_cost(CostTokenType::Pedersen) as u64,
+        token_gas_cost(CostTokenType::Bitwise) as u64,
+        token_gas_cost(CostTokenType::EcOp) as u64,
+        token_gas_cost(CostTokenType::Poseidon) as u64,
+        token_gas_cost(CostTokenType::AddMod) as u64,
+        token_gas_cost(CostTokenType::MulMod) as u64,
+    ];
+
     // Generate argument list.
     let mut iter = args.iter();
     for item in function_signature.param_types.iter().filter_map(|type_id| {
@@ -165,6 +178,9 @@ fn invoke_dynamic(
 
                 (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
                     .to_bytes(&mut invoke_data)?;
+            }
+            CoreTypeConcrete::BuiltinCosts(_) => {
+                (builin_costs.as_ptr()).to_bytes(&mut invoke_data)?;
             }
             type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
             type_info => JitValueWithInfoWrapper {
@@ -249,26 +265,38 @@ fn invoke_dynamic(
             },
             _ if type_info.is_builtin() => {
                 if !type_info.is_zst(registry)? {
-                    let value = match &mut return_ptr {
-                        Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
-                        None => ret_registers[0],
-                    } as usize;
+                    if let CoreTypeConcrete::BuiltinCosts(_) = type_info {
+                        // todo: should we use this value?
+                        let value = match &mut return_ptr {
+                            Some(return_ptr) => unsafe { *read_value::<*mut u64>(return_ptr) },
+                            None => ret_registers[0] as *mut u64,
+                        };
+                    } else {
+                        let value = match &mut return_ptr {
+                            Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
+                            None => ret_registers[0],
+                        } as usize;
 
-                    match type_info {
-                        CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
-                        CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
-                        CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
-                        CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
-                        CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
-                        CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
-                        CoreTypeConcrete::RangeCheck96(_) => builtin_stats.range_check_96 = value,
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
-                            builtin_stats.circuit_add = value
+                        match type_info {
+                            CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
+                            CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
+                            CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
+                            CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
+                            CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
+                            CoreTypeConcrete::SegmentArena(_) => {
+                                builtin_stats.segment_arena = value
+                            }
+                            CoreTypeConcrete::RangeCheck96(_) => {
+                                builtin_stats.range_check_96 = value
+                            }
+                            CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                                builtin_stats.circuit_add = value
+                            }
+                            CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                                builtin_stats.circuit_mul = value
+                            }
+                            _ => unreachable!("{type_id:?}"),
                         }
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
-                            builtin_stats.circuit_mul = value
-                        }
-                        _ => unreachable!("{type_id:?}"),
                     }
                 }
             }
