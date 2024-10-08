@@ -16,9 +16,9 @@ jobs:
     name: clippy
     runs-on: ubuntu-latest
     env:
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.81.0
@@ -28,11 +28,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
       - name: Clippy
         run: make check
 
@@ -83,9 +83,9 @@ jobs:
   udeps:
     runs-on: ubuntu-latest
     env:
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
       RUSTUP_TOOLCHAIN: nightly # udeps needs nightly
     steps:
       - uses: actions/checkout@v4
@@ -97,11 +97,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
       - name: "Download and run cargo-udeps"
         run: |
           wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.50/cargo-udeps-v0.1.50-x86_64-unknown-linux-gnu.tar.gz | tar -xz
@@ -111,9 +111,9 @@ jobs:
     name: test (linux, amd64)
     runs-on: ubuntu-latest
     env:
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
@@ -143,16 +143,14 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - run: sudo apt-get update && sudo apt-get upgrade -y
       - name: Install LLVM
-        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
       - name: Install deps
         run: make deps
-      - name: Build cairo-native-runtime library.
-        run: cargo build --profile=ci --package=cairo-native-runtime
       - name: test
         run: make test-ci
       - name: test-cairo
@@ -164,9 +162,9 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       LIBRARY_PATH: /opt/homebrew/lib
-      MLIR_SYS_180_PREFIX: /opt/homebrew/opt/llvm@18
-      LLVM_SYS_181_PREFIX: /opt/homebrew/opt/llvm@18
-      TABLEGEN_180_PREFIX: /opt/homebrew/opt/llvm@18
+      MLIR_SYS_190_PREFIX: /opt/homebrew/opt/llvm@19
+      LLVM_SYS_191_PREFIX: /opt/homebrew/opt/llvm@19
+      TABLEGEN_190_PREFIX: /opt/homebrew/opt/llvm@19
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
@@ -180,11 +178,9 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.8.2"
+          scarb-version: "2.8.4"
       - name: Install deps
         run: make deps
-      - name: Build cairo-native-runtime library.
-        run: cargo build --profile=ci --package=cairo-native-runtime
       - name: Run tests
         run: make test-ci
       - name: test-cairo
@@ -206,10 +202,9 @@ jobs:
           - partition: 4
             output: lcov-4.info
     env:
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-      MLIR_SYS_180_PREFIX: /usr/lib/llvm-18/
-      LLVM_SYS_181_PREFIX: /usr/lib/llvm-18/
-      TABLEGEN_180_PREFIX: /usr/lib/llvm-18/
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
       RUST_LOG: cairo_native=debug
     steps:
       - uses: actions/checkout@v4
@@ -239,11 +234,11 @@ jobs:
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        run: sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
       - name: Install testing tools
         uses: taiki-e/install-action@v2
         with:
@@ -251,13 +246,11 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.8.2"
+          scarb-version: "2.8.4"
       - name: Install deps
         run: make deps
       - name: Build runtime and alexandria
-        run: make runtime && make check-llvm && make needs-cairo2 && make build-alexandria
-      - name: Build cairo-native-runtime library.
-        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && cargo build --profile=ci --package=cairo-native-runtime
+        run: make runtime-ci && make check-llvm && make needs-cairo2 && make build-alexandria
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
         run: cargo llvm-cov nextest --verbose --all-features --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4

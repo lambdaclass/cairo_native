@@ -12,6 +12,8 @@ to machine code via MLIR and LLVM.
 [![codecov](https://img.shields.io/codecov/c/github/lambdaclass/cairo_native)](https://codecov.io/gh/lambdaclass/cairo_native)
 [![license](https://img.shields.io/github/license/lambdaclass/cairo_native)](/LICENSE)
 [![pr-welcome]](#-contributing)
+[![Crates.io Version](https://img.shields.io/crates/v/cairo_native)](https://crates.io/crates/cairo-native)
+
 
 [tg-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Ftg.sumanjay.workers.dev%2FLambdaStarkNet%2F&logo=telegram&label=chat&color=neon
 [tg-url]: https://t.me/LambdaStarkNet
@@ -45,7 +47,7 @@ use. This can be done by adding `cairo-native = "0.1.0"` to your Cargo.toml
 
 ### Dependencies
 - Linux or macOS (aarch64 included) only for now
-- LLVM 18 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/),
+- LLVM 19 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/),
   on macOS you can use brew
 - Rust 1.78.0 or later, since we make use of the u128
   [abi change](https://blog.rust-lang.org/2024/03/30/i128-layout-update.html).
@@ -61,14 +63,14 @@ make deps
 ```
 
 #### Linux
-Since Linux distributions change widely, you need to install LLVM 18 via your
+Since Linux distributions change widely, you need to install LLVM 19 via your
 package manager, compile it or check if the current release has a Linux binary.
 
 If you are on Debian/Ubuntu, check out the repository https://apt.llvm.org/
 Then you can install with:
 
 ```bash
-sudo apt-get install llvm-18 llvm-18-dev llvm-18-runtime clang-18 clang-tools-18 lld-18 libpolly-18-dev libmlir-18-dev mlir-18-tools
+sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
 ```
 
 If you decide to build from source, here are some indications:
@@ -77,23 +79,23 @@ If you decide to build from source, here are some indications:
 
 ```bash
 # Go to https://github.com/llvm/llvm-project/releases
-# Download the latest LLVM 18 release:
-# The blob to download is called llvm-project-18.x.x.src.tar.xz
+# Download the latest LLVM 19 release:
+# The blob to download is called llvm-project-19.x.x.src.tar.xz
 
 # For example
-wget https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.7/llvm-project-18.1.7.src.tar.xz
-tar xf llvm-project-18.1.7.src.tar.xz
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.0/llvm-project-19.1.0.src.tar.xz
+tar xf llvm-project-19.1.0.src.tar.xz
 
-cd llvm-project-18.1.7.src.tar
+cd llvm-project-19.1.0.src.tar
 mkdir build
 cd build
 
-# The following cmake command configures the build to be installed to /opt/llvm-18
+# The following cmake command configures the build to be installed to /opt/llvm-19
 cmake -G Ninja ../llvm \
    -DLLVM_ENABLE_PROJECTS="mlir;clang;clang-tools-extra;lld;polly" \
    -DLLVM_BUILD_EXAMPLES=OFF \
    -DLLVM_TARGETS_TO_BUILD="Native" \
-   -DCMAKE_INSTALL_PREFIX=/opt/llvm-18 \
+   -DCMAKE_INSTALL_PREFIX=/opt/llvm-19 \
    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
    -DLLVM_PARALLEL_LINK_JOBS=4 \
    -DLLVM_ENABLE_BINDINGS=OFF \
@@ -105,14 +107,14 @@ ninja install
 
 </details>
 
-Setup a environment variable called `MLIR_SYS_180_PREFIX`, `LLVM_SYS_181_PREFIX`
-and `TABLEGEN_180_PREFIX` pointing to the llvm directory:
+Setup a environment variable called `MLIR_SYS_190_PREFIX`, `LLVM_SYS_191_PREFIX`
+and `TABLEGEN_190_PREFIX` pointing to the llvm directory:
 
 ```bash
-# For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-18
-export MLIR_SYS_180_PREFIX=/usr/lib/llvm-18
-export LLVM_SYS_181_PREFIX=/usr/lib/llvm-18
-export TABLEGEN_180_PREFIX=/usr/lib/llvm-18
+# For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-19
+export MLIR_SYS_190_PREFIX=/usr/lib/llvm-19
+export LLVM_SYS_191_PREFIX=/usr/lib/llvm-19
+export TABLEGEN_190_PREFIX=/usr/lib/llvm-19
 ```
 
 Alternatively, if installed from Debian/Ubuntu repository, then you can use
@@ -123,7 +125,7 @@ source env.sh
 ```
 
 #### MacOS
-The makefile `deps` target (which you should have ran before) installs LLVM 18
+The makefile `deps` target (which you should have ran before) installs LLVM 19
 with brew for you, afterwards you need to execute the `env.sh` script to setup
 the needed environment variables.
 
@@ -350,14 +352,14 @@ Options:
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
 - [cairo 2.8.2](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
-- LLVM 18 with MLIR
+- LLVM 19 with MLIR
 
 You need to setup some environment variables:
 
 ```bash
-$MLIR_SYS_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
-$LLVM_SYS_181_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
-$TABLEGEN_180_PREFIX=/path/to/llvm18  # Required for non-standard LLVM install locations.
+$MLIR_SYS_190_PREFIX=/path/to/llvm19  # Required for non-standard LLVM install locations.
+$LLVM_SYS_191_PREFIX=/path/to/llvm19  # Required for non-standard LLVM install locations.
+$TABLEGEN_190_PREFIX=/path/to/llvm19  # Required for non-standard LLVM install locations.
 ```
 
 You can then run the `bench` makefile target:

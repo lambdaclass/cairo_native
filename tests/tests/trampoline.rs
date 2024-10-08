@@ -5,16 +5,15 @@ use cairo_native::{
     execution_result::{BuiltinStats, ExecutionResult},
     executor::JitNativeExecutor,
     utils::find_function_id,
-    values::JitValue,
-    OptLevel,
+    OptLevel, Value,
 };
 use starknet_types_core::felt::Felt;
 
-fn run_program(program: &Program, entry_point: &str, args: &[JitValue]) -> ExecutionResult {
+fn run_program(program: &Program, entry_point: &str, args: &[Value]) -> ExecutionResult {
     let entry_point_id = find_function_id(program, entry_point).expect("entry point not found");
 
     let context = NativeContext::new();
-    let module = context.compile(program).unwrap();
+    let module = context.compile(program, false).unwrap();
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
     let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
 
@@ -31,7 +30,7 @@ fn invoke0() {
         run_program(&program, &format!("{0}::{0}::main", module_name), &[]),
         ExecutionResult {
             remaining_gas: None,
-            return_value: JitValue::Struct {
+            return_value: Value::Struct {
                 fields: Vec::new(),
                 debug_name: None,
             },
@@ -49,7 +48,7 @@ fn invoke1_felt252() {
     };
 
     let r = |x: Felt| {
-        let x = JitValue::Felt252(x);
+        let x = Value::Felt252(x);
         assert_eq!(
             run_program(
                 &program,
@@ -79,7 +78,7 @@ fn invoke1_u8() {
     };
 
     let r = |x: u8| {
-        let x = JitValue::Uint8(x);
+        let x = Value::Uint8(x);
         assert_eq!(
             run_program(
                 &program,
@@ -109,7 +108,7 @@ fn invoke1_u16() {
     };
 
     let r = |x: u16| {
-        let x = JitValue::Uint16(x);
+        let x = Value::Uint16(x);
         assert_eq!(
             run_program(
                 &program,
@@ -139,7 +138,7 @@ fn invoke1_u32() {
     };
 
     let r = |x: u32| {
-        let x = JitValue::Uint32(x);
+        let x = Value::Uint32(x);
         assert_eq!(
             run_program(
                 &program,
@@ -169,7 +168,7 @@ fn invoke1_u64() {
     };
 
     let r = |x: u64| {
-        let x = JitValue::Uint64(x);
+        let x = Value::Uint64(x);
         assert_eq!(
             run_program(
                 &program,
@@ -199,7 +198,7 @@ fn invoke1_u128() {
     };
 
     let r = |x: u128| {
-        let x = JitValue::Uint128(x);
+        let x = Value::Uint128(x);
         assert_eq!(
             run_program(
                 &program,
@@ -229,8 +228,8 @@ fn invoke1_tuple1_felt252() {
     };
 
     let r = |x: (Felt,)| {
-        let x = JitValue::Struct {
-            fields: vec![JitValue::Felt252(x.0)],
+        let x = Value::Struct {
+            fields: vec![Value::Felt252(x.0)],
             debug_name: None,
         };
         assert_eq!(
@@ -262,8 +261,8 @@ fn invoke1_tuple1_u64() {
     };
 
     let r = |x: (u64,)| {
-        let x = JitValue::Struct {
-            fields: vec![JitValue::Uint64(x.0)],
+        let x = Value::Struct {
+            fields: vec![Value::Uint64(x.0)],
             debug_name: None,
         };
         assert_eq!(
@@ -295,13 +294,13 @@ fn invoke1_tuple5_u8_u16_u32_u64_u128() {
     };
 
     let r = |x: (u8, u16, u32, u64, u128)| {
-        let x = JitValue::Struct {
+        let x = Value::Struct {
             fields: vec![
-                JitValue::Uint8(x.0),
-                JitValue::Uint16(x.1),
-                JitValue::Uint32(x.2),
-                JitValue::Uint64(x.3),
-                JitValue::Uint128(x.4),
+                Value::Uint8(x.0),
+                Value::Uint16(x.1),
+                Value::Uint32(x.2),
+                Value::Uint64(x.3),
+                Value::Uint128(x.4),
             ],
             debug_name: None,
         };
@@ -334,7 +333,7 @@ fn invoke1_array_felt252() {
     };
 
     let r = |x: Vec<Felt>| {
-        let x = JitValue::Array(x.into_iter().map(JitValue::Felt252).collect());
+        let x = Value::Array(x.into_iter().map(Value::Felt252).collect());
         assert_eq!(
             run_program(
                 &program,
@@ -368,9 +367,9 @@ fn invoke1_enum1_unit() {
         }
     };
 
-    let x = JitValue::Enum {
+    let x = Value::Enum {
         tag: 0,
-        value: Box::new(JitValue::Struct {
+        value: Box::new(Value::Struct {
             fields: Vec::new(),
             debug_name: None,
         }),
@@ -403,9 +402,9 @@ fn invoke1_enum1_u64() {
     };
 
     let r = |x: u64| {
-        let x = JitValue::Enum {
+        let x = Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Uint64(x)),
+            value: Box::new(Value::Uint64(x)),
             debug_name: Some("MyEnum".into()),
         };
         assert_eq!(
@@ -441,9 +440,9 @@ fn invoke1_enum1_felt252() {
     };
 
     let r = |x: Felt| {
-        let x = JitValue::Enum {
+        let x = Value::Enum {
             tag: 0,
-            value: Box::new(JitValue::Felt252(x)),
+            value: Box::new(Value::Felt252(x)),
             debug_name: Some("MyEnum".into()),
         };
         assert_eq!(
@@ -486,14 +485,14 @@ fn invoke1_enum2_u8_u16() {
 
     let r = |x: MyEnum| {
         let x = match x {
-            MyEnum::A(x) => JitValue::Enum {
+            MyEnum::A(x) => Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Uint8(x)),
+                value: Box::new(Value::Uint8(x)),
                 debug_name: Some("MyEnum".into()),
             },
-            MyEnum::B(x) => JitValue::Enum {
+            MyEnum::B(x) => Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Uint16(x)),
+                value: Box::new(Value::Uint16(x)),
                 debug_name: Some("MyEnum".into()),
             },
         };
@@ -533,11 +532,11 @@ fn invoke1_box_felt252() {
         run_program(
             &program,
             &format!("{0}::{0}::main", module_name),
-            &[JitValue::Felt252(42.into())],
+            &[Value::Felt252(42.into())],
         ),
         ExecutionResult {
             remaining_gas: None,
-            return_value: JitValue::Felt252(42.into()),
+            return_value: Value::Felt252(42.into()),
             builtin_stats: BuiltinStats::default(),
         }
     );
@@ -560,13 +559,13 @@ fn invoke1_nullable_felt252() {
         run_program(
             &program,
             &format!("{0}::{0}::main", module_name),
-            &[JitValue::Felt252(42.into())],
+            &[Value::Felt252(42.into())],
         ),
         ExecutionResult {
             remaining_gas: None,
-            return_value: JitValue::Enum {
+            return_value: Value::Enum {
                 tag: 0,
-                value: Box::new(JitValue::Felt252(42.into())),
+                value: Box::new(Value::Felt252(42.into())),
                 debug_name: None
             },
             builtin_stats: BuiltinStats::default(),
@@ -576,13 +575,13 @@ fn invoke1_nullable_felt252() {
         run_program(
             &program,
             &format!("{0}::{0}::main", module_name),
-            &[JitValue::Null],
+            &[Value::Null],
         ),
         ExecutionResult {
             remaining_gas: None,
-            return_value: JitValue::Enum {
+            return_value: Value::Enum {
                 tag: 1,
-                value: Box::new(JitValue::Struct {
+                value: Box::new(Value::Struct {
                     fields: Vec::new(),
                     debug_name: None
                 }),
@@ -609,15 +608,15 @@ fn test_deserialize_param_bug() {
     };
 
     let args = vec![
-        JitValue::Uint64(0),
-        JitValue::Uint64(0),
-        JitValue::Uint64(0),
-        JitValue::Uint128(0),
-        JitValue::Uint64(0),
-        JitValue::Struct {
-            fields: vec![JitValue::Array(vec![
-                JitValue::Felt252(1.into()),
-                JitValue::Felt252(2.into()),
+        Value::Uint64(0),
+        Value::Uint64(0),
+        Value::Uint64(0),
+        Value::Uint128(0),
+        Value::Uint64(0),
+        Value::Struct {
+            fields: vec![Value::Array(vec![
+                Value::Felt252(1.into()),
+                Value::Felt252(2.into()),
             ])],
             debug_name: None,
         },
@@ -626,7 +625,7 @@ fn test_deserialize_param_bug() {
         run_program(&program, &format!("{0}::{0}::main", module_name), &args),
         ExecutionResult {
             remaining_gas: None,
-            return_value: JitValue::Struct {
+            return_value: Value::Struct {
                 fields: args,
                 debug_name: None
             },

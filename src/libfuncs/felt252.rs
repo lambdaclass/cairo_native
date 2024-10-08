@@ -2,10 +2,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    block_ext::BlockExt,
-    error::{Error, Result},
-    metadata::{prime_modulo::PrimeModuloMeta, MetadataStorage},
-    utils::ProgramRegistryExt,
+    error::Result,
+    metadata::MetadataStorage,
+    utils::{BlockExt, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,8 +26,7 @@ use melior::{
     ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
-use num_bigint::{Sign, ToBigInt};
-use starknet_types_core::felt::Felt;
+use num_bigint::{BigInt, Sign};
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -77,11 +75,6 @@ pub fn build_binary_operation<'ctx, 'this>(
     let i256 = IntegerType::new(context, 256).into();
     let i512 = IntegerType::new(context, 512).into();
 
-    let prime = metadata
-        .get::<PrimeModuloMeta<Felt>>()
-        .ok_or(Error::MissingMetadata)?
-        .prime();
-
     let (op, lhs, rhs) = match info {
         Felt252BinaryOperationConcrete::WithVar(operation) => (
             operation.operator,
@@ -90,16 +83,10 @@ pub fn build_binary_operation<'ctx, 'this>(
         ),
         Felt252BinaryOperationConcrete::WithConst(operation) => {
             let value = match operation.c.sign() {
-                Sign::Minus => {
-                    let prime = metadata
-                        .get::<PrimeModuloMeta<Felt>>()
-                        .ok_or(Error::MissingMetadata)?
-                        .prime();
-                    (&operation.c + prime.to_bigint().expect("always is Some"))
-                        .to_biguint()
-                        .expect("always positive")
-                }
-                _ => operation.c.to_biguint().expect("sign already checked"),
+                Sign::Minus => (&operation.c + BigInt::from_biguint(Sign::Minus, PRIME.clone()))
+                    .magnitude()
+                    .clone(),
+                _ => operation.c.magnitude().clone(),
             };
 
             // TODO: Ensure that the constant is on the correct side of the operation.
@@ -115,7 +102,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let rhs = entry.append_op_result(arith::extui(rhs, i256, location))?;
             let result = entry.append_op_result(arith::addi(lhs, rhs, location))?;
 
-            let prime = entry.const_int_from_type(context, location, prime.clone(), i256)?;
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
             let result_mod = entry.append_op_result(arith::subi(result, prime, location))?;
             let is_out_of_range = entry.append_op_result(arith::cmpi(
                 context,
@@ -138,7 +125,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let rhs = entry.append_op_result(arith::extui(rhs, i256, location))?;
             let result = entry.append_op_result(arith::subi(lhs, rhs, location))?;
 
-            let prime = entry.const_int_from_type(context, location, prime.clone(), i256)?;
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
             let result_mod = entry.append_op_result(arith::addi(result, prime, location))?;
             let is_out_of_range = entry.append_op_result(arith::cmpi(
                 context,
@@ -161,7 +148,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let rhs = entry.append_op_result(arith::extui(rhs, i512, location))?;
             let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
 
-            let prime = entry.const_int_from_type(context, location, prime.clone(), i512)?;
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i512)?;
             let result_mod = entry.append_op_result(arith::remui(result, prime, location))?;
             let is_out_of_range = entry.append_op_result(arith::cmpi(
                 context,
@@ -202,7 +189,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             // For the initial setup, r0 = PRIME, r1 = a
             // This order is chosen because if we reverse them, then the first iteration will just swap them
             let prev_remainder =
-                start_block.const_int_from_type(context, location, prime.clone(), i512)?;
+                start_block.const_int_from_type(context, location, PRIME.clone(), i512)?;
             let remainder = start_block.argument(0)?.into();
             // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
             let prev_inverse = start_block.const_int_from_type(context, location, 0, i512)?;
@@ -272,7 +259,7 @@ pub fn build_binary_operation<'ctx, 'this>(
                 .into();
             // if the inverse is < 0, add PRIME
             let prime =
-                negative_check_block.const_int_from_type(context, location, prime.clone(), i512)?;
+                negative_check_block.const_int_from_type(context, location, PRIME.clone(), i512)?;
             let wrapped_inverse =
                 negative_check_block.append_op_result(arith::addi(inverse, prime, location))?;
             let inverse = negative_check_block.append_op_result(arith::select(
@@ -339,16 +326,10 @@ pub fn build_const<'ctx, 'this>(
     info: &Felt252ConstConcreteLibfunc,
 ) -> Result<()> {
     let value = match info.c.sign() {
-        Sign::Minus => {
-            let prime = metadata
-                .get::<PrimeModuloMeta<Felt>>()
-                .ok_or(Error::MissingMetadata)?
-                .prime();
-            (&info.c + prime.to_bigint().expect("always is Some"))
-                .to_biguint()
-                .expect("always is positive")
-        }
-        _ => info.c.to_biguint().expect("sign already checked"),
+        Sign::Minus => (&info.c + BigInt::from_biguint(Sign::Minus, PRIME.clone()))
+            .magnitude()
+            .clone(),
+        _ => info.c.magnitude().clone(),
     };
 
     let felt252_ty = registry.build_type(
@@ -388,7 +369,7 @@ pub fn build_is_zero<'ctx, 'this>(
 pub mod test {
     use crate::{
         utils::test::{load_cairo, run_program},
-        values::JitValue,
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -457,11 +438,11 @@ pub mod test {
             match run_program(
                 &FELT252_ADD,
                 "run_test",
-                &[JitValue::Felt252(lhs), JitValue::Felt252(rhs)],
+                &[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
             .return_value
             {
-                JitValue::Felt252(x) => x,
+                Value::Felt252(x) => x,
                 _ => panic!("invalid return type"),
             }
         }
@@ -495,11 +476,11 @@ pub mod test {
             match run_program(
                 &FELT252_SUB,
                 "run_test",
-                &[JitValue::Felt252(lhs), JitValue::Felt252(rhs)],
+                &[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
             .return_value
             {
-                JitValue::Felt252(x) => x,
+                Value::Felt252(x) => x,
                 _ => panic!("invalid return type"),
             }
         }
@@ -531,11 +512,11 @@ pub mod test {
             match run_program(
                 &FELT252_MUL,
                 "run_test",
-                &[JitValue::Felt252(lhs), JitValue::Felt252(rhs)],
+                &[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
             .return_value
             {
-                JitValue::Felt252(x) => x,
+                Value::Felt252(x) => x,
                 _ => panic!("invalid return type"),
             }
         }
@@ -568,21 +549,21 @@ pub mod test {
             match run_program(
                 &FELT252_DIV,
                 "run_test",
-                &[JitValue::Felt252(lhs), JitValue::Felt252(rhs)],
+                &[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
             .return_value
             {
-                JitValue::Enum { tag: 0, value, .. } => match *value {
-                    JitValue::Struct { fields, .. } => {
+                Value::Enum { tag: 0, value, .. } => match *value {
+                    Value::Struct { fields, .. } => {
                         assert_eq!(fields.len(), 1);
                         Some(match &fields[0] {
-                            JitValue::Felt252(x) => *x,
+                            Value::Felt252(x) => *x,
                             _ => panic!("invalid return type payload"),
                         })
                     }
                     _ => panic!("invalid return type"),
                 },
-                JitValue::Enum { tag: 1, .. } => None,
+                Value::Enum { tag: 1, .. } => None,
                 _ => panic!("invalid return type"),
             }
         }
@@ -627,9 +608,9 @@ pub mod test {
     fn felt252_const() {
         assert_eq!(
             run_program(&FELT252_CONST, "run_test", &[]).return_value,
-            JitValue::Struct {
+            Value::Struct {
                 fields: [f("0"), f("1"), f("-2"), f("-1")]
-                    .map(JitValue::Felt252)
+                    .map(Value::Felt252)
                     .to_vec(),
                 debug_name: None
             }
@@ -639,8 +620,8 @@ pub mod test {
     #[test]
     fn felt252_is_zero() {
         fn r(x: Felt) -> bool {
-            match run_program(&FELT252_IS_ZERO, "run_test", &[JitValue::Felt252(x)]).return_value {
-                JitValue::Enum { tag, .. } => tag != 0,
+            match run_program(&FELT252_IS_ZERO, "run_test", &[Value::Felt252(x)]).return_value {
+                Value::Enum { tag, .. } => tag != 0,
                 _ => panic!("invalid return type"),
             }
         }
