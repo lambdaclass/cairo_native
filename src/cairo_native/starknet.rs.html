@@ -1771,6 +1771,27 @@
 <a href="#1771" id="1771">1771</a>
 <a href="#1772" id="1772">1772</a>
 <a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
+<a href="#1777" id="1777">1777</a>
+<a href="#1778" id="1778">1778</a>
+<a href="#1779" id="1779">1779</a>
+<a href="#1780" id="1780">1780</a>
+<a href="#1781" id="1781">1781</a>
+<a href="#1782" id="1782">1782</a>
+<a href="#1783" id="1783">1783</a>
+<a href="#1784" id="1784">1784</a>
+<a href="#1785" id="1785">1785</a>
+<a href="#1786" id="1786">1786</a>
+<a href="#1787" id="1787">1787</a>
+<a href="#1788" id="1788">1788</a>
+<a href="#1789" id="1789">1789</a>
+<a href="#1790" id="1790">1790</a>
+<a href="#1791" id="1791">1791</a>
+<a href="#1792" id="1792">1792</a>
+<a href="#1793" id="1793">1793</a>
+<a href="#1794" id="1794">1794</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -2059,10 +2080,10 @@
 
     <span class="kw">fn </span>sha256_process_block(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        prev_state: <span class="kw-2">&amp;</span>[u32; <span class="number">8</span>],
-        current_block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
+        state: <span class="kw-2">&amp;mut </span>[u32; <span class="number">8</span>],
+        block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
         remaining_gas: <span class="kw-2">&amp;mut </span>u128,
-    ) -&gt; SyscallResult&lt;[u32; <span class="number">8</span>]&gt;;
+    ) -&gt; SyscallResult&lt;()&gt;;
 
     <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
     </span><span class="kw">fn </span>cheatcode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _selector: Felt, _input: <span class="kw-2">&amp;</span>[Felt]) -&gt; Vec&lt;Felt&gt; {
@@ -2258,10 +2279,10 @@
 
     <span class="kw">fn </span>sha256_process_block(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        _prev_state: <span class="kw-2">&amp;</span>[u32; <span class="number">8</span>],
-        _current_block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
+        _state: <span class="kw-2">&amp;mut </span>[u32; <span class="number">8</span>],
+        _block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
         _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
-    ) -&gt; SyscallResult&lt;[u32; <span class="number">8</span>]&gt; {
+    ) -&gt; SyscallResult&lt;()&gt; {
         <span class="macro">unimplemented!</span>()
     }
 }
@@ -2269,8 +2290,10 @@
 <span class="comment">// TODO: Move to the correct place or remove if unused.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>handler {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::utils::{libc_free, libc_malloc};
     <span class="kw">use </span>std::{
         alloc::Layout,
+        ffi::c_void,
         fmt::Debug,
         mem::{size_of, ManuallyDrop, MaybeUninit},
         ptr::{null_mut, NonNull},
@@ -2535,8 +2558,8 @@
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;<span class="kw-2">*mut </span>[u32; <span class="number">8</span>]&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
-            prev_state: <span class="kw-2">&amp;</span>[u32; <span class="number">8</span>],
-            current_block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
+            state: <span class="kw-2">*mut </span>[u32; <span class="number">8</span>],
+            block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
         ),
         <span class="comment">// testing syscalls
         </span><span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
@@ -2626,8 +2649,7 @@
                     capacity: <span class="number">0</span>,
                 },
                 <span class="kw">_ </span>=&gt; {
-                    <span class="kw">let </span>ptr =
-                        libc::malloc(Layout::array::&lt;E&gt;(data.len()).unwrap().size()) <span class="kw">as </span><span class="kw-2">*mut </span>E;
+                    <span class="kw">let </span>ptr = libc_malloc(Layout::array::&lt;E&gt;(data.len()).unwrap().size()) <span class="kw">as </span><span class="kw-2">*mut </span>E;
 
                     <span class="kw">let </span>len: u32 = data.len().try_into().unwrap();
                     <span class="kw">for </span>(i, val) <span class="kw">in </span>data.iter().enumerate() {
@@ -2682,7 +2704,8 @@
             selector: <span class="kw-2">&amp;</span>Felt252Abi,
             input: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ) {
-            <span class="kw">let </span>input: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>selector = Felt::from_bytes_le(<span class="kw-2">&amp;</span>selector.<span class="number">0</span>);
+            <span class="kw">let </span>input_vec: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>since_offset = input.since <span class="kw">as </span>usize;
                 <span class="kw">let </span>until_offset = input.until <span class="kw">as </span>usize;
                 <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
@@ -2692,10 +2715,13 @@
             .iter()
             .map(|x| Felt::from_bytes_le(<span class="kw-2">&amp;</span>x.<span class="number">0</span>))
             .collect();
-            <span class="kw">let </span>selector = Felt::from_bytes_le(<span class="kw-2">&amp;</span>selector.<span class="number">0</span>);
+
+            <span class="kw">unsafe </span>{
+                libc_free(input.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+            }
 
             <span class="kw">let </span>result = ptr
-                .cheatcode(selector, <span class="kw-2">&amp;</span>input)
+                .cheatcode(selector, <span class="kw-2">&amp;</span>input_vec)
                 .into_iter()
                 .map(|x| Felt252Abi(x.to_bytes_le()))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
@@ -2715,20 +2741,19 @@
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: <span class="number">0u8</span>,
                         payload: <span class="kw">unsafe </span>{
-                            <span class="kw">let </span><span class="kw-2">mut </span>block_info_ptr =
-                                NonNull::new(
-                                    libc::malloc(size_of::&lt;BlockInfoAbi&gt;()) <span class="kw">as </span><span class="kw-2">*mut </span>BlockInfoAbi
-                                )
-                                .unwrap();
+                            <span class="kw">let </span><span class="kw-2">mut </span>block_info_ptr = NonNull::new(libc_malloc(
+                                size_of::&lt;BlockInfoAbi&gt;(),
+                            )
+                                <span class="kw">as </span><span class="kw-2">*mut </span>BlockInfoAbi)
+                            .unwrap();
                             block_info_ptr.as_mut().block_number = x.block_info.block_number;
                             block_info_ptr.as_mut().block_timestamp = x.block_info.block_timestamp;
                             block_info_ptr.as_mut().sequencer_address =
                                 Felt252Abi(x.block_info.sequencer_address.to_bytes_le());
 
-                            <span class="kw">let </span><span class="kw-2">mut </span>tx_info_ptr = NonNull::new(
-                                libc::malloc(size_of::&lt;TxInfoAbi&gt;()) <span class="kw">as </span><span class="kw-2">*mut </span>TxInfoAbi,
-                            )
-                            .unwrap();
+                            <span class="kw">let </span><span class="kw-2">mut </span>tx_info_ptr =
+                                NonNull::new(libc_malloc(size_of::&lt;TxInfoAbi&gt;()) <span class="kw">as </span><span class="kw-2">*mut </span>TxInfoAbi)
+                                    .unwrap();
                             tx_info_ptr.as_mut().version =
                                 Felt252Abi(x.tx_info.version.to_bytes_le());
                             tx_info_ptr.as_mut().account_contract_address =
@@ -2748,7 +2773,7 @@
                             tx_info_ptr.as_mut().nonce = Felt252Abi(x.tx_info.nonce.to_bytes_le());
 
                             <span class="kw">let </span><span class="kw-2">mut </span>execution_info_ptr =
-                                NonNull::new(libc::malloc(size_of::&lt;ExecutionInfoAbi&gt;())
+                                NonNull::new(libc_malloc(size_of::&lt;ExecutionInfoAbi&gt;())
                                     <span class="kw">as </span><span class="kw-2">*mut </span>ExecutionInfoAbi)
                                 .unwrap();
                             execution_info_ptr.as_mut().block_info = block_info_ptr;
@@ -2781,22 +2806,22 @@
                         tag: <span class="number">0u8</span>,
                         payload: <span class="kw">unsafe </span>{
                             <span class="kw">let </span><span class="kw-2">mut </span>execution_info_ptr =
-                                NonNull::new(libc::malloc(size_of::&lt;ExecutionInfoV2Abi&gt;())
+                                NonNull::new(libc_malloc(size_of::&lt;ExecutionInfoV2Abi&gt;())
                                     <span class="kw">as </span><span class="kw-2">*mut </span>ExecutionInfoV2Abi)
                                 .unwrap();
 
-                            <span class="kw">let </span><span class="kw-2">mut </span>block_info_ptr =
-                                NonNull::new(
-                                    libc::malloc(size_of::&lt;BlockInfoAbi&gt;()) <span class="kw">as </span><span class="kw-2">*mut </span>BlockInfoAbi
-                                )
-                                .unwrap();
+                            <span class="kw">let </span><span class="kw-2">mut </span>block_info_ptr = NonNull::new(libc_malloc(
+                                size_of::&lt;BlockInfoAbi&gt;(),
+                            )
+                                <span class="kw">as </span><span class="kw-2">*mut </span>BlockInfoAbi)
+                            .unwrap();
                             block_info_ptr.as_mut().block_number = x.block_info.block_number;
                             block_info_ptr.as_mut().block_timestamp = x.block_info.block_timestamp;
                             block_info_ptr.as_mut().sequencer_address =
                                 Felt252Abi(x.block_info.sequencer_address.to_bytes_le());
 
                             <span class="kw">let </span><span class="kw-2">mut </span>tx_info_ptr = NonNull::new(
-                                libc::malloc(size_of::&lt;TxInfoV2Abi&gt;()) <span class="kw">as </span><span class="kw-2">*mut </span>TxInfoV2Abi,
+                                libc_malloc(size_of::&lt;TxInfoV2Abi&gt;()) <span class="kw">as </span><span class="kw-2">*mut </span>TxInfoV2Abi,
                             )
                             .unwrap();
                             tx_info_ptr.as_mut().version =
@@ -2886,7 +2911,7 @@
                 data
             });
 
-            <span class="kw">let </span>calldata: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>calldata_vec: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>since_offset = calldata.since <span class="kw">as </span>usize;
                 <span class="kw">let </span>until_offset = calldata.until <span class="kw">as </span>usize;
                 <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
@@ -2906,10 +2931,14 @@
             })
             .collect();
 
+            <span class="kw">unsafe </span>{
+                libc_free(calldata.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+            }
+
             <span class="kw">let </span>result = ptr.deploy(
                 class_hash,
                 contract_address_salt,
-                <span class="kw-2">&amp;</span>calldata,
+                <span class="kw-2">&amp;</span>calldata_vec,
                 deploy_from_zero,
                 gas,
             );
@@ -2972,7 +3001,7 @@
                 data
             });
 
-            <span class="kw">let </span>calldata: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>calldata_vec: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>since_offset = calldata.since <span class="kw">as </span>usize;
                 <span class="kw">let </span>until_offset = calldata.until <span class="kw">as </span>usize;
                 <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
@@ -2992,7 +3021,11 @@
             })
             .collect();
 
-            <span class="kw">let </span>result = ptr.library_call(class_hash, function_selector, <span class="kw-2">&amp;</span>calldata, gas);
+            <span class="kw">unsafe </span>{
+                libc_free(calldata.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+            }
+
+            <span class="kw">let </span>result = ptr.library_call(class_hash, function_selector, <span class="kw-2">&amp;</span>calldata_vec, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; {
@@ -3028,7 +3061,7 @@
                 data
             });
 
-            <span class="kw">let </span>calldata: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>calldata_vec: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>since_offset = calldata.since <span class="kw">as </span>usize;
                 <span class="kw">let </span>until_offset = calldata.until <span class="kw">as </span>usize;
                 <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
@@ -3048,7 +3081,11 @@
             })
             .collect();
 
-            <span class="kw">let </span>result = ptr.call_contract(address, entry_point_selector, <span class="kw-2">&amp;</span>calldata, gas);
+            <span class="kw">unsafe </span>{
+                libc_free(calldata.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+            }
+
+            <span class="kw">let </span>result = ptr.call_contract(address, entry_point_selector, <span class="kw-2">&amp;</span>calldata_vec, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; {
@@ -3128,7 +3165,7 @@
             keys: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
             data: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ) {
-            <span class="kw">let </span>keys: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>keys_vec: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>since_offset = keys.since <span class="kw">as </span>usize;
                 <span class="kw">let </span>until_offset = keys.until <span class="kw">as </span>usize;
                 <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
@@ -3148,7 +3185,11 @@
             })
             .collect();
 
-            <span class="kw">let </span>data: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
+            <span class="kw">unsafe </span>{
+                libc_free(keys.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+            }
+
+            <span class="kw">let </span>data_vec: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>since_offset = data.since <span class="kw">as </span>usize;
                 <span class="kw">let </span>until_offset = data.until <span class="kw">as </span>usize;
                 <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
@@ -3168,7 +3209,11 @@
             })
             .collect();
 
-            <span class="kw">let </span>result = ptr.emit_event(<span class="kw-2">&amp;</span>keys, <span class="kw-2">&amp;</span>data, gas);
+            <span class="kw">unsafe </span>{
+                libc_free(data.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+            }
+
+            <span class="kw">let </span>result = ptr.emit_event(<span class="kw-2">&amp;</span>keys_vec, <span class="kw-2">&amp;</span>data_vec, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; SyscallResultAbi {
@@ -3193,7 +3238,7 @@
                 data.reverse();
                 data
             });
-            <span class="kw">let </span>payload: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>payload_vec: Vec&lt;<span class="kw">_</span>&gt; = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>since_offset = payload.since <span class="kw">as </span>usize;
                 <span class="kw">let </span>until_offset = payload.until <span class="kw">as </span>usize;
                 <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
@@ -3213,7 +3258,11 @@
             })
             .collect();
 
-            <span class="kw">let </span>result = ptr.send_message_to_l1(to_address, <span class="kw-2">&amp;</span>payload, gas);
+            <span class="kw">unsafe </span>{
+                libc_free(payload.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+            }
+
+            <span class="kw">let </span>result = ptr.send_message_to_l1(to_address, <span class="kw-2">&amp;</span>payload_vec, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; SyscallResultAbi {
@@ -3232,7 +3281,7 @@
             gas: <span class="kw-2">&amp;mut </span>u128,
             input: <span class="kw-2">&amp;</span>ArrayAbi&lt;u64&gt;,
         ) {
-            <span class="kw">let </span>input = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>input_vec = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>since_offset = input.since <span class="kw">as </span>usize;
                 <span class="kw">let </span>until_offset = input.until <span class="kw">as </span>usize;
                 <span class="macro">debug_assert!</span>(since_offset &lt;= until_offset);
@@ -3243,7 +3292,10 @@
                 }
             };
 
-            <span class="kw">let </span>result = ptr.keccak(input, gas);
+            <span class="kw">let </span>result = ptr.keccak(input_vec, gas);
+            <span class="kw">unsafe </span>{
+                libc_free(input.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+            }
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
@@ -3489,26 +3541,16 @@
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;<span class="kw-2">*mut </span>[u32; <span class="number">8</span>]&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u128,
-            prev_state: <span class="kw-2">&amp;</span>[u32; <span class="number">8</span>],
-            current_block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
+            state: <span class="kw-2">*mut </span>[u32; <span class="number">8</span>],
+            block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
         ) {
-            <span class="kw">let </span>result = ptr.sha256_process_block(prev_state, current_block, gas);
+            <span class="kw">let </span>result = ptr.sha256_process_block(<span class="kw">unsafe </span>{ <span class="kw-2">&amp;mut *</span>state }, block, gas);
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
                 <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: <span class="number">0u8</span>,
-                        payload: ManuallyDrop::new({
-                            <span class="kw">unsafe </span>{
-                                <span class="kw">let </span>data = libc::malloc(std::mem::size_of_val(<span class="kw-2">&amp;</span>x)).cast();
-                                std::ptr::copy_nonoverlapping::&lt;u32&gt;(
-                                    x.as_ptr().cast(),
-                                    data,
-                                    x.len(),
-                                );
-                                data.cast()
-                            }
-                        }),
+                        payload: ManuallyDrop::new(state),
                     }),
                 },
                 <span class="prelude-val">Err</span>(e) =&gt; <span class="self">Self</span>::wrap_error(<span class="kw-2">&amp;</span>e),

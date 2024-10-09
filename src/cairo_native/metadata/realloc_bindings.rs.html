@@ -92,47 +92,40 @@
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Memory allocation external bindings
 //!
 //! This metadata ensures that the bindings to the C function `realloc` exist in the current
 //! compilation context.
 
 </span><span class="kw">use </span>melior::{
-    dialect::{func, llvm},
+    dialect::llvm,
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        r#type::{FunctionType, IntegerType},
+        operation::OperationBuilder,
+        r#type::IntegerType,
         Identifier, Location, Module, Operation, Region, Value,
     },
     Context,
 };
-<span class="kw">use </span>std::marker::PhantomData;
 
 <span class="doccomment">/// Memory allocation `realloc` metadata.
 </span><span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>ReallocBindingsMeta {
-    phantom: PhantomData&lt;()&gt;,
-}
+</span><span class="kw">pub struct </span>ReallocBindingsMeta;
 
 <span class="kw">impl </span>ReallocBindingsMeta {
     <span class="doccomment">/// Register the bindings to the `realloc` C function and return the metadata.
     </span><span class="kw">pub fn </span>new(context: <span class="kw-2">&amp;</span>Context, module: <span class="kw-2">&amp;</span>Module) -&gt; <span class="self">Self </span>{
-        module.body().append_operation(func::func(
+        module.body().append_operation(llvm::func(
             context,
             StringAttribute::new(context, <span class="string">"realloc"</span>),
-            TypeAttribute::new(
-                FunctionType::new(
-                    context,
-                    <span class="kw-2">&amp;</span>[
-                        llvm::r#type::pointer(context, <span class="number">0</span>),
-                        IntegerType::new(context, <span class="number">64</span>).into(),
-                    ],
-                    <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
-                )
-                .into(),
-            ),
+            TypeAttribute::new(llvm::r#type::function(
+                llvm::r#type::pointer(context, <span class="number">0</span>),
+                <span class="kw-2">&amp;</span>[
+                    llvm::r#type::pointer(context, <span class="number">0</span>),
+                    IntegerType::new(context, <span class="number">64</span>).into(),
+                ],
+                <span class="bool-val">false</span>,
+            )),
             Region::new(),
             <span class="kw-2">&amp;</span>[(
                 Identifier::new(context, <span class="string">"sym_visibility"</span>),
@@ -140,12 +133,14 @@
             )],
             Location::unknown(context),
         ));
-        module.body().append_operation(func::func(
+        module.body().append_operation(llvm::func(
             context,
             StringAttribute::new(context, <span class="string">"free"</span>),
-            TypeAttribute::new(
-                FunctionType::new(context, <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)], <span class="kw-2">&amp;</span>[]).into(),
-            ),
+            TypeAttribute::new(llvm::r#type::function(
+                llvm::r#type::void(context),
+                <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
+                <span class="bool-val">false</span>,
+            )),
             Region::new(),
             <span class="kw-2">&amp;</span>[(
                 Identifier::new(context, <span class="string">"sym_visibility"</span>),
@@ -154,10 +149,8 @@
             Location::unknown(context),
         ));
 
-        <span class="self">Self </span>{
-            phantom: PhantomData,
-        }
-    }
+        <span class="self">Self
+    </span>}
 
     <span class="doccomment">/// Calls the `realloc` function, returns a op with 1 result: an opaque pointer.
     </span><span class="kw">pub fn </span>realloc&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
@@ -166,13 +159,15 @@
         len: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
         location: Location&lt;<span class="lifetime">'c</span>&gt;,
     ) -&gt; Operation&lt;<span class="lifetime">'c</span>&gt; {
-        func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, <span class="string">"realloc"</span>),
-            <span class="kw-2">&amp;</span>[ptr, len],
-            <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
-            location,
-        )
+        OperationBuilder::new(<span class="string">"llvm.call"</span>, location)
+            .add_attributes(<span class="kw-2">&amp;</span>[(
+                Identifier::new(context, <span class="string">"callee"</span>),
+                FlatSymbolRefAttribute::new(context, <span class="string">"realloc"</span>).into(),
+            )])
+            .add_operands(<span class="kw-2">&amp;</span>[ptr, len])
+            .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)])
+            .build()
+            .unwrap()
     }
 
     <span class="doccomment">/// Calls the `free` function.
@@ -181,13 +176,14 @@
         ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'_</span>&gt;,
         location: Location&lt;<span class="lifetime">'c</span>&gt;,
     ) -&gt; Operation&lt;<span class="lifetime">'c</span>&gt; {
-        func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, <span class="string">"free"</span>),
-            <span class="kw-2">&amp;</span>[ptr],
-            <span class="kw-2">&amp;</span>[],
-            location,
-        )
+        OperationBuilder::new(<span class="string">"llvm.call"</span>, location)
+            .add_attributes(<span class="kw-2">&amp;</span>[(
+                Identifier::new(context, <span class="string">"callee"</span>),
+                FlatSymbolRefAttribute::new(context, <span class="string">"free"</span>).into(),
+            )])
+            .add_operands(<span class="kw-2">&amp;</span>[ptr])
+            .build()
+            .unwrap()
     }
 }
 </code></pre></div></section></main></body></html>

@@ -1018,6 +1018,8 @@
 <a href="#1018" id="1018">1018</a>
 <a href="#1019" id="1019">1019</a>
 <a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::{
@@ -1043,12 +1045,12 @@
     fmt::{<span class="self">self</span>, Display},
     ops::Neg,
     path::Path,
-    ptr::NonNull,
     sync::Arc,
 };
 <span class="kw">use </span>thiserror::Error;
 
 <span class="kw">mod </span>block_ext;
+<span class="kw">pub mod </span>mem_tracing;
 <span class="kw">mod </span>program_registry_ext;
 <span class="kw">mod </span>range_ext;
 
@@ -1068,6 +1070,15 @@
         </span>.parse()
         .unwrap()
 });
+
+<span class="attr">#[cfg(feature = <span class="string">"with-mem-tracing"</span>)]
+#[allow(unused_imports)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::mem_tracing::{
+    _wrapped_free <span class="kw">as </span>libc_free, _wrapped_malloc <span class="kw">as </span>libc_malloc, _wrapped_realloc <span class="kw">as </span>libc_realloc,
+};
+<span class="attr">#[cfg(not(feature = <span class="string">"with-mem-tracing"</span>))]
+#[allow(unused_imports)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>libc::{free <span class="kw">as </span>libc_free, malloc <span class="kw">as </span>libc_malloc, realloc <span class="kw">as </span>libc_realloc};
 
 <span class="doccomment">/// Generate a function name.
 ///
@@ -1247,6 +1258,9 @@
         .unwrap()
         .register_impls(<span class="kw-2">&amp;</span>engine);
 
+    <span class="attr">#[cfg(feature = <span class="string">"with-mem-tracing"</span>)]
+    </span><span class="self">self</span>::mem_tracing::register_bindings(<span class="kw-2">&amp;</span>engine);
+
     engine
 }
 
@@ -1347,16 +1361,6 @@
             cairo_native_runtime::cairo_native__dict_get
                 <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>FeltDict, <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>]) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void
                 <span class="kw">as </span><span class="kw-2">*mut </span>(),
-        );
-
-        engine.register_symbol(
-            <span class="string">"cairo_native__dict_insert"</span>,
-            cairo_native_runtime::cairo_native__dict_insert
-                <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">fn</span>(
-                    <span class="kw-2">*mut </span>FeltDict,
-                    <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
-                    NonNull&lt;std::ffi::c_void&gt;,
-                ) -&gt; <span class="kw-2">*mut </span>std::ffi::c_void <span class="kw">as </span><span class="kw-2">*mut </span>(),
         );
 
         engine.register_symbol(

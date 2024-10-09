@@ -299,7 +299,6 @@
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -358,8 +357,7 @@
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
         .expect(<span class="string">"Runtime library not available."</span>);
 
-    <span class="kw">let </span>op = runtime_bindings.dict_new(context, helper, entry, location)<span class="question-mark">?</span>;
-    <span class="kw">let </span>dict_ptr = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>dict_ptr = runtime_bindings.dict_new(context, helper, entry, location)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[segment_arena, dict_ptr], location));
     <span class="prelude-val">Ok</span>(())

@@ -543,6 +543,11 @@
 <a href="#543" id="543">543</a>
 <a href="#544" id="544">544</a>
 <a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
@@ -585,7 +590,9 @@
     module::NativeModule,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::{decode_error_message, generate_function_name, get_integer_layout},
+    utils::{
+        decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
+    },
     OptLevel,
 };
 <span class="kw">use </span>bumpalo::Bump;
@@ -791,7 +798,7 @@
         }
 
         <span class="kw">let </span>felt_layout = get_integer_layout(<span class="number">252</span>).pad_to_align();
-        <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() = <span class="kw">unsafe </span>{ libc::malloc(felt_layout.size() * args.len()).cast() };
+        <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() = <span class="kw">unsafe </span>{ libc_malloc(felt_layout.size() * args.len()).cast() };
         <span class="kw">let </span>len: u32 = args.len().try_into().unwrap();
 
         ptr.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
@@ -932,7 +939,7 @@
         }
 
         <span class="kw">if </span>!array_ptr.is_null() {
-            <span class="kw">unsafe </span>{ libc::free(array_ptr.cast()) };
+            <span class="kw">unsafe </span>{ libc_free(array_ptr.cast()) };
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>error_msg = <span class="prelude-val">None</span>;
@@ -948,6 +955,9 @@
 
             error_msg = <span class="prelude-val">Some</span>(str_error);
         }
+
+        <span class="attr">#[cfg(feature = <span class="string">"with-mem-tracing"</span>)]
+        </span><span class="kw">crate</span>::utils::mem_tracing::report_stats();
 
         <span class="prelude-val">Ok</span>(ContractExecutionResult {
             remaining_gas,

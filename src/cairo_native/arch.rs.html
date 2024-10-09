@@ -192,10 +192,12 @@
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error,
     starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
+    utils::libc_malloc,
     values::Value,
 };
 <span class="kw">use </span>bumpalo::Bump;
@@ -257,7 +259,7 @@
 
                 <span class="kw">let </span>layout = <span class="self">self</span>.registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(<span class="self">self</span>.registry)<span class="question-mark">?</span>;
                 <span class="kw">let </span>heap_ptr = <span class="kw">unsafe </span>{
-                    <span class="kw">let </span>heap_ptr = libc::malloc(layout.size());
+                    <span class="kw">let </span>heap_ptr = libc_malloc(layout.size());
                     libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
                     heap_ptr
                 };
@@ -272,7 +274,7 @@
 
                     <span class="kw">let </span>layout = <span class="self">self</span>.registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(<span class="self">self</span>.registry)<span class="question-mark">?</span>;
                     <span class="kw">let </span>heap_ptr = <span class="kw">unsafe </span>{
-                        <span class="kw">let </span>heap_ptr = libc::malloc(layout.size());
+                        <span class="kw">let </span>heap_ptr = libc_malloc(layout.size());
                         libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
                         heap_ptr
                     };

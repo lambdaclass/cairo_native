@@ -124,6 +124,21 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Debug libfuncs
 
 </span><span class="comment">// Printable: 9-13, 27, 32, 33-126
@@ -138,8 +153,10 @@
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
     error::Result,
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::BlockExt,
+    metadata::{
+        drop_overrides::DropOverridesMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+    },
+    utils::{BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -173,12 +190,12 @@
 
 <span class="kw">pub fn </span>build_print&lt;<span class="lifetime">'ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+    info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>stdout_fd = entry.const_int(context, location, <span class="number">1</span>, <span class="number">32</span>)<span class="question-mark">?</span>;
 
@@ -230,6 +247,19 @@
     <span class="kw">let </span>return_code = runtime_bindings.libfunc_debug_print(
         context, helper, entry, stdout_fd, values_ptr, values_len, location,
     )<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>input_ty = <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty;
+    registry.build_type(context, helper, registry, metadata, input_ty)<span class="question-mark">?</span>;
+    metadata
+        .get::&lt;DropOverridesMeta&gt;()
+        .unwrap()
+        .invoke_override(
+            context,
+            entry,
+            location,
+            input_ty,
+            entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">32</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>return_code_is_ok = entry.append_op_result(arith::cmpi(

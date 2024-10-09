@@ -1074,7 +1074,6 @@
 <a href="#1074" id="1074">1074</a>
 <a href="#1075" id="1075">1075</a>
 <a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A (somewhat) usable implementation of the starknet syscall handler trait.
 
 </span><span class="kw">use </span>std::{
@@ -1711,19 +1710,18 @@
 
     <span class="kw">fn </span>sha256_process_block(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        prev_state: <span class="kw-2">&amp;</span>[u32; <span class="number">8</span>],
-        current_block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
+        state: <span class="kw-2">&amp;mut </span>[u32; <span class="number">8</span>],
+        block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
         _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
-    ) -&gt; SyscallResult&lt;[u32; <span class="number">8</span>]&gt; {
+    ) -&gt; SyscallResult&lt;()&gt; {
         <span class="comment">// reference impl
         // https://github.com/starkware-libs/cairo/blob/ba3f82b4a09972b6a24bf791e344cabce579bf69/crates/cairo-lang-runner/src/casm_run/mod.rs#L1292
-        </span><span class="kw">let </span><span class="kw-2">mut </span>state = <span class="kw-2">*</span>prev_state;
-        <span class="kw">let </span>data_as_bytes = sha2::digest::generic_array::GenericArray::from_exact_iter(
-            current_block.iter().flat_map(|x| x.to_be_bytes()),
+        </span><span class="kw">let </span>data_as_bytes = sha2::digest::generic_array::GenericArray::from_exact_iter(
+            block.iter().flat_map(|x| x.to_be_bytes()),
         )
         .unwrap();
-        sha2::compress256(<span class="kw-2">&amp;mut </span>state, <span class="kw-2">&amp;</span>[data_as_bytes]);
-        <span class="prelude-val">Ok</span>(state)
+        sha2::compress256(state, <span class="kw-2">&amp;</span>[data_as_bytes]);
+        <span class="prelude-val">Ok</span>(())
     }
 }
 

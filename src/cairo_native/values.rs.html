@@ -1584,15 +1584,31 @@
 <a href="#1584" id="1584">1584</a>
 <a href="#1585" id="1585">1585</a>
 <a href="#1586" id="1586">1586</a>
+<a href="#1587" id="1587">1587</a>
+<a href="#1588" id="1588">1588</a>
+<a href="#1589" id="1589">1589</a>
+<a href="#1590" id="1590">1590</a>
+<a href="#1591" id="1591">1591</a>
+<a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
+<a href="#1595" id="1595">1595</a>
+<a href="#1596" id="1596">1596</a>
+<a href="#1597" id="1597">1597</a>
+<a href="#1598" id="1598">1598</a>
+<a href="#1599" id="1599">1599</a>
+<a href="#1600" id="1600">1600</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # JIT params and return values de/serialization
-
+//!
 //! A Rusty interface to provide parameters to JIT calls.
 
 </span><span class="kw">use crate</span>::{
     error::{CompilerError, Error},
     starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
-    utils::{felt252_bigint, get_integer_layout, layout_repeat, RangeExt, PRIME},
+    utils::{
+        felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc, RangeExt, PRIME,
+    },
 };
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -1820,7 +1836,10 @@
                         <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
                         <span class="kw">let </span>elem_layout = elem_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align();
 
-                        <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() = libc::malloc(elem_layout.size() * data.len()).cast();
+                        <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() = <span class="kw">match </span>elem_layout.size() * data.len() {
+                            <span class="number">0 </span>=&gt; std::ptr::null_mut(),
+                            len =&gt; libc_malloc(len).cast(),
+                        };
                         <span class="kw">let </span>len: u32 = data
                             .len()
                             .try_into()
@@ -1969,7 +1988,11 @@
                         <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
                         <span class="kw">let </span>elem_layout = elem_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align();
 
-                        <span class="kw">let </span><span class="kw-2">mut </span>value_map = Box::&lt;FeltDict&gt;::default();
+                        <span class="kw">let </span><span class="kw-2">mut </span>value_map = Box::new(FeltDict {
+                            inner: HashMap::default(),
+                            count: <span class="number">0</span>,
+                            free_fn: <span class="kw">crate</span>::utils::libc_free,
+                        });
 
                         <span class="comment">// next key must be called before next_value
 
@@ -1977,20 +2000,14 @@
                             <span class="kw">let </span>key = key.to_bytes_le();
                             <span class="kw">let </span>value = value.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
-                            <span class="kw">let </span>value_malloc_ptr = libc::malloc(elem_layout.size());
-
+                            <span class="kw">let </span>value_malloc_ptr = libc_malloc(elem_layout.size());
                             std::ptr::copy_nonoverlapping(
                                 value.cast::&lt;u8&gt;().as_ptr(),
                                 value_malloc_ptr.cast(),
                                 elem_layout.size(),
                             );
 
-                            value_map.inner.insert(
-                                key,
-                                NonNull::new(value_malloc_ptr)
-                                    .expect(<span class="string">"allocation failure"</span>)
-                                    .cast(),
-                            );
+                            value_map.inner.insert(key, value_malloc_ptr);
                         }
 
                         NonNull::new_unchecked(Box::into_raw(value_map)).cast()
@@ -2146,7 +2163,7 @@
                     }
 
                     <span class="kw">if </span>!init_data_ptr.is_null() {
-                        libc::free(init_data_ptr.cast());
+                        libc_free(init_data_ptr.cast());
                     }
 
                     <span class="self">Self</span>::Array(array_value)
@@ -2154,7 +2171,7 @@
                 CoreTypeConcrete::Box(info) =&gt; {
                     <span class="kw">let </span>inner = <span class="kw-2">*</span>ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ptr();
                     <span class="kw">let </span>value = <span class="self">Self</span>::from_ptr(inner, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
-                    libc::free(inner.as_ptr().cast());
+                    libc_free(inner.as_ptr().cast());
                     value
                 }
                 CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; {
@@ -2199,7 +2216,7 @@
                             <span class="kw-2">&amp;</span>info.ty,
                             registry,
                         )<span class="question-mark">?</span>;
-                        libc::free(inner_ptr.cast());
+                        libc_free(inner_ptr.cast());
                         value
                     }
                 }
@@ -2279,9 +2296,20 @@
 
                     <span class="kw">let </span><span class="kw-2">mut </span>output_map = HashMap::with_capacity(inner.len());
                     <span class="kw">for </span>(key, val_ptr) <span class="kw">in </span>inner.iter() {
+                        <span class="kw">if </span>val_ptr.is_null() {
+                            <span class="kw">continue</span>;
+                        }
+
                         <span class="kw">let </span>key = Felt::from_bytes_le(key);
-                        output_map.insert(key, <span class="self">Self</span>::from_ptr(val_ptr.cast(), <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>);
-                        libc::free(val_ptr.as_ptr());
+                        output_map.insert(
+                            key,
+                            <span class="self">Self</span>::from_ptr(
+                                NonNull::new(<span class="kw-2">*</span>val_ptr).unwrap().cast(),
+                                <span class="kw-2">&amp;</span>info.ty,
+                                registry,
+                            )<span class="question-mark">?</span>,
+                        );
+                        libc_free(<span class="kw-2">*</span>val_ptr);
                     }
 
                     <span class="self">Self</span>::Felt252Dict {

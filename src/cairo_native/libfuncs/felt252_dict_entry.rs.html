@@ -334,17 +334,51 @@
 <a href="#334" id="334">334</a>
 <a href="#335" id="335">335</a>
 <a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary entry libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
     error::Result,
     metadata::{
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
     types::TypeBuilder,
-    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
+    utils::{BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -356,11 +390,8 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{cf, llvm},
-    ir::{
-        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Identifier, Location, Value, ValueLike,
-    },
+    dialect::{cf, llvm, ods},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -393,10 +424,6 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
-        metadata.insert(ReallocBindingsMeta::new(context, helper));
-    }
-
     <span class="kw">let </span>(key_ty, key_layout) = registry.build_type_with_layout(
         context,
         helper,
@@ -404,7 +431,6 @@
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">1</span>].ty,
     )<span class="question-mark">?</span>;
-
     <span class="kw">let </span>entry_ty = registry.build_type(
         context,
         helper,
@@ -412,169 +438,209 @@
         metadata,
         <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>value_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>dict_ptr = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>entry_key = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+
+    <span class="kw">let </span>entry_key_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, key_ty, key_layout.align())<span class="question-mark">?</span>;
+    entry.store(context, location, entry_key_ptr, entry_key)<span class="question-mark">?</span>;
+
+    <span class="comment">// Double pointer. Avoid allocating an element on a dict getter.
+    </span><span class="kw">let </span>entry_value_ptr_ptr = metadata
+        .get_mut::&lt;RuntimeBindingsMeta&gt;()
+        .unwrap()
+        .dict_get(context, helper, entry, dict_ptr, entry_key_ptr, location)<span class="question-mark">?</span>;
+    <span class="kw">let </span>entry_value_ptr = entry.load(
+        context,
+        location,
+        entry_value_ptr_ptr,
+        llvm::r#type::pointer(context, <span class="number">0</span>),
+    )<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>null_ptr =
+        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>is_vacant = entry.append_op_result(
+        ods::llvm::icmp(
+            context,
+            IntegerType::new(context, <span class="number">1</span>).into(),
+            entry_value_ptr,
+            null_ptr,
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>).into(),
+            location,
+        )
+        .into(),
+    )<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>block_occupied = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+    <span class="kw">let </span>block_vacant = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+    <span class="kw">let </span>block_final = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[(value_ty, location)]));
+    entry.append_operation(cf::cond_br(
+        context,
+        is_vacant,
+        block_vacant,
+        block_occupied,
+        <span class="kw-2">&amp;</span>[],
+        <span class="kw-2">&amp;</span>[],
+        location,
+    ));
+
+    {
+        <span class="kw">let </span>value = block_occupied.load(context, location, entry_value_ptr, value_ty)<span class="question-mark">?</span>;
+        <span class="kw">let </span>values = <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
+            <span class="prelude-val">Some</span>(dup_overrides_meta) <span class="kw">if </span>dup_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
+                dup_overrides_meta.invoke_override(
+                    context,
+                    block_occupied,
+                    location,
+                    <span class="kw-2">&amp;</span>info.ty,
+                    value,
+                )<span class="question-mark">?
+            </span>}
+            <span class="kw">_ </span>=&gt; (value, value),
+        };
+
+        block_occupied.store(context, location, entry_value_ptr, values.<span class="number">0</span>)<span class="question-mark">?</span>;
+        block_occupied.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[values.<span class="number">1</span>], location));
+    }
+
+    {
+        <span class="kw">let </span>value = registry
+            .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
+            </span>.build_default(
+                context,
+                registry,
+                block_vacant,
+                location,
+                helper,
+                metadata,
+                <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
+            )<span class="question-mark">?</span>;
+        block_vacant.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[value], location));
+    }
+
+    <span class="kw">let </span>entry = block_final.append_op_result(llvm::undef(entry_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>entry =
+        block_final.insert_values(context, location, entry, <span class="kw-2">&amp;</span>[dict_ptr, entry_value_ptr_ptr])<span class="question-mark">?</span>;
+
+    block_final.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry, block_final.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
+    <span class="prelude-val">Ok</span>(())
+}
+
+<span class="kw">pub fn </span>build_finalize&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
+    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, helper));
+    }
 
     <span class="kw">let </span>(value_ty, value_layout) = registry.build_type_with_layout(
         context,
         helper,
         registry,
         metadata,
-        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
+        <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>dict_ptr = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>key_value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>dict_entry = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>entry_value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
 
-    <span class="kw">let </span>key_ptr = helper
-        .init_block()
-        .alloca1(context, location, key_ty, key_layout.align())<span class="question-mark">?</span>;
-
-    entry.store(context, location, key_ptr, key_value)<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>runtime_bindings = metadata
-        .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .expect(<span class="string">"Runtime library not available."</span>);
-
-    <span class="kw">let </span>op = runtime_bindings.dict_get(context, helper, entry, dict_ptr, key_ptr, location)<span class="question-mark">?</span>;
-    <span class="kw">let </span>result_ptr: Value = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-
-    <span class="kw">let </span>null_ptr = entry.append_op_result(
-        OperationBuilder::new(<span class="string">"llvm.mlir.zero"</span>, location)
-            .add_results(<span class="kw-2">&amp;</span>[result_ptr.r#type()])
-            .build()<span class="question-mark">?</span>,
+    <span class="kw">let </span>dict_ptr = entry.extract_value(
+        context,
+        location,
+        dict_entry,
+        llvm::r#type::pointer(context, <span class="number">0</span>),
+        <span class="number">0</span>,
+    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>value_ptr_ptr = entry.extract_value(
+        context,
+        location,
+        dict_entry,
+        llvm::r#type::pointer(context, <span class="number">0</span>),
+        <span class="number">1</span>,
     )<span class="question-mark">?</span>;
 
-    <span class="comment">// need llvm instead of arith to compare pointers
-    </span><span class="kw">let </span>is_null_ptr = entry.append_op_result(
-        OperationBuilder::new(<span class="string">"llvm.icmp"</span>, location)
-            .add_operands(<span class="kw-2">&amp;</span>[result_ptr, null_ptr])
-            .add_attributes(<span class="kw-2">&amp;</span>[(
-                Identifier::new(context, <span class="string">"predicate"</span>),
-                IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>).into(),
-            )])
-            .add_results(<span class="kw-2">&amp;</span>[IntegerType::new(context, <span class="number">1</span>).into()])
-            .build()<span class="question-mark">?</span>,
+    <span class="kw">let </span>value_ptr = entry.load(
+        context,
+        location,
+        value_ptr_ptr,
+        llvm::r#type::pointer(context, <span class="number">0</span>),
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>block_is_null = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
-    <span class="kw">let </span>block_is_found = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
-    <span class="kw">let </span>block_final = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[
-        (llvm::r#type::pointer(context, <span class="number">0</span>), location),
-        (value_ty, location),
-    ]));
+    <span class="kw">let </span>null_ptr =
+        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>is_vacant = entry.append_op_result(
+        ods::llvm::icmp(
+            context,
+            IntegerType::new(context, <span class="number">1</span>).into(),
+            value_ptr,
+            null_ptr,
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>).into(),
+            location,
+        )
+        .into(),
+    )<span class="question-mark">?</span>;
 
+    <span class="kw">let </span>block_occupied = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+    <span class="kw">let </span>block_vacant = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+    <span class="kw">let </span>block_final =
+        helper.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
     entry.append_operation(cf::cond_br(
         context,
-        is_null_ptr,
-        block_is_null,
-        block_is_found,
+        is_vacant,
+        block_vacant,
+        block_occupied,
         <span class="kw-2">&amp;</span>[],
         <span class="kw-2">&amp;</span>[],
         location,
     ));
 
-    <span class="comment">// null block
-    </span>{
-        <span class="kw">let </span>alloc_size = block_is_null.const_int(context, location, value_layout.size(), <span class="number">64</span>)<span class="question-mark">?</span>;
+    {
+        <span class="kw">match </span>metadata.get::&lt;DropOverridesMeta&gt;() {
+            <span class="prelude-val">Some</span>(drop_overrides_meta)
+                <span class="kw">if </span>drop_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty) =&gt;
+            {
+                <span class="kw">let </span>value = block_occupied.load(context, location, value_ptr, value_ty)<span class="question-mark">?</span>;
+                drop_overrides_meta.invoke_override(
+                    context,
+                    block_occupied,
+                    location,
+                    <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
+                    value,
+                )<span class="question-mark">?</span>;
+            }
+            <span class="kw">_ </span>=&gt; {}
+        }
 
-        <span class="kw">let </span>value_ptr = block_is_null.append_op_result(ReallocBindingsMeta::realloc(
-            context, result_ptr, alloc_size, location,
+        block_occupied.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[value_ptr], location));
+    }
+
+    {
+        <span class="kw">let </span>value_len = block_vacant.const_int(context, location, value_layout.size(), <span class="number">64</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>value_ptr = block_vacant.append_op_result(ReallocBindingsMeta::realloc(
+            context, null_ptr, value_len, location,
         ))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>default_value = registry
-            .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
-            </span>.build_default(
-                context,
-                registry,
-                block_is_null,
-                location,
-                helper,
-                metadata,
-                <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
-            )<span class="question-mark">?</span>;
-
-        block_is_null.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[value_ptr, default_value], location));
+        block_vacant.store(context, location, value_ptr_ptr, value_ptr)<span class="question-mark">?</span>;
+        block_vacant.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[value_ptr], location));
     }
 
-    <span class="comment">// found block
-    </span>{
-        <span class="kw">let </span>loaded_val_ptr = block_is_found.load(context, location, result_ptr, value_ty)<span class="question-mark">?</span>;
-        block_is_found.append_operation(cf::br(
-            block_final,
-            <span class="kw-2">&amp;</span>[result_ptr, loaded_val_ptr],
-            location,
-        ));
-    }
-
-    <span class="comment">// construct the struct
-
-    </span><span class="kw">let </span>entry_value = block_final.append_op_result(llvm::undef(entry_ty, location))<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>value_ptr = block_final.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>value = block_final.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-
-    <span class="kw">let </span>entry_value = block_final.insert_value(context, location, entry_value, key_value, <span class="number">0</span>)<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>entry_value = block_final.insert_value(context, location, entry_value, value_ptr, <span class="number">1</span>)<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>entry_value = block_final.insert_value(context, location, entry_value, dict_ptr, <span class="number">2</span>)<span class="question-mark">?</span>;
-
-    block_final.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry_value, value], location));
-
-    <span class="prelude-val">Ok</span>(())
-}
-
-<span class="kw">pub fn </span>build_finalize&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    _info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>key_ty = IntegerType::new(context, <span class="number">252</span>).into();
-    <span class="kw">let </span>key_layout = get_integer_layout(<span class="number">252</span>);
-
-    <span class="kw">let </span>entry_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>new_value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-
-    <span class="kw">let </span>key_value = entry.extract_value(context, location, entry_value, key_ty, <span class="number">0</span>)<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>value_ptr = entry.extract_value(
+    block_final.store(
         context,
         location,
+        block_final.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
         entry_value,
-        llvm::r#type::pointer(context, <span class="number">0</span>),
-        <span class="number">1</span>,
     )<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>dict_ptr = entry.extract_value(
-        context,
-        location,
-        entry_value,
-        llvm::r#type::pointer(context, <span class="number">0</span>),
-        <span class="number">2</span>,
-    )<span class="question-mark">?</span>;
-
-    entry.store(context, location, value_ptr, new_value)<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>key_ptr = helper
-        .init_block()
-        .alloca1(context, location, key_ty, key_layout.align())<span class="question-mark">?</span>;
-
-    entry.store(context, location, key_ptr, key_value)<span class="question-mark">?</span>;
-
-    <span class="comment">// call insert
-
-    </span><span class="kw">let </span>runtime_bindings = metadata
-        .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .expect(<span class="string">"Runtime library not available."</span>);
-
-    runtime_bindings.dict_insert(
-        context, helper, entry, dict_ptr, key_ptr, value_ptr, location,
-    )<span class="question-mark">?</span>;
-
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[dict_ptr], location));
+    block_final.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[dict_ptr], location));
 
     <span class="prelude-val">Ok</span>(())
 }

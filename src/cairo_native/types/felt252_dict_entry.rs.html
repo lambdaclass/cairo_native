@@ -45,18 +45,16 @@
 <a href="#45" id="45">45</a>
 <a href="#46" id="46">46</a>
 <a href="#47" id="47">47</a>
-<a href="#48" id="48">48</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary entry type
 //!
 //! The entry type returning when getting a value from a dictionary.
 //!
 //! It is represented as the following struct:
 //!
-//! | Index | Type           | Description                      |
-//! | ----- | -------------- | -------------------------------- |
-//! |   0   | `i252`         | The entry key.                   |
-//! |   1   | `!llvm.ptr`    | Pointer to the entry value.      |
-//! |   2   | `!llvm.ptr`    | Pointer to the dictionary (rust) |
+//! | Index | Type           | Description                                  |
+//! | ----- | -------------- | -------------------------------------------- |
+//! |   0   | `!llvm.ptr`    | Pointer to the dictionary (Rust).            |
+//! |   1   | `!llvm.ptr`    | Pointer to the entry's value pointer (Rust). |
 //!
 
 </span><span class="kw">use </span><span class="kw">super</span>::WithSelf;
@@ -70,7 +68,7 @@
 };
 <span class="kw">use </span>melior::{
     dialect::llvm,
-    ir::{r#type::IntegerType, Module, Type},
+    ir::{Module, Type},
     Context,
 };
 
@@ -84,12 +82,12 @@
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: WithSelf&lt;InfoAndTypeConcreteType&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
-    <span class="prelude-val">Ok</span>(llvm::r#type::r#struct(
+    <span class="comment">// Note: This is neither droppable nor cloneable.
+    </span><span class="prelude-val">Ok</span>(llvm::r#type::r#struct(
         context,
         <span class="kw-2">&amp;</span>[
-            IntegerType::new(context, <span class="number">252</span>).into(), <span class="comment">// entry key
-            </span>llvm::r#type::pointer(context, <span class="number">0</span>),     <span class="comment">// value ptr
-            </span>llvm::r#type::pointer(context, <span class="number">0</span>),     <span class="comment">// dict ptr
+            llvm::r#type::pointer(context, <span class="number">0</span>), <span class="comment">// dict ptr
+            </span>llvm::r#type::pointer(context, <span class="number">0</span>), <span class="comment">// value ptr
         </span>],
         <span class="bool-val">false</span>,
     ))

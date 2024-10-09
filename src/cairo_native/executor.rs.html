@@ -707,6 +707,9 @@
 <a href="#707" id="707">707</a>
 <a href="#708" id="708">708</a>
 <a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -719,7 +722,7 @@
     execution_result::{BuiltinStats, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::RangeExt,
+    utils::{libc_free, RangeExt},
     values::Value,
 };
 <span class="kw">use </span>bumpalo::Bump;
@@ -1007,6 +1010,9 @@
             debug_name: <span class="prelude-val">None</span>,
         });
 
+    <span class="attr">#[cfg(feature = <span class="string">"with-mem-tracing"</span>)]
+    </span><span class="kw">crate</span>::utils::mem_tracing::report_stats();
+
     <span class="prelude-val">Ok</span>(ExecutionResult {
         remaining_gas,
         return_value,
@@ -1045,7 +1051,7 @@
         CoreTypeConcrete::Box(info) =&gt; <span class="kw">unsafe </span>{
             <span class="kw">let </span>ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[<span class="number">0</span>] <span class="kw">as </span><span class="kw-2">*mut </span>()));
             <span class="kw">let </span>value = Value::from_ptr(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
-            libc::free(ptr.cast().as_ptr());
+            libc_free(ptr.cast().as_ptr());
             <span class="prelude-val">Ok</span>(value)
         },
         CoreTypeConcrete::EcPoint(<span class="kw">_</span>) | CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; {
@@ -1163,7 +1169,7 @@
             } <span class="kw">else </span>{
                 <span class="kw">let </span>ptr = NonNull::new_unchecked(ptr);
                 <span class="kw">let </span>value = Value::from_ptr(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
-                libc::free(ptr.as_ptr().cast());
+                libc_free(ptr.as_ptr().cast());
                 <span class="prelude-val">Ok</span>(value)
             }
         },
