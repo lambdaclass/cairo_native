@@ -470,7 +470,7 @@ fn compile_func(
         initial_state,
         |statement_idx, mut state| {
             if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
-                let gas_cost = gas_metadata.get_gas_cost_for_statement(statement_idx);
+                let gas_cost = gas_metadata.get_gas_costs_for_statement(statement_idx);
                 metadata.remove::<GasCost>();
                 metadata.insert(GasCost(gas_cost));
             }
