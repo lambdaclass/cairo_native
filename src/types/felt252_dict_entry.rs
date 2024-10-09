@@ -35,7 +35,7 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    // TODO: Custom drop (dup?) for dict entries.
+    // Note: This is neither droppable nor cloneable.
     Ok(llvm::r#type::r#struct(
         context,
         &[

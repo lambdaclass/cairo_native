@@ -182,7 +182,6 @@ pub unsafe extern "C" fn cairo_native__dict_drop(
                 drop_fn(entry);
             }
 
-            // TODO: Use the mem tracing subsystem (avoid false memory leaks).
             (dict.free_fn)(entry);
         }
     }
