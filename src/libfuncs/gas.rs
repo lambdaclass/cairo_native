@@ -138,11 +138,8 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         let cost_value = entry.append_op_result(arith::extui(cost_value, u128_type, location))?;
         let total_gas_cost_val =
             entry.append_op_result(arith::muli(gas_cost_val, cost_value, location))?;
-        final_gas_cost = entry.append_op_result(arith::addi(
-            total_gas_cost_val,
-            total_gas_cost_val,
-            location,
-        ))?;
+        final_gas_cost =
+            entry.append_op_result(arith::addi(final_gas_cost, total_gas_cost_val, location))?;
     }
 
     let is_enough = entry.append_op_result(arith::cmpi(
@@ -224,11 +221,8 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
         let cost_value = entry.append_op_result(arith::extui(cost_value, u128_type, location))?;
         let total_gas_cost_val =
             entry.append_op_result(arith::muli(gas_cost_val, cost_value, location))?;
-        final_gas_cost = entry.append_op_result(arith::addi(
-            total_gas_cost_val,
-            total_gas_cost_val,
-            location,
-        ))?;
+        final_gas_cost =
+            entry.append_op_result(arith::addi(final_gas_cost, total_gas_cost_val, location))?;
     }
 
     let is_enough = entry.append_op_result(arith::cmpi(
