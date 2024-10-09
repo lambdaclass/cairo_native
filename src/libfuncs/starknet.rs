@@ -2981,7 +2981,6 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    // todo: do
     // Extract self pointer.
     let ptr = entry
         .append_operation(llvm::load(
