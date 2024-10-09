@@ -74,7 +74,7 @@ use melior::{
         arith::CmpiPredicate,
         cf, func, index,
         llvm::{self, LoadStoreOptions},
-        memref,
+        memref, ods,
     },
     ir::{
         attribute::{
@@ -133,6 +133,30 @@ pub fn compile(
         if x == "1" || x == "true" {
             std::fs::write("program.sierra", program.to_string()).expect("failed to dump sierra");
         }
+    }
+
+    {
+        // Add the builtin_costs global.
+        // We always add it because symbol look up otherwise can panic.
+        let region = Region::new();
+        let location = Location::unknown(context);
+        let block = region.append_block(Block::new(&[]));
+        let value = block.append_op_result(
+            ods::llvm::mlir_zero(context, llvm::r#type::pointer(context, 0), location).into(),
+        )?;
+        block.append_operation(melior::dialect::llvm::r#return(Some(value), location));
+
+        module.body().append_operation(
+            ods::llvm::mlir_global(
+                context,
+                region,
+                TypeAttribute::new(llvm::r#type::pointer(context, 0)),
+                StringAttribute::new(context, "builtin_costs"),
+                Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                location,
+            )
+            .into(),
+        );
     }
 
     // Sierra programs have the following structure:

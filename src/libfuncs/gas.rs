@@ -9,7 +9,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        gas::GasConcreteLibfunc,
+        gas::{CostTokenType, GasConcreteLibfunc},
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc,
     },
@@ -18,7 +18,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm::r#type::pointer,
+        llvm::{self, r#type::pointer},
         ods,
     },
     ir::{attribute::FlatSymbolRefAttribute, r#type::IntegerType, Block, Location},
@@ -87,19 +87,56 @@ pub fn build_withdraw_gas<'ctx, 'this>(
     let (cost, token_type) = metadata
         .get::<GasCost>()
         .and_then(|x| x.0)
-        .unwrap_or((0, 0));
+        .unwrap_or((0, CostTokenType::Const));
+
+    let token_type_index = match token_type {
+        CostTokenType::Const => 0, // handled differently
+        CostTokenType::Pedersen => 1,
+        CostTokenType::Bitwise => 2,
+        CostTokenType::EcOp => 3,
+        CostTokenType::Poseidon => 4,
+        CostTokenType::AddMod => 5,
+        CostTokenType::MulMod => 6,
+        _ => unreachable!(),
+    };
 
     let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
 
     let gas_cost_val = entry.const_int_from_type(context, location, cost, u128_type)?;
-    let token_type_val = entry.const_int_from_type(context, location, token_type, u64_type)?;
+    let token_type_index_val =
+        entry.const_int_from_type(context, location, token_type_index, u64_type)?;
+
+    // Get the ptr to the global, holding a ptr to the list.
+    let builtin_ptr_ptr = entry.append_op_result(
+        ods::llvm::mlir_addressof(
+            context,
+            pointer(context, 0),
+            FlatSymbolRefAttribute::new(context, "builtin_costs"),
+            location,
+        )
+        .into(),
+    )?;
+
+    let builtin_ptr = entry.load(context, location, builtin_ptr_ptr, pointer(context, 0))?;
+    let cost_value_ptr = entry.append_op_result(llvm::get_element_ptr_dynamic(
+        context,
+        builtin_ptr,
+        &[token_type_index_val],
+        u64_type,
+        pointer(context, 0),
+        location,
+    ))?;
+    let cost_value = entry.load(context, location, cost_value_ptr, u64_type)?;
+    let cost_value = entry.append_op_result(arith::extui(cost_value, u128_type, location))?;
+    let total_gas_cost_val =
+        entry.append_op_result(arith::muli(gas_cost_val, cost_value, location))?;
 
     let is_enough = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
         current_gas,
-        gas_cost_val,
+        total_gas_cost_val,
         location,
     ))?;
 
@@ -131,18 +168,49 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
     let current_gas = entry.argument(1)?.into();
+    let builtin_ptr = entry.argument(2)?.into();
 
-    let cost = metadata.get::<GasCost>().and_then(|x| x.0);
+    let (cost, token_type) = metadata
+        .get::<GasCost>()
+        .and_then(|x| x.0)
+        .unwrap_or((0, CostTokenType::Const));
+
+    let token_type_index = match token_type {
+        CostTokenType::Const => 0, // handled differently
+        CostTokenType::Pedersen => 1,
+        CostTokenType::Bitwise => 2,
+        CostTokenType::EcOp => 3,
+        CostTokenType::Poseidon => 4,
+        CostTokenType::AddMod => 5,
+        CostTokenType::MulMod => 6,
+        _ => unreachable!(),
+    };
 
     let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
-    let gas_cost_val =
-        entry.const_int_from_type(context, location, cost.unwrap_or(0), u128_type)?;
+    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
+
+    let gas_cost_val = entry.const_int_from_type(context, location, cost, u128_type)?;
+    let token_type_index_val =
+        entry.const_int_from_type(context, location, token_type_index, u64_type)?;
+
+    let cost_value_ptr = entry.append_op_result(llvm::get_element_ptr_dynamic(
+        context,
+        builtin_ptr,
+        &[token_type_index_val],
+        u64_type,
+        pointer(context, 0),
+        location,
+    ))?;
+    let cost_value = entry.load(context, location, cost_value_ptr, u64_type)?;
+    let cost_value = entry.append_op_result(arith::extui(cost_value, u128_type, location))?;
+    let total_gas_cost_val =
+        entry.append_op_result(arith::muli(gas_cost_val, cost_value, location))?;
 
     let is_enough = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
         current_gas,
-        gas_cost_val,
+        total_gas_cost_val,
         location,
     ))?;
 

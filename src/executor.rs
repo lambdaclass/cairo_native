@@ -144,9 +144,10 @@ fn invoke_dynamic(
         previous_syscall_handler
     });
 
-    // Order matters, from
+    // Order matters, for the libfunc impl
     // https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
     let builtin_costs_array: &[u64] = &[
+        token_gas_cost(CostTokenType::Const) as u64,
         token_gas_cost(CostTokenType::Pedersen) as u64,
         token_gas_cost(CostTokenType::Bitwise) as u64,
         token_gas_cost(CostTokenType::EcOp) as u64,
@@ -280,7 +281,7 @@ fn invoke_dynamic(
                 if !type_info.is_zst(registry)? {
                     if let CoreTypeConcrete::BuiltinCosts(_) = type_info {
                         // todo: should we use this value?
-                        let value = match &mut return_ptr {
+                        let _value = match &mut return_ptr {
                             Some(return_ptr) => unsafe { *read_value::<*mut u64>(return_ptr) },
                             None => ret_registers[0] as *mut u64,
                         };

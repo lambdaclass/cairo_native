@@ -209,7 +209,7 @@ impl AotContractExecutor {
         function_id: &FunctionId,
         args: &[Felt],
         gas: Option<u128>,
-        builtin_costs: Option<[u64; 6]>,
+        builtin_costs: Option<[u64; 7]>,
         mut syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult> {
         let arena = Bump::new();
@@ -219,6 +219,7 @@ impl AotContractExecutor {
         let builtin_costs_ptr = self.find_symbol_ptr("builtin_costs");
 
         let fallback_builtin_costs = [
+            token_gas_cost(CostTokenType::Const) as u64,
             token_gas_cost(CostTokenType::Pedersen) as u64,
             token_gas_cost(CostTokenType::Bitwise) as u64,
             token_gas_cost(CostTokenType::EcOp) as u64,
