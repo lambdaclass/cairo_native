@@ -187,6 +187,7 @@ pub fn build_secp256_point<'ctx>(
                 ],
                 false,
             ),
+            IntegerType::new(context, 1).into(),
         ],
         false,
     ))

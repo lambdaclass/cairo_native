@@ -151,8 +151,6 @@ jobs:
         run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
       - name: Install deps
         run: make deps
-      - name: Build cairo-native-runtime library.
-        run: cargo build --profile=ci --package=cairo-native-runtime
       - name: test
         run: make test-ci
       - name: test-cairo
@@ -180,11 +178,9 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.8.2"
+          scarb-version: "2.8.4"
       - name: Install deps
         run: make deps
-      - name: Build cairo-native-runtime library.
-        run: cargo build --profile=ci --package=cairo-native-runtime
       - name: Run tests
         run: make test-ci
       - name: test-cairo
@@ -206,7 +202,6 @@ jobs:
           - partition: 4
             output: lcov-4.info
     env:
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
       TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
@@ -251,13 +246,11 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.8.2"
+          scarb-version: "2.8.4"
       - name: Install deps
         run: make deps
       - name: Build runtime and alexandria
-        run: make runtime && make check-llvm && make needs-cairo2 && make build-alexandria
-      - name: Build cairo-native-runtime library.
-        run: export PATH=$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH && cargo build --profile=ci --package=cairo-native-runtime
+        run: make runtime-ci && make check-llvm && make needs-cairo2 && make build-alexandria
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
         run: cargo llvm-cov nextest --verbose --features=scarb --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
