@@ -1,11 +1,14 @@
 //! # JIT params and return values de/serialization
-
+//!
 //! A Rusty interface to provide parameters to JIT calls.
 
 use crate::{
     error::{CompilerError, Error},
+    starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
-    utils::{felt252_bigint, get_integer_layout, layout_repeat, RangeExt, PRIME},
+    utils::{
+        felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc, RangeExt, PRIME,
+    },
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -66,14 +69,8 @@ pub enum Value {
     Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
-    Secp256K1Point {
-        x: (u128, u128),
-        y: (u128, u128),
-    },
-    Secp256R1Point {
-        x: (u128, u128),
-        y: (u128, u128),
-    },
+    Secp256K1Point(Secp256k1Point),
+    Secp256R1Point(Secp256r1Point),
     BoundedInt {
         value: Felt,
         #[serde(with = "range_serde")]
@@ -239,7 +236,10 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let ptr: *mut () = libc::malloc(elem_layout.size() * data.len()).cast();
+                        let ptr: *mut () = match elem_layout.size() * data.len() {
+                            0 => std::ptr::null_mut(),
+                            len => libc_malloc(len).cast(),
+                        };
                         let len: u32 = data
                             .len()
                             .try_into()
@@ -388,7 +388,11 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let mut value_map = Box::<FeltDict>::default();
+                        let mut value_map = Box::new(FeltDict {
+                            inner: HashMap::default(),
+                            count: 0,
+                            free_fn: crate::utils::libc_free,
+                        });
 
                         // next key must be called before next_value
 
@@ -396,20 +400,14 @@ impl Value {
                             let key = key.to_bytes_le();
                             let value = value.to_ptr(arena, registry, &info.ty)?;
 
-                            let value_malloc_ptr = libc::malloc(elem_layout.size());
-
+                            let value_malloc_ptr = libc_malloc(elem_layout.size());
                             std::ptr::copy_nonoverlapping(
                                 value.cast::<u8>().as_ptr(),
                                 value_malloc_ptr.cast(),
                                 elem_layout.size(),
                             );
 
-                            value_map.inner.insert(
-                                key,
-                                NonNull::new(value_malloc_ptr)
-                                    .expect("allocation failure")
-                                    .cast(),
-                            );
+                            value_map.inner.insert(key, value_malloc_ptr);
                         }
 
                         NonNull::new_unchecked(Box::into_raw(value_map)).cast()
@@ -565,7 +563,7 @@ impl Value {
                     }
 
                     if !init_data_ptr.is_null() {
-                        libc::free(init_data_ptr.cast());
+                        libc_free(init_data_ptr.cast());
                     }
 
                     Self::Array(array_value)
@@ -573,7 +571,7 @@ impl Value {
                 CoreTypeConcrete::Box(info) => {
                     let inner = *ptr.cast::<NonNull<()>>().as_ptr();
                     let value = Self::from_ptr(inner, &info.ty, registry)?;
-                    libc::free(inner.as_ptr().cast());
+                    libc_free(inner.as_ptr().cast());
                     value
                 }
                 CoreTypeConcrete::EcPoint(_) => {
@@ -618,7 +616,7 @@ impl Value {
                             &info.ty,
                             registry,
                         )?;
-                        libc::free(inner_ptr.cast());
+                        libc_free(inner_ptr.cast());
                         value
                     }
                 }
@@ -698,9 +696,20 @@ impl Value {
 
                     let mut output_map = HashMap::with_capacity(inner.len());
                     for (key, val_ptr) in inner.iter() {
+                        if val_ptr.is_null() {
+                            continue;
+                        }
+
                         let key = Felt::from_bytes_le(key);
-                        output_map.insert(key, Self::from_ptr(val_ptr.cast(), &info.ty, registry)?);
-                        libc::free(val_ptr.as_ptr());
+                        output_map.insert(
+                            key,
+                            Self::from_ptr(
+                                NonNull::new(*val_ptr).unwrap().cast(),
+                                &info.ty,
+                                registry,
+                            )?,
+                        );
+                        libc_free(*val_ptr);
                     }
 
                     Self::Felt252Dict {
@@ -735,17 +744,16 @@ impl Value {
                     StarkNetTypeConcrete::System(_) => {
                         unreachable!("should be handled before")
                     }
-                    StarkNetTypeConcrete::Secp256Point(info) => {
-                        let data = ptr.cast::<[[u128; 2]; 2]>().as_ref();
-
-                        let x = (data[0][0], data[0][1]);
-                        let y = (data[1][0], data[1][1]);
-
-                        match info {
-                            Secp256PointTypeConcrete::K1(_) => Self::Secp256K1Point { x, y },
-                            Secp256PointTypeConcrete::R1(_) => Self::Secp256R1Point { x, y },
+                    StarkNetTypeConcrete::Secp256Point(info) => match info {
+                        Secp256PointTypeConcrete::K1(_) => {
+                            let data = ptr.cast::<Secp256k1Point>().as_ref();
+                            Self::Secp256K1Point(*data)
                         }
-                    }
+                        Secp256PointTypeConcrete::R1(_) => {
+                            let data = ptr.cast::<Secp256r1Point>().as_ref();
+                            Self::Secp256R1Point(*data)
+                        }
+                    },
                     StarkNetTypeConcrete::Sha256StateHandle(_) => todo!(),
                 },
                 CoreTypeConcrete::Span(_) => todo!("implement span from_ptr"),

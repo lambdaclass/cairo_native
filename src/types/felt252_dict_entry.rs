@@ -4,11 +4,10 @@
 //!
 //! It is represented as the following struct:
 //!
-//! | Index | Type           | Description                      |
-//! | ----- | -------------- | -------------------------------- |
-//! |   0   | `i252`         | The entry key.                   |
-//! |   1   | `!llvm.ptr`    | Pointer to the entry value.      |
-//! |   2   | `!llvm.ptr`    | Pointer to the dictionary (rust) |
+//! | Index | Type           | Description                                  |
+//! | ----- | -------------- | -------------------------------------------- |
+//! |   0   | `!llvm.ptr`    | Pointer to the dictionary (Rust).            |
+//! |   1   | `!llvm.ptr`    | Pointer to the entry's value pointer (Rust). |
 //!
 
 use super::WithSelf;
@@ -22,7 +21,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{r#type::IntegerType, Module, Type},
+    ir::{Module, Type},
     Context,
 };
 
@@ -36,12 +35,12 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
+    // Note: This is neither droppable nor cloneable.
     Ok(llvm::r#type::r#struct(
         context,
         &[
-            IntegerType::new(context, 252).into(), // entry key
-            llvm::r#type::pointer(context, 0),     // value ptr
-            llvm::r#type::pointer(context, 0),     // dict ptr
+            llvm::r#type::pointer(context, 0), // dict ptr
+            llvm::r#type::pointer(context, 0), // value ptr
         ],
         false,
     ))
