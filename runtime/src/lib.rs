@@ -963,12 +963,9 @@ pub mod trace_dump {
                     .map(|(k, v)| {
                         let p = *v;
                         let v = match NonNull::new(p) {
-                            Some(value_ptr) => read_value_ptr(
-                                registry,
-                                &info.ty,
-                                value_ptr.cast::<NonNull<()>>().read(),
-                                get_layout,
-                            ),
+                            Some(value_ptr) => {
+                                read_value_ptr(registry, &info.ty, value_ptr.cast(), get_layout)
+                            }
                             None => Value::Uninitialized {
                                 ty: info.ty.clone(),
                             },
