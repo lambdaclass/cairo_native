@@ -361,11 +361,13 @@ fn parse_result(
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
-                Ok(Value::Felt252(
-                    starknet_types_core::felt::Felt::from_bytes_le(unsafe {
-                        std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-                    }),
-                ))
+                Ok(Value::Felt252({
+                    let data = unsafe {
+                        std::mem::transmute::<&mut [u64; 4], &mut [u8; 32]>(&mut ret_registers)
+                    };
+                    data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    starknet_types_core::felt::Felt::from_bytes_le(data)
+                }))
             }
         },
         CoreTypeConcrete::Bytes31(_) => match return_ptr {
@@ -478,6 +480,12 @@ fn parse_result(
                         _ => return Err(Error::ParseAttributeError),
                     }
                 };
+
+                // Filter out bits that are not part of the enum's tag.
+                let tag = tag
+                    & 1usize
+                        .wrapping_shl(info.variants.len().next_power_of_two().trailing_zeros())
+                        .wrapping_sub(1);
 
                 (
                     tag,
