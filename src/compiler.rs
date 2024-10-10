@@ -922,7 +922,11 @@ fn compile_func(
         &[
             (
                 Identifier::new(context, "sym_visibility"),
-                StringAttribute::new(context, "public").into(),
+                StringAttribute::new(context, "private").into(),
+            ),
+            (
+                Identifier::new(context, "linkage"),
+                Attribute::parse(context, "#llvm.linkage<internal>").unwrap(),
             ),
             // (
             //     Identifier::new(context, "CConv"),
@@ -1384,6 +1388,10 @@ fn generate_entry_point_wrapper<'c>(
             (
                 Identifier::new(context, "sym_visibility"),
                 StringAttribute::new(context, "public").into(),
+            ),
+            (
+                Identifier::new(context, "llvm.linkage"),
+                Attribute::parse(context, "#llvm.linkage<internal>").unwrap(),
             ),
             (
                 Identifier::new(context, "llvm.emit_c_interface"),
