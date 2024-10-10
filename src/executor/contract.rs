@@ -42,15 +42,15 @@ use crate::{
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
+        BuiltinCosts,
     },
     OptLevel,
 };
 use bumpalo::Bump;
-use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, gas::CostTokenType,
-        starknet::StarkNetTypeConcrete, ConcreteType,
+        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, starknet::StarkNetTypeConcrete,
+        ConcreteType,
     },
     ids::FunctionId,
     program::Program,
@@ -211,7 +211,7 @@ impl AotContractExecutor {
         function_id: &FunctionId,
         args: &[Felt],
         gas: Option<u128>,
-        builtin_costs: Option<[u64; 7]>,
+        builtin_costs: Option<BuiltinCosts>,
         mut syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult> {
         let arena = Bump::new();
@@ -220,21 +220,8 @@ impl AotContractExecutor {
         let function_ptr = self.find_function_ptr(function_id, true)?;
         let builtin_costs_ptr = self.find_symbol_ptr("builtin_costs");
 
-        let fallback_builtin_costs = [
-            token_gas_cost(CostTokenType::Const) as u64,
-            token_gas_cost(CostTokenType::Pedersen) as u64,
-            token_gas_cost(CostTokenType::Bitwise) as u64,
-            token_gas_cost(CostTokenType::EcOp) as u64,
-            token_gas_cost(CostTokenType::Poseidon) as u64,
-            token_gas_cost(CostTokenType::AddMod) as u64,
-            token_gas_cost(CostTokenType::MulMod) as u64,
-        ];
-
-        let builtin_costs = if let Some(builtin_costs) = &builtin_costs {
-            builtin_costs.as_slice()
-        } else {
-            fallback_builtin_costs.as_slice()
-        };
+        let builtin_costs = builtin_costs.unwrap_or_default();
+        let builtin_costs: [u64; 7] = builtin_costs.into();
 
         if let Some(builtin_costs_ptr) = builtin_costs_ptr {
             unsafe {

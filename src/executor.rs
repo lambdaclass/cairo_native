@@ -10,16 +10,14 @@ use crate::{
     execution_result::{BuiltinStats, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::{libc_free, RangeExt},
+    utils::{libc_free, BuiltinCosts, RangeExt},
     values::Value,
 };
 use bumpalo::Bump;
-use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        gas::CostTokenType,
         starknet::StarkNetTypeConcrete,
         ConcreteType,
     },
@@ -71,7 +69,7 @@ extern "C" {
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
-    builtin_costs: Option<*mut c_void>,
+    builtin_costs_ptr: Option<*mut c_void>,
     function_signature: &FunctionSignature,
     args: &[Value],
     gas: u128,
@@ -145,21 +143,11 @@ fn invoke_dynamic(
     });
 
     // Order matters, for the libfunc impl
-    // https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
-    let builtin_costs_array: &[u64] = &[
-        token_gas_cost(CostTokenType::Const) as u64,
-        token_gas_cost(CostTokenType::Pedersen) as u64,
-        token_gas_cost(CostTokenType::Bitwise) as u64,
-        token_gas_cost(CostTokenType::EcOp) as u64,
-        token_gas_cost(CostTokenType::Poseidon) as u64,
-        token_gas_cost(CostTokenType::AddMod) as u64,
-        token_gas_cost(CostTokenType::MulMod) as u64,
-    ];
+    let builtin_costs: [u64; 7] = BuiltinCosts::default().into();
 
-    if let Some(builtin_costs) = builtin_costs {
+    if let Some(builtin_costs_ptr) = builtin_costs_ptr {
         unsafe {
-            // Store the ptr to the global var.
-            *builtin_costs.cast() = builtin_costs_array.as_ptr();
+            *builtin_costs_ptr.cast() = builtin_costs.as_ptr();
         }
     }
 
@@ -190,10 +178,10 @@ fn invoke_dynamic(
             }
             CoreTypeConcrete::BuiltinCosts(_) => {
                 // This builtin should never be an argument but just in case.
-                if let Some(builtin_costs) = builtin_costs {
-                    builtin_costs.to_bytes(&mut invoke_data)?;
+                if let Some(builtin_costs_ptr) = builtin_costs_ptr {
+                    builtin_costs_ptr.to_bytes(&mut invoke_data)?;
                 } else {
-                    (builtin_costs_array.as_ptr()).to_bytes(&mut invoke_data)?;
+                    (builtin_costs.as_ptr()).to_bytes(&mut invoke_data)?;
                 }
             }
             type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
