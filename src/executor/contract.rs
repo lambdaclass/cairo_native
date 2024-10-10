@@ -355,7 +355,7 @@ impl AotContractExecutor {
         };
 
         let tag = *unsafe { enum_ptr.cast::<u8>().as_ref() } as usize;
-        let tag &= 0x01; // Filter out bits that are not part of the enum's tag.
+        let tag = tag & 0x01; // Filter out bits that are not part of the enum's tag.
 
         // layout of both enum variants, both are a array of felts
         let value_layout = unsafe { Layout::from_size_align_unchecked(24, 8) };

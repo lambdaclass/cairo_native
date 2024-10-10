@@ -575,7 +575,7 @@ impl Value {
                     value
                 }
                 CoreTypeConcrete::EcPoint(_) => {
-                    let data = ptr.cast::<[[u8; 32]; 2]>().as_ref();
+                    let data = ptr.cast::<[[u8; 32]; 2]>().as_mut();
 
                     data[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                     data[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
@@ -583,7 +583,7 @@ impl Value {
                     Self::EcPoint(Felt::from_bytes_le(&data[0]), Felt::from_bytes_le(&data[1]))
                 }
                 CoreTypeConcrete::EcState(_) => {
-                    let data = ptr.cast::<[[u8; 32]; 4]>().as_ref();
+                    let data = ptr.cast::<[[u8; 32]; 4]>().as_mut();
 
                     data[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                     data[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
