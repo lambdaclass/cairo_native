@@ -938,11 +938,9 @@ pub mod trace_dump {
             CoreTypeConcrete::Sint64(_) => todo!("CoreTypeConcrete::Sint64"),
             CoreTypeConcrete::Sint128(_) => Value::I128(value_ptr.cast().read()),
             CoreTypeConcrete::Nullable(info) => {
-                let value_ptr = value_ptr.as_ptr();
-                match NonNull::new(value_ptr) {
-                    Some(value_ptr) => {
-                        read_value_ptr(registry, &info.ty, value_ptr.cast().read(), get_layout)
-                    }
+                let inner_ptr = value_ptr.cast::<*mut ()>().read();
+                match NonNull::new(inner_ptr) {
+                    Some(inner_ptr) => read_value_ptr(registry, &info.ty, inner_ptr, get_layout),
                     None => Value::Uninitialized {
                         ty: info.ty.clone(),
                     },
@@ -956,8 +954,7 @@ pub mod trace_dump {
                 let data = value
                     .inner
                     .iter()
-                    .map(|(k, v)| {
-                        let p = *v;
+                    .map(|(k, &p)| {
                         let v = match NonNull::new(p) {
                             Some(value_ptr) => {
                                 read_value_ptr(registry, &info.ty, value_ptr.cast(), get_layout)
