@@ -34,7 +34,7 @@ use mlir_sys::{
     MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
 use std::{sync::OnceLock, time::Instant};
-use tracing::info;
+use tracing::trace;
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -71,7 +71,7 @@ impl NativeContext {
         program: &Program,
         ignore_debug_names: bool,
     ) -> Result<NativeModule, Error> {
-        info!("starting sierra to mlir compilation");
+        trace!("starting sierra to mlir compilation");
         let pre_sierra_compilation_instant = Instant::now();
 
         static INITIALIZED: OnceLock<()> = OnceLock::new();
@@ -186,7 +186,7 @@ impl NativeContext {
         )?;
 
         let sierra_compilation_time = pre_sierra_compilation_instant.elapsed().as_millis();
-        info!(
+        trace!(
             time = sierra_compilation_time,
             "sierra to mlir compilation finished"
         );
@@ -212,11 +212,11 @@ impl NativeContext {
             }
         }
 
-        info!("starting mlir passes");
+        trace!("starting mlir passes");
         let pre_passes_instant = Instant::now();
         run_pass_manager(&self.context, &mut module)?;
         let passes_time = pre_passes_instant.elapsed().as_millis();
-        info!(time = passes_time, "mlir passes finished");
+        trace!(time = passes_time, "mlir passes finished");
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {
