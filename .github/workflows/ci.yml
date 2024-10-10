@@ -253,11 +253,11 @@ jobs:
         run: make runtime-ci && make check-llvm && make needs-cairo2 && make build-alexandria
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
-        run: cargo llvm-cov nextest --verbose --all-features --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
+        run: cargo llvm-cov nextest --verbose --features=scarb --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
       - name: test and generate coverage corelib
         if: ${{ matrix.partition == '1' }}
-        run: cargo llvm-cov nextest --verbose --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+        run: cargo llvm-cov nextest --verbose --features=scarb --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
       - name: save coverage data with corelib
         if: ${{ matrix.partition == '1' }}

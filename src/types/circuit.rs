@@ -218,6 +218,7 @@ pub fn layout(
         | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_)
         | CircuitTypeConcrete::Circuit(_)
         | CircuitTypeConcrete::CircuitDescriptor(_)
+        | CircuitTypeConcrete::CircuitPartialOutputs(_)
         | CircuitTypeConcrete::CircuitFailureGuarantee(_) => Ok(Layout::new::<()>()),
 
         CircuitTypeConcrete::CircuitData(info) => {
@@ -278,9 +279,6 @@ pub fn layout(
             let layout = length_layout.extend(inputs_layout)?.0;
 
             Ok(layout)
-        }
-        CircuitTypeConcrete::CircuitPartialOutputs(_) => {
-            todo!("CircuitPartialOutputs is noop for now")
         }
     }
 }

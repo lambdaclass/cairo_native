@@ -40,7 +40,9 @@ use crate::{
     module::NativeModule,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::{decode_error_message, generate_function_name, get_integer_layout},
+    utils::{
+        decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
+    },
     OptLevel,
 };
 use bumpalo::Bump;
@@ -71,7 +73,7 @@ use tempfile::NamedTempFile;
 #[educe(Debug)]
 pub struct AotContractExecutor {
     #[educe(Debug(ignore))]
-    library: Arc<Library>,
+    pub library: Arc<Library>,
     path: PathBuf,
     is_temp_path: bool,
     entry_points_info: BTreeMap<u64, EntryPointInfo>,
@@ -246,7 +248,7 @@ impl AotContractExecutor {
         }
 
         let felt_layout = get_integer_layout(252).pad_to_align();
-        let ptr: *mut () = unsafe { libc::malloc(felt_layout.size() * args.len()).cast() };
+        let ptr: *mut () = unsafe { libc_malloc(felt_layout.size() * args.len()).cast() };
         let len: u32 = args.len().try_into().unwrap();
 
         ptr.to_bytes(&mut invoke_data)?;
@@ -387,7 +389,7 @@ impl AotContractExecutor {
         }
 
         if !array_ptr.is_null() {
-            unsafe { libc::free(array_ptr.cast()) };
+            unsafe { libc_free(array_ptr.cast()) };
         }
 
         let mut error_msg = None;
@@ -403,6 +405,9 @@ impl AotContractExecutor {
 
             error_msg = Some(str_error);
         }
+
+        #[cfg(feature = "with-mem-tracing")]
+        crate::utils::mem_tracing::report_stats();
 
         Ok(ContractExecutionResult {
             remaining_gas,
