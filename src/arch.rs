@@ -1,7 +1,8 @@
 use crate::{
     error,
-    starknet::{ArrayAbi, U256},
+    starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
+    utils::libc_malloc,
     values::Value,
 };
 use bumpalo::Bump;
@@ -59,11 +60,11 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), error::Error> {
         match (self.value, self.info) {
             (value, CoreTypeConcrete::Box(info)) => {
-                let ptr = value.to_jit(self.arena, self.registry, self.type_id)?;
+                let ptr = value.to_ptr(self.arena, self.registry, self.type_id)?;
 
                 let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
                 let heap_ptr = unsafe {
-                    let heap_ptr = libc::malloc(layout.size());
+                    let heap_ptr = libc_malloc(layout.size());
                     libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
                     heap_ptr
                 };
@@ -74,11 +75,11 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
                 if matches!(value, Value::Null) {
                     null::<()>().to_bytes(buffer)?;
                 } else {
-                    let ptr = value.to_jit(self.arena, self.registry, self.type_id)?;
+                    let ptr = value.to_ptr(self.arena, self.registry, self.type_id)?;
 
                     let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
                     let heap_ptr = unsafe {
-                        let heap_ptr = libc::malloc(layout.size());
+                        let heap_ptr = libc_malloc(layout.size());
                         libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
                         heap_ptr
                     };
@@ -93,7 +94,7 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
             (Value::Array(_), CoreTypeConcrete::Array(_)) => {
                 // TODO: Assert that `info.ty` matches all the values' types.
 
-                let abi_ptr = self.value.to_jit(self.arena, self.registry, self.type_id)?;
+                let abi_ptr = self.value.to_ptr(self.arena, self.registry, self.type_id)?;
                 let abi = unsafe { abi_ptr.cast::<ArrayAbi<()>>().as_ref() };
 
                 abi.ptr.to_bytes(buffer)?;
@@ -115,7 +116,7 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
             }
             (Value::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) => {
                 if self.info.is_memory_allocated(self.registry)? {
-                    let abi_ptr = self.value.to_jit(self.arena, self.registry, self.type_id)?;
+                    let abi_ptr = self.value.to_ptr(self.arena, self.registry, self.type_id)?;
 
                     let abi_ptr = unsafe { *abi_ptr.cast::<NonNull<()>>().as_ref() };
                     abi_ptr.as_ptr().to_bytes(buffer)?;
@@ -145,27 +146,25 @@ impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
                 // TODO: Assert that `info.ty` matches all the values' types.
 
                 self.value
-                    .to_jit(self.arena, self.registry, self.type_id)?
+                    .to_ptr(self.arena, self.registry, self.type_id)?
                     .as_ptr()
                     .to_bytes(buffer)?
             }
             (
-                Value::Secp256K1Point { x, y },
+                Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),
                 CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
                     Secp256PointTypeConcrete::K1(_),
                 )),
             )
             | (
-                Value::Secp256R1Point { x, y },
+                Value::Secp256R1Point(Secp256r1Point { x, y, is_infinity }),
                 CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
                     Secp256PointTypeConcrete::R1(_),
                 )),
             ) => {
-                let x = U256 { lo: x.0, hi: x.1 };
-                let y = U256 { lo: y.0, hi: y.1 };
-
                 x.to_bytes(buffer)?;
                 y.to_bytes(buffer)?;
+                is_infinity.to_bytes(buffer)?;
             }
             (Value::Sint128(value), CoreTypeConcrete::Sint128(_)) => value.to_bytes(buffer)?,
             (Value::Sint16(value), CoreTypeConcrete::Sint16(_)) => value.to_bytes(buffer)?,
