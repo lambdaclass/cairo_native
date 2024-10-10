@@ -199,6 +199,9 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_runner::token_gas_cost;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::gas::CostTokenType,
@@ -221,8 +224,9 @@
     <span class="kw">pub </span>gas_info: GasInfo,
 }
 
-<span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-</span><span class="kw">pub struct </span>GasCost(<span class="kw">pub </span><span class="prelude-ty">Option</span>&lt;u128&gt;);
+<span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+</span><span class="comment">// Cost, token type (index into builtin costs).
+</span><span class="kw">pub struct </span>GasCost(<span class="kw">pub </span>Vec&lt;(u128, CostTokenType)&gt;);
 
 <span class="doccomment">/// Configuration for metadata computation.
 </span><span class="attr">#[derive(Debug, Clone)]
@@ -303,16 +307,18 @@
         )
     }
 
-    <span class="kw">pub fn </span>get_gas_cost_for_statement(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: StatementIdx) -&gt; <span class="prelude-ty">Option</span>&lt;u128&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>cost = <span class="prelude-val">None</span>;
+    <span class="kw">pub fn </span>get_gas_costs_for_statement(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: StatementIdx) -&gt; Vec&lt;(u128, CostTokenType)&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>costs = Vec::new();
         <span class="kw">for </span>cost_type <span class="kw">in </span>CostTokenType::iter_casm_tokens() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) =
                 <span class="self">self</span>.get_gas_cost_for_statement_and_cost_token_type(idx, <span class="kw-2">*</span>cost_type)
             {
-                <span class="kw-2">*</span>cost.get_or_insert(<span class="number">0</span>) += amount * token_gas_cost(<span class="kw-2">*</span>cost_type) <span class="kw">as </span>u128;
+                <span class="kw">if </span>amount &gt; <span class="number">0 </span>{
+                    costs.push((amount, <span class="kw-2">*</span>cost_type));
+                }
             }
         }
-        cost
+        costs
     }
 
     <span class="kw">pub fn </span>get_gas_cost_for_statement_and_cost_token_type(

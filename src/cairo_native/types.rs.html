@@ -997,6 +997,8 @@
 <a href="#997" id="997">997</a>
 <a href="#998" id="998">998</a>
 <a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -1548,10 +1550,12 @@
             | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
             | CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>)
             | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+
+            <span class="comment">// A ptr to a list of costs.
+            </span>CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+
             <span class="comment">// Other builtins:
-            </span>CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>)
-            | CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>)
-            | CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            </span>CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) | CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 
             <span class="comment">// Normal types:
             </span>CoreTypeConcrete::Array(<span class="kw">_</span>)
@@ -1633,7 +1637,7 @@
             CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; layout_repeat(<span class="kw-2">&amp;</span>get_integer_layout(<span class="number">252</span>), <span class="number">4</span>)<span class="question-mark">?</span>.<span class="number">0</span>,
             CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">252</span>),
             CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">128</span>),
-            CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; Layout::new::&lt;()&gt;(),
+            CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; Layout::new::&lt;<span class="kw-2">*const </span>()&gt;(),
             CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">8</span>),
             CoreTypeConcrete::Uint16(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">16</span>),
             CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">32</span>),

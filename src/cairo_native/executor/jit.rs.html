@@ -152,6 +152,19 @@
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -233,6 +246,7 @@
         <span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
+            <span class="self">self</span>.find_symbol_ptr(<span class="string">"builtin_costs"</span>),
             <span class="self">self</span>.extract_signature(function_id).unwrap(),
             args,
             available_gas,
@@ -256,6 +270,7 @@
         <span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
+            <span class="self">self</span>.find_symbol_ptr(<span class="string">"builtin_costs"</span>),
             <span class="self">self</span>.extract_signature(function_id).unwrap(),
             args,
             available_gas,
@@ -278,6 +293,7 @@
         </span>ContractExecutionResult::from_execution_result(<span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
+            <span class="self">self</span>.find_symbol_ptr(<span class="string">"builtin_costs"</span>),
             <span class="self">self</span>.extract_signature(function_id).unwrap(),
             <span class="kw-2">&amp;</span>[Value::Struct {
                 fields: <span class="macro">vec!</span>[Value::Array(
@@ -297,6 +313,16 @@
 
         <span class="comment">// Arguments and return values are hardcoded since they'll be handled by the trampoline.
         </span><span class="self">self</span>.engine.lookup(<span class="kw-2">&amp;</span>function_name) <span class="kw">as </span><span class="kw-2">*mut </span>c_void
+    }
+
+    <span class="kw">pub fn </span>find_symbol_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">*mut </span>c_void&gt; {
+        <span class="kw">let </span>ptr = <span class="self">self</span>.engine.lookup(name) <span class="kw">as </span><span class="kw-2">*mut </span>c_void;
+
+        <span class="kw">if </span>ptr.is_null() {
+            <span class="prelude-val">None
+        </span>} <span class="kw">else </span>{
+            <span class="prelude-val">Some</span>(ptr)
+        }
     }
 
     <span class="kw">fn </span>extract_signature(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>FunctionSignature&gt; {

@@ -548,6 +548,36 @@
 <a href="#548" id="548">548</a>
 <a href="#549" id="549">549</a>
 <a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
@@ -592,6 +622,7 @@
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
+        BuiltinCosts,
     },
     OptLevel,
 };
@@ -647,6 +678,7 @@
     CircuitMul,
     Gas,
     System,
+    BuiltinCosts,
 }
 
 <span class="kw">impl </span>AotContractExecutor {
@@ -759,12 +791,23 @@
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[Felt],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
+        builtin_costs: <span class="prelude-ty">Option</span>&lt;BuiltinCosts&gt;,
         <span class="kw-2">mut </span>syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult&gt; {
         <span class="kw">let </span>arena = Bump::new();
         <span class="kw">let </span><span class="kw-2">mut </span>invoke_data = Vec::&lt;u8&gt;::new();
 
         <span class="kw">let </span>function_ptr = <span class="self">self</span>.find_function_ptr(function_id, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>builtin_costs_ptr = <span class="self">self</span>.find_symbol_ptr(<span class="string">"builtin_costs"</span>);
+
+        <span class="kw">let </span>builtin_costs = builtin_costs.unwrap_or_default();
+        <span class="kw">let </span>builtin_costs: [u64; <span class="number">7</span>] = builtin_costs.into();
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(builtin_costs_ptr) = builtin_costs_ptr {
+            <span class="kw">unsafe </span>{
+                <span class="kw-2">*</span>builtin_costs_ptr.cast() = builtin_costs.as_ptr();
+            }
+        }
 
         <span class="comment">//  it can vary from contract to contract thats why we need to store/ load it.
         // substract 2, which are the gas and syscall builtin
@@ -870,6 +913,11 @@
                     <span class="kw">let </span>ptr = return_ptr.cast::&lt;<span class="kw-2">*mut </span>()&gt;();
                     <span class="kw-2">*</span>return_ptr = <span class="kw">unsafe </span>{ NonNull::new_unchecked(ptr.as_ptr().add(<span class="number">1</span>)).cast() };
                 }
+                BuiltinType::BuiltinCosts =&gt; {
+                    <span class="kw">let </span>ptr = return_ptr.cast::&lt;<span class="kw-2">*mut </span>()&gt;();
+                    <span class="kw-2">*</span>return_ptr = <span class="kw">unsafe </span>{ NonNull::new_unchecked(ptr.as_ptr().add(<span class="number">1</span>)).cast() };
+                    <span class="comment">// ptr holds the builtin costs, but they dont change, so its of no use, but we read to advance the ptr.
+                </span>}
                 x =&gt; {
                     <span class="kw">let </span>value = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>read_value::&lt;u64&gt;(return_ptr) } <span class="kw">as </span>usize;
 
@@ -885,6 +933,7 @@
                         BuiltinType::CircuitMul =&gt; builtin_stats.circuit_mul = value,
                         BuiltinType::Gas =&gt; {}
                         BuiltinType::System =&gt; {}
+                        BuiltinType::BuiltinCosts =&gt; {}
                     }
                 }
             }
@@ -983,6 +1032,15 @@
                 .into_raw()
         })
     }
+
+    <span class="kw">pub fn </span>find_symbol_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">*mut </span>c_void&gt; {
+        <span class="kw">unsafe </span>{
+            <span class="self">self</span>.library
+                .get::&lt;<span class="kw-2">*mut </span>()&gt;(name.as_bytes())
+                .ok()
+                .map(|x| x.into_raw().into_raw())
+        }
+    }
 }
 
 <span class="kw">impl </span>Drop <span class="kw">for </span>AotContractExecutor {
@@ -1066,6 +1124,7 @@
                 entrypoint_function_id,
                 <span class="kw-2">&amp;</span>[<span class="number">2</span>.into()],
                 <span class="prelude-val">Some</span>(u64::MAX <span class="kw">as </span>u128),
+                <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )
             .unwrap();
@@ -1091,6 +1150,7 @@
                 entrypoint_function_id,
                 <span class="kw-2">&amp;</span>[],
                 <span class="prelude-val">Some</span>(u64::MAX <span class="kw">as </span>u128),
+                <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )
             .unwrap();

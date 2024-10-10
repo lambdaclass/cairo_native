@@ -1020,6 +1020,50 @@
 <a href="#1020" id="1020">1020</a>
 <a href="#1021" id="1021">1021</a>
 <a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::{
@@ -1027,7 +1071,9 @@
 };
 <span class="kw">use crate</span>::{metadata::MetadataStorage, OptLevel};
 <span class="kw">use </span>cairo_lang_compiler::CompilerConfig;
+<span class="kw">use </span>cairo_lang_runner::token_gas_cost;
 <span class="kw">use </span>cairo_lang_sierra::{
+    extensions::gas::CostTokenType,
     ids::FunctionId,
     program::{GenFunction, Program, StatementIdx},
 };
@@ -1037,6 +1083,7 @@
     Context, Error, ExecutionEngine,
 };
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, Sign};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::sync::LazyLock;
 <span class="kw">use </span>std::{
@@ -1070,6 +1117,47 @@
         </span>.parse()
         .unwrap()
 });
+
+<span class="attr">#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+</span><span class="kw">pub struct </span>BuiltinCosts {
+    <span class="kw">pub </span>r#const: u64,
+    <span class="kw">pub </span>pedersen: u64,
+    <span class="kw">pub </span>bitwise: u64,
+    <span class="kw">pub </span>ecop: u64,
+    <span class="kw">pub </span>poseidon: u64,
+    <span class="kw">pub </span>add_mod: u64,
+    <span class="kw">pub </span>mul_mod: u64,
+}
+
+<span class="kw">impl </span>From&lt;BuiltinCosts&gt; <span class="kw">for </span>[u64; <span class="number">7</span>] {
+    <span class="comment">// Order matters, for the libfunc impl
+    // https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
+    </span><span class="kw">fn </span>from(value: BuiltinCosts) -&gt; <span class="self">Self </span>{
+        [
+            value.r#const,
+            value.pedersen,
+            value.bitwise,
+            value.ecop,
+            value.poseidon,
+            value.add_mod,
+            value.mul_mod,
+        ]
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>BuiltinCosts {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            r#const: token_gas_cost(CostTokenType::Const) <span class="kw">as </span>u64,
+            pedersen: token_gas_cost(CostTokenType::Pedersen) <span class="kw">as </span>u64,
+            bitwise: token_gas_cost(CostTokenType::Bitwise) <span class="kw">as </span>u64,
+            ecop: token_gas_cost(CostTokenType::EcOp) <span class="kw">as </span>u64,
+            poseidon: token_gas_cost(CostTokenType::Poseidon) <span class="kw">as </span>u64,
+            add_mod: token_gas_cost(CostTokenType::AddMod) <span class="kw">as </span>u64,
+            mul_mod: token_gas_cost(CostTokenType::MulMod) <span class="kw">as </span>u64,
+        }
+    }
+}
 
 <span class="attr">#[cfg(feature = <span class="string">"with-mem-tracing"</span>)]
 #[allow(unused_imports)]
