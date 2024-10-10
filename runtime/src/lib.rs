@@ -983,7 +983,8 @@ pub mod trace_dump {
                     todo!("StarkNetTypeConcrete::Secp256Point")
                 }
                 StarkNetTypeConcrete::Sha256StateHandle(_) => {
-                    todo!("StarkNetTypeConcrete::Sha256StateHandle")
+                    let inner_ptr = value_ptr.cast::<NonNull<()>>().read();
+                    Value::U64(inner_ptr.cast().read())
                 }
                 _ => unreachable!(),
             },
