@@ -10,7 +10,7 @@ use crate::{
     execution_result::{BuiltinStats, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::RangeExt,
+    utils::{libc_free, RangeExt},
     values::Value,
 };
 use bumpalo::Bump;
@@ -340,6 +340,9 @@ fn invoke_dynamic(
             debug_name: None,
         });
 
+    #[cfg(feature = "with-mem-tracing")]
+    crate::utils::mem_tracing::report_stats();
+
     Ok(ExecutionResult {
         remaining_gas,
         return_value,
@@ -378,7 +381,7 @@ fn parse_result(
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
             let value = Value::from_ptr(ptr, &info.ty, registry)?;
-            libc::free(ptr.cast().as_ptr());
+            libc_free(ptr.cast().as_ptr());
             Ok(value)
         },
         CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
@@ -496,7 +499,7 @@ fn parse_result(
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
                 let value = Value::from_ptr(ptr, &info.ty, registry)?;
-                libc::free(ptr.as_ptr().cast());
+                libc_free(ptr.as_ptr().cast());
                 Ok(value)
             }
         },

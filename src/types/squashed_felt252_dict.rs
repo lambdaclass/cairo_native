@@ -10,7 +10,6 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
     ir::{Module, Type},
     Context,
 };
@@ -20,10 +19,10 @@ use melior::{
 /// Check out [the module](self) for more info.
 pub fn build<'ctx>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _metadata: &mut MetadataStorage,
-    _info: WithSelf<InfoAndTypeConcreteType>,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(llvm::r#type::pointer(context, 0))
+    super::felt252_dict::build(context, module, registry, metadata, info)
 }
