@@ -292,6 +292,13 @@ pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Er
     pass_manager.add_pass(pass::transform::create_canonicalizer());
     pass_manager.add_pass(pass::conversion::create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
     pass_manager.add_pass(pass::conversion::create_to_llvm());
+    pass_manager.add_pass(pass::transform::create_cse());
+    pass_manager.add_pass(pass::transform::create_sccp());
+    pass_manager.add_pass(pass::transform::create_control_flow_sink());
+    pass_manager.add_pass(pass::transform::create_loop_invariant_code_motion());
+    pass_manager.add_pass(pass::transform::create_inliner());
+    pass_manager.add_pass(pass::transform::create_topological_sort());
+    pass_manager.add_pass(pass::transform::create_canonicalizer());
     pass_manager.run(module)
 }
 
@@ -642,8 +649,7 @@ pub mod test {
             .compile(program, false)
             .expect("Could not compile test program to MLIR.");
 
-        // FIXME: There are some bugs with non-zero LLVM optimization levels.
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Less);
         executor
             .invoke_dynamic_with_syscall_handler(
                 entry_point_id,
