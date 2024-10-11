@@ -100,7 +100,7 @@ pub fn build_binary_operation<'ctx, 'this>(
         Felt252BinaryOperator::Add => {
             let lhs = entry.append_op_result(arith::extui(lhs, i256, location))?;
             let rhs = entry.append_op_result(arith::extui(rhs, i256, location))?;
-            let result = entry.append_op_result(arith::subi(lhs, rhs, location))?;
+            let result = entry.append_op_result(arith::addi(lhs, rhs, location))?;
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
             let result_mod = entry.append_op_result(arith::subi(result, prime, location))?;
