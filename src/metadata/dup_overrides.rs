@@ -32,7 +32,7 @@ use melior::{
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Block, Location, Module, Region, Value, ValueLike,
+        Attribute, Block, Identifier, Location, Module, Region, Value, ValueLike,
     },
     Context,
 };
@@ -85,7 +85,16 @@ impl DupOverridesMeta {
                     StringAttribute::new(context, &format!("dup${}", id.id)),
                     TypeAttribute::new(FunctionType::new(context, &[ty], &[ty, ty]).into()),
                     region,
-                    &[],
+                    &[
+                        (
+                            Identifier::new(context, "sym_visibility"),
+                            StringAttribute::new(context, "private").into(),
+                        ),
+                        (
+                            Identifier::new(context, "llvm.linkage"),
+                            Attribute::parse(context, "#llvm.linkage<internal>").unwrap(),
+                        ),
+                    ],
                     Location::unknown(context),
                 ));
             }

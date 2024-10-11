@@ -32,7 +32,7 @@ use melior::{
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Block, Location, Module, Region, Value,
+        Attribute, Block, Identifier, Location, Module, Region, Value,
     },
     Context,
 };
@@ -85,7 +85,16 @@ impl DropOverridesMeta {
                     StringAttribute::new(context, &format!("drop${}", id.id)),
                     TypeAttribute::new(FunctionType::new(context, &[ty], &[]).into()),
                     region,
-                    &[],
+                    &[
+                        (
+                            Identifier::new(context, "sym_visibility"),
+                            StringAttribute::new(context, "private").into(),
+                        ),
+                        (
+                            Identifier::new(context, "llvm.linkage"),
+                            Attribute::parse(context, "#llvm.linkage<internal>").unwrap(),
+                        ),
+                    ],
                     Location::unknown(context),
                 ));
             }
