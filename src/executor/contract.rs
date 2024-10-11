@@ -42,6 +42,7 @@ use crate::{
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
+        BuiltinCosts,
     },
     OptLevel,
 };
@@ -97,6 +98,7 @@ enum BuiltinType {
     CircuitMul,
     Gas,
     System,
+    BuiltinCosts,
 }
 
 impl AotContractExecutor {
@@ -209,12 +211,23 @@ impl AotContractExecutor {
         function_id: &FunctionId,
         args: &[Felt],
         gas: Option<u128>,
+        builtin_costs: Option<BuiltinCosts>,
         mut syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult> {
         let arena = Bump::new();
         let mut invoke_data = Vec::<u8>::new();
 
         let function_ptr = self.find_function_ptr(function_id, true)?;
+        let builtin_costs_ptr = self.find_symbol_ptr("builtin_costs");
+
+        let builtin_costs = builtin_costs.unwrap_or_default();
+        let builtin_costs: [u64; 7] = builtin_costs.into();
+
+        if let Some(builtin_costs_ptr) = builtin_costs_ptr {
+            unsafe {
+                *builtin_costs_ptr.cast() = builtin_costs.as_ptr();
+            }
+        }
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         // substract 2, which are the gas and syscall builtin
@@ -320,6 +333,11 @@ impl AotContractExecutor {
                     let ptr = return_ptr.cast::<*mut ()>();
                     *return_ptr = unsafe { NonNull::new_unchecked(ptr.as_ptr().add(1)).cast() };
                 }
+                BuiltinType::BuiltinCosts => {
+                    let ptr = return_ptr.cast::<*mut ()>();
+                    *return_ptr = unsafe { NonNull::new_unchecked(ptr.as_ptr().add(1)).cast() };
+                    // ptr holds the builtin costs, but they dont change, so its of no use, but we read to advance the ptr.
+                }
                 x => {
                     let value = unsafe { *read_value::<u64>(return_ptr) } as usize;
 
@@ -335,6 +353,7 @@ impl AotContractExecutor {
                         BuiltinType::CircuitMul => builtin_stats.circuit_mul = value,
                         BuiltinType::Gas => {}
                         BuiltinType::System => {}
+                        BuiltinType::BuiltinCosts => {}
                     }
                 }
             }
@@ -436,6 +455,15 @@ impl AotContractExecutor {
                 .into_raw()
         })
     }
+
+    pub fn find_symbol_ptr(&self, name: &str) -> Option<*mut c_void> {
+        unsafe {
+            self.library
+                .get::<*mut ()>(name.as_bytes())
+                .ok()
+                .map(|x| x.into_raw().into_raw())
+        }
+    }
 }
 
 impl Drop for AotContractExecutor {
@@ -519,6 +547,7 @@ mod tests {
                 entrypoint_function_id,
                 &[2.into()],
                 Some(u64::MAX as u128),
+                None,
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
@@ -544,6 +573,7 @@ mod tests {
                 entrypoint_function_id,
                 &[],
                 Some(u64::MAX as u128),
+                None,
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
