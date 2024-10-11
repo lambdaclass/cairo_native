@@ -13,7 +13,7 @@ use starknet_types_core::{
     felt::Felt,
     hash::StarkHash,
 };
-use std::{collections::HashMap, ffi::c_void, fs::File, io::Write, os::fd::FromRawFd, slice};
+use std::{collections::HashMap, ffi::c_void, fs::File, io::Write, os::fd::FromRawFd};
 use std::{ops::Mul, vec::IntoIter};
 
 lazy_static! {
@@ -410,7 +410,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
     point_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
     point_ptr[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-    let scalar_ptr = *scalar_ptr;
+    let mut scalar_ptr = *scalar_ptr;
     scalar_ptr[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
     // Here the points should already be checked as valid, so we can use unchecked.
@@ -422,7 +422,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
         Felt::from_bytes_le(&point_ptr[0]),
         Felt::from_bytes_le(&point_ptr[1]),
     );
-    let scalar = Felt::from_bytes_le(scalar_ptr);
+    let scalar = Felt::from_bytes_le(&scalar_ptr);
 
     state += &point.mul(scalar);
     let state = state.to_affine().unwrap();
