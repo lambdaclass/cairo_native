@@ -52,7 +52,7 @@ amount being withdrawn.
 ### Example
 Let's illustrate this with a simple example using the following Cairo 1 code:
 
-```rust,ignore
+```rust,no_run
 fn run_test() {
     let mut i: u8 = 0;
     let mut val = 0;
@@ -174,7 +174,7 @@ called from within the program.
 ### Example
 Let us consider the following Cairo program which uses the `pedersen` builtin:
 
-```rust,ignore
+```rust,no_run
 use core::integer::bitwise;
 use core::pedersen::pedersen;
 

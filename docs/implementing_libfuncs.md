@@ -65,7 +65,7 @@ Libfuncs are implemented under `src/libfuncs.rs` and
 
 Using the `src/libfuncs/felt252.rs` libfuncs as a aid:
 
-```rust,ignore
+```rust,no_run
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this, TType, TLibfunc>(
     context: &'ctx Context,
@@ -107,7 +107,7 @@ the `src/libfuncs.rs` match statement.
 ### Example libfunc implementation: u8_to_felt252
 An example libfunc, converting a u8 to a felt252, extensively commented:
 
-```rust,ignore
+```rust,no_run
 /// Generate MLIR operations for the `u8_to_felt252` libfunc.
 pub fn build_to_felt252<'ctx, 'this, TType, TLibfunc>(
     // The Context from MLIR, this is like the heart of the MLIR API, its required to create most stuff like types.
