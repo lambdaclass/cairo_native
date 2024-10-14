@@ -575,12 +575,20 @@ impl Value {
                     value
                 }
                 CoreTypeConcrete::EcPoint(_) => {
-                    let data = ptr.cast::<[[u8; 32]; 2]>().as_ref();
+                    let data = ptr.cast::<[[u8; 32]; 2]>().as_mut();
+
+                    data[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    data[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
                     Self::EcPoint(Felt::from_bytes_le(&data[0]), Felt::from_bytes_le(&data[1]))
                 }
                 CoreTypeConcrete::EcState(_) => {
-                    let data = ptr.cast::<[[u8; 32]; 4]>().as_ref();
+                    let data = ptr.cast::<[[u8; 32]; 4]>().as_mut();
+
+                    data[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    data[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    data[2][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    data[3][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
                     Self::EcState(
                         Felt::from_bytes_le(&data[0]),
@@ -590,7 +598,8 @@ impl Value {
                     )
                 }
                 CoreTypeConcrete::Felt252(_) => {
-                    let data = ptr.cast::<[u8; 32]>().as_ref();
+                    let data = ptr.cast::<[u8; 32]>().as_mut();
+                    data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                     let data = Felt::from_bytes_le_slice(data);
                     Self::Felt252(data)
                 }
@@ -645,6 +654,12 @@ impl Value {
                         },
                     };
 
+                    // Filter out bits that are not part of the enum's tag.
+                    let tag_value = tag_value
+                        & 1usize
+                            .wrapping_shl(info.variants.len().next_power_of_two().trailing_zeros())
+                            .wrapping_sub(1);
+
                     let payload_ty = registry.get_type(&info.variants[tag_value])?;
                     let payload_layout = payload_ty.layout(registry)?;
 
@@ -695,21 +710,23 @@ impl Value {
                     );
 
                     let mut output_map = HashMap::with_capacity(inner.len());
-                    for (key, val_ptr) in inner.iter() {
+                    for (mut key, val_ptr) in inner.into_iter() {
                         if val_ptr.is_null() {
                             continue;
                         }
 
-                        let key = Felt::from_bytes_le(key);
+                        key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
+                        let key = Felt::from_bytes_le(&key);
                         output_map.insert(
                             key,
                             Self::from_ptr(
-                                NonNull::new(*val_ptr).unwrap().cast(),
+                                NonNull::new(val_ptr).unwrap().cast(),
                                 &info.ty,
                                 registry,
                             )?,
                         );
-                        libc_free(*val_ptr);
+                        libc_free(val_ptr);
                     }
 
                     Self::Felt252Dict {
@@ -737,7 +754,8 @@ impl Value {
                     | StarkNetTypeConcrete::StorageBaseAddress(_)
                     | StarkNetTypeConcrete::StorageAddress(_) => {
                         // felt values
-                        let data = ptr.cast::<[u8; 32]>().as_ref();
+                        let data = ptr.cast::<[u8; 32]>().as_mut();
+                        data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                         let data = Felt::from_bytes_le(data);
                         Self::Felt252(data)
                     }
