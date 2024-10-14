@@ -926,12 +926,12 @@ fn compile_func(
             ),
             (
                 Identifier::new(context, "linkage"),
-                Attribute::parse(context, "#llvm.linkage<internal>").unwrap(),
+                Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
             ),
-            // (
-            //     Identifier::new(context, "CConv"),
-            //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
-            // ),
+            (
+                Identifier::new(context, "CConv"),
+                Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+            ),
         ],
         Location::fused(
             context,
@@ -1392,6 +1392,10 @@ fn generate_entry_point_wrapper<'c>(
             (
                 Identifier::new(context, "llvm.linkage"),
                 Attribute::parse(context, "#llvm.linkage<internal>").unwrap(),
+            ),
+            (
+                Identifier::new(context, "llvm.CConv"),
+                Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
             ),
             (
                 Identifier::new(context, "llvm.emit_c_interface"),

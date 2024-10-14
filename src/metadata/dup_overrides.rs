@@ -88,11 +88,15 @@ impl DupOverridesMeta {
                     &[
                         (
                             Identifier::new(context, "sym_visibility"),
-                            StringAttribute::new(context, "private").into(),
+                            StringAttribute::new(context, "public").into(),
+                        ),
+                        (
+                            Identifier::new(context, "llvm.CConv"),
+                            Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
                         ),
                         (
                             Identifier::new(context, "llvm.linkage"),
-                            Attribute::parse(context, "#llvm.linkage<internal>").unwrap(),
+                            Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
                         ),
                     ],
                     Location::unknown(context),

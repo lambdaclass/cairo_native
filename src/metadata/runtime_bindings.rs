@@ -143,6 +143,10 @@ impl RuntimeBindingsMeta {
                         Identifier::new(context, "llvm.linkage"),
                         Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
                     ),
+                    (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
+                    ),
                 ],
                 Location::unknown(context),
             ));
@@ -196,6 +200,10 @@ impl RuntimeBindingsMeta {
                         StringAttribute::new(context, "private").into(),
                     ),
                     (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
+                    ),
+                    (
                         Identifier::new(context, "llvm.linkage"),
                         Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
                     ),
@@ -242,6 +250,10 @@ impl RuntimeBindingsMeta {
                     (
                         Identifier::new(context, "sym_visibility"),
                         StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
@@ -292,6 +304,10 @@ impl RuntimeBindingsMeta {
                         StringAttribute::new(context, "private").into(),
                     ),
                     (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
+                    ),
+                    (
                         Identifier::new(context, "llvm.linkage"),
                         Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
                     ),
@@ -333,6 +349,10 @@ impl RuntimeBindingsMeta {
                     (
                         Identifier::new(context, "sym_visibility"),
                         StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
@@ -385,6 +405,10 @@ impl RuntimeBindingsMeta {
                     (
                         Identifier::new(context, "sym_visibility"),
                         StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
@@ -442,6 +466,10 @@ impl RuntimeBindingsMeta {
                         StringAttribute::new(context, "private").into(),
                     ),
                     (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
+                    ),
+                    (
                         Identifier::new(context, "llvm.linkage"),
                         Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
                     ),
@@ -496,6 +524,10 @@ impl RuntimeBindingsMeta {
                         StringAttribute::new(context, "private").into(),
                     ),
                     (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
+                    ),
+                    (
                         Identifier::new(context, "llvm.linkage"),
                         Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
                     ),
@@ -547,6 +579,10 @@ impl RuntimeBindingsMeta {
                     (
                         Identifier::new(context, "sym_visibility"),
                         StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
@@ -614,6 +650,10 @@ impl RuntimeBindingsMeta {
                         StringAttribute::new(context, "private").into(),
                     ),
                     (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
+                    ),
+                    (
                         Identifier::new(context, "llvm.linkage"),
                         Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
                     ),
@@ -676,6 +716,10 @@ impl RuntimeBindingsMeta {
                         StringAttribute::new(context, "private").into(),
                     ),
                     (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
+                    ),
+                    (
                         Identifier::new(context, "llvm.linkage"),
                         Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
                     ),
@@ -731,6 +775,10 @@ impl RuntimeBindingsMeta {
                     (
                         Identifier::new(context, "sym_visibility"),
                         StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
@@ -792,6 +840,10 @@ impl RuntimeBindingsMeta {
                         StringAttribute::new(context, "private").into(),
                     ),
                     (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
+                    ),
+                    (
                         Identifier::new(context, "llvm.linkage"),
                         Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
                     ),
@@ -843,6 +895,10 @@ impl RuntimeBindingsMeta {
                     (
                         Identifier::new(context, "sym_visibility"),
                         StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
@@ -903,6 +959,10 @@ impl RuntimeBindingsMeta {
                     (
                         Identifier::new(context, "sym_visibility"),
                         StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.will_return"),
+                        Attribute::unit(context),
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
