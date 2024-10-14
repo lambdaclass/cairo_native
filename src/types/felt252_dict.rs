@@ -132,10 +132,6 @@ fn build_dup<'ctx>(
                     StringAttribute::new(context, "public").into(),
                 ),
                 (
-                    Identifier::new(context, "CConv"),
-                    Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
-                ),
-                (
                     Identifier::new(context, "linkage"),
                     Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
                 ),
@@ -208,10 +204,6 @@ fn build_drop<'ctx>(
                     (
                         Identifier::new(context, "sym_visibility"),
                         StringAttribute::new(context, "public").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.CConv"),
-                        Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),

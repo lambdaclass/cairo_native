@@ -1355,10 +1355,10 @@ fn generate_entry_point_wrapper<'c>(
                     Identifier::new(context, "callee"),
                     FlatSymbolRefAttribute::new(context, private_symbol).into(),
                 ),
-                // (
-                //     Identifier::new(context, "CConv"),
-                //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
-                // ),
+                (
+                    Identifier::new(context, "CConv"),
+                    Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                ),
             ])
             .add_operands(&args)
             .add_results(&[llvm::r#type::r#struct(context, ret_types, false)])
@@ -1391,7 +1391,7 @@ fn generate_entry_point_wrapper<'c>(
             ),
             (
                 Identifier::new(context, "llvm.linkage"),
-                Attribute::parse(context, "#llvm.linkage<internal>").unwrap(),
+                Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
             ),
             (
                 Identifier::new(context, "llvm.CConv"),
