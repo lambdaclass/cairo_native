@@ -662,6 +662,7 @@ pub mod trace_dump {
         program_registry::ProgramRegistry,
     };
     use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+    use itertools::Itertools;
     use num_bigint::BigInt;
     use num_traits::One;
     use sierra_emu::{ProgramTrace, StateDump, Value};
@@ -1015,8 +1016,9 @@ pub mod trace_dump {
                     todo!("StarkNetTypeConcrete::Secp256Point")
                 }
                 StarkNetTypeConcrete::Sha256StateHandle(_) => {
-                    let inner_ptr = value_ptr.cast::<NonNull<()>>().read();
-                    Value::U64(inner_ptr.cast().read())
+                    let raw_data = value_ptr.cast::<NonNull<[u32; 8]>>().read().read();
+                    let data = raw_data.into_iter().map(Value::U32).collect_vec();
+                    Value::Struct(data)
                 }
                 _ => unreachable!(),
             },
