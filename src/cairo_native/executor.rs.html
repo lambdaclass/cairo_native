@@ -740,6 +740,14 @@
 <a href="#740" id="740">740</a>
 <a href="#741" id="741">741</a>
 <a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -1133,11 +1141,13 @@
                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::ParseAttributeError);
 
                 <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
-                </span><span class="prelude-val">Ok</span>(Value::Felt252(
-                    starknet_types_core::felt::Felt::from_bytes_le(<span class="kw">unsafe </span>{
-                        std::mem::transmute::&lt;<span class="kw-2">&amp;</span>[u64; <span class="number">4</span>], <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>]&gt;(<span class="kw-2">&amp;</span>ret_registers)
-                    }),
-                ))
+                </span><span class="prelude-val">Ok</span>(Value::Felt252({
+                    <span class="kw">let </span>data = <span class="kw">unsafe </span>{
+                        std::mem::transmute::&lt;<span class="kw-2">&amp;mut </span>[u64; <span class="number">4</span>], <span class="kw-2">&amp;mut </span>[u8; <span class="number">32</span>]&gt;(<span class="kw-2">&amp;mut </span>ret_registers)
+                    };
+                    data[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+                    </span>starknet_types_core::felt::Felt::from_bytes_le(data)
+                }))
             }
         },
         CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="kw">match </span>return_ptr {
@@ -1250,6 +1260,12 @@
                         <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ParseAttributeError),
                     }
                 };
+
+                <span class="comment">// Filter out bits that are not part of the enum's tag.
+                </span><span class="kw">let </span>tag = tag
+                    &amp; <span class="number">1usize
+                        </span>.wrapping_shl(info.variants.len().next_power_of_two().trailing_zeros())
+                        .wrapping_sub(<span class="number">1</span>);
 
                 (
                     tag,

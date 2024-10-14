@@ -578,6 +578,9 @@
 <a href="#578" id="578">578</a>
 <a href="#579" id="579">579</a>
 <a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
@@ -954,7 +957,9 @@
         };
 
         <span class="kw">let </span>tag = <span class="kw-2">*</span><span class="kw">unsafe </span>{ enum_ptr.cast::&lt;u8&gt;().as_ref() } <span class="kw">as </span>usize;
-        <span class="comment">// layout of both enum variants, both are a array of felts
+        <span class="kw">let </span>tag = tag &amp; <span class="number">0x01</span>; <span class="comment">// Filter out bits that are not part of the enum's tag.
+
+        // layout of both enum variants, both are a array of felts
         </span><span class="kw">let </span>value_layout = <span class="kw">unsafe </span>{ Layout::from_size_align_unchecked(<span class="number">24</span>, <span class="number">8</span>) };
         <span class="kw">let </span>value_ptr = <span class="kw">unsafe </span>{
             enum_ptr
@@ -981,8 +986,9 @@
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_elems {
             <span class="comment">// safe to create a NonNull because if the array has elements, the data_ptr can't be null.
             </span><span class="kw">let </span>cur_elem_ptr = NonNull::new(<span class="kw">unsafe </span>{ data_ptr.byte_add(elem_stride * i) }).unwrap();
-            <span class="kw">let </span>data = <span class="kw">unsafe </span>{ cur_elem_ptr.cast::&lt;[u8; <span class="number">32</span>]&gt;().as_ref() };
-            <span class="kw">let </span>data = Felt::from_bytes_le_slice(data);
+            <span class="kw">let </span>data = <span class="kw">unsafe </span>{ cur_elem_ptr.cast::&lt;[u8; <span class="number">32</span>]&gt;().as_mut() };
+            data[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+            </span><span class="kw">let </span>data = Felt::from_bytes_le_slice(data);
 
             array_value.push(data);
         }

@@ -1598,6 +1598,24 @@
 <a href="#1598" id="1598">1598</a>
 <a href="#1599" id="1599">1599</a>
 <a href="#1600" id="1600">1600</a>
+<a href="#1601" id="1601">1601</a>
+<a href="#1602" id="1602">1602</a>
+<a href="#1603" id="1603">1603</a>
+<a href="#1604" id="1604">1604</a>
+<a href="#1605" id="1605">1605</a>
+<a href="#1606" id="1606">1606</a>
+<a href="#1607" id="1607">1607</a>
+<a href="#1608" id="1608">1608</a>
+<a href="#1609" id="1609">1609</a>
+<a href="#1610" id="1610">1610</a>
+<a href="#1611" id="1611">1611</a>
+<a href="#1612" id="1612">1612</a>
+<a href="#1613" id="1613">1613</a>
+<a href="#1614" id="1614">1614</a>
+<a href="#1615" id="1615">1615</a>
+<a href="#1616" id="1616">1616</a>
+<a href="#1617" id="1617">1617</a>
+<a href="#1618" id="1618">1618</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
 //!
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
@@ -2175,14 +2193,22 @@
                     value
                 }
                 CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; {
-                    <span class="kw">let </span>data = ptr.cast::&lt;[[u8; <span class="number">32</span>]; <span class="number">2</span>]&gt;().as_ref();
+                    <span class="kw">let </span>data = ptr.cast::&lt;[[u8; <span class="number">32</span>]; <span class="number">2</span>]&gt;().as_mut();
 
-                    <span class="self">Self</span>::EcPoint(Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">0</span>]), Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">1</span>]))
+                    data[<span class="number">0</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+                    </span>data[<span class="number">1</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+                    </span><span class="self">Self</span>::EcPoint(Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">0</span>]), Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">1</span>]))
                 }
                 CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; {
-                    <span class="kw">let </span>data = ptr.cast::&lt;[[u8; <span class="number">32</span>]; <span class="number">4</span>]&gt;().as_ref();
+                    <span class="kw">let </span>data = ptr.cast::&lt;[[u8; <span class="number">32</span>]; <span class="number">4</span>]&gt;().as_mut();
 
-                    <span class="self">Self</span>::EcState(
+                    data[<span class="number">0</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+                    </span>data[<span class="number">1</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+                    </span>data[<span class="number">2</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+                    </span>data[<span class="number">3</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+                    </span><span class="self">Self</span>::EcState(
                         Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">0</span>]),
                         Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">1</span>]),
                         Felt::from_bytes_le(<span class="kw-2">&amp;</span>data[<span class="number">2</span>]),
@@ -2190,8 +2216,9 @@
                     )
                 }
                 CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; {
-                    <span class="kw">let </span>data = ptr.cast::&lt;[u8; <span class="number">32</span>]&gt;().as_ref();
-                    <span class="kw">let </span>data = Felt::from_bytes_le_slice(data);
+                    <span class="kw">let </span>data = ptr.cast::&lt;[u8; <span class="number">32</span>]&gt;().as_mut();
+                    data[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+                    </span><span class="kw">let </span>data = Felt::from_bytes_le_slice(data);
                     <span class="self">Self</span>::Felt252(data)
                 }
                 CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Uint8(<span class="kw-2">*</span>ptr.cast::&lt;u8&gt;().as_ref()),
@@ -2245,6 +2272,12 @@
                         },
                     };
 
+                    <span class="comment">// Filter out bits that are not part of the enum's tag.
+                    </span><span class="kw">let </span>tag_value = tag_value
+                        &amp; <span class="number">1usize
+                            </span>.wrapping_shl(info.variants.len().next_power_of_two().trailing_zeros())
+                            .wrapping_sub(<span class="number">1</span>);
+
                     <span class="kw">let </span>payload_ty = registry.get_type(<span class="kw-2">&amp;</span>info.variants[tag_value])<span class="question-mark">?</span>;
                     <span class="kw">let </span>payload_layout = payload_ty.layout(registry)<span class="question-mark">?</span>;
 
@@ -2295,21 +2328,23 @@
                     );
 
                     <span class="kw">let </span><span class="kw-2">mut </span>output_map = HashMap::with_capacity(inner.len());
-                    <span class="kw">for </span>(key, val_ptr) <span class="kw">in </span>inner.iter() {
+                    <span class="kw">for </span>(<span class="kw-2">mut </span>key, val_ptr) <span class="kw">in </span>inner.into_iter() {
                         <span class="kw">if </span>val_ptr.is_null() {
                             <span class="kw">continue</span>;
                         }
 
-                        <span class="kw">let </span>key = Felt::from_bytes_le(key);
+                        key[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+                        </span><span class="kw">let </span>key = Felt::from_bytes_le(<span class="kw-2">&amp;</span>key);
                         output_map.insert(
                             key,
                             <span class="self">Self</span>::from_ptr(
-                                NonNull::new(<span class="kw-2">*</span>val_ptr).unwrap().cast(),
+                                NonNull::new(val_ptr).unwrap().cast(),
                                 <span class="kw-2">&amp;</span>info.ty,
                                 registry,
                             )<span class="question-mark">?</span>,
                         );
-                        libc_free(<span class="kw-2">*</span>val_ptr);
+                        libc_free(val_ptr);
                     }
 
                     <span class="self">Self</span>::Felt252Dict {
@@ -2337,8 +2372,9 @@
                     | StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>)
                     | StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>) =&gt; {
                         <span class="comment">// felt values
-                        </span><span class="kw">let </span>data = ptr.cast::&lt;[u8; <span class="number">32</span>]&gt;().as_ref();
-                        <span class="kw">let </span>data = Felt::from_bytes_le(data);
+                        </span><span class="kw">let </span>data = ptr.cast::&lt;[u8; <span class="number">32</span>]&gt;().as_mut();
+                        data[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+                        </span><span class="kw">let </span>data = Felt::from_bytes_le(data);
                         <span class="self">Self</span>::Felt252(data)
                     }
                     StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; {

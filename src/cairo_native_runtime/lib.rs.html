@@ -616,6 +616,38 @@
 <a href="#616" id="616">616</a>
 <a href="#617" id="617">617</a>
 <a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
 </span><span class="kw">use </span>cairo_lang_sierra_gas::core_libfunc_cost::{
@@ -631,7 +663,7 @@
     felt::Felt,
     hash::StarkHash,
 };
-<span class="kw">use </span>std::{collections::HashMap, ffi::c_void, fs::File, io::Write, os::fd::FromRawFd, slice};
+<span class="kw">use </span>std::{collections::HashMap, ffi::c_void, fs::File, io::Write, os::fd::FromRawFd};
 <span class="kw">use </span>std::{ops::Mul, vec::IntoIter};
 
 <span class="macro">lazy_static!</span> {
@@ -662,9 +694,10 @@
     <span class="kw">let </span><span class="kw-2">mut </span>items = Vec::with_capacity(len <span class="kw">as </span>usize);
 
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..len <span class="kw">as </span>usize {
-        <span class="kw">let </span>data = <span class="kw-2">*</span>data.add(i);
+        <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="kw-2">*</span>data.add(i);
+        data[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
 
-        <span class="kw">let </span>value = Felt::from_bytes_le(<span class="kw-2">&amp;</span>data);
+        </span><span class="kw">let </span>value = Felt::from_bytes_le(<span class="kw-2">&amp;</span>data);
         items.push(value);
     }
 
@@ -694,22 +727,24 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__libfunc__pedersen(
-    dst: <span class="kw-2">*mut </span>u8,
-    lhs: <span class="kw-2">*const </span>u8,
-    rhs: <span class="kw-2">*const </span>u8,
+    dst: <span class="kw-2">&amp;mut </span>[u8; <span class="number">32</span>],
+    lhs: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
+    rhs: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
 ) {
     <span class="comment">// Extract arrays from the pointers.
-    </span><span class="kw">let </span>dst = slice::from_raw_parts_mut(dst, <span class="number">32</span>);
-    <span class="kw">let </span>lhs = slice::from_raw_parts(lhs, <span class="number">32</span>);
-    <span class="kw">let </span>rhs = slice::from_raw_parts(rhs, <span class="number">32</span>);
+    </span><span class="kw">let </span><span class="kw-2">mut </span>lhs = <span class="kw-2">*</span>lhs;
+    <span class="kw">let </span><span class="kw-2">mut </span>rhs = <span class="kw-2">*</span>rhs;
 
-    <span class="comment">// Convert to FieldElement.
-    </span><span class="kw">let </span>lhs = Felt::from_bytes_le_slice(lhs);
-    <span class="kw">let </span>rhs = Felt::from_bytes_le_slice(rhs);
+    lhs[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>rhs[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+    // Convert to FieldElement.
+    </span><span class="kw">let </span>lhs = Felt::from_bytes_le(<span class="kw-2">&amp;</span>lhs);
+    <span class="kw">let </span>rhs = Felt::from_bytes_le(<span class="kw-2">&amp;</span>rhs);
 
     <span class="comment">// Compute pedersen hash and copy the result into `dst`.
     </span><span class="kw">let </span>res = starknet_types_core::hash::Pedersen::hash(<span class="kw-2">&amp;</span>lhs, <span class="kw-2">&amp;</span>rhs);
-    dst.copy_from_slice(<span class="kw-2">&amp;</span>res.to_bytes_le());
+    <span class="kw-2">*</span>dst = res.to_bytes_le();
 }
 
 <span class="doccomment">/// Compute `hades_permutation(op0, op1, op2)` and replace the operands with the results.
@@ -726,29 +761,28 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__libfunc__hades_permutation(
-    op0: <span class="kw-2">*mut </span>u8,
-    op1: <span class="kw-2">*mut </span>u8,
-    op2: <span class="kw-2">*mut </span>u8,
+    op0: <span class="kw-2">&amp;mut </span>[u8; <span class="number">32</span>],
+    op1: <span class="kw-2">&amp;mut </span>[u8; <span class="number">32</span>],
+    op2: <span class="kw-2">&amp;mut </span>[u8; <span class="number">32</span>],
 ) {
-    <span class="comment">// Extract arrays from the pointers.
-    </span><span class="kw">let </span>op0 = slice::from_raw_parts_mut(op0, <span class="number">32</span>);
-    <span class="kw">let </span>op1 = slice::from_raw_parts_mut(op1, <span class="number">32</span>);
-    <span class="kw">let </span>op2 = slice::from_raw_parts_mut(op2, <span class="number">32</span>);
+    op0[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>op1[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>op2[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
 
-    <span class="comment">// Convert to FieldElement.
+    // Convert to FieldElement.
     </span><span class="kw">let </span><span class="kw-2">mut </span>state = [
-        Felt::from_bytes_le_slice(op0),
-        Felt::from_bytes_le_slice(op1),
-        Felt::from_bytes_le_slice(op2),
+        Felt::from_bytes_le(op0),
+        Felt::from_bytes_le(op1),
+        Felt::from_bytes_le(op2),
     ];
 
     <span class="comment">// Compute Poseidon permutation.
     </span>starknet_types_core::hash::Poseidon::hades_permutation(<span class="kw-2">&amp;mut </span>state);
 
     <span class="comment">// Write back the results.
-    </span>op0.copy_from_slice(<span class="kw-2">&amp;</span>state[<span class="number">0</span>].to_bytes_le());
-    op1.copy_from_slice(<span class="kw-2">&amp;</span>state[<span class="number">1</span>].to_bytes_le());
-    op2.copy_from_slice(<span class="kw-2">&amp;</span>state[<span class="number">2</span>].to_bytes_le());
+    </span><span class="kw-2">*</span>op0 = state[<span class="number">0</span>].to_bytes_le();
+    <span class="kw-2">*</span>op1 = state[<span class="number">1</span>].to_bytes_le();
+    <span class="kw-2">*</span>op2 = state[<span class="number">2</span>].to_bytes_le();
 }
 
 <span class="doccomment">/// Felt252 type used in cairo native runtime
@@ -848,8 +882,11 @@
     dict: <span class="kw-2">&amp;mut </span>FeltDict,
     key: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
 ) -&gt; <span class="kw-2">*mut </span>c_void {
-    dict.count += <span class="number">1</span>;
-    dict.inner.entry(<span class="kw-2">*</span>key).or_insert(std::ptr::null_mut()) <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_ as </span><span class="kw-2">*mut </span>c_void
+    <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="kw-2">*</span>key;
+    key[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+    </span>dict.count += <span class="number">1</span>;
+    dict.inner.entry(key).or_insert(std::ptr::null_mut()) <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_ as </span><span class="kw-2">*mut </span>c_void
 }
 
 <span class="doccomment">/// Compute the total gas refund for the dictionary at squash time.
@@ -878,7 +915,8 @@
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__libfunc__ec__ec_point_from_x_nz(
     point_ptr: <span class="kw-2">&amp;mut </span>[[u8; <span class="number">32</span>]; <span class="number">2</span>],
 ) -&gt; bool {
-    <span class="kw">let </span>x = Felt::from_bytes_le(<span class="kw-2">&amp;</span>point_ptr[<span class="number">0</span>]);
+    point_ptr[<span class="number">0</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span><span class="kw">let </span>x = Felt::from_bytes_le(<span class="kw-2">&amp;</span>point_ptr[<span class="number">0</span>]);
 
     <span class="comment">// https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L63
 
@@ -894,7 +932,7 @@
 
     <span class="kw">match </span>AffinePoint::new(x, y) {
         <span class="prelude-val">Ok</span>(point) =&gt; {
-            point_ptr.as_mut()[<span class="number">1</span>].copy_from_slice(<span class="kw-2">&amp;</span>point.y().to_bytes_le());
+            point_ptr[<span class="number">1</span>] = point.y().to_bytes_le();
             <span class="bool-val">true
         </span>}
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
@@ -915,13 +953,16 @@
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__libfunc__ec__ec_point_try_new_nz(
     point_ptr: <span class="kw-2">&amp;mut </span>[[u8; <span class="number">32</span>]; <span class="number">2</span>],
 ) -&gt; bool {
-    <span class="kw">let </span>x = Felt::from_bytes_le(<span class="kw-2">&amp;</span>point_ptr[<span class="number">0</span>]);
+    point_ptr[<span class="number">0</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>point_ptr[<span class="number">1</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+    </span><span class="kw">let </span>x = Felt::from_bytes_le(<span class="kw-2">&amp;</span>point_ptr[<span class="number">0</span>]);
     <span class="kw">let </span>y = Felt::from_bytes_le(<span class="kw-2">&amp;</span>point_ptr[<span class="number">1</span>]);
 
     <span class="kw">match </span>AffinePoint::new(x, y) {
         <span class="prelude-val">Ok</span>(point) =&gt; {
-            point_ptr[<span class="number">0</span>].copy_from_slice(<span class="kw-2">&amp;</span>point.x().to_bytes_le());
-            point_ptr[<span class="number">1</span>].copy_from_slice(<span class="kw-2">&amp;</span>point.y().to_bytes_le());
+            point_ptr[<span class="number">0</span>] = point.x().to_bytes_le();
+            point_ptr[<span class="number">1</span>] = point.y().to_bytes_le();
             <span class="bool-val">true
         </span>}
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
@@ -951,10 +992,10 @@
     <span class="comment">// We already made sure its a valid point.
     </span><span class="kw">let </span>state = AffinePoint::new_unchecked(random_x, random_y);
 
-    state_ptr[<span class="number">0</span>].copy_from_slice(<span class="kw-2">&amp;</span>state.x().to_bytes_le());
-    state_ptr[<span class="number">1</span>].copy_from_slice(<span class="kw-2">&amp;</span>state.y().to_bytes_le());
-    state_ptr[<span class="number">2</span>].copy_from_slice(<span class="kw-2">&amp;</span>state.x().to_bytes_le());
-    state_ptr[<span class="number">3</span>].copy_from_slice(<span class="kw-2">&amp;</span>state.y().to_bytes_le());
+    state_ptr[<span class="number">0</span>] = state.x().to_bytes_le();
+    state_ptr[<span class="number">1</span>] = state.y().to_bytes_le();
+    state_ptr[<span class="number">2</span>] = state_ptr[<span class="number">0</span>];
+    state_ptr[<span class="number">3</span>] = state_ptr[<span class="number">1</span>];
 }
 
 <span class="doccomment">/// Compute `ec_state_add(state, point)` and store the state back.
@@ -972,7 +1013,14 @@
     state_ptr: <span class="kw-2">&amp;mut </span>[[u8; <span class="number">32</span>]; <span class="number">4</span>],
     point_ptr: <span class="kw-2">&amp;</span>[[u8; <span class="number">32</span>]; <span class="number">2</span>],
 ) {
-    <span class="comment">// We use unchecked methods because the inputs must already be valid points.
+    state_ptr[<span class="number">0</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>state_ptr[<span class="number">1</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+    </span><span class="kw">let </span><span class="kw-2">mut </span>point_ptr = <span class="kw-2">*</span>point_ptr;
+    point_ptr[<span class="number">0</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>point_ptr[<span class="number">1</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+    // We use unchecked methods because the inputs must already be valid points.
     </span><span class="kw">let </span><span class="kw-2">mut </span>state = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr[<span class="number">0</span>]),
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr[<span class="number">1</span>]),
@@ -985,8 +1033,8 @@
     state += <span class="kw-2">&amp;</span>point;
     <span class="kw">let </span>state = state.to_affine().unwrap();
 
-    state_ptr[<span class="number">0</span>].copy_from_slice(<span class="kw-2">&amp;</span>state.x().to_bytes_le());
-    state_ptr[<span class="number">1</span>].copy_from_slice(<span class="kw-2">&amp;</span>state.y().to_bytes_le());
+    state_ptr[<span class="number">0</span>] = state.x().to_bytes_le();
+    state_ptr[<span class="number">1</span>] = state.y().to_bytes_le();
 }
 
 <span class="doccomment">/// Compute `ec_state_add_mul(state, scalar, point)` and store the state back.
@@ -1005,7 +1053,17 @@
     scalar_ptr: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
     point_ptr: <span class="kw-2">&amp;</span>[[u8; <span class="number">32</span>]; <span class="number">2</span>],
 ) {
-    <span class="comment">// Here the points should already be checked as valid, so we can use unchecked.
+    state_ptr[<span class="number">0</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>state_ptr[<span class="number">1</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+    </span><span class="kw">let </span><span class="kw-2">mut </span>point_ptr = <span class="kw-2">*</span>point_ptr;
+    point_ptr[<span class="number">0</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>point_ptr[<span class="number">1</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+    </span><span class="kw">let </span><span class="kw-2">mut </span>scalar_ptr = <span class="kw-2">*</span>scalar_ptr;
+    scalar_ptr[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+    // Here the points should already be checked as valid, so we can use unchecked.
     </span><span class="kw">let </span><span class="kw-2">mut </span>state = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr[<span class="number">0</span>]),
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr[<span class="number">1</span>]),
@@ -1014,13 +1072,13 @@
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>point_ptr[<span class="number">0</span>]),
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>point_ptr[<span class="number">1</span>]),
     );
-    <span class="kw">let </span>scalar = Felt::from_bytes_le(scalar_ptr);
+    <span class="kw">let </span>scalar = Felt::from_bytes_le(<span class="kw-2">&amp;</span>scalar_ptr);
 
     state += <span class="kw-2">&amp;</span>point.mul(scalar);
     <span class="kw">let </span>state = state.to_affine().unwrap();
 
-    state_ptr[<span class="number">0</span>].copy_from_slice(<span class="kw-2">&amp;</span>state.x().to_bytes_le());
-    state_ptr[<span class="number">1</span>].copy_from_slice(<span class="kw-2">&amp;</span>state.y().to_bytes_le());
+    state_ptr[<span class="number">0</span>] = state.x().to_bytes_le();
+    state_ptr[<span class="number">1</span>] = state.y().to_bytes_le();
 }
 
 <span class="doccomment">/// Compute `ec_state_try_finalize_nz(state)` and store the result.
@@ -1038,7 +1096,13 @@
     point_ptr: <span class="kw-2">&amp;mut </span>[[u8; <span class="number">32</span>]; <span class="number">2</span>],
     state_ptr: <span class="kw-2">&amp;</span>[[u8; <span class="number">32</span>]; <span class="number">4</span>],
 ) -&gt; bool {
-    <span class="comment">// We use unchecked methods because the inputs must already be valid points.
+    <span class="kw">let </span><span class="kw-2">mut </span>state_ptr = <span class="kw-2">*</span>state_ptr;
+    state_ptr[<span class="number">0</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>state_ptr[<span class="number">1</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>state_ptr[<span class="number">2</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    </span>state_ptr[<span class="number">3</span>][<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+
+    // We use unchecked methods because the inputs must already be valid points.
     </span><span class="kw">let </span>state = ProjectivePoint::from_affine_unchecked(
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr[<span class="number">0</span>]),
         Felt::from_bytes_le(<span class="kw-2">&amp;</span>state_ptr[<span class="number">1</span>]),
@@ -1054,8 +1118,8 @@
         <span class="kw">let </span>point = <span class="kw-2">&amp;</span>state - <span class="kw-2">&amp;</span>random;
         <span class="kw">let </span>point = point.to_affine().unwrap();
 
-        point_ptr[<span class="number">0</span>].copy_from_slice(<span class="kw-2">&amp;</span>point.x().to_bytes_le());
-        point_ptr[<span class="number">1</span>].copy_from_slice(<span class="kw-2">&amp;</span>point.y().to_bytes_le());
+        point_ptr[<span class="number">0</span>] = point.x().to_bytes_le();
+        point_ptr[<span class="number">1</span>] = point.y().to_bytes_le();
 
         <span class="bool-val">true
     </span>}
