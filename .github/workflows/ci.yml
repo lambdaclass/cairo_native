@@ -86,7 +86,6 @@ jobs:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
       TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
-      RUSTUP_TOOLCHAIN: nightly # udeps needs nightly
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -102,10 +101,8 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
         run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
-      - name: "Download and run cargo-udeps"
-        run: |
-          wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.50/cargo-udeps-v0.1.50-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-          cargo-udeps-*/cargo-udeps udeps --all-targets --all-features
+      - name: Machete
+        uses: bnjbvr/cargo-machete@main
 
   test:
     name: test (linux, amd64)
@@ -127,7 +124,7 @@ jobs:
           sudo apt-get remove -y 'php.*'
           sudo apt-get remove -y '^dotnet-.*'
           sudo apt-get remove -y '^temurin-.*'
-          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
           sudo apt-get autoremove -y
           sudo apt-get clean
           df -h
@@ -218,7 +215,7 @@ jobs:
           sudo apt-get remove -y 'php.*'
           sudo apt-get remove -y '^dotnet-.*'
           sudo apt-get remove -y '^temurin-.*'
-          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
           sudo apt-get autoremove -y
           sudo apt-get clean
           df -h
@@ -333,7 +330,7 @@ jobs:
           sudo apt-get remove -y 'php.*'
           sudo apt-get remove -y '^dotnet-.*'
           sudo apt-get remove -y '^temurin-.*'
-          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
           sudo apt-get autoremove -y
           sudo apt-get clean
           df -h
