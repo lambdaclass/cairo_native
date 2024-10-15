@@ -1022,7 +1022,7 @@ pub mod trace_dump {
                 }
                 _ => unreachable!(),
             },
-            CoreTypeConcrete::Bytes31(_) => todo!("CoreTypeConcrete::Bytes31"),
+            CoreTypeConcrete::Bytes31(_) => Value::Bytes31(value_ptr.cast().read()),
         }
     }
 }
