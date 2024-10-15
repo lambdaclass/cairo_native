@@ -1750,7 +1750,8 @@ pub(crate) mod handler {
             state: *mut [u32; 8],
             block: &[u32; 16],
         ) {
-            let result = ptr.sha256_process_block(unsafe { &mut *state }, block, gas);
+            let state_ref = unsafe { state.as_mut().unwrap() };
+            let result = ptr.sha256_process_block(state_ref, block, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
