@@ -16,7 +16,7 @@ pub struct ArrayAbi<T> {
 
 impl From<&ArrayAbi<Felt252Abi>> for Vec<Felt> {
     fn from(value: &ArrayAbi<Felt252Abi>) -> Self {
-        let felt_vec: Vec<_> = unsafe {
+        unsafe {
             let since_offset = value.since as usize;
             let until_offset = value.until as usize;
             debug_assert!(since_offset <= until_offset);
@@ -28,8 +28,7 @@ impl From<&ArrayAbi<Felt252Abi>> for Vec<Felt> {
         }
         .iter()
         .map(Felt::from)
-        .collect();
-        felt_vec
+        .collect()
     }
 }
 
