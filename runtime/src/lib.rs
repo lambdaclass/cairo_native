@@ -655,7 +655,7 @@ pub mod trace_dump {
         extensions::{
             bounded_int::BoundedIntConcreteType,
             core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-            starknet::StarkNetTypeConcrete,
+            starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
         },
         ids::{ConcreteTypeId, VarId},
         program::StatementIdx,
@@ -665,7 +665,13 @@ pub mod trace_dump {
     use itertools::Itertools;
     use num_bigint::BigInt;
     use num_traits::One;
-    use sierra_emu::{ProgramTrace, StateDump, Value};
+    use sierra_emu::{
+        starknet::{
+            Secp256k1Point as EmuSecp256k1Point, Secp256r1Point as EmuSecp256r1Point,
+            U256 as EmuU256,
+        },
+        ProgramTrace, StateDump, Value,
+    };
     use starknet_types_core::felt::Felt;
     use std::{
         alloc::Layout,
@@ -1012,9 +1018,36 @@ pub mod trace_dump {
             }
             CoreTypeConcrete::Span(_) => todo!("CoreTypeConcrete::Span"),
             CoreTypeConcrete::StarkNet(selector) => match selector {
-                StarkNetTypeConcrete::Secp256Point(_) => {
-                    todo!("StarkNetTypeConcrete::Secp256Point")
-                }
+                StarkNetTypeConcrete::Secp256Point(selector) => match selector {
+                    Secp256PointTypeConcrete::K1(_) => {
+                        let point: Secp256Point = value_ptr.cast().read();
+                        let emu_point = EmuSecp256k1Point {
+                            x: EmuU256 {
+                                lo: point.x.lo,
+                                hi: point.x.hi,
+                            },
+                            y: EmuU256 {
+                                lo: point.y.lo,
+                                hi: point.y.hi,
+                            },
+                        };
+                        emu_point.into_value()
+                    }
+                    Secp256PointTypeConcrete::R1(_) => {
+                        let point: Secp256Point = value_ptr.cast().read();
+                        let emu_point = EmuSecp256r1Point {
+                            x: EmuU256 {
+                                lo: point.x.lo,
+                                hi: point.x.hi,
+                            },
+                            y: EmuU256 {
+                                lo: point.y.lo,
+                                hi: point.y.hi,
+                            },
+                        };
+                        emu_point.into_value()
+                    }
+                },
                 StarkNetTypeConcrete::Sha256StateHandle(_) => {
                     let raw_data = value_ptr.cast::<NonNull<[u32; 8]>>().read().read();
                     let data = raw_data.into_iter().map(Value::U32).collect_vec();
@@ -1024,5 +1057,18 @@ pub mod trace_dump {
             },
             CoreTypeConcrete::Bytes31(_) => Value::Bytes31(value_ptr.cast().read()),
         }
+    }
+
+    #[repr(C, align(16))]
+    pub struct Secp256Point {
+        pub x: U256,
+        pub y: U256,
+        pub is_infinity: bool,
+    }
+
+    #[repr(C, align(16))]
+    pub struct U256 {
+        pub lo: u128,
+        pub hi: u128,
     }
 }
