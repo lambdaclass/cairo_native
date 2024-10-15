@@ -142,6 +142,9 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
 </span><span class="kw">use </span><span class="kw">crate</span>::metadata::gas::GasMetadataError;
 <span class="kw">use </span>cairo_lang_sierra::extensions::modules::utils::Range;
@@ -212,6 +215,9 @@
 
     <span class="attr">#[error(<span class="string">"integer conversion failed"</span>)]
     </span>IntegerConversion,
+
+    <span class="attr">#[error(<span class="string">"missing BuiltinCosts global symbol, should never happen, this is a bug"</span>)]
+    </span>MissingBuiltinCostsSymbol,
 
     <span class="attr">#[error(transparent)]
     </span>IoError(<span class="attr">#[from] </span>std::io::Error),

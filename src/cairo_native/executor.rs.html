@@ -747,7 +747,6 @@
 <a href="#747" id="747">747</a>
 <a href="#748" id="748">748</a>
 <a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -927,8 +926,7 @@
                     .to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
             }
             CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; {
-                <span class="comment">// This builtin should never be an argument but just in case.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(builtin_costs_ptr) = builtin_costs_ptr {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(builtin_costs_ptr) = builtin_costs_ptr {
                     builtin_costs_ptr.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
                     (builtin_costs.as_ptr()).to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
