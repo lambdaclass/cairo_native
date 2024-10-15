@@ -34,7 +34,7 @@
 use crate::{
     arch::AbiArgument,
     context::NativeContext,
-    error::Result,
+    error::{Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
     module::NativeModule,
@@ -77,16 +77,27 @@ pub struct AotContractExecutor {
     pub library: Arc<Library>,
     path: PathBuf,
     is_temp_path: bool,
-    entry_points_info: BTreeMap<u64, EntryPointInfo>,
+    contract_info: ContractInfo,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-struct EntryPointInfo {
-    builtins: Vec<BuiltinType>,
+pub struct ContractInfo {
+    pub version: ContractInfoVersion,
+    pub entry_points: BTreeMap<u64, EntryPointInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-enum BuiltinType {
+pub enum ContractInfoVersion {
+    Version0,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct EntryPointInfo {
+    pub builtins: Vec<BuiltinType>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub enum BuiltinType {
     Bitwise,
     EcOp,
     RangeCheck,
@@ -136,6 +147,9 @@ impl AotContractExecutor {
                         CoreTypeConcrete::RangeCheck(_) => builtins.push(BuiltinType::RangeCheck),
                         CoreTypeConcrete::Pedersen(_) => builtins.push(BuiltinType::Pedersen),
                         CoreTypeConcrete::Poseidon(_) => builtins.push(BuiltinType::Poseidon),
+                        CoreTypeConcrete::BuiltinCosts(_) => {
+                            builtins.push(BuiltinType::BuiltinCosts)
+                        }
                         CoreTypeConcrete::SegmentArena(_) => {
                             builtins.push(BuiltinType::SegmentArena)
                         }
@@ -174,7 +188,10 @@ impl AotContractExecutor {
             library: Arc::new(unsafe { Library::new(&library_path)? }),
             path: library_path,
             is_temp_path: true,
-            entry_points_info: infos,
+            contract_info: ContractInfo {
+                version: ContractInfoVersion::Version0,
+                entry_points: infos,
+            },
         })
     }
 
@@ -183,9 +200,9 @@ impl AotContractExecutor {
         let to = to.as_ref();
         std::fs::copy(&self.path, to)?;
 
-        let info = serde_json::to_string(&self.entry_points_info)?;
+        let contract_info = serde_json::to_string(&self.contract_info)?;
         let path = to.with_extension("json");
-        std::fs::write(path, info)?;
+        std::fs::write(path, contract_info)?;
 
         self.path = to.to_path_buf();
         self.is_temp_path = false;
@@ -196,12 +213,12 @@ impl AotContractExecutor {
     /// Load the executor from an already compiled library with the additional info json file.
     pub fn load(library_path: &Path) -> Result<Self> {
         let info_str = std::fs::read_to_string(library_path.with_extension("json"))?;
-        let info: BTreeMap<u64, EntryPointInfo> = serde_json::from_str(&info_str)?;
+        let contract_info: ContractInfo = serde_json::from_str(&info_str)?;
         Ok(Self {
             library: Arc::new(unsafe { Library::new(library_path)? }),
             path: library_path.to_path_buf(),
             is_temp_path: false,
-            entry_points_info: info,
+            contract_info,
         })
     }
 
@@ -218,20 +235,23 @@ impl AotContractExecutor {
         let mut invoke_data = Vec::<u8>::new();
 
         let function_ptr = self.find_function_ptr(function_id, true)?;
-        let builtin_costs_ptr = self.find_symbol_ptr("builtin_costs");
+        let builtin_costs_ptr = self
+            .find_symbol_ptr("builtin_costs")
+            .ok_or_else(|| Error::MissingBuiltinCostsSymbol)?;
 
         let builtin_costs = builtin_costs.unwrap_or_default();
         let builtin_costs: [u64; 7] = builtin_costs.into();
 
-        if let Some(builtin_costs_ptr) = builtin_costs_ptr {
-            unsafe {
-                *builtin_costs_ptr.cast() = builtin_costs.as_ptr();
-            }
+        unsafe {
+            *builtin_costs_ptr.cast() = builtin_costs.as_ptr();
         }
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         // substract 2, which are the gas and syscall builtin
-        let num_builtins = self.entry_points_info[&function_id.id].builtins.len() - 2;
+        let num_builtins = self.contract_info.entry_points[&function_id.id]
+            .builtins
+            .len()
+            - 2;
 
         // There is always a return ptr because contracts always return more than 1 thing (builtin counters, syscall, enum)
         let return_ptr = arena.alloc_layout(unsafe {
@@ -244,11 +264,14 @@ impl AotContractExecutor {
 
         let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
 
-        for b in &self.entry_points_info[&function_id.id].builtins {
+        for b in &self.contract_info.entry_points[&function_id.id].builtins {
             match b {
                 BuiltinType::Gas => {
                     let gas = gas.unwrap_or(0);
                     gas.to_bytes(&mut invoke_data)?;
+                }
+                BuiltinType::BuiltinCosts => {
+                    builtin_costs_ptr.to_bytes(&mut invoke_data)?;
                 }
                 BuiltinType::System => {
                     (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
@@ -324,7 +347,7 @@ impl AotContractExecutor {
 
         let return_ptr = &mut return_ptr.cast();
 
-        for b in &self.entry_points_info[&function_id.id].builtins {
+        for b in &self.contract_info.entry_points[&function_id.id].builtins {
             match b {
                 BuiltinType::Gas => {
                     remaining_gas = unsafe { *read_value::<u128>(return_ptr) };
