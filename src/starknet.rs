@@ -14,10 +14,45 @@ pub struct ArrayAbi<T> {
     pub capacity: u32,
 }
 
+impl From<&ArrayAbi<Felt252Abi>> for Vec<Felt> {
+    fn from(value: &ArrayAbi<Felt252Abi>) -> Self {
+        let felt_vec: Vec<_> = unsafe {
+            let since_offset = value.since as usize;
+            let until_offset = value.until as usize;
+            debug_assert!(since_offset <= until_offset);
+            let len = until_offset - since_offset;
+            match len {
+                0 => &[],
+                _ => std::slice::from_raw_parts(value.ptr.add(since_offset), len),
+            }
+        }
+        .iter()
+        .map(Felt::from)
+        .collect();
+        felt_vec
+    }
+}
+
 /// Binary representation of a `Felt` (in MLIR).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 #[repr(C, align(16))]
 pub struct Felt252Abi(pub [u8; 32]);
+
+impl From<Felt252Abi> for Felt {
+    fn from(mut value: Felt252Abi) -> Felt {
+        value.0[31] &= 0x0F;
+        Felt::from_bytes_le(&value.0)
+    }
+}
+
+impl From<&Felt252Abi> for Felt {
+    fn from(value: &Felt252Abi) -> Felt {
+        let mut value = *value;
+        value.0[31] &= 0x0F;
+        Felt::from_bytes_le(&value.0)
+    }
+}
+
 /// Binary representation of a `u256` (in MLIR).
 // TODO: This shouldn't need to be public.
 #[derive(
@@ -910,17 +945,8 @@ pub(crate) mod handler {
             selector: &Felt252Abi,
             input: &ArrayAbi<Felt252Abi>,
         ) {
-            let selector = Felt::from_bytes_le(&selector.0);
-            let input_vec: Vec<_> = unsafe {
-                let since_offset = input.since as usize;
-                let until_offset = input.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                std::slice::from_raw_parts(input.ptr.add(since_offset), len)
-            }
-            .iter()
-            .map(|x| Felt::from_bytes_le(&x.0))
-            .collect();
+            let selector = Felt::from(selector);
+            let input_vec: Vec<_> = input.into();
 
             unsafe {
                 libc_free(input.ptr as *mut c_void);
@@ -1106,16 +1132,8 @@ pub(crate) mod handler {
             calldata: &ArrayAbi<Felt252Abi>,
             deploy_from_zero: bool,
         ) {
-            let class_hash = Felt::from_bytes_be(&{
-                let mut data = class_hash.0;
-                data.reverse();
-                data
-            });
-            let contract_address_salt = Felt::from_bytes_be(&{
-                let mut data = contract_address_salt.0;
-                data.reverse();
-                data
-            });
+            let class_hash = Felt::from(class_hash);
+            let contract_address_salt = Felt::from(contract_address_salt);
 
             let calldata_vec: Vec<_> = unsafe {
                 let since_offset = calldata.since as usize;
@@ -1128,13 +1146,7 @@ pub(crate) mod handler {
                 }
             }
             .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
+            .map(Felt::from)
             .collect();
 
             unsafe {
@@ -1170,11 +1182,7 @@ pub(crate) mod handler {
             gas: &mut u128,
             class_hash: &Felt252Abi,
         ) {
-            let class_hash = Felt::from_bytes_be(&{
-                let mut data = class_hash.0;
-                data.reverse();
-                data
-            });
+            let class_hash = Felt::from(class_hash);
             let result = ptr.replace_class(class_hash, gas);
 
             *result_ptr = match result {
@@ -1196,36 +1204,10 @@ pub(crate) mod handler {
             function_selector: &Felt252Abi,
             calldata: &ArrayAbi<Felt252Abi>,
         ) {
-            let class_hash = Felt::from_bytes_be(&{
-                let mut data = class_hash.0;
-                data.reverse();
-                data
-            });
-            let function_selector = Felt::from_bytes_be(&{
-                let mut data = function_selector.0;
-                data.reverse();
-                data
-            });
+            let class_hash = Felt::from(class_hash);
+            let function_selector = Felt::from(function_selector);
 
-            let calldata_vec: Vec<_> = unsafe {
-                let since_offset = calldata.since as usize;
-                let until_offset = calldata.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
-                }
-            }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
+            let calldata_vec: Vec<Felt> = calldata.into();
 
             unsafe {
                 libc_free(calldata.ptr as *mut c_void);
@@ -1256,36 +1238,10 @@ pub(crate) mod handler {
             entry_point_selector: &Felt252Abi,
             calldata: &ArrayAbi<Felt252Abi>,
         ) {
-            let address = Felt::from_bytes_be(&{
-                let mut data = address.0;
-                data.reverse();
-                data
-            });
-            let entry_point_selector = Felt::from_bytes_be(&{
-                let mut data = entry_point_selector.0;
-                data.reverse();
-                data
-            });
+            let address = Felt::from(address);
+            let entry_point_selector = Felt::from(entry_point_selector);
 
-            let calldata_vec: Vec<_> = unsafe {
-                let since_offset = calldata.since as usize;
-                let until_offset = calldata.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
-                }
-            }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
+            let calldata_vec: Vec<Felt> = calldata.into();
 
             unsafe {
                 libc_free(calldata.ptr as *mut c_void);
@@ -1315,11 +1271,7 @@ pub(crate) mod handler {
             address_domain: u32,
             address: &Felt252Abi,
         ) {
-            let address = Felt::from_bytes_be(&{
-                let mut data = address.0;
-                data.reverse();
-                data
-            });
+            let address = Felt::from(address);
             let result = ptr.storage_read(address_domain, address, gas);
 
             *result_ptr = match result {
@@ -1341,16 +1293,8 @@ pub(crate) mod handler {
             address: &Felt252Abi,
             value: &Felt252Abi,
         ) {
-            let address = Felt::from_bytes_be(&{
-                let mut data = address.0;
-                data.reverse();
-                data
-            });
-            let value = Felt::from_bytes_be(&{
-                let mut data = value.0;
-                data.reverse();
-                data
-            });
+            let address = Felt::from(address);
+            let value = Felt::from(value);
             let result = ptr.storage_write(address_domain, address, value, gas);
 
             *result_ptr = match result {
@@ -1371,49 +1315,13 @@ pub(crate) mod handler {
             keys: &ArrayAbi<Felt252Abi>,
             data: &ArrayAbi<Felt252Abi>,
         ) {
-            let keys_vec: Vec<_> = unsafe {
-                let since_offset = keys.since as usize;
-                let until_offset = keys.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(keys.ptr.add(since_offset), len),
-                }
-            }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
+            let keys_vec: Vec<_> = keys.into();
 
             unsafe {
                 libc_free(keys.ptr as *mut c_void);
             }
 
-            let data_vec: Vec<_> = unsafe {
-                let since_offset = data.since as usize;
-                let until_offset = data.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(data.ptr.add(since_offset), len),
-                }
-            }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
+            let data_vec: Vec<_> = data.into();
 
             unsafe {
                 libc_free(data.ptr as *mut c_void);
@@ -1439,30 +1347,8 @@ pub(crate) mod handler {
             to_address: &Felt252Abi,
             payload: &ArrayAbi<Felt252Abi>,
         ) {
-            let to_address = Felt::from_bytes_be(&{
-                let mut data = to_address.0;
-                data.reverse();
-                data
-            });
-            let payload_vec: Vec<_> = unsafe {
-                let since_offset = payload.since as usize;
-                let until_offset = payload.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(payload.ptr.add(since_offset), len),
-                }
-            }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
+            let to_address = Felt::from(to_address);
+            let payload_vec: Vec<_> = payload.into();
 
             unsafe {
                 libc_free(payload.ptr as *mut c_void);
