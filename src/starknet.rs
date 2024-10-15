@@ -1134,19 +1134,7 @@ pub(crate) mod handler {
             let class_hash = Felt::from(class_hash);
             let contract_address_salt = Felt::from(contract_address_salt);
 
-            let calldata_vec: Vec<_> = unsafe {
-                let since_offset = calldata.since as usize;
-                let until_offset = calldata.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
-                }
-            }
-            .iter()
-            .map(Felt::from)
-            .collect();
+            let calldata_vec: Vec<_> = calldata.into();
 
             unsafe {
                 libc_free(calldata.ptr as *mut c_void);
