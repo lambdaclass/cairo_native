@@ -152,8 +152,8 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
         let opt = match opt_level {
             OptLevel::None => 0,
             OptLevel::Less => 1,
-            // slp-vectorizer pass may cause issues, but after the change
-            // on function attributes it seems to not trigger it anymore.
+            // slp-vectorizer pass did cause some issues, but after the change
+            // on function attributes it seems to not trigger them anymore.
             // https://github.com/llvm/llvm-project/issues/107198
             OptLevel::Default => 2,
             OptLevel::Aggressive => 3,
