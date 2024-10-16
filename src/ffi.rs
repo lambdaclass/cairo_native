@@ -239,7 +239,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
             )
         }
     } else {
-        String::from("libcario_native_runtime.a")
+        String::from("libcairo_native_runtime.a")
     };
 
     let args: Vec<Cow<'static, str>> = {
