@@ -384,6 +384,19 @@
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # FFI Wrappers
 //!
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
@@ -415,6 +428,7 @@
 <span class="kw">use </span>mlir_sys::{mlirLLVMStructTypeGetElementType, mlirTranslateModuleToLLVMIR};
 <span class="kw">use </span>std::{
     borrow::Cow,
+    env,
     ffi::{CStr, CString},
     io::Write,
     mem::MaybeUninit,
@@ -608,6 +622,28 @@
         }
     }
 
+    <span class="kw">let </span>runtime_library_path = <span class="kw">if let </span><span class="prelude-val">Ok</span>(extra_dir) = std::env::var(<span class="string">"CAIRO_NATIVE_RUNTIME_LIBRARY"</span>)
+    {
+        <span class="kw">let </span>path = Path::new(<span class="kw-2">&amp;</span>extra_dir);
+        <span class="kw">if </span>path.is_absolute() {
+            extra_dir
+        } <span class="kw">else </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>absolute_path = env::current_dir()
+                .expect(<span class="string">"Failed to get the current directory"</span>)
+                .join(path);
+            absolute_path = absolute_path
+                .canonicalize()
+                .expect(<span class="string">"Failed to cannonicalize path"</span>);
+            String::from(
+                absolute_path
+                    .to_str()
+                    .expect(<span class="string">"Absolute path contains non-utf8 characters"</span>),
+            )
+        }
+    } <span class="kw">else </span>{
+        String::from(<span class="string">"libcairo_native_runtime.a"</span>)
+    };
+
     <span class="kw">let </span>args: Vec&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt; = {
         <span class="attr">#[cfg(target_os = <span class="string">"macos"</span>)]
         </span>{
@@ -625,13 +661,8 @@
                 <span class="string">"-o"</span>.into(),
                 Cow::from(output_path),
                 <span class="string">"-lSystem"</span>.into(),
+                Cow::from(runtime_library_path),
             ]);
-
-            <span class="kw">if let </span><span class="prelude-val">Ok</span>(extra_dir) = std::env::var(<span class="string">"CAIRO_NATIVE_RUNTIME_LIBRARY"</span>) {
-                args.extend([Cow::from(extra_dir)]);
-            } <span class="kw">else </span>{
-                args.extend([<span class="string">"libcairo_native_runtime.a"</span>.into()]);
-            }
 
             args
         }
@@ -650,13 +681,8 @@
                 Cow::from(output_path),
                 <span class="string">"-lc"</span>.into(),
                 Cow::from(file_path),
+                Cow::from(runtime_library_path),
             ]);
-
-            <span class="kw">if let </span><span class="prelude-val">Ok</span>(extra_dir) = std::env::var(<span class="string">"CAIRO_NATIVE_RUNTIME_LIBRARY"</span>) {
-                args.extend([Cow::from(extra_dir)]);
-            } <span class="kw">else </span>{
-                args.extend([<span class="string">"libcairo_native_runtime.a"</span>.into()]);
-            }
 
             args
         }
