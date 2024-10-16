@@ -143,7 +143,7 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
                 OptLevel::Default => LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
                 OptLevel::Aggressive => LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
             },
-            LLVMRelocMode::LLVMRelocDynamicNoPic,
+            LLVMRelocMode::LLVMRelocPIC,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
 
@@ -152,8 +152,11 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
         let opt = match opt_level {
             OptLevel::None => 0,
             OptLevel::Less => 1,
-            OptLevel::Default => 1, // todo: change once slp-vectorizer pass is fixed on llvm
-            OptLevel::Aggressive => 1, // https://github.com/llvm/llvm-project/issues/107198
+            // slp-vectorizer pass did cause some issues, but after the change
+            // on function attributes it seems to not trigger them anymore.
+            // https://github.com/llvm/llvm-project/issues/107198
+            OptLevel::Default => 2,
+            OptLevel::Aggressive => 3,
         };
         let passes = CString::new(format!("default<O{opt}>")).unwrap();
         let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
