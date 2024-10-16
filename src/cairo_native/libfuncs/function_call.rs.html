@@ -323,7 +323,7 @@
         attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Type, Value,
+        Attribute, Block, Identifier, Location, Type, Value,
     },
     Context,
 };
@@ -495,11 +495,11 @@
                         )
                         .into(),
                     ),
-                    <span class="comment">// (
-                    //     Identifier::new(context, "CConv"),
-                    //     Attribute::parse(context, "#llvm.cconv&lt;tailcc&gt;").unwrap(),
-                    // ),
-                </span>])
+                    (
+                        Identifier::new(context, <span class="string">"CConv"</span>),
+                        Attribute::parse(context, <span class="string">"#llvm.cconv&lt;fastcc&gt;"</span>).unwrap(),
+                    ),
+                ])
                 .add_operands(<span class="kw-2">&amp;</span>arguments)
                 .add_results(<span class="kw-2">&amp;</span>[llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span>result_types, <span class="bool-val">false</span>)])
                 .build()<span class="question-mark">?</span>,

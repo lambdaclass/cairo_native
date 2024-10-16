@@ -479,6 +479,24 @@
 <a href="#479" id="479">479</a>
 <a href="#480" id="480">480</a>
 <a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary type
 //!
 //! A key value storage for values whose type implement Copy. The key is always a felt.
@@ -509,7 +527,7 @@
     dialect::{func, llvm, ods},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        Block, Location, Module, Region, Type,
+        Attribute, Block, Identifier, Location, Module, Region, Type,
     },
     Context,
 };
@@ -607,7 +625,16 @@
                 <span class="bool-val">false</span>,
             )),
             region,
-            <span class="kw-2">&amp;</span>[],
+            <span class="kw-2">&amp;</span>[
+                (
+                    Identifier::new(context, <span class="string">"sym_visibility"</span>),
+                    StringAttribute::new(context, <span class="string">"public"</span>).into(),
+                ),
+                (
+                    Identifier::new(context, <span class="string">"linkage"</span>),
+                    Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>).unwrap(),
+                ),
+            ],
             location,
         ));
     }
@@ -672,7 +699,16 @@
                     <span class="bool-val">false</span>,
                 )),
                 region,
-                <span class="kw-2">&amp;</span>[],
+                <span class="kw-2">&amp;</span>[
+                    (
+                        Identifier::new(context, <span class="string">"sym_visibility"</span>),
+                        StringAttribute::new(context, <span class="string">"public"</span>).into(),
+                    ),
+                    (
+                        Identifier::new(context, <span class="string">"llvm.linkage"</span>),
+                        Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>).unwrap(),
+                    ),
+                ],
                 location,
             ));
 

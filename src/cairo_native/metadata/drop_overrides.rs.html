@@ -129,6 +129,19 @@
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Dropping logic overrides
 //!
 //! By default, values are discarded, but some cases (like arrays, boxes, nullables, dictionaries
@@ -163,7 +176,7 @@
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Block, Location, Module, Region, Value,
+        Attribute, Block, Identifier, Location, Module, Region, Value,
     },
     Context,
 };
@@ -216,7 +229,20 @@
                     StringAttribute::new(context, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"drop${}"</span>, id.id)),
                     TypeAttribute::new(FunctionType::new(context, <span class="kw-2">&amp;</span>[ty], <span class="kw-2">&amp;</span>[]).into()),
                     region,
-                    <span class="kw-2">&amp;</span>[],
+                    <span class="kw-2">&amp;</span>[
+                        (
+                            Identifier::new(context, <span class="string">"sym_visibility"</span>),
+                            StringAttribute::new(context, <span class="string">"public"</span>).into(),
+                        ),
+                        (
+                            Identifier::new(context, <span class="string">"llvm.CConv"</span>),
+                            Attribute::parse(context, <span class="string">"#llvm.cconv&lt;fastcc&gt;"</span>).unwrap(),
+                        ),
+                        (
+                            Identifier::new(context, <span class="string">"llvm.linkage"</span>),
+                            Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>).unwrap(),
+                        ),
+                    ],
                     Location::unknown(context),
                 ));
             }
