@@ -661,8 +661,8 @@ mod tests {
     use starknet_types_core::felt::Felt;
 
     use crate::{
-        cairo_native__dict_drop, cairo_native__dict_dup, cairo_native__dict_get,
-        cairo_native__dict_new, cairo_native__libfunc__debug__print,
+        cairo_native__dict_drop, cairo_native__dict_dup, cairo_native__dict_gas_refund,
+        cairo_native__dict_get, cairo_native__dict_new, cairo_native__libfunc__debug__print,
         cairo_native__libfunc__hades_permutation, cairo_native__libfunc__pedersen,
     };
 
@@ -774,6 +774,11 @@ mod tests {
             assert!(!ptr.is_null());
             assert!(!unsafe { *ptr }.is_null());
             assert_eq!(unsafe { **ptr }, 2);
+        }
+
+        {
+            let refund = unsafe { cairo_native__dict_gas_refund(dict) };
+            assert_eq!(refund, 4050);
         }
 
         let cloned_dict = unsafe { cairo_native__dict_dup(dict, dup_fn_test) };
