@@ -648,3 +648,110 @@ pub fn as_cairo_short_string_ex(value: &Felt, length: usize) -> Option<String> {
 
     Some(as_string)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        env,
+        fs::{remove_file, File},
+        io::{Read, Seek},
+        os::{fd::AsRawFd, raw::c_void},
+    };
+
+    use starknet_types_core::felt::Felt;
+
+    use crate::{
+        cairo_native__dict_new, cairo_native__libfunc__debug__print,
+        cairo_native__libfunc__hades_permutation, cairo_native__libfunc__pedersen,
+    };
+
+    pub fn felt252_short_str(value: &str) -> Felt {
+        let values: Vec<_> = value
+            .chars()
+            .filter_map(|c| c.is_ascii().then_some(c as u8))
+            .collect();
+
+        assert!(values.len() < 32);
+        Felt::from_bytes_be_slice(&values)
+    }
+
+    #[test]
+    fn test_debug_print() {
+        let dir = env::temp_dir();
+        remove_file(dir.join("print.txt")).ok();
+        let mut file = File::create_new(dir.join("print.txt")).unwrap();
+        {
+            let fd = file.as_raw_fd();
+            let data = felt252_short_str("hello world");
+            let data = data.to_bytes_le();
+            unsafe { cairo_native__libfunc__debug__print(fd, &data, 1) };
+        }
+        file.seek(std::io::SeekFrom::Start(0)).unwrap();
+
+        let mut result = String::new();
+        file.read_to_string(&mut result).unwrap();
+
+        assert_eq!(
+            result,
+            "[DEBUG]\t0x68656c6c6f20776f726c64 ('hello world')\n"
+        );
+    }
+
+    #[test]
+    fn test_pederesen() {
+        let mut dst = [0; 32];
+        let lhs = Felt::from(1).to_bytes_le();
+        let rhs = Felt::from(3).to_bytes_le();
+
+        unsafe {
+            cairo_native__libfunc__pedersen(&mut dst, &lhs, &rhs);
+        }
+
+        assert_eq!(
+            dst,
+            [
+                84, 98, 174, 134, 3, 124, 237, 179, 166, 110, 159, 98, 170, 35, 83, 237, 130, 154,
+                236, 0, 205, 134, 200, 185, 39, 92, 0, 228, 132, 217, 130, 5
+            ]
+        )
+    }
+
+    #[test]
+    fn test_hades_permutation() {
+        let mut op0 = Felt::from(1).to_bytes_le();
+        let mut op1 = Felt::from(1).to_bytes_le();
+        let mut op2 = Felt::from(1).to_bytes_le();
+
+        unsafe {
+            cairo_native__libfunc__hades_permutation(&mut op0, &mut op1, &mut op2);
+        }
+
+        assert_eq!(
+            Felt::from_bytes_le(&op0),
+            Felt::from_hex("0x4ebdde1149fcacbb41e4fc342432a48c97994fd045f432ad234ae9279269779")
+                .unwrap()
+        );
+        assert_eq!(
+            Felt::from_bytes_le(&op1),
+            Felt::from_hex("0x7f4cec57dd08b69414f7de7dffa230fc90fa3993673c422408af05831e0cc98")
+                .unwrap()
+        );
+        assert_eq!(
+            Felt::from_bytes_le(&op2),
+            Felt::from_hex("0x5b5d00fd09caade43caffe70527fa84d5d9cd51e22c2ce115693ecbb5854d6a")
+                .unwrap()
+        );
+    }
+
+    // Test free_fn for the dict testing, values are u64.
+    pub extern "C" fn free_fn_test(ptr: *mut c_void) {
+        assert!(!ptr.is_null());
+        let b: Box<u64> = unsafe { Box::from_raw(ptr.cast()) };
+        drop(b);
+    }
+
+    #[test]
+    fn test_dict() {
+        let dict = unsafe { cairo_native__dict_new(free_fn_test) };
+    }
+}
