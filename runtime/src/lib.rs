@@ -663,7 +663,9 @@ mod tests {
     use crate::{
         cairo_native__dict_drop, cairo_native__dict_dup, cairo_native__dict_gas_refund,
         cairo_native__dict_get, cairo_native__dict_new, cairo_native__libfunc__debug__print,
-        cairo_native__libfunc__hades_permutation, cairo_native__libfunc__pedersen,
+        cairo_native__libfunc__ec__ec_point_try_new_nz, cairo_native__libfunc__ec__ec_state_add,
+        cairo_native__libfunc__ec__ec_state_init, cairo_native__libfunc__hades_permutation,
+        cairo_native__libfunc__pedersen,
     };
 
     pub fn felt252_short_str(value: &str) -> Felt {
@@ -794,5 +796,85 @@ mod tests {
         }
 
         unsafe { cairo_native__dict_drop(cloned_dict, None) };
+    }
+
+    #[test]
+    fn test_ec__ec_point() {
+        let mut state = [
+            Felt::ZERO.to_bytes_le(),
+            Felt::ZERO.to_bytes_le(),
+            Felt::ZERO.to_bytes_le(),
+            Felt::ZERO.to_bytes_le(),
+        ];
+
+        unsafe { cairo_native__libfunc__ec__ec_state_init(&mut state) };
+
+        let points: &mut [[u8; 32]; 2] = (&mut state[..2]).try_into().unwrap();
+
+        let result = unsafe { cairo_native__libfunc__ec__ec_point_try_new_nz(points) };
+
+        // point should be valid since it was made with state init
+        assert!(result);
+    }
+
+    #[test]
+    fn test_ec__ec_point_add() {
+        // Test values taken from starknet-rs
+        let mut state = [
+            Felt::from_dec_str(
+                "874739451078007766457464989774322083649278607533249481151382481072868806602",
+            )
+            .unwrap()
+            .to_bytes_le(),
+            Felt::from_dec_str(
+                "152666792071518830868575557812948353041420400780739481342941381225525861407",
+            )
+            .unwrap()
+            .to_bytes_le(),
+            Felt::from_dec_str(
+                "874739451078007766457464989774322083649278607533249481151382481072868806602",
+            )
+            .unwrap()
+            .to_bytes_le(),
+            Felt::from_dec_str(
+                "152666792071518830868575557812948353041420400780739481342941381225525861407",
+            )
+            .unwrap()
+            .to_bytes_le(),
+        ];
+
+        let point = [
+            Felt::from_dec_str(
+                "874739451078007766457464989774322083649278607533249481151382481072868806602",
+            )
+            .unwrap()
+            .to_bytes_le(),
+            Felt::from_dec_str(
+                "152666792071518830868575557812948353041420400780739481342941381225525861407",
+            )
+            .unwrap()
+            .to_bytes_le(),
+        ];
+
+        unsafe {
+            cairo_native__libfunc__ec__ec_state_add(&mut state, &point);
+        };
+
+        assert_eq!(
+            state[0],
+            Felt::from_dec_str(
+                "3324833730090626974525872402899302150520188025637965566623476530814354734325",
+            )
+            .unwrap()
+            .to_bytes_le()
+        );
+        assert_eq!(
+            state[1],
+            Felt::from_dec_str(
+                "3147007486456030910661996439995670279305852583596209647900952752170983517249",
+            )
+            .unwrap()
+            .to_bytes_le()
+        );
     }
 }
