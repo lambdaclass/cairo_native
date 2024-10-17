@@ -248,7 +248,7 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> u64 {
     let dict = &*ptr;
-    (dict.count - dict.inner.len() as u64) * *DICT_GAS_REFUND_PER_ACCESS
+    (dict.count.saturating_sub(dict.inner.len() as u64)) * *DICT_GAS_REFUND_PER_ACCESS
 }
 
 /// Compute `ec_point_from_x_nz(x)` and store it.
