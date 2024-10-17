@@ -13,7 +13,7 @@ use starknet_types_core::{
     felt::Felt,
     hash::StarkHash,
 };
-use std::{collections::HashMap, fs::File, io::Write, os::fd::FromRawFd, ptr::NonNull, slice};
+use std::{collections::HashMap, ffi::c_void, fs::File, io::Write, os::fd::FromRawFd};
 use std::{ops::Mul, vec::IntoIter};
 
 lazy_static! {
@@ -44,7 +44,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
     let mut items = Vec::with_capacity(len as usize);
 
     for i in 0..len as usize {
-        let data = *data.add(i);
+        let mut data = *data.add(i);
+        data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
         let value = Felt::from_bytes_le(&data);
         items.push(value);
@@ -76,22 +77,24 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
-    dst: *mut u8,
-    lhs: *const u8,
-    rhs: *const u8,
+    dst: &mut [u8; 32],
+    lhs: &[u8; 32],
+    rhs: &[u8; 32],
 ) {
     // Extract arrays from the pointers.
-    let dst = slice::from_raw_parts_mut(dst, 32);
-    let lhs = slice::from_raw_parts(lhs, 32);
-    let rhs = slice::from_raw_parts(rhs, 32);
+    let mut lhs = *lhs;
+    let mut rhs = *rhs;
+
+    lhs[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    rhs[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
     // Convert to FieldElement.
-    let lhs = Felt::from_bytes_le_slice(lhs);
-    let rhs = Felt::from_bytes_le_slice(rhs);
+    let lhs = Felt::from_bytes_le(&lhs);
+    let rhs = Felt::from_bytes_le(&rhs);
 
     // Compute pedersen hash and copy the result into `dst`.
     let res = starknet_types_core::hash::Pedersen::hash(&lhs, &rhs);
-    dst.copy_from_slice(&res.to_bytes_le());
+    *dst = res.to_bytes_le();
 }
 
 /// Compute `hades_permutation(op0, op1, op2)` and replace the operands with the results.
@@ -108,36 +111,37 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
-    op0: *mut u8,
-    op1: *mut u8,
-    op2: *mut u8,
+    op0: &mut [u8; 32],
+    op1: &mut [u8; 32],
+    op2: &mut [u8; 32],
 ) {
-    // Extract arrays from the pointers.
-    let op0 = slice::from_raw_parts_mut(op0, 32);
-    let op1 = slice::from_raw_parts_mut(op1, 32);
-    let op2 = slice::from_raw_parts_mut(op2, 32);
+    op0[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    op1[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    op2[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
     // Convert to FieldElement.
     let mut state = [
-        Felt::from_bytes_le_slice(op0),
-        Felt::from_bytes_le_slice(op1),
-        Felt::from_bytes_le_slice(op2),
+        Felt::from_bytes_le(op0),
+        Felt::from_bytes_le(op1),
+        Felt::from_bytes_le(op2),
     ];
 
     // Compute Poseidon permutation.
     starknet_types_core::hash::Poseidon::hades_permutation(&mut state);
 
     // Write back the results.
-    op0.copy_from_slice(&state[0].to_bytes_le());
-    op1.copy_from_slice(&state[1].to_bytes_le());
-    op2.copy_from_slice(&state[2].to_bytes_le());
+    *op0 = state[0].to_bytes_le();
+    *op1 = state[1].to_bytes_le();
+    *op2 = state[2].to_bytes_le();
 }
 
 /// Felt252 type used in cairo native runtime
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct FeltDict {
-    pub inner: HashMap<[u8; 32], NonNull<std::ffi::c_void>>,
+    pub inner: HashMap<[u8; 32], *mut c_void>,
     pub count: u64,
+
+    pub free_fn: unsafe extern "C" fn(*mut c_void),
 }
 
 /// Allocate a new dictionary.
@@ -147,8 +151,14 @@ pub struct FeltDict {
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_new() -> *mut FeltDict {
-    Box::into_raw(Box::<FeltDict>::default())
+pub unsafe extern "C" fn cairo_native__dict_new(
+    free_fn: extern "C" fn(*mut c_void),
+) -> *mut FeltDict {
+    Box::into_raw(Box::new(FeltDict {
+        inner: HashMap::default(),
+        count: 0,
+        free_fn,
+    }))
 }
 
 /// Free a dictionary using an optional callback to drop each element.
@@ -157,23 +167,25 @@ pub unsafe extern "C" fn cairo_native__dict_new() -> *mut FeltDict {
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-// Note: Using `Option<extern "C" fn(*mut std::ffi::c_void)>` is ffi-safe thanks to Option's null
+// Note: Using `Option<extern "C" fn(*mut c_void)>` is ffi-safe thanks to Option's null
 //   pointer optimization. Check out
 //   https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization for more info.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_drop(
     ptr: *mut FeltDict,
-    drop_fn: Option<extern "C" fn(*mut std::ffi::c_void)>,
+    drop_fn: Option<extern "C" fn(*mut c_void)>,
 ) {
-    let map = Box::from_raw(ptr);
+    let dict = Box::from_raw(ptr);
 
     // Free the entries manually.
-    for entry in map.inner.into_values() {
-        if let Some(drop_fn) = drop_fn {
-            drop_fn(entry.as_ptr());
-        }
+    for entry in dict.inner.into_values() {
+        if !entry.is_null() {
+            if let Some(drop_fn) = drop_fn {
+                drop_fn(entry);
+            }
 
-        libc::free(entry.as_ptr());
+            (dict.free_fn)(entry);
+        }
     }
 }
 
@@ -186,23 +198,30 @@ pub unsafe extern "C" fn cairo_native__dict_drop(
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_dup(
     ptr: *mut FeltDict,
-    dup_fn: extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
+    dup_fn: extern "C" fn(*mut c_void) -> *mut c_void,
 ) -> *mut FeltDict {
     let old_dict = &*ptr;
-    let mut new_dict = Box::<FeltDict>::default();
+    let mut new_dict = Box::new(FeltDict {
+        inner: HashMap::default(),
+        count: 0,
+        free_fn: old_dict.free_fn,
+    });
 
     new_dict.inner.extend(
         old_dict
             .inner
             .iter()
-            .map(|(&k, &v)| (k, NonNull::new(dup_fn(v.as_ptr())).unwrap())),
+            .filter_map(|(&k, &v)| (!v.is_null()).then_some((k, dup_fn(v)))),
     );
 
     Box::into_raw(new_dict)
 }
 
-/// Return the value (reference) for a given key, or null if not present. Increment the access
-/// count.
+/// Return a pointer to the entry's value pointer for a given key, inserting a null pointer if not
+/// present. Increment the access count.
+///
+/// The null pointer will be either updated by `felt252_dict_entry_finalize` or removed (along with
+/// everything else in the dict) by the entry's drop implementation.
 ///
 /// # Safety
 ///
@@ -210,38 +229,14 @@ pub unsafe extern "C" fn cairo_native__dict_dup(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_get(
-    ptr: *mut FeltDict,
+    dict: &mut FeltDict,
     key: &[u8; 32],
-) -> *mut std::ffi::c_void {
-    let dict: &mut FeltDict = &mut *ptr;
+) -> *mut c_void {
+    let mut key = *key;
+    key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
     dict.count += 1;
-
-    match dict.inner.get(key) {
-        Some(v) => v.as_ptr(),
-        None => std::ptr::null_mut(),
-    }
-}
-
-/// Inserts the provided key value. Returning the old one or nullptr if there was none.
-///
-/// # Safety
-///
-/// This function is intended to be called from MLIR, deals with pointers, and is therefore
-/// definitely unsafe to use manually.
-#[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_insert(
-    ptr: *mut FeltDict,
-    key: &[u8; 32],
-    value: NonNull<std::ffi::c_void>,
-) -> *mut std::ffi::c_void {
-    let dict = &mut *ptr;
-    let old_ptr = dict.inner.insert(*key, value);
-
-    if let Some(v) = old_ptr {
-        v.as_ptr()
-    } else {
-        std::ptr::null_mut()
-    }
+    dict.inner.entry(key).or_insert(std::ptr::null_mut()) as *mut _ as *mut c_void
 }
 
 /// Compute the total gas refund for the dictionary at squash time.
@@ -268,9 +263,10 @@ pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> 
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
-    mut point_ptr: NonNull<[[u8; 32]; 2]>,
+    point_ptr: &mut [[u8; 32]; 2],
 ) -> bool {
-    let x = Felt::from_bytes_le(&point_ptr.as_ref()[0]);
+    point_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    let x = Felt::from_bytes_le(&point_ptr[0]);
 
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L63
 
@@ -286,7 +282,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
 
     match AffinePoint::new(x, y) {
         Ok(point) => {
-            point_ptr.as_mut()[1].copy_from_slice(&point.y().to_bytes_le());
+            point_ptr[1] = point.y().to_bytes_le();
             true
         }
         Err(_) => false,
@@ -305,15 +301,18 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
-    mut point_ptr: NonNull<[[u8; 32]; 2]>,
+    point_ptr: &mut [[u8; 32]; 2],
 ) -> bool {
-    let x = Felt::from_bytes_le(&point_ptr.as_ref()[0]);
-    let y = Felt::from_bytes_le(&point_ptr.as_ref()[1]);
+    point_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    point_ptr[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
+    let x = Felt::from_bytes_le(&point_ptr[0]);
+    let y = Felt::from_bytes_le(&point_ptr[1]);
 
     match AffinePoint::new(x, y) {
         Ok(point) => {
-            point_ptr.as_mut()[0].copy_from_slice(&point.x().to_bytes_le());
-            point_ptr.as_mut()[1].copy_from_slice(&point.y().to_bytes_le());
+            point_ptr[0] = point.x().to_bytes_le();
+            point_ptr[1] = point.y().to_bytes_le();
             true
         }
         Err(_) => false,
@@ -327,9 +326,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(
-    mut state_ptr: NonNull<[[u8; 32]; 4]>,
-) {
+pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(state_ptr: &mut [[u8; 32]; 4]) {
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-runner/src/casm_run/mod.rs#L1802
     let mut rng = rand::thread_rng();
     let (random_x, random_y) = loop {
@@ -345,10 +342,10 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(
     // We already made sure its a valid point.
     let state = AffinePoint::new_unchecked(random_x, random_y);
 
-    state_ptr.as_mut()[0].copy_from_slice(&state.x().to_bytes_le());
-    state_ptr.as_mut()[1].copy_from_slice(&state.y().to_bytes_le());
-    state_ptr.as_mut()[2].copy_from_slice(&state.x().to_bytes_le());
-    state_ptr.as_mut()[3].copy_from_slice(&state.y().to_bytes_le());
+    state_ptr[0] = state.x().to_bytes_le();
+    state_ptr[1] = state.y().to_bytes_le();
+    state_ptr[2] = state_ptr[0];
+    state_ptr[3] = state_ptr[1];
 }
 
 /// Compute `ec_state_add(state, point)` and store the state back.
@@ -363,24 +360,31 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
-    mut state_ptr: NonNull<[[u8; 32]; 4]>,
-    point_ptr: NonNull<[[u8; 32]; 2]>,
+    state_ptr: &mut [[u8; 32]; 4],
+    point_ptr: &[[u8; 32]; 2],
 ) {
+    state_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    state_ptr[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
+    let mut point_ptr = *point_ptr;
+    point_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    point_ptr[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
     // We use unchecked methods because the inputs must already be valid points.
     let mut state = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr.as_ref()[0]),
-        Felt::from_bytes_le(&state_ptr.as_ref()[1]),
+        Felt::from_bytes_le(&state_ptr[0]),
+        Felt::from_bytes_le(&state_ptr[1]),
     );
     let point = AffinePoint::new_unchecked(
-        Felt::from_bytes_le(&point_ptr.as_ref()[0]),
-        Felt::from_bytes_le(&point_ptr.as_ref()[1]),
+        Felt::from_bytes_le(&point_ptr[0]),
+        Felt::from_bytes_le(&point_ptr[1]),
     );
 
     state += &point;
     let state = state.to_affine().unwrap();
 
-    state_ptr.as_mut()[0].copy_from_slice(&state.x().to_bytes_le());
-    state_ptr.as_mut()[1].copy_from_slice(&state.y().to_bytes_le());
+    state_ptr[0] = state.x().to_bytes_le();
+    state_ptr[1] = state.y().to_bytes_le();
 }
 
 /// Compute `ec_state_add_mul(state, scalar, point)` and store the state back.
@@ -395,26 +399,36 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
-    mut state_ptr: NonNull<[[u8; 32]; 4]>,
-    scalar_ptr: NonNull<[u8; 32]>,
-    point_ptr: NonNull<[[u8; 32]; 2]>,
+    state_ptr: &mut [[u8; 32]; 4],
+    scalar_ptr: &[u8; 32],
+    point_ptr: &[[u8; 32]; 2],
 ) {
+    state_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    state_ptr[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
+    let mut point_ptr = *point_ptr;
+    point_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    point_ptr[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
+    let mut scalar_ptr = *scalar_ptr;
+    scalar_ptr[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
     // Here the points should already be checked as valid, so we can use unchecked.
     let mut state = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr.as_ref()[0]),
-        Felt::from_bytes_le(&state_ptr.as_ref()[1]),
+        Felt::from_bytes_le(&state_ptr[0]),
+        Felt::from_bytes_le(&state_ptr[1]),
     );
     let point = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&point_ptr.as_ref()[0]),
-        Felt::from_bytes_le(&point_ptr.as_ref()[1]),
+        Felt::from_bytes_le(&point_ptr[0]),
+        Felt::from_bytes_le(&point_ptr[1]),
     );
-    let scalar = Felt::from_bytes_le(scalar_ptr.as_ref());
+    let scalar = Felt::from_bytes_le(&scalar_ptr);
 
     state += &point.mul(scalar);
     let state = state.to_affine().unwrap();
 
-    state_ptr.as_mut()[0].copy_from_slice(&state.x().to_bytes_le());
-    state_ptr.as_mut()[1].copy_from_slice(&state.y().to_bytes_le());
+    state_ptr[0] = state.x().to_bytes_le();
+    state_ptr[1] = state.y().to_bytes_le();
 }
 
 /// Compute `ec_state_try_finalize_nz(state)` and store the result.
@@ -429,17 +443,23 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
-    mut point_ptr: NonNull<[[u8; 32]; 2]>,
-    state_ptr: NonNull<[[u8; 32]; 4]>,
+    point_ptr: &mut [[u8; 32]; 2],
+    state_ptr: &[[u8; 32]; 4],
 ) -> bool {
+    let mut state_ptr = *state_ptr;
+    state_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    state_ptr[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    state_ptr[2][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    state_ptr[3][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
     // We use unchecked methods because the inputs must already be valid points.
     let state = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr.as_ref()[0]),
-        Felt::from_bytes_le(&state_ptr.as_ref()[1]),
+        Felt::from_bytes_le(&state_ptr[0]),
+        Felt::from_bytes_le(&state_ptr[1]),
     );
     let random = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr.as_ref()[2]),
-        Felt::from_bytes_le(&state_ptr.as_ref()[3]),
+        Felt::from_bytes_le(&state_ptr[2]),
+        Felt::from_bytes_le(&state_ptr[3]),
     );
 
     if state.x() == random.x() && state.y() == random.y() {
@@ -448,8 +468,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
         let point = &state - &random;
         let point = point.to_affine().unwrap();
 
-        point_ptr.as_mut()[0].copy_from_slice(&point.x().to_bytes_le());
-        point_ptr.as_mut()[1].copy_from_slice(&point.y().to_bytes_le());
+        point_ptr[0] = point.x().to_bytes_le();
+        point_ptr[1] = point.y().to_bytes_le();
 
         true
     }
@@ -635,16 +655,23 @@ pub mod trace_dump {
         extensions::{
             bounded_int::BoundedIntConcreteType,
             core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-            starknet::StarkNetTypeConcrete,
+            starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
         },
         ids::{ConcreteTypeId, VarId},
         program::StatementIdx,
         program_registry::ProgramRegistry,
     };
     use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+    use itertools::Itertools;
     use num_bigint::BigInt;
     use num_traits::One;
-    use sierra_emu::{ProgramTrace, StateDump, Value};
+    use sierra_emu::{
+        starknet::{
+            Secp256k1Point as EmuSecp256k1Point, Secp256r1Point as EmuSecp256r1Point,
+            U256 as EmuU256,
+        },
+        ProgramTrace, StateDump, Value,
+    };
     use starknet_types_core::felt::Felt;
     use std::{
         alloc::Layout,
@@ -654,6 +681,8 @@ pub mod trace_dump {
         ptr::NonNull,
         sync::{LazyLock, Mutex},
     };
+
+    use crate::FeltDict;
 
     pub static TRACE_DUMP: LazyLock<Mutex<HashMap<u64, TraceDump>>> =
         LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -942,29 +971,112 @@ pub mod trace_dump {
             CoreTypeConcrete::Coupon(_) => todo!("CoreTypeConcrete::Coupon"),
             CoreTypeConcrete::Circuit(_) => todo!("CoreTypeConcrete::Circuit"),
             CoreTypeConcrete::Const(_) => todo!("CoreTypeConcrete::Const"),
-            CoreTypeConcrete::Sint8(_) => todo!("CoreTypeConcrete::Sint8"),
+            CoreTypeConcrete::Sint8(_) => Value::I8(value_ptr.cast().read()),
             CoreTypeConcrete::Sint16(_) => todo!("CoreTypeConcrete::Sint16"),
-            CoreTypeConcrete::Sint32(_) => todo!("CoreTypeConcrete::Sint32"),
+            CoreTypeConcrete::Sint32(_) => Value::I32(value_ptr.cast().read()),
             CoreTypeConcrete::Sint64(_) => todo!("CoreTypeConcrete::Sint64"),
-            CoreTypeConcrete::Sint128(_) => todo!("CoreTypeConcrete::Sint128"),
-            CoreTypeConcrete::Nullable(_) => todo!("CoreTypeConcrete::Nullable"),
+            CoreTypeConcrete::Sint128(_) => Value::I128(value_ptr.cast().read()),
+            CoreTypeConcrete::Nullable(info) => {
+                let inner_ptr = value_ptr.cast::<*mut ()>().read();
+                match NonNull::new(inner_ptr) {
+                    Some(inner_ptr) => read_value_ptr(registry, &info.ty, inner_ptr, get_layout),
+                    None => Value::Uninitialized {
+                        ty: info.ty.clone(),
+                    },
+                }
+            }
+
             CoreTypeConcrete::RangeCheck96(_) => todo!("CoreTypeConcrete::RangeCheck96"),
-            CoreTypeConcrete::Felt252Dict(_) => todo!("CoreTypeConcrete::Felt252Dict"),
+            CoreTypeConcrete::Felt252Dict(info) => {
+                let value = value_ptr.cast::<FeltDict>().as_ref();
+
+                let data = value
+                    .inner
+                    .iter()
+                    .map(|(k, &p)| {
+                        let v = match NonNull::new(p) {
+                            Some(value_ptr) => {
+                                read_value_ptr(registry, &info.ty, value_ptr.cast(), get_layout)
+                            }
+                            None => Value::Uninitialized {
+                                ty: info.ty.clone(),
+                            },
+                        };
+                        let k = Felt::from_bytes_le(k);
+                        (k, v)
+                    })
+                    .collect::<HashMap<Felt, Value>>();
+
+                Value::FeltDict {
+                    ty: info.ty.clone(),
+                    data,
+                }
+            }
             CoreTypeConcrete::Felt252DictEntry(_) => todo!("CoreTypeConcrete::Felt252DictEntry"),
             CoreTypeConcrete::SquashedFelt252Dict(_) => {
                 todo!("CoreTypeConcrete::SquashedFelt252Dict")
             }
             CoreTypeConcrete::Span(_) => todo!("CoreTypeConcrete::Span"),
             CoreTypeConcrete::StarkNet(selector) => match selector {
-                StarkNetTypeConcrete::Secp256Point(_) => {
-                    todo!("StarkNetTypeConcrete::Secp256Point")
-                }
+                StarkNetTypeConcrete::Secp256Point(selector) => match selector {
+                    Secp256PointTypeConcrete::K1(_) => {
+                        let point: Secp256Point = value_ptr.cast().read();
+                        let emu_point = EmuSecp256k1Point {
+                            x: EmuU256 {
+                                lo: point.x.lo,
+                                hi: point.x.hi,
+                            },
+                            y: EmuU256 {
+                                lo: point.y.lo,
+                                hi: point.y.hi,
+                            },
+                        };
+                        emu_point.into_value()
+                    }
+                    Secp256PointTypeConcrete::R1(_) => {
+                        let point: Secp256Point = value_ptr.cast().read();
+                        let emu_point = EmuSecp256r1Point {
+                            x: EmuU256 {
+                                lo: point.x.lo,
+                                hi: point.x.hi,
+                            },
+                            y: EmuU256 {
+                                lo: point.y.lo,
+                                hi: point.y.hi,
+                            },
+                        };
+                        emu_point.into_value()
+                    }
+                },
                 StarkNetTypeConcrete::Sha256StateHandle(_) => {
-                    todo!("StarkNetTypeConcrete::Sha256StateHandle")
+                    let raw_data = value_ptr.cast::<NonNull<[u32; 8]>>().read().read();
+                    let data = raw_data.into_iter().map(Value::U32).collect_vec();
+                    Value::Struct(data)
                 }
                 _ => unreachable!(),
             },
-            CoreTypeConcrete::Bytes31(_) => todo!("CoreTypeConcrete::Bytes31"),
+            CoreTypeConcrete::Bytes31(_) => {
+                let original_data: [u8; 31] = value_ptr.cast().read();
+                let mut data = [0u8; 32];
+                for (i, v) in original_data.into_iter().enumerate() {
+                    data[i] = v
+                }
+
+                Value::Bytes31(Felt::from_bytes_le(&data))
+            }
         }
+    }
+
+    #[repr(C, align(16))]
+    pub struct Secp256Point {
+        pub x: U256,
+        pub y: U256,
+        pub is_infinity: bool,
+    }
+
+    #[repr(C, align(16))]
+    pub struct U256 {
+        pub lo: u128,
+        pub hi: u128,
     }
 }

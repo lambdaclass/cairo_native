@@ -29,6 +29,7 @@ use melior::ir::{Module, Type, TypeLike};
 use mlir_sys::{mlirLLVMStructTypeGetElementType, mlirTranslateModuleToLLVMIR};
 use std::{
     borrow::Cow,
+    env,
     ffi::{CStr, CString},
     io::Write,
     mem::MaybeUninit,
@@ -143,7 +144,7 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
                 OptLevel::Default => LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
                 OptLevel::Aggressive => LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
             },
-            LLVMRelocMode::LLVMRelocDynamicNoPic,
+            LLVMRelocMode::LLVMRelocPIC,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
 
@@ -152,8 +153,11 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
         let opt = match opt_level {
             OptLevel::None => 0,
             OptLevel::Less => 1,
-            OptLevel::Default => 1, // todo: change once slp-vectorizer pass is fixed on llvm
-            OptLevel::Aggressive => 1, // https://github.com/llvm/llvm-project/issues/107198
+            // slp-vectorizer pass did cause some issues, but after the change
+            // on function attributes it seems to not trigger them anymore.
+            // https://github.com/llvm/llvm-project/issues/107198
+            OptLevel::Default => 2,
+            OptLevel::Aggressive => 3,
         };
         let passes = CString::new(format!("default<O{opt}>")).unwrap();
         let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
@@ -219,6 +223,28 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
         }
     }
 
+    let runtime_library_path = if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBRARY")
+    {
+        let path = Path::new(&extra_dir);
+        if path.is_absolute() {
+            extra_dir
+        } else {
+            let mut absolute_path = env::current_dir()
+                .expect("Failed to get the current directory")
+                .join(path);
+            absolute_path = absolute_path
+                .canonicalize()
+                .expect("Failed to cannonicalize path");
+            String::from(
+                absolute_path
+                    .to_str()
+                    .expect("Absolute path contains non-utf8 characters"),
+            )
+        }
+    } else {
+        String::from("libcairo_native_runtime.a")
+    };
+
     let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]
         {
@@ -236,13 +262,8 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 "-o".into(),
                 Cow::from(output_path),
                 "-lSystem".into(),
+                Cow::from(runtime_library_path),
             ]);
-
-            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBRARY") {
-                args.extend([Cow::from(extra_dir)]);
-            } else {
-                args.extend(["libcairo_native_runtime.a".into()]);
-            }
 
             args
         }
@@ -261,13 +282,8 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 Cow::from(output_path),
                 "-lc".into(),
                 Cow::from(file_path),
+                Cow::from(runtime_library_path),
             ]);
-
-            if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBRARY") {
-                args.extend([Cow::from(extra_dir)]);
-            } else {
-                args.extend(["libcairo_native_runtime.a".into()]);
-            }
 
             args
         }

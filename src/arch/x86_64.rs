@@ -18,6 +18,18 @@ fn align_to(buffer: &mut Vec<u8>, align: usize) {
     buffer.resize(buffer.len().next_multiple_of(align), 0);
 }
 
+impl AbiArgument for bool {
+    fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
+        if buffer.len() < 48 {
+            buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
+        } else {
+            align_to(buffer, get_integer_layout(1).align());
+            buffer.push((*self) as u8);
+        }
+        Ok(())
+    }
+}
+
 impl AbiArgument for u8 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
         if buffer.len() < 48 {
