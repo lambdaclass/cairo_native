@@ -221,9 +221,9 @@
     </span><span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), error::Error&gt;;
 }
 
-<span class="doccomment">/// A wrapper that implements `AbiArgument` for `JitValue`s. It contains all the required stuff to
-/// serialize all possible `JitValue`s.
-</span><span class="kw">pub struct </span>JitValueWithInfoWrapper&lt;<span class="lifetime">'a</span>&gt; {
+<span class="doccomment">/// A wrapper that implements `AbiArgument` for `Value`s. It contains all the required stuff to
+/// serialize all possible `Value`s.
+</span><span class="kw">pub struct </span>ValueWithInfoWrapper&lt;<span class="lifetime">'a</span>&gt; {
     <span class="kw">pub </span>value: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Value,
     <span class="kw">pub </span>type_id: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ConcreteTypeId,
     <span class="kw">pub </span>info: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CoreTypeConcrete,
@@ -232,12 +232,12 @@
     <span class="kw">pub </span>registry: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; JitValueWithInfoWrapper&lt;<span class="lifetime">'a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ValueWithInfoWrapper&lt;<span class="lifetime">'a</span>&gt; {
     <span class="kw">fn </span>map&lt;<span class="lifetime">'b</span>&gt;(
         <span class="kw-2">&amp;</span><span class="lifetime">'b </span><span class="self">self</span>,
         value: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>Value,
         type_id: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>ConcreteTypeId,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;JitValueWithInfoWrapper&lt;<span class="lifetime">'b</span>&gt;, error::Error&gt;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ValueWithInfoWrapper&lt;<span class="lifetime">'b</span>&gt;, error::Error&gt;
     <span class="kw">where
         </span><span class="lifetime">'b</span>: <span class="lifetime">'a</span>,
     {
@@ -251,7 +251,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; AbiArgument <span class="kw">for </span>JitValueWithInfoWrapper&lt;<span class="lifetime">'a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; AbiArgument <span class="kw">for </span>ValueWithInfoWrapper&lt;<span class="lifetime">'a</span>&gt; {
     <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), error::Error&gt; {
         <span class="kw">match </span>(<span class="self">self</span>.value, <span class="self">self</span>.info) {
             (value, CoreTypeConcrete::Box(info)) =&gt; {

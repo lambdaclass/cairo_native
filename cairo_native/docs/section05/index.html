@@ -13,59 +13,50 @@ the proper type and return a MLIR type, such as
 A type that doesn’t have size would be <code>Layout::new::&lt;()&gt;()</code>, or if the
 type is a pointer like box: <code>Layout::new::&lt;*mut ()&gt;()</code></p>
 <p>When adding a type, we also need to add the <strong>serialization</strong> and
-<strong>deserialization</strong> functionality, so we can use it with the JIT runner.</p>
-<p>You can find this functionality under <code>src/values.rs</code> and
-<code>src/values/{typename}.rs</code>. As you can see, the project is quite organized
-if you have a feel of its layout.</p>
-<p>Serialization is done using <code>Serde</code>, and each type provides a <code>deserialize</code>
-and <code>serialize</code> function. The inner workings of such functions can be a bit
-complex due to how the JIT runner works. You need to work with pointers and
-unsafe rust.</p>
-<p>In <code>values.rs</code> we should also declare whether the type is complex under
-<code>is_complex</code> in the <code>ValueBuilder</code> trait implementation.</p>
+<strong>deserialization</strong> functionality to convert the value to a memory representation that works with cairo-native.</p>
+<p>You can find this functionality under <code>src/values.rs</code>.</p>
+<p>There is a <code>Value</code> enum with all the possible values that can be passed as input/output.</p>
+<p>This enum has a <code>impl</code> block with 2 important methods <code>to_ptr</code> and <code>from_ptr</code> which convert the Value into and from said
+memory representation, held behind a pointer.</p>
+<p>When passing the values as inputs, there is one more required step, that is to pass the bytes of those values in the
+target platform ABI compatible way, this is done with the <code>AbiArgument</code> trait and the <code>to_bytes</code> method.</p>
+<p>This trait, located in <code>src/arch.rs</code> is implemented currently for aarch64 and x86_64 (depending on the host platform) for some basic types, such as u64, u128, pointers, etc. Most importantly, it is also implemented for <code>ValueWithInfoWrapper</code> which allows to convert the Value using it’s <code>to_ptr</code> method and correctly passing it as an argument in the given <code>buffer: &amp;mut Vec&lt;u8&gt;</code>.</p>
+<p>In <code>types.rs</code> we should also declare whether the type is complex under
+<code>is_complex</code>, whether its a builtin in <code>is_builtin</code>, a zst in <code>is_zst</code> and define it’s layout in the <code>TypeBuilder</code> trait implementation.</p>
 <blockquote>
 <p>Complex types are always passed by pointer (both as params and return
 values) and require a stack allocation. Examples of complex values include
 structs and enums, but not felts since LLVM considers them integers.</p>
 </blockquote>
 <h4 id="deserializing-a-type"><a class="doc-anchor" href="#deserializing-a-type">§</a>Deserializing a type</h4>
-<p>When <strong>deserializing</strong> (a.k.a converting the inputs so the JIT runner
+<p>When <strong>deserializing</strong> (a.k.a converting the inputs so the runner
 accepts them), you are passed a bump allocator arena from <code>Bumpalo</code>, the
 general idea is to get the layout and size of the type, allocate it under
-the arena, get a pointer, and return it. Which will later be passed to the
-MLIR JIT runner. It is important the pointers passed are allocated by the
+the arena, get a pointer, and return it (Some types require additional data on the heap, such as arrays, such allocations should be done with libc’s malloc.). Which will later be passed to the runner. It is important the pointers passed are allocated by the
 arena and not Rust itself.</p>
-<p>Then we need to hookup de <code>deserialize</code> method in <code>values.rs</code> <code>deserialize</code>
-method.</p>
+<p>This is done in the <code>to_ptr</code> method.</p>
 <h4 id="serializing-a-type"><a class="doc-anchor" href="#serializing-a-type">§</a>Serializing a type</h4>
 <p>When <strong>serializing</strong> a type, you will get a <code>ptr: NonNull&lt;()&gt;</code> (non null
 pointer), which you will have to cast, dereference and then deserialize.</p>
 <p>For a simple type to learn how it works, we recommend checking
-<code>src/values/uint8.rs</code>, for more complex types, check <code>src/values/felt252.rs</code>.
+<code>src/values.rs</code>, in the <code>from_ptr</code> method, look the u8 type in the match, for more complex types, check the felt252 type.
 The hardest types to understand are the enums, dictionaries and arrays,
 since they are complex types.</p>
-<p>Then we need to hookup de <code>serialize</code> method in <code>values.rs</code> <code>serialize</code> method.</p>
 <h4 id="implementing-the-library-function"><a class="doc-anchor" href="#implementing-the-library-function">§</a>Implementing the library function</h4>
 <p>Libfuncs are implemented under <code>src/libfuncs.rs</code> and
 <code>src/libfuncs/{libfunc_name}.rs</code>. Just like types.</p>
 <p>Using the <code>src/libfuncs/felt252.rs</code> libfuncs as a aid:</p>
 
 <div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="doccomment">/// Select and call the correct libfunc builder function from the selector.
-</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     selector: <span class="kw-2">&amp;</span>Felt252Concrete,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">match </span>selector {
         Felt252Concrete::BinaryOperation(info) =&gt; {
             build_binary_operation(context, registry, entry, location, helper, metadata, info)
@@ -88,11 +79,11 @@ the <code>src/libfuncs.rs</code> match statement.</p>
 <p>An example libfunc, converting a u8 to a felt252, extensively commented:</p>
 
 <div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="doccomment">/// Generate MLIR operations for the `u8_to_felt252` libfunc.
-</span><span class="kw">pub fn </span>build_to_felt252&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>, TType, TLibfunc&gt;(
+</span><span class="kw">pub fn </span>build_to_felt252&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     <span class="comment">// The Context from MLIR, this is like the heart of the MLIR API, its required to create most stuff like types.
     </span>context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     <span class="comment">// This is the sierra program registry, it aids us at finding types, functions, etc.
-    </span>registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;TType, TLibfunc&gt;,
+    </span>registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     <span class="comment">// This is the MLIR entry block for this libfunc. Remember we append operations to blocks.
     </span>entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     <span class="comment">// The already created MLIR location for this libfunc, we need to pass this to all the MLIR operations.
@@ -104,28 +95,24 @@ the <code>src/libfuncs.rs</code> match statement.</p>
     <span class="comment">// The sierra information for this specific library function. This libfunc only contains signature information, but
     // others which are generic over a type will contain information about that type, for example array related libfuncs.
     </span>info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
-<span class="kw">where
-    </span>TType: GenericType,
-    TLibfunc: GenericLibfunc,
-    &lt;TType <span class="kw">as </span>GenericType&gt;::Concrete: TypeBuilder&lt;TType, TLibfunc, Error = CoreTypeBuilderError&gt;,
-    &lt;TLibfunc <span class="kw">as </span>GenericLibfunc&gt;::Concrete: LibfuncBuilder&lt;TType, TLibfunc, Error = Error&gt;,
-{
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// We retrieve the felt252 type from the registry and call the "build" method to create the MLIR type.
     // We could also just call get_type() to hold on to the sierra type, and then `.layout(registry)` to get the type layout,
     // which is needed in some libfuncs doing more complex stuff.
-    </span><span class="kw">let </span>felt252_ty = registry
-        .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.build(context, helper, registry, metadata)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>felt252_ty = registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
+    )<span class="question-mark">?</span>;
 
     <span class="comment">// Retrieve the first argument passed to this library function, in this case its the u8 value we need to convert.
     </span><span class="kw">let </span>value: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-    <span class="comment">// We create a "extui" operation from the "arith" dialect, which basically zero extends the value to have the same bits as the given type.
-    </span><span class="kw">let </span>op = entry.append_operation(arith::extui(value, felt252_ty, location));
-
-    <span class="comment">// Get  the result from the operation, in this case it's the extended value
-    </span><span class="kw">let </span>result = op.result(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="comment">// We create a "extui" operation from the "arith" dialect, which basically
+    // zero extends the value to have the same bits as the given type.
+    </span><span class="kw">let </span>result = entry.append_op_result(arith::extui(value, felt252_ty, location))<span class="question-mark">?</span>;
 
     <span class="comment">// Using the helper argument, append the branching operation to the next statement, passing result as our output variable.
     </span>entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
