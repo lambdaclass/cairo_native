@@ -5,7 +5,7 @@
 
 pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNativeExecutor};
 use crate::{
-    arch::{AbiArgument, JitValueWithInfoWrapper},
+    arch::{AbiArgument, ValueWithInfoWrapper},
     error::Error,
     execution_result::{BuiltinStats, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -184,7 +184,7 @@ fn invoke_dynamic(
                 }
             }
             type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
-            type_info => JitValueWithInfoWrapper {
+            type_info => ValueWithInfoWrapper {
                 value: iter.next().unwrap(),
                 type_id,
                 info: type_info,

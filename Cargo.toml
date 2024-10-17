@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native"
-version = "0.2.0-alpha.3"
+version = "0.2.0-alpha.4"
 edition = "2021"
 license = "Apache-2.0"
 description = "A compiler to convert Cairo's intermediate representation Sierra code to MLIR."
@@ -92,7 +92,7 @@ cairo-lang-sierra-gas = "2.8.4"
 cairo-lang-starknet = "2.8.4"
 cairo-lang-utils = "2.8.4"
 cairo-lang-starknet-classes = "2.8.4"
-cairo-native-runtime = { version = "0.2.0-alpha.3", path = "runtime", optional = true }
+cairo-native-runtime = { version = "0.2.0-alpha.4", path = "runtime", optional = true }
 clap = { version = "4.5.19", features = ["derive"], optional = true }
 libloading = "0.8.5"
 tracing-subscriber = { version = "0.3.18", features = [
