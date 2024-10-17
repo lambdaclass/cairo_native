@@ -79,7 +79,7 @@ pub fn felt(value: &str) -> [u32; 8] {
     u32_digits.try_into().unwrap()
 }
 
-/// Parse any time that can be a bigint to a felt that can be used in the cairo-native input.
+/// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
 pub fn feltn(value: impl Into<BigInt>) -> [u32; 8] {
     let value: BigInt = value.into();
     let value = match value.sign() {
