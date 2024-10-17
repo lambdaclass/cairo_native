@@ -14,7 +14,7 @@ concurrency:
 jobs:
   check:
     name: clippy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
@@ -38,7 +38,7 @@ jobs:
 
   fmt:
     name: rustfmt
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.81.0
@@ -81,7 +81,7 @@ jobs:
 
   # Check for unnecessary dependencies.
   udeps:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
@@ -106,7 +106,7 @@ jobs:
 
   test:
     name: test (linux, amd64)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
@@ -185,7 +185,7 @@ jobs:
 
   coverage:
     name: coverage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         partition: [1, 2, 3, 4]
@@ -274,7 +274,7 @@ jobs:
 
   upload-coverage:
     name: Upload Coverage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [coverage]
     steps:
       - name: Setup rust env
@@ -317,7 +317,7 @@ jobs:
 
   dockerfile:
     name: dockerfile (linux, amd64)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: check and free hdd space left
