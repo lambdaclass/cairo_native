@@ -26,9 +26,9 @@ pub trait AbiArgument {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), error::Error>;
 }
 
-/// A wrapper that implements `AbiArgument` for `JitValue`s. It contains all the required stuff to
-/// serialize all possible `JitValue`s.
-pub struct JitValueWithInfoWrapper<'a> {
+/// A wrapper that implements `AbiArgument` for `Value`s. It contains all the required stuff to
+/// serialize all possible `Value`s.
+pub struct ValueWithInfoWrapper<'a> {
     pub value: &'a Value,
     pub type_id: &'a ConcreteTypeId,
     pub info: &'a CoreTypeConcrete,
@@ -37,12 +37,12 @@ pub struct JitValueWithInfoWrapper<'a> {
     pub registry: &'a ProgramRegistry<CoreType, CoreLibfunc>,
 }
 
-impl<'a> JitValueWithInfoWrapper<'a> {
+impl<'a> ValueWithInfoWrapper<'a> {
     fn map<'b>(
         &'b self,
         value: &'b Value,
         type_id: &'b ConcreteTypeId,
-    ) -> Result<JitValueWithInfoWrapper<'b>, error::Error>
+    ) -> Result<ValueWithInfoWrapper<'b>, error::Error>
     where
         'b: 'a,
     {
@@ -56,7 +56,7 @@ impl<'a> JitValueWithInfoWrapper<'a> {
     }
 }
 
-impl<'a> AbiArgument for JitValueWithInfoWrapper<'a> {
+impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), error::Error> {
         match (self.value, self.info) {
             (value, CoreTypeConcrete::Box(info)) => {
