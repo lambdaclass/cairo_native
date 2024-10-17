@@ -13,7 +13,9 @@ use starknet_types_core::{
     felt::Felt,
     hash::StarkHash,
 };
-use std::{collections::HashMap, ffi::c_void, fs::File, io::Write, os::fd::FromRawFd};
+use std::{
+    collections::HashMap, ffi::c_void, fs::File, io::Write, mem::ManuallyDrop, os::fd::FromRawFd,
+};
 use std::{ops::Mul, vec::IntoIter};
 
 lazy_static! {
@@ -39,7 +41,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
     data: *const [u8; 32],
     len: u32,
 ) -> i32 {
-    let mut target = File::from_raw_fd(target_fd);
+    // Avoid closing `stdout` on all branches.
+    let mut target = ManuallyDrop::new(File::from_raw_fd(target_fd));
 
     let mut items = Vec::with_capacity(len as usize);
 
@@ -56,9 +59,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
     if write!(target, "{}", value).is_err() {
         return 1;
     };
-
-    // Avoid closing `stdout`.
-    std::mem::forget(target);
 
     0
 }
