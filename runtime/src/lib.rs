@@ -1055,7 +1055,9 @@ pub mod trace_dump {
                 }
                 _ => unreachable!(),
             },
-            CoreTypeConcrete::Bytes31(_) => Value::Bytes31(value_ptr.cast().read()),
+            CoreTypeConcrete::Bytes31(_) => {
+                Value::Bytes31(Felt::from_bytes_le(value_ptr.cast().as_ref()))
+            }
         }
     }
 
