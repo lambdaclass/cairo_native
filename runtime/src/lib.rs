@@ -661,8 +661,9 @@ mod tests {
     use starknet_types_core::felt::Felt;
 
     use crate::{
-        cairo_native__dict_new, cairo_native__libfunc__debug__print,
-        cairo_native__libfunc__hades_permutation, cairo_native__libfunc__pedersen,
+        cairo_native__dict_drop, cairo_native__dict_get, cairo_native__dict_new,
+        cairo_native__libfunc__debug__print, cairo_native__libfunc__hades_permutation,
+        cairo_native__libfunc__pedersen,
     };
 
     pub fn felt252_short_str(value: &str) -> Felt {
@@ -753,5 +754,21 @@ mod tests {
     #[test]
     fn test_dict() {
         let dict = unsafe { cairo_native__dict_new(free_fn_test) };
+
+        let key = Felt::ONE.to_bytes_le();
+
+        {
+            let ptr: *mut *mut u64 = unsafe { cairo_native__dict_get(&mut *dict, &key) }.cast();
+            unsafe { *ptr = Box::into_raw(Box::new(2u64)) };
+        }
+
+        {
+            let ptr: *mut *mut u64 = unsafe { cairo_native__dict_get(&mut *dict, &key) }.cast();
+            assert!(!ptr.is_null());
+            assert!(!unsafe { *ptr }.is_null());
+            assert_eq!(unsafe { **ptr }, 2);
+        }
+
+        unsafe { cairo_native__dict_drop(dict, None) };
     }
 }
