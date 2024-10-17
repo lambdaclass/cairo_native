@@ -28,7 +28,7 @@ use melior::{
     dialect::{func, llvm, ods},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        Block, Location, Module, Region, Type,
+        Attribute, Block, Identifier, Location, Module, Region, Type,
     },
     Context,
 };
@@ -126,7 +126,16 @@ fn build_dup<'ctx>(
                 false,
             )),
             region,
-            &[],
+            &[
+                (
+                    Identifier::new(context, "sym_visibility"),
+                    StringAttribute::new(context, "public").into(),
+                ),
+                (
+                    Identifier::new(context, "linkage"),
+                    Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+                ),
+            ],
             location,
         ));
     }
@@ -191,7 +200,16 @@ fn build_drop<'ctx>(
                     false,
                 )),
                 region,
-                &[],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "public").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+                    ),
+                ],
                 location,
             ));
 

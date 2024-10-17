@@ -10,7 +10,7 @@ use crate::{
     execution_result::{BuiltinStats, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::{libc_free, RangeExt},
+    utils::{libc_free, BuiltinCosts, RangeExt},
     values::Value,
 };
 use bumpalo::Bump;
@@ -69,6 +69,7 @@ extern "C" {
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
+    builtin_costs_ptr: Option<*mut c_void>,
     function_signature: &FunctionSignature,
     args: &[Value],
     gas: u128,
@@ -141,6 +142,15 @@ fn invoke_dynamic(
         previous_syscall_handler
     });
 
+    // Order matters, for the libfunc impl
+    let builtin_costs: [u64; 7] = BuiltinCosts::default().into();
+
+    if let Some(builtin_costs_ptr) = builtin_costs_ptr {
+        unsafe {
+            *builtin_costs_ptr.cast() = builtin_costs.as_ptr();
+        }
+    }
+
     // Generate argument list.
     let mut iter = args.iter();
     for item in function_signature.param_types.iter().filter_map(|type_id| {
@@ -165,6 +175,13 @@ fn invoke_dynamic(
 
                 (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
                     .to_bytes(&mut invoke_data)?;
+            }
+            CoreTypeConcrete::BuiltinCosts(_) => {
+                if let Some(builtin_costs_ptr) = builtin_costs_ptr {
+                    builtin_costs_ptr.to_bytes(&mut invoke_data)?;
+                } else {
+                    (builtin_costs.as_ptr()).to_bytes(&mut invoke_data)?;
+                }
             }
             type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
             type_info => JitValueWithInfoWrapper {
@@ -249,26 +266,38 @@ fn invoke_dynamic(
             },
             _ if type_info.is_builtin() => {
                 if !type_info.is_zst(registry)? {
-                    let value = match &mut return_ptr {
-                        Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
-                        None => ret_registers[0],
-                    } as usize;
+                    if let CoreTypeConcrete::BuiltinCosts(_) = type_info {
+                        // todo: should we use this value?
+                        let _value = match &mut return_ptr {
+                            Some(return_ptr) => unsafe { *read_value::<*mut u64>(return_ptr) },
+                            None => ret_registers[0] as *mut u64,
+                        };
+                    } else {
+                        let value = match &mut return_ptr {
+                            Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
+                            None => ret_registers[0],
+                        } as usize;
 
-                    match type_info {
-                        CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
-                        CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
-                        CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
-                        CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
-                        CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
-                        CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
-                        CoreTypeConcrete::RangeCheck96(_) => builtin_stats.range_check_96 = value,
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
-                            builtin_stats.circuit_add = value
+                        match type_info {
+                            CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
+                            CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
+                            CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
+                            CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
+                            CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
+                            CoreTypeConcrete::SegmentArena(_) => {
+                                builtin_stats.segment_arena = value
+                            }
+                            CoreTypeConcrete::RangeCheck96(_) => {
+                                builtin_stats.range_check_96 = value
+                            }
+                            CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                                builtin_stats.circuit_add = value
+                            }
+                            CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                                builtin_stats.circuit_mul = value
+                            }
+                            _ => unreachable!("{type_id:?}"),
                         }
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
-                            builtin_stats.circuit_mul = value
-                        }
-                        _ => unreachable!("{type_id:?}"),
                     }
                 }
             }
@@ -361,11 +390,13 @@ fn parse_result(
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
-                Ok(Value::Felt252(
-                    starknet_types_core::felt::Felt::from_bytes_le(unsafe {
-                        std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-                    }),
-                ))
+                Ok(Value::Felt252({
+                    let data = unsafe {
+                        std::mem::transmute::<&mut [u64; 4], &mut [u8; 32]>(&mut ret_registers)
+                    };
+                    data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    starknet_types_core::felt::Felt::from_bytes_le(data)
+                }))
             }
         },
         CoreTypeConcrete::Bytes31(_) => match return_ptr {
@@ -478,6 +509,12 @@ fn parse_result(
                         _ => return Err(Error::ParseAttributeError),
                     }
                 };
+
+                // Filter out bits that are not part of the enum's tag.
+                let tag = tag
+                    & 1usize
+                        .wrapping_shl(info.variants.len().next_power_of_two().trailing_zeros())
+                        .wrapping_sub(1);
 
                 (
                     tag,
