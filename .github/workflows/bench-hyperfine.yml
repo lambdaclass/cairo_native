@@ -16,7 +16,7 @@ env:
 jobs:
   bench-hyperfine:
     name: Hyperfine
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
@@ -97,7 +97,7 @@ jobs:
       matrix:
         branch: [ base, head ]
     name: Build cairo-native-run for ${{ matrix.branch }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Cache binary
         uses: actions/cache@v3
@@ -171,7 +171,7 @@ jobs:
   hyperfine-prs:
     name: Bench PR (linux, amd64)
     needs: [ build-binaries ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       PROGRAM: fib_2M
       OUTPUT_DIR: bench-outputs
