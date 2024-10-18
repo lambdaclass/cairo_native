@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         runner: [native, vm]
-        features: ["state-dump", "state-dump,only_cairo_vm"]
+        features: ["state_dump", "state_dump,only_cairo_vm"]
         dump-path: ["state_dumps/native", "state_dumps/vm"]
     steps:
       - uses: actions/checkout@v4
