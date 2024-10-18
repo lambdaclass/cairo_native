@@ -1,0 +1,78 @@
+name: Execute blocks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  native-vm-dump:
+    name: Check Dump Naitve vs VM
+    runs-on: ubuntu-latest
+    env:
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+      RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
+      RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: check and free hdd space left
+        run: |
+          echo "Listing 20 largest packages"
+          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+          df -h
+          sudo apt-get update
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^temurin-.*'
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          df -h
+          echo "Removing large directories"
+          # deleting 15GB
+          sudo rm -rf /usr/share/dotnet/
+          sudo rm -rf /usr/local/lib/android
+          df -h
+      - uses: dtolnay/rust-toolchain@1.81.0
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: add llvm deb repository
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
+          repo-name: llvm-repo
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - name: Install LLVM
+        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
+
+      - name: Install Cairo Native deps
+        run: make deps
+      - name: Build Cairo Native project
+        run: make build
+      - name: Build runtime subproject
+        run: |
+            make runtime-ci
+            export CAIRO_NATIVE_RUNTIME_LIBRARY=libcairo_native_runtime.a
+
+      - name: Checkout to Starknet Replay
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/starknet-replay
+          ref: main
+
+      - name: Install Starknet Replay deps
+        run: make deps
+      - name: Build Starknet Replay project
+        run: make build
+
+      - name: Run Blocks
+        run: |
+          cargo run block-range 807301 807301 mainnet
