@@ -1,16 +1,19 @@
 [package]
 name = "cairo-native-runtime"
 version = "0.2.0-alpha.4"
-description = "A compiler to convert Cairo's intermediate representation Sierra code to MLIR."
+description = "The runtime for cairo-native."
 edition = "2021"
 license = "Apache-2.0"
+keywords = ["starknet", "cairo", "runtime"]
 
 [lib]
 crate-type = ["rlib", "cdylib", "staticlib"]
 
 [dependencies]
 starknet-types-core = { version = "0.1.7", default-features = false, features = [
-    "std", "serde", "hash"
+    "std",
+    "serde",
+    "hash",
 ] }
 cairo-lang-sierra-gas = "2.8.4"
 starknet-curve = "0.5.1"
