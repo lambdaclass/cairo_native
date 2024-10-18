@@ -19,7 +19,7 @@ jobs:
       RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
     strategy:
       matrix:
-        runner: [native, vm]
+        runner: ["native", "vm"]
         features: ["state-dump", "state-dump,only_cairo_vm"]
         dump-path: ["state_dumps/native", "state_dumps/vm"]
     steps:
