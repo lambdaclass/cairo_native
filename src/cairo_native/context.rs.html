@@ -242,6 +242,20 @@
 <a href="#242" id="242">242</a>
 <a href="#243" id="243">243</a>
 <a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     ffi::{get_data_layout_rep, get_target_triple},
@@ -277,7 +291,8 @@
     mlirLLVMDIModuleAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
     MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
-<span class="kw">use </span>std::sync::OnceLock;
+<span class="kw">use </span>std::{sync::OnceLock, time::Instant};
+<span class="kw">use </span>tracing::trace;
 
 <span class="doccomment">/// Context of IRs, dialects and passes for Cairo programs compilation.
 </span><span class="attr">#[derive(Debug, Eq, PartialEq)]
@@ -314,6 +329,9 @@
         program: <span class="kw-2">&amp;</span>Program,
         ignore_debug_names: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">"starting sierra to mlir compilation"</span>);
+        <span class="kw">let </span>pre_sierra_compilation_instant = Instant::now();
+
         <span class="kw">static </span>INITIALIZED: OnceLock&lt;()&gt; = OnceLock::new();
         INITIALIZED.get_or_init(|| <span class="kw">unsafe </span>{
             LLVM_InitializeAllTargets();
@@ -425,6 +443,12 @@
             ignore_debug_names,
         )<span class="question-mark">?</span>;
 
+        <span class="kw">let </span>sierra_compilation_time = pre_sierra_compilation_instant.elapsed().as_millis();
+        <span class="macro">trace!</span>(
+            time = sierra_compilation_time,
+            <span class="string">"sierra to mlir compilation finished"
+        </span>);
+
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(x) = std::env::var(<span class="string">"NATIVE_DEBUG_DUMP"</span>) {
             <span class="kw">if </span>x == <span class="string">"1" </span>|| x == <span class="string">"true" </span>{
                 std::fs::write(<span class="string">"dump-prepass.mlir"</span>, module.as_operation().to_string())
@@ -446,7 +470,11 @@
             }
         }
 
+        <span class="macro">trace!</span>(<span class="string">"starting mlir passes"</span>);
+        <span class="kw">let </span>pre_passes_instant = Instant::now();
         run_pass_manager(<span class="kw-2">&amp;</span><span class="self">self</span>.context, <span class="kw-2">&amp;mut </span>module)<span class="question-mark">?</span>;
+        <span class="kw">let </span>passes_time = pre_passes_instant.elapsed().as_millis();
+        <span class="macro">trace!</span>(time = passes_time, <span class="string">"mlir passes finished"</span>);
 
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(x) = std::env::var(<span class="string">"NATIVE_DEBUG_DUMP"</span>) {
             <span class="kw">if </span>x == <span class="string">"1" </span>|| x == <span class="string">"true" </span>{
