@@ -82,9 +82,17 @@ jobs:
       - name: Install Starknet Replay deps
         run: make deps
 
-      - name: Run Blocks
+      - name: Patch Cairo Native's version
+        if: ${{ matrix.dump == native }}
         run: |
-          cargo run --features ${{matrix.features}} block-range 807301 807301 mainnet
+          echo \
+            "\n[patch.'https://github.com/lambdaclass/cairo_native']
+            cairo-native = { git = 'https://github.com/lambdaclass//cairo_native.git', rev = ${{ github.event.pull_request.head.sha }}" \
+            Cargo.toml
+            cargo update
+
+      - name: Run Blocks
+        run: cargo run --features ${{matrix.features}} block-range 807301 807301 mainnet
 
       - name: Upload generated Dump
         uses: actions/upload-artifact@v4
@@ -117,4 +125,8 @@ jobs:
 
       - name: Check Diffs
         run: |
-          if [./scripts/cmp_state_dumps.sh | grep Matching == ]
+          diffs=./scripts/diff-check.sh
+          if cpm -s $diffs 0 then \
+            echo "$diffs DUMPS DIFFING" \
+            exit 1 \
+          fi
