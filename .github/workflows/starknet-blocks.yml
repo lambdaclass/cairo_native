@@ -19,14 +19,14 @@ jobs:
       RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
     strategy:
       matrix:
-        strategy: [native, vm]
+        runner: [native, vm]
         features: ["state-dump", "state-dump,only_cairo_vm"]
         dump-path: ["state_dumps/native", "state_dumps/vm"]
     steps:
       - uses: actions/checkout@v4
 
       - name: Check and free hdd space left
-        if: ${{ matrix.dump == native }}
+        if: ${{ matrix.runner == native }}
         run: |
           echo "Listing 20 largest packages"
           dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
@@ -51,24 +51,24 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: add llvm deb repository
-        if: ${{ matrix.dump == native }}
+        if: ${{ matrix.runner == native }}
         uses: myci-actions/add-deb-repo@11
         with:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        if: ${{ matrix.dump == native }}
+        if: ${{ matrix.runner == native }}
         run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
 
       - name: Install Cairo Native deps
-        if: ${{ matrix.dump == native }}
+        if: ${{ matrix.runner == native }}
         run: make deps
       - name: Build Cairo Native project
-        if: ${{ matrix.dump == native }}
+        if: ${{ matrix.runner == native }}
         run: make build
       - name: Build runtime subproject
-        if: ${{ matrix.dump == native }}
+        if: ${{ matrix.runner == native }}
         run: |
             make runtime-ci
             export CAIRO_NATIVE_RUNTIME_LIBRARY=libcairo_native_runtime.a
@@ -83,7 +83,7 @@ jobs:
         run: make deps
 
       - name: Patch Cairo Native's version
-        if: ${{ matrix.dump == native }}
+        if: ${{ matrix.runner == native }}
         run: |
           echo \
             "\n[patch.'https://github.com/lambdaclass/cairo_native']
@@ -97,11 +97,11 @@ jobs:
       - name: Upload generated Dump
         uses: actions/upload-artifact@v4
         with:
-          name: dump-{{matrix.dump}}
+          name: dump-{{matrix.runner}}
           path: ${{matrix.dump-path}}
 
   compare-dump:
-    needs: native-vm-blocks-dump
+    needs: [native-vm-blocks-dump]
     runs-on: ubuntu-latest
 
     steps:
