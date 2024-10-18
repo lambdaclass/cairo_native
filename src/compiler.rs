@@ -74,7 +74,7 @@ use melior::{
         arith::CmpiPredicate,
         cf, func, index,
         llvm::{self, LoadStoreOptions},
-        memref,
+        memref, ods,
     },
     ir::{
         attribute::{
@@ -134,6 +134,30 @@ pub fn compile(
         if x == "1" || x == "true" {
             std::fs::write("program.sierra", program.to_string()).expect("failed to dump sierra");
         }
+    }
+
+    {
+        // Add the builtin_costs global.
+        // We always add it because symbol look up otherwise can panic.
+        let region = Region::new();
+        let location = Location::unknown(context);
+        let block = region.append_block(Block::new(&[]));
+        let value = block.append_op_result(
+            ods::llvm::mlir_zero(context, llvm::r#type::pointer(context, 0), location).into(),
+        )?;
+        block.append_operation(melior::dialect::llvm::r#return(Some(value), location));
+
+        module.body().append_operation(
+            ods::llvm::mlir_global(
+                context,
+                region,
+                TypeAttribute::new(llvm::r#type::pointer(context, 0)),
+                StringAttribute::new(context, "builtin_costs"),
+                Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                location,
+            )
+            .into(),
+        );
     }
 
     // Sierra programs have the following structure:
@@ -452,7 +476,7 @@ fn compile_func(
         initial_state,
         |statement_idx, mut state| {
             if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
-                let gas_cost = gas_metadata.get_gas_cost_for_statement(statement_idx);
+                let gas_cost = gas_metadata.get_gas_costs_for_statement(statement_idx);
                 metadata.remove::<GasCost>();
                 metadata.insert(GasCost(gas_cost));
             }
@@ -945,12 +969,16 @@ fn compile_func(
         &[
             (
                 Identifier::new(context, "sym_visibility"),
-                StringAttribute::new(context, "public").into(),
+                StringAttribute::new(context, "private").into(),
             ),
-            // (
-            //     Identifier::new(context, "CConv"),
-            //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
-            // ),
+            (
+                Identifier::new(context, "linkage"),
+                Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+            ),
+            (
+                Identifier::new(context, "CConv"),
+                Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+            ),
         ],
         Location::fused(
             context,
@@ -1374,10 +1402,10 @@ fn generate_entry_point_wrapper<'c>(
                     Identifier::new(context, "callee"),
                     FlatSymbolRefAttribute::new(context, private_symbol).into(),
                 ),
-                // (
-                //     Identifier::new(context, "CConv"),
-                //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
-                // ),
+                (
+                    Identifier::new(context, "CConv"),
+                    Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                ),
             ])
             .add_operands(&args)
             .add_results(&[llvm::r#type::r#struct(context, ret_types, false)])
@@ -1407,6 +1435,14 @@ fn generate_entry_point_wrapper<'c>(
             (
                 Identifier::new(context, "sym_visibility"),
                 StringAttribute::new(context, "public").into(),
+            ),
+            (
+                Identifier::new(context, "llvm.linkage"),
+                Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+            ),
+            (
+                Identifier::new(context, "llvm.CConv"),
+                Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
             ),
             (
                 Identifier::new(context, "llvm.emit_c_interface"),
