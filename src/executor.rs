@@ -177,6 +177,7 @@ fn invoke_dynamic(
                     .to_bytes(&mut invoke_data)?;
             }
             CoreTypeConcrete::BuiltinCosts(_) => {
+                // This builtin should never be an argument but just in case.
                 if let Some(builtin_costs_ptr) = builtin_costs_ptr {
                     builtin_costs_ptr.to_bytes(&mut invoke_data)?;
                 } else {
