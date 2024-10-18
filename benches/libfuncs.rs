@@ -1,5 +1,9 @@
 use cairo_lang_runner::StarknetState;
-use cairo_native::{context::NativeContext, executor::{AotNativeExecutor, JitNativeExecutor}, OptLevel};
+use cairo_native::{
+    context::NativeContext,
+    executor::{AotNativeExecutor, JitNativeExecutor},
+    OptLevel,
+};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use util::{create_vm_runner, prepare_programs};
 
