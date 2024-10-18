@@ -1,5 +1,5 @@
 use cairo_lang_runner::StarknetState;
-use cairo_native::{context::NativeContext, executor::JitNativeExecutor};
+use cairo_native::{context::NativeContext, executor::{AotNativeExecutor, JitNativeExecutor}, OptLevel};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use util::{create_vm_runner, prepare_programs};
 
@@ -53,7 +53,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                         let module = native_context.compile(program, false).unwrap();
                         // pass manager internally verifies the MLIR output is correct.
                         let native_executor =
-                            JitNativeExecutor::from_native_module(module, Default::default());
+                            JitNativeExecutor::from_native_module(module, OptLevel::Aggressive);
 
                         // Execute the program.
                         let result = native_executor
@@ -72,7 +72,54 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                     let module = native_context.compile(program, false).unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                     let native_executor =
-                        JitNativeExecutor::from_native_module(module, Default::default());
+                        JitNativeExecutor::from_native_module(module, OptLevel::Aggressive);
+
+                    // warmup
+                    for _ in 0..5 {
+                        native_executor
+                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128))
+                            .unwrap();
+                    }
+
+                    b.iter(|| {
+                        // Execute the program.
+                        let result = native_executor
+                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128))
+                            .unwrap();
+                        black_box(result)
+                    })
+                },
+            );
+
+            c.bench_with_input(
+                BenchmarkId::new(filename, "aot-with-compile"),
+                &program,
+                |b, program| {
+                    let native_context = NativeContext::new();
+                    b.iter(|| {
+                        let module = native_context.compile(program, false).unwrap();
+                        // pass manager internally verifies the MLIR output is correct.
+                        let native_executor =
+                            AotNativeExecutor::from_native_module(module, OptLevel::Aggressive);
+
+                        // Execute the program.
+                        let result = native_executor
+                            .invoke_dynamic(&entry.id, &[], Some(u64::MAX as u128))
+                            .unwrap();
+                        black_box(result)
+                    })
+                },
+            );
+
+            c.bench_with_input(
+                BenchmarkId::new(filename, "aot-without-compile"),
+                program,
+                |b, program| {
+                    let native_context = NativeContext::new();
+                    let module = native_context.compile(program, false).unwrap();
+                    // pass manager internally verifies the MLIR output is correct.
+                    let native_executor =
+                        AotNativeExecutor::from_native_module(module, OptLevel::Aggressive);
 
                     // warmup
                     for _ in 0..5 {
