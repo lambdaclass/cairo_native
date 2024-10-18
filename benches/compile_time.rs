@@ -68,6 +68,23 @@ pub fn bench_compile_time(c: &mut Criterion) {
             });
         }
     }
+
+    {
+        let mut c = c.benchmark_group("Compilation With Shared Context To Object Code With -O3");
+
+        let native_context = NativeContext::new();
+
+        for (program, filename) in &programs {
+            c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
+                b.iter(|| {
+                    let module = native_context.compile(black_box(program), false).unwrap();
+                    let object = module_to_object(module.module(), OptLevel::Aggressive)
+                        .expect("to compile correctly to a object file");
+                    black_box(object)
+                })
+            });
+        }
+    }
 }
 
 criterion_group!(benches, bench_compile_time);
