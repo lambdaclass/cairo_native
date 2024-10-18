@@ -54,8 +54,11 @@ pub enum Error {
     #[error(transparent)]
     GasMetadataError(#[from] GasMetadataError),
 
-    #[error("llvm error")]
+    #[error("llvm compile error: {0}")]
     LLVMCompileError(String),
+
+    #[error("ld link error: {0}")]
+    LinkError(String),
 
     #[error("cairo const data mismatch")]
     ConstDataMismatch,
@@ -65,6 +68,9 @@ pub enum Error {
 
     #[error("integer conversion failed")]
     IntegerConversion,
+
+    #[error("missing BuiltinCosts global symbol, should never happen, this is a bug")]
+    MissingBuiltinCostsSymbol,
 
     #[error(transparent)]
     IoError(#[from] std::io::Error),

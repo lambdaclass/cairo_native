@@ -1,8 +1,8 @@
 # Environment detection.
 
 UNAME := $(shell uname)
-CAIRO_2_VERSION = 2.8.2
-SCARB_VERSION = 2.8.3
+CAIRO_2_VERSION = 2.8.4
+SCARB_VERSION = 2.8.4
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
@@ -46,15 +46,15 @@ endif
 
 .PHONY: build
 build: check-llvm runtime
-	cargo build --release --all-features
+	cargo build --release --features=scarb
 
 .PHONY: build-natives
 build-native: check-llvm runtime
-	RUSTFLAGS="-C target-cpu=native" cargo build --release --all-features
+	RUSTFLAGS="-C target-cpu=native" cargo build --release --features=scarb
 
 .PHONY: build-dev
 build-dev: check-llvm
-	cargo build --profile optimized-dev --all-features
+	cargo build --profile optimized-dev --features=scarb
 
 .PHONY: check
 check: check-llvm
@@ -63,7 +63,7 @@ check: check-llvm
 
 .PHONY: test
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --all-features
+	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
@@ -71,20 +71,20 @@ test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --all-features proptest
+	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
 
 .PHONY: test-cli
 test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --all-features
+	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: proptest-cli
 proptest-ci: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --all-features proptest
+	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
 
 .PHONY: coverage
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo llvm-cov --verbose --profile ci --all-features --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --all-features --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
 .PHONY: doc
 doc: check-llvm
@@ -95,12 +95,13 @@ doc-open: check-llvm
 	cargo doc --all-features --no-deps --workspace --open
 
 .PHONY: bench
-bench: build needs-cairo2 runtime
+bench: needs-cairo2 runtime
+	cargo b --release --bin cairo-native-run
 	./scripts/bench-hyperfine.sh
 
 .PHONY: bench-ci
 bench-ci: check-llvm needs-cairo2 runtime
-	cargo criterion --all-features
+	cargo criterion --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: stress-test
 stress-test: check-llvm
@@ -116,7 +117,7 @@ stress-clean:
 
 .PHONY: install
 install: check-llvm
-	RUSTFLAGS="-C target-cpu=native" cargo install --all-features --locked --path .
+	RUSTFLAGS="-C target-cpu=native" cargo install --features=scarb,with-cheatcode --locked --path .
 
 .PHONY: clean
 clean: stress-clean

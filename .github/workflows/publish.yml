@@ -11,7 +11,7 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
         MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
         LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
@@ -19,7 +19,7 @@ jobs:
         CRATES_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: free HDD space
         run: |
           # deleting space

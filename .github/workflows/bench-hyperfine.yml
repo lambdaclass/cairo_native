@@ -16,7 +16,7 @@ env:
 jobs:
   bench-hyperfine:
     name: Hyperfine
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
@@ -34,7 +34,7 @@ jobs:
           sudo apt-get remove -y 'php.*'
           sudo apt-get remove -y '^dotnet-.*'
           sudo apt-get remove -y '^temurin-.*'
-          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
           sudo apt-get autoremove -y
           sudo apt-get clean
           df -h
@@ -97,7 +97,7 @@ jobs:
       matrix:
         branch: [ base, head ]
     name: Build cairo-native-run for ${{ matrix.branch }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Cache binary
         uses: actions/cache@v3
@@ -124,7 +124,7 @@ jobs:
           sudo apt-get remove -y 'php.*'
           sudo apt-get remove -y '^dotnet-.*'
           sudo apt-get remove -y '^temurin-.*'
-          sudo apt-get remove -y azure-cli google-cloud-cli microsoft-edge-stable google-chrome-stable firefox powershell mono-devel
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
           sudo apt-get autoremove -y
           sudo apt-get clean
           df -h
@@ -171,7 +171,7 @@ jobs:
   hyperfine-prs:
     name: Bench PR (linux, amd64)
     needs: [ build-binaries ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       PROGRAM: fib_2M
       OUTPUT_DIR: bench-outputs
@@ -228,7 +228,7 @@ jobs:
       - name: Print tables
         run: |
           {
-            echo "Benchmark results Main vs HEAD"
+            echo "${bold}Benchmark results Main vs HEAD.${normal}"
             for f in $OUTPUT_DIR/*.md; do
               echo
               cat $f
@@ -242,7 +242,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: "github-actions[bot]"
-          body-includes: Benchmarking
+          body-includes: Benchmark results Main vs HEAD
 
       - name: Create or update bench comment
         continue-on-error: true
