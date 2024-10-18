@@ -36,8 +36,10 @@ use std::{
     path::Path,
     ptr::{addr_of_mut, null_mut},
     sync::OnceLock,
+    time::Instant,
 };
 use tempfile::NamedTempFile;
+use tracing::trace;
 
 /// For any `!llvm.struct<...>` type, return the MLIR type of the field at the requested index.
 pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c> {
@@ -110,7 +112,11 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 
         let op = module.as_operation().to_raw();
 
+        trace!("starting mlir to llvm compilation");
+        let pre_mlir_instant = Instant::now();
         let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context as *mut _) as *mut _;
+        let mlir_time = pre_mlir_instant.elapsed().as_millis();
+        trace!(time = mlir_time, "mlir to llvm finished");
 
         let mut null = null_mut();
         let mut error_buffer = addr_of_mut!(null);
@@ -160,7 +166,13 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
             OptLevel::Aggressive => 3,
         };
         let passes = CString::new(format!("default<O{opt}>")).unwrap();
+
+        trace!("starting llvm passes");
+        let pre_passes_instant = Instant::now();
         let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
+        let passes_time = pre_passes_instant.elapsed().as_millis();
+        trace!(time = passes_time, "llvm passes finished");
+
         if !error.is_null() {
             let msg = LLVMGetErrorMessage(error);
             let msg = CStr::from_ptr(msg);
@@ -171,12 +183,19 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 
         let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
 
+        trace!("starting llvm to object compilation");
+        let pre_llvm_compilation_instant = Instant::now();
         let ok = LLVMTargetMachineEmitToMemoryBuffer(
             machine,
             llvm_module,
             LLVMCodeGenFileType::LLVMObjectFile,
             error_buffer,
             out_buf.as_mut_ptr(),
+        );
+        let llvm_compilation_time = pre_llvm_compilation_instant.elapsed().as_millis();
+        trace!(
+            time = llvm_compilation_time,
+            "llvm to object compilation finished"
         );
 
         if ok != 0 {
@@ -294,7 +313,13 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
     };
 
     let mut linker = std::process::Command::new("ld");
+
+    trace!("starting linking");
+    let pre_linking_instant = Instant::now();
     let proc = linker.args(args.iter().map(|x| x.as_ref())).output()?;
+    let linking_time = pre_linking_instant.elapsed().as_millis();
+    trace!(time = linking_time, "linking finished");
+
     if proc.status.success() {
         Ok(())
     } else {
