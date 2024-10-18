@@ -549,12 +549,10 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Poseidon(_)
             | CoreTypeConcrete::RangeCheck96(_)
             | CoreTypeConcrete::SegmentArena(_) => false,
-
-            // A ptr to a list of costs.
-            CoreTypeConcrete::BuiltinCosts(_) => false,
-
             // Other builtins:
-            CoreTypeConcrete::Uint128MulGuarantee(_) | CoreTypeConcrete::Coupon(_) => true,
+            CoreTypeConcrete::BuiltinCosts(_)
+            | CoreTypeConcrete::Uint128MulGuarantee(_)
+            | CoreTypeConcrete::Coupon(_) => true,
 
             // Normal types:
             CoreTypeConcrete::Array(_)
@@ -636,7 +634,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
             CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(128),
-            CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<*const ()>(),
+            CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(),
             CoreTypeConcrete::Uint8(_) => get_integer_layout(8),
             CoreTypeConcrete::Uint16(_) => get_integer_layout(16),
             CoreTypeConcrete::Uint32(_) => get_integer_layout(32),

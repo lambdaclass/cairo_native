@@ -1,6 +1,6 @@
-//! # Params and return values de/serialization
+//! # JIT params and return values de/serialization
 //!
-//! A Rusty interface to provide parameters to cairo-native entry point calls.
+//! A Rusty interface to provide parameters to JIT calls.
 
 use crate::{
     error::{CompilerError, Error},
