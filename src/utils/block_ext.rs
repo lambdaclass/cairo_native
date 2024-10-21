@@ -392,8 +392,8 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         indexes: &[GepIndex<'ctx, '_>],
         elem_type: Type<'ctx>,
     ) -> Result<Value<'ctx, '_>, Error> {
-        let mut dynamic_indices = Vec::new();
-        let mut raw_constant_indices = Vec::new();
+        let mut dynamic_indices = Vec::with_capacity(indexes.len());
+        let mut raw_constant_indices = Vec::with_capacity(indexes.len());
 
         for index in indexes {
             match index {
