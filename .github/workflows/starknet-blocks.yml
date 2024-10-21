@@ -73,7 +73,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
-          ref: e125989afa77022995b3989c1d64292755312a87
 
       - name: Install Starknet Replay deps
         run: make deps
@@ -84,7 +83,7 @@ jobs:
           echo \
             "\n[patch.'https://github.com/lambdaclass/cairo_native']
             cairo-native = { git = 'https://github.com/lambdaclass//cairo_native.git', rev = '${{ github.event.pull_request.head.sha }}' }" \
-            Cargo.toml
+            >> Cargo.toml
           cargo update
 
       - name: Run Blocks Native
