@@ -4,7 +4,11 @@
 use anyhow::bail;
 use cairo_lang_runner::{casm_run::format_next_item, RunResultValue};
 use cairo_lang_sierra::program::{Function, Program};
-use cairo_native::{execution_result::ExecutionResult, Value};
+use cairo_native::{
+    execution_result::ExecutionResult,
+    starknet::{Secp256k1Point, Secp256r1Point},
+    Value,
+};
 use clap::ValueEnum;
 use itertools::Itertools;
 use starknet_types_core::felt::Felt;
@@ -159,11 +163,19 @@ fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
         Value::EcState(a, b, c, d) => {
             vec![*a, *b, *c, *d]
         }
-        Value::Secp256K1Point { x, y } => {
-            vec![x.0.into(), x.1.into(), y.0.into(), y.1.into()]
+        Value::Secp256K1Point(Secp256k1Point {
+            x,
+            y,
+            is_infinity: _,
+        }) => {
+            vec![x.lo.into(), x.hi.into(), y.lo.into(), y.hi.into()]
         }
-        Value::Secp256R1Point { x, y } => {
-            vec![x.0.into(), x.1.into(), y.0.into(), y.1.into()]
+        Value::Secp256R1Point(Secp256r1Point {
+            x,
+            y,
+            is_infinity: _,
+        }) => {
+            vec![x.lo.into(), x.hi.into(), y.lo.into(), y.hi.into()]
         }
         Value::Null => vec![0.into()],
     }
@@ -550,10 +562,9 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_secp256_k1_point() {
         assert_eq!(
-            jitvalue_to_felt(&Value::Secp256K1Point {
-                x: (1, 2),
-                y: (3, 4)
-            }),
+            jitvalue_to_felt(&Value::Secp256K1Point(Secp256k1Point::new(
+                1, 2, 3, 4, false
+            ))),
             vec![Felt::ONE, Felt::TWO, Felt::THREE, Felt::from(4)]
         );
     }
@@ -561,10 +572,9 @@ mod tests {
     #[test]
     fn test_jitvalue_to_felt_secp256_r1_point() {
         assert_eq!(
-            jitvalue_to_felt(&Value::Secp256R1Point {
-                x: (1, 2),
-                y: (3, 4)
-            }),
+            jitvalue_to_felt(&Value::Secp256R1Point(Secp256r1Point::new(
+                1, 2, 3, 4, false
+            ))),
             vec![Felt::ONE, Felt::TWO, Felt::THREE, Felt::from(4)]
         );
     }

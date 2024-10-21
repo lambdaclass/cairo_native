@@ -5,7 +5,9 @@ pub(crate) use self::{
 };
 use crate::{metadata::MetadataStorage, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
+    extensions::gas::CostTokenType,
     ids::FunctionId,
     program::{GenFunction, Program, StatementIdx},
 };
@@ -15,6 +17,7 @@ use melior::{
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
+use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::sync::LazyLock;
 use std::{
@@ -23,12 +26,12 @@ use std::{
     fmt::{self, Display},
     ops::Neg,
     path::Path,
-    ptr::NonNull,
     sync::Arc,
 };
 use thiserror::Error;
 
 mod block_ext;
+pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
 
@@ -48,6 +51,56 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
         .parse()
         .unwrap()
 });
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub struct BuiltinCosts {
+    pub r#const: u64,
+    pub pedersen: u64,
+    pub bitwise: u64,
+    pub ecop: u64,
+    pub poseidon: u64,
+    pub add_mod: u64,
+    pub mul_mod: u64,
+}
+
+impl From<BuiltinCosts> for [u64; 7] {
+    // Order matters, for the libfunc impl
+    // https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
+    fn from(value: BuiltinCosts) -> Self {
+        [
+            value.r#const,
+            value.pedersen,
+            value.bitwise,
+            value.ecop,
+            value.poseidon,
+            value.add_mod,
+            value.mul_mod,
+        ]
+    }
+}
+
+impl Default for BuiltinCosts {
+    fn default() -> Self {
+        Self {
+            r#const: token_gas_cost(CostTokenType::Const) as u64,
+            pedersen: token_gas_cost(CostTokenType::Pedersen) as u64,
+            bitwise: token_gas_cost(CostTokenType::Bitwise) as u64,
+            ecop: token_gas_cost(CostTokenType::EcOp) as u64,
+            poseidon: token_gas_cost(CostTokenType::Poseidon) as u64,
+            add_mod: token_gas_cost(CostTokenType::AddMod) as u64,
+            mul_mod: token_gas_cost(CostTokenType::MulMod) as u64,
+        }
+    }
+}
+
+#[cfg(feature = "with-mem-tracing")]
+#[allow(unused_imports)]
+pub(crate) use self::mem_tracing::{
+    _wrapped_free as libc_free, _wrapped_malloc as libc_malloc, _wrapped_realloc as libc_realloc,
+};
+#[cfg(not(feature = "with-mem-tracing"))]
+#[allow(unused_imports)]
+pub(crate) use libc::{free as libc_free, malloc as libc_malloc, realloc as libc_realloc};
 
 /// Generate a function name.
 ///
@@ -227,6 +280,9 @@ pub fn create_engine(
         .unwrap()
         .register_impls(&engine);
 
+    #[cfg(feature = "with-mem-tracing")]
+    self::mem_tracing::register_bindings(&engine);
+
     #[cfg(feature = "with-trace-dump")]
     _metadata
         .get::<crate::metadata::trace_dump::TraceDumpMeta>()
@@ -333,16 +389,6 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
             cairo_native_runtime::cairo_native__dict_get
                 as *const fn(*mut FeltDict, &[u8; 32]) -> *mut std::ffi::c_void
                 as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_insert",
-            cairo_native_runtime::cairo_native__dict_insert
-                as *const fn(
-                    *mut FeltDict,
-                    &[u8; 32],
-                    NonNull<std::ffi::c_void>,
-                ) -> *mut std::ffi::c_void as *mut (),
         );
 
         engine.register_symbol(
@@ -600,8 +646,7 @@ pub mod test {
             .compile(program, false)
             .expect("Could not compile test program to MLIR.");
 
-        // FIXME: There are some bugs with non-zero LLVM optimization levels.
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Less);
         executor
             .invoke_dynamic_with_syscall_handler(
                 entry_point_id,

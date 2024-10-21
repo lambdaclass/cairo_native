@@ -377,15 +377,8 @@ pub mod test {
 
     lazy_static! {
         static ref FELT252_ADD: (String, Program) = load_cairo! {
-            use core::debug::PrintTrait;
             fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs.print();
-                rhs.print();
-                let result = lhs + rhs;
-
-    result.print();
-
-    result
+                lhs + rhs
             }
         };
 

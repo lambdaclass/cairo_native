@@ -5,11 +5,11 @@
 
 use crate::{error::Result, utils::BlockExt};
 use melior::{
-    dialect::{func, llvm},
+    dialect::{func, llvm, ods},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
-        Block, Identifier, Location, Module, OperationRef, Region, Value,
+        Attribute, Block, Identifier, Location, Module, OperationRef, Region, Value,
     },
     Context,
 };
@@ -76,10 +76,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -128,10 +134,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -178,10 +190,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -220,10 +238,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -262,10 +286,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -299,10 +329,16 @@ impl RuntimeBindingsMeta {
                     FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -345,10 +381,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -394,10 +436,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -442,10 +490,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 location,
             ));
         }
@@ -472,7 +526,7 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         location: Location<'c>,
-    ) -> Result<OperationRef<'c, 'a>>
+    ) -> Result<Value<'c, 'a>>
     where
         'c: 'a,
     {
@@ -481,24 +535,45 @@ impl RuntimeBindingsMeta {
                 context,
                 StringAttribute::new(context, "cairo_native__dict_new"),
                 TypeAttribute::new(
-                    FunctionType::new(context, &[], &[llvm::r#type::pointer(context, 0)]).into(),
+                    FunctionType::new(
+                        context,
+                        &[llvm::r#type::pointer(context, 0)],
+                        &[llvm::r#type::pointer(context, 0)],
+                    )
+                    .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
 
-        Ok(block.append_operation(func::call(
+        let free_fn = block.append_op_result(
+            ods::llvm::mlir_addressof(
+                context,
+                llvm::r#type::pointer(context, 0),
+                FlatSymbolRefAttribute::new(context, "free"),
+                location,
+            )
+            .into(),
+        )?;
+
+        block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_new"),
-            &[],
+            &[free_fn],
             &[llvm::r#type::pointer(context, 0)],
             location,
-        )))
+        ))
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
@@ -533,10 +608,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -589,10 +670,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -620,7 +707,7 @@ impl RuntimeBindingsMeta {
         dict_ptr: Value<'c, 'a>, // ptr to the dict
         key_ptr: Value<'c, 'a>,  // key must be a ptr to Felt
         location: Location<'c>,
-    ) -> Result<OperationRef<'c, 'a>>
+    ) -> Result<Value<'c, 'a>>
     where
         'c: 'a,
     {
@@ -640,21 +727,27 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
 
-        Ok(block.append_operation(func::call(
+        block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_get"),
             &[dict_ptr, key_ptr],
             &[llvm::r#type::pointer(context, 0)],
             location,
-        )))
+        ))
     }
 
     /// Register if necessary, then invoke the `dict_insert()` function.
@@ -693,10 +786,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -740,10 +839,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }
@@ -794,10 +899,16 @@ impl RuntimeBindingsMeta {
                     .into(),
                 ),
                 Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                    ),
+                ],
                 Location::unknown(context),
             ));
         }

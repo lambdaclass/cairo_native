@@ -12,8 +12,10 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::BlockExt,
+    metadata::{
+        drop_overrides::DropOverridesMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+    },
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -47,12 +49,12 @@ pub fn build<'ctx>(
 
 pub fn build_print<'ctx>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, '_>,
     metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let stdout_fd = entry.const_int(context, location, 1, 32)?;
 
@@ -104,6 +106,19 @@ pub fn build_print<'ctx>(
     let return_code = runtime_bindings.libfunc_debug_print(
         context, helper, entry, stdout_fd, values_ptr, values_len, location,
     )?;
+
+    let input_ty = &info.signature.param_signatures[0].ty;
+    registry.build_type(context, helper, registry, metadata, input_ty)?;
+    metadata
+        .get::<DropOverridesMeta>()
+        .unwrap()
+        .invoke_override(
+            context,
+            entry,
+            location,
+            input_ty,
+            entry.argument(0)?.into(),
+        )?;
 
     let k0 = entry.const_int(context, location, 0, 32)?;
     let return_code_is_ok = entry.append_op_result(arith::cmpi(
