@@ -143,9 +143,10 @@ pub trait BlockExt<'ctx> {
     /// - https://llvm.org/docs/GetElementPtr.html
     ///
     /// Get Element Pointer is used to index into pointers, it uses the given
-    /// element type to compute the offsets, it allows offsetting deep into a structure (field of field of a ptr for example),
+    /// element type to compute the offsets, it allows indexing deep into a structure (field of field of a ptr for example),
     /// this is why it accepts a array of indexes, it indexes through the list, offsetting depending on the element type,
-    /// it also knows when you index into a struct, so the next index uses the struct field for offsets, etc.
+    /// for example it knows when you index into a struct field, the following index will use the struct field type for offsets, etc.
+    ///
     /// Address computation is done at compile time.
     ///
     /// Note: This GEP sets the inbounds attribute, all GEPs we do in native should be inbounds, llvm inbounds requires the following:
