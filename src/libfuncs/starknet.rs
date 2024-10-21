@@ -24,9 +24,7 @@ use melior::{
         llvm::{self, r#type::pointer, LoadStoreOptions},
     },
     ir::{
-        attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
+        attribute::DenseI64ArrayAttribute, operation::OperationBuilder, r#type::IntegerType,
         Attribute, Block, Location, Type, ValueLike,
     },
     Context,
@@ -2759,16 +2757,7 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
         )],
         pointer(context, 0),
     )?;
-    let fn_ptr = entry
-        .append_operation(llvm::load(
-            context,
-            fn_ptr,
-            llvm::r#type::pointer(context, 0),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
         OperationBuilder::new("llvm.call", location)
