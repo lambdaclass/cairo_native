@@ -80,7 +80,7 @@ jobs:
       - name: Patch Cairo Native's version
         if: ${{ matrix.runner == 'native' }}
         run: |
-          sed -r -i "" "s/rev.*[0-9a-z]+./rev = '${{ github.event.pull_request.head.sha }}'/" Cargo.toml
+          sed -r -i "s/rev.*[0-9a-z]+./rev = '${{ github.event.pull_request.head.sha }}'/" Cargo.toml
           cargo update
 
       - name: Run Blocks Native
