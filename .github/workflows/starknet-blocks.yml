@@ -122,8 +122,7 @@ jobs:
 
       - name: Check Diffs
         run: |
-          diffs=./scripts/diff-check.sh
-          if cpm -s $diffs 0 then \
-            echo "$diffs DUMPS DIFFING" \
+          diffing=./scripts/diff-check.sh
+          if cpm -s $diffing 1 then \
             exit 1 \
           fi
