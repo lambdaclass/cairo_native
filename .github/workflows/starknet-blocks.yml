@@ -87,7 +87,7 @@ jobs:
       - name: Patch Cairo Native's version
         if: ${{ matrix.runner == 'native' }}
         run: |
-          sed -r -i "s/cairo_native.*rev.*[0-9a-z]+./cairo_native.git', rev = '${{ github.event.pull_request.head.sha }}'/" Cargo.toml
+          sed -r -i 's/cairo_native.*rev.*[0-9a-z]+./cairo_native.git", rev = "${{ github.event.pull_request.head.sha }}"/' Cargo.toml
           cargo update
 
       - name: Fetch runtime library
