@@ -24,7 +24,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::{BlockExt, GepIndex, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -190,14 +190,13 @@ fn build_dup<'ctx>(
 
             let src_value_offset =
                 block_realloc.append_op_result(arith::muli(value_offset, elem_stride, location))?;
-            block_realloc.append_op_result(llvm::get_element_ptr_dynamic(
+            block_realloc.gep(
                 context,
-                value_ptr,
-                &[src_value_offset],
-                IntegerType::new(context, 8).into(),
-                llvm::r#type::pointer(context, 0),
                 location,
-            ))?
+                value_ptr,
+                &[GepIndex::Value(src_value_offset)],
+                IntegerType::new(context, 8).into(),
+            )?
         };
 
         match metadata.get::<DupOverridesMeta>() {
@@ -216,24 +215,20 @@ fn build_dup<'ctx>(
 
                         let idx = block.argument(0)?.into();
 
-                        let src_value_ptr =
-                            block.append_op_result(llvm::get_element_ptr_dynamic(
-                                context,
-                                src_value_ptr,
-                                &[idx],
-                                IntegerType::new(context, 8).into(),
-                                llvm::r#type::pointer(context, 0),
-                                location,
-                            ))?;
-                        let dst_value_ptr =
-                            block.append_op_result(llvm::get_element_ptr_dynamic(
-                                context,
-                                dst_value_ptr,
-                                &[idx],
-                                IntegerType::new(context, 8).into(),
-                                llvm::r#type::pointer(context, 0),
-                                location,
-                            ))?;
+                        let src_value_ptr = block.gep(
+                            context,
+                            location,
+                            src_value_ptr,
+                            &[GepIndex::Value(idx)],
+                            IntegerType::new(context, 8).into(),
+                        )?;
+                        let dst_value_ptr = block.gep(
+                            context,
+                            location,
+                            dst_value_ptr,
+                            &[GepIndex::Value(idx)],
+                            IntegerType::new(context, 8).into(),
+                        )?;
 
                         let value = block.load(context, location, src_value_ptr, elem_ty)?;
                         let values = dup_override_meta

@@ -1,7 +1,9 @@
 //! # Various utilities
 
 pub(crate) use self::{
-    block_ext::BlockExt, program_registry_ext::ProgramRegistryExt, range_ext::RangeExt,
+    block_ext::{BlockExt, GepIndex},
+    program_registry_ext::ProgramRegistryExt,
+    range_ext::RangeExt,
 };
 use crate::{metadata::MetadataStorage, OptLevel};
 use cairo_lang_compiler::CompilerConfig;

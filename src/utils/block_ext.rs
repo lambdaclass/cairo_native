@@ -4,13 +4,24 @@ use crate::{error::Error, utils::get_integer_layout};
 use melior::{
     dialect::{llvm::r#type::pointer, ods},
     ir::{
-        attribute::{DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute},
+        attribute::{
+            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute,
+        },
         r#type::IntegerType,
         Attribute, Block, Location, Operation, Type, Value, ValueLike,
     },
     Context,
 };
 use num_bigint::BigInt;
+
+/// Index types for LLVM GEP.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GepIndex<'c, 'a> {
+    /// A compile time known index.
+    Const(i32),
+    /// A runtime value index.
+    Value(Value<'c, 'a>),
+}
 
 pub trait BlockExt<'ctx> {
     /// Appends the operation and returns the first result.
@@ -123,9 +134,37 @@ pub trait BlockExt<'ctx> {
         dst: Value<'ctx, '_>,
         len_bytes: Value<'ctx, '_>,
     );
+
+    /// Creates a getelementptr operation. Returns a pointer to the indexed element.
+    /// This method allows combining both compile time indexes and runtime value indexes.
+    ///
+    /// See:
+    /// - https://llvm.org/docs/LangRef.html#getelementptr-instruction
+    /// - https://llvm.org/docs/GetElementPtr.html
+    ///
+    /// Get Element Pointer is used to index into pointers, it uses the given
+    /// element type to compute the offsets, it allows offsetting deep into a structure (field of field of a ptr for example),
+    /// this is why it accepts a array of indexes, it indexes through the list, offsetting depending on the element type,
+    /// it also knows when you index into a struct, so the next index uses the struct field for offsets, etc.
+    /// Address computation is done at compile time.
+    ///
+    /// Note: This GEP sets the inbounds attribute, all GEPs we do in native should be inbounds, llvm inbounds requires the following:
+    ///
+    /// The base pointer has an in bounds address of the allocated object that it is based on. This means that it points into that allocated object, or to its end. Note that the object does not have to be live anymore; being in-bounds of a deallocated object is sufficient.
+    ///
+    /// During the successive addition of offsets to the address, the resulting pointer must remain in bounds of the allocated object at each step.
+    fn gep(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        ptr: Value<'ctx, '_>,
+        indexes: &[GepIndex<'ctx, '_>],
+        elem_type: Type<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
 }
 
 impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
+    #[inline]
     fn const_int<T>(
         &self,
         context: &'ctx Context,
@@ -149,6 +188,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         )
     }
 
+    #[inline]
     fn const_int_from_type<T>(
         &self,
         context: &'ctx Context,
@@ -171,6 +211,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         )
     }
 
+    #[inline]
     fn extract_value(
         &self,
         context: &'ctx Context,
@@ -195,6 +236,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         )
     }
 
+    #[inline]
     fn insert_value(
         &self,
         context: &'ctx Context,
@@ -220,6 +262,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         )
     }
 
+    #[inline]
     fn insert_values<'block>(
         &'block self,
         context: &'ctx Context,
@@ -233,6 +276,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         Ok(container)
     }
 
+    #[inline]
     fn store(
         &self,
         context: &'ctx Context,
@@ -250,6 +294,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         Ok(self.append_operation(operation).result(0)?.into())
     }
 
+    #[inline]
     fn load(
         &self,
         context: &'ctx Context,
@@ -260,6 +305,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         self.append_op_result(ods::llvm::load(context, value_type, addr, location).into())
     }
 
+    #[inline]
     fn memcpy(
         &self,
         context: &'ctx Context,
@@ -281,6 +327,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         );
     }
 
+    #[inline]
     fn alloca(
         &self,
         context: &'ctx Context,
@@ -306,6 +353,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         self.append_op_result(op.into())
     }
 
+    #[inline]
     fn alloca1(
         &self,
         context: &'ctx Context,
@@ -317,6 +365,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         self.alloca(context, location, elem_type, num_elems, align)
     }
 
+    #[inline]
     fn alloca_int(
         &self,
         context: &'ctx Context,
@@ -331,5 +380,41 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
             num_elems,
             get_integer_layout(bits).align(),
         )
+    }
+
+    #[inline]
+    fn gep(
+        &self,
+        context: &'ctx Context,
+        location: Location<'ctx>,
+        ptr: Value<'ctx, '_>,
+        indexes: &[GepIndex<'ctx, '_>],
+        elem_type: Type<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        let mut dynamic_indices = Vec::new();
+        let mut raw_constant_indices = Vec::new();
+
+        for index in indexes {
+            match index {
+                GepIndex::Const(idx) => raw_constant_indices.push(*idx),
+                GepIndex::Value(value) => {
+                    dynamic_indices.push(*value);
+                    raw_constant_indices.push(i32::MIN); // marker for dynamic index
+                }
+            }
+        }
+
+        let mut op = ods::llvm::getelementptr(
+            context,
+            pointer(context, 0),
+            ptr,
+            &dynamic_indices,
+            DenseI32ArrayAttribute::new(context, &raw_constant_indices),
+            TypeAttribute::new(elem_type),
+            location,
+        );
+        op.set_inbounds(Attribute::unit(context));
+
+        self.append_op_result(op.into())
     }
 }
