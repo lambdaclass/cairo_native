@@ -257,13 +257,14 @@ fn invoke_dynamic(
                     }
                 });
             }
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match &mut return_ptr {
-                Some(return_ptr) => unsafe {
-                    let ptr = return_ptr.cast::<*mut ()>();
-                    *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
-                },
-                None => {}
-            },
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+                if let Some(return_ptr) = &mut return_ptr {
+                    unsafe {
+                        let ptr = return_ptr.cast::<*mut ()>();
+                        *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
+                    }
+                }
+            }
             _ if type_info.is_builtin() => {
                 if !type_info.is_zst(registry)? {
                     if let CoreTypeConcrete::BuiltinCosts(_) = type_info {
