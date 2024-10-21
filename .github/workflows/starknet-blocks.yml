@@ -63,7 +63,7 @@ jobs:
       - name: Build Cairo Native project
         if: ${{ matrix.runner == 'native' }}
         run: make build
-      - name: Build runtime subproject
+      - name: Build runtime
         if: ${{ matrix.runner == 'native' }}
         run: |
             make runtime-ci
@@ -98,7 +98,7 @@ jobs:
       - name: Upload generated Dump
         uses: actions/upload-artifact@v4
         with:
-          name: dump-{{matrix.runner}}
+          name: dump-${{matrix.runner}}
           path: state_dumps/${{matrix.runner}}
 
   compare-dump:
