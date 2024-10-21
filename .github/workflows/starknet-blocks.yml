@@ -17,7 +17,7 @@ jobs:
       TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
       RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
       RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
-      CAIRO_NATIVE_RUNTIME_LIBRARY: libcairo_native_runtime.a
+      CAIRO_NATIVE_RUNTIME_LIBRARY: /home/runner/work/cairo_native/cairo_native/libcairo_native_runtime.a
     strategy:
       matrix:
         runner: [native, vm]
