@@ -551,59 +551,6 @@
 <a href="#551" id="551">551</a>
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
-<a href="#554" id="554">554</a>
-<a href="#555" id="555">555</a>
-<a href="#556" id="556">556</a>
-<a href="#557" id="557">557</a>
-<a href="#558" id="558">558</a>
-<a href="#559" id="559">559</a>
-<a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
-<a href="#562" id="562">562</a>
-<a href="#563" id="563">563</a>
-<a href="#564" id="564">564</a>
-<a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
@@ -640,7 +587,7 @@
 </span><span class="kw">use crate</span>::{
     arch::AbiArgument,
     context::NativeContext,
-    error::{Error, <span class="prelude-ty">Result</span>},
+    error::Result,
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
     module::NativeModule,
@@ -648,7 +595,6 @@
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
-        BuiltinCosts,
     },
     OptLevel,
 };
@@ -683,27 +629,16 @@
     </span>library: Arc&lt;Library&gt;,
     path: PathBuf,
     is_temp_path: bool,
-    contract_info: ContractInfo,
+    entry_points_info: BTreeMap&lt;u64, EntryPointInfo&gt;,
 }
 
 <span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-</span><span class="kw">pub struct </span>ContractInfo {
-    <span class="kw">pub </span>version: ContractInfoVersion,
-    <span class="kw">pub </span>entry_points: BTreeMap&lt;u64, EntryPointInfo&gt;,
+</span><span class="kw">struct </span>EntryPointInfo {
+    builtins: Vec&lt;BuiltinType&gt;,
 }
 
 <span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-</span><span class="kw">pub enum </span>ContractInfoVersion {
-    Version0,
-}
-
-<span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-</span><span class="kw">pub struct </span>EntryPointInfo {
-    <span class="kw">pub </span>builtins: Vec&lt;BuiltinType&gt;,
-}
-
-<span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-</span><span class="kw">pub enum </span>BuiltinType {
+</span><span class="kw">enum </span>BuiltinType {
     Bitwise,
     EcOp,
     RangeCheck,
@@ -715,7 +650,6 @@
     CircuitMul,
     Gas,
     System,
-    BuiltinCosts,
 }
 
 <span class="kw">impl </span>AotContractExecutor {
@@ -753,9 +687,6 @@
                         CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::RangeCheck),
                         CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::Pedersen),
                         CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::Poseidon),
-                        CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; {
-                            builtins.push(BuiltinType::BuiltinCosts)
-                        }
                         CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; {
                             builtins.push(BuiltinType::SegmentArena)
                         }
@@ -794,10 +725,7 @@
             library: Arc::new(<span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>library_path)<span class="question-mark">? </span>}),
             path: library_path,
             is_temp_path: <span class="bool-val">true</span>,
-            contract_info: ContractInfo {
-                version: ContractInfoVersion::Version0,
-                entry_points: infos,
-            },
+            entry_points_info: infos,
         })
     }
 
@@ -806,9 +734,9 @@
         <span class="kw">let </span>to = to.as_ref();
         std::fs::copy(<span class="kw-2">&amp;</span><span class="self">self</span>.path, to)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>contract_info = serde_json::to_string(<span class="kw-2">&amp;</span><span class="self">self</span>.contract_info)<span class="question-mark">?</span>;
+        <span class="kw">let </span>info = serde_json::to_string(<span class="kw-2">&amp;</span><span class="self">self</span>.entry_points_info)<span class="question-mark">?</span>;
         <span class="kw">let </span>path = to.with_extension(<span class="string">"json"</span>);
-        std::fs::write(path, contract_info)<span class="question-mark">?</span>;
+        std::fs::write(path, info)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.path = to.to_path_buf();
         <span class="self">self</span>.is_temp_path = <span class="bool-val">false</span>;
@@ -819,12 +747,12 @@
     <span class="doccomment">/// Load the executor from an already compiled library with the additional info json file.
     </span><span class="kw">pub fn </span>load(library_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>info_str = std::fs::read_to_string(library_path.with_extension(<span class="string">"json"</span>))<span class="question-mark">?</span>;
-        <span class="kw">let </span>contract_info: ContractInfo = serde_json::from_str(<span class="kw-2">&amp;</span>info_str)<span class="question-mark">?</span>;
+        <span class="kw">let </span>info: BTreeMap&lt;u64, EntryPointInfo&gt; = serde_json::from_str(<span class="kw-2">&amp;</span>info_str)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             library: Arc::new(<span class="kw">unsafe </span>{ Library::new(library_path)<span class="question-mark">? </span>}),
             path: library_path.to_path_buf(),
             is_temp_path: <span class="bool-val">false</span>,
-            contract_info,
+            entry_points_info: info,
         })
     }
 
@@ -834,30 +762,16 @@
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         args: <span class="kw-2">&amp;</span>[Felt],
         gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
-        builtin_costs: <span class="prelude-ty">Option</span>&lt;BuiltinCosts&gt;,
         <span class="kw-2">mut </span>syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult&gt; {
         <span class="kw">let </span>arena = Bump::new();
         <span class="kw">let </span><span class="kw-2">mut </span>invoke_data = Vec::&lt;u8&gt;::new();
 
         <span class="kw">let </span>function_ptr = <span class="self">self</span>.find_function_ptr(function_id, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>builtin_costs_ptr = <span class="self">self
-            </span>.find_symbol_ptr(<span class="string">"builtin_costs"</span>)
-            .ok_or_else(|| Error::MissingBuiltinCostsSymbol)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>builtin_costs = builtin_costs.unwrap_or_default();
-        <span class="kw">let </span>builtin_costs: [u64; <span class="number">7</span>] = builtin_costs.into();
-
-        <span class="kw">unsafe </span>{
-            <span class="kw-2">*</span>builtin_costs_ptr.cast() = builtin_costs.as_ptr();
-        }
 
         <span class="comment">//  it can vary from contract to contract thats why we need to store/ load it.
         // substract 2, which are the gas and syscall builtin
-        </span><span class="kw">let </span>num_builtins = <span class="self">self</span>.contract_info.entry_points[<span class="kw-2">&amp;</span>function_id.id]
-            .builtins
-            .len()
-            - <span class="number">2</span>;
+        </span><span class="kw">let </span>num_builtins = <span class="self">self</span>.entry_points_info[<span class="kw-2">&amp;</span>function_id.id].builtins.len() - <span class="number">2</span>;
 
         <span class="comment">// There is always a return ptr because contracts always return more than 1 thing (builtin counters, syscall, enum)
         </span><span class="kw">let </span>return_ptr = arena.alloc_layout(<span class="kw">unsafe </span>{
@@ -870,14 +784,11 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = StarknetSyscallHandlerCallbacks::new(<span class="kw-2">&amp;mut </span>syscall_handler);
 
-        <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.contract_info.entry_points[<span class="kw-2">&amp;</span>function_id.id].builtins {
+        <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.entry_points_info[<span class="kw-2">&amp;</span>function_id.id].builtins {
             <span class="kw">match </span>b {
                 BuiltinType::Gas =&gt; {
                     <span class="kw">let </span>gas = gas.unwrap_or(<span class="number">0</span>);
                     gas.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
-                }
-                BuiltinType::BuiltinCosts =&gt; {
-                    builtin_costs_ptr.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
                 }
                 BuiltinType::System =&gt; {
                     (<span class="kw-2">&amp;mut </span>syscall_handler <span class="kw">as </span><span class="kw-2">*mut </span>StarknetSyscallHandlerCallbacks&lt;<span class="kw">_</span>&gt;)
@@ -953,7 +864,7 @@
 
         <span class="kw">let </span>return_ptr = <span class="kw-2">&amp;mut </span>return_ptr.cast();
 
-        <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.contract_info.entry_points[<span class="kw-2">&amp;</span>function_id.id].builtins {
+        <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.entry_points_info[<span class="kw-2">&amp;</span>function_id.id].builtins {
             <span class="kw">match </span>b {
                 BuiltinType::Gas =&gt; {
                     remaining_gas = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>read_value::&lt;u128&gt;(return_ptr) };
@@ -962,11 +873,6 @@
                     <span class="kw">let </span>ptr = return_ptr.cast::&lt;<span class="kw-2">*mut </span>()&gt;();
                     <span class="kw-2">*</span>return_ptr = <span class="kw">unsafe </span>{ NonNull::new_unchecked(ptr.as_ptr().add(<span class="number">1</span>)).cast() };
                 }
-                BuiltinType::BuiltinCosts =&gt; {
-                    <span class="kw">let </span>ptr = return_ptr.cast::&lt;<span class="kw-2">*mut </span>()&gt;();
-                    <span class="kw-2">*</span>return_ptr = <span class="kw">unsafe </span>{ NonNull::new_unchecked(ptr.as_ptr().add(<span class="number">1</span>)).cast() };
-                    <span class="comment">// ptr holds the builtin costs, but they dont change, so its of no use, but we read to advance the ptr.
-                </span>}
                 x =&gt; {
                     <span class="kw">let </span>value = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>read_value::&lt;u64&gt;(return_ptr) } <span class="kw">as </span>usize;
 
@@ -982,7 +888,6 @@
                         BuiltinType::CircuitMul =&gt; builtin_stats.circuit_mul = value,
                         BuiltinType::Gas =&gt; {}
                         BuiltinType::System =&gt; {}
-                        BuiltinType::BuiltinCosts =&gt; {}
                     }
                 }
             }
@@ -1084,15 +989,6 @@
                 .into_raw()
         })
     }
-
-    <span class="kw">pub fn </span>find_symbol_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">*mut </span>c_void&gt; {
-        <span class="kw">unsafe </span>{
-            <span class="self">self</span>.library
-                .get::&lt;<span class="kw-2">*mut </span>()&gt;(name.as_bytes())
-                .ok()
-                .map(|x| x.into_raw().into_raw())
-        }
-    }
 }
 
 <span class="kw">impl </span>Drop <span class="kw">for </span>AotContractExecutor {
@@ -1176,7 +1072,6 @@
                 entrypoint_function_id,
                 <span class="kw-2">&amp;</span>[<span class="number">2</span>.into()],
                 <span class="prelude-val">Some</span>(u64::MAX <span class="kw">as </span>u128),
-                <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )
             .unwrap();
@@ -1202,7 +1097,6 @@
                 entrypoint_function_id,
                 <span class="kw-2">&amp;</span>[],
                 <span class="prelude-val">Some</span>(u64::MAX <span class="kw">as </span>u128),
-                <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )
             .unwrap();
