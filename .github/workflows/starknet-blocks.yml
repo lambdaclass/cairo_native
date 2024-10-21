@@ -20,8 +20,6 @@ jobs:
     strategy:
       matrix:
         runner: [native, vm]
-        features: ["state_dump", "state_dump,only_cairo_vm"]
-        dump-path: ["state_dumps/native", "state_dumps/vm"]
     steps:
       - uses: actions/checkout@v4
 
@@ -51,14 +49,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: add llvm deb repository
-        if: ${{ matrix.runner == 'native' }}
         uses: myci-actions/add-deb-repo@11
         with:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        if: ${{ matrix.runner == 'native' }}
         run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
 
       - name: Install Cairo Native deps
@@ -91,14 +87,19 @@ jobs:
             Cargo.toml
             cargo update
 
-      - name: Run Blocks
-        run: cargo run --features ${{matrix.features}} block-range 807301 807301 mainnet
+      - name: Run Blocks Native
+        if: ${{ matrix.runner == 'native' }}
+        run: cargo run --features state_dump block-range 807301 807301 mainnet
+
+      - name: Run Blocks VM
+        if: ${{ matrix.runner == 'vm' }}
+        run: cargo run --features "state_dump,only_cairo_vm" block-range 807301 807301 mainnet
 
       - name: Upload generated Dump
         uses: actions/upload-artifact@v4
         with:
           name: dump-{{matrix.runner}}
-          path: ${{matrix.dump-path}}
+          path: state_dumps/${{matrix.runner}}
 
   compare-dump:
     needs: [native-vm-blocks-dump]
@@ -112,13 +113,13 @@ jobs:
           ref: e125989afa77022995b3989c1d64292755312a87
 
       - name: Fetch Native dumps
-        uses: actions/upload-artifact@v4
+        uses: actions/download-artifact@v4
         with:
           name: dump-native
           path: state_dumps/native
 
       - name: Fetch VM dumps
-        uses: actions/upload-artifact@v4
+        uses: actions/download-artifact@v4
         with:
           name: dump-vm
           path: state_dumps/vm
