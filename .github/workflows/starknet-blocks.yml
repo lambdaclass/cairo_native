@@ -83,7 +83,7 @@ jobs:
         run: |
           echo \
             "\n[patch.'https://github.com/lambdaclass/cairo_native']
-            cairo-native = { git = 'https://github.com/lambdaclass//cairo_native.git', rev = '${{ github.event.pull_request.head.sha }}' } \
+            cairo-native = { git = 'https://github.com/lambdaclass//cairo_native.git', rev = '${{ github.event.pull_request.head.sha }}' }" \
             Cargo.toml
           cargo update
 
