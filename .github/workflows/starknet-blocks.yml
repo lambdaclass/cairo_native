@@ -17,6 +17,7 @@ jobs:
       TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
       RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
       RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
+      CAIRO_NATIVE_RUNTIME_LIBRARY: libcairo_native_runtime.a
     strategy:
       matrix:
         runner: [native, vm]
@@ -65,9 +66,14 @@ jobs:
         run: cargo b --release --all-features
       - name: Build runtime
         if: ${{ matrix.runner == 'native' }}
-        run: |
-            make runtime-ci
-            export CAIRO_NATIVE_RUNTIME_LIBRARY=libcairo_native_runtime.a
+        run: make runtime-ci
+
+      - name: Upload runtime library
+        if: ${{ matrix.runner == 'native' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: library
+          path: libcairo_native_runtime.a
 
       - name: Checkout to Starknet Replay
         uses: actions/checkout@v4
@@ -82,6 +88,13 @@ jobs:
         run: |
           sed -r -i "s/rev.*[0-9a-z]+./rev = '${{ github.event.pull_request.head.sha }}'/" Cargo.toml
           cargo update
+
+      - name: Fetch runtime library
+        if: ${{ matrix.runner == 'native' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: library
+          path: libcairo_native_runtime.a
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
