@@ -20,9 +20,7 @@ use melior::{
         llvm::{self, LoadStoreOptions},
     },
     ir::{
-        attribute::{
-            DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute,
-        },
+        attribute::{DenseI32ArrayAttribute, IntegerAttribute, TypeAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
         Block, Identifier, Location,
