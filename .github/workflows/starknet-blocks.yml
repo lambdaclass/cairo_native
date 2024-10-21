@@ -43,7 +43,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
-      - uses: dtolnay/rust-toolchain@1.81.0
+      - uses: dtolnay/rust-toolchain@1.82.0
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -62,7 +62,7 @@ jobs:
         run: make deps
       - name: Build Cairo Native project
         if: ${{ matrix.runner == 'native' }}
-        run: make build
+        run: cargo b --release --all-features
       - name: Build runtime
         if: ${{ matrix.runner == 'native' }}
         run: |
@@ -83,9 +83,9 @@ jobs:
         run: |
           echo \
             "\n[patch.'https://github.com/lambdaclass/cairo_native']
-            cairo-native = { git = 'https://github.com/lambdaclass//cairo_native.git', rev = ${{ github.event.pull_request.head.sha }}" \
+            cairo-native = { git = 'https://github.com/lambdaclass//cairo_native.git', rev = '${{ github.event.pull_request.head.sha }}' } \
             Cargo.toml
-            cargo update
+          cargo update
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
