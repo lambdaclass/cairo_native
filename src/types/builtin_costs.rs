@@ -1,7 +1,4 @@
 //! # Builtin costs type
-//!
-//! A ptr to a list of u64, this list will not change at runtime in size and thus we only really need to store the pointer,
-//! it can be allocated on the stack on rust side and passed.
 
 use super::WithSelf;
 use crate::{error::Result, metadata::MetadataStorage};
@@ -14,7 +11,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{Module, Type},
+    ir::{r#type::IntegerType, Module, Type},
     Context,
 };
 
@@ -28,6 +25,5 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    // A ptr to a list of u64
-    Ok(llvm::r#type::pointer(context, 0))
+    Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
 }
