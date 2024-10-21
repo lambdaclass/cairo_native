@@ -21,7 +21,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm::{self, LoadStoreOptions},
+        llvm::{self, r#type::pointer, LoadStoreOptions},
     },
     ir::{
         attribute::{DenseI32ArrayAttribute, DenseI64ArrayAttribute},
@@ -266,17 +266,15 @@ pub fn build_call_contract<'ctx, 'this>(
     )?;
 
     // Extract function pointer.
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::CALL_CONTRACT.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::CALL_CONTRACT.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -587,17 +585,15 @@ pub fn build_storage_read<'ctx, 'this>(
     )?;
 
     // Extract function pointer.
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::STORAGE_READ.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::STORAGE_READ.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -760,17 +756,15 @@ pub fn build_storage_write<'ctx, 'this>(
     let value_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
     entry.store(context, location, value_arg_ptr, entry.argument(4)?.into())?;
 
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::STORAGE_WRITE.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::STORAGE_WRITE.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -1119,17 +1113,15 @@ pub fn build_emit_event<'ctx, 'this>(
     )?;
     entry.store(context, location, data_arg_ptr, entry.argument(3)?.into())?;
 
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::EMIT_EVENT.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::EMIT_EVENT.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -1277,17 +1269,15 @@ pub fn build_get_block_hash<'ctx, 'this>(
     ));
 
     // Extract function pointer.
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::GET_BLOCK_HASH.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::GET_BLOCK_HASH.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -1433,17 +1423,15 @@ pub fn build_get_execution_info<'ctx, 'this>(
     )?;
 
     // Extract function pointer.
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFO.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFO.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -1583,17 +1571,15 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
     )?;
 
     // Extract function pointer.
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFOV2.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFOV2.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -1820,17 +1806,15 @@ pub fn build_deploy<'ctx, 'this>(
         entry.argument(4)?.into(),
     )?;
 
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::DEPLOY.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::DEPLOY.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -2022,17 +2006,15 @@ pub fn build_keccak<'ctx, 'this>(
     )?;
     entry.store(context, location, input_arg_ptr, entry.argument(2)?.into())?;
 
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::KECCAK.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::KECCAK.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -2215,17 +2197,15 @@ pub fn build_library_call<'ctx, 'this>(
         entry.argument(4)?.into(),
     )?;
 
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::LIBRARY_CALL.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::LIBRARY_CALL.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -2385,17 +2365,15 @@ pub fn build_replace_class<'ctx, 'this>(
         entry.argument(2)?.into(),
     )?;
 
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::REPLACE_CLASS.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::REPLACE_CLASS.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -2570,17 +2548,15 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         entry.argument(3)?.into(),
     )?;
 
-    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+    let fn_ptr = entry.gep(
         context,
-        entry.argument(1)?.into(),
-        DenseI32ArrayAttribute::new(
-            context,
-            &[StarknetSyscallHandlerCallbacks::<()>::SEND_MESSAGE_TO_L1.try_into()?],
-        ),
-        llvm::r#type::pointer(context, 0),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::SEND_MESSAGE_TO_L1.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     entry.append_operation(
@@ -2774,20 +2750,15 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
     let sha256_prev_state_ptr = entry.argument(2)?.into();
     let sha256_current_block_ptr = entry.argument(3)?.into();
 
-    let fn_ptr = entry
-        .append_operation(llvm::get_element_ptr(
-            context,
-            entry.argument(1)?.into(),
-            DenseI32ArrayAttribute::new(
-                context,
-                &[StarknetSyscallHandlerCallbacks::<()>::SHA256_PROCESS_BLOCK.try_into()?],
-            ),
-            llvm::r#type::pointer(context, 0),
-            llvm::r#type::pointer(context, 0),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let fn_ptr = entry.gep(
+        context,
+        location,
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::SHA256_PROCESS_BLOCK.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
     let fn_ptr = entry
         .append_operation(llvm::load(
             context,

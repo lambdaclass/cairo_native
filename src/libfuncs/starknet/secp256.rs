@@ -463,36 +463,29 @@ pub fn build_k1_add<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
         let ptr = entry.gep(
@@ -711,36 +704,29 @@ pub fn build_k1_mul<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
         let ptr = entry.gep(
@@ -950,36 +936,29 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     // Load the two variants of the result returned by the syscall handler.
     let payload_ok = {
@@ -1201,36 +1180,29 @@ pub fn build_k1_get_xy<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
         let ptr = entry.gep(
@@ -1485,36 +1457,29 @@ pub fn build_r1_new<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     // Load the two variants of the result returned by the syscall handler.
     let payload_ok = {
@@ -1734,36 +1699,29 @@ pub fn build_r1_add<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
         let ptr = entry.gep(
@@ -1985,36 +1943,29 @@ pub fn build_r1_mul<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
         let ptr = entry.gep(
@@ -2226,36 +2177,29 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
         let ptr = entry.gep(
@@ -2478,36 +2422,29 @@ pub fn build_r1_get_xy<'ctx, 'this>(
             .build()?,
     );
 
-    let result = entry
-        .append_operation(llvm::load(
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
             context,
-            result_ptr,
-            llvm::r#type::r#struct(
-                context,
-                &[
-                    result_tag_ty,
-                    llvm::r#type::array(
-                        IntegerType::new(context, 8).into(),
-                        (result_layout.size() - 1).try_into()?,
-                    ),
-                ],
-                false,
-            ),
-            location,
-            LoadStoreOptions::default(),
-        ))
-        .result(0)?
-        .into();
-    let result_tag = entry
-        .append_operation(llvm::extract_value(
-            context,
-            result,
-            DenseI64ArrayAttribute::new(context, &[0]),
-            IntegerType::new(context, 1).into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
         let ptr = entry.gep(
