@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         runner: [native, vm]
-        block: [807301]
+        block: [742001]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -87,7 +87,7 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         run: |
           cd replay
-          sed -r -i 's/cairo_native.*rev.*[0-9a-z]*./cairo_native.git", rev = "${{ github.event.pull_request.head.sha }}"/' Cargo.toml
+          sed -r -i 's/cairo_native.*rev.*[0-9a-z]+./cairo_native.git", rev = "${{ github.event.pull_request.head.sha }}"/' Cargo.toml
           cargo update
 
       - name: Run Blocks Native
@@ -106,14 +106,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dump-${{matrix.block}}-${{matrix.runner}}
-          path: state_dumps/${{matrix.runner}}
+          path: replay/state_dumps/${{matrix.runner}}
 
   compare-dumps:
     needs: [run-blocks]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        block: [807301]
+        block: [742001]
     steps:
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
