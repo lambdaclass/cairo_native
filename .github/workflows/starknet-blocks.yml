@@ -122,7 +122,7 @@ jobs:
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
-        run: CAIRO_NATIVE_RUNTIME_LIBRARY=/home/runner/work/cairo_native/starknet_replay/libcairo_native_runtime.a cargo run --features state_dump block mainnet ${{ matrix.block }}
+        run: CAIRO_NATIVE_RUNTIME_LIBRARY=/home/runner/work/cairo_native/cairo_native/libcairo_native_runtime.a cargo run --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
