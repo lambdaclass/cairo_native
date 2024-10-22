@@ -134,10 +134,18 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             pointer(context, 0),
             location,
         ))?;
-        let token_cost_multiplier_value = entry.load(context, location, token_cost_value_ptr, u64_type)?;
-        let token_cost_multiplier_value = entry.append_op_result(arith::extui(token_cost_multiplier_value, u128_type, location))?;
-        let total_gas_cost_val =
-            entry.append_op_result(arith::muli(gas_cost_val, token_cost_multiplier_value, location))?;
+        let token_cost_multiplier_value =
+            entry.load(context, location, token_cost_value_ptr, u64_type)?;
+        let token_cost_multiplier_value = entry.append_op_result(arith::extui(
+            token_cost_multiplier_value,
+            u128_type,
+            location,
+        ))?;
+        let total_gas_cost_val = entry.append_op_result(arith::muli(
+            gas_cost_val,
+            token_cost_multiplier_value,
+            location,
+        ))?;
         final_gas_cost =
             entry.append_op_result(arith::addi(final_gas_cost, total_gas_cost_val, location))?;
     }

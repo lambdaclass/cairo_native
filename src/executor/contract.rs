@@ -37,6 +37,7 @@ use crate::{
     error::{Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
+    metadata::gas::GasMetadata,
     module::NativeModule,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
@@ -94,6 +95,7 @@ pub enum ContractInfoVersion {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntryPointInfo {
     pub builtins: Vec<BuiltinType>,
+    pub initial_cost: BTreeMap<u64, u64>, // cost token type offset, cost
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -144,8 +146,13 @@ impl AotContractExecutor {
         let NativeModule {
             module,
             registry,
-            metadata: _,
+            metadata,
         } = module;
+
+        let initial_gas_costs = {
+            let gas_meta: &GasMetadata = metadata.get().unwrap();
+            gas_meta.initial_required_gas_for_entry_points()
+        };
 
         let mut infos = BTreeMap::new();
 
@@ -192,7 +199,13 @@ impl AotContractExecutor {
                 }
             }
 
-            infos.insert(x.id.id, EntryPointInfo { builtins });
+            infos.insert(
+                x.id.id,
+                EntryPointInfo {
+                    builtins,
+                    initial_cost: initial_gas_costs.get(&x.id.id).cloned().unwrap_or_default(),
+                },
+            );
         }
 
         let library_path = NamedTempFile::new()?
@@ -261,12 +274,36 @@ impl AotContractExecutor {
         let builtin_costs = builtin_costs.unwrap_or_default();
         let builtin_costs: [u64; 7] = builtin_costs.into();
 
+        let initial_gas_cost = {
+            let mut cost = 0;
+
+            for (offset, val) in self
+                .contract_info
+                .entry_points
+                .get(&function_id.id)
+                .unwrap()
+                .initial_cost
+                .iter()
+            {
+                let token_cost = builtin_costs[*offset as usize] * val;
+                cost += token_cost;
+            }
+            cost as u128
+        };
+        let gas = gas
+            .unwrap_or(initial_gas_cost)
+            .saturating_sub(initial_gas_cost);
+
         unsafe {
             *builtin_costs_ptr.cast() = builtin_costs.as_ptr();
         }
 
         //  it can vary from contract to contract thats why we need to store/ load it.
-        let builtins_size: usize = self.contract_info.entry_points[&function_id.id].builtins.iter().map(|x| x.size_in_bytes()).sum();
+        let builtins_size: usize = self.contract_info.entry_points[&function_id.id]
+            .builtins
+            .iter()
+            .map(|x| x.size_in_bytes())
+            .sum();
 
         // There is always a return ptr because contracts always return more than 1 thing (builtin counters, syscall, enum)
         let return_ptr = arena.alloc_layout(unsafe {
@@ -282,7 +319,6 @@ impl AotContractExecutor {
         for b in &self.contract_info.entry_points[&function_id.id].builtins {
             match b {
                 BuiltinType::Gas => {
-                    let gas = gas.unwrap_or(0);
                     gas.to_bytes(&mut invoke_data)?;
                 }
                 BuiltinType::BuiltinCosts => {

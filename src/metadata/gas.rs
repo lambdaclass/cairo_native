@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::gas::CostTokenType,
@@ -101,6 +103,34 @@ impl GasMetadata {
                 .map(|(token_type, val)| val.into_or_panic::<usize>() * token_gas_cost(*token_type))
                 .sum::<usize>() as u128,
         )
+    }
+
+    pub fn initial_required_gas_for_entry_points(&self) -> BTreeMap<u64, BTreeMap<u64, u64>> {
+        self.gas_info
+            .function_costs
+            .iter()
+            .map(|func| {
+                (func.0.id, {
+                    let mut costs = BTreeMap::new();
+
+                    for (token, val) in func.1.iter() {
+                        let offset: u64 = match token {
+                            CostTokenType::Const => 0,
+                            CostTokenType::Pedersen => 1,
+                            CostTokenType::Bitwise => 2,
+                            CostTokenType::EcOp => 3,
+                            CostTokenType::Poseidon => 4,
+                            CostTokenType::AddMod => 5,
+                            CostTokenType::MulMod => 6,
+                            _ => unreachable!(),
+                        };
+                        costs.insert(offset, *val as u64);
+                    }
+
+                    costs
+                })
+            })
+            .collect()
     }
 
     pub fn get_gas_costs_for_statement(&self, idx: StatementIdx) -> Vec<(u128, CostTokenType)> {

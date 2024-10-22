@@ -146,21 +146,18 @@ pub fn compile(
         )?;
         block.append_operation(melior::dialect::llvm::r#return(Some(value), location));
 
-        module.body().append_operation(
-            {
-                let op =
-                ods::llvm::mlir_global(
-                    context,
-                    region,
-                    TypeAttribute::new(llvm::r#type::pointer(context, 0)),
-                    StringAttribute::new(context, "builtin_costs"),
-                    Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
-                    location,
-                );
+        module.body().append_operation({
+            let op = ods::llvm::mlir_global(
+                context,
+                region,
+                TypeAttribute::new(llvm::r#type::pointer(context, 0)),
+                StringAttribute::new(context, "builtin_costs"),
+                Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                location,
+            );
 
-                op.into()
-            },
-        );
+            op.into()
+        });
     }
 
     // Sierra programs have the following structure:
