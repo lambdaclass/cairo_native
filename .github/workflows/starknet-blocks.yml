@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         runner: [native, vm]
-        block: [742001, 759940, 749929, 769597, 779328]
+        block: [742001, 754725, 749929, 769597, 779328]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        block: [742001, 759940, 749929, 769597, 779328]
+        block: [742001, 754725, 749929, 769597, 779328]
     steps:
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
