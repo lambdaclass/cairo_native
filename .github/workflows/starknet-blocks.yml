@@ -98,7 +98,9 @@ jobs:
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
-        run: cargo run --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
+        run: |
+          cd replay
+          cargo run --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
 
       - name: Upload dumps
         uses: actions/upload-artifact@v4
