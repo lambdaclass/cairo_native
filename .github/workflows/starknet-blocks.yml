@@ -22,6 +22,8 @@ jobs:
         runner: [native, vm]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: Check and free hdd space left
         if: ${{ matrix.runner == 'native' }}
@@ -99,7 +101,7 @@ jobs:
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
-        run: CAIRO_NATIVE_RUNTIME_LIBRARY=libcairo_native_runtime.a cargo run --features state_dump block-range 807301 807301 mainnet
+        run: CAIRO_NATIVE_RUNTIME_LIBRARY=./libcairo_native_runtime.a cargo run --features state_dump block-range 807301 807301 mainnet
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
@@ -112,6 +114,140 @@ jobs:
           path: state_dumps/${{matrix.runner}}
 
   compare-dump:
+    needs: [native-vm-blocks-dump]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Starknet Replay
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/starknet-replay
+
+      - name: Fetch Native dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-native
+          path: state_dumps/native
+
+      - name: Fetch VM dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-vm
+          path: state_dumps/vm
+
+      - name: Check Diffs
+        run: |
+          diffing=./scripts/diff-check.sh
+          if cpm -s $diffing 1 then \
+            exit 1 \
+          fi
+
+  native-vm-blocks-dump-macos:
+    name: Check Dump Naitve vs VM
+    runs-on: ubuntu-latest
+    env:
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+      RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
+      RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
+    strategy:
+      matrix:
+        runner: [native, vm]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request[matrix.branch].sha }}
+
+      - name: Check and free hdd space left
+        if: ${{ matrix.runner == 'native' }}
+        run: |
+          echo "Listing 20 largest packages"
+          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+          df -h
+          sudo apt-get update
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^temurin-.*'
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          df -h
+          echo "Removing large directories"
+          # deleting 15GB
+          sudo rm -rf /usr/share/dotnet/
+          sudo rm -rf /usr/local/lib/android
+          df -h
+      - uses: dtolnay/rust-toolchain@1.82.0
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: add llvm deb repository
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
+          repo-name: llvm-repo
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - name: Install LLVM
+        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
+
+      - name: Install Cairo Native deps
+        if: ${{ matrix.runner == 'native' }}
+        run: make deps
+      - name: Build Cairo Native project
+        if: ${{ matrix.runner == 'native' }}
+        run: cargo b --release --all-features
+      - name: Build runtime
+        if: ${{ matrix.runner == 'native' }}
+        run: |
+          make runtime-ci
+          cargo update
+
+      - name: Upload runtime library
+        if: ${{ matrix.runner == 'native' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: library
+          path: libcairo_native_runtime.a
+
+      - name: Checkout to Starknet Replay
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/starknet-replay
+
+      - name: Install Starknet Replay deps
+        run: make deps
+
+      - name: Patch Cairo Native's version
+        if: ${{ matrix.runner == 'native' }}
+        run: |
+          sed -r -i "" 's/cairo_native.*rev.*[0-9a-z]+./cairo_native.git", rev = "${{ github.event.pull_request.head.sha }}"/' Cargo.toml
+          cargo update
+
+      - name: Fetch runtime library
+        if: ${{ matrix.runner == 'native' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: library
+          path: libcairo_native_runtime.a
+
+      - name: Run Blocks Native
+        if: ${{ matrix.runner == 'native' }}
+        run: CAIRO_NATIVE_RUNTIME_LIBRARY=./libcairo_native_runtime.a cargo run --features state_dump block-range 807301 807301 mainnet
+
+      - name: Run Blocks VM
+        if: ${{ matrix.runner == 'vm' }}
+        run: cargo run --features "state_dump,only_cairo_vm" block-range 807301 807301 mainnet
+
+      - name: Upload generated Dump
+        uses: actions/upload-artifact@v4
+        with:
+          name: dump-${{matrix.runner}}
+          path: state_dumps/${{matrix.runner}}
+
+  compare-dump-macos:
     needs: [native-vm-blocks-dump]
     runs-on: ubuntu-latest
 
