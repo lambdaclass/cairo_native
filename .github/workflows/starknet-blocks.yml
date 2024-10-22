@@ -132,5 +132,5 @@ jobs:
           diffing=./scripts/diff-check.sh
           if cpm -s $diffing 1
           then
-            exit 1 \
+            exit 1
           fi
