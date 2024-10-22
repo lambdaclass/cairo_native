@@ -118,13 +118,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: library
-          path: libcairo_native_runtime.a
+          path: lib/libcairo_native_runtime.a
+        run: |
+          cd lib
+          export CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
-        run: |
-          CAIRO_NATIVE_RUNTIME_LIBRARY=/home/runner/work/cairo_native/cairo_native/libcairo_native_runtime.a
-          cargo run --features state_dump block mainnet ${{ matrix.block }}
+        run: cargo run --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
