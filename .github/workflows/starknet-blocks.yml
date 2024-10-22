@@ -78,6 +78,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
+          path: replay
 
       - name: Install Starknet Replay deps
         run: make deps
@@ -85,12 +86,15 @@ jobs:
       - name: Patch Cairo Native's version
         if: ${{ matrix.runner == 'native' }}
         run: |
+          cd replay
           sed -r -i 's/cairo_native.*rev.*[0-9a-z]+./cairo_native.git", rev = "${{ github.event.pull_request.head.sha }}"/' Cargo.toml
           cargo update
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
-        run: cargo run --features state_dump block mainnet ${{ matrix.block }}
+        run: |
+          cd replay
+          cargo run --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
@@ -109,10 +113,6 @@ jobs:
       matrix:
         block: [807301]
     steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: lambdaclass/starknet-replay
-
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
         with:
