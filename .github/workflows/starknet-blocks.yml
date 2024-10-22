@@ -244,11 +244,11 @@ jobs:
       - name: Upload generated Dump
         uses: actions/upload-artifact@v4
         with:
-          name: dump-${{matrix.runner}}
+          name: dump-${{matrix.runner}}-macos
           path: state_dumps/${{matrix.runner}}
 
   compare-dump-macos:
-    needs: [native-vm-blocks-dump]
+    needs: [native-vm-blocks-dump-macos]
     runs-on: ubuntu-latest
 
     steps:
@@ -260,13 +260,13 @@ jobs:
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
         with:
-          name: dump-native
+          name: dump-native-macos
           path: state_dumps/native
 
       - name: Fetch VM dumps
         uses: actions/download-artifact@v4
         with:
-          name: dump-vm
+          name: dump-vm-macos
           path: state_dumps/vm
 
       - name: Check Diffs
