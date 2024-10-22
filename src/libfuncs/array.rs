@@ -1,8 +1,5 @@
 //! # Array libfuncs
 
-// TODO: A future possible improvement would be to put the array behind a double pointer and a
-//   reference counter, to avoid unnecessary clones.
-
 use super::LibfuncHelper;
 use crate::{
     error::Result,
@@ -136,6 +133,8 @@ pub fn build_append<'ctx, 'this>(
     //   - If array_end == capacity:
     //     - If array_start == 0: realloc, then append.
     //     - If array_start != 0: memmove, then append.
+
+    // TODO: Check if shared. If shared, clone.
 
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
