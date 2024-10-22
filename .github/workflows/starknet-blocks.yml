@@ -50,7 +50,7 @@ jobs:
           name: library
           path: libcairo_native_runtime.a
 
-  compare-dumps:
+  run-blocks:
     needs: [build-native]
     runs-on: ubuntu-latest
     env:
@@ -95,6 +95,15 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
 
+      - name: add llvm deb repository
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
+          repo-name: llvm-repo
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - name: Install LLVM
+        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
+
       - name: Install Starknet Replay deps
         run: make deps
 
@@ -118,6 +127,14 @@ jobs:
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
         run: cargo run --features "state_dump,only_cairo_vm" block ${{ matrix.block }} mainnet
+
+  compare-dumps:
+    needs: [run-blocks]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/starknet-replay
 
       - name: Check Diffs
         run: |
