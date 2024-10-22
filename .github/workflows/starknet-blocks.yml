@@ -101,7 +101,7 @@ jobs:
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
-        run: CAIRO_NATIVE_RUNTIME_LIBRARY=./libcairo_native_runtime.a cargo run --features state_dump block-range 807301 807301 mainnet
+        run: CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo_native_runtime.a cargo run --features state_dump block-range 807301 807301 mainnet
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
@@ -143,7 +143,7 @@ jobs:
           fi
 
   native-vm-blocks-dump-macos:
-    name: Check Dump Naitve vs VM
+    name: Check Dump Naitve vs VM (macos)
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
@@ -209,7 +209,7 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         uses: actions/upload-artifact@v4
         with:
-          name: library
+          name: library-macos
           path: libcairo_native_runtime.a
 
       - name: Checkout to Starknet Replay
@@ -230,12 +230,12 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         uses: actions/download-artifact@v4
         with:
-          name: library
-          path: libcairo_native_runtime.a
+          name: library-macos
+          path: lib/libcairo_native_runtime.a
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
-        run: CAIRO_NATIVE_RUNTIME_LIBRARY=./libcairo_native_runtime.a cargo run --features state_dump block-range 807301 807301 mainnet
+        run: CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo_native_runtime.a cargo run --features state_dump block-range 807301 807301 mainnet
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
@@ -252,7 +252,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Starknet Replay
+      - name: Checkout Starknet Replay (macos)
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
