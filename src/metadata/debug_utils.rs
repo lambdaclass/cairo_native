@@ -4,7 +4,7 @@
 //!
 //! ## Example
 //!
-//! ```rust,ignore
+//! ```rust,no_run
 //! # use cairo_lang_sierra::{
 //! #     extensions::{
 //! #         core::{CoreLibfunc, CoreType},

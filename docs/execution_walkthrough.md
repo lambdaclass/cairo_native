@@ -2,7 +2,7 @@
 
 Given the following Cairo program:
 
-```rust,ignore
+```rust
 // This is the cairo program. It just adds two numbers together and returns the
 // result in an enum whose variant is selected using the result's parity.
 enum Parity<T> {

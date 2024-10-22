@@ -31,7 +31,7 @@ export NATIVE_DEBUG_TRAP_AT_STMT=10
 The trap instruction may not end up exactly where the statement is.
 
 If we want to manually set the breakpoint (for example, when executing a particular libfunc), then we can use the `DebugUtils` metadata in the code.
-```rust,ignore
+```rust,no_run
 #[cfg(feature = "with-debug-utils")]
 {
     metadata.get_mut::<DebugUtils>()
@@ -65,7 +65,7 @@ export RUST_LOG="cairo_native=trace"
 - Try to find the minimal program to reproduce an issue, the more isolated the easier to test.
 - Use the `debug_utils` print utilities, more info [here](https://lambdaclass.github.io/cairo_native/cairo_native/metadata/debug_utils/struct.DebugUtils.html):
 
-```rust,ignore
+```rust,no_run
 #[cfg(feature = "with-debug-utils")]
 {
     metadata.get_mut::<DebugUtils>()
@@ -139,7 +139,7 @@ hash, but a chain of contract/library calls.
 To know which contract is being called we can add some debugging prints in
 the replay that logs contract executions. For example:
 
-```rust,ignore
+```rust,no_run
 impl StarknetSyscallHandler for ReplaySyscallHandler {
     // ...
 
@@ -204,7 +204,7 @@ An idea on how to do that is modifying Cairo native so that it adds a
 breakpoint every time a constant with that error message is generated.
 For example:
 
-```rust,ignore
+```rust,no_run
 /// Generate MLIR operations for the `felt252_const` libfunc.
 pub fn build_const<'ctx, 'this>(
     context: &'ctx Context,
