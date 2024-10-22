@@ -119,13 +119,13 @@ jobs:
         with:
           name: library
           path: lib/libcairo_native_runtime.a
-        run: |
-          cd lib
-          export CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
-        run: cargo run --features state_dump block mainnet ${{ matrix.block }}
+        run: |
+            cd lib
+            export CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a
+            cargo run --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
