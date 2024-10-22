@@ -122,19 +122,40 @@ jobs:
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
-        run: CAIRO_NATIVE_RUNTIME_LIBRARY=/home/runner/work/cairo_native/starknet_replay/libcairo_native_runtime.a cargo run --features state_dump block ${{ matrix.block }} mainnet
+        run: CAIRO_NATIVE_RUNTIME_LIBRARY=/home/runner/work/cairo_native/starknet_replay/libcairo_native_runtime.a cargo run --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
-        run: cargo run --features "state_dump,only_cairo_vm" block ${{ matrix.block }} mainnet
+        run: cargo run --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
+
+      - name: Upload dumps
+        uses: actions/upload-artifact@v4
+        with:
+          name: dump-${{matrix.block}}-${{matrix.runner}}
+          path: state_dumps/${{matrix.runner}}
 
   compare-dumps:
     needs: [run-blocks]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        block: [807301]
     steps:
       - uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
+
+      - name: Fetch Native dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-${{matrix.block}}-native
+          path: state_dumps/native
+
+      - name: Fetch VM dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-${{matrix.block}}-vm
+          path: state_dumps/vm
 
       - name: Check Diffs
         run: |
