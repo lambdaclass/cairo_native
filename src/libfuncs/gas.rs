@@ -52,7 +52,7 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Generate MLIR operations for the `get_builtin_costs` libfunc.
+/// Generate MLIR operations for the `get_available_gas` libfunc.
 pub fn build_get_available_gas<'ctx, 'this>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -126,7 +126,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         let token_type_index_val =
             entry.const_int_from_type(context, location, token_type_index, u64_type)?;
 
-        let cost_value_ptr = entry.append_op_result(llvm::get_element_ptr_dynamic(
+        let token_cost_value_ptr = entry.append_op_result(llvm::get_element_ptr_dynamic(
             context,
             builtin_ptr,
             &[token_type_index_val],
@@ -134,10 +134,10 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             pointer(context, 0),
             location,
         ))?;
-        let cost_value = entry.load(context, location, cost_value_ptr, u64_type)?;
-        let cost_value = entry.append_op_result(arith::extui(cost_value, u128_type, location))?;
+        let token_cost_multiplier_value = entry.load(context, location, token_cost_value_ptr, u64_type)?;
+        let token_cost_multiplier_value = entry.append_op_result(arith::extui(token_cost_multiplier_value, u128_type, location))?;
         let total_gas_cost_val =
-            entry.append_op_result(arith::muli(gas_cost_val, cost_value, location))?;
+            entry.append_op_result(arith::muli(gas_cost_val, token_cost_multiplier_value, location))?;
         final_gas_cost =
             entry.append_op_result(arith::addi(final_gas_cost, total_gas_cost_val, location))?;
     }
@@ -158,7 +158,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         context,
         is_enough,
         [0, 1],
-        [&[range_check, resulting_gas]; 2],
+        [&[range_check, resulting_gas], &[range_check, current_gas]],
         location,
     ));
 
@@ -241,7 +241,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
         context,
         is_enough,
         [0, 1],
-        [&[range_check, resulting_gas]; 2],
+        [&[range_check, resulting_gas], &[range_check, current_gas]],
         location,
     ));
 

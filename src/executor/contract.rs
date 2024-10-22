@@ -112,6 +112,25 @@ pub enum BuiltinType {
     BuiltinCosts,
 }
 
+impl BuiltinType {
+    pub fn size_in_bytes(&self) -> usize {
+        match self {
+            BuiltinType::Bitwise => 8,
+            BuiltinType::EcOp => 8,
+            BuiltinType::RangeCheck => 8,
+            BuiltinType::SegmentArena => 8,
+            BuiltinType::Poseidon => 8,
+            BuiltinType::Pedersen => 8,
+            BuiltinType::RangeCheck96 => 8,
+            BuiltinType::CircuitAdd => 8,
+            BuiltinType::CircuitMul => 8,
+            BuiltinType::Gas => 16,
+            BuiltinType::System => 8,
+            BuiltinType::BuiltinCosts => 8,
+        }
+    }
+}
+
 impl AotContractExecutor {
     /// Create the executor from a sierra program with the given optimization level.
     /// You can save the library on the desired location later using `save`.
@@ -247,17 +266,13 @@ impl AotContractExecutor {
         }
 
         //  it can vary from contract to contract thats why we need to store/ load it.
-        // substract 2, which are the gas and syscall builtin
-        let num_builtins = self.contract_info.entry_points[&function_id.id]
-            .builtins
-            .len()
-            - 2;
+        let builtins_size: usize = self.contract_info.entry_points[&function_id.id].builtins.iter().map(|x| x.size_in_bytes()).sum();
 
         // There is always a return ptr because contracts always return more than 1 thing (builtin counters, syscall, enum)
         let return_ptr = arena.alloc_layout(unsafe {
-            // 64 = size of enum + syscall + u128 from gas builtin + 8 bytes for each additional builtin counter
-            // align is 16 because of the u128
-            Layout::from_size_align_unchecked(64 + 8 * num_builtins, 16)
+            // 64 = size of enum + builtin sizes
+            // align is 16 because of the u128 from gas
+            Layout::from_size_align_unchecked(64 + builtins_size, 16)
         });
 
         return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
@@ -353,12 +368,10 @@ impl AotContractExecutor {
                     remaining_gas = unsafe { *read_value::<u128>(return_ptr) };
                 }
                 BuiltinType::System => {
-                    let ptr = return_ptr.cast::<*mut ()>();
-                    *return_ptr = unsafe { NonNull::new_unchecked(ptr.as_ptr().add(1)).cast() };
+                    unsafe { read_value::<*mut ()>(return_ptr) };
                 }
                 BuiltinType::BuiltinCosts => {
-                    let ptr = return_ptr.cast::<*mut ()>();
-                    *return_ptr = unsafe { NonNull::new_unchecked(ptr.as_ptr().add(1)).cast() };
+                    unsafe { read_value::<*mut ()>(return_ptr) };
                     // ptr holds the builtin costs, but they dont change, so its of no use, but we read to advance the ptr.
                 }
                 x => {
