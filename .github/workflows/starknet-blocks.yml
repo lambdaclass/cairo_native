@@ -15,48 +15,6 @@ jobs:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
       TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request[matrix.branch].sha }}
-
-      - uses: dtolnay/rust-toolchain@1.82.0
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-
-      - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@11
-        with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
-          repo-name: llvm-repo
-          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-      - name: Install LLVM
-        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
-
-      - name: Install Cairo Native deps
-        run: make deps
-      - name: Build Cairo Native project
-        run: cargo b --release --all-features
-      - name: Build runtime
-        run: |
-          make runtime-ci
-          cargo update
-
-      - name: Upload runtime library
-        uses: actions/upload-artifact@v4
-        with:
-          name: library
-          path: libcairo_native_runtime.a
-
-  run-blocks:
-    needs: [build-native]
-    runs-on: ubuntu-latest
-    env:
-      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
-      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
-      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
       RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
       RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
     strategy:
@@ -67,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: lambdaclass/starknet-replay
+          ref: ${{ github.event.pull_request[matrix.branch].sha }}
 
       - uses: dtolnay/rust-toolchain@1.82.0
         with:
@@ -104,6 +62,24 @@ jobs:
       - name: Install LLVM
         run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
 
+      - name: Install Cairo Native deps
+        if: ${{ matrix.runner == 'native' }}
+        run: make deps
+      - name: Build Cairo Native project
+        if: ${{ matrix.runner == 'native' }}
+        run: cargo b --release --all-features
+      - name: Build runtime
+        if: ${{ matrix.runner == 'native' }}
+        run: |
+          make runtime-ci
+          cargo update
+          echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
+
+      - name: Checkout Starknet Replay
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/starknet-replay
+
       - name: Install Starknet Replay deps
         run: make deps
 
@@ -113,19 +89,9 @@ jobs:
           sed -r -i 's/cairo_native.*rev.*[0-9a-z]+./cairo_native.git", rev = "${{ github.event.pull_request.head.sha }}"/' Cargo.toml
           cargo update
 
-      - name: Fetch runtime library
-        if: ${{ matrix.runner == 'native' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: library
-          path: lib/libcairo_native_runtime.a
-
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
-        run: |
-            cd lib
-            export CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a
-            cargo run --features state_dump block mainnet ${{ matrix.block }}
+        run: cargo run --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
