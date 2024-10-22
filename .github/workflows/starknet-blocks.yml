@@ -8,7 +8,7 @@ on:
     types: [checks_requested]
 
 jobs:
-  build-native:
+  run-blocks:
     name: Build Cairo Native
     runs-on: ubuntu-latest
     env:
@@ -21,7 +21,6 @@ jobs:
       matrix:
         runner: [native, vm]
         block: [807301]
-
     steps:
       - uses: actions/checkout@v4
         with:
