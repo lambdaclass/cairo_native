@@ -16,6 +16,7 @@ typedef struct map_return_values
     } result;
 } map_return_values_t;
 
+extern uint64_t* builtin_costs;
 
 static void run_bench(map_return_values_t *, uint64_t)
     __attribute__((weakref("_mlir_ciface_logistic_map::logistic_map::main(f2)")));
@@ -23,6 +24,10 @@ static void run_bench(map_return_values_t *, uint64_t)
 
 int main()
 {
+    uint64_t BuiltinCosts[7] = {1, 4050, 583, 4085, 491, 230, 604};
+
+    builtin_costs = &BuiltinCosts[0];
+
     map_return_values_t return_values;
 
     run_bench(&return_values, 0);
