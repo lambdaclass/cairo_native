@@ -7,7 +7,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -104,15 +104,11 @@ pub fn build_new<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let ptr = entry
-        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
-
     let k0 = entry.const_int(context, location, 0, 32)?;
+    let ptr = entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+
     let value = entry.append_op_result(llvm::undef(array_ty, location))?;
-    let value = entry.insert_value(context, location, value, ptr, 0)?;
-    let value = entry.insert_value(context, location, value, k0, 1)?;
-    let value = entry.insert_value(context, location, value, k0, 2)?;
-    let value = entry.insert_value(context, location, value, k0, 3)?;
+    let value = entry.insert_values(context, location, value, &[ptr, k0, k0, k0])?;
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())
@@ -129,10 +125,11 @@ pub fn build_append<'ctx, 'this>(
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     // Algorithm:
-    //   - If array_end < capacity, then append.
-    //   - If array_end == capacity:
-    //     - If array_start == 0: realloc, then append.
-    //     - If array_start != 0: memmove, then append.
+    //   - If len == 0 || refcnt > 1 -> realloc, refcnt = 1
+    //     - Append
+    //   - Else if len > 0
+    //     - Either memmove or realloc
+    //       - Append
 
     // TODO: Check if shared. If shared, clone.
 
@@ -154,65 +151,135 @@ pub fn build_append<'ctx, 'this>(
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_layout = elem_ty.layout(registry)?;
     let elem_stride = elem_layout.pad_to_align().size();
+    let elem_offset = get_integer_layout(32)
+        .align_to(elem_layout.align())
+        .unwrap()
+        .pad_to_align()
+        .size();
 
+    let k0 = entry.const_int(context, location, 0, 32)?;
     let k1 = entry.const_int(context, location, 1, 32)?;
 
     let elem_stride = entry.const_int(context, location, elem_stride, 64)?;
 
+    let array_ptr = entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
+    let array_start =
+        entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
     let array_end = entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 2)?;
     let array_capacity =
         entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 3)?;
 
-    let has_tail_space = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ult,
-        array_end,
-        array_capacity,
-        location,
-    ))?;
-
-    let handle_block = helper.append_block(Block::new(&[]));
-    let memmove_block = helper.append_block(Block::new(&[]));
-    let realloc_block = helper.append_block(Block::new(&[]));
-    let append_block = helper.append_block(Block::new(&[(array_ty, location)]));
-
-    entry.append_operation(cf::cond_br(
-        context,
-        has_tail_space,
-        append_block,
-        handle_block,
-        &[entry.argument(0)?.into()],
-        &[],
-        location,
-    ));
-
-    {
-        let k0 = handle_block.const_int(context, location, 0, 32)?;
-        let array_start =
-            handle_block.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
-
-        let has_head_space = handle_block.append_op_result(arith::cmpi(
+    // Array needs realloc if either:
+    //   - It's shared.
+    //   - It has no data (zero capacity).
+    //   - It's full (array_start is zero, array_end is capacity).
+    //
+    // Possible actions:
+    //   0. Just append.
+    //   1. Realloc, then append.
+    //   2. Memmove, then append.
+    let target_action = {
+        let is_empty = entry.append_op_result(arith::cmpi(
             context,
-            CmpiPredicate::Ne,
-            array_start,
+            CmpiPredicate::Eq,
+            array_capacity,
             k0,
             location,
         ))?;
-        handle_block.append_operation(cf::cond_br(
-            context,
-            has_head_space,
-            memmove_block,
-            realloc_block,
-            &[],
-            &[],
+        entry.append_op_result(scf::r#if(
+            is_empty,
+            &[IntegerType::new(context, 2).into()],
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                // Array is empty (zero capacity), we need to realloc.
+                let action = block.const_int(context, location, 1, 2)?;
+
+                block.append_operation(scf::r#yield(&[action], location));
+                region
+            },
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                let refcount_ptr = block.append_op_result(llvm::get_element_ptr(
+                    context,
+                    array_ptr,
+                    DenseI32ArrayAttribute::new(context, &[-(elem_offset as i32)]),
+                    IntegerType::new(context, 8).into(),
+                    llvm::r#type::pointer(context, 0),
+                    location,
+                ))?;
+                let ref_count = block.load(
+                    context,
+                    location,
+                    refcount_ptr,
+                    IntegerType::new(context, 32).into(),
+                )?;
+                let is_shared = block.append_op_result(arith::cmpi(
+                    context,
+                    CmpiPredicate::Ugt,
+                    ref_count,
+                    k1,
+                    location,
+                ))?;
+
+                let starts_at_zero = block.append_op_result(arith::cmpi(
+                    context,
+                    CmpiPredicate::Eq,
+                    array_start,
+                    k0,
+                    location,
+                ))?;
+                let ends_at_len = block.append_op_result(arith::cmpi(
+                    context,
+                    CmpiPredicate::Eq,
+                    array_end,
+                    array_capacity,
+                    location,
+                ))?;
+
+                // TODO: Need an extra action: clone (separate from realloc).
+                let k0 = entry.const_int(context, location, 0, 2)?;
+                let k1 = entry.const_int(context, location, 1, 2)?;
+                let k2 = entry.const_int(context, location, 2, 2)?;
+                let action =
+                    block.append_op_result(arith::select(starts_at_zero, k1, k2, location))?;
+                let action =
+                    block.append_op_result(arith::select(ends_at_len, action, k0, location))?;
+
+                block.append_operation(scf::r#yield(&[action], location));
+                region
+            },
             location,
-        ));
-    }
+        ))?
+    };
+
+    // Memmove block: Used to move the data.
+    // Realloc block: Used to reallocate the data.
+    // Append block: Performs the append operation.
+    let default_block = helper.append_block(Block::new(&[]));
+    let memmove_block = helper.append_block(Block::new(&[]));
+    let realloc_block = helper.append_block(Block::new(&[]));
+    let append_block = helper.append_block(Block::new(&[(array_ty, location)]));
+    entry.append_operation(cf::switch(
+        context,
+        &[0, 1, 2],
+        target_action,
+        IntegerType::new(context, 2).into(),
+        (default_block, &[]),
+        &[
+            (append_block, &[entry.argument(0)?.into()]),
+            (realloc_block, &[]),
+            (memmove_block, &[]),
+        ],
+        location,
+    )?);
+
+    default_block.append_operation(llvm::unreachable(location));
 
     {
-        let array_start =
-            memmove_block.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
-
         let start_offset = memmove_block.append_op_result(arith::extui(
             array_start,
             IntegerType::new(context, 64).into(),
@@ -239,7 +306,6 @@ pub fn build_append<'ctx, 'this>(
             IntegerType::new(context, 64).into(),
             location,
         ))?;
-
         let memmove_len =
             memmove_block.append_op_result(arith::muli(memmove_len, elem_stride, location))?;
         memmove_block.append_operation(
@@ -285,17 +351,83 @@ pub fn build_append<'ctx, 'this>(
             realloc_block.append_op_result(arith::muli(new_capacity, elem_stride, location))?
         };
 
-        let ptr =
-            realloc_block.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
-        let ptr = realloc_block.append_op_result(ReallocBindingsMeta::realloc(
+        let elem_offset = realloc_block.const_int(context, location, elem_offset, 64)?;
+        let realloc_size =
+            realloc_block.append_op_result(arith::addi(realloc_size, elem_offset, location))?;
+
+        let refcount_offset = get_integer_layout(32)
+            .align_to(elem_layout.align())
+            .unwrap()
+            .pad_to_align()
+            .size();
+        let is_malloc = realloc_block.append_op_result(arith::cmpi(
             context,
-            ptr,
-            realloc_size,
+            CmpiPredicate::Eq,
+            array_capacity,
+            k0,
             location,
         ))?;
+        let ptr = realloc_block.append_op_result(scf::r#if(
+            is_malloc,
+            &[llvm::r#type::pointer(context, 0)],
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
 
-        // No need to memmove, guaranteed by the fact that if we needed to memmove we'd have gone
-        // through the memmove block instead of reallocating.
+                let null_ptr = block
+                    .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+                let ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                    context,
+                    null_ptr,
+                    realloc_size,
+                    location,
+                ))?;
+
+                block.store(context, location, ptr, k1)?;
+                let ptr = block.append_op_result(llvm::get_element_ptr(
+                    context,
+                    ptr,
+                    DenseI32ArrayAttribute::new(context, &[refcount_offset as i32]),
+                    IntegerType::new(context, 8).into(),
+                    llvm::r#type::pointer(context, 0),
+                    location,
+                ))?;
+
+                block.append_operation(scf::r#yield(&[ptr], location));
+                region
+            },
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                let ptr = block.append_op_result(llvm::get_element_ptr(
+                    context,
+                    array_ptr,
+                    DenseI32ArrayAttribute::new(context, &[-(refcount_offset as i32)]),
+                    IntegerType::new(context, 8).into(),
+                    llvm::r#type::pointer(context, 0),
+                    location,
+                ))?;
+                let ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                    context,
+                    ptr,
+                    realloc_size,
+                    location,
+                ))?;
+                let ptr = block.append_op_result(llvm::get_element_ptr(
+                    context,
+                    ptr,
+                    DenseI32ArrayAttribute::new(context, &[refcount_offset as i32]),
+                    IntegerType::new(context, 8).into(),
+                    llvm::r#type::pointer(context, 0),
+                    location,
+                ))?;
+
+                block.append_operation(scf::r#yield(&[ptr], location));
+                region
+            },
+            location,
+        ))?;
 
         let value =
             realloc_block.insert_value(context, location, entry.argument(0)?.into(), ptr, 0)?;
@@ -426,6 +558,11 @@ pub fn build_get<'ctx, 'this>(
     let elem_layout = elem_ty.layout(registry)?;
     let elem_stride = elem_layout.pad_to_align().size();
     let elem_ty = elem_ty.build(context, helper, registry, metadata, &info.ty)?;
+    let elem_offset = get_integer_layout(32)
+        .align_to(elem_layout.align())
+        .unwrap()
+        .pad_to_align()
+        .size();
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
@@ -459,6 +596,14 @@ pub fn build_get<'ctx, 'this>(
 
     {
         let ptr = valid_block.extract_value(context, location, value, ptr_ty, 0)?;
+        let offset_ptr = valid_block.append_op_result(llvm::get_element_ptr(
+            context,
+            ptr,
+            DenseI32ArrayAttribute::new(context, &[elem_offset as i32]),
+            IntegerType::new(context, 64).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
 
         let array_start = valid_block.append_op_result(arith::extui(
             array_start,
@@ -480,7 +625,7 @@ pub fn build_get<'ctx, 'this>(
 
         let elem_ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
             context,
-            ptr,
+            offset_ptr,
             &[elem_offset],
             IntegerType::new(context, 8).into(),
             llvm::r#type::pointer(context, 0),
@@ -508,74 +653,125 @@ pub fn build_get<'ctx, 'this>(
 
         match metadata.get::<DropOverridesMeta>() {
             Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
-                let array_end = valid_block.append_op_result(arith::extui(
-                    array_end,
-                    IntegerType::new(context, 64).into(),
+                let ref_count = valid_block.load(
+                    context,
+                    location,
+                    ptr,
+                    IntegerType::new(context, 32).into(),
+                )?;
+                let k1 = valid_block.const_int(context, location, 1, 32)?;
+                let is_shared = valid_block.append_op_result(arith::cmpi(
+                    context,
+                    CmpiPredicate::Eq,
+                    ref_count,
+                    k1,
                     location,
                 ))?;
 
-                let array_start = valid_block.append_op_result(arith::muli(
-                    array_start,
-                    elem_stride,
-                    location,
-                ))?;
-                let array_end =
-                    valid_block.append_op_result(arith::muli(array_end, elem_stride, location))?;
-
-                valid_block.append_operation(scf::r#for(
-                    array_start,
-                    array_end,
-                    elem_stride,
+                valid_block.append_operation(scf::r#if(
+                    is_shared,
+                    &[],
                     {
                         let region = Region::new();
-                        let block = region.append_block(Block::new(&[(
-                            IntegerType::new(context, 64).into(),
-                            location,
-                        )]));
+                        let block = region.append_block(Block::new(&[]));
 
-                        let value_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
-                            context,
-                            ptr,
-                            &[block.argument(0)?.into()],
-                            IntegerType::new(context, 8).into(),
-                            llvm::r#type::pointer(context, 0),
+                        let ref_count =
+                            block.append_op_result(arith::subi(ref_count, k1, location))?;
+                        block.store(context, location, ptr, ref_count)?;
+
+                        block.append_operation(scf::r#yield(&[], location));
+                        region
+                    },
+                    {
+                        let region = Region::new();
+                        let block = region.append_block(Block::new(&[]));
+
+                        let array_end = block.append_op_result(arith::extui(
+                            array_end,
+                            IntegerType::new(context, 64).into(),
                             location,
                         ))?;
 
-                        let is_target_element = block.append_op_result(
-                            ods::llvm::icmp(
-                                context,
-                                IntegerType::new(context, 1).into(),
-                                value_ptr,
-                                elem_ptr,
-                                IntegerAttribute::new(IntegerType::new(context, 64).into(), 0)
+                        let array_start = block.append_op_result(arith::muli(
+                            array_start,
+                            elem_stride,
+                            location,
+                        ))?;
+                        let array_end = block.append_op_result(arith::muli(
+                            array_end,
+                            elem_stride,
+                            location,
+                        ))?;
+
+                        block.append_operation(scf::r#for(
+                            array_start,
+                            array_end,
+                            elem_stride,
+                            {
+                                let region = Region::new();
+                                let block = region.append_block(Block::new(&[(
+                                    IntegerType::new(context, 64).into(),
+                                    location,
+                                )]));
+
+                                let value_ptr =
+                                    block.append_op_result(llvm::get_element_ptr_dynamic(
+                                        context,
+                                        ptr,
+                                        &[block.argument(0)?.into()],
+                                        IntegerType::new(context, 8).into(),
+                                        llvm::r#type::pointer(context, 0),
+                                        location,
+                                    ))?;
+
+                                let is_target_element = block.append_op_result(
+                                    ods::llvm::icmp(
+                                        context,
+                                        IntegerType::new(context, 1).into(),
+                                        value_ptr,
+                                        elem_ptr,
+                                        IntegerAttribute::new(
+                                            IntegerType::new(context, 64).into(),
+                                            0,
+                                        )
+                                        .into(),
+                                        location,
+                                    )
                                     .into(),
-                                location,
-                            )
-                            .into(),
-                        )?;
-                        block.append_operation(scf::r#if(
-                            is_target_element,
-                            &[],
-                            {
-                                let region = Region::new();
-                                let block = region.append_block(Block::new(&[]));
+                                )?;
+                                block.append_operation(scf::r#if(
+                                    is_target_element,
+                                    &[],
+                                    {
+                                        let region = Region::new();
+                                        let block = region.append_block(Block::new(&[]));
 
-                                block.append_operation(scf::r#yield(&[], location));
-                                region
-                            },
-                            {
-                                let region = Region::new();
-                                let block = region.append_block(Block::new(&[]));
+                                        block.append_operation(scf::r#yield(&[], location));
+                                        region
+                                    },
+                                    {
+                                        let region = Region::new();
+                                        let block = region.append_block(Block::new(&[]));
 
-                                let value = block.load(context, location, value_ptr, elem_ty)?;
-                                drop_overrides_meta
-                                    .invoke_override(context, &block, location, &info.ty, value)?;
+                                        let value =
+                                            block.load(context, location, value_ptr, elem_ty)?;
+                                        drop_overrides_meta.invoke_override(
+                                            context, &block, location, &info.ty, value,
+                                        )?;
+
+                                        block.append_operation(scf::r#yield(&[], location));
+                                        region
+                                    },
+                                    location,
+                                ));
 
                                 block.append_operation(scf::r#yield(&[], location));
                                 region
                             },
                             location,
+                        ));
+                        block.append_operation(ReallocBindingsMeta::free(
+                            context, offset_ptr, location,
                         ));
 
                         block.append_operation(scf::r#yield(&[], location));
@@ -586,7 +782,6 @@ pub fn build_get<'ctx, 'this>(
             }
             _ => {}
         }
-        valid_block.append_operation(ReallocBindingsMeta::free(context, ptr, location));
 
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
     }

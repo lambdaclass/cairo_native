@@ -141,6 +141,17 @@ fn build_dup<'ctx>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
+            metadata
+                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+                .unwrap()
+                .debug_print(
+                    context,
+                    module,
+                    &block,
+                    "[MEM] Cloning empty array.",
+                    location,
+                )?;
+
             block.append_operation(scf::r#yield(&[], location));
             region
         },
@@ -170,6 +181,21 @@ fn build_dup<'ctx>(
                 refcount_ptr,
                 IntegerType::new(context, 32).into(),
             )?;
+
+            metadata
+                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+                .unwrap()
+                .debug_print(
+                    context,
+                    module,
+                    &block,
+                    "[MEM] Cloning non-empty array (ref_count += 1). Original ref_count:",
+                    location,
+                )?;
+            metadata
+                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+                .unwrap()
+                .print_i32(context, module, &block, ref_count, location)?;
 
             let k1 = block.const_int(context, location, 1, 32)?;
             let ref_count = block.append_op_result(arith::addi(ref_count, k1, location))?;
@@ -469,12 +495,38 @@ fn build_drop<'ctx>(
                     let ref_count = block.append_op_result(arith::subi(ref_count, k1, location))?;
                     block.store(context, location, refcount_ptr, ref_count)?;
 
+                    metadata
+                        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+                        .unwrap()
+                        .debug_print(
+                            context,
+                            module,
+                            &block,
+                            "[MEM] Dropping non-empty array (ref_count -= 1). Original ref_count:",
+                            location,
+                        )?;
+                    metadata
+                        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+                        .unwrap()
+                        .print_i32(context, module, &block, ref_count, location)?;
+
                     block.append_operation(scf::r#yield(&[], location));
                     region
                 },
                 {
                     let region = Region::new();
                     let block = region.append_block(Block::new(&[]));
+
+                    metadata
+                        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+                        .unwrap()
+                        .debug_print(
+                            context,
+                            module,
+                            &block,
+                            "[MEM] Dropping non-empty array (ref_count -= 1). Freeing memory.",
+                            location,
+                        )?;
 
                     match metadata.get::<DropOverridesMeta>() {
                         Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
@@ -554,7 +606,11 @@ fn build_drop<'ctx>(
                         _ => {}
                     }
 
-                    block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location));
+                    block.append_operation(ReallocBindingsMeta::free(
+                        context,
+                        refcount_ptr,
+                        location,
+                    ));
                     block.append_operation(scf::r#yield(&[], location));
                     region
                 },

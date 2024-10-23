@@ -590,7 +590,7 @@ impl Value {
                     }
 
                     if should_drop && !init_data_ptr.is_null() {
-                        libc_free(init_data_ptr.cast());
+                        libc_free(init_data_ptr.byte_sub(refcount_offset).cast());
                     }
 
                     Self::Array(array_value)
