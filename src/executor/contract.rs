@@ -552,6 +552,7 @@ mod tests {
     use super::*;
     use crate::{starknet_stub::StubSyscallHandler, utils::test::load_starknet};
     use cairo_lang_sierra::program::Program;
+    use rayon::iter::ParallelBridge;
     use rstest::*;
 
     #[fixture]
@@ -599,6 +600,37 @@ mod tests {
             }
         };
         program
+    }
+
+    #[rstest]
+    #[case(OptLevel::Default)]
+    fn test_contract_executor_parallel(starknet_program: Program, #[case] optlevel: OptLevel) {
+        use rayon::iter::ParallelIterator;
+
+        let executor = Arc::new(AotContractExecutor::new(&starknet_program, optlevel).unwrap());
+
+        // The last function in the program is the `get` wrapper function.
+        let entrypoint_function_id = starknet_program
+            .funcs
+            .last()
+            .expect("should have a function")
+            .id
+            .clone();
+
+        (0..200).par_bridge().for_each(|n| {
+            let result = executor
+                .run(
+                    &entrypoint_function_id,
+                    &[n.into()],
+                    Some(u64::MAX as u128),
+                    None,
+                    &mut StubSyscallHandler::default(),
+                )
+                .unwrap();
+
+            assert_eq!(result.return_values, vec![Felt::from(n), Felt::from(n * 2)]);
+            assert_eq!(result.remaining_gas, 18446744073709548175);
+        });
     }
 
     #[rstest]
