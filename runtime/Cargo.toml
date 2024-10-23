@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native-runtime"
-version = "0.2.0-alpha.5"
+version = "0.2.1-alpha.0"
 description = "The runtime for cairo-native."
 edition = "2021"
 license = "Apache-2.0"
