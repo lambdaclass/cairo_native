@@ -89,7 +89,7 @@ jobs:
         run: |
           cd replay
           sed -r -i 's/cairo_native.*rev.*[0-9a-z]+./cairo_native.git", rev = "${{ github.event.pull_request.head.sha }}"/' Cargo.toml
-          cargo update
+          cargo build --release --bin replay
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
@@ -131,8 +131,10 @@ jobs:
 
       - name: Check Diffs
         run: |
-          diffing=./scripts/diff-check.sh
-          if cmp -s $diffing 1
+          results=./scripts/diff-check.sh
+          if \
+            cmp -s ${results[0]} 1 \
+            && cmp -s ${results[1]} 0
           then
             exit 1
           fi
