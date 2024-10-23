@@ -21,13 +21,16 @@ use cairo_lang_sierra::{
     program::Program,
     program_registry::ProgramRegistry,
 };
-use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
+use cairo_lang_sierra_generator::replace_ids::{DebugReplacer, SierraIdReplacer};
 use cairo_lang_starknet::{
-    compile::compile_contract_in_prepared_db, contract::get_contracts_info, starknet_plugin_suite,
+    compile::compile_contract_in_prepared_db,
+    contract::{find_contracts, get_contracts_info},
+    starknet_plugin_suite,
 };
 use cairo_lang_starknet_classes::{
     casm_contract_class::CasmContractClass, contract_class::ContractClass,
 };
+use cairo_lang_utils::Upcast;
 use cairo_native::{
     context::NativeContext,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -128,13 +131,18 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
         },
     )
     .unwrap();
-    let program = sierra_program_with_dbg.program;
+    let mut program = sierra_program_with_dbg.program;
 
     let module_name = program_file.path().with_extension("");
     let module_name = module_name.file_name().unwrap().to_str().unwrap();
 
     let replacer = DebugReplacer { db: &db };
-    let contracts_info = get_contracts_info(&db, main_crate_ids, &replacer).unwrap();
+    replacer.enrich_function_names(&mut program);
+
+    let contracts = find_contracts((db).upcast(), &main_crate_ids);
+    let contracts_info = get_contracts_info(&db, contracts, &replacer).unwrap();
+
+    let program = replacer.apply(&program);
 
     let runner = SierraCasmRunner::new(
         program.clone(),
@@ -165,13 +173,17 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
         },
     )
     .unwrap();
-    let program = sierra_program_with_dbg.program;
+    let mut program = sierra_program_with_dbg.program;
 
     let module_name = program_file.with_extension("");
     let module_name = module_name.file_name().unwrap().to_str().unwrap();
 
     let replacer = DebugReplacer { db: &db };
-    let contracts_info = get_contracts_info(&db, main_crate_ids, &replacer).unwrap();
+    replacer.enrich_function_names(&mut program);
+    let contracts = find_contracts((db).upcast(), &main_crate_ids);
+    let contracts_info = get_contracts_info(&db, contracts, &replacer).unwrap();
+
+    let program = replacer.apply(&program);
 
     let runner = SierraCasmRunner::new(
         program.clone(),
@@ -283,7 +295,7 @@ pub fn run_vm_contract(
         .expect("failed to extract program from casm contract");
 
     // Initialize runner and builtins
-    let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, false, false)
+    let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, None, false, false)
         .expect("failed to build runner");
 
     let program_builtins = contract

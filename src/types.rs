@@ -429,6 +429,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            Self::IntRange(_) => todo!("2.9.0"),
         }
     }
 
@@ -532,7 +533,9 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(_)) => todo!(),
             CoreTypeConcrete::Coupon(_) => false,
 
-            CoreTypeConcrete::Circuit(info) => circuit::is_complex(info)
+            CoreTypeConcrete::Circuit(info) => circuit::is_complex(info),
+
+            CoreTypeConcrete::IntRange(_info) => todo!("2.9.0")
         })
     }
 
@@ -610,6 +613,8 @@ impl TypeBuilder for CoreTypeConcrete {
             }
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::Circuit(info) => circuit::is_zst(info),
+
+            CoreTypeConcrete::IntRange(_) => todo!("2.9.0"),
         })
     }
 
@@ -715,6 +720,8 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
             CoreTypeConcrete::RangeCheck96(_) => get_integer_layout(64),
             CoreTypeConcrete::Circuit(info) => circuit::layout(registry, info)?,
+
+            CoreTypeConcrete::IntRange(_info) => todo!("2.9.0"),
         }
         .pad_to_align())
     }
@@ -726,6 +733,7 @@ impl TypeBuilder for CoreTypeConcrete {
         // Right now, only enums and other structures which may end up passing a flattened enum as
         // arguments.
         Ok(match self {
+            CoreTypeConcrete::IntRange(_) => todo!("2.9.0"),
             CoreTypeConcrete::Array(_) => false,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => false,

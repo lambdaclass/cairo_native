@@ -802,6 +802,7 @@ impl Value {
                 CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::Circuit(_)
                 | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+                CoreTypeConcrete::IntRange(_) => todo!("2.9.0"),
             }
         })
     }

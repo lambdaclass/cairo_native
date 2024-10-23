@@ -229,6 +229,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::BoundedInt(info) => {
                 self::bounded_int::build(context, registry, entry, location, helper, metadata, info)
             }
+            Self::IntRange(_info) => {
+                todo!("2.9.0")
+            }
         }
     }
 

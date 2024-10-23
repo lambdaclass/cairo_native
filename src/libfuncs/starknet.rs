@@ -144,6 +144,7 @@ pub fn build<'ctx, 'this>(
         StarkNetConcreteLibfunc::Sha256StateHandleDigest(info) => build_sha256_state_handle_digest(
             context, registry, entry, location, helper, metadata, info,
         ),
+        StarkNetConcreteLibfunc::GetClassHashAt(_) => todo!("2.9.0"),
         #[cfg(feature = "with-cheatcode")]
         StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
             self::testing::build(context, registry, entry, location, helper, metadata, info)
