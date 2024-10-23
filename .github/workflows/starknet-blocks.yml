@@ -70,7 +70,7 @@ jobs:
       - name: Build runtime
         if: ${{ matrix.runner == 'native' }}
         run: |
-          make runtime-ci
+          make runtime
           cargo update
           echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
 
@@ -89,19 +89,20 @@ jobs:
         run: |
           cd replay
           sed -r -i 's/cairo_native.*rev.*[0-9a-z]+./cairo_native.git", rev = "${{ github.event.pull_request.head.sha }}"/' Cargo.toml
-          cargo build --release --bin replay
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
         run: |
           cd replay
-          cargo run --features state_dump block mainnet ${{ matrix.block }}
+          cargo build --release --bin replay
+          cargo run --release --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
         run: |
           cd replay
-          cargo run --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
+          cargo build --release --bin replay
+          cargo run --release --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
 
       - name: Upload dumps
         uses: actions/upload-artifact@v4
