@@ -9,7 +9,7 @@ on:
 
 jobs:
   run-blocks:
-    name: Build Cairo Native
+    name: Run Blocks
     runs-on: ubuntu-latest
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
