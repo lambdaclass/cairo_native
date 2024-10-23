@@ -1,0 +1,130 @@
+{
+  "execution_info": {
+    "validate_call_info": {
+      "call": {
+        "class_hash": "0x36078334509b514626504edc9fb252328d1a240e4e948bef8d0c08dff45927f",
+        "code_address": null,
+        "entry_point_type": "EXTERNAL",
+        "entry_point_selector": "0x162da33a4585851fe8d3af3c2a9c60b557814e221e0d4f30ff0b2189d9c7775",
+        "calldata": [
+          "0x1",
+          "0x127021a1b5a52d3174c2ab077c2b043c80369250d29428cee956d76ee51584f",
+          "0x240060cdb34fcc260f41eac7474ee1d7c80b7e3607daff9ac67c7ea2ebb1c44",
+          "0x28",
+          "0x1e637c300d7c105df1f620c34f08a99b0757f177f2d9d52a7a6d6a337f5cad6",
+          "0x34cc13b274446654ca3233ed2c1620d4c5d1d32fd20b47146a3371064bdc57d",
+          "0x22",
+          "0x127021a1b5a52d3174c2ab077c2b043c80369250d29428cee956d76ee51584f",
+          "0xfca8c886b84a85d1ae389cd2bb5217d83ff061075f0223f0116aaacb4e3f4f",
+          "0x1",
+          "0x1929341c3ea",
+          "0x2",
+          "0x422d33a3638dcc4c62e72e1d6942cd31eb643ef596ccac2351e0e21f6cd4bf4",
+          "0xcaffbd1bd76bd7f24a3fa1d69d1b2588a86d1f9d2359b13f6a84b7e1cbd126",
+          "0xa",
+          "0x53616d706c654465706f7369745374617274",
+          "0x8",
+          "0x4",
+          "0x200000d5fe",
+          "0x5",
+          "0x5",
+          "0x552e",
+          "0x2",
+          "0x1",
+          "0x2012",
+          "0x4878d1148318a31829523ee9c6a5ee563af6cd87f90a30809e5b0d27db8a9b",
+          "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+          "0x3",
+          "0x127021a1b5a52d3174c2ab077c2b043c80369250d29428cee956d76ee51584f",
+          "0x632cf4ba",
+          "0x0",
+          "0x9",
+          "0x2",
+          "0x0",
+          "0x49b409e72a32f8de12965615e479f490661375c1b1fda02088dd8bf61e2acf",
+          "0x546f14fc63fcc5fca73b33f6772d1705b43f59952d5d89bf173259916dfb3d9",
+          "0x19635c57764f09020240d0b73eb7a6db9512b830d92d6daa25152b81ea6a417",
+          "0x0",
+          "0x1c96d393e70d445f26c904875bab0ddaa1f4af5c4835c141842eb8d014b3f4d",
+          "0x683162ebe1ec4b1ed99fb796f8043460671f76aa1547a0728d85a784c941888",
+          "0x68630e7cbd8d225f509576447f24b0789c257d20fee8d27bf5cd1cf150da7d1",
+          "0x4878d1148318a31829523ee9c6a5ee563af6cd87f90a30809e5b0d27db8a9b",
+          "0x1f5973c0",
+          "0x0"
+        ],
+        "storage_address": "0x271e7b3b1c8e8fb6f93866edd386f50ae02e9a67b63f90e9e800bdb1e48785",
+        "caller_address": "0x0",
+        "call_type": "Call"
+      },
+      "execution": {
+        "retdata": [
+          "0x56414c4944"
+        ],
+        "events": [],
+        "l2_to_l1_messages": [],
+        "failed": false
+      },
+      "inner_calls": [],
+      "storage_read_values": [
+        "0x4088b3713e2753e7801f4ba098a8afd879ae5c7a167bbaefdc750e1040cfa48",
+        "0x0",
+        "0x4088b3713e2753e7801f4ba098a8afd879ae5c7a167bbaefdc750e1040cfa48"
+      ],
+      "accessed_storage_keys": [
+        "0x1ccc09c8a19948e048de7add6929589945e25f22059c7345aaf7837188d8d05",
+        "0x31e7534f8ddb1628d6e07db5c743e33403b9a0b57508a93f4c49582040a2f71"
+      ]
+    },
+    "execute_call_info": null,
+    "fee_transfer_call_info": null,
+    "receipt": {
+      "resources": {
+        "starknet_resources": {
+          "calldata_length": 44,
+          "state_changes_for_fee": {
+            "n_storage_updates": 1,
+            "n_class_hash_updates": 0,
+            "n_compiled_class_hash_updates": 0,
+            "n_modified_contracts": 1
+          },
+          "message_cost_info": {
+            "l2_to_l1_payload_lengths": [],
+            "message_segment_length": 0
+          },
+          "l1_handler_payload_size": null,
+          "n_events": 0
+        }
+      },
+      "da_gas": {
+        "l1_gas": 0,
+        "l1_data_gas": 128,
+        "l2_gas": 0
+      }
+    },
+    "reverted": "Transaction execution has failed:\n0: Error in the called contract (contract address: 0x00271e7b3b1c8e8fb6f93866edd386f50ae02e9a67b63f90e9e800bdb1e48785, class hash: 0x036078334509b514626504edc9fb252328d1a240e4e948bef8d0c08dff45927f, selector: 0x015d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad):\nNative execution error: argent/multicall-failed\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000Native execution error: Native execution error: argent/invalid-owner-sig\n"
+  },
+  "state_maps": {
+    "nonces": [
+      [
+        "0x271e7b3b1c8e8fb6f93866edd386f50ae02e9a67b63f90e9e800bdb1e48785",
+        "0x54b0"
+      ],
+      [
+        "0x220b42311ad4bfbf2359372cfd1fec370aaa8859c9b5f77a62f0acd5c099e44",
+        "0x10aa"
+      ]
+    ],
+    "class_hashes": [],
+    "storage": [
+      [
+        [
+          "0x422d33a3638dcc4c62e72e1d6942cd31eb643ef596ccac2351e0e21f6cd4bf4",
+          "0x7bd38402521c61a9ec0de147b7f5cc7400f5fffba6de79b429b62fc6003a6cd"
+        ],
+        "0x10ccccb600019c373f1400f8d36800f8d36800022"
+      ]
+    ],
+    "compiled_class_hashes": [],
+    "declared_contracts": []
+  }
+}

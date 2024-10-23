@@ -23,9 +23,6 @@ jobs:
         block: [742001, 754725, 749929, 769597, 779328]
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request[matrix.branch].sha }}
-
       - uses: dtolnay/rust-toolchain@1.82.0
         with:
           components: clippy
@@ -118,6 +115,8 @@ jobs:
         block: [742001, 754725, 749929, 769597, 779328]
       fail-fast: false
     steps:
+      - uses: actions/checkout@v4
+
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
         with:

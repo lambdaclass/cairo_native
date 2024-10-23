@@ -1,0 +1,2474 @@
+{
+  "execution_info": {
+    "validate_call_info": {
+      "call": {
+        "class_hash": "0x29927c8af6bccf3f6fda035981e765a7bdbf18a2dc0d630494f8758aa908e2b",
+        "code_address": null,
+        "entry_point_type": "EXTERNAL",
+        "entry_point_selector": "0x162da33a4585851fe8d3af3c2a9c60b557814e221e0d4f30ff0b2189d9c7775",
+        "calldata": [
+          "0x2",
+          "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+          "0x1a923de6533f2e453af43975ee396cc2d327f663f482e8cca3f6969216f0a8a",
+          "0xb",
+          "0xb7ab6",
+          "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+          "0x0",
+          "0xd2",
+          "0x0",
+          "0x850b60",
+          "0x1",
+          "0x850a8e",
+          "0x1",
+          "0xef4707b0bc46884dd17f9",
+          "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+          "0x3213dc28053a4493534881eee7eede9e8f195710086079f1113c8ba5556c9cb",
+          "0xe",
+          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+          "0x150cb41d060e2850c",
+          "0x0",
+          "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+          "0x0",
+          "0xd2",
+          "0x0",
+          "0x84f7b0",
+          "0x1",
+          "0x84f6de",
+          "0x1",
+          "0x1",
+          "0x1"
+        ],
+        "storage_address": "0x79dd521cc08105684c9cdb37c33cebda8b563f8194fb0eaa54d807c92f129b8",
+        "caller_address": "0x0",
+        "call_type": "Call"
+      },
+      "execution": {
+        "retdata": [
+          "0x56414c4944"
+        ],
+        "events": [],
+        "l2_to_l1_messages": [],
+        "failed": false
+      },
+      "inner_calls": [],
+      "storage_read_values": [
+        "0x72d62fe4a277322caf083cef7fa82fba1beaad6c747eea9b309ee0ed7670192",
+        "0x0"
+      ],
+      "accessed_storage_keys": [
+        "0x1ccc09c8a19948e048de7add6929589945e25f22059c7345aaf7837188d8d05",
+        "0x31e7534f8ddb1628d6e07db5c743e33403b9a0b57508a93f4c49582040a2f71"
+      ]
+    },
+    "execute_call_info": {
+      "call": {
+        "class_hash": "0x29927c8af6bccf3f6fda035981e765a7bdbf18a2dc0d630494f8758aa908e2b",
+        "code_address": null,
+        "entry_point_type": "EXTERNAL",
+        "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
+        "calldata": [
+          "0x2",
+          "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+          "0x1a923de6533f2e453af43975ee396cc2d327f663f482e8cca3f6969216f0a8a",
+          "0xb",
+          "0xb7ab6",
+          "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+          "0x0",
+          "0xd2",
+          "0x0",
+          "0x850b60",
+          "0x1",
+          "0x850a8e",
+          "0x1",
+          "0xef4707b0bc46884dd17f9",
+          "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+          "0x3213dc28053a4493534881eee7eede9e8f195710086079f1113c8ba5556c9cb",
+          "0xe",
+          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+          "0x150cb41d060e2850c",
+          "0x0",
+          "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+          "0x0",
+          "0xd2",
+          "0x0",
+          "0x84f7b0",
+          "0x1",
+          "0x84f6de",
+          "0x1",
+          "0x1",
+          "0x1"
+        ],
+        "storage_address": "0x79dd521cc08105684c9cdb37c33cebda8b563f8194fb0eaa54d807c92f129b8",
+        "caller_address": "0x0",
+        "call_type": "Call"
+      },
+      "execution": {
+        "retdata": [
+          "0x2",
+          "0x0",
+          "0x0"
+        ],
+        "events": [
+          {
+            "order": 13,
+            "event": {
+              "keys": [
+                "0x1dcde06aabdbca2f80aa51392b345d7549d7757aa855f7e37f5d335ac8243b1",
+                "0x78b7474adcf72db8556c73f06aa8888cdfc5a699f5045378977b33d55551a11"
+              ],
+              "data": [
+                "0x2",
+                "0x0",
+                "0x0"
+              ]
+            }
+          }
+        ],
+        "l2_to_l1_messages": [],
+        "failed": false
+      },
+      "inner_calls": [
+        {
+          "call": {
+            "class_hash": "0x515317b1d51ba74e47de9e3c968864c69366723c964f6dbc261f660169e86b8",
+            "code_address": "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+            "entry_point_type": "EXTERNAL",
+            "entry_point_selector": "0x1a923de6533f2e453af43975ee396cc2d327f663f482e8cca3f6969216f0a8a",
+            "calldata": [
+              "0xb7ab6",
+              "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+              "0x0",
+              "0xd2",
+              "0x0",
+              "0x850b60",
+              "0x1",
+              "0x850a8e",
+              "0x1",
+              "0xef4707b0bc46884dd17f9"
+            ],
+            "storage_address": "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+            "caller_address": "0x79dd521cc08105684c9cdb37c33cebda8b563f8194fb0eaa54d807c92f129b8",
+            "call_type": "Call"
+          },
+          "execution": {
+            "retdata": [],
+            "events": [],
+            "l2_to_l1_messages": [],
+            "failed": false
+          },
+          "inner_calls": [
+            {
+              "call": {
+                "class_hash": "0x6192bd5cfffdcb0cc27d550075a6410a733df4be20fcfb32b834abf011d3fc8",
+                "code_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                "entry_point_type": "EXTERNAL",
+                "entry_point_selector": "0x15511cc3694f64379908437d6d64458dc76d02482052bfb8a5b33a72c054c77",
+                "calldata": [
+                  "0xb7ab6",
+                  "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                  "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                  "0x0",
+                  "0xd2",
+                  "0x0",
+                  "0x850b60",
+                  "0x1",
+                  "0x850a8e",
+                  "0x1",
+                  "0xef4707b0bc46884dd17f9",
+                  "0x0",
+                  "0x0",
+                  "0x1"
+                ],
+                "storage_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                "caller_address": "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                "call_type": "Call"
+              },
+              "execution": {
+                "retdata": [
+                  "0x0",
+                  "0x150cb41d060e2850c"
+                ],
+                "events": [],
+                "l2_to_l1_messages": [],
+                "failed": false
+              },
+              "inner_calls": [
+                {
+                  "call": {
+                    "class_hash": "0x50d220a0f76ed0e1ff2df6b433190c9cc360ccc08c4e57d6037c7c2dfd62a91",
+                    "code_address": "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x2a3c80a7a30f62bd2d71a194d545cbc64e29e6cf4f17c2a495fdf928deaa615",
+                    "calldata": [
+                      "0xb7ab6",
+                      "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                    ],
+                    "storage_address": "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x1"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [],
+                  "storage_read_values": [
+                    "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x1142032d89562f1bbf3b5eaa02d7d9fa08eedc589975a0473a0bcb4f374b07e"
+                  ]
+                },
+                {
+                  "call": {
+                    "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                    "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x168652c307c1e813ca11cfb3a601f1cf3b22452021a5052d8b05f1f1f8a3e92",
+                    "calldata": [
+                      "0xc",
+                      "0x2",
+                      "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                      "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                      "0x0",
+                      "0xd2",
+                      "0x0",
+                      "0xb7ab6",
+                      "0x850b60",
+                      "0x1",
+                      "0x850a8e",
+                      "0x1",
+                      "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                    ],
+                    "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x4",
+                      "0x0",
+                      "0x1",
+                      "0x0",
+                      "0x1"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [
+                    {
+                      "call": {
+                        "class_hash": "0x6192bd5cfffdcb0cc27d550075a6410a733df4be20fcfb32b834abf011d3fc8",
+                        "code_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                        "entry_point_type": "EXTERNAL",
+                        "entry_point_selector": "0x399c6d7581cbb37d2e578d3097bfdd3323e05447f1fd7670b6c3a3fb9d9ff79",
+                        "calldata": [
+                          "0x0",
+                          "0xc",
+                          "0x2",
+                          "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                          "0x0",
+                          "0xd2",
+                          "0x0",
+                          "0xb7ab6",
+                          "0x850b60",
+                          "0x1",
+                          "0x850a8e",
+                          "0x1",
+                          "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                        ],
+                        "storage_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                        "caller_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                        "call_type": "Call"
+                      },
+                      "execution": {
+                        "retdata": [
+                          "0x4",
+                          "0x0",
+                          "0x1",
+                          "0x0",
+                          "0x1"
+                        ],
+                        "events": [],
+                        "l2_to_l1_messages": [],
+                        "failed": false
+                      },
+                      "inner_calls": [
+                        {
+                          "call": {
+                            "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                            "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x15bfcc0d8740529e70b4d8aa4a5a5ff6f1044a7f3aff662df42ef4c24acef7",
+                            "calldata": [
+                              "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "0x0",
+                              "0xd2",
+                              "0x0",
+                              "0xb7ab6",
+                              "0x850b60",
+                              "0x1",
+                              "0x850a8e",
+                              "0x1"
+                            ],
+                            "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [
+                              "0x0",
+                              "0x1",
+                              "0x0",
+                              "0x1"
+                            ],
+                            "events": [
+                              {
+                                "order": 0,
+                                "event": {
+                                  "keys": [
+                                    "0x96982abd597114bdaa4a60612f87fabfcc7206aa12d61c50e7ba1e6c291100"
+                                  ],
+                                  "data": [
+                                    "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                                    "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                    "0x0",
+                                    "0xd2",
+                                    "0x0",
+                                    "0xb7ab6",
+                                    "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                    "0x850b60",
+                                    "0x1",
+                                    "0x850a8e",
+                                    "0x1",
+                                    "0x0",
+                                    "0x1",
+                                    "0x0",
+                                    "0x1"
+                                  ]
+                                }
+                              }
+                            ],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [],
+                          "storage_read_values": [
+                            "0x1",
+                            "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "0xef4707b0bc46884dd17f9",
+                            "0x0",
+                            "0x0",
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0"
+                          ],
+                          "accessed_storage_keys": [
+                            "0x0",
+                            "0x5e3099a64aa94b349fb56a06d3d4b2464d96b8b6caf8afb92383ff57b8d2de",
+                            "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7",
+                            "0x154e86f639530e5adf4bc6a6b399f4376bd79ec2231e5962977473813417a60",
+                            "0x154e86f639530e5adf4bc6a6b399f4376bd79ec2231e5962977473813417a61",
+                            "0x2184b354ca87829f6630fdba298bfe114492a8f832a240312af0a7c607477e3",
+                            "0x2184b354ca87829f6630fdba298bfe114492a8f832a240312af0a7c607477e4",
+                            "0x2184b354ca87829f6630fdba298bfe114492a8f832a240312af0a7c607477e5",
+                            "0x5b3b6e3ddcfcb7f66b7e7825fad9ba02f37c3793ac6828b8e28ea18f155b91d",
+                            "0x5b3b6e3ddcfcb7f66b7e7825fad9ba02f37c3793ac6828b8e28ea18f155b91e",
+                            "0x651e78d26428062663d5c0c045485ef9c7c848449bb54d12e6545299e52036d",
+                            "0x68153282240797844a90a332ec1b2eabf7d15c42ba228e0c249720e6914176f"
+                          ]
+                        }
+                      ],
+                      "storage_read_values": [
+                        "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b"
+                      ],
+                      "accessed_storage_keys": [
+                        "0x281a85306374a5ab27f0bbc385296a54bcd314a1948b6cf61c4ea1bc44bb9f8"
+                      ]
+                    }
+                  ],
+                  "storage_read_values": [
+                    "0x0",
+                    "0x0"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x0",
+                    "0x100000000",
+                    "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7"
+                  ]
+                },
+                {
+                  "call": {
+                    "class_hash": "0x50d220a0f76ed0e1ff2df6b433190c9cc360ccc08c4e57d6037c7c2dfd62a91",
+                    "code_address": "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x2a3c80a7a30f62bd2d71a194d545cbc64e29e6cf4f17c2a495fdf928deaa615",
+                    "calldata": [
+                      "0xb7ab6",
+                      "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                    ],
+                    "storage_address": "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x1"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [],
+                  "storage_read_values": [
+                    "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x1142032d89562f1bbf3b5eaa02d7d9fa08eedc589975a0473a0bcb4f374b07e"
+                  ]
+                },
+                {
+                  "call": {
+                    "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                    "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x168652c307c1e813ca11cfb3a601f1cf3b22452021a5052d8b05f1f1f8a3e92",
+                    "calldata": [
+                      "0xf",
+                      "0x1",
+                      "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                      "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                      "0x0",
+                      "0xd2",
+                      "0x0",
+                      "0xb7ab6",
+                      "0x850b60",
+                      "0x1",
+                      "0x850a8e",
+                      "0x1",
+                      "0xef4707b0bc46884dd17f9",
+                      "0x0",
+                      "0x0",
+                      "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                    ],
+                    "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x4",
+                      "0x0",
+                      "0x0",
+                      "0x150cb41d060e2850c",
+                      "0x1"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [
+                    {
+                      "call": {
+                        "class_hash": "0x6192bd5cfffdcb0cc27d550075a6410a733df4be20fcfb32b834abf011d3fc8",
+                        "code_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                        "entry_point_type": "EXTERNAL",
+                        "entry_point_selector": "0x399c6d7581cbb37d2e578d3097bfdd3323e05447f1fd7670b6c3a3fb9d9ff79",
+                        "calldata": [
+                          "0x0",
+                          "0xf",
+                          "0x1",
+                          "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                          "0x0",
+                          "0xd2",
+                          "0x0",
+                          "0xb7ab6",
+                          "0x850b60",
+                          "0x1",
+                          "0x850a8e",
+                          "0x1",
+                          "0xef4707b0bc46884dd17f9",
+                          "0x0",
+                          "0x0",
+                          "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                        ],
+                        "storage_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                        "caller_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                        "call_type": "Call"
+                      },
+                      "execution": {
+                        "retdata": [
+                          "0x4",
+                          "0x0",
+                          "0x0",
+                          "0x150cb41d060e2850c",
+                          "0x1"
+                        ],
+                        "events": [],
+                        "l2_to_l1_messages": [],
+                        "failed": false
+                      },
+                      "inner_calls": [
+                        {
+                          "call": {
+                            "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                            "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x3da09dc53311389a752b596be95f18b94d6f1a91d0bc47feeb33bfa37acb11d",
+                            "calldata": [
+                              "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "0x0",
+                              "0xd2",
+                              "0x0",
+                              "0xb7ab6",
+                              "0x850b60",
+                              "0x1",
+                              "0x850a8e",
+                              "0x1",
+                              "0xef4707b0bc46884dd17f9",
+                              "0x1"
+                            ],
+                            "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [
+                              "0x0",
+                              "0x0",
+                              "0x150cb41d060e2850c",
+                              "0x1"
+                            ],
+                            "events": [
+                              {
+                                "order": 1,
+                                "event": {
+                                  "keys": [
+                                    "0x5dacf59794364ad1555bb3c9b2346afa81e57e5c19bb6bae0d22721c96c4e5"
+                                  ],
+                                  "data": [
+                                    "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                                    "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                    "0x0",
+                                    "0xd2",
+                                    "0x0",
+                                    "0xb7ab6",
+                                    "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                    "0x850b60",
+                                    "0x1",
+                                    "0x850a8e",
+                                    "0x1",
+                                    "0x0",
+                                    "0x1",
+                                    "0x0",
+                                    "0x1"
+                                  ]
+                                }
+                              },
+                              {
+                                "order": 2,
+                                "event": {
+                                  "keys": [
+                                    "0x3a7adca3546c213ce791fabf3b04090c163e419c808c9830fb343a4a395946e"
+                                  ],
+                                  "data": [
+                                    "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                    "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                                    "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                    "0x0",
+                                    "0xd2",
+                                    "0x0",
+                                    "0xb7ab6",
+                                    "0x850b60",
+                                    "0x1",
+                                    "0x850a8e",
+                                    "0x1",
+                                    "0xef4707b0bc46884dd17f9",
+                                    "0x1",
+                                    "0x0",
+                                    "0x0",
+                                    "0x150cb41d060e2850c",
+                                    "0x1"
+                                  ]
+                                }
+                              }
+                            ],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [],
+                          "storage_read_values": [
+                            "0x1",
+                            "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee",
+                            "0xef4707b0bc46884dd17f9",
+                            "0x0",
+                            "0x0",
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x12ae1792534f38ccb646c6",
+                            "0x12ae1792534f38ccb646c6",
+                            "0x800000000000010ffffffffffffffffffffffffffed51e86dacb0c73349b93b",
+                            "0x12ae1792534f38ccb646c6",
+                            "0x0",
+                            "0x0",
+                            "0x0"
+                          ],
+                          "accessed_storage_keys": [
+                            "0x0",
+                            "0x100000000",
+                            "0x5e3099a64aa94b349fb56a06d3d4b2464d96b8b6caf8afb92383ff57b8d2de",
+                            "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7",
+                            "0x154e86f639530e5adf4bc6a6b399f4376bd79ec2231e5962977473813417a60",
+                            "0x154e86f639530e5adf4bc6a6b399f4376bd79ec2231e5962977473813417a61",
+                            "0x2184b354ca87829f6630fdba298bfe114492a8f832a240312af0a7c607477e3",
+                            "0x2184b354ca87829f6630fdba298bfe114492a8f832a240312af0a7c607477e4",
+                            "0x2184b354ca87829f6630fdba298bfe114492a8f832a240312af0a7c607477e5",
+                            "0x297565de133f819b13039db8f34b3ac3cd6b7eff1993e42c002174388d645b3",
+                            "0x364b1cc98b8cdc61f741aa6be10e405b4a408b637cf02ebf282577077b8a699",
+                            "0x5611e7112e949650115388077a9e16ace35aa24d02dd9ae235e8fb7900cf485",
+                            "0x5629f1c5bc8dcb00feed20b327e496ea5e33760731c138947bb1be590a2cc85",
+                            "0x5b3b6e3ddcfcb7f66b7e7825fad9ba02f37c3793ac6828b8e28ea18f155b91d",
+                            "0x5b3b6e3ddcfcb7f66b7e7825fad9ba02f37c3793ac6828b8e28ea18f155b91e",
+                            "0x651e78d26428062663d5c0c045485ef9c7c848449bb54d12e6545299e52036d",
+                            "0x68153282240797844a90a332ec1b2eabf7d15c42ba228e0c249720e6914176f"
+                          ]
+                        },
+                        {
+                          "call": {
+                            "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                            "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x15511cc3694f64379908437d6d64458dc76d02482052bfb8a5b33a72c054c77",
+                            "calldata": [
+                              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                              "0x150cb41d060e2850c"
+                            ],
+                            "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [],
+                            "events": [],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [
+                            {
+                              "call": {
+                                "class_hash": "0x7f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420",
+                                "code_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                "entry_point_type": "EXTERNAL",
+                                "entry_point_selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+                                "calldata": [
+                                  "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                                  "0x150cb41d060e2850c",
+                                  "0x0"
+                                ],
+                                "storage_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                "caller_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                                "call_type": "Call"
+                              },
+                              "execution": {
+                                "retdata": [
+                                  "0x1"
+                                ],
+                                "events": [
+                                  {
+                                    "order": 3,
+                                    "event": {
+                                      "keys": [
+                                        "0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9"
+                                      ],
+                                      "data": [
+                                        "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                                        "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                                        "0x150cb41d060e2850c",
+                                        "0x0"
+                                      ]
+                                    }
+                                  }
+                                ],
+                                "l2_to_l1_messages": [],
+                                "failed": false
+                              },
+                              "inner_calls": [],
+                              "storage_read_values": [
+                                "0x11bea482ce479609d0b",
+                                "0x0",
+                                "0x0",
+                                "0x0"
+                              ],
+                              "accessed_storage_keys": [
+                                "0x2920912716bfc888a69e4da5cb49cd594afe4c94313887e34fbf82764115ae9",
+                                "0x2920912716bfc888a69e4da5cb49cd594afe4c94313887e34fbf82764115aea",
+                                "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca369",
+                                "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca36a"
+                              ]
+                            }
+                          ],
+                          "storage_read_values": [
+                            "0x1",
+                            "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "0x800000000000010fffffffffffffffffffffffffffffffeaf34be2f9f1d7af5",
+                            "0x1"
+                          ],
+                          "accessed_storage_keys": [
+                            "0x0",
+                            "0x100000000",
+                            "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7",
+                            "0x651e78d26428062663d5c0c045485ef9c7c848449bb54d12e6545299e52036d"
+                          ]
+                        }
+                      ],
+                      "storage_read_values": [
+                        "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b"
+                      ],
+                      "accessed_storage_keys": [
+                        "0x281a85306374a5ab27f0bbc385296a54bcd314a1948b6cf61c4ea1bc44bb9f8"
+                      ]
+                    }
+                  ],
+                  "storage_read_values": [
+                    "0x0",
+                    "0x0"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x0",
+                    "0x100000000",
+                    "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7"
+                  ]
+                }
+              ],
+              "storage_read_values": [
+                "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b"
+              ],
+              "accessed_storage_keys": [
+                "0x1d481eb4b63b94bb55e6b98aabb06c3b8484f82a4d656d6bca0b0cf9b446be0",
+                "0x281a85306374a5ab27f0bbc385296a54bcd314a1948b6cf61c4ea1bc44bb9f8"
+              ]
+            },
+            {
+              "call": {
+                "class_hash": "0x6192bd5cfffdcb0cc27d550075a6410a733df4be20fcfb32b834abf011d3fc8",
+                "code_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                "entry_point_type": "EXTERNAL",
+                "entry_point_selector": "0x1f83f6f60f983fb1a4d262394cf174d7191f6107786d3acd5d8200f39d673",
+                "calldata": [
+                  "0xb7ab6",
+                  "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                  "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                  "0x0",
+                  "0xd2",
+                  "0x0",
+                  "0x850b60",
+                  "0x1",
+                  "0x850a8e",
+                  "0x1"
+                ],
+                "storage_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                "caller_address": "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                "call_type": "Call"
+              },
+              "execution": {
+                "retdata": [],
+                "events": [],
+                "l2_to_l1_messages": [],
+                "failed": false
+              },
+              "inner_calls": [
+                {
+                  "call": {
+                    "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                    "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x168652c307c1e813ca11cfb3a601f1cf3b22452021a5052d8b05f1f1f8a3e92",
+                    "calldata": [
+                      "0x6",
+                      "0x3",
+                      "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                      "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                      "0x0",
+                      "0xd2",
+                      "0x0"
+                    ],
+                    "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x4",
+                      "0x37a4b54af81e351389c3e4b217182ee",
+                      "0x0",
+                      "0x83306a",
+                      "0x1"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [
+                    {
+                      "call": {
+                        "class_hash": "0x6192bd5cfffdcb0cc27d550075a6410a733df4be20fcfb32b834abf011d3fc8",
+                        "code_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                        "entry_point_type": "EXTERNAL",
+                        "entry_point_selector": "0x399c6d7581cbb37d2e578d3097bfdd3323e05447f1fd7670b6c3a3fb9d9ff79",
+                        "calldata": [
+                          "0x0",
+                          "0x6",
+                          "0x3",
+                          "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                          "0x0",
+                          "0xd2",
+                          "0x0"
+                        ],
+                        "storage_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                        "caller_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                        "call_type": "Call"
+                      },
+                      "execution": {
+                        "retdata": [
+                          "0x4",
+                          "0x37a4b54af81e351389c3e4b217182ee",
+                          "0x0",
+                          "0x83306a",
+                          "0x1"
+                        ],
+                        "events": [],
+                        "l2_to_l1_messages": [],
+                        "failed": false
+                      },
+                      "inner_calls": [
+                        {
+                          "call": {
+                            "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                            "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x63ecb4395e589622a41a66715a0eac930abc9f0b92c0b1dcda630adfb2bf2d",
+                            "calldata": [
+                              "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "0x0",
+                              "0xd2",
+                              "0x0"
+                            ],
+                            "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [
+                              "0x37a4b54af81e351389c3e4b217182ee",
+                              "0x0",
+                              "0x83306a",
+                              "0x1"
+                            ],
+                            "events": [],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [],
+                          "storage_read_values": [
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee"
+                          ],
+                          "accessed_storage_keys": [
+                            "0x5e3099a64aa94b349fb56a06d3d4b2464d96b8b6caf8afb92383ff57b8d2de"
+                          ]
+                        },
+                        {
+                          "call": {
+                            "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                            "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x15543c3708653cda9d418b4ccd3be11368e40636c10c44b18cfe756b6d88b29",
+                            "calldata": [
+                              "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "0x0",
+                              "0xd2",
+                              "0x0",
+                              "0x0",
+                              "0x0",
+                              "0x0",
+                              "0x1000003f7f1380b75",
+                              "0x0",
+                              "0x0"
+                            ],
+                            "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [
+                              "0x0",
+                              "0x0",
+                              "0x0",
+                              "0x1"
+                            ],
+                            "events": [
+                              {
+                                "order": 4,
+                                "event": {
+                                  "keys": [
+                                    "0x157717768aca88da4ac4279765f09f4d0151823d573537fbbeb950cdbd9a870"
+                                  ],
+                                  "data": [
+                                    "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                    "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                                    "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                    "0x0",
+                                    "0xd2",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0",
+                                    "0x1000003f7f1380b75",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0",
+                                    "0x1",
+                                    "0x37a4b54af81e351389c3e4b217182ee",
+                                    "0x0",
+                                    "0x83306a",
+                                    "0x1",
+                                    "0x0"
+                                  ]
+                                }
+                              }
+                            ],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [],
+                          "storage_read_values": [
+                            "0x1",
+                            "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0"
+                          ],
+                          "accessed_storage_keys": [
+                            "0x0",
+                            "0x5e3099a64aa94b349fb56a06d3d4b2464d96b8b6caf8afb92383ff57b8d2de",
+                            "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7",
+                            "0x150deac2b0a549449681bba54c08e73b686f6f3da7e4e7f26ede5dea71b73f1",
+                            "0x150deac2b0a549449681bba54c08e73b686f6f3da7e4e7f26ede5dea71b73f2",
+                            "0x2ffd175d84255596e319fe87ee8a1b1b4388f2bbd4bc4078f8ef23e1a244e26",
+                            "0x651e78d26428062663d5c0c045485ef9c7c848449bb54d12e6545299e52036d",
+                            "0x68153282240797844a90a332ec1b2eabf7d15c42ba228e0c249720e6914176f"
+                          ]
+                        },
+                        {
+                          "call": {
+                            "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                            "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x3da09dc53311389a752b596be95f18b94d6f1a91d0bc47feeb33bfa37acb11d",
+                            "calldata": [
+                              "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "0x0",
+                              "0xd2",
+                              "0x0",
+                              "0x0",
+                              "0x549cd02",
+                              "0x1",
+                              "0x549cd02",
+                              "0x0",
+                              "0x0",
+                              "0x0"
+                            ],
+                            "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [
+                              "0x0",
+                              "0x0",
+                              "0x0",
+                              "0x0"
+                            ],
+                            "events": [
+                              {
+                                "order": 5,
+                                "event": {
+                                  "keys": [
+                                    "0x3a7adca3546c213ce791fabf3b04090c163e419c808c9830fb343a4a395946e"
+                                  ],
+                                  "data": [
+                                    "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                    "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                                    "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                    "0x0",
+                                    "0xd2",
+                                    "0x0",
+                                    "0x0",
+                                    "0x549cd02",
+                                    "0x1",
+                                    "0x549cd02",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0"
+                                  ]
+                                }
+                              }
+                            ],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [],
+                          "storage_read_values": [
+                            "0x1",
+                            "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0"
+                          ],
+                          "accessed_storage_keys": [
+                            "0x0",
+                            "0x5e3099a64aa94b349fb56a06d3d4b2464d96b8b6caf8afb92383ff57b8d2de",
+                            "0xcb936602016c4287df15d7fa1f8d462a5e99d0ad6a2709b9f5be40d8274cf4",
+                            "0xcb936602016c4287df15d7fa1f8d462a5e99d0ad6a2709b9f5be40d8274cf5",
+                            "0xcb936602016c4287df15d7fa1f8d462a5e99d0ad6a2709b9f5be40d8274cf6",
+                            "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7",
+                            "0x150deac2b0a549449681bba54c08e73b686f6f3da7e4e7f26ede5dea71b73f1",
+                            "0x150deac2b0a549449681bba54c08e73b686f6f3da7e4e7f26ede5dea71b73f2",
+                            "0x275fedccf586ed5f6d2ca27a3ef7e9ced1fd5f2cd4db8f8c1d03f2339f6afbe",
+                            "0x2ed5ed2f345bc113f96f6be872d2e397dbac40987793f53e0171786fca31d13",
+                            "0x2ffd175d84255596e319fe87ee8a1b1b4388f2bbd4bc4078f8ef23e1a244e26",
+                            "0x3ad803af718905fe5324413114a15cabf3e320b251ded4a567034099960ed8f",
+                            "0x56c80e288f246893661951d549241c8f9b4880fb6ea4d063be37536672c117b",
+                            "0x56c80e288f246893661951d549241c8f9b4880fb6ea4d063be37536672c117c",
+                            "0x651e78d26428062663d5c0c045485ef9c7c848449bb54d12e6545299e52036d",
+                            "0x68153282240797844a90a332ec1b2eabf7d15c42ba228e0c249720e6914176f",
+                            "0x69dc66fbe5a6e607f8ff4decc4be32e5cc652f5e33926a22187cd7971d88e54",
+                            "0x6b21391da79e240bf88e8ebfedd080e85efcc9032512e9945b330d232da7462",
+                            "0x6b21391da79e240bf88e8ebfedd080e85efcc9032512e9945b330d232da7463"
+                          ]
+                        },
+                        {
+                          "call": {
+                            "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                            "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x63ecb4395e589622a41a66715a0eac930abc9f0b92c0b1dcda630adfb2bf2d",
+                            "calldata": [
+                              "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "0x0",
+                              "0xd2",
+                              "0x0"
+                            ],
+                            "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [
+                              "0x37a4b54af81e351389c3e4b217182ee",
+                              "0x0",
+                              "0x83306a",
+                              "0x1"
+                            ],
+                            "events": [],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [],
+                          "storage_read_values": [
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee"
+                          ],
+                          "accessed_storage_keys": [
+                            "0x5e3099a64aa94b349fb56a06d3d4b2464d96b8b6caf8afb92383ff57b8d2de"
+                          ]
+                        }
+                      ],
+                      "storage_read_values": [
+                        "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b"
+                      ],
+                      "accessed_storage_keys": [
+                        "0x281a85306374a5ab27f0bbc385296a54bcd314a1948b6cf61c4ea1bc44bb9f8"
+                      ]
+                    }
+                  ],
+                  "storage_read_values": [
+                    "0x0",
+                    "0x0"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x0",
+                    "0x100000000",
+                    "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7"
+                  ]
+                },
+                {
+                  "call": {
+                    "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                    "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x1ca31955bcbdbe32a3f4ac1f53fdef5757c64684e5a7982b52ff08a1f967a8f",
+                    "calldata": [
+                      "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                      "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                      "0x0",
+                      "0xd2",
+                      "0x0",
+                      "0xb7ab6",
+                      "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                      "0x850b60",
+                      "0x1",
+                      "0x850a8e",
+                      "0x1"
+                    ],
+                    "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x0",
+                      "0x0",
+                      "0x0",
+                      "0x0",
+                      "0x0",
+                      "0x0",
+                      "0x0"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [],
+                  "storage_read_values": [
+                    "0x0",
+                    "0x0",
+                    "0x0",
+                    "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee",
+                    "0x0",
+                    "0x0",
+                    "0x0",
+                    "0x0"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x5e3099a64aa94b349fb56a06d3d4b2464d96b8b6caf8afb92383ff57b8d2de",
+                    "0x154e86f639530e5adf4bc6a6b399f4376bd79ec2231e5962977473813417a60",
+                    "0x154e86f639530e5adf4bc6a6b399f4376bd79ec2231e5962977473813417a61",
+                    "0x2184b354ca87829f6630fdba298bfe114492a8f832a240312af0a7c607477e3",
+                    "0x2184b354ca87829f6630fdba298bfe114492a8f832a240312af0a7c607477e4",
+                    "0x2184b354ca87829f6630fdba298bfe114492a8f832a240312af0a7c607477e5",
+                    "0x5b3b6e3ddcfcb7f66b7e7825fad9ba02f37c3793ac6828b8e28ea18f155b91d",
+                    "0x5b3b6e3ddcfcb7f66b7e7825fad9ba02f37c3793ac6828b8e28ea18f155b91e"
+                  ]
+                }
+              ],
+              "storage_read_values": [
+                "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b"
+              ],
+              "accessed_storage_keys": [
+                "0x281a85306374a5ab27f0bbc385296a54bcd314a1948b6cf61c4ea1bc44bb9f8"
+              ]
+            },
+            {
+              "call": {
+                "class_hash": "0x50d220a0f76ed0e1ff2df6b433190c9cc360ccc08c4e57d6037c7c2dfd62a91",
+                "code_address": "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                "entry_point_type": "EXTERNAL",
+                "entry_point_selector": "0x3704ffe8fba161be0e994951751a5033b1462b918ff785c0a636be718dfdb68",
+                "calldata": [
+                  "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                  "0xeef442c6cf5d3f3ad3a67049d32f93edf86432ab896a72251ea6e10e86380b",
+                  "0xb7ab6",
+                  "0x0"
+                ],
+                "storage_address": "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                "caller_address": "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                "call_type": "Call"
+              },
+              "execution": {
+                "retdata": [],
+                "events": [
+                  {
+                    "order": 6,
+                    "event": {
+                      "keys": [
+                        "0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9"
+                      ],
+                      "data": [
+                        "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                        "0xeef442c6cf5d3f3ad3a67049d32f93edf86432ab896a72251ea6e10e86380b",
+                        "0xb7ab6",
+                        "0x0"
+                      ]
+                    }
+                  }
+                ],
+                "l2_to_l1_messages": [],
+                "failed": false
+              },
+              "inner_calls": [],
+              "storage_read_values": [
+                "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                "0x2979",
+                "0x1"
+              ],
+              "accessed_storage_keys": [
+                "0x15e83510db1fbdac28669e5f612c29482c804fcd097a04fe1e8d6900f083ed",
+                "0x1142032d89562f1bbf3b5eaa02d7d9fa08eedc589975a0473a0bcb4f374b07e",
+                "0x566cc18be9fa96839ded514811f06611c3b500e7630d8af96dd32b8a1e745c9",
+                "0x7ce725d43110a0a0d8a3618c1973d85345cbb8ec9d7c558bff51561f8421d1d"
+              ]
+            }
+          ],
+          "storage_read_values": [
+            "0x79dd521cc08105684c9cdb37c33cebda8b563f8194fb0eaa54d807c92f129b8",
+            "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+            "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+            "0xeef442c6cf5d3f3ad3a67049d32f93edf86432ab896a72251ea6e10e86380b"
+          ],
+          "accessed_storage_keys": [
+            "0xb8e3f976660e643965518e220d89ad543be5520b38b1e9add4aa03faa2c5a4",
+            "0x1841799e6300ee448a06355123cf115e84b2d37be797198dc800fb99a4b0061",
+            "0x1f4de2d0e0984b857f80d50b8d5861840ec28ad3c9ce3368c88dc6eb16f48a4",
+            "0x3eea9c5362cba5b4d93ffe0b27a4e94f567f407cac80da74fb1fde209715431"
+          ]
+        },
+        {
+          "call": {
+            "class_hash": "0x515317b1d51ba74e47de9e3c968864c69366723c964f6dbc261f660169e86b8",
+            "code_address": "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+            "entry_point_type": "EXTERNAL",
+            "entry_point_selector": "0x3213dc28053a4493534881eee7eede9e8f195710086079f1113c8ba5556c9cb",
+            "calldata": [
+              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+              "0x150cb41d060e2850c",
+              "0x0",
+              "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+              "0x0",
+              "0xd2",
+              "0x0",
+              "0x84f7b0",
+              "0x1",
+              "0x84f6de",
+              "0x1",
+              "0x1",
+              "0x1"
+            ],
+            "storage_address": "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+            "caller_address": "0x79dd521cc08105684c9cdb37c33cebda8b563f8194fb0eaa54d807c92f129b8",
+            "call_type": "Call"
+          },
+          "execution": {
+            "retdata": [],
+            "events": [],
+            "l2_to_l1_messages": [],
+            "failed": false
+          },
+          "inner_calls": [
+            {
+              "call": {
+                "class_hash": "0x7f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420",
+                "code_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                "entry_point_type": "EXTERNAL",
+                "entry_point_selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+                "calldata": [
+                  "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                  "0x150cb41d060e2850c",
+                  "0x0"
+                ],
+                "storage_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                "caller_address": "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                "call_type": "Call"
+              },
+              "execution": {
+                "retdata": [
+                  "0x1"
+                ],
+                "events": [
+                  {
+                    "order": 7,
+                    "event": {
+                      "keys": [
+                        "0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9"
+                      ],
+                      "data": [
+                        "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                        "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                        "0x150cb41d060e2850c",
+                        "0x0"
+                      ]
+                    }
+                  }
+                ],
+                "l2_to_l1_messages": [],
+                "failed": false
+              },
+              "inner_calls": [],
+              "storage_read_values": [
+                "0x150cb41d060e2850c",
+                "0x0",
+                "0x0",
+                "0x0"
+              ],
+              "accessed_storage_keys": [
+                "0x2920912716bfc888a69e4da5cb49cd594afe4c94313887e34fbf82764115ae9",
+                "0x2920912716bfc888a69e4da5cb49cd594afe4c94313887e34fbf82764115aea",
+                "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf533",
+                "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf534"
+              ]
+            },
+            {
+              "call": {
+                "class_hash": "0x6192bd5cfffdcb0cc27d550075a6410a733df4be20fcfb32b834abf011d3fc8",
+                "code_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                "entry_point_type": "EXTERNAL",
+                "entry_point_selector": "0x17232b5819217a9421fbcf4a244a0904bc5e1a1e36ff240f10dd42eb8ccfa09",
+                "calldata": [
+                  "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                  "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                  "0x0",
+                  "0xd2",
+                  "0x0",
+                  "0x84f7b0",
+                  "0x1",
+                  "0x84f6de",
+                  "0x1",
+                  "0x1"
+                ],
+                "storage_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                "caller_address": "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                "call_type": "Call"
+              },
+              "execution": {
+                "retdata": [
+                  "0xb7ac3",
+                  "0xeeacdc9d51b801eb396fe",
+                  "0x0",
+                  "0x0",
+                  "0x0",
+                  "0x0"
+                ],
+                "events": [],
+                "l2_to_l1_messages": [],
+                "failed": false
+              },
+              "inner_calls": [
+                {
+                  "call": {
+                    "class_hash": "0x50d220a0f76ed0e1ff2df6b433190c9cc360ccc08c4e57d6037c7c2dfd62a91",
+                    "code_address": "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x2f0b3c5710379609eb5495f1ecd348cb28167711b73609fe565a72734550354",
+                    "calldata": [
+                      "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                    ],
+                    "storage_address": "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0xb7ac3"
+                    ],
+                    "events": [
+                      {
+                        "order": 8,
+                        "event": {
+                          "keys": [
+                            "0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9"
+                          ],
+                          "data": [
+                            "0x0",
+                            "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac",
+                            "0xb7ac3",
+                            "0x0"
+                          ]
+                        }
+                      }
+                    ],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [],
+                  "storage_read_values": [
+                    "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "0xb7ac3",
+                    "0x0"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x4dc380c9560b1716539ac47b410eb41ec84e722d2bbcfc6499f0b1755df4fa",
+                    "0x2016836a56b71f0d02689e69e326f4f4c1b9057164ef592671cf0d37c8040c0",
+                    "0x2a9f6940e96680af2fe721eb59341cde71d9b7ae61dc834d205d6c59360268e",
+                    "0x566cc18be9fa96839ded514811f06611c3b500e7630d8af96dd32b8a1e745c9"
+                  ]
+                },
+                {
+                  "call": {
+                    "class_hash": "0x4ad3c1dc8413453db314497945b6903e1c766495a1e60492d44da9c2a986e4b",
+                    "code_address": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+                    "calldata": [
+                      "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067"
+                    ],
+                    "storage_address": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x0",
+                      "0x0"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [],
+                  "storage_read_values": [
+                    "0x0",
+                    "0x0"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf533",
+                    "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf534"
+                  ]
+                },
+                {
+                  "call": {
+                    "class_hash": "0x7f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420",
+                    "code_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+                    "calldata": [
+                      "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067"
+                    ],
+                    "storage_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x150cb41d060e2850c",
+                      "0x0"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [],
+                  "storage_read_values": [
+                    "0x150cb41d060e2850c",
+                    "0x0"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf533",
+                    "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf534"
+                  ]
+                },
+                {
+                  "call": {
+                    "class_hash": "0x50d220a0f76ed0e1ff2df6b433190c9cc360ccc08c4e57d6037c7c2dfd62a91",
+                    "code_address": "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x2a3c80a7a30f62bd2d71a194d545cbc64e29e6cf4f17c2a495fdf928deaa615",
+                    "calldata": [
+                      "0xb7ac3",
+                      "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                    ],
+                    "storage_address": "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x1"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [],
+                  "storage_read_values": [
+                    "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x4dc380c9560b1716539ac47b410eb41ec84e722d2bbcfc6499f0b1755df4fa"
+                  ]
+                },
+                {
+                  "call": {
+                    "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                    "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x168652c307c1e813ca11cfb3a601f1cf3b22452021a5052d8b05f1f1f8a3e92",
+                    "calldata": [
+                      "0xe",
+                      "0x0",
+                      "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                      "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                      "0x0",
+                      "0xd2",
+                      "0x0",
+                      "0xb7ac3",
+                      "0x84f7b0",
+                      "0x1",
+                      "0x84f6de",
+                      "0x1",
+                      "0x0",
+                      "0x150cb41d060e2850c",
+                      "0x1"
+                    ],
+                    "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x1",
+                      "0xeeacdc9d51b801eb396fe"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [
+                    {
+                      "call": {
+                        "class_hash": "0x6192bd5cfffdcb0cc27d550075a6410a733df4be20fcfb32b834abf011d3fc8",
+                        "code_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                        "entry_point_type": "EXTERNAL",
+                        "entry_point_selector": "0x399c6d7581cbb37d2e578d3097bfdd3323e05447f1fd7670b6c3a3fb9d9ff79",
+                        "calldata": [
+                          "0x0",
+                          "0xe",
+                          "0x0",
+                          "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                          "0x0",
+                          "0xd2",
+                          "0x0",
+                          "0xb7ac3",
+                          "0x84f7b0",
+                          "0x1",
+                          "0x84f6de",
+                          "0x1",
+                          "0x0",
+                          "0x150cb41d060e2850c",
+                          "0x1"
+                        ],
+                        "storage_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                        "caller_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                        "call_type": "Call"
+                      },
+                      "execution": {
+                        "retdata": [
+                          "0x1",
+                          "0xeeacdc9d51b801eb396fe"
+                        ],
+                        "events": [],
+                        "l2_to_l1_messages": [],
+                        "failed": false
+                      },
+                      "inner_calls": [
+                        {
+                          "call": {
+                            "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                            "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x63ecb4395e589622a41a66715a0eac930abc9f0b92c0b1dcda630adfb2bf2d",
+                            "calldata": [
+                              "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "0x0",
+                              "0xd2",
+                              "0x0"
+                            ],
+                            "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [
+                              "0x37a4b54af81e351389c3e4b217182ee",
+                              "0x0",
+                              "0x83306a",
+                              "0x1"
+                            ],
+                            "events": [],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [],
+                          "storage_read_values": [
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee"
+                          ],
+                          "accessed_storage_keys": [
+                            "0x5e3099a64aa94b349fb56a06d3d4b2464d96b8b6caf8afb92383ff57b8d2de"
+                          ]
+                        },
+                        {
+                          "call": {
+                            "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                            "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x3da09dc53311389a752b596be95f18b94d6f1a91d0bc47feeb33bfa37acb11d",
+                            "calldata": [
+                              "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                              "0x0",
+                              "0xd2",
+                              "0x0",
+                              "0xb7ac3",
+                              "0x84f7b0",
+                              "0x1",
+                              "0x84f6de",
+                              "0x1",
+                              "0xeeacdc9d51b801eb396fe",
+                              "0x0"
+                            ],
+                            "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [
+                              "0x0",
+                              "0x0",
+                              "0x150cb41d060e2850c",
+                              "0x0"
+                            ],
+                            "events": [
+                              {
+                                "order": 9,
+                                "event": {
+                                  "keys": [
+                                    "0x3a7adca3546c213ce791fabf3b04090c163e419c808c9830fb343a4a395946e"
+                                  ],
+                                  "data": [
+                                    "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                    "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                                    "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                    "0x0",
+                                    "0xd2",
+                                    "0x0",
+                                    "0xb7ac3",
+                                    "0x84f7b0",
+                                    "0x1",
+                                    "0x84f6de",
+                                    "0x1",
+                                    "0xeeacdc9d51b801eb396fe",
+                                    "0x0",
+                                    "0x0",
+                                    "0x0",
+                                    "0x150cb41d060e2850c",
+                                    "0x0"
+                                  ]
+                                }
+                              }
+                            ],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [],
+                          "storage_read_values": [
+                            "0x1",
+                            "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x10083306a000000000000000000037a4b54af81e351389c3e4b217182ee",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x0",
+                            "0x180198000000000000000000000",
+                            "0x0",
+                            "0x0",
+                            "0x180198100000000000000000000",
+                            "0x0",
+                            "0x0",
+                            "0x0"
+                          ],
+                          "accessed_storage_keys": [
+                            "0x0",
+                            "0x100000000",
+                            "0x322613ff48c5e35895a9cc952eae47ace73a27325bf50749c90d689bb5cf49",
+                            "0x5e3099a64aa94b349fb56a06d3d4b2464d96b8b6caf8afb92383ff57b8d2de",
+                            "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7",
+                            "0x24c8732f7c7f1dd616bcec5e8b10f962a77e780078d083e7db86326811ee8e5",
+                            "0x24c8732f7c7f1dd616bcec5e8b10f962a77e780078d083e7db86326811ee8e6",
+                            "0x24c8732f7c7f1dd616bcec5e8b10f962a77e780078d083e7db86326811ee8e7",
+                            "0x2ffb691312e83f0b4ee086cbdebad3d603ad38009ee740833bb070e8bb83293",
+                            "0x33037b65b2ea83a54d621f878a36e947738c4feb112daf1310d212b86b3b494",
+                            "0x3c5173de76dac066de1d9d289846ec3107e702b721d76adfc4a703220b104a1",
+                            "0x3c5173de76dac066de1d9d289846ec3107e702b721d76adfc4a703220b104a2",
+                            "0x404bff330129bfe95c80cb160583dac113e697940da55cab3aa8ae7132e8e6f",
+                            "0x651e78d26428062663d5c0c045485ef9c7c848449bb54d12e6545299e52036d",
+                            "0x68153282240797844a90a332ec1b2eabf7d15c42ba228e0c249720e6914176f",
+                            "0x6d77a55ac8ce3d456954f3a4b75aa940c9ab736a3568677544381872880755d",
+                            "0x7f15579965c820852b40f91e59dd791605d72f04c0448dde186214d6f4fa5e8",
+                            "0x7f15579965c820852b40f91e59dd791605d72f04c0448dde186214d6f4fa5e9"
+                          ]
+                        },
+                        {
+                          "call": {
+                            "class_hash": "0x7f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420",
+                            "code_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c",
+                            "calldata": [
+                              "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                              "0x150cb41d060e2850c",
+                              "0x0"
+                            ],
+                            "storage_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [
+                              "0x1"
+                            ],
+                            "events": [
+                              {
+                                "order": 10,
+                                "event": {
+                                  "keys": [
+                                    "0x134692b230b9e1ffa39098904722134159652b09c5bc41d88d6698779d228ff"
+                                  ],
+                                  "data": [
+                                    "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                    "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                                    "0x150cb41d060e2850c",
+                                    "0x0"
+                                  ]
+                                }
+                              }
+                            ],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [],
+                          "storage_read_values": [],
+                          "accessed_storage_keys": [
+                            "0x55a776eb3b0c20eb7c53e2c0eb2309dc48a67d9cc770f5192bbbd17aeda3991",
+                            "0x55a776eb3b0c20eb7c53e2c0eb2309dc48a67d9cc770f5192bbbd17aeda3992"
+                          ]
+                        },
+                        {
+                          "call": {
+                            "class_hash": "0x30e64ecb769ff832478ed5ce52fc5b81ffc7d32dd36cd9b8937135683339a2c",
+                            "code_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "entry_point_type": "EXTERNAL",
+                            "entry_point_selector": "0x1c756803e4eb4ccfb136b73d5f72e3dc0d452d30ae1f4bc82af394c73ce7115",
+                            "calldata": [
+                              "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+                            ],
+                            "storage_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                            "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "call_type": "Call"
+                          },
+                          "execution": {
+                            "retdata": [],
+                            "events": [],
+                            "l2_to_l1_messages": [],
+                            "failed": false
+                          },
+                          "inner_calls": [
+                            {
+                              "call": {
+                                "class_hash": "0x7f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420",
+                                "code_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                "entry_point_type": "EXTERNAL",
+                                "entry_point_selector": "0x1e888a1026b19c8c0b57c72d63ed1737106aa10034105b980ba117bd0c29fe1",
+                                "calldata": [
+                                  "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                  "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b"
+                                ],
+                                "storage_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                "caller_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                                "call_type": "Call"
+                              },
+                              "execution": {
+                                "retdata": [
+                                  "0x150cb41d060e2850c",
+                                  "0x0"
+                                ],
+                                "events": [],
+                                "l2_to_l1_messages": [],
+                                "failed": false
+                              },
+                              "inner_calls": [],
+                              "storage_read_values": [
+                                "0x150cb41d060e2850c",
+                                "0x0"
+                              ],
+                              "accessed_storage_keys": [
+                                "0x55a776eb3b0c20eb7c53e2c0eb2309dc48a67d9cc770f5192bbbd17aeda3991",
+                                "0x55a776eb3b0c20eb7c53e2c0eb2309dc48a67d9cc770f5192bbbd17aeda3992"
+                              ]
+                            },
+                            {
+                              "call": {
+                                "class_hash": "0x7f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420",
+                                "code_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                "entry_point_type": "EXTERNAL",
+                                "entry_point_selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+                                "calldata": [
+                                  "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b"
+                                ],
+                                "storage_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                "caller_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                                "call_type": "Call"
+                              },
+                              "execution": {
+                                "retdata": [
+                                  "0x11a997ceb14187e17ff",
+                                  "0x0"
+                                ],
+                                "events": [],
+                                "l2_to_l1_messages": [],
+                                "failed": false
+                              },
+                              "inner_calls": [],
+                              "storage_read_values": [
+                                "0x11a997ceb14187e17ff",
+                                "0x0"
+                              ],
+                              "accessed_storage_keys": [
+                                "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca369",
+                                "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca36a"
+                              ]
+                            },
+                            {
+                              "call": {
+                                "class_hash": "0x7f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420",
+                                "code_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                "entry_point_type": "EXTERNAL",
+                                "entry_point_selector": "0x41b033f4a31df8067c24d1e9b550a2ce75fd4a29e1147af9752174f0e6cb20",
+                                "calldata": [
+                                  "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                  "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                                  "0x150cb41d060e2850c",
+                                  "0x0"
+                                ],
+                                "storage_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                "caller_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                                "call_type": "Call"
+                              },
+                              "execution": {
+                                "retdata": [
+                                  "0x1"
+                                ],
+                                "events": [
+                                  {
+                                    "order": 11,
+                                    "event": {
+                                      "keys": [
+                                        "0x134692b230b9e1ffa39098904722134159652b09c5bc41d88d6698779d228ff"
+                                      ],
+                                      "data": [
+                                        "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                        "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                                        "0x0",
+                                        "0x0"
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "order": 12,
+                                    "event": {
+                                      "keys": [
+                                        "0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9"
+                                      ],
+                                      "data": [
+                                        "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                                        "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                                        "0x150cb41d060e2850c",
+                                        "0x0"
+                                      ]
+                                    }
+                                  }
+                                ],
+                                "l2_to_l1_messages": [],
+                                "failed": false
+                              },
+                              "inner_calls": [],
+                              "storage_read_values": [
+                                "0x150cb41d060e2850c",
+                                "0x0",
+                                "0x150cb41d060e2850c",
+                                "0x0",
+                                "0x11a997ceb14187e17ff",
+                                "0x0"
+                              ],
+                              "accessed_storage_keys": [
+                                "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca369",
+                                "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca36a",
+                                "0x55a776eb3b0c20eb7c53e2c0eb2309dc48a67d9cc770f5192bbbd17aeda3991",
+                                "0x55a776eb3b0c20eb7c53e2c0eb2309dc48a67d9cc770f5192bbbd17aeda3992",
+                                "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf533",
+                                "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf534"
+                              ]
+                            },
+                            {
+                              "call": {
+                                "class_hash": "0x7f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420",
+                                "code_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                "entry_point_type": "EXTERNAL",
+                                "entry_point_selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+                                "calldata": [
+                                  "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b"
+                                ],
+                                "storage_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                                "caller_address": "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+                                "call_type": "Call"
+                              },
+                              "execution": {
+                                "retdata": [
+                                  "0x11bea482ce479609d0b",
+                                  "0x0"
+                                ],
+                                "events": [],
+                                "l2_to_l1_messages": [],
+                                "failed": false
+                              },
+                              "inner_calls": [],
+                              "storage_read_values": [
+                                "0x11bea482ce479609d0b",
+                                "0x0"
+                              ],
+                              "accessed_storage_keys": [
+                                "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca369",
+                                "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca36a"
+                              ]
+                            }
+                          ],
+                          "storage_read_values": [
+                            "0x1",
+                            "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                            "0x150cb41d060e2850c",
+                            "0x1"
+                          ],
+                          "accessed_storage_keys": [
+                            "0x0",
+                            "0x100000000",
+                            "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7",
+                            "0x651e78d26428062663d5c0c045485ef9c7c848449bb54d12e6545299e52036d"
+                          ]
+                        }
+                      ],
+                      "storage_read_values": [
+                        "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b"
+                      ],
+                      "accessed_storage_keys": [
+                        "0x281a85306374a5ab27f0bbc385296a54bcd314a1948b6cf61c4ea1bc44bb9f8"
+                      ]
+                    }
+                  ],
+                  "storage_read_values": [
+                    "0x0",
+                    "0x0"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x0",
+                    "0x100000000",
+                    "0xd5ee72ce4ea000d334dd7d37bd432beb488d5ceae18a4a955e14901a851ec7"
+                  ]
+                },
+                {
+                  "call": {
+                    "class_hash": "0x4ad3c1dc8413453db314497945b6903e1c766495a1e60492d44da9c2a986e4b",
+                    "code_address": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+                    "calldata": [
+                      "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067"
+                    ],
+                    "storage_address": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x0",
+                      "0x0"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [],
+                  "storage_read_values": [
+                    "0x0",
+                    "0x0"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf533",
+                    "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf534"
+                  ]
+                },
+                {
+                  "call": {
+                    "class_hash": "0x7f3777c99f3700505ea966676aac4a0d692c2a9f5e667f4c606b51ca1dd3420",
+                    "code_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                    "entry_point_type": "EXTERNAL",
+                    "entry_point_selector": "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+                    "calldata": [
+                      "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067"
+                    ],
+                    "storage_address": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                    "caller_address": "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
+                    "call_type": "Call"
+                  },
+                  "execution": {
+                    "retdata": [
+                      "0x0",
+                      "0x0"
+                    ],
+                    "events": [],
+                    "l2_to_l1_messages": [],
+                    "failed": false
+                  },
+                  "inner_calls": [],
+                  "storage_read_values": [
+                    "0x0",
+                    "0x0"
+                  ],
+                  "accessed_storage_keys": [
+                    "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf533",
+                    "0x6cc244154405af2a8ec3ad708e4a4c5ed55364ffae45f50c69b12f6f7edf534"
+                  ]
+                }
+              ],
+              "storage_read_values": [
+                "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+                "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b"
+              ],
+              "accessed_storage_keys": [
+                "0x1d481eb4b63b94bb55e6b98aabb06c3b8484f82a4d656d6bca0b0cf9b446be0",
+                "0x281a85306374a5ab27f0bbc385296a54bcd314a1948b6cf61c4ea1bc44bb9f8"
+              ]
+            }
+          ],
+          "storage_read_values": [
+            "0x79dd521cc08105684c9cdb37c33cebda8b563f8194fb0eaa54d807c92f129b8",
+            "0x2e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067"
+          ],
+          "accessed_storage_keys": [
+            "0xb8e3f976660e643965518e220d89ad543be5520b38b1e9add4aa03faa2c5a4",
+            "0x3eea9c5362cba5b4d93ffe0b27a4e94f567f407cac80da74fb1fde209715431"
+          ]
+        }
+      ],
+      "storage_read_values": [],
+      "accessed_storage_keys": []
+    },
+    "fee_transfer_call_info": null,
+    "receipt": {
+      "resources": {
+        "starknet_resources": {
+          "calldata_length": 32,
+          "state_changes_for_fee": {
+            "n_storage_updates": 16,
+            "n_class_hash_updates": 0,
+            "n_compiled_class_hash_updates": 0,
+            "n_modified_contracts": 3
+          },
+          "message_cost_info": {
+            "l2_to_l1_payload_lengths": [],
+            "message_segment_length": 0
+          },
+          "l1_handler_payload_size": null,
+          "n_events": 14
+        }
+      },
+      "da_gas": {
+        "l1_gas": 0,
+        "l1_data_gas": 1216,
+        "l2_gas": 0
+      }
+    },
+    "reverted": null
+  },
+  "state_maps": {
+    "nonces": [
+      [
+        "0xa0e96f3ceb8dfab7f4c8b5c1a5e6f951917409cf54f89497b3dc642e96a3fb",
+        "0x4d"
+      ],
+      [
+        "0x2bb8a1f5a1241c1ebe8e10ff93b38ab097b1a20f77517997f8799829e096535",
+        "0x765"
+      ],
+      [
+        "0x40a8501e38696f800dd90296824e5cf436b26a22aceca6523bc20cfd9de0e43",
+        "0xb1"
+      ],
+      [
+        "0x4b30d3384d91ed9f1782d497f169a5bf7bb34ed4dc518b9c4693a0c35b44ec3",
+        "0xd0"
+      ],
+      [
+        "0x79b365c3be7561c00435876f8e74d61411bb46182c6d89aae60696f4eae99b2",
+        "0x8"
+      ],
+      [
+        "0x79dd521cc08105684c9cdb37c33cebda8b563f8194fb0eaa54d807c92f129b8",
+        "0x3552"
+      ]
+    ],
+    "class_hashes": [],
+    "storage": [
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x322613ff48c5e35895a9cc952eae47ace73a27325bf50749c90d689bb5cf49"
+        ],
+        "0xeeacdc9d51b801eb396fe"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0xae1b72a594adf942d61d66fb222d7bbe953934f3b762905c245fa71ea84aba"
+        ],
+        "0xb89851e4e1b4c9a5ee83ddb84a"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x2184b354ca87829f6630fdba298bfe114492a8f832a240312af0a7c607477e3"
+        ],
+        "0x0"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x2280e13b22890effab8f7c0c88a1d04bdbb6c6014a9c7c5b1da627a3b8313aa"
+        ],
+        "0x13252cafdc1eff79601ad02204c286535b"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x24c8732f7c7f1dd616bcec5e8b10f962a77e780078d083e7db86326811ee8e5"
+        ],
+        "0xeeacdc9d51b801eb396fe"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x297565de133f819b13039db8f34b3ac3cd6b7eff1993e42c002174388d645b3"
+        ],
+        "0x3b9a717478ad047d92ecd"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x2ffb691312e83f0b4ee086cbdebad3d603ad38009ee740833bb070e8bb83293"
+        ],
+        "0x180198180000000000000000000"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x33037b65b2ea83a54d621f878a36e947738c4feb112daf1310d212b86b3b494"
+        ],
+        "0xeeacdc9d51b801eb396fe"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x364b1cc98b8cdc61f741aa6be10e405b4a408b637cf02ebf282577077b8a699"
+        ],
+        "0x3b9a717478ad047d92ecd"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x404bff330129bfe95c80cb160583dac113e697940da55cab3aa8ae7132e8e6f"
+        ],
+        "0x800000000000010fffffffffffffffffffffffffff11532362ae47fe14c6903"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x40ac5058c23fec0a73d4ef336802f9e52ae27ba2ad2250c05f9d87c35b6ee0a"
+        ],
+        "0x100a04abd00000000000000000001570fe1bdda5a7ee73304b3a37614ee"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x45fb8ffc8b8d0d2521fdc1b3558fea0c43ed03911387994698ae9e504026d43"
+        ],
+        "0x298faa6cf4f2cbd5bdee25cd60c179ef0bd7"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x4a586bf09eec1cf5a6cf9d6d34e17e76a4f73dae476853d9f2bed89865e2ef2"
+        ],
+        "0x101b2241300000000000000000000000b212f04dd68e5050676cc9f02f8"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x4b530c11579e8ee5766af3c9503368b10dc6aa01c6c7b005f608742ab5f1cb1"
+        ],
+        "0x11700000000000000000100092bf8d76159f1b361ddc3d9ea62b2"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x4c461150be1bb0404df648b7535aa4412ab7c1715229ea6164f2da22be9b761"
+        ],
+        "0x32764e8a7d565f6817ee342deb8"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x5611e7112e949650115388077a9e16ace35aa24d02dd9ae235e8fb7900cf485"
+        ],
+        "0x3b9a717478ad047d92ecd"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x5629f1c5bc8dcb00feed20b327e496ea5e33760731c138947bb1be590a2cc85"
+        ],
+        "0x800000000000010fffffffffffffffffffffffffffc4658e8b8752fb826d134"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x5f9a669a94afaa1ea90dfb0d6630af5faeed54199a0c335636f21c007c17d00"
+        ],
+        "0x96fe35e08b1b3360574f7d745d9"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x6aff514d3c14935bb84bfc2f5e443daa68c6b9af02150bce2904dc5cee89fb4"
+        ],
+        "0x101b223b600000000000000000000000b2150f534ba5667253c7452a41d"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x6d77a55ac8ce3d456954f3a4b75aa940c9ab736a3568677544381872880755d"
+        ],
+        "0xeeacdc9d51b801eb396fe"
+      ],
+      [
+        [
+          "0x5dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b",
+          "0x7ed715b5117e2c4ce5878bbfc6d610ae7e96f8a63b03688cb85da00c24a311d"
+        ],
+        "0x1290000000000000000010009bfd2033f079187e59cfe5a03fdbb"
+      ],
+      [
+        [
+          "0x124aeb495b947201f5fac96fd1138e326ad86195b98df6dec9009158a533b49",
+          "0x8e3724ea010ebf7f2c1232a4e1fab09f7aff8d4579198d191973c5fed18942"
+        ],
+        "0x5c44bd4d0e77722e1dd7a"
+      ],
+      [
+        [
+          "0x124aeb495b947201f5fac96fd1138e326ad86195b98df6dec9009158a533b49",
+          "0x7657e1229332929e29b9013e456a5ca99f8045a682d855301a9786a8b90bc92"
+        ],
+        "0xd8b77a3c496f964144a"
+      ],
+      [
+        [
+          "0x18108b32cea514a78ef1b0e4a0753e855cdf620bc0565202c02456f618c4dc4",
+          "0x1959ab71fd0203715020d59b881b63a56b6bf32abe1efca9e0ab5267044f69"
+        ],
+        "0x11c1508156c0068000014a86108c60000008003479"
+      ],
+      [
+        [
+          "0x212c219a68c8fe38f37951123d1ec877570dfa891de270aa4f8634c5e60bc23",
+          "0x1908097fb9394d36342b481059c228deecce9332eaa83f34f2dfc3076ef97d"
+        ],
+        "0x139251172c7a5af6fc8b3"
+      ],
+      [
+        [
+          "0x212c219a68c8fe38f37951123d1ec877570dfa891de270aa4f8634c5e60bc23",
+          "0x144130a7b4c68dd0c3db0ad12c07b91356d128cc984fdf808322b318ad65408"
+        ],
+        "0xa4"
+      ],
+      [
+        [
+          "0x212c219a68c8fe38f37951123d1ec877570dfa891de270aa4f8634c5e60bc23",
+          "0x3197f3bf0d5fef50e9162e65de4021d539a86a671dd7d4eb9a079f2788e1513"
+        ],
+        "0x0"
+      ],
+      [
+        [
+          "0x212c219a68c8fe38f37951123d1ec877570dfa891de270aa4f8634c5e60bc23",
+          "0x7310c169299ef1a1d245f0c435b5378a54927fde67e31c6493f3c47f301f4cc"
+        ],
+        "0x79b365c3be7561c00435876f8e74d61411bb46182c6d89aae60696f4eae99b2"
+      ],
+      [
+        [
+          "0x212c219a68c8fe38f37951123d1ec877570dfa891de270aa4f8634c5e60bc23",
+          "0x7310c169299ef1a1d245f0c435b5378a54927fde67e31c6493f3c47f301f4cd"
+        ],
+        "0x2a5a058fc295ed000000"
+      ],
+      [
+        [
+          "0x212c219a68c8fe38f37951123d1ec877570dfa891de270aa4f8634c5e60bc23",
+          "0x7310c169299ef1a1d245f0c435b5378a54927fde67e31c6493f3c47f301f4cf"
+        ],
+        "0x670d614f"
+      ],
+      [
+        [
+          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+          "0x3a575caeafd56a1e0d54e1fc8197f846939eec6187392c6d4e790f74f524ed3"
+        ],
+        "0x264a0e6e30a58084"
+      ],
+      [
+        [
+          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+          "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca369"
+        ],
+        "0x11bea482ce479609d0b"
+      ],
+      [
+        [
+          "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+          "0x493875a3926558b908441a8fd6642a9f5b85f7fc5e39289c3a83b72b2eca837"
+        ],
+        "0x10c96c58ef0cfd9d"
+      ],
+      [
+        [
+          "0x53c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+          "0x22a4b7afc2704e10b8477b865344080b5047c811b93d8a28c837425010f9d3"
+        ],
+        "0x0"
+      ],
+      [
+        [
+          "0x53c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+          "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca369"
+        ],
+        "0x1616c9df7eed"
+      ],
+      [
+        [
+          "0x68f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8",
+          "0x22a4b7afc2704e10b8477b865344080b5047c811b93d8a28c837425010f9d3"
+        ],
+        "0x2d50ba5"
+      ],
+      [
+        [
+          "0x68f5c6a61780768455de69077e07e89787839bf8166decfbf92b645209c0fb8",
+          "0x43e1ef374bc5f9e49c6c9764a9aac6e36bc8e3df0ca3bffb3cde5a0990ca369"
+        ],
+        "0xaf4012e5cb5"
+      ],
+      [
+        [
+          "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+          "0x15e83510db1fbdac28669e5f612c29482c804fcd097a04fe1e8d6900f083ed"
+        ],
+        "0x297a"
+      ],
+      [
+        [
+          "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+          "0x4dc380c9560b1716539ac47b410eb41ec84e722d2bbcfc6499f0b1755df4fa"
+        ],
+        "0x6aa236ec7fbcdd352e52b166f0b5e82c8961c518c09169a99c9ff9fcc19efac"
+      ],
+      [
+        [
+          "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+          "0x1142032d89562f1bbf3b5eaa02d7d9fa08eedc589975a0473a0bcb4f374b07e"
+        ],
+        "0xeef442c6cf5d3f3ad3a67049d32f93edf86432ab896a72251ea6e10e86380b"
+      ],
+      [
+        [
+          "0x7b696af58c967c1b14c9dde0ace001720635a660a8e90c565ea459345318b30",
+          "0x2a9f6940e96680af2fe721eb59341cde71d9b7ae61dc834d205d6c59360268e"
+        ],
+        "0xb7ac4"
+      ]
+    ],
+    "compiled_class_hashes": [],
+    "declared_contracts": []
+  }
+}
