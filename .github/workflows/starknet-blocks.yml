@@ -130,7 +130,7 @@ jobs:
       - name: Check Diffs
         run: |
           diffing=./scripts/diff-check.sh
-          if cpm -s $diffing 1
+          if cmp -s $diffing 1
           then
             exit 1
           fi
