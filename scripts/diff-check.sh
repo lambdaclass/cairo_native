@@ -26,6 +26,7 @@ for vm_dump in state_dumps/vm/*/*.json; do
   fi
 done
 
-local -a results=($diffing $skipping)
-
-echo $results
+if $diffing == 1 && $skipping == 0
+then
+  exit 1
+fi

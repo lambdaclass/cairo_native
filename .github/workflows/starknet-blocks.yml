@@ -131,11 +131,4 @@ jobs:
           path: state_dumps/vm
 
       - name: Check Diffs
-        run: |
-          results=./scripts/diff-check.sh
-          if \
-            cmp -s ${results[0]} 1 \
-            && cmp -s ${results[1]} 0
-          then
-            exit 1
-          fi
+        run: ./scripts/diff-check.sh
