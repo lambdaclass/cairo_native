@@ -13,9 +13,8 @@ for vm_dump in state_dumps/vm/*/*.json; do
       <(sed '/"reverted": /d' "$native_dump") \
       <(sed '/"reverted": /d' "$vm_dump")
   then
-    echo "Native diffing in tx: $native_dump"
+    echo "NATIVE DIFFING IN TX: $native_dump"
     diffing=1
-    break
   fi
 done
 

@@ -114,6 +114,7 @@ jobs:
     strategy:
       matrix:
         block: [742001, 754725, 749929, 769597, 779328]
+      fail-fast: false
     steps:
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
