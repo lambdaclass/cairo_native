@@ -69,6 +69,9 @@ pub enum Error {
     #[error("integer conversion failed")]
     IntegerConversion,
 
+    #[error("missing BuiltinCosts global symbol, should never happen, this is a bug")]
+    MissingBuiltinCostsSymbol,
+
     #[error(transparent)]
     IoError(#[from] std::io::Error),
 

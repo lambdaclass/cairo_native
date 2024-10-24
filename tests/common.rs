@@ -31,7 +31,7 @@ use cairo_lang_starknet_classes::{
 use cairo_native::{
     context::NativeContext,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    executor::JitNativeExecutor,
+    executor::{AotContractExecutor, JitNativeExecutor},
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{find_entry_point_by_idx, HALF_PRIME, PRIME},
     OptLevel, Value,
@@ -391,7 +391,6 @@ pub fn run_vm_contract(
         .collect_vec()
 }
 
-#[track_caller]
 pub fn compare_inputless_program(program_path: &str) {
     let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
     let program = &program;
@@ -434,11 +433,25 @@ pub fn run_native_starknet_contract(
         .expect("failed to execute the given contract")
 }
 
+pub fn run_native_starknet_aot_contract(
+    sierra_program: &Program,
+    entry_point_function_idx: usize,
+    args: &[Felt],
+    handler: impl StarknetSyscallHandler,
+) -> ContractExecutionResult {
+    let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
+    let entry_point_id = &entry_point_fn.id;
+
+    let native_executor = AotContractExecutor::new(sierra_program, Default::default()).unwrap();
+    native_executor
+        .run(entry_point_id, args, u128::MAX.into(), None, handler)
+        .expect("failed to execute the given contract")
+}
+
 /// Given the result of the cairo-vm and cairo-native of the same program, it compares
 /// the results automatically, triggering a proptest assert if there is a mismatch.
 ///
 /// Left of report of the assert is the cairo vm result, right side is cairo native
-#[track_caller]
 pub fn compare_outputs(
     program: &Program,
     entry_point: &FunctionId,
@@ -744,8 +757,12 @@ pub fn compare_outputs(
             .unwrap_or(false)
     });
     assert_eq!(
-        vm_result.gas_counter.unwrap_or_else(|| Felt::from(0)),
-        Felt::from(native_result.remaining_gas.unwrap_or(0)),
+        vm_result
+            .gas_counter
+            .unwrap_or_else(|| Felt::from(0))
+            .to_bigint(),
+        Felt::from(native_result.remaining_gas.unwrap_or(0)).to_bigint(),
+        "gas mismatch"
     );
 
     let vm_result = match &vm_result.value {
@@ -807,7 +824,11 @@ pub fn compare_outputs(
         },
     };
 
-    pretty_assertions_sorted::assert_eq!(native_result.return_value, vm_result);
+    pretty_assertions_sorted::assert_eq!(
+        native_result.return_value,
+        vm_result,
+        "return value mismatch"
+    );
     Ok(())
 }
 

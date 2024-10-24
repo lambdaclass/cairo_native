@@ -131,6 +131,7 @@ rstest = "0.23.0"
 test-case = "3.3"
 walkdir = "2.5.0"
 serde_json = { version = "1.0.128" }
+rayon = "1.10.0"
 
 [build-dependencies]
 cc = "1.1.28"
