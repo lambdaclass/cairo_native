@@ -79,7 +79,6 @@ impl<'m> JitNativeExecutor<'m> {
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
             self.extract_signature(function_id).unwrap(),
             args,
             available_gas,
@@ -103,7 +102,6 @@ impl<'m> JitNativeExecutor<'m> {
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
             self.extract_signature(function_id).unwrap(),
             args,
             available_gas,
@@ -126,7 +124,6 @@ impl<'m> JitNativeExecutor<'m> {
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
             self.extract_signature(function_id).unwrap(),
             &[Value::Struct {
                 fields: vec![Value::Array(
@@ -146,16 +143,6 @@ impl<'m> JitNativeExecutor<'m> {
 
         // Arguments and return values are hardcoded since they'll be handled by the trampoline.
         self.engine.lookup(&function_name) as *mut c_void
-    }
-
-    pub fn find_symbol_ptr(&self, name: &str) -> Option<*mut c_void> {
-        let ptr = self.engine.lookup(name) as *mut c_void;
-
-        if ptr.is_null() {
-            None
-        } else {
-            Some(ptr)
-        }
     }
 
     fn extract_signature(&self, function_id: &FunctionId) -> Option<&FunctionSignature> {
