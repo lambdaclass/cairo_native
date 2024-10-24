@@ -530,7 +530,7 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
-    use crate::utils::{libc_free, libc_malloc};
+    use crate::utils::{get_integer_layout, libc_free, libc_malloc};
     use std::{
         alloc::Layout,
         ffi::c_void,
@@ -889,7 +889,20 @@ pub(crate) mod handler {
                     capacity: 0,
                 },
                 _ => {
-                    let ptr = libc_malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
+                    let ptr = {
+                        let refcount_offset = get_integer_layout(32)
+                            .align_to(align_of::<E>())
+                            .unwrap()
+                            .pad_to_align()
+                            .size();
+                        let ptr = libc_malloc(
+                            Layout::array::<E>(data.len()).unwrap().size() + refcount_offset,
+                        );
+
+                        // Write the reference counter and return the data pointer.
+                        ptr.cast::<u32>().write(1);
+                        ptr.byte_add(refcount_offset) as *mut E
+                    };
 
                     let len: u32 = data.len().try_into().unwrap();
                     for (i, val) in data.iter().enumerate() {
@@ -947,8 +960,20 @@ pub(crate) mod handler {
             let selector = Felt::from(selector);
             let input_vec: Vec<_> = input.into();
 
-            unsafe {
-                libc_free(input.ptr as *mut c_void);
+            if !input.ptr.is_null() {
+                unsafe {
+                    let input_ptr = input.ptr.byte_sub(
+                        get_integer_layout(32)
+                            .align_to(align_of::<Felt252Abi>())
+                            .unwrap()
+                            .pad_to_align()
+                            .size(),
+                    );
+                    match input_ptr.cast::<u32>().read() {
+                        1 => libc_free(input_ptr.cast()),
+                        n => input_ptr.cast::<u32>().write(n - 1),
+                    }
+                }
             }
 
             let result = ptr
@@ -1136,8 +1161,20 @@ pub(crate) mod handler {
 
             let calldata_vec: Vec<_> = calldata.into();
 
-            unsafe {
-                libc_free(calldata.ptr as *mut c_void);
+            if !calldata.ptr.is_null() {
+                unsafe {
+                    let calldata_ptr = calldata.ptr.byte_sub(
+                        get_integer_layout(32)
+                            .align_to(align_of::<Felt252Abi>())
+                            .unwrap()
+                            .pad_to_align()
+                            .size(),
+                    );
+                    match calldata_ptr.cast::<u32>().read() {
+                        1 => libc_free(calldata_ptr.cast()),
+                        n => calldata_ptr.cast::<u32>().write(n - 1),
+                    }
+                }
             }
 
             let result = ptr.deploy(
@@ -1196,8 +1233,20 @@ pub(crate) mod handler {
 
             let calldata_vec: Vec<Felt> = calldata.into();
 
-            unsafe {
-                libc_free(calldata.ptr as *mut c_void);
+            if !calldata.ptr.is_null() {
+                unsafe {
+                    let calldata_ptr = calldata.ptr.byte_sub(
+                        get_integer_layout(32)
+                            .align_to(align_of::<Felt252Abi>())
+                            .unwrap()
+                            .pad_to_align()
+                            .size(),
+                    );
+                    match calldata_ptr.cast::<u32>().read() {
+                        1 => libc_free(calldata_ptr.cast()),
+                        n => calldata_ptr.cast::<u32>().write(n - 1),
+                    }
+                }
             }
 
             let result = ptr.library_call(class_hash, function_selector, &calldata_vec, gas);
@@ -1230,8 +1279,20 @@ pub(crate) mod handler {
 
             let calldata_vec: Vec<Felt> = calldata.into();
 
-            unsafe {
-                libc_free(calldata.ptr as *mut c_void);
+            if !calldata.ptr.is_null() {
+                unsafe {
+                    let calldata_ptr = calldata.ptr.byte_sub(
+                        get_integer_layout(32)
+                            .align_to(align_of::<Felt252Abi>())
+                            .unwrap()
+                            .pad_to_align()
+                            .size(),
+                    );
+                    match calldata_ptr.cast::<u32>().read() {
+                        1 => libc_free(calldata_ptr.cast()),
+                        n => calldata_ptr.cast::<u32>().write(n - 1),
+                    }
+                }
             }
 
             let result = ptr.call_contract(address, entry_point_selector, &calldata_vec, gas);
@@ -1304,14 +1365,38 @@ pub(crate) mod handler {
         ) {
             let keys_vec: Vec<_> = keys.into();
 
-            unsafe {
-                libc_free(keys.ptr as *mut c_void);
+            if !keys.ptr.is_null() {
+                unsafe {
+                    let keys_ptr = keys.ptr.byte_sub(
+                        get_integer_layout(32)
+                            .align_to(align_of::<Felt252Abi>())
+                            .unwrap()
+                            .pad_to_align()
+                            .size(),
+                    );
+                    match keys_ptr.cast::<u32>().read() {
+                        1 => libc_free(keys_ptr.cast()),
+                        n => keys_ptr.cast::<u32>().write(n - 1),
+                    }
+                }
             }
 
             let data_vec: Vec<_> = data.into();
 
-            unsafe {
-                libc_free(data.ptr as *mut c_void);
+            if !data.ptr.is_null() {
+                unsafe {
+                    let data_ptr = data.ptr.byte_sub(
+                        get_integer_layout(32)
+                            .align_to(align_of::<Felt252Abi>())
+                            .unwrap()
+                            .pad_to_align()
+                            .size(),
+                    );
+                    match data_ptr.cast::<u32>().read() {
+                        1 => libc_free(data_ptr.cast()),
+                        n => data_ptr.cast::<u32>().write(n - 1),
+                    }
+                }
             }
 
             let result = ptr.emit_event(&keys_vec, &data_vec, gas);
@@ -1337,8 +1422,20 @@ pub(crate) mod handler {
             let to_address = Felt::from(to_address);
             let payload_vec: Vec<_> = payload.into();
 
-            unsafe {
-                libc_free(payload.ptr as *mut c_void);
+            if !payload.ptr.is_null() {
+                unsafe {
+                    let payload_ptr = payload.ptr.byte_sub(
+                        get_integer_layout(32)
+                            .align_to(align_of::<Felt252Abi>())
+                            .unwrap()
+                            .pad_to_align()
+                            .size(),
+                    );
+                    match payload_ptr.cast::<u32>().read() {
+                        1 => libc_free(payload_ptr.cast()),
+                        n => payload_ptr.cast::<u32>().write(n - 1),
+                    }
+                }
             }
 
             let result = ptr.send_message_to_l1(to_address, &payload_vec, gas);
@@ -1372,8 +1469,20 @@ pub(crate) mod handler {
             };
 
             let result = ptr.keccak(input_vec, gas);
-            unsafe {
-                libc_free(input.ptr as *mut c_void);
+            if !input.ptr.is_null() {
+                unsafe {
+                    let input_ptr = input.ptr.byte_sub(
+                        get_integer_layout(32)
+                            .align_to(align_of::<u64>())
+                            .unwrap()
+                            .pad_to_align()
+                            .size(),
+                    );
+                    match input_ptr.cast::<u32>().read() {
+                        1 => libc_free(input_ptr.cast()),
+                        n => input_ptr.cast::<u32>().write(n - 1),
+                    }
+                }
             }
 
             *result_ptr = match result {
