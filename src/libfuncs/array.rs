@@ -10,7 +10,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::{BlockExt, GepIndex, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -479,14 +479,13 @@ pub fn build_get<'ctx, 'this>(
         let elem_offset =
             valid_block.append_op_result(arith::muli(elem_stride, index, location))?;
 
-        let elem_ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
+        let elem_ptr = valid_block.gep(
             context,
-            ptr,
-            &[elem_offset],
-            IntegerType::new(context, 8).into(),
-            llvm::r#type::pointer(context, 0),
             location,
-        ))?;
+            ptr,
+            &[GepIndex::Value(elem_offset)],
+            IntegerType::new(context, 8).into(),
+        )?;
 
         let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
 
