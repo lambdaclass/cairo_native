@@ -218,7 +218,7 @@ fn build_add_input<'ctx, 'this>(
             middle_insert_block.insert_value(context, location, accumulator, next_length, 0)?;
 
         // Get pointer to accumulator with alloc and store
-        let accumulator_ptr = middle_insert_block.alloca1(
+        let accumulator_ptr = helper.init_block().alloca1(
             context,
             location,
             accumulator.r#type(),
@@ -261,10 +261,12 @@ fn build_add_input<'ctx, 'this>(
 
         // Alloc return data
         let data_ptr =
-            last_insert_block.alloca1(context, location, data_type, data_layout.align())?;
+            helper
+                .init_block()
+                .alloca1(context, location, data_type, data_layout.align())?;
 
         // Get pointer to accumulator with alloc and store
-        let accumulator_ptr = last_insert_block.alloca1(
+        let accumulator_ptr = helper.init_block().alloca1(
             context,
             location,
             accumulator.r#type(),
