@@ -144,7 +144,9 @@ pub fn build<'ctx, 'this>(
         StarkNetConcreteLibfunc::Sha256StateHandleDigest(info) => build_sha256_state_handle_digest(
             context, registry, entry, location, helper, metadata, info,
         ),
-        StarkNetConcreteLibfunc::GetClassHashAt(_) => todo!("2.9.0"),
+        StarkNetConcreteLibfunc::GetClassHashAt(info) => {
+            build_get_class_hash_at(context, registry, entry, location, helper, metadata, info)
+        }
         #[cfg(feature = "with-cheatcode")]
         StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
             self::testing::build(context, registry, entry, location, helper, metadata, info)
@@ -3115,6 +3117,193 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
             llvm::r#type::r#struct(context, &[result_tag_ty, variant_tys[1].0], false),
         )?;
         entry.extract_value(context, location, value, variant_tys[1].0, 1)?
+    };
+
+    let remaining_gas = entry.load(
+        context,
+        location,
+        gas_builtin_ptr,
+        IntegerType::new(context, 128).into(),
+    )?;
+
+    entry.append_operation(helper.cond_br(
+        context,
+        result_tag,
+        [1, 0],
+        [
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+        ],
+        location,
+    ));
+    Ok(())
+}
+
+pub fn build_get_class_hash_at<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    // Extract self pointer.
+    let ptr = entry.load(
+        context,
+        location,
+        entry.argument(1)?.into(),
+        llvm::r#type::pointer(context, 0),
+    )?;
+
+    // Allocate space for the return value.
+    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
+        crate::types::r#enum::get_type_for_variants(
+            context,
+            helper,
+            registry,
+            metadata,
+            &[
+                info.branch_signatures()[0].vars[2].ty.clone(),
+                info.branch_signatures()[1].vars[2].ty.clone(),
+            ],
+        )?;
+
+    let result_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        llvm::r#type::r#struct(
+            context,
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+        result_layout.align(),
+    )?;
+
+    // Allocate space and write the current gas.
+    let gas_builtin_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        IntegerType::new(context, 128).into(),
+        get_integer_layout(128).align(),
+    )?;
+    entry.store(
+        context,
+        location,
+        gas_builtin_ptr,
+        entry.argument(0)?.into(),
+    )?;
+
+    // Allocate `contract_address` argument and write the value.
+    let contract_address_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    entry.store(
+        context,
+        location,
+        contract_address_ptr,
+        entry.argument(2)?.into(),
+    )?;
+
+    // Extract function pointer.
+    let fn_ptr = entry.append_op_result(llvm::get_element_ptr(
+        context,
+        entry.argument(1)?.into(),
+        DenseI32ArrayAttribute::new(
+            context,
+            &[StarknetSyscallHandlerCallbacks::<()>::GET_CLASS_HASH_AT.try_into()?],
+        ),
+        llvm::r#type::pointer(context, 0),
+        llvm::r#type::pointer(context, 0),
+        location,
+    ))?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
+
+    entry.append_operation(
+        OperationBuilder::new("llvm.call", location)
+            .add_operands(&[
+                fn_ptr,
+                result_ptr,
+                ptr,
+                gas_builtin_ptr,
+                contract_address_ptr,
+            ])
+            .build()?,
+    );
+
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
+            context,
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
+
+    let payload_ok = {
+        let ptr = entry.append_op_result(
+            OperationBuilder::new("llvm.getelementptr", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "rawConstantIndices"),
+                        DenseI32ArrayAttribute::new(
+                            context,
+                            &[result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?],
+                        )
+                        .into(),
+                    ),
+                    (
+                        Identifier::new(context, "elem_type"),
+                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                    ),
+                ])
+                .add_operands(&[result_ptr])
+                .add_results(&[llvm::r#type::pointer(context, 0)])
+                .build()?,
+        )?;
+        entry.load(context, location, ptr, variant_tys[0].0)?
+    };
+    let payload_err = {
+        let ptr = entry.append_op_result(
+            OperationBuilder::new("llvm.getelementptr", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "rawConstantIndices"),
+                        DenseI32ArrayAttribute::new(
+                            context,
+                            &[result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?],
+                        )
+                        .into(),
+                    ),
+                    (
+                        Identifier::new(context, "elem_type"),
+                        TypeAttribute::new(IntegerType::new(context, 8).into()).into(),
+                    ),
+                ])
+                .add_operands(&[result_ptr])
+                .add_results(&[llvm::r#type::pointer(context, 0)])
+                .build()?,
+        )?;
+        entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
     let remaining_gas = entry.load(
