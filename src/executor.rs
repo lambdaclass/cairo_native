@@ -198,14 +198,12 @@ fn invoke_dynamic(
     let mut ret_registers = [0; 4];
 
     unsafe {
-        println!("BEFORE");
         invoke_trampoline(
             function_ptr,
             invoke_data.as_ptr().cast(),
             invoke_data.len() >> 3,
             ret_registers.as_mut_ptr(),
         );
-        println!("AFTER");
     }
 
     // If the syscall handler was changed, then reset the previous one.

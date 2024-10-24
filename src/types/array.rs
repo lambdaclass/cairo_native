@@ -141,17 +141,6 @@ fn build_dup<'ctx>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            metadata
-                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-                .unwrap()
-                .debug_print(
-                    context,
-                    module,
-                    &block,
-                    "[MEM] Cloning empty array.",
-                    location,
-                )?;
-
             block.append_operation(scf::r#yield(&[], location));
             region
         },
@@ -182,21 +171,6 @@ fn build_dup<'ctx>(
                 IntegerType::new(context, 32).into(),
             )?;
 
-            metadata
-                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-                .unwrap()
-                .debug_print(
-                    context,
-                    module,
-                    &block,
-                    "[MEM] Cloning non-empty array (ref_count += 1). Original ref_count:",
-                    location,
-                )?;
-            metadata
-                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-                .unwrap()
-                .print_i32(context, module, &block, ref_count, location)?;
-
             let k1 = block.const_int(context, location, 1, 32)?;
             let ref_count = block.append_op_result(arith::addi(ref_count, k1, location))?;
             block.store(context, location, refcount_ptr, ref_count)?;
@@ -212,188 +186,6 @@ fn build_dup<'ctx>(
         location,
     ));
     Ok(region)
-
-    // let location = Location::unknown(context);
-    // if metadata.get::<ReallocBindingsMeta>().is_none() {
-    //     metadata.insert(ReallocBindingsMeta::new(context, module));
-    // }
-
-    // let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
-    // let elem_ty = registry.get_type(&info.ty)?;
-    // let elem_stride = elem_ty.layout(registry)?.pad_to_align().size();
-    // let elem_ty = elem_ty.build(context, module, registry, metadata, &info.ty)?;
-
-    // let region = Region::new();
-    // let entry = region.append_block(Block::new(&[(value_ty, location)]));
-
-    // let src_value = entry.argument(0)?.into();
-    // let value_ptr = entry.extract_value(
-    //     context,
-    //     location,
-    //     src_value,
-    //     llvm::r#type::pointer(context, 0),
-    //     0,
-    // )?;
-    // let value_start = entry.extract_value(
-    //     context,
-    //     location,
-    //     src_value,
-    //     IntegerType::new(context, 32).into(),
-    //     1,
-    // )?;
-    // let value_end = entry.extract_value(
-    //     context,
-    //     location,
-    //     src_value,
-    //     IntegerType::new(context, 32).into(),
-    //     2,
-    // )?;
-
-    // let value_len = entry.append_op_result(arith::subi(value_end, value_start, location))?;
-
-    // let k0 = entry.const_int(context, location, 0, 32)?;
-    // let value_is_empty = entry.append_op_result(arith::cmpi(
-    //     context,
-    //     CmpiPredicate::Eq,
-    //     value_len,
-    //     k0,
-    //     location,
-    // ))?;
-
-    // let null_ptr =
-    //     entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
-
-    // let block_realloc = region.append_block(Block::new(&[]));
-    // let block_finish =
-    //     region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
-    // entry.append_operation(cf::cond_br(
-    //     context,
-    //     value_is_empty,
-    //     &block_finish,
-    //     &block_realloc,
-    //     &[null_ptr],
-    //     &[],
-    //     location,
-    // ));
-
-    // {
-    //     let elem_stride = block_realloc.const_int(context, location, elem_stride, 64)?;
-
-    //     let dst_value_len = {
-    //         let value_len = block_realloc.append_op_result(arith::extui(
-    //             value_len,
-    //             IntegerType::new(context, 64).into(),
-    //             location,
-    //         ))?;
-
-    //         block_realloc.append_op_result(arith::muli(value_len, elem_stride, location))?
-    //     };
-    //     let dst_value_ptr = {
-    //         block_realloc.append_op_result(ReallocBindingsMeta::realloc(
-    //             context,
-    //             null_ptr,
-    //             dst_value_len,
-    //             location,
-    //         ))?
-    //     };
-
-    //     let src_value_ptr = {
-    //         let value_offset = block_realloc.append_op_result(arith::extui(
-    //             value_start,
-    //             IntegerType::new(context, 64).into(),
-    //             location,
-    //         ))?;
-
-    //         let src_value_offset =
-    //             block_realloc.append_op_result(arith::muli(value_offset, elem_stride, location))?;
-    //         block_realloc.append_op_result(llvm::get_element_ptr_dynamic(
-    //             context,
-    //             value_ptr,
-    //             &[src_value_offset],
-    //             IntegerType::new(context, 8).into(),
-    //             llvm::r#type::pointer(context, 0),
-    //             location,
-    //         ))?
-    //     };
-
-    //     match metadata.get::<DupOverridesMeta>() {
-    //         Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
-    //             let k0 = block_realloc.const_int(context, location, 0, 64)?;
-    //             block_realloc.append_operation(scf::r#for(
-    //                 k0,
-    //                 dst_value_len,
-    //                 elem_stride,
-    //                 {
-    //                     let region = Region::new();
-    //                     let block = region.append_block(Block::new(&[(
-    //                         IntegerType::new(context, 64).into(),
-    //                         location,
-    //                     )]));
-
-    //                     let idx = block.argument(0)?.into();
-
-    //                     let src_value_ptr =
-    //                         block.append_op_result(llvm::get_element_ptr_dynamic(
-    //                             context,
-    //                             src_value_ptr,
-    //                             &[idx],
-    //                             IntegerType::new(context, 8).into(),
-    //                             llvm::r#type::pointer(context, 0),
-    //                             location,
-    //                         ))?;
-    //                     let dst_value_ptr =
-    //                         block.append_op_result(llvm::get_element_ptr_dynamic(
-    //                             context,
-    //                             dst_value_ptr,
-    //                             &[idx],
-    //                             IntegerType::new(context, 8).into(),
-    //                             llvm::r#type::pointer(context, 0),
-    //                             location,
-    //                         ))?;
-
-    //                     let value = block.load(context, location, src_value_ptr, elem_ty)?;
-    //                     let values = dup_override_meta
-    //                         .invoke_override(context, &block, location, &info.ty, value)?;
-    //                     block.store(context, location, src_value_ptr, values.0)?;
-    //                     block.store(context, location, dst_value_ptr, values.1)?;
-
-    //                     block.append_operation(scf::r#yield(&[], location));
-    //                     region
-    //                 },
-    //                 location,
-    //             ));
-    //         }
-    //         _ => {
-    //             block_realloc.append_operation(
-    //                 ods::llvm::intr_memcpy(
-    //                     context,
-    //                     dst_value_ptr,
-    //                     src_value_ptr,
-    //                     dst_value_len,
-    //                     IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-    //                     location,
-    //                 )
-    //                 .into(),
-    //             );
-    //         }
-    //     }
-
-    //     block_realloc.append_operation(cf::br(&block_finish, &[dst_value_ptr], location));
-    // }
-
-    // {
-    //     let dst_value = block_finish.append_op_result(llvm::undef(value_ty, location))?;
-    //     let dst_value = block_finish.insert_values(
-    //         context,
-    //         location,
-    //         dst_value,
-    //         &[block_finish.argument(0)?.into(), k0, value_len, value_len],
-    //     )?;
-
-    //     block_finish.append_operation(func::r#return(&[src_value, dst_value], location));
-    // }
-
-    // Ok(region)
 }
 
 fn build_drop<'ctx>(
@@ -495,38 +287,12 @@ fn build_drop<'ctx>(
                     let ref_count = block.append_op_result(arith::subi(ref_count, k1, location))?;
                     block.store(context, location, refcount_ptr, ref_count)?;
 
-                    metadata
-                        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-                        .unwrap()
-                        .debug_print(
-                            context,
-                            module,
-                            &block,
-                            "[MEM] Dropping non-empty array (ref_count -= 1). Original ref_count:",
-                            location,
-                        )?;
-                    metadata
-                        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-                        .unwrap()
-                        .print_i32(context, module, &block, ref_count, location)?;
-
                     block.append_operation(scf::r#yield(&[], location));
                     region
                 },
                 {
                     let region = Region::new();
                     let block = region.append_block(Block::new(&[]));
-
-                    metadata
-                        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-                        .unwrap()
-                        .debug_print(
-                            context,
-                            module,
-                            &block,
-                            "[MEM] Dropping non-empty array (ref_count -= 1). Freeing memory.",
-                            location,
-                        )?;
 
                     match metadata.get::<DropOverridesMeta>() {
                         Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {

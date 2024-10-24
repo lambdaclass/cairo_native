@@ -4,7 +4,8 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{
-        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
@@ -178,6 +179,7 @@ pub fn build_append<'ctx, 'this>(
     //   0. Just append.
     //   1. Realloc, then append.
     //   2. Memmove, then append.
+    //   2. Clone, then append.
     let target_action = {
         let is_empty = entry.append_op_result(arith::cmpi(
             context,
@@ -240,14 +242,16 @@ pub fn build_append<'ctx, 'this>(
                     location,
                 ))?;
 
-                // TODO: Need an extra action: clone (separate from realloc).
                 let k0 = entry.const_int(context, location, 0, 2)?;
                 let k1 = entry.const_int(context, location, 1, 2)?;
                 let k2 = entry.const_int(context, location, 2, 2)?;
+                let k3 = entry.const_int(context, location, 3, 2)?;
                 let action =
                     block.append_op_result(arith::select(starts_at_zero, k1, k2, location))?;
                 let action =
                     block.append_op_result(arith::select(ends_at_len, action, k0, location))?;
+                let action =
+                    block.append_op_result(arith::select(is_shared, k3, action, location))?;
 
                 block.append_operation(scf::r#yield(&[action], location));
                 region
@@ -263,9 +267,10 @@ pub fn build_append<'ctx, 'this>(
     let memmove_block = helper.append_block(Block::new(&[]));
     let realloc_block = helper.append_block(Block::new(&[]));
     let append_block = helper.append_block(Block::new(&[(array_ty, location)]));
+    let clone_block = helper.append_block(Block::new(&[]));
     entry.append_operation(cf::switch(
         context,
-        &[0, 1, 2],
+        &[0, 1, 2, 3],
         target_action,
         IntegerType::new(context, 2).into(),
         (default_block, &[]),
@@ -273,6 +278,7 @@ pub fn build_append<'ctx, 'this>(
             (append_block, &[entry.argument(0)?.into()]),
             (realloc_block, &[]),
             (memmove_block, &[]),
+            (clone_block, &[]),
         ],
         location,
     )?);
@@ -481,6 +487,209 @@ pub fn build_append<'ctx, 'this>(
         append_block.append_operation(helper.br(0, &[value], location));
     }
 
+    {
+        let array_is_empty = clone_block.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Eq,
+            array_capacity,
+            k0,
+            location,
+        ))?;
+        let value = clone_block.append_op_result(scf::r#if(
+            array_is_empty,
+            &[llvm::r#type::r#struct(
+                context,
+                &[
+                    llvm::r#type::pointer(context, 0),
+                    IntegerType::new(context, 32).into(),
+                    IntegerType::new(context, 32).into(),
+                    IntegerType::new(context, 32).into(),
+                ],
+                false,
+            )],
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                let null_ptr = block
+                    .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+                let value = block.append_op_result(llvm::undef(
+                    llvm::r#type::r#struct(
+                        context,
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            IntegerType::new(context, 32).into(),
+                            IntegerType::new(context, 32).into(),
+                            IntegerType::new(context, 32).into(),
+                        ],
+                        false,
+                    ),
+                    location,
+                ))?;
+                let value =
+                    block.insert_values(context, location, value, &[null_ptr, k0, k0, k0])?;
+
+                block.append_operation(scf::r#yield(&[value], location));
+                region
+            },
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                // Allocate space for all elements.
+                let array_len =
+                    block.append_op_result(arith::subi(array_end, array_start, location))?;
+                let new_capacity = block.append_op_result(arith::extui(
+                    array_len,
+                    IntegerType::new(context, 64).into(),
+                    location,
+                ))?;
+                let new_capacity_bytes =
+                    block.append_op_result(arith::muli(new_capacity, elem_stride, location))?;
+
+                let elem_offset = block.const_int(context, location, elem_offset, 64)?;
+                let realloc_size = block.append_op_result(arith::addi(
+                    new_capacity_bytes,
+                    elem_offset,
+                    location,
+                ))?;
+
+                let ptr = block
+                    .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+                let ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                    context,
+                    ptr,
+                    realloc_size,
+                    location,
+                ))?;
+                assert_nonnull(context, &block, location, ptr, "memory allocation failed")?;
+
+                // Write ref counter to 1.
+                block.store(context, location, ptr, k1)?;
+
+                // Copy/clone the data.
+                let refcount_offset = get_integer_layout(32)
+                    .align_to(elem_layout.align())
+                    .unwrap()
+                    .pad_to_align()
+                    .size();
+                let dst_ptr = block.append_op_result(llvm::get_element_ptr(
+                    context,
+                    ptr,
+                    DenseI32ArrayAttribute::new(context, &[refcount_offset as i32]),
+                    IntegerType::new(context, 8).into(),
+                    llvm::r#type::pointer(context, 0),
+                    location,
+                ))?;
+
+                let src_offset = block.append_op_result(arith::extui(
+                    array_start,
+                    IntegerType::new(context, 64).into(),
+                    location,
+                ))?;
+                let src_offset =
+                    block.append_op_result(arith::muli(src_offset, elem_stride, location))?;
+                let src_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
+                    context,
+                    array_ptr,
+                    &[src_offset],
+                    IntegerType::new(context, 8).into(),
+                    llvm::r#type::pointer(context, 0),
+                    location,
+                ))?;
+
+                let elem_ty = elem_ty.build(context, helper, registry, metadata, &info.ty)?;
+                match metadata.get::<DupOverridesMeta>() {
+                    Some(dup_overrides_meta) => {
+                        let k0 = block.const_int(context, location, 0, 64)?;
+                        block.append_operation(scf::r#for(
+                            k0,
+                            new_capacity_bytes,
+                            elem_stride,
+                            {
+                                let region = Region::new();
+                                let block = region.append_block(Block::new(&[(
+                                    IntegerType::new(context, 64).into(),
+                                    location,
+                                )]));
+
+                                let idx = block.argument(0)?.into();
+
+                                let src_ptr =
+                                    block.append_op_result(llvm::get_element_ptr_dynamic(
+                                        context,
+                                        src_ptr,
+                                        &[idx],
+                                        IntegerType::new(context, 8).into(),
+                                        llvm::r#type::pointer(context, 0),
+                                        location,
+                                    ))?;
+                                let dst_ptr =
+                                    block.append_op_result(llvm::get_element_ptr_dynamic(
+                                        context,
+                                        dst_ptr,
+                                        &[idx],
+                                        IntegerType::new(context, 8).into(),
+                                        llvm::r#type::pointer(context, 0),
+                                        location,
+                                    ))?;
+
+                                let value = block.load(context, location, src_ptr, elem_ty)?;
+                                let values = dup_overrides_meta
+                                    .invoke_override(context, &block, location, &info.ty, value)?;
+                                block.store(context, location, src_ptr, values.0)?;
+                                block.store(context, location, dst_ptr, values.1)?;
+
+                                block.append_operation(scf::r#yield(&[], location));
+                                region
+                            },
+                            location,
+                        ));
+                    }
+                    None => {
+                        block.append_operation(
+                            ods::llvm::intr_memcpy(
+                                context,
+                                dst_ptr,
+                                src_ptr,
+                                new_capacity_bytes,
+                                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                                location,
+                            )
+                            .into(),
+                        );
+                    }
+                }
+
+                let value = block.append_op_result(llvm::undef(
+                    llvm::r#type::r#struct(
+                        context,
+                        &[
+                            llvm::r#type::pointer(context, 0),
+                            IntegerType::new(context, 32).into(),
+                            IntegerType::new(context, 32).into(),
+                            IntegerType::new(context, 32).into(),
+                        ],
+                        false,
+                    ),
+                    location,
+                ))?;
+                let value = block.insert_values(
+                    context,
+                    location,
+                    value,
+                    &[dst_ptr, k0, array_len, array_len],
+                )?;
+
+                block.append_operation(scf::r#yield(&[value], location));
+                region
+            },
+            location,
+        ))?;
+
+        clone_block.append_operation(cf::br(append_block, &[value], location));
+    }
+
     Ok(())
 }
 
@@ -599,8 +808,8 @@ pub fn build_get<'ctx, 'this>(
         let offset_ptr = valid_block.append_op_result(llvm::get_element_ptr(
             context,
             ptr,
-            DenseI32ArrayAttribute::new(context, &[elem_offset as i32]),
-            IntegerType::new(context, 64).into(),
+            DenseI32ArrayAttribute::new(context, &[-(elem_offset as i32)]),
+            IntegerType::new(context, 8).into(),
             llvm::r#type::pointer(context, 0),
             location,
         ))?;
@@ -625,7 +834,7 @@ pub fn build_get<'ctx, 'this>(
 
         let elem_ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
             context,
-            offset_ptr,
+            ptr,
             &[elem_offset],
             IntegerType::new(context, 8).into(),
             llvm::r#type::pointer(context, 0),
@@ -656,7 +865,7 @@ pub fn build_get<'ctx, 'this>(
                 let ref_count = valid_block.load(
                     context,
                     location,
-                    ptr,
+                    offset_ptr,
                     IntegerType::new(context, 32).into(),
                 )?;
                 let k1 = valid_block.const_int(context, location, 1, 32)?;
@@ -780,7 +989,19 @@ pub fn build_get<'ctx, 'this>(
                     location,
                 ));
             }
-            _ => {}
+            Some(drop_overrides_meta) => {
+                drop_overrides_meta.invoke_override(
+                    context,
+                    valid_block,
+                    location,
+                    &info.param_signatures()[1].ty,
+                    entry.argument(1)?.into(),
+                )?;
+            }
+            None => {
+                // All arrays implement the drop override.
+                unreachable!()
+            }
         }
 
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
@@ -1548,84 +1769,86 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    // tuple to array span (t,t,t) -> &[t,t,t]
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let struct_type_info = registry.get_type(&info.ty)?;
+    let elem_ty = registry.get_type(&info.ty)?;
+    let elem_layout = elem_ty.layout(registry)?;
 
-    let struct_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let src_ptr = entry.argument(0)?.into();
+    let dst_ptr = {
+        let refcount_offset = get_integer_layout(32)
+            .align_to(elem_layout.align())
+            .unwrap()
+            .pad_to_align()
+            .size();
+        let realloc_size =
+            entry.const_int(context, location, elem_layout.size() + refcount_offset, 64)?;
 
-    let container: Value = {
-        // load box
-        entry.load(context, location, entry.argument(0)?.into(), struct_ty)?
-    };
-    // TODO: Maybe reuse the pointer?
-    entry.append_operation(ReallocBindingsMeta::free(
-        context,
-        entry.argument(0)?.into(),
-        location,
-    ));
-
-    let fields = struct_type_info.fields().expect("should have fields");
-    let (field_ty, field_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, &fields[0])?;
-    let field_stride = field_layout.pad_to_align().size();
-
-    let array_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.branch_signatures()[0].vars[0].ty,
-    )?;
-    let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
-
-    let array_len_value = entry.const_int_from_type(context, location, fields.len(), len_ty)?;
-
-    let array_container = entry.append_op_result(llvm::undef(array_ty, location))?;
-
-    let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
-
-    let array_container = entry.insert_value(context, location, array_container, k0, 1)?;
-    let array_container =
-        entry.insert_value(context, location, array_container, array_len_value, 2)?;
-    let array_container =
-        entry.insert_value(context, location, array_container, array_len_value, 3)?;
-
-    let ptr = entry
-        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
-
-    let field_size: Value = entry.const_int(context, location, field_stride, 64)?;
-    let array_len_value_i64 =
-        entry.append_op_result(arith::extui(array_len_value, field_size.r#type(), location))?;
-    let total_size =
-        entry.append_op_result(arith::muli(field_size, array_len_value_i64, location))?;
-
-    let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
-        context, ptr, total_size, location,
-    ))?;
-
-    for (i, _) in fields.iter().enumerate() {
-        let value: Value = entry.extract_value(context, location, container, field_ty, i)?;
-
-        let target_ptr = entry.append_op_result(llvm::get_element_ptr(
+        let ptr =
+            entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+        let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
             context,
             ptr,
-            DenseI32ArrayAttribute::new(context, &[i as i32]),
-            field_ty,
-            pointer(context, 0),
+            realloc_size,
             location,
         ))?;
+        assert_nonnull(context, entry, location, ptr, "memory allocation error")?;
 
-        entry.store(context, location, target_ptr, value)?;
-    }
+        let k1 = entry.const_int(context, location, 1, 32)?;
+        entry.store(context, location, ptr, k1)?;
 
-    let array_container = entry.insert_value(context, location, array_container, ptr, 0)?;
+        entry.append_op_result(llvm::get_element_ptr(
+            context,
+            ptr,
+            DenseI32ArrayAttribute::new(context, &[refcount_offset as i32]),
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?
+    };
 
-    entry.append_operation(helper.br(0, &[array_container], location));
+    entry.append_operation(
+        ods::llvm::intr_memcpy_inline(
+            context,
+            dst_ptr,
+            src_ptr,
+            IntegerAttribute::new(
+                IntegerType::new(context, 64).into(),
+                elem_layout.size() as i64,
+            ),
+            IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+            location,
+        )
+        .into(),
+    );
+    entry.append_operation(ReallocBindingsMeta::free(context, src_ptr, location));
 
+    let k0 = entry.const_int(context, location, 0, 32)?;
+    let array_len = entry.const_int(context, location, elem_ty.fields().unwrap().len(), 32)?;
+
+    let value = entry.append_op_result(llvm::undef(
+        llvm::r#type::r#struct(
+            context,
+            &[
+                llvm::r#type::pointer(context, 0),
+                IntegerType::new(context, 32).into(),
+                IntegerType::new(context, 32).into(),
+                IntegerType::new(context, 32).into(),
+            ],
+            false,
+        ),
+        location,
+    ))?;
+    let value = entry.insert_values(
+        context,
+        location,
+        value,
+        &[dst_ptr, k0, array_len, array_len],
+    )?;
+
+    entry.append_operation(helper.br(0, &[value], location));
     Ok(())
 }
 
@@ -1732,31 +1955,15 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         location,
     ));
 
+    registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[0].ty,
+    )?;
+
     {
-        let k0 = block_ok.const_int(context, location, 0, 32)?;
-        let starts_at_zero = block_ok.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Eq,
-            array_start,
-            k0,
-            location,
-        ))?;
-
-        let array_cap = block_ok.extract_value(
-            context,
-            location,
-            entry.argument(0)?.into(),
-            IntegerType::new(context, 32).into(),
-            3,
-        )?;
-        let capacity_matches = block_ok.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Eq,
-            array_cap,
-            tuple_len,
-            location,
-        ))?;
-
         let array_ptr = block_ok.extract_value(
             context,
             location,
@@ -1764,87 +1971,210 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             llvm::r#type::pointer(context, 0),
             0,
         )?;
-        let should_forward_pointer =
-            block_ok.append_op_result(arith::andi(starts_at_zero, capacity_matches, location))?;
 
-        let block_clone = helper.append_block(Block::new(&[]));
-        let block_forward = helper.append_block(Block::new(&[]));
-        block_ok.append_operation(cf::cond_br(
+        let elem_stride =
+            block_ok.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
+        let tuple_len = block_ok.append_op_result(arith::extui(
+            tuple_len,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
+        let tuple_len = block_ok.append_op_result(arith::muli(tuple_len, elem_stride, location))?;
+
+        let box_ptr =
+            block_ok.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+        let box_ptr = block_ok.append_op_result(ReallocBindingsMeta::realloc(
+            context, box_ptr, tuple_len, location,
+        ))?;
+
+        let elem_offset = block_ok.append_op_result(arith::extui(
+            array_start,
+            IntegerType::new(context, 64).into(),
+            location,
+        ))?;
+        let elem_offset =
+            block_ok.append_op_result(arith::muli(elem_offset, elem_stride, location))?;
+        let elem_ptr = block_ok.append_op_result(llvm::get_element_ptr_dynamic(
             context,
-            should_forward_pointer,
-            block_forward,
-            block_clone,
+            array_ptr,
+            &[elem_offset],
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
+
+        // (has override, is shared) =>
+        //   (false, false) -> memcpy, then free
+        //   (false,  true) -> memcpy, then drop
+        //   ( true, false) -> memcpy, then free
+        //   ( true,  true) -> clone , then drop
+
+        let refcount_offset = get_integer_layout(32)
+            .align_to(elem_layout.align())
+            .unwrap()
+            .pad_to_align()
+            .size();
+        let ptr = block_ok.append_op_result(llvm::get_element_ptr(
+            context,
+            array_ptr,
+            DenseI32ArrayAttribute::new(context, &[-(refcount_offset as i32)]),
+            IntegerType::new(context, 8).into(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
+        let ref_count =
+            block_ok.load(context, location, ptr, IntegerType::new(context, 32).into())?;
+
+        let k1 = block_ok.const_int(context, location, 1, 32)?;
+        let is_shared = block_ok.append_op_result(arith::cmpi(
+            context,
+            CmpiPredicate::Ne,
+            ref_count,
+            k1,
+            location,
+        ))?;
+
+        let elem_ty = elem_ty.build(context, helper, registry, metadata, &info.ty)?;
+        match metadata.get::<DupOverridesMeta>() {
+            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
+                block_ok.append_operation(scf::r#if(
+                    is_shared,
+                    &[],
+                    {
+                        let region = Region::new();
+                        let block = region.append_block(Block::new(&[]));
+
+                        let k0 = block.const_int(context, location, 0, 64)?;
+                        block.append_operation(scf::r#for(
+                            k0,
+                            tuple_len,
+                            elem_stride,
+                            {
+                                let region = Region::new();
+                                let block = region.append_block(Block::new(&[(
+                                    IntegerType::new(context, 64).into(),
+                                    location,
+                                )]));
+
+                                let src_ptr =
+                                    block.append_op_result(llvm::get_element_ptr_dynamic(
+                                        context,
+                                        elem_ptr,
+                                        &[block.argument(0)?.into()],
+                                        IntegerType::new(context, 8).into(),
+                                        llvm::r#type::pointer(context, 0),
+                                        location,
+                                    ))?;
+                                let dst_ptr =
+                                    block.append_op_result(llvm::get_element_ptr_dynamic(
+                                        context,
+                                        box_ptr,
+                                        &[block.argument(0)?.into()],
+                                        IntegerType::new(context, 8).into(),
+                                        llvm::r#type::pointer(context, 0),
+                                        location,
+                                    ))?;
+
+                                let value = block.load(context, location, src_ptr, elem_ty)?;
+                                let values = dup_overrides_meta
+                                    .invoke_override(context, &block, location, &info.ty, value)?;
+                                block.store(context, location, src_ptr, values.0)?;
+                                block.store(context, location, dst_ptr, values.1)?;
+
+                                block.append_operation(scf::r#yield(&[], location));
+                                region
+                            },
+                            location,
+                        ));
+
+                        block.append_operation(scf::r#yield(&[], location));
+                        region
+                    },
+                    {
+                        let region = Region::new();
+                        let block = region.append_block(Block::new(&[]));
+
+                        block.append_operation(
+                            ods::llvm::intr_memcpy_inline(
+                                context,
+                                box_ptr,
+                                elem_ptr,
+                                IntegerAttribute::new(
+                                    IntegerType::new(context, 64).into(),
+                                    (tuple_len_val * elem_layout.pad_to_align().size()) as i64,
+                                ),
+                                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                                location,
+                            )
+                            .into(),
+                        );
+
+                        block.append_operation(scf::r#yield(&[], location));
+                        region
+                    },
+                    location,
+                ));
+            }
+            _ => {
+                block_ok.append_operation(
+                    ods::llvm::intr_memcpy_inline(
+                        context,
+                        box_ptr,
+                        elem_ptr,
+                        IntegerAttribute::new(
+                            IntegerType::new(context, 64).into(),
+                            (tuple_len_val * elem_layout.pad_to_align().size()) as i64,
+                        ),
+                        IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                        location,
+                    )
+                    .into(),
+                );
+            }
+        }
+
+        block_ok.append_operation(scf::r#if(
+            is_shared,
             &[],
-            &[],
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                // The following unwrap is unreachable because an array always has a drop
+                // implementation, which at this point is always inserted thanks to the call to
+                // `build_type()`.
+                metadata
+                    .get::<DropOverridesMeta>()
+                    .unwrap()
+                    .invoke_override(
+                        context,
+                        &block,
+                        location,
+                        &info.signature.param_signatures[0].ty,
+                        entry.argument(0)?.into(),
+                    )?;
+
+                block.append_operation(scf::r#yield(&[], location));
+                region
+            },
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                block.append_operation(ReallocBindingsMeta::free(context, ptr, location));
+
+                block.append_operation(scf::r#yield(&[], location));
+                region
+            },
             location,
         ));
 
-        {
-            let elem_stride =
-                block_clone.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
-            let tuple_len = block_clone.append_op_result(arith::extui(
-                tuple_len,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
-            let tuple_len =
-                block_clone.append_op_result(arith::muli(tuple_len, elem_stride, location))?;
-
-            let box_ptr = block_clone
-                .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
-            let box_ptr = block_clone.append_op_result(ReallocBindingsMeta::realloc(
-                context, box_ptr, tuple_len, location,
-            ))?;
-
-            let elem_offset = block_clone.append_op_result(arith::extui(
-                array_start,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
-            let elem_offset =
-                block_clone.append_op_result(arith::muli(elem_offset, elem_stride, location))?;
-            let elem_ptr = block_clone.append_op_result(llvm::get_element_ptr_dynamic(
-                context,
-                array_ptr,
-                &[elem_offset],
-                IntegerType::new(context, 8).into(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))?;
-
-            block_clone.append_operation(
-                ods::llvm::intr_memcpy_inline(
-                    context,
-                    box_ptr,
-                    elem_ptr,
-                    IntegerAttribute::new(
-                        IntegerType::new(context, 64).into(),
-                        (tuple_len_val * elem_layout.pad_to_align().size()) as i64,
-                    ),
-                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                    location,
-                )
-                .into(),
-            );
-
-            block_clone.append_operation(ReallocBindingsMeta::free(context, array_ptr, location));
-            block_clone.append_operation(helper.br(0, &[box_ptr], location));
-        }
-
-        block_forward.append_operation(helper.br(0, &[array_ptr], location));
+        block_ok.append_operation(helper.br(0, &[box_ptr], location));
     }
 
     {
-        registry.build_type(
-            context,
-            helper,
-            registry,
-            metadata,
-            &info.signature.param_signatures[0].ty,
-        )?;
-
         // The following unwrap is unreachable because an array always has a drop implementation,
-        // which at this point is always inserted thanks to the `build_type()` just above.
+        // which at this point is always inserted thanks to the call to `build_type()`.
         metadata
             .get::<DropOverridesMeta>()
             .unwrap()
