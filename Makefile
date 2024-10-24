@@ -1,7 +1,7 @@
 # Environment detection.
 
 UNAME := $(shell uname)
-CAIRO_2_VERSION = 2.8.4
+CAIRO_2_VERSION = 2.9.0-dev.0
 SCARB_VERSION = 2.8.4
 
 # Usage is the default target for newcomers running `make`.

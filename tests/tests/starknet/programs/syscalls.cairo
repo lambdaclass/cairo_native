@@ -4,16 +4,21 @@ use core::starknet::{
     keccak_syscall,
     library_call_syscall, replace_class_syscall, send_message_to_l1_syscall,
     storage_address_try_from_felt252, storage_read_syscall, storage_write_syscall, SyscallResult,
-    testing::cheatcode,
+    testing::cheatcode, class_hash::ClassHash
 };
 use core::starknet::syscalls::get_execution_info_syscall;
 use core::starknet::syscalls::get_execution_info_v2_syscall;
+use core::starknet::syscalls::get_class_hash_at_syscall;
 use core::sha256::{sha256_state_handle_init, sha256_state_handle_digest, SHA256_INITIAL_STATE};
 use core::box::BoxTrait;
 use core::starknet::SyscallResultTrait;
 
 fn get_block_hash() -> SyscallResult<felt252> {
     get_block_hash_syscall(0)
+}
+
+fn get_class_hash_at() -> SyscallResult<ClassHash> {
+    get_class_hash_at_syscall(contract_address_const::<2>())
 }
 
 fn get_execution_info() -> SyscallResult<Box<core::starknet::info::ExecutionInfo>> {

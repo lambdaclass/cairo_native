@@ -502,6 +502,14 @@ impl StarknetSyscallHandler for SyscallHandler {
     ) -> SyscallResult<()> {
         Ok(())
     }
+
+    fn get_class_hash_at(
+        &mut self,
+        contract_address: Felt,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Felt> {
+        Ok(contract_address)
+    }
 }
 
 lazy_static! {
@@ -1196,6 +1204,26 @@ fn sha256_process() {
                 }],
                 debug_name: None
             }),
+            debug_name: None,
+        },
+    );
+}
+
+#[test]
+fn get_class_hash_at() {
+    let result = run_native_program(
+        &SYSCALLS_PROGRAM,
+        "get_class_hash_at",
+        &[],
+        Some(u128::MAX),
+        Some(SyscallHandler::new()),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        Value::Enum {
+            tag: 0,
+            value: Box::new(Value::Felt252(2.into())),
             debug_name: None,
         },
     );

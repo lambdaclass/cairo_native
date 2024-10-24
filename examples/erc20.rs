@@ -274,6 +274,14 @@ impl StarknetSyscallHandler for SyscallHandler {
     ) -> SyscallResult<()> {
         unimplemented!()
     }
+
+    fn get_class_hash_at(
+        &mut self,
+        _contract_address: Felt,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Felt> {
+        todo!()
+    }
 }
 
 fn main() {

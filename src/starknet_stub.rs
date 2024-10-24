@@ -647,6 +647,14 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         sha2::compress256(state, &[data_as_bytes]);
         Ok(())
     }
+
+    fn get_class_hash_at(
+        &mut self,
+        contract_address: Felt,
+        _remaining_gas: &mut u128,
+    ) -> SyscallResult<Felt> {
+        Ok(contract_address)
+    }
 }
 
 #[cfg(test)]
