@@ -336,16 +336,24 @@ fn parse_result(
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?),
+        CoreTypeConcrete::Array(_) => Ok(Value::from_ptr(
+            return_ptr.unwrap(),
+            type_id,
+            registry,
+            true,
+        )?),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
-            let value = Value::from_ptr(ptr, &info.ty, registry)?;
+            let value = Value::from_ptr(ptr, &info.ty, registry, true)?;
             libc_free(ptr.cast().as_ptr());
             Ok(value)
         },
-        CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
-            Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?)
-        }
+        CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => Ok(Value::from_ptr(
+            return_ptr.unwrap(),
+            type_id,
+            registry,
+            true,
+        )?),
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
@@ -353,7 +361,7 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry, true)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -372,7 +380,7 @@ fn parse_result(
             }
         },
         CoreTypeConcrete::Bytes31(_) => match return_ptr {
-            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry, true)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -387,7 +395,7 @@ fn parse_result(
             }
         },
         CoreTypeConcrete::BoundedInt(info) => match return_ptr {
-            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry, true)?),
             None => {
                 let mut data = if info.range.offset_bit_width() <= 64 {
                     BigInt::from(ret_registers[0])
@@ -459,7 +467,7 @@ fn parse_result(
                 Ok(Value::Null)
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
-                let value = Value::from_ptr(ptr, &info.ty, registry)?;
+                let value = Value::from_ptr(ptr, &info.ty, registry, true)?;
                 libc_free(ptr.as_ptr().cast());
                 Ok(value)
             }
@@ -515,7 +523,7 @@ fn parse_result(
                 }
             };
             let value = match ptr {
-                Ok(ptr) => Box::new(Value::from_ptr(ptr, &info.variants[tag], registry)?),
+                Ok(ptr) => Box::new(Value::from_ptr(ptr, &info.variants[tag], registry, true)?),
                 Err(offset) => {
                     ret_registers.copy_within(offset.., 0);
                     Box::new(parse_result(
@@ -540,14 +548,19 @@ fn parse_result(
                     debug_name: Some(debug_name),
                 })
             } else {
-                Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?)
+                Ok(Value::from_ptr(
+                    return_ptr.unwrap(),
+                    type_id,
+                    registry,
+                    true,
+                )?)
             }
         }
         CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
                 addr_of_mut!(ret_registers[0]) as *mut ()
             ));
-            Ok(Value::from_ptr(ptr, type_id, registry)?)
+            Ok(Value::from_ptr(ptr, type_id, registry, true)?)
         },
 
         CoreTypeConcrete::Snapshot(info) => {
