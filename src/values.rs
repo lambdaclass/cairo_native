@@ -76,6 +76,10 @@ pub enum Value {
         #[serde(with = "range_serde")]
         range: Range,
     },
+    IntRange {
+        x: Box<Value>,
+        y: Box<Value>,
+    },
     /// Used as return value for Nullables that are null.
     Null,
 }
@@ -511,6 +515,36 @@ impl Value {
                 Self::Null => {
                     unimplemented!("null is meant as return value for nullable for now")
                 }
+                Self::IntRange { x, y } => {
+                    if let CoreTypeConcrete::IntRange(info) = Self::resolve_type(ty, registry)? {
+                        let inner = registry.get_type(&info.ty)?;
+                        let inner_layout = inner.layout(registry)?;
+
+                        let mut data = Vec::with_capacity(2);
+
+                        let member_ptr = x.to_ptr(arena, registry, &info.ty)?;
+                        data.push((inner_layout, 0, member_ptr));
+
+                        let (struct_layout, offset) = inner_layout.extend(inner_layout)?;
+
+                        let member_ptr = y.to_ptr(arena, registry, &info.ty)?;
+                        data.push((inner_layout, offset, member_ptr));
+
+                        let ptr = arena.alloc_layout(struct_layout.pad_to_align()).as_ptr();
+
+                        for (layout, offset, member_ptr) in data {
+                            std::ptr::copy_nonoverlapping(
+                                member_ptr.cast::<u8>().as_ptr(),
+                                ptr.byte_add(offset),
+                                layout.size(),
+                            );
+                        }
+
+                        NonNull::new_unchecked(ptr).cast()
+                    } else {
+                        unreachable!()
+                    }
+                }
             }
         })
     }
@@ -802,7 +836,35 @@ impl Value {
                 CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::Circuit(_)
                 | CoreTypeConcrete::RangeCheck96(_) => todo!(),
-                CoreTypeConcrete::IntRange(_) => todo!("2.9.0"),
+                CoreTypeConcrete::IntRange(info) => {
+                    let mut layout: Option<Layout> = None;
+                    let mut members = Vec::with_capacity(2);
+
+                    for member_ty in &[&info.ty, &info.ty] {
+                        let member = registry.get_type(member_ty)?;
+                        let member_layout = member.layout(registry)?;
+
+                        let (new_layout, offset) = match layout {
+                            Some(layout) => layout.extend(member_layout)?,
+                            None => (member_layout, 0),
+                        };
+                        layout = Some(new_layout);
+
+                        members.push(Self::from_ptr(
+                            NonNull::new(ptr.as_ptr().byte_add(offset)).unwrap(),
+                            member_ty,
+                            registry,
+                        )?);
+                    }
+
+                    let y = members.pop().unwrap();
+                    let x = members.pop().unwrap();
+
+                    Self::IntRange {
+                        x: x.into(),
+                        y: y.into(),
+                    }
+                }
             }
         })
     }

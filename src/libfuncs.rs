@@ -39,6 +39,7 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
+mod int_range;
 mod mem;
 mod nullable;
 mod pedersen;
@@ -229,9 +230,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::BoundedInt(info) => {
                 self::bounded_int::build(context, registry, entry, location, helper, metadata, info)
             }
-            Self::IntRange(_info) => {
-                todo!("2.9.0")
-            }
+            Self::IntRange(selector) => self::int_range::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
         }
     }
 
