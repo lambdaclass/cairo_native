@@ -65,11 +65,7 @@ jobs:
       - name: Patch dependencies
         run: |
           # Patches native dependency to local path, to use current cairo native version
-          NEW_PATH="path = 'cairo_native'"
-          sed -Ei "s/^(cairo-native = \{).*/\1$NEW_PATH }/" Cargo.toml
-          # Patches sequencer dependency to specified rev
-          NEW_PATH="git = 'https://github.com/lambdaclass/sequencer', rev = '$SEQUENCER_REV'"
-          sed -Ei "s/^(sequencer = \{).*/\1$NEW_PATH }/" Cargo.toml
+          sed -Ei "s/^(cairo-native = \{).*/\1 path = 'cairo_native' }/" Cargo.toml
 
       - name: Run with Native
         run: |
