@@ -8,7 +8,7 @@ on:
   push:
 
 env:
-  RANGE_SIZE: 100
+  RANGE_SIZE: 5
   SEQUENCER_REV: 1b1b95cae7ae07b9bc778443ca75ee18008a6bc8
 
 jobs:
@@ -65,16 +65,21 @@ jobs:
           cd ../cairo_native
           make runtime
           echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
-          
+      
       - name: Patch dependencies
         run: |
           # Patches native dependency to local path, to use current cairo native version
           DEPENDENCY="cairo-native"
           NEW_PATH="../cairo_native"
           sed -Ei "s#^($DEPENDENCY\s*=).*#\1 { path = '$NEW_PATH' }#" Cargo.toml
+          grep $DEPENDENCY Cargo.toml
 
-      - run: cat Cargo.toml | tail -n 1
-
+          # Patches sequencer dependency to specified rev
+          GIT="https://github.com/lambdaclass/sequencer"
+          NEW_REV="$SEQUENCER_REV"
+          sed -Ei "s#(\"$GIT\" *, *rev *= *\").?*(\".*)#\1$NEW_REV\2#" Cargo.toml
+          grep $GIT Cargo.toml
+          
       - name: Run with Native
         run: |
           BLOCK_START=${{ matrix.block }}
