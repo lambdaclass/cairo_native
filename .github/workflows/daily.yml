@@ -8,8 +8,7 @@ on:
   push:
 
 env:
-  # increase later, only for testing
-  RANGE_SIZE: 1
+  RANGE_SIZE: 100
   SEQUENCER_REV: 1b1b95cae7ae07b9bc778443ca75ee18008a6bc8
 
 jobs:
@@ -35,8 +34,6 @@ jobs:
           - 747000
           - 748000
           - 749000
-          # remove later, only for testing
-          - 803072
       fail-fast: false
 
     steps:
