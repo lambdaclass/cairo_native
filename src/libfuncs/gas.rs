@@ -105,7 +105,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         context,
         is_enough,
         [0, 1],
-        [&[range_check, resulting_gas]; 2],
+        [&[range_check, resulting_gas], &[range_check, current_gas]],
         location,
     ));
 
@@ -148,7 +148,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
         context,
         is_enough,
         [0, 1],
-        [&[range_check, resulting_gas]; 2],
+        [&[range_check, resulting_gas], &[range_check, current_gas]],
         location,
     ));
 
