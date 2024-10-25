@@ -3,6 +3,8 @@ name: Execute blocks
 on:
   pull_request:
     branches: [main]
+  merge_group:
+    types: [checks_requested]
 
 jobs:
   run-blocks:
@@ -77,12 +79,6 @@ jobs:
 
       - name: Install Starknet Replay deps
         run: make deps
-
-      - name: Patch Cairo Native's version
-        if: ${{ matrix.runner == 'native' }}
-        run: |
-          cd replay
-          sed -r -i 's/cairo_native.*rev.*[0-9a-z]+./cairo_native.git", rev = "${{ github.event.pull_request.head.sha }}"/' Cargo.toml
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
