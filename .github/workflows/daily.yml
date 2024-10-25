@@ -35,6 +35,10 @@ jobs:
           - 748000
           - 749000
       fail-fast: false
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./starknet-replay
 
     steps:
       # We checkout replay first, as it's the main repository for this workflow
@@ -42,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
-          path: .
+          path: starknet-replay
       # We need native for building the runtime, so we checkout it to a subdirectory
       - name: Checkout Native
         uses: actions/checkout@v4
@@ -58,14 +62,18 @@ jobs:
       - name: Build Cairo Native Runtime Library
         shell: bash
         run: |
-          cd cairo_native
+          cd ../cairo_native
           make runtime
           echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
-
+          
       - name: Patch dependencies
         run: |
           # Patches native dependency to local path, to use current cairo native version
-          sed -Ei "s/^(cairo-native = \{).*/\1 path = 'cairo_native' }/" Cargo.toml
+          DEPENDENCY="cairo-native"
+          NEW_PATH="../cairo_native"
+          sed -Ei "s#^($DEPENDENCY\s*=).*#\1 { path = '$NEW_PATH' }#" Cargo.toml
+
+      - run: cat Cargo.toml | tail -n 1
 
       - name: Run with Native
         run: |
@@ -79,4 +87,4 @@ jobs:
           cargo run --release --features state_dump,only_cairo_vm block-range $BLOCK_START $BLOCK_END mainnet
 
       - name: Compare states
-        run: ./cairo_native/scripts/cmp_state_dumps.sh
+        run: ../cairo_native/scripts/cmp_state_dumps.sh
