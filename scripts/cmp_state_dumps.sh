@@ -33,7 +33,6 @@ for vm_dump in state_dumps/vm/*/*.json; do
     echo "diff:  $base"
     diffing=$((diffing+1))
   else
-    echo "match: $base"
     matching=$((matching+1))
   fi
 done
