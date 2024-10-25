@@ -68,8 +68,6 @@ jobs:
         run: |
           # Removes the "rev" portion of the native patch, allowing to use current native version
           sed -Ei 's/(\/\/cairo_native\.git").*/\1, path = "cairo_native" }/' Cargo.toml
-          # Updates Cargo.lock to use latest native main commit
-          cargo update
 
       - name: Run with Native
         run: |
