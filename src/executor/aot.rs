@@ -81,7 +81,6 @@ impl AotNativeExecutor {
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
             self.extract_signature(function_id),
             args,
             available_gas,
@@ -104,7 +103,6 @@ impl AotNativeExecutor {
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
             self.extract_signature(function_id),
             args,
             available_gas,
@@ -127,7 +125,6 @@ impl AotNativeExecutor {
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
             self.extract_signature(function_id),
             &[Value::Struct {
                 fields: vec![Value::Array(
@@ -152,15 +149,6 @@ impl AotNativeExecutor {
                 .unwrap()
                 .into_raw()
                 .into_raw()
-        }
-    }
-
-    pub fn find_symbol_ptr(&self, name: &str) -> Option<*mut c_void> {
-        unsafe {
-            self.library
-                .get::<*mut ()>(name.as_bytes())
-                .ok()
-                .map(|x| x.into_raw().into_raw())
         }
     }
 

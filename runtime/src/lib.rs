@@ -674,7 +674,13 @@ pub mod trace_dump {
     };
     use starknet_types_core::felt::Felt;
     use std::{
-        alloc::Layout, collections::HashMap, marker::PhantomData, mem::swap, ops::Range, ptr::NonNull, sync::{LazyLock, Mutex}
+        alloc::Layout,
+        collections::HashMap,
+        marker::PhantomData,
+        mem::swap,
+        ops::Range,
+        ptr::NonNull,
+        sync::{LazyLock, Mutex},
     };
 
     use crate::FeltDict;
@@ -901,9 +907,7 @@ pub mod trace_dump {
             CoreTypeConcrete::Enum(info) => {
                 let tag_bits = info.variants.len().next_power_of_two().trailing_zeros();
                 let (tag_value, layout) = match tag_bits {
-                    0 => {
-                        (0, Layout::new::<PhantomData<u8>>())
-                    },
+                    0 => (0, Layout::new::<()>()),
                     width if width <= 8 => {
                         (value_ptr.cast::<u8>().read() as usize, Layout::new::<u8>())
                     }
