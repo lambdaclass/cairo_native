@@ -47,7 +47,7 @@ jobs:
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-      # We need native for building the runtime, so we checkout it to a subdirectory
+      # We need native for building the runtime
       - name: Checkout Native
         uses: actions/checkout@v4
         with:
