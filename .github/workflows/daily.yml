@@ -71,7 +71,7 @@ jobs:
           # Patches native dependency to local path, to use current cairo native version
           DEPENDENCY="cairo-native"
           NEW_PATH="../cairo_native"
-          sed -Ei "s#^($DEPENDENCY\s*=).*#\1 { path = '$NEW_PATH' }#" Cargo.toml
+          sed -Ei "s#^($DEPENDENCY *=).*#\1 { path = '$NEW_PATH' }#" Cargo.toml
           grep $DEPENDENCY Cargo.toml
 
           # Patches sequencer dependency to specified rev
