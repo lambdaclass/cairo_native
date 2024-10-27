@@ -84,7 +84,7 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         run: |
           cd replay
-          sed -r -i 's/cairo-native.*/cairo-native = { path = "..\/cairo_native" }/' Cargo.toml
+          sed -r -i 's/cairo-native.*/cairo-native = { path = ".." }/' Cargo.toml
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
