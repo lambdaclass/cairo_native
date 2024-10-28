@@ -43,8 +43,8 @@ fn keccak_test() {
     assert_eq!(result.return_values, vec![1.into()]);
 
     let result_aot_ct = run_native_starknet_aot_contract(
-        &program,
-        entry_point.function_idx,
+        contract,
+        &entry_point.selector,
         &[],
         &mut StubSyscallHandler::default(),
     );

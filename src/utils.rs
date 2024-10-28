@@ -517,7 +517,8 @@ pub mod test {
         program::Program,
         program::{FunctionSignature, GenFunction, StatementIdx},
     };
-    use cairo_lang_starknet::starknet_plugin_suite;
+    use cairo_lang_starknet::{compile::compile_contract_in_prepared_db, starknet_plugin_suite};
+    use cairo_lang_starknet_classes::contract_class::ContractClass;
     use pretty_assertions_sorted::assert_eq;
     use std::io::Write;
     use std::{env::var, fmt::Formatter, fs, path::Path};
@@ -532,8 +533,14 @@ pub mod test {
             $crate::utils::test::load_starknet_str(stringify!($($program)+))
         };
     }
+    macro_rules! load_starknet_contract {
+        ( $( $program:tt )+ ) => {
+            $crate::utils::test::load_starknet_contract_str(stringify!($($program)+))
+        };
+    }
     pub(crate) use load_cairo;
     pub(crate) use load_starknet;
+    pub(crate) use load_starknet_contract;
 
     // Helper macros for faster testing.
     macro_rules! jit_struct {
@@ -590,6 +597,49 @@ pub mod test {
                 .build()
                 .unwrap(),
         )
+    }
+
+    pub(crate) fn load_starknet_contract_str(program_str: &str) -> (String, ContractClass) {
+        compile_contract(
+            program_str,
+            RootDatabase::builder()
+                .with_plugin_suite(starknet_plugin_suite())
+                .build()
+                .unwrap(),
+        )
+    }
+
+    pub(crate) fn compile_contract(
+        program_str: &str,
+        mut db: RootDatabase,
+    ) -> (String, ContractClass) {
+        let mut program_file = tempfile::Builder::new()
+            .prefix("test_")
+            .suffix(".cairo")
+            .tempfile()
+            .unwrap();
+        fs::write(&mut program_file, program_str).unwrap();
+
+        init_dev_corelib(
+            &mut db,
+            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+        );
+        let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
+        let contract = compile_contract_in_prepared_db(
+            &db,
+            None,
+            main_crate_ids,
+            CompilerConfig {
+                diagnostics_reporter: DiagnosticsReporter::stderr(),
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let module_name = program_file.path().with_extension("");
+        let module_name = module_name.file_name().unwrap().to_str().unwrap();
+        (module_name.to_string(), contract)
     }
 
     pub(crate) fn compile_program(program_str: &str, mut db: RootDatabase) -> (String, Program) {

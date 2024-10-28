@@ -72,6 +72,9 @@ pub enum Error {
     #[error("missing BuiltinCosts global symbol, should never happen, this is a bug")]
     MissingBuiltinCostsSymbol,
 
+    #[error("selector not found in the AotContractExecutor mappings")]
+    SelectorNotFound,
+
     #[error(transparent)]
     IoError(#[from] std::io::Error),
 
