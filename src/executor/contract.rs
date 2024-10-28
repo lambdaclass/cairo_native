@@ -56,13 +56,15 @@ use cairo_lang_sierra::{
     ids::FunctionId,
     program::Program,
 };
+use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 use educe::Educe;
 use libloading::Library;
+use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     ffi::c_void,
     path::{Path, PathBuf},
     ptr::NonNull,
@@ -78,13 +80,14 @@ pub struct AotContractExecutor {
     library: Arc<Library>,
     path: PathBuf,
     is_temp_path: bool,
-    contract_info: ContractInfo,
+    contract_info: NativeContractInfo,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ContractInfo {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NativeContractInfo {
     pub version: ContractInfoVersion,
-    pub entry_points: BTreeMap<u64, EntryPointInfo>,
+    pub entry_points_info: BTreeMap<u64, EntryPointInfo>,
+    pub entry_point_selector_to_id: BTreeMap<BigUint, u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -139,7 +142,11 @@ impl AotContractExecutor {
     /// If not saved, the path is treated as
     /// a temporary file an deleted when dropped.
     /// If you loaded a ContractExecutor using [`load`] then it will not be treated as a temp file.
-    pub fn new(sierra_program: &Program, opt_level: OptLevel) -> Result<Self> {
+    pub fn new(
+        sierra_program: &Program,
+        entry_points: &ContractEntryPoints,
+        opt_level: OptLevel,
+    ) -> Result<Self> {
         let native_context = NativeContext::new();
         let module = native_context.compile(sierra_program, true)?;
 
@@ -156,7 +163,25 @@ impl AotContractExecutor {
 
         let mut infos = BTreeMap::new();
 
+        let mut entry_point_selector_to_id = BTreeMap::new();
+
+        let mut used_function_ids = HashSet::new();
+        for entry in entry_points
+            .constructor
+            .iter()
+            .chain(entry_points.external.iter())
+            .chain(entry_points.l1_handler.iter())
+        {
+            entry_point_selector_to_id.insert(entry.selector.clone(), entry.function_idx as u64);
+            used_function_ids.insert(entry.function_idx as u64);
+        }
+
         for x in &sierra_program.funcs {
+            // Avoid storing function info for methods that are not contract entry points.
+            if !used_function_ids.contains(&x.id.id) {
+                continue;
+            }
+
             let mut builtins = Vec::new();
 
             for p in &x.params {
@@ -220,9 +245,10 @@ impl AotContractExecutor {
             library: Arc::new(unsafe { Library::new(&library_path)? }),
             path: library_path,
             is_temp_path: true,
-            contract_info: ContractInfo {
+            contract_info: NativeContractInfo {
                 version: ContractInfoVersion::Version0,
-                entry_points: infos,
+                entry_points_info: infos,
+                entry_point_selector_to_id,
             },
         })
     }
@@ -245,7 +271,7 @@ impl AotContractExecutor {
     /// Load the executor from an already compiled library with the additional info json file.
     pub fn load(library_path: &Path) -> Result<Self> {
         let info_str = std::fs::read_to_string(library_path.with_extension("json"))?;
-        let contract_info: ContractInfo = serde_json::from_str(&info_str)?;
+        let contract_info: NativeContractInfo = serde_json::from_str(&info_str)?;
         Ok(Self {
             library: Arc::new(unsafe { Library::new(library_path)? }),
             path: library_path.to_path_buf(),
@@ -257,7 +283,7 @@ impl AotContractExecutor {
     /// Runs the given entry point.
     pub fn run(
         &self,
-        function_id: &FunctionId,
+        selector: &BigUint,
         args: &[Felt],
         gas: Option<u128>,
         builtin_costs: Option<BuiltinCosts>,
@@ -266,7 +292,15 @@ impl AotContractExecutor {
         let arena = Bump::new();
         let mut invoke_data = Vec::<u8>::new();
 
-        let function_ptr = self.find_function_ptr(function_id, true)?;
+        let function_id = FunctionId {
+            id: *self
+                .contract_info
+                .entry_point_selector_to_id
+                .get(selector)
+                .ok_or(Error::SelectorNotFound)?,
+            debug_name: None,
+        };
+        let function_ptr = self.find_function_ptr(&function_id, true)?;
         let builtin_costs_ptr = self
             .find_symbol_ptr("builtin_costs")
             .ok_or_else(|| Error::MissingBuiltinCostsSymbol)?;
@@ -279,7 +313,7 @@ impl AotContractExecutor {
 
             for (offset, val) in self
                 .contract_info
-                .entry_points
+                .entry_points_info
                 .get(&function_id.id)
                 .unwrap()
                 .initial_cost
@@ -299,7 +333,7 @@ impl AotContractExecutor {
         }
 
         //  it can vary from contract to contract thats why we need to store/ load it.
-        let builtins_size: usize = self.contract_info.entry_points[&function_id.id]
+        let builtins_size: usize = self.contract_info.entry_points_info[&function_id.id]
             .builtins
             .iter()
             .map(|x| x.size_in_bytes())
@@ -316,7 +350,7 @@ impl AotContractExecutor {
 
         let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
 
-        for b in &self.contract_info.entry_points[&function_id.id].builtins {
+        for b in &self.contract_info.entry_points_info[&function_id.id].builtins {
             match b {
                 BuiltinType::Gas => {
                     gas.to_bytes(&mut invoke_data)?;
@@ -398,7 +432,7 @@ impl AotContractExecutor {
 
         let return_ptr = &mut return_ptr.cast();
 
-        for b in &self.contract_info.entry_points[&function_id.id].builtins {
+        for b in &self.contract_info.entry_points_info[&function_id.id].builtins {
             match b {
                 BuiltinType::Gas => {
                     remaining_gas = unsafe { *read_value::<u128>(return_ptr) };
@@ -550,14 +584,14 @@ impl Drop for AotContractExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{starknet_stub::StubSyscallHandler, utils::test::load_starknet};
-    use cairo_lang_sierra::program::Program;
+    use crate::{starknet_stub::StubSyscallHandler, utils::test::load_starknet_contract};
+    use cairo_lang_starknet_classes::contract_class::ContractClass;
     use rayon::iter::ParallelBridge;
     use rstest::*;
 
     #[fixture]
-    fn starknet_program() -> Program {
-        let (_, program) = load_starknet! {
+    fn starknet_program() -> ContractClass {
+        let (_, program) = load_starknet_contract! {
             #[starknet::interface]
             trait ISimpleStorage<TContractState> {
                 fn get(self: @TContractState, x: felt252) -> (felt252, felt252);
@@ -580,8 +614,8 @@ mod tests {
     }
 
     #[fixture]
-    fn starknet_program_empty() -> Program {
-        let (_, program) = load_starknet! {
+    fn starknet_program_empty() -> ContractClass {
+        let (_, program) = load_starknet_contract! {
             #[starknet::interface]
             trait ISimpleStorage<TContractState> {
                 fn call(self: @TContractState);
@@ -604,23 +638,34 @@ mod tests {
 
     #[rstest]
     #[case(OptLevel::Default)]
-    fn test_contract_executor_parallel(starknet_program: Program, #[case] optlevel: OptLevel) {
+    fn test_contract_executor_parallel(
+        starknet_program: ContractClass,
+        #[case] optlevel: OptLevel,
+    ) {
         use rayon::iter::ParallelIterator;
 
-        let executor = Arc::new(AotContractExecutor::new(&starknet_program, optlevel).unwrap());
+        let executor = Arc::new(
+            AotContractExecutor::new(
+                &starknet_program.extract_sierra_program().unwrap(),
+                &starknet_program.entry_points_by_type,
+                optlevel,
+            )
+            .unwrap(),
+        );
 
         // The last function in the program is the `get` wrapper function.
-        let entrypoint_function_id = starknet_program
-            .funcs
+        let selector = starknet_program
+            .entry_points_by_type
+            .external
             .last()
-            .expect("should have a function")
-            .id
+            .unwrap()
+            .selector
             .clone();
 
         (0..200).par_bridge().for_each(|n| {
             let result = executor
                 .run(
-                    &entrypoint_function_id,
+                    &selector,
                     &[n.into()],
                     Some(u64::MAX as u128),
                     None,
@@ -636,19 +681,26 @@ mod tests {
     #[rstest]
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
-    fn test_contract_executor(starknet_program: Program, #[case] optlevel: OptLevel) {
-        let executor = AotContractExecutor::new(&starknet_program, optlevel).unwrap();
+    fn test_contract_executor(starknet_program: ContractClass, #[case] optlevel: OptLevel) {
+        let executor = AotContractExecutor::new(
+            &starknet_program.extract_sierra_program().unwrap(),
+            &starknet_program.entry_points_by_type,
+            optlevel,
+        )
+        .unwrap();
 
         // The last function in the program is the `get` wrapper function.
-        let entrypoint_function_id = &starknet_program
-            .funcs
+        let selector = starknet_program
+            .entry_points_by_type
+            .external
             .last()
-            .expect("should have a function")
-            .id;
+            .unwrap()
+            .selector
+            .clone();
 
         let result = executor
             .run(
-                entrypoint_function_id,
+                &selector,
                 &[2.into()],
                 Some(u64::MAX as u128),
                 None,
@@ -662,19 +714,30 @@ mod tests {
     #[rstest]
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
-    fn test_contract_executor_empty(starknet_program_empty: Program, #[case] optlevel: OptLevel) {
-        let executor = AotContractExecutor::new(&starknet_program_empty, optlevel).unwrap();
+    fn test_contract_executor_empty(
+        starknet_program_empty: ContractClass,
+        #[case] optlevel: OptLevel,
+    ) {
+        let executor = AotContractExecutor::new(
+            &starknet_program_empty.extract_sierra_program().unwrap(),
+            &starknet_program_empty.entry_points_by_type,
+            optlevel,
+        )
+        .unwrap();
 
         // The last function in the program is the `get` wrapper function.
-        let entrypoint_function_id = &starknet_program_empty
-            .funcs
+        // The last function in the program is the `get` wrapper function.
+        let selector = starknet_program_empty
+            .entry_points_by_type
+            .external
             .last()
-            .expect("should have a function")
-            .id;
+            .unwrap()
+            .selector
+            .clone();
 
         let result = executor
             .run(
-                entrypoint_function_id,
+                &selector,
                 &[],
                 Some(u64::MAX as u128),
                 None,

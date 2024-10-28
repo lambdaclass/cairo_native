@@ -48,7 +48,7 @@ use lambdaworks_math::{
     },
     unsigned_integer::element::UnsignedInteger,
 };
-use num_bigint::{BigInt, Sign};
+use num_bigint::{BigInt, BigUint, Sign};
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use starknet_types_core::felt::Felt;
 use std::{collections::HashMap, env::var, fs, ops::Neg, path::Path};
@@ -434,17 +434,19 @@ pub fn run_native_starknet_contract(
 }
 
 pub fn run_native_starknet_aot_contract(
-    sierra_program: &Program,
-    entry_point_function_idx: usize,
+    contract: &ContractClass,
+    selector: &BigUint,
     args: &[Felt],
     handler: impl StarknetSyscallHandler,
 ) -> ContractExecutionResult {
-    let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
-    let entry_point_id = &entry_point_fn.id;
-
-    let native_executor = AotContractExecutor::new(sierra_program, Default::default()).unwrap();
+    let native_executor = AotContractExecutor::new(
+        &contract.extract_sierra_program().unwrap(),
+        &contract.entry_points_by_type,
+        Default::default(),
+    )
+    .unwrap();
     native_executor
-        .run(entry_point_id, args, u128::MAX.into(), None, handler)
+        .run(selector, args, u128::MAX.into(), None, handler)
         .expect("failed to execute the given contract")
 }
 
