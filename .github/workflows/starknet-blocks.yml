@@ -1,9 +1,8 @@
 name: Execute blocks
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    branches: [main]
   merge_group:
     types: [checks_requested]
 
@@ -85,7 +84,7 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         run: |
           cd replay
-          sed -r -i 's/cairo_native.*rev.*[0-9a-z]+./cairo_native.git", rev = "${{ github.event.pull_request.head.sha }}"/' Cargo.toml
+          sed -r -i 's/cairo-native.*/cairo-native = { path = ".." }/' Cargo.toml
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
