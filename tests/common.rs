@@ -446,7 +446,7 @@ pub fn run_native_starknet_aot_contract(
     )
     .unwrap();
     native_executor
-        .run(selector, args, u128::MAX.into(), None, handler)
+        .run(Felt::from(selector), args, u128::MAX.into(), None, handler)
         .expect("failed to execute the given contract")
 }
 

@@ -59,7 +59,6 @@ use cairo_lang_sierra::{
 use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 use educe::Educe;
 use libloading::Library;
-use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{
@@ -87,7 +86,7 @@ pub struct AotContractExecutor {
 pub struct NativeContractInfo {
     pub version: ContractInfoVersion,
     pub entry_points_info: BTreeMap<u64, EntryPointInfo>,
-    pub entry_point_selector_to_id: BTreeMap<BigUint, u64>,
+    pub entry_point_selector_to_id: BTreeMap<Felt, u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -172,7 +171,8 @@ impl AotContractExecutor {
             .chain(entry_points.external.iter())
             .chain(entry_points.l1_handler.iter())
         {
-            entry_point_selector_to_id.insert(entry.selector.clone(), entry.function_idx as u64);
+            entry_point_selector_to_id
+                .insert(Felt::from(&entry.selector), entry.function_idx as u64);
             used_function_ids.insert(entry.function_idx as u64);
         }
 
@@ -283,7 +283,7 @@ impl AotContractExecutor {
     /// Runs the given entry point.
     pub fn run(
         &self,
-        selector: &BigUint,
+        selector: Felt,
         args: &[Felt],
         gas: Option<u128>,
         builtin_costs: Option<BuiltinCosts>,
@@ -296,7 +296,7 @@ impl AotContractExecutor {
             id: *self
                 .contract_info
                 .entry_point_selector_to_id
-                .get(selector)
+                .get(&selector)
                 .ok_or(Error::SelectorNotFound)?,
             debug_name: None,
         };
@@ -665,7 +665,7 @@ mod tests {
         (0..200).par_bridge().for_each(|n| {
             let result = executor
                 .run(
-                    &selector,
+                    Felt::from(&selector),
                     &[n.into()],
                     Some(u64::MAX as u128),
                     None,
@@ -700,7 +700,7 @@ mod tests {
 
         let result = executor
             .run(
-                &selector,
+                Felt::from(&selector),
                 &[2.into()],
                 Some(u64::MAX as u128),
                 None,
@@ -737,7 +737,7 @@ mod tests {
 
         let result = executor
             .run(
-                &selector,
+                Felt::from(&selector),
                 &[],
                 Some(u64::MAX as u128),
                 None,
