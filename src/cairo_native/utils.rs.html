@@ -1019,10 +1019,14 @@
 <a href="#1019" id="1019">1019</a>
 <a href="#1020" id="1020">1020</a>
 <a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::{
-    block_ext::BlockExt, program_registry_ext::ProgramRegistryExt, range_ext::RangeExt,
+    block_ext::{BlockExt, GepIndex},
+    program_registry_ext::ProgramRegistryExt,
+    range_ext::RangeExt,
 };
 <span class="kw">use crate</span>::{metadata::MetadataStorage, OptLevel};
 <span class="kw">use </span>cairo_lang_compiler::CompilerConfig;

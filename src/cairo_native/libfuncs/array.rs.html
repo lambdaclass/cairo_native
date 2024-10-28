@@ -2638,7 +2638,6 @@
 <a href="#2638" id="2638">2638</a>
 <a href="#2639" id="2639">2639</a>
 <a href="#2640" id="2640">2640</a>
-<a href="#2641" id="2641">2641</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="comment">// TODO: A future possible improvement would be to put the array behind a double pointer and a
@@ -2651,7 +2650,7 @@
         drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::{BlockExt, GepIndex, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -3120,14 +3119,13 @@
         <span class="kw">let </span>elem_offset =
             valid_block.append_op_result(arith::muli(elem_stride, index, location))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>elem_ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
+        <span class="kw">let </span>elem_ptr = valid_block.gep(
             context,
-            ptr,
-            <span class="kw-2">&amp;</span>[elem_offset],
-            IntegerType::new(context, <span class="number">8</span>).into(),
-            llvm::r#type::pointer(context, <span class="number">0</span>),
             location,
-        ))<span class="question-mark">?</span>;
+            ptr,
+            <span class="kw-2">&amp;</span>[GepIndex::Value(elem_offset)],
+            IntegerType::new(context, <span class="number">8</span>).into(),
+        )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>elem_size = valid_block.const_int(context, location, elem_layout.size(), <span class="number">64</span>)<span class="question-mark">?</span>;
 

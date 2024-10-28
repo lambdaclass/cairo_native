@@ -415,11 +415,6 @@
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array type
 //!
 //! An array type is a dynamically allocated list of items.
@@ -446,7 +441,7 @@
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::{BlockExt, GepIndex, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -612,14 +607,13 @@
 
             <span class="kw">let </span>src_value_offset =
                 block_realloc.append_op_result(arith::muli(value_offset, elem_stride, location))<span class="question-mark">?</span>;
-            block_realloc.append_op_result(llvm::get_element_ptr_dynamic(
+            block_realloc.gep(
                 context,
-                value_ptr,
-                <span class="kw-2">&amp;</span>[src_value_offset],
-                IntegerType::new(context, <span class="number">8</span>).into(),
-                llvm::r#type::pointer(context, <span class="number">0</span>),
                 location,
-            ))<span class="question-mark">?
+                value_ptr,
+                <span class="kw-2">&amp;</span>[GepIndex::Value(src_value_offset)],
+                IntegerType::new(context, <span class="number">8</span>).into(),
+            )<span class="question-mark">?
         </span>};
 
         <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
@@ -638,24 +632,20 @@
 
                         <span class="kw">let </span>idx = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
 
-                        <span class="kw">let </span>src_value_ptr =
-                            block.append_op_result(llvm::get_element_ptr_dynamic(
-                                context,
-                                src_value_ptr,
-                                <span class="kw-2">&amp;</span>[idx],
-                                IntegerType::new(context, <span class="number">8</span>).into(),
-                                llvm::r#type::pointer(context, <span class="number">0</span>),
-                                location,
-                            ))<span class="question-mark">?</span>;
-                        <span class="kw">let </span>dst_value_ptr =
-                            block.append_op_result(llvm::get_element_ptr_dynamic(
-                                context,
-                                dst_value_ptr,
-                                <span class="kw-2">&amp;</span>[idx],
-                                IntegerType::new(context, <span class="number">8</span>).into(),
-                                llvm::r#type::pointer(context, <span class="number">0</span>),
-                                location,
-                            ))<span class="question-mark">?</span>;
+                        <span class="kw">let </span>src_value_ptr = block.gep(
+                            context,
+                            location,
+                            src_value_ptr,
+                            <span class="kw-2">&amp;</span>[GepIndex::Value(idx)],
+                            IntegerType::new(context, <span class="number">8</span>).into(),
+                        )<span class="question-mark">?</span>;
+                        <span class="kw">let </span>dst_value_ptr = block.gep(
+                            context,
+                            location,
+                            dst_value_ptr,
+                            <span class="kw-2">&amp;</span>[GepIndex::Value(idx)],
+                            IntegerType::new(context, <span class="number">8</span>).into(),
+                        )<span class="question-mark">?</span>;
 
                         <span class="kw">let </span>value = block.load(context, location, src_value_ptr, elem_ty)<span class="question-mark">?</span>;
                         <span class="kw">let </span>values = dup_override_meta
