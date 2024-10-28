@@ -22,7 +22,14 @@
 // TODO: Maybe the types used here can be i251 instead of i252.
 
 use super::WithSelf;
-use crate::{error::Result, metadata::MetadataStorage};
+use crate::{
+    error::Result,
+    metadata::{
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+    },
+    utils::BlockExt,
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -32,8 +39,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
-    ir::{r#type::IntegerType, Module, Type},
+    dialect::{func, llvm, ods},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Region, Type},
     Context,
 };
 
@@ -180,6 +187,7 @@ pub fn build_secp256_point<'ctx>(
                 ],
                 false,
             ),
+            IntegerType::new(context, 1).into(),
         ],
         false,
     ))
@@ -187,11 +195,61 @@ pub fn build_secp256_point<'ctx>(
 
 pub fn build_sha256_state_handle<'ctx>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _metadata: &mut MetadataStorage,
-    _info: WithSelf<InfoOnlyConcreteType>,
+    module: &Module<'ctx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    metadata: &mut MetadataStorage,
+    info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
+    let location = Location::unknown(context);
+    if metadata.get::<ReallocBindingsMeta>().is_none() {
+        metadata.insert(ReallocBindingsMeta::new(context, module));
+    }
+
+    DupOverridesMeta::register_with(context, module, registry, metadata, info.self_ty(), |_| {
+        let region = Region::new();
+        let block =
+            region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
+
+        let null_ptr =
+            block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+        let k32 = block.const_int(context, location, 32, 64)?;
+        let new_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+            context, null_ptr, k32, location,
+        ))?;
+
+        block.append_operation(
+            ods::llvm::intr_memcpy_inline(
+                context,
+                new_ptr,
+                block.argument(0)?.into(),
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 32),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                location,
+            )
+            .into(),
+        );
+
+        block.append_operation(func::r#return(
+            &[block.argument(0)?.into(), new_ptr],
+            location,
+        ));
+        Ok(Some(region))
+    })?;
+    DropOverridesMeta::register_with(context, module, registry, metadata, info.self_ty(), |_| {
+        let region = Region::new();
+        let block =
+            region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
+
+        block.append_operation(ReallocBindingsMeta::free(
+            context,
+            block.argument(0)?.into(),
+            location,
+        ));
+
+        block.append_operation(func::r#return(&[], location));
+        Ok(Some(region))
+    })?;
+
     // A ptr to a heap (realloc) allocated [u32; 8]
     Ok(llvm::r#type::pointer(context, 0))
 }

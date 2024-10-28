@@ -56,8 +56,7 @@ pub fn build_new<'ctx, 'this>(
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
-    let op = runtime_bindings.dict_alloc_new(context, helper, entry, location)?;
-    let dict_ptr = op.result(0)?.into();
+    let dict_ptr = runtime_bindings.dict_new(context, helper, entry, location)?;
 
     entry.append_operation(helper.br(0, &[segment_arena, dict_ptr], location));
     Ok(())

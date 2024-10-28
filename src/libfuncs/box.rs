@@ -12,10 +12,7 @@ use cairo_lang_sierra::{
     extensions::{
         boxing::BoxConcreteLibfunc,
         core::{CoreLibfunc, CoreType},
-        lib_func::{
-            BranchSignature, LibfuncSignature, SignatureAndTypeConcreteLibfunc,
-            SignatureOnlyConcreteLibfunc,
-        },
+        lib_func::SignatureAndTypeConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -152,37 +149,16 @@ pub fn build_unbox<'ctx, 'this>(
 }
 
 fn build_forward_snapshot<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureAndTypeConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    super::snapshot_take::build(
-        context,
-        registry,
-        entry,
-        location,
-        helper,
-        metadata,
-        &SignatureOnlyConcreteLibfunc {
-            signature: LibfuncSignature {
-                param_signatures: info.signature.param_signatures.clone(),
-                branch_signatures: info
-                    .signature
-                    .branch_signatures
-                    .iter()
-                    .map(|x| BranchSignature {
-                        vars: x.vars.clone(),
-                        ap_change: x.ap_change.clone(),
-                    })
-                    .collect(),
-                fallthrough: info.signature.fallthrough,
-            },
-        },
-    )
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
+    Ok(())
 }
 
 #[cfg(test)]

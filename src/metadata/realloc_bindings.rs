@@ -4,39 +4,34 @@
 //! compilation context.
 
 use melior::{
-    dialect::{func, llvm},
+    dialect::llvm,
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        r#type::{FunctionType, IntegerType},
+        operation::OperationBuilder,
+        r#type::IntegerType,
         Identifier, Location, Module, Operation, Region, Value,
     },
     Context,
 };
-use std::marker::PhantomData;
 
 /// Memory allocation `realloc` metadata.
 #[derive(Debug)]
-pub struct ReallocBindingsMeta {
-    phantom: PhantomData<()>,
-}
+pub struct ReallocBindingsMeta;
 
 impl ReallocBindingsMeta {
     /// Register the bindings to the `realloc` C function and return the metadata.
     pub fn new(context: &Context, module: &Module) -> Self {
-        module.body().append_operation(func::func(
+        module.body().append_operation(llvm::func(
             context,
             StringAttribute::new(context, "realloc"),
-            TypeAttribute::new(
-                FunctionType::new(
-                    context,
-                    &[
-                        llvm::r#type::pointer(context, 0),
-                        IntegerType::new(context, 64).into(),
-                    ],
-                    &[llvm::r#type::pointer(context, 0)],
-                )
-                .into(),
-            ),
+            TypeAttribute::new(llvm::r#type::function(
+                llvm::r#type::pointer(context, 0),
+                &[
+                    llvm::r#type::pointer(context, 0),
+                    IntegerType::new(context, 64).into(),
+                ],
+                false,
+            )),
             Region::new(),
             &[(
                 Identifier::new(context, "sym_visibility"),
@@ -44,12 +39,14 @@ impl ReallocBindingsMeta {
             )],
             Location::unknown(context),
         ));
-        module.body().append_operation(func::func(
+        module.body().append_operation(llvm::func(
             context,
             StringAttribute::new(context, "free"),
-            TypeAttribute::new(
-                FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
-            ),
+            TypeAttribute::new(llvm::r#type::function(
+                llvm::r#type::void(context),
+                &[llvm::r#type::pointer(context, 0)],
+                false,
+            )),
             Region::new(),
             &[(
                 Identifier::new(context, "sym_visibility"),
@@ -58,9 +55,7 @@ impl ReallocBindingsMeta {
             Location::unknown(context),
         ));
 
-        Self {
-            phantom: PhantomData,
-        }
+        Self
     }
 
     /// Calls the `realloc` function, returns a op with 1 result: an opaque pointer.
@@ -70,13 +65,15 @@ impl ReallocBindingsMeta {
         len: Value<'c, 'a>,
         location: Location<'c>,
     ) -> Operation<'c> {
-        func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "realloc"),
-            &[ptr, len],
-            &[llvm::r#type::pointer(context, 0)],
-            location,
-        )
+        OperationBuilder::new("llvm.call", location)
+            .add_attributes(&[(
+                Identifier::new(context, "callee"),
+                FlatSymbolRefAttribute::new(context, "realloc").into(),
+            )])
+            .add_operands(&[ptr, len])
+            .add_results(&[llvm::r#type::pointer(context, 0)])
+            .build()
+            .unwrap()
     }
 
     /// Calls the `free` function.
@@ -85,12 +82,13 @@ impl ReallocBindingsMeta {
         ptr: Value<'c, '_>,
         location: Location<'c>,
     ) -> Operation<'c> {
-        func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "free"),
-            &[ptr],
-            &[],
-            location,
-        )
+        OperationBuilder::new("llvm.call", location)
+            .add_attributes(&[(
+                Identifier::new(context, "callee"),
+                FlatSymbolRefAttribute::new(context, "free").into(),
+            )])
+            .add_operands(&[ptr])
+            .build()
+            .unwrap()
     }
 }
