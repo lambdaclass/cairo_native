@@ -4,11 +4,9 @@ on:
   schedule:
   # At the end of every day
   - cron: "0 0 * * *"
-  # remove later, only for testing
-  push:
 
 env:
-  RANGE_SIZE: 5
+  RANGE_SIZE: 50
   SEQUENCER_REV: 1b1b95cae7ae07b9bc778443ca75ee18008a6bc8
 
 jobs:
