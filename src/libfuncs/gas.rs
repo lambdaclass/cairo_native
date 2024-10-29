@@ -4,7 +4,6 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{gas::GasCost, MetadataStorage},
-    types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -21,7 +20,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm, ods,
     },
-    ir::{r#type::IntegerType, Block, Location},
+    ir::{Block, Location},
     Context,
 };
 
@@ -224,6 +223,6 @@ mod test {
         );
 
         let result = run_program(&program, "run_test", &[]);
-        assert_eq!(result.remaining_gas, Some(u64::MAX),);
+        assert_eq!(result.remaining_gas, Some(u64::MAX));
     }
 }

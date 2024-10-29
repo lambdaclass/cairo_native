@@ -222,9 +222,9 @@ impl AotContractExecutor {
 
         // There is always a return ptr because contracts always return more than 1 thing (builtin counters, syscall, enum)
         let return_ptr = arena.alloc_layout(unsafe {
-            // 64 = size of enum + syscall + u128 from gas builtin + 8 bytes for each additional builtin counter
+            // 56 = size of enum + syscall + u128 from gas builtin + 8 bytes for each additional builtin counter
             // align is 16 because of the u128
-            Layout::from_size_align_unchecked(64 + 8 * num_builtins, 16)
+            Layout::from_size_align_unchecked(56 + 8 * num_builtins, 16)
         });
 
         return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
