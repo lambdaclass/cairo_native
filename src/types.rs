@@ -459,7 +459,7 @@ impl TypeBuilder for CoreTypeConcrete {
             // Builtins.
             CoreTypeConcrete::Bitwise(_)
             | CoreTypeConcrete::EcOp(_)
-            | CoreTypeConcrete::GasBuiltin(_) // u128 is not complex
+            | CoreTypeConcrete::GasBuiltin(_)
             | CoreTypeConcrete::BuiltinCosts(_)
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
@@ -633,7 +633,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
             CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
-            CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(128),
+            CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(64),
             CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<()>(),
             CoreTypeConcrete::Uint8(_) => get_integer_layout(8),
             CoreTypeConcrete::Uint16(_) => get_integer_layout(16),

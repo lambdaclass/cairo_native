@@ -2,9 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::{gas::GasCost, MetadataStorage},
-    utils::{BlockExt, ProgramRegistryExt},
+    error::Result, metadata::{gas::GasCost, MetadataStorage}, types::TypeBuilder, utils::{BlockExt, ProgramRegistryExt}
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -72,12 +70,12 @@ pub fn build_get_available_gas<'ctx, 'this>(
 /// Generate MLIR operations for the `withdraw_gas` libfunc.
 pub fn build_withdraw_gas<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
@@ -85,9 +83,9 @@ pub fn build_withdraw_gas<'ctx, 'this>(
 
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);
 
-    let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
+    let gas_type = registry.build_type(context, helper, registry, metadata, &info.param_signatures()[1].ty)?;
     let gas_cost_val =
-        entry.const_int_from_type(context, location, cost.unwrap_or(0), u128_type)?;
+        entry.const_int_from_type(context, location, cost.unwrap_or(0), gas_type)?;
 
     let is_enough = entry.append_op_result(arith::cmpi(
         context,
@@ -115,12 +113,12 @@ pub fn build_withdraw_gas<'ctx, 'this>(
 /// Generate MLIR operations for the `withdraw_gas_all` libfunc.
 pub fn build_builtin_withdraw_gas<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
@@ -128,9 +126,9 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
 
     let cost = metadata.get::<GasCost>().and_then(|x| x.0);
 
-    let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
+    let gas_type = registry.build_type(context, helper, registry, metadata, &info.param_signatures()[1].ty)?;
     let gas_cost_val =
-        entry.const_int_from_type(context, location, cost.unwrap_or(0), u128_type)?;
+        entry.const_int_from_type(context, location, cost.unwrap_or(0), gas_type)?;
 
     let is_enough = entry.append_op_result(arith::cmpi(
         context,
@@ -215,7 +213,7 @@ mod test {
         let result = run_program(&program, "run_test", &[]);
         assert_eq!(
             result.remaining_gas,
-            Some(340282366920938463463374607431768205035),
+            Some(u64::MAX),
         );
     }
 }

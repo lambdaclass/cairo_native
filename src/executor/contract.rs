@@ -208,7 +208,7 @@ impl AotContractExecutor {
         &self,
         function_id: &FunctionId,
         args: &[Felt],
-        gas: Option<u128>,
+        gas: Option<u64>,
         mut syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult> {
         let arena = Bump::new();
@@ -235,7 +235,7 @@ impl AotContractExecutor {
             match b {
                 BuiltinType::Gas => {
                     let gas = gas.unwrap_or(0);
-                    gas.to_bytes(&mut invoke_data)?;
+                    (gas as u128).to_bytes(&mut invoke_data)?;
                 }
                 BuiltinType::System => {
                     (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
@@ -314,7 +314,7 @@ impl AotContractExecutor {
         for b in &self.entry_points_info[&function_id.id].builtins {
             match b {
                 BuiltinType::Gas => {
-                    remaining_gas = unsafe { *read_value::<u128>(return_ptr) };
+                    remaining_gas = unsafe { *read_value::<u64>(return_ptr) };
                 }
                 BuiltinType::System => {
                     let ptr = return_ptr.cast::<*mut ()>();
@@ -518,7 +518,7 @@ mod tests {
             .run(
                 entrypoint_function_id,
                 &[2.into()],
-                Some(u64::MAX as u128),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
@@ -543,7 +543,7 @@ mod tests {
             .run(
                 entrypoint_function_id,
                 &[],
-                Some(u64::MAX as u128),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();

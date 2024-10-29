@@ -324,7 +324,7 @@ fn main() {
                 Felt::from(4),
                 Felt::from(6),
             ],
-            Some(u128::MAX),
+            Some(u64::MAX),
             SyscallHandler,
         )
         .expect("failed to execute the given contract");

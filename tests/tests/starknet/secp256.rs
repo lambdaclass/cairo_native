@@ -304,7 +304,7 @@ fn secp256k1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -336,7 +336,7 @@ fn secp256k1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -365,7 +365,7 @@ fn secp256k1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -461,7 +461,7 @@ fn secp256k1_add() {
             Value::Secp256K1Point(Secp256k1Point::default()),
             Value::Secp256K1Point(Secp256k1Point::default()),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -480,7 +480,7 @@ fn secp256k1_add() {
             Value::Secp256K1Point(Secp256k1Point::new(0, u128::MAX, u128::MAX, 0, false)),
             Value::Secp256K1Point(Secp256k1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -517,7 +517,7 @@ fn secp256k1_add() {
                 false,
             )),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -651,7 +651,7 @@ fn secp256k1_mul() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -673,7 +673,7 @@ fn secp256k1_mul() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -701,7 +701,7 @@ fn secp256k1_mul() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -798,7 +798,7 @@ fn secp256k1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -834,7 +834,7 @@ fn secp256k1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -867,7 +867,7 @@ fn secp256k1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -906,7 +906,7 @@ fn secp256k1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1004,7 +1004,7 @@ fn secp256k1_get_xy() {
         &SECP256_PROGRAM,
         "secp256k1_get_xy",
         &[Value::Secp256K1Point(Secp256k1Point::default())],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1038,7 +1038,7 @@ fn secp256k1_get_xy() {
             0,
             false,
         ))],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1072,7 +1072,7 @@ fn secp256k1_get_xy() {
             u128::MAX,
             false,
         ))],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1106,7 +1106,7 @@ fn secp256k1_get_xy() {
             u128::MAX,
             false,
         ))],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1217,7 +1217,7 @@ fn secp256r1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1249,7 +1249,7 @@ fn secp256r1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1278,7 +1278,7 @@ fn secp256r1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1374,7 +1374,7 @@ fn secp256r1_add() {
             Value::Secp256R1Point(Secp256r1Point::default()),
             Value::Secp256R1Point(Secp256r1Point::default()),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1393,7 +1393,7 @@ fn secp256r1_add() {
             Value::Secp256R1Point(Secp256r1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
             Value::Secp256R1Point(Secp256r1Point::new(0, u128::MAX, u128::MAX, 0, false)),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1430,7 +1430,7 @@ fn secp256r1_add() {
                 false,
             )),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1513,7 +1513,7 @@ fn secp256r1_mul() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1535,7 +1535,7 @@ fn secp256r1_mul() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1563,7 +1563,7 @@ fn secp256r1_mul() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1660,7 +1660,7 @@ fn secp256r1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1696,7 +1696,7 @@ fn secp256r1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1729,7 +1729,7 @@ fn secp256r1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1768,7 +1768,7 @@ fn secp256r1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1866,7 +1866,7 @@ fn secp256r1_get_xy() {
         &SECP256_PROGRAM,
         "secp256r1_get_xy",
         &[Value::Secp256R1Point(Secp256r1Point::default())],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1900,7 +1900,7 @@ fn secp256r1_get_xy() {
             0,
             false,
         ))],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1934,7 +1934,7 @@ fn secp256r1_get_xy() {
             u128::MAX,
             false,
         ))],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1968,7 +1968,7 @@ fn secp256r1_get_xy() {
             u128::MAX,
             false,
         ))],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(

@@ -445,7 +445,7 @@ fn main() {
     let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
     let result = native_executor
-        .invoke_contract_dynamic(fn_id, &[Felt::ONE], Some(u128::MAX), SyscallHandler::new())
+        .invoke_contract_dynamic(fn_id, &[Felt::ONE], Some(u64::MAX), SyscallHandler::new())
         .expect("failed to execute the given contract");
 
     println!();

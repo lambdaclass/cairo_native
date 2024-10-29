@@ -69,7 +69,7 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[Value],
-        gas: Option<u128>,
+        gas: Option<u64>,
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
@@ -91,7 +91,7 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[Value],
-        gas: Option<u128>,
+        gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
@@ -113,7 +113,7 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[Felt],
-        gas: Option<u128>,
+        gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self

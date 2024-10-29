@@ -21,7 +21,7 @@ pub struct GasMetadata {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct GasCost(pub Option<u128>);
+pub struct GasCost(pub Option<u64>);
 
 /// Configuration for metadata computation.
 #[derive(Debug, Clone)]
@@ -40,7 +40,7 @@ pub enum GasMetadataError {
     #[error(transparent)]
     CostError(#[from] CostError),
     #[error("Not enough gas to run the operation. Required: {:?}, Available: {:?}.", gas.0, gas.1)]
-    NotEnoughGas { gas: Box<(u128, u128)> },
+    NotEnoughGas { gas: Box<(u64, u64)> },
 }
 
 impl Default for MetadataComputationConfig {
@@ -70,8 +70,8 @@ impl GasMetadata {
     pub fn get_initial_available_gas(
         &self,
         func: &FunctionId,
-        available_gas: Option<u128>,
-    ) -> Result<u128, GasMetadataError> {
+        available_gas: Option<u64>,
+    ) -> Result<u64, GasMetadataError> {
         let Some(available_gas) = available_gas else {
             return Ok(0);
         };
@@ -90,7 +90,7 @@ impl GasMetadata {
             })
     }
 
-    pub fn initial_required_gas(&self, func: &FunctionId) -> Option<u128> {
+    pub fn initial_required_gas(&self, func: &FunctionId) -> Option<u64> {
         if self.gas_info.function_costs.is_empty() {
             return None;
         }
@@ -98,17 +98,17 @@ impl GasMetadata {
             self.gas_info.function_costs[func]
                 .iter()
                 .map(|(token_type, val)| val.into_or_panic::<usize>() * token_gas_cost(*token_type))
-                .sum::<usize>() as u128,
+                .sum::<usize>() as u64,
         )
     }
 
-    pub fn get_gas_cost_for_statement(&self, idx: StatementIdx) -> Option<u128> {
+    pub fn get_gas_cost_for_statement(&self, idx: StatementIdx) -> Option<u64> {
         let mut cost = None;
         for cost_type in CostTokenType::iter_casm_tokens() {
             if let Some(amount) =
                 self.get_gas_cost_for_statement_and_cost_token_type(idx, *cost_type)
             {
-                *cost.get_or_insert(0) += amount * token_gas_cost(*cost_type) as u128;
+                *cost.get_or_insert(0) += amount * token_gas_cost(*cost_type) as u64;
             }
         }
         cost
@@ -118,7 +118,7 @@ impl GasMetadata {
         &self,
         idx: StatementIdx,
         cost_type: CostTokenType,
-    ) -> Option<u128> {
+    ) -> Option<u64> {
         self.gas_info
             .variable_values
             .get(&(idx, cost_type))
