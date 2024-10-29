@@ -76,10 +76,13 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
+        let builtin_setter_ptr: extern "C" fn(*const u64) =
+            unsafe { std::mem::transmute(self.engine.lookup("internal_set_builtin_costs")) };
+
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
+            builtin_setter_ptr,
             self.extract_signature(function_id).unwrap(),
             args,
             available_gas,
@@ -100,10 +103,13 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
+        let builtin_setter_ptr: extern "C" fn(*const u64) =
+            unsafe { std::mem::transmute(self.engine.lookup("internal_set_builtin_costs")) };
+
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
+            builtin_setter_ptr,
             self.extract_signature(function_id).unwrap(),
             args,
             available_gas,
@@ -122,17 +128,19 @@ impl<'m> JitNativeExecutor<'m> {
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
-        // TODO: Check signature for contract interface.
+
+        let builtin_setter_ptr: extern "C" fn(*const u64) =
+            unsafe { std::mem::transmute(self.engine.lookup("internal_set_builtin_costs")) };
+
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
+            builtin_setter_ptr,
             self.extract_signature(function_id).unwrap(),
             &[Value::Struct {
                 fields: vec![Value::Array(
                     args.iter().cloned().map(Value::Felt252).collect(),
                 )],
-                // TODO: Populate `debug_name`.
                 debug_name: None,
             }],
             available_gas,

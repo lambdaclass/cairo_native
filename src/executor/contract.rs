@@ -301,12 +301,16 @@ impl AotContractExecutor {
             debug_name: None,
         };
         let function_ptr = self.find_function_ptr(&function_id, true)?;
-        let builtin_costs_ptr = self
-            .find_symbol_ptr("builtin_costs")
-            .ok_or_else(|| Error::MissingBuiltinCostsSymbol)?;
+
+        let builtin_setter_ptr = unsafe {
+            self.library
+                .get::<extern "C" fn(*const u64)>(b"internal_set_builtin_costs")?
+        };
 
         let builtin_costs = builtin_costs.unwrap_or_default();
         let builtin_costs: [u64; 7] = builtin_costs.into();
+        // set the builtin costs using the utility method to set the thread local
+        builtin_setter_ptr(builtin_costs.as_ptr());
 
         let initial_gas_cost = {
             let mut cost = 0;
@@ -327,10 +331,6 @@ impl AotContractExecutor {
         let gas = gas
             .unwrap_or(initial_gas_cost)
             .saturating_sub(initial_gas_cost);
-
-        unsafe {
-            *builtin_costs_ptr.cast() = builtin_costs.as_ptr();
-        }
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         let builtins_size: usize = self.contract_info.entry_points_info[&function_id.id]
@@ -356,7 +356,8 @@ impl AotContractExecutor {
                     gas.to_bytes(&mut invoke_data)?;
                 }
                 BuiltinType::BuiltinCosts => {
-                    builtin_costs_ptr.to_bytes(&mut invoke_data)?;
+                    // todo: check if valid
+                    builtin_costs.as_ptr().to_bytes(&mut invoke_data)?;
                 }
                 BuiltinType::System => {
                     (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)

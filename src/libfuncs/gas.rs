@@ -101,8 +101,22 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         )
         .into(),
     )?;
+    let thread_local_builtin_ptr_ptr = entry.append_op_result(
+        ods::llvm::intr_threadlocal_address(
+            context,
+            pointer(context, 0),
+            builtin_ptr_ptr,
+            location,
+        )
+        .into(),
+    )?;
 
-    let builtin_ptr = entry.load(context, location, builtin_ptr_ptr, pointer(context, 0))?;
+    let builtin_ptr = entry.load(
+        context,
+        location,
+        thread_local_builtin_ptr_ptr,
+        pointer(context, 0),
+    )?;
 
     let mut final_gas_cost = entry.const_int_from_type(context, location, 0, u128_type)?;
 
@@ -284,8 +298,22 @@ pub fn build_get_builtin_costs<'ctx, 'this>(
         )
         .into(),
     )?;
+    let thread_local_builtin_ptr_ptr = entry.append_op_result(
+        ods::llvm::intr_threadlocal_address(
+            context,
+            pointer(context, 0),
+            builtin_ptr_ptr,
+            location,
+        )
+        .into(),
+    )?;
 
-    let builtin_ptr = entry.load(context, location, builtin_ptr_ptr, builtin_costs_ty)?;
+    let builtin_ptr = entry.load(
+        context,
+        location,
+        thread_local_builtin_ptr_ptr,
+        builtin_costs_ty,
+    )?;
 
     entry.append_operation(helper.br(0, &[builtin_ptr], location));
 

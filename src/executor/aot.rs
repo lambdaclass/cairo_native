@@ -78,10 +78,19 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
+        let builtin_setter_ptr = unsafe {
+            std::mem::transmute::<*mut libc::c_void, extern "C" fn(*const u64)>(
+                self.library
+                    .get::<extern "C" fn(*const u64)>(b"internal_set_builtin_costs")?
+                    .into_raw()
+                    .into_raw(),
+            )
+        };
+
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
+            builtin_setter_ptr,
             self.extract_signature(function_id),
             args,
             available_gas,
@@ -101,10 +110,19 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
+        let builtin_setter_ptr = unsafe {
+            std::mem::transmute::<*mut libc::c_void, extern "C" fn(*const u64)>(
+                self.library
+                    .get::<extern "C" fn(*const u64)>(b"internal_set_builtin_costs")?
+                    .into_raw()
+                    .into_raw(),
+            )
+        };
+
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
+            builtin_setter_ptr,
             self.extract_signature(function_id),
             args,
             available_gas,
@@ -124,10 +142,19 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
+        let builtin_setter_ptr = unsafe {
+            std::mem::transmute::<*mut libc::c_void, extern "C" fn(*const u64)>(
+                self.library
+                    .get::<extern "C" fn(*const u64)>(b"internal_set_builtin_costs")?
+                    .into_raw()
+                    .into_raw(),
+            )
+        };
+
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
+            builtin_setter_ptr,
             self.extract_signature(function_id),
             &[Value::Struct {
                 fields: vec![Value::Array(

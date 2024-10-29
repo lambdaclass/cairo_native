@@ -69,7 +69,7 @@ extern "C" {
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
-    builtin_costs_ptr: Option<*mut c_void>,
+    builtin_costs_setter_ptr: extern "C" fn(*const u64),
     function_signature: &FunctionSignature,
     args: &[Value],
     gas: u128,
@@ -145,11 +145,8 @@ fn invoke_dynamic(
     // Order matters, for the libfunc impl
     let builtin_costs: [u64; 7] = BuiltinCosts::default().into();
 
-    if let Some(builtin_costs_ptr) = builtin_costs_ptr {
-        unsafe {
-            *builtin_costs_ptr.cast() = builtin_costs.as_ptr();
-        }
-    }
+    // set the builtin costs using the utility method to set the thread local
+    builtin_costs_setter_ptr(builtin_costs.as_ptr());
 
     // Generate argument list.
     let mut iter = args.iter();
@@ -177,11 +174,8 @@ fn invoke_dynamic(
                     .to_bytes(&mut invoke_data)?;
             }
             CoreTypeConcrete::BuiltinCosts(_) => {
-                if let Some(builtin_costs_ptr) = builtin_costs_ptr {
-                    builtin_costs_ptr.to_bytes(&mut invoke_data)?;
-                } else {
-                    (builtin_costs.as_ptr()).to_bytes(&mut invoke_data)?;
-                }
+                // todo: check if valid
+                (builtin_costs.as_ptr()).to_bytes(&mut invoke_data)?;
             }
             type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
             type_info => ValueWithInfoWrapper {

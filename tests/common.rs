@@ -31,7 +31,7 @@ use cairo_lang_starknet_classes::{
 use cairo_native::{
     context::NativeContext,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    executor::{AotContractExecutor, JitNativeExecutor},
+    executor::{AotContractExecutor, AotNativeExecutor, JitNativeExecutor},
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{find_entry_point_by_idx, HALF_PRIME, PRIME},
     OptLevel, Value,
@@ -427,7 +427,7 @@ pub fn run_native_starknet_contract(
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor = AotNativeExecutor::from_native_module(native_program, Default::default());
     native_executor
         .invoke_contract_dynamic(entry_point_id, args, u128::MAX.into(), handler)
         .expect("failed to execute the given contract")
