@@ -36,9 +36,6 @@ fn keccak_test() {
     );
 
     assert!(!result.failure_flag);
-    assert_eq!(
-        result.remaining_gas,
-        u64::MAX
-    );
+    assert_eq!(result.remaining_gas, u64::MAX);
     assert_eq!(result.return_values, vec![1.into()]);
 }
