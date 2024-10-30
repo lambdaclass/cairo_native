@@ -149,6 +149,13 @@ jobs:
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
 
+          # Save output
+          {
+            echo 'OUTPUT<<EOF'
+            cat output
+            echo EOF
+          } >> "$GITHUB_ENV"
+
       # - name: Create Issue
       #   if: ${{ failure() }}
       #   uses: JasonEtco/create-an-issue@v2
