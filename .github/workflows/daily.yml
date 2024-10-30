@@ -139,11 +139,14 @@ jobs:
       - name: Prepare env vars
         if: ${{ always() }}
         run: |
+          # Save blocks to env var
           BLOCK_START=${{ matrix.block }}
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
-          OUTPUT=$(< output)
           echo "BLOCK_END=$BLOCK_END" >> $GITHUB_ENV
           echo "BLOCK_START=$BLOCK_START" >> $GITHUB_ENV
+
+          # Save cmp output to env var
+          OUTPUT=$(< output)
           echo "OUTPUT=\"$OUTPUT\"" >> $GITHUB_ENV
           echo "$OUTPUT"
 
