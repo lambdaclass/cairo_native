@@ -73,8 +73,8 @@ use melior::{
     dialect::{
         arith::CmpiPredicate,
         cf, func, index,
-        llvm::{self, r#type::pointer, LoadStoreOptions},
-        memref, ods,
+        llvm::{self, LoadStoreOptions},
+        memref,
     },
     ir::{
         attribute::{
@@ -133,93 +133,6 @@ pub fn compile(
         if x == "1" || x == "true" {
             std::fs::write("program.sierra", program.to_string()).expect("failed to dump sierra");
         }
-    }
-
-    {
-        // Add the builtin_costs global.
-        // We always add it because symbol look up otherwise can panic.
-        let region = Region::new();
-        let location = Location::unknown(context);
-        let block = region.append_block(Block::new(&[]));
-        let value = block.append_op_result(
-            ods::llvm::mlir_zero(context, llvm::r#type::pointer(context, 0), location).into(),
-        )?;
-        block.append_operation(melior::dialect::llvm::r#return(Some(value), location));
-
-        module.body().append_operation({
-            let mut op = ods::llvm::mlir_global(
-                context,
-                region,
-                TypeAttribute::new(llvm::r#type::pointer(context, 0)),
-                StringAttribute::new(context, "builtin_costs"),
-                Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
-                location,
-            );
-            op.set_thread_local(Attribute::unit(context));
-
-            op.into()
-        });
-
-        module.body().append_operation({
-            llvm::func(
-                context,
-                StringAttribute::new(context, "internal_set_builtin_costs"),
-                TypeAttribute::new(llvm::r#type::function(
-                    llvm::r#type::void(context),
-                    &[pointer(context, 0)],
-                    false,
-                )),
-                {
-                    let region = Region::new();
-
-                    let entry = region.append_block(Block::new(&[(pointer(context, 0), location)]));
-
-                    let global = entry.append_op_result(
-                        ods::llvm::mlir_addressof(
-                            context,
-                            pointer(context, 0),
-                            FlatSymbolRefAttribute::new(context, "builtin_costs"),
-                            location,
-                        )
-                        .into(),
-                    )?;
-                    let thread_local_ptr = entry.append_op_result(
-                        ods::llvm::intr_threadlocal_address(
-                            context,
-                            pointer(context, 0),
-                            global,
-                            location,
-                        )
-                        .into(),
-                    )?;
-                    entry.store(
-                        context,
-                        location,
-                        thread_local_ptr,
-                        entry.argument(0)?.into(),
-                    )?;
-
-                    entry.append_operation(llvm::r#return(None, location));
-
-                    region
-                },
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "public").into(),
-                    ),
-                    (
-                        Identifier::new(context, "linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
-                    ),
-                    (
-                        Identifier::new(context, "CConv"),
-                        Attribute::parse(context, "#llvm.cconv<ccc>").unwrap(),
-                    ),
-                ],
-                location,
-            )
-        });
     }
 
     // Sierra programs have the following structure:

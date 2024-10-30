@@ -302,15 +302,14 @@ impl AotContractExecutor {
         };
         let function_ptr = self.find_function_ptr(&function_id, true)?;
 
-        let builtin_setter_ptr = unsafe {
-            self.library
-                .get::<extern "C" fn(*const u64)>(b"internal_set_builtin_costs")?
-        };
-
         let builtin_costs = builtin_costs.unwrap_or_default();
         let builtin_costs: [u64; 7] = builtin_costs.into();
         // set the builtin costs using the utility method to set the thread local
-        builtin_setter_ptr(builtin_costs.as_ptr());
+        let set_costs_builtin = unsafe {
+            self.library
+                .get::<extern "C" fn(*const u64)>(b"cairo_native__set_costs_builtin")?
+        };
+        set_costs_builtin(builtin_costs.as_ptr());
 
         let initial_gas_cost = {
             let mut cost = 0;

@@ -55,13 +55,17 @@ impl AotNativeExecutor {
             mut metadata,
         } = module;
 
-        let library_path = NamedTempFile::new().unwrap().into_temp_path();
+        let library_path = NamedTempFile::new()
+            .unwrap()
+            .into_temp_path()
+            .keep()
+            .unwrap();
 
         let object_data = crate::module_to_object(&module, opt_level).unwrap();
         crate::object_to_shared_lib(&object_data, &library_path).unwrap();
 
         Self {
-            library: unsafe { Library::new(library_path).unwrap() },
+            library: unsafe { Library::new(&library_path).unwrap() },
             registry,
             gas_metadata: metadata.remove().unwrap(),
         }
@@ -78,10 +82,10 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let builtin_setter_ptr = unsafe {
-            std::mem::transmute::<*mut libc::c_void, extern "C" fn(*const u64)>(
+        let set_costs_builtin: extern "C" fn(*const u64) = unsafe {
+            std::mem::transmute(
                 self.library
-                    .get::<extern "C" fn(*const u64)>(b"internal_set_builtin_costs")?
+                    .get::<extern "C" fn(*const u64)>(b"cairo_native__set_costs_builtin")?
                     .into_raw()
                     .into_raw(),
             )
@@ -90,7 +94,7 @@ impl AotNativeExecutor {
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            builtin_setter_ptr,
+            set_costs_builtin,
             self.extract_signature(function_id),
             args,
             available_gas,
@@ -110,10 +114,10 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let builtin_setter_ptr = unsafe {
-            std::mem::transmute::<*mut libc::c_void, extern "C" fn(*const u64)>(
+        let set_costs_builtin: extern "C" fn(*const u64) = unsafe {
+            std::mem::transmute(
                 self.library
-                    .get::<extern "C" fn(*const u64)>(b"internal_set_builtin_costs")?
+                    .get::<extern "C" fn(*const u64)>(b"cairo_native__set_costs_builtin")?
                     .into_raw()
                     .into_raw(),
             )
@@ -122,7 +126,7 @@ impl AotNativeExecutor {
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            builtin_setter_ptr,
+            set_costs_builtin,
             self.extract_signature(function_id),
             args,
             available_gas,
@@ -142,10 +146,10 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let builtin_setter_ptr = unsafe {
-            std::mem::transmute::<*mut libc::c_void, extern "C" fn(*const u64)>(
+        let set_costs_builtin: extern "C" fn(*const u64) = unsafe {
+            std::mem::transmute(
                 self.library
-                    .get::<extern "C" fn(*const u64)>(b"internal_set_builtin_costs")?
+                    .get::<extern "C" fn(*const u64)>(b"cairo_native__set_costs_builtin")?
                     .into_raw()
                     .into_raw(),
             )
@@ -154,7 +158,7 @@ impl AotNativeExecutor {
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            builtin_setter_ptr,
+            set_costs_builtin,
             self.extract_signature(function_id),
             &[Value::Struct {
                 fields: vec![Value::Array(

@@ -393,6 +393,18 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
                 as *mut (),
         );
 
+        engine.register_symbol(
+            "cairo_native__set_costs_builtin",
+            cairo_native_runtime::cairo_native__set_costs_builtin as *const fn(*const u64) -> ()
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__get_costs_builtin",
+            cairo_native_runtime::cairo_native__get_costs_builtin as *const fn() -> *const u64
+                as *mut (),
+        );
+
         #[cfg(feature = "with-cheatcode")]
         {
             engine.register_symbol(

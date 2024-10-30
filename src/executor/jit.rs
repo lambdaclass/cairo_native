@@ -76,13 +76,13 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let builtin_setter_ptr: extern "C" fn(*const u64) =
-            unsafe { std::mem::transmute(self.engine.lookup("internal_set_builtin_costs")) };
+        let set_builtin_costs_fnptr: extern "C" fn(*const u64) =
+            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
 
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            builtin_setter_ptr,
+            set_builtin_costs_fnptr,
             self.extract_signature(function_id).unwrap(),
             args,
             available_gas,
@@ -103,13 +103,13 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let builtin_setter_ptr: extern "C" fn(*const u64) =
-            unsafe { std::mem::transmute(self.engine.lookup("internal_set_builtin_costs")) };
+        let set_builtin_costs_fnptr: extern "C" fn(*const u64) =
+            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
 
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            builtin_setter_ptr,
+            set_builtin_costs_fnptr,
             self.extract_signature(function_id).unwrap(),
             args,
             available_gas,
@@ -129,13 +129,13 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let builtin_setter_ptr: extern "C" fn(*const u64) =
-            unsafe { std::mem::transmute(self.engine.lookup("internal_set_builtin_costs")) };
+        let set_builtin_costs_fnptr: extern "C" fn(*const u64) =
+            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            builtin_setter_ptr,
+            set_builtin_costs_fnptr,
             self.extract_signature(function_id).unwrap(),
             &[Value::Struct {
                 fields: vec![Value::Array(

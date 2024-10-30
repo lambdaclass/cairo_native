@@ -2,16 +2,15 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::{gas::GasCost, MetadataStorage},
-    utils::{BlockExt, ProgramRegistryExt},
+    error::{Error, Result},
+    metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         gas::{CostTokenType, GasConcreteLibfunc},
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -21,7 +20,7 @@ use melior::{
         llvm::{self, r#type::pointer},
         ods,
     },
-    ir::{attribute::FlatSymbolRefAttribute, r#type::IntegerType, Block, Location},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -77,7 +76,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &MetadataStorage,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check =
@@ -86,37 +85,21 @@ pub fn build_withdraw_gas<'ctx, 'this>(
 
     let gas_cost = metadata
         .get::<GasCost>()
-        .expect("builtin_withdraw_gas should always have a gas cost");
+        .expect("builtin_withdraw_gas should always have a gas cost")
+        .clone();
 
     let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
 
-    // Get the ptr to the global, holding a ptr to the list.
-    let builtin_ptr_ptr = entry.append_op_result(
-        ods::llvm::mlir_addressof(
-            context,
-            pointer(context, 0),
-            FlatSymbolRefAttribute::new(context, "builtin_costs"),
-            location,
-        )
-        .into(),
-    )?;
-    let thread_local_builtin_ptr_ptr = entry.append_op_result(
-        ods::llvm::intr_threadlocal_address(
-            context,
-            pointer(context, 0),
-            builtin_ptr_ptr,
-            location,
-        )
-        .into(),
-    )?;
-
-    let builtin_ptr = entry.load(
-        context,
-        location,
-        thread_local_builtin_ptr_ptr,
-        pointer(context, 0),
-    )?;
+    let builtin_ptr = {
+        let runtime = metadata
+            .get_mut::<RuntimeBindingsMeta>()
+            .ok_or(Error::MissingMetadata)?;
+        runtime
+            .get_gas_builtin(context, helper, entry, location)?
+            .result(0)?
+            .into()
+    };
 
     let mut final_gas_cost = entry.const_int_from_type(context, location, 0, u128_type)?;
 
@@ -273,47 +256,23 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
 /// Generate MLIR operations for the `get_builtin_costs` libfunc.
 pub fn build_get_builtin_costs<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let builtin_costs_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.branch_signatures()[0].vars[0].ty,
-    )?;
-
     // Get the ptr to the global, holding a ptr to the list.
-    let builtin_ptr_ptr = entry.append_op_result(
-        ods::llvm::mlir_addressof(
-            context,
-            pointer(context, 0),
-            FlatSymbolRefAttribute::new(context, "builtin_costs"),
-            location,
-        )
-        .into(),
-    )?;
-    let thread_local_builtin_ptr_ptr = entry.append_op_result(
-        ods::llvm::intr_threadlocal_address(
-            context,
-            pointer(context, 0),
-            builtin_ptr_ptr,
-            location,
-        )
-        .into(),
-    )?;
-
-    let builtin_ptr = entry.load(
-        context,
-        location,
-        thread_local_builtin_ptr_ptr,
-        builtin_costs_ty,
-    )?;
+    let builtin_ptr = {
+        let runtime = metadata
+            .get_mut::<RuntimeBindingsMeta>()
+            .ok_or(Error::MissingMetadata)?;
+        runtime
+            .get_gas_builtin(context, helper, entry, location)?
+            .result(0)?
+            .into()
+    };
 
     entry.append_operation(helper.br(0, &[builtin_ptr], location));
 

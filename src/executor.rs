@@ -69,7 +69,7 @@ extern "C" {
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
-    builtin_costs_setter_ptr: extern "C" fn(*const u64),
+    set_builtin_costs_fnptr: extern "C" fn(*const u64),
     function_signature: &FunctionSignature,
     args: &[Value],
     gas: u128,
@@ -144,9 +144,7 @@ fn invoke_dynamic(
 
     // Order matters, for the libfunc impl
     let builtin_costs: [u64; 7] = BuiltinCosts::default().into();
-
-    // set the builtin costs using the utility method to set the thread local
-    builtin_costs_setter_ptr(builtin_costs.as_ptr());
+    set_builtin_costs_fnptr(builtin_costs.as_ptr());
 
     // Generate argument list.
     let mut iter = args.iter();
