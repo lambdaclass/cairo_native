@@ -5,9 +5,10 @@ labels: bug
 
 Comparing VM execution against Native in the given block range produced diffs:
 
-- Workflow URL: {{ env.WORKFLOW_URL }}
+- Commit: {{ env.COMMIT_SHA }}
 - Block Start: {{ env.BLOCK_START }}
 - Block End: {{ env.BLOCK_END }}
+- Workflow URL: {{ env.WORKFLOW_URL }}
 
 ## Compare Output
 

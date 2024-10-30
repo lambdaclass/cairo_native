@@ -153,7 +153,6 @@ jobs:
         uses: JasonEtco/create-an-issue@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OS: ${{ matrix.os_name}}
           COMMIT_SHA: ${{ github.sha }}
         with:
           filename: .github/ISSUE_TEMPLATE/daily_failure.md
