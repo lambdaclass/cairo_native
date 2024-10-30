@@ -134,7 +134,7 @@ jobs:
 
       - name: Compare states
         run: |
-          ./scripts/cmp_state_dumps.sh > output
+          ./scripts/cmp_state_dumps.sh | tee output
           false
 
       - name: Prepare env vars
