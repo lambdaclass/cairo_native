@@ -12,6 +12,8 @@ Comparing VM execution against Native in the given block range produced diffs:
 
 ## Compare Output
 
+The transaction were not compared in order. You should rerun the whole block to find the error root
+
 ```
 {{ env.OUTPUT }}
 ```
