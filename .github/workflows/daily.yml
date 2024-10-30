@@ -135,6 +135,7 @@ jobs:
       - name: Compare states
         run: |
           ./scripts/cmp_state_dumps.sh > output
+          false
 
       - name: Prepare env vars
         if: ${{ always() }}
@@ -156,12 +157,12 @@ jobs:
             echo EOF
           } >> "$GITHUB_ENV"
 
-      # - name: Create Issue
-      #   if: ${{ failure() }}
-      #   uses: JasonEtco/create-an-issue@v2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     OS: ${{ matrix.os_name}}
-      #     COMMIT_SHA: ${{ github.sha }}
-      #   with:
-      #     filename: .github/ISSUE_TEMPLATE/daily_failure.md
+      - name: Create Issue
+        if: ${{ failure() }}
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OS: ${{ matrix.os_name}}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/daily_failure.md
