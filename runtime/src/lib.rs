@@ -989,7 +989,7 @@ pub mod trace_dump {
 
             CoreTypeConcrete::RangeCheck96(_) => todo!("CoreTypeConcrete::RangeCheck96"),
             CoreTypeConcrete::Felt252Dict(info) => {
-                let value = value_ptr.cast::<FeltDict>().as_ref();
+                let value = value_ptr.cast::<&FeltDict>().read();
 
                 let data = value
                     .inner
