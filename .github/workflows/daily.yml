@@ -145,10 +145,9 @@ jobs:
           echo "BLOCK_END=$BLOCK_END" >> $GITHUB_ENV
           echo "BLOCK_START=$BLOCK_START" >> $GITHUB_ENV
 
-          # Save cmp output to env var
-          OUTPUT=$(< output)
-          echo "OUTPUT=\"$OUTPUT\"" >> $GITHUB_ENV
-          echo "$OUTPUT"
+          # Save workflow url
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
 
       - name: Create Issue
         if: ${{ failure() }}
