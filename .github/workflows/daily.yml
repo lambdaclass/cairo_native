@@ -102,7 +102,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dump-${{matrix.runner}}-${{matrix.block}}
-          path: ../replay/state_dumps/${{matrix.runner}}
+          path: starknet-replay/state_dumps/${{matrix.runner}}
 
       - name: Compare states
         run: ../cairo_native/scripts/cmp_state_dumps.sh
