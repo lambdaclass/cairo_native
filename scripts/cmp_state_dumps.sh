@@ -24,13 +24,16 @@ for vm_dump in state_dumps/vm/*/*.json; do
     continue
   fi
 
-  base=$(basename "$vm_dump")
+  tx_name=$(basename "$vm_dump")
+  tx=${tx_name//.*/}
+  block_name=$(basename "$(dirname "$vm_dump")")
+  block=${block_name//block/}
 
   if ! cmp -s \
       <(sed '/"reverted": /d' "$native_dump") \
       <(sed '/"reverted": /d' "$vm_dump")
   then
-    echo "diff:  $base"
+    echo "diff: block $block, tx $tx"
     diffing=$((diffing+1))
   else
     matching=$((matching+1))
