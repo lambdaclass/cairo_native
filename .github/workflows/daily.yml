@@ -120,13 +120,13 @@ jobs:
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
         with:
-          name: dump-${{matrix.block}}-native
+          name: dump-native-${{matrix.block}}
           path: state_dumps/native
 
       - name: Fetch VM dumps
         uses: actions/download-artifact@v4
         with:
-          name: dump-${{matrix.block}}-vm
+          name: dump-vm-${{matrix.block}}
           path: state_dumps/vm
 
       - name: Compare states
