@@ -114,6 +114,9 @@ jobs:
           - 740000
           - 741000
       fail-fast: false
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -130,4 +133,26 @@ jobs:
           path: state_dumps/vm
 
       - name: Compare states
-        run: ./scripts/cmp_state_dumps.sh
+        run: |
+          ./scripts/cmp_state_dumps.sh > output
+
+      - name: Prepare env vars
+        if: ${{ always() }}
+        run: |
+          BLOCK_START=${{ matrix.block }}
+          BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
+          OUTPUT=$(< output)
+          echo "BLOCK_END=$BLOCK_END" >> $GITHUB_ENV
+          echo "BLOCK_START=$BLOCK_START" >> $GITHUB_ENV
+          echo "OUTPUT=\"$OUTPUT\"" >> $GITHUB_ENV
+          echo "$OUTPUT"
+
+      # - name: Create Issue
+      #   if: ${{ failure() }}
+      #   uses: JasonEtco/create-an-issue@v2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     OS: ${{ matrix.os_name}}
+      #     COMMIT_SHA: ${{ github.sha }}
+      #   with:
+      #     filename: .github/ISSUE_TEMPLATE/daily_failure.md
