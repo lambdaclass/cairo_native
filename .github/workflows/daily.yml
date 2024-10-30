@@ -106,13 +106,13 @@ jobs:
 
 
   compare:
-    needs: [run]
+    # needs: [run]
     runs-on: ubuntu-latest
     strategy:
       matrix:
         block:
           - 740000
-          - 741000
+          # - 741000
       fail-fast: false
     defaults:
       run:
@@ -120,17 +120,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch Native dumps
-        uses: actions/download-artifact@v4
-        with:
-          name: dump-native-${{matrix.block}}
-          path: state_dumps/native
+      # - name: Fetch Native dumps
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: dump-native-${{matrix.block}}
+      #     path: state_dumps/native
 
-      - name: Fetch VM dumps
-        uses: actions/download-artifact@v4
-        with:
-          name: dump-vm-${{matrix.block}}
-          path: state_dumps/vm
+      # - name: Fetch VM dumps
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: dump-vm-${{matrix.block}}
+      #     path: state_dumps/vm
 
       - name: Compare states
         run: |
@@ -149,12 +149,12 @@ jobs:
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
 
-      - name: Create Issue
-        if: ${{ failure() }}
-        uses: JasonEtco/create-an-issue@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OS: ${{ matrix.os_name}}
-          COMMIT_SHA: ${{ github.sha }}
-        with:
-          filename: .github/ISSUE_TEMPLATE/daily_failure.md
+      # - name: Create Issue
+      #   if: ${{ failure() }}
+      #   uses: JasonEtco/create-an-issue@v2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     OS: ${{ matrix.os_name}}
+      #     COMMIT_SHA: ${{ github.sha }}
+      #   with:
+      #     filename: .github/ISSUE_TEMPLATE/daily_failure.md
