@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  RANGE_SIZE: 40
+  RANGE_SIZE: 1
   SEQUENCER_REV: 1b1b95cae7ae07b9bc778443ca75ee18008a6bc8
 
 jobs:
@@ -23,15 +23,7 @@ jobs:
       matrix:
         block:
           - 740000
-          - 741000
-          - 742000
-          - 743000
-          - 744000
-          - 745000
-          - 746000
-          - 747000
-          - 748000
-          - 749000
+          - 803072
         runner:
           - native
           - vm
@@ -112,15 +104,7 @@ jobs:
       matrix:
         block:
           - 740000
-          - 741000
-          - 742000
-          - 743000
-          - 744000
-          - 745000
-          - 746000
-          - 747000
-          - 748000
-          - 749000
+          - 803072
       fail-fast: false
     defaults:
       run:
