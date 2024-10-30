@@ -142,12 +142,12 @@ jobs:
           # Save blocks to env var
           BLOCK_START=${{ matrix.block }}
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
-          echo "BLOCK_END=$BLOCK_END" >> $GITHUB_ENV
-          echo "BLOCK_START=$BLOCK_START" >> $GITHUB_ENV
+          echo "BLOCK_END=$BLOCK_END" | tee -a $GITHUB_ENV
+          echo "BLOCK_START=$BLOCK_START" | tee -a $GITHUB_ENV
 
           # Save workflow url
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
-          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
+          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
 
       # - name: Create Issue
       #   if: ${{ failure() }}
