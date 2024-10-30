@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  RANGE_SIZE: 2
+  RANGE_SIZE: 40
   SEQUENCER_REV: 1b1b95cae7ae07b9bc778443ca75ee18008a6bc8
 
 jobs:
@@ -24,14 +24,14 @@ jobs:
         block:
           - 740000
           - 741000
-          # - 742000
-          # - 743000
-          # - 744000
-          # - 745000
-          # - 746000
-          # - 747000
-          # - 748000
-          # - 749000
+          - 742000
+          - 743000
+          - 744000
+          - 745000
+          - 746000
+          - 747000
+          - 748000
+          - 749000
         runner:
           - native
           - vm
@@ -106,13 +106,21 @@ jobs:
 
 
   compare:
-    # needs: [run]
+    needs: [run]
     runs-on: ubuntu-latest
     strategy:
       matrix:
         block:
           - 740000
-          # - 741000
+          - 741000
+          - 742000
+          - 743000
+          - 744000
+          - 745000
+          - 746000
+          - 747000
+          - 748000
+          - 749000
       fail-fast: false
     defaults:
       run:
@@ -120,22 +128,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # - name: Fetch Native dumps
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: dump-native-${{matrix.block}}
-      #     path: state_dumps/native
+      - name: Fetch Native dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-native-${{matrix.block}}
+          path: state_dumps/native
 
-      # - name: Fetch VM dumps
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: dump-vm-${{matrix.block}}
-      #     path: state_dumps/vm
+      - name: Fetch VM dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-vm-${{matrix.block}}
+          path: state_dumps/vm
 
       - name: Compare states
         run: |
           ./scripts/cmp_state_dumps.sh | tee output
-          false
 
       - name: Prepare env vars
         if: ${{ always() }}
