@@ -676,14 +676,13 @@ pub mod trace_dump {
     use std::{
         alloc::Layout,
         collections::HashMap,
-        marker::PhantomData,
         mem::swap,
         ops::Range,
         ptr::NonNull,
         sync::{LazyLock, Mutex},
     };
 
-    use crate::FeltDict;
+    use crate::{c_void, FeltDict};
 
     pub static TRACE_DUMP: LazyLock<Mutex<HashMap<u64, TraceDump>>> =
         LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -963,6 +962,7 @@ pub mod trace_dump {
             | CoreTypeConcrete::EcOp(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
+            | CoreTypeConcrete::RangeCheck96(_)
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::SegmentArena(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
@@ -987,8 +987,8 @@ pub mod trace_dump {
                 }
             }
 
-            CoreTypeConcrete::RangeCheck96(_) => todo!("CoreTypeConcrete::RangeCheck96"),
-            CoreTypeConcrete::Felt252Dict(info) => {
+            CoreTypeConcrete::SquashedFelt252Dict(info)
+            | CoreTypeConcrete::Felt252Dict(info) => {
                 let value = value_ptr.cast::<&FeltDict>().read();
 
                 let data = value
@@ -1013,9 +1013,33 @@ pub mod trace_dump {
                     data,
                 }
             }
-            CoreTypeConcrete::Felt252DictEntry(_) => todo!("CoreTypeConcrete::Felt252DictEntry"),
-            CoreTypeConcrete::SquashedFelt252Dict(_) => {
-                todo!("CoreTypeConcrete::SquashedFelt252Dict")
+            CoreTypeConcrete::Felt252DictEntry(info) => {
+                let value = value_ptr.cast::<FeltDictEntry>().read();
+
+                let data = value
+                    .dict
+                    .inner
+                    .iter()
+                    .map(|(k, &p)| {
+                        let v = match NonNull::new(p) {
+                            Some(value_ptr) => {
+                                read_value_ptr(registry, &info.ty, value_ptr.cast(), get_layout)
+                            }
+                            None => Value::Uninitialized {
+                                ty: info.ty.clone(),
+                            },
+                        };
+                        let k = Felt::from_bytes_le(k);
+                        (k, v)
+                    })
+                    .collect::<HashMap<Felt, Value>>();
+                let key = Felt::from_bytes_le(&value.key);
+
+                Value::FeltDictEntry {
+                    ty: info.ty.clone(),
+                    data,
+                    key
+                }
             }
             CoreTypeConcrete::Span(_) => todo!("CoreTypeConcrete::Span"),
             CoreTypeConcrete::StarkNet(selector) => match selector {
@@ -1066,6 +1090,12 @@ pub mod trace_dump {
                 Value::Bytes31(Felt::from_bytes_le(&data))
             }
         }
+    }
+
+    #[derive(Debug)]
+    struct FeltDictEntry<'a> {
+        dict: &'a FeltDict,
+        key: &'a [u8; 32]
     }
 
     #[repr(C, align(16))]
