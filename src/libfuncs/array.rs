@@ -968,15 +968,35 @@ pub fn build_slice<'ctx, 'this>(
 
 /// Generate MLIR operations for the `array_len` libfunc.
 pub fn build_len<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureAndTypeConcreteLibfunc,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    let len_ty = IntegerType::new(context, 32).into();
+
+    let array_start =
+        entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 2)?;
+
+    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
+
+    metadata
+        .get::<DropOverridesMeta>()
+        .unwrap()
+        .invoke_override(
+            context,
+            entry,
+            location,
+            &info.signature.param_signatures[0].ty,
+            entry.argument(0)?.into(),
+        )?;
+
+    entry.append_operation(helper.br(0, &[array_len], location));
+    Ok(())
 }
 
 fn calc_refcount_offset(layout: Layout) -> usize {
