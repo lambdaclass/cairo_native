@@ -96,6 +96,8 @@ jobs:
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
           cargo run --release --features state_dump,only_cairo_vm block-range $BLOCK_START $BLOCK_END mainnet
 
+      # We create the directory to upload, so that the upload step never
+      # fails, even if no dumps were generated.
       - name: Create runner dir
         if: ${{ always() }}
         run: mkdir -a state_dumps/${{matrix.runner}}
