@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  RANGE_SIZE: 40
+  RANGE_SIZE: 1
   SEQUENCER_REV: 1b1b95cae7ae07b9bc778443ca75ee18008a6bc8
 
 jobs:
@@ -89,17 +89,16 @@ jobs:
           BLOCK_START=${{ matrix.block }}
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
           cargo run --release --features state_dump block-range $BLOCK_START $BLOCK_END mainnet
-        continue-on-error: true
       - name: Run with VM
         if: ${{ matrix.runner == 'vm' }}
         run: |
           BLOCK_START=${{ matrix.block }}
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
           cargo run --release --features state_dump,only_cairo_vm block-range $BLOCK_START $BLOCK_END mainnet
-        continue-on-error: true
 
       - name: Upload dumps
         uses: actions/upload-artifact@v4
+        if: ${{ always() }}
         with:
           name: dump-${{matrix.runner}}-${{matrix.block}}
           path: starknet-replay/state_dumps/${{matrix.runner}}
@@ -108,6 +107,7 @@ jobs:
   compare:
     needs: [run]
     runs-on: ubuntu-latest
+    if: ${{ always() }}
     strategy:
       matrix:
         block:
