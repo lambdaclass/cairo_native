@@ -101,7 +101,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
-          name: dump-${{matrix.runner}}-${{matrix.block}}
+          name: dump-${{matrix.block}}-${{matrix.runner}}
           path: starknet-replay/state_dumps/${{matrix.runner}}
 
 
@@ -134,13 +134,13 @@ jobs:
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
         with:
-          name: dump-native-${{matrix.block}}
+          name: dump-${{matrix.block}}-native
           path: state_dumps/native
         continue-on-error: true
       - name: Fetch VM dumps
         uses: actions/download-artifact@v4
         with:
-          name: dump-vm-${{matrix.block}}
+          name: dump-${{matrix.block}}-vm
           path: state_dumps/vm
         continue-on-error: true
 
