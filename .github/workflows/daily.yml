@@ -96,6 +96,10 @@ jobs:
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
           cargo run --release --features state_dump,only_cairo_vm block-range $BLOCK_START $BLOCK_END mainnet
 
+      - name: Create runner dir
+        if: ${{ always() }}
+        run: mkdir -a state_dumps/${{matrix.runner}}
+
       - name: Upload dumps
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
