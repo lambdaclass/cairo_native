@@ -96,12 +96,7 @@ jobs:
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
           cargo run --release --features state_dump,only_cairo_vm block-range $BLOCK_START $BLOCK_END mainnet
 
-      # We create the directory to upload, so that the upload step never
-      # fails, even if no dumps were generated.
-      - name: Create runner dir
-        if: ${{ always() }}
-        run: mkdir -a state_dumps/${{matrix.runner}}
-
+      # We always upload the dump, even if the job fails
       - name: Upload dumps
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
@@ -113,6 +108,8 @@ jobs:
   compare:
     needs: [run]
     runs-on: ubuntu-latest
+    # We always run the compare job, to ensure that a single run job failing
+    # would not cancel the whole comparison.
     if: ${{ always() }}
     strategy:
       matrix:
@@ -134,17 +131,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # These steps should never fail, as we always create the artifact.
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
         with:
           name: dump-native-${{matrix.block}}
           path: state_dumps/native
+        continue-on-error: true
       - name: Fetch VM dumps
         uses: actions/download-artifact@v4
         with:
           name: dump-vm-${{matrix.block}}
           path: state_dumps/vm
+        continue-on-error: true
 
       - name: Compare states
         run: |
