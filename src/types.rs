@@ -132,9 +132,6 @@ pub trait TypeBuilder {
     /// TODO: How is it used?
     fn variants(&self) -> Option<&[ConcreteTypeId]>;
 
-    // If the type is a struct, return the field types.
-    fn fields(&self) -> Option<&[ConcreteTypeId]>;
-
     #[allow(clippy::too_many_arguments)]
     fn build_default<'ctx, 'this>(
         &self,
@@ -875,13 +872,6 @@ impl TypeBuilder for CoreTypeConcrete {
     fn variants(&self) -> Option<&[ConcreteTypeId]> {
         match self {
             Self::Enum(info) => Some(&info.variants),
-            _ => None,
-        }
-    }
-
-    fn fields(&self) -> Option<&[ConcreteTypeId]> {
-        match self {
-            Self::Struct(info) => Some(&info.members),
             _ => None,
         }
     }
