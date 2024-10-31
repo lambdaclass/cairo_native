@@ -7,6 +7,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
+    types::TypeBuilder,
     utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -23,7 +24,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, llvm, ods, scf,
     },
-    ir::{r#type::IntegerType, Block, Location, Region, Value},
+    ir::{r#type::IntegerType, Block, BlockRef, Location, Region, Value},
     Context,
 };
 use std::alloc::Layout;
@@ -476,7 +477,8 @@ pub fn build_append<'ctx, 'this>(
     let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
     let elem_stride = entry.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
 
-    let k1 = block.const_int(context, location, 1, 32)?;
+    let k0 = entry.const_int(context, location, 1, 32)?;
+    let k1 = entry.const_int(context, location, 1, 32)?;
 
     let array_ptr = entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
     let array_start =
@@ -486,19 +488,20 @@ pub fn build_append<'ctx, 'this>(
         entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 3)?;
 
     let calc_next_size = |block: &Block| {
-        // Array allocation growth formula:
-        //   new_len = max(8, old_len + min(1024, 2 * old_len));
-        //   new_size = size_of::<T>() * new_len + refcount_offset;
+        // // Array allocation growth formula:
+        // //   new_len = max(8, old_len + min(1024, 2 * old_len));
+        // //   new_size = size_of::<T>() * new_len + refcount_offset;
 
-        let k8 = block.const_int(context, location, 8, 32)?;
-        let k1024 = block.const_int(context, location, 1024, 32)?;
+        // let k8 = block.const_int(context, location, 8, 32)?;
+        // let k1024 = block.const_int(context, location, 1024, 32)?;
 
-        let new_len = block.append_op_result(arith::shli(array_capacity, k1, location))?;
-        let new_len = block.append_op_result(arith::minui(new_len, k1024, location))?;
-        let new_len = block.append_op_result(arith::addi(new_len, array_capacity, location))?;
-        let new_len = block.append_op_result(arith::maxui(new_len, k8, location))?;
+        // let new_len = block.append_op_result(arith::shli(array_capacity, k1, location))?;
+        // let new_len = block.append_op_result(arith::minui(new_len, k1024, location))?;
+        // let new_len = block.append_op_result(arith::addi(new_len, array_capacity, location))?;
+        // let new_len = block.append_op_result(arith::maxui(new_len, k8, location))?;
 
-        Result::Ok(new_len)
+        // Result::Ok(new_len)
+        Result::Ok(todo!())
     };
 
     let is_shared = is_shared(context, entry, location, array_ptr, elem_layout)?;
@@ -522,7 +525,7 @@ pub fn build_append<'ctx, 'this>(
             let clone_capacity = block.append_op_result(arith::select(
                 has_capacity,
                 array_len,
-                calc_next_size(&block),
+                calc_next_size(&block)?,
                 location,
             ))?;
             let clone_size = block.append_op_result(arith::extui(
@@ -564,7 +567,7 @@ pub fn build_append<'ctx, 'this>(
                     elem_stride,
                     location,
                 ))?)],
-                elem_type,
+                IntegerType::new(context, 8).into(),
             )?;
 
             match metadata.get::<DupOverridesMeta>() {

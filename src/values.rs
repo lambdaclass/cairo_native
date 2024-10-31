@@ -236,15 +236,28 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let ptr: *mut () = match elem_layout.size() * data.len() {
+                        let refcount_offset = get_integer_layout(32)
+                            .align_to(elem_layout.align())
+                            .unwrap()
+                            .pad_to_align()
+                            .size();
+                        let ptr = match elem_layout.size() * data.len() {
                             0 => std::ptr::null_mut(),
-                            len => libc_malloc(len).cast(),
+                            len => {
+                                let ptr: *mut () = libc_malloc(len).cast();
+
+                                // Write reference count.
+                                ptr.cast::<u32>().write(1);
+
+                                ptr.byte_add(refcount_offset)
+                            }
                         };
                         let len: u32 = data
                             .len()
                             .try_into()
                             .map_err(|_| Error::IntegerConversion)?;
 
+                        // Write the data.
                         for (idx, elem) in data.iter().enumerate() {
                             let elem = elem.to_ptr(arena, registry, &info.ty)?;
 
