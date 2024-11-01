@@ -242,14 +242,15 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             return Err(Error::SierraAssert(SierraAssertError::BadTypeInfo));
         };
 
+        debug_assert!(
+            param.ty == info.ty,
+            "invalid input tuple for libfunc `span_from_tuple`"
+        );
+
         let CoreTypeConcrete::Struct(param) = registry.get_type(&param.ty)? else {
             return Err(Error::SierraAssert(SierraAssertError::BadTypeInfo));
         };
 
-        debug_assert!(
-            param.members.iter().all(|member| *member == info.ty),
-            "invalid input tuple for libfunc `span_from_tuple`"
-        );
         param.members.len()
     };
 
@@ -261,7 +262,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     let array_ptr = entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
     let array_start =
         entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
-    let array_end = entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 2)?;
 
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
     let tuple_len = entry.const_int_from_type(context, location, tuple_len_const, len_ty)?;
@@ -322,7 +323,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         let array_ptr = valid_block.gep(
             context,
             location,
-            array_start,
+            array_ptr,
             &[GepIndex::Value(array_start_offset)],
             IntegerType::new(context, 8).into(),
         )?;
@@ -421,6 +422,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             },
             location,
         ));
+
+        valid_block.append_operation(helper.br(0, &[value], location));
     }
 
     {
@@ -463,216 +466,219 @@ pub fn build_append<'ctx, 'this>(
      * 5. Append element.
      */
 
-    let self_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.signature.param_signatures[0].ty,
-    )?;
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
 
-    let ptr_ty = llvm::r#type::pointer(context, 0);
-    let len_ty = IntegerType::new(context, 32).into();
+    // let self_ty = registry.build_type(
+    //     context,
+    //     helper,
+    //     registry,
+    //     metadata,
+    //     &info.signature.param_signatures[0].ty,
+    // )?;
 
-    let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
-    let elem_stride = entry.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
+    // let ptr_ty = llvm::r#type::pointer(context, 0);
+    // let len_ty = IntegerType::new(context, 32).into();
 
-    let k0 = entry.const_int(context, location, 1, 32)?;
-    let k1 = entry.const_int(context, location, 1, 32)?;
+    // let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
+    // let elem_stride = entry.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
 
-    let array_ptr = entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
-    let array_start =
-        entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
-    let array_end = entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 2)?;
-    let array_capacity =
-        entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 3)?;
+    // let k0 = entry.const_int(context, location, 1, 32)?;
+    // let k1 = entry.const_int(context, location, 1, 32)?;
 
-    let calc_next_size = |block: &Block| {
-        // // Array allocation growth formula:
-        // //   new_len = max(8, old_len + min(1024, 2 * old_len));
-        // //   new_size = size_of::<T>() * new_len + refcount_offset;
+    // let array_ptr = entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
+    // let array_start =
+    //     entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
+    // let array_end = entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 2)?;
+    // let array_capacity =
+    //     entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 3)?;
 
-        // let k8 = block.const_int(context, location, 8, 32)?;
-        // let k1024 = block.const_int(context, location, 1024, 32)?;
+    // let calc_next_size = |block: &Block| {
+    //     // // Array allocation growth formula:
+    //     // //   new_len = max(8, old_len + min(1024, 2 * old_len));
+    //     // //   new_size = size_of::<T>() * new_len + refcount_offset;
 
-        // let new_len = block.append_op_result(arith::shli(array_capacity, k1, location))?;
-        // let new_len = block.append_op_result(arith::minui(new_len, k1024, location))?;
-        // let new_len = block.append_op_result(arith::addi(new_len, array_capacity, location))?;
-        // let new_len = block.append_op_result(arith::maxui(new_len, k8, location))?;
+    //     // let k8 = block.const_int(context, location, 8, 32)?;
+    //     // let k1024 = block.const_int(context, location, 1024, 32)?;
 
-        // Result::Ok(new_len)
-        Result::Ok(todo!())
-    };
+    //     // let new_len = block.append_op_result(arith::shli(array_capacity, k1, location))?;
+    //     // let new_len = block.append_op_result(arith::minui(new_len, k1024, location))?;
+    //     // let new_len = block.append_op_result(arith::addi(new_len, array_capacity, location))?;
+    //     // let new_len = block.append_op_result(arith::maxui(new_len, k8, location))?;
 
-    let is_shared = is_shared(context, entry, location, array_ptr, elem_layout)?;
-    entry.append_operation(scf::r#if(
-        is_shared,
-        &[self_ty],
-        {
-            let region = Region::new();
-            let block = region.append_block(Block::new(&[]));
+    //     // Result::Ok(new_len)
+    //     Result::Ok(todo!())
+    // };
 
-            let array_len =
-                block.append_op_result(arith::subi(array_end, array_start, location))?;
-            let has_capacity = block.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Ult,
-                array_len,
-                array_capacity,
-                location,
-            ))?;
+    // let is_shared = is_shared(context, entry, location, array_ptr, elem_layout)?;
+    // entry.append_operation(scf::r#if(
+    //     is_shared,
+    //     &[self_ty],
+    //     {
+    //         let region = Region::new();
+    //         let block = region.append_block(Block::new(&[]));
 
-            let clone_capacity = block.append_op_result(arith::select(
-                has_capacity,
-                array_len,
-                calc_next_size(&block)?,
-                location,
-            ))?;
-            let clone_size = block.append_op_result(arith::extui(
-                clone_capacity,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
-            let clone_data_size =
-                block.append_op_result(arith::muli(clone_size, elem_stride, location))?;
-            let clone_size = block.append_op_result(arith::addi(
-                clone_data_size,
-                block.const_int(context, location, calc_refcount_offset(elem_layout), 64)?,
-                location,
-            ))?;
+    //         let array_len =
+    //             block.append_op_result(arith::subi(array_end, array_start, location))?;
+    //         let has_capacity = block.append_op_result(arith::cmpi(
+    //             context,
+    //             CmpiPredicate::Ult,
+    //             array_len,
+    //             array_capacity,
+    //             location,
+    //         ))?;
 
-            let clone_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
-            let clone_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
-                context, clone_ptr, clone_size, location,
-            ))?;
-            block.store(context, location, clone_ptr, k1)?;
-            let clone_ptr = block.gep(
-                context,
-                location,
-                clone_ptr,
-                &[GepIndex::Const(calc_refcount_offset(elem_layout) as i32)],
-                IntegerType::new(context, 8).into(),
-            )?;
+    //         let clone_capacity = block.append_op_result(arith::select(
+    //             has_capacity,
+    //             array_len,
+    //             calc_next_size(&block)?,
+    //             location,
+    //         ))?;
+    //         let clone_size = block.append_op_result(arith::extui(
+    //             clone_capacity,
+    //             IntegerType::new(context, 64).into(),
+    //             location,
+    //         ))?;
+    //         let clone_data_size =
+    //             block.append_op_result(arith::muli(clone_size, elem_stride, location))?;
+    //         let clone_size = block.append_op_result(arith::addi(
+    //             clone_data_size,
+    //             block.const_int(context, location, calc_refcount_offset(elem_layout), 64)?,
+    //             location,
+    //         ))?;
 
-            let data_ptr = block.gep(
-                context,
-                location,
-                array_ptr,
-                &[GepIndex::Value(block.append_op_result(arith::muli(
-                    block.append_op_result(arith::extui(
-                        array_start,
-                        IntegerType::new(context, 64).into(),
-                        location,
-                    ))?,
-                    elem_stride,
-                    location,
-                ))?)],
-                IntegerType::new(context, 8).into(),
-            )?;
+    //         let clone_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
+    //         let clone_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+    //             context, clone_ptr, clone_size, location,
+    //         ))?;
+    //         block.store(context, location, clone_ptr, k1)?;
+    //         let clone_ptr = block.gep(
+    //             context,
+    //             location,
+    //             clone_ptr,
+    //             &[GepIndex::Const(calc_refcount_offset(elem_layout) as i32)],
+    //             IntegerType::new(context, 8).into(),
+    //         )?;
 
-            match metadata.get::<DupOverridesMeta>() {
-                Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
-                    // TODO: Clone elements.
-                    todo!()
-                }
-                _ => block.memcpy(context, location, data_ptr, clone_ptr, clone_data_size),
-            }
+    //         let data_ptr = block.gep(
+    //             context,
+    //             location,
+    //             array_ptr,
+    //             &[GepIndex::Value(block.append_op_result(arith::muli(
+    //                 block.append_op_result(arith::extui(
+    //                     array_start,
+    //                     IntegerType::new(context, 64).into(),
+    //                     location,
+    //                 ))?,
+    //                 elem_stride,
+    //                 location,
+    //             ))?)],
+    //             IntegerType::new(context, 8).into(),
+    //         )?;
 
-            let clone_value = block.append_op_result(llvm::undef(self_ty, location))?;
-            let clone_value = block.insert_values(
-                context,
-                location,
-                clone_value,
-                &[clone_ptr, k0, array_len, clone_capacity],
-            )?;
+    //         match metadata.get::<DupOverridesMeta>() {
+    //             Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
+    //                 // TODO: Clone elements.
+    //                 todo!()
+    //             }
+    //             _ => block.memcpy(context, location, data_ptr, clone_ptr, clone_data_size),
+    //         }
 
-            metadata
-                .get::<DropOverridesMeta>()
-                .unwrap()
-                .invoke_override(
-                    context,
-                    &block,
-                    location,
-                    &info.signature.param_signatures[0].ty,
-                    entry.argument(0)?.into(),
-                )?;
+    //         let clone_value = block.append_op_result(llvm::undef(self_ty, location))?;
+    //         let clone_value = block.insert_values(
+    //             context,
+    //             location,
+    //             clone_value,
+    //             &[clone_ptr, k0, array_len, clone_capacity],
+    //         )?;
 
-            block.append_operation(scf::r#yield(&[clone_value], location));
-            region
-        },
-        {
-            let region = Region::new();
-            let block = region.append_block(Block::new(&[]));
+    //         metadata
+    //             .get::<DropOverridesMeta>()
+    //             .unwrap()
+    //             .invoke_override(
+    //                 context,
+    //                 &block,
+    //                 location,
+    //                 &info.signature.param_signatures[0].ty,
+    //                 entry.argument(0)?.into(),
+    //             )?;
 
-            let has_tail_space = block.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Ne,
-                array_end,
-                array_capacity,
-                location,
-            ))?;
-            block.append_op_result(scf::r#if(
-                has_tail_space,
-                &[],
-                {
-                    let region = Region::new();
-                    let block = region.append_block(Block::new(&[]));
+    //         block.append_operation(scf::r#yield(&[clone_value], location));
+    //         region
+    //     },
+    //     {
+    //         let region = Region::new();
+    //         let block = region.append_block(Block::new(&[]));
 
-                    // TODO: Do nothing if it fits.
+    //         let has_tail_space = block.append_op_result(arith::cmpi(
+    //             context,
+    //             CmpiPredicate::Ne,
+    //             array_end,
+    //             array_capacity,
+    //             location,
+    //         ))?;
+    //         block.append_op_result(scf::r#if(
+    //             has_tail_space,
+    //             &[],
+    //             {
+    //                 let region = Region::new();
+    //                 let block = region.append_block(Block::new(&[]));
 
-                    block.append_operation(scf::r#yield(&[], location));
-                    region
-                },
-                {
-                    let region = Region::new();
-                    let block = region.append_block(Block::new(&[]));
+    //                 // TODO: Do nothing if it fits.
 
-                    let has_head_space = block.append_op_result(arith::cmpi(
-                        context,
-                        CmpiPredicate::Ne,
-                        array_start,
-                        k0,
-                        location,
-                    ))?;
-                    block.append_op_result(scf::r#if(
-                        has_head_space,
-                        &[],
-                        {
-                            let region = Region::new();
-                            let block = region.append_block(Block::new(&[]));
+    //                 block.append_operation(scf::r#yield(&[], location));
+    //                 region
+    //             },
+    //             {
+    //                 let region = Region::new();
+    //                 let block = region.append_block(Block::new(&[]));
 
-                            // TODO: Move if it has space in front.
+    //                 let has_head_space = block.append_op_result(arith::cmpi(
+    //                     context,
+    //                     CmpiPredicate::Ne,
+    //                     array_start,
+    //                     k0,
+    //                     location,
+    //                 ))?;
+    //                 block.append_op_result(scf::r#if(
+    //                     has_head_space,
+    //                     &[],
+    //                     {
+    //                         let region = Region::new();
+    //                         let block = region.append_block(Block::new(&[]));
 
-                            block.append_operation(scf::r#yield(&[], location));
-                            region
-                        },
-                        {
-                            let region = Region::new();
-                            let block = region.append_block(Block::new(&[]));
+    //                         // TODO: Move if it has space in front.
 
-                            // TODO: Realloc if it has no space.
+    //                         block.append_operation(scf::r#yield(&[], location));
+    //                         region
+    //                     },
+    //                     {
+    //                         let region = Region::new();
+    //                         let block = region.append_block(Block::new(&[]));
 
-                            block.append_operation(scf::r#yield(&[], location));
-                            region
-                        },
-                        location,
-                    ))?;
+    //                         // TODO: Realloc if it has no space.
 
-                    block.append_operation(scf::r#yield(&[], location));
-                    region
-                },
-                location,
-            ))?;
+    //                         block.append_operation(scf::r#yield(&[], location));
+    //                         region
+    //                     },
+    //                     location,
+    //                 ))?;
 
-            block.append_operation(scf::r#yield(&[], location));
-            region
-        },
-        location,
-    ));
+    //                 block.append_operation(scf::r#yield(&[], location));
+    //                 region
+    //             },
+    //             location,
+    //         ))?;
 
-    // TODO: Append the item.
+    //         block.append_operation(scf::r#yield(&[], location));
+    //         region
+    //     },
+    //     location,
+    // ));
 
-    todo!()
+    // // TODO: Append the item.
+
+    // todo!()
+    Ok(())
 }
 
 #[derive(Clone, Copy)]
@@ -729,8 +735,14 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                 entry.argument(0)?.into(),
             )?;
 
-            let CoreTypeConcrete::Span(InfoAndTypeConcreteType { ty, .. }) =
+            let CoreTypeConcrete::Snapshot(InfoAndTypeConcreteType { ty, .. }) =
                 registry.get_type(&signature.param_signatures[1].ty)?
+            else {
+                return Err(Error::SierraAssert(SierraAssertError::BadTypeInfo));
+            };
+
+            let CoreTypeConcrete::Array(InfoAndTypeConcreteType { ty, .. }) =
+                registry.get_type(ty)?
             else {
                 return Err(Error::SierraAssert(SierraAssertError::BadTypeInfo));
             };
@@ -762,7 +774,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
     let has_enough_data = entry.append_op_result(arith::cmpi(
         context,
-        CmpiPredicate::Uge,
+        CmpiPredicate::Ule,
         extract_len_value,
         array_len,
         location,
@@ -781,6 +793,9 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
     ));
 
     {
+        // Clone branch_values so that it doesn't interfere with the other branch.
+        let mut branch_values = branch_values.clone();
+
         let value_size = valid_block.const_int(
             context,
             location,
@@ -793,7 +808,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             context, value_ptr, value_size, location,
         ))?;
 
-        let array_ptr = entry.extract_value(context, location, array_value, ptr_ty, 0)?;
+        let array_ptr = valid_block.extract_value(context, location, array_value, ptr_ty, 0)?;
         let is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)?;
 
         let data_ptr = {
@@ -829,7 +844,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
-                let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
+                let k0 = block.const_int(context, location, 0, 64)?;
                 let k1 = block.const_int_from_type(context, location, 1, len_ty)?;
 
                 let elem_stride =
@@ -1023,6 +1038,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
         };
 
         branch_values.push(array_value);
+        branch_values.push(value_ptr);
 
         valid_block.append_operation(helper.br(0, &branch_values, location));
     }
@@ -1060,6 +1076,15 @@ pub fn build_get<'ctx, 'this>(
 ) -> Result<()> {
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();
+
+    // Build the type so that the drop impl invocation works properly.
+    registry.build_type(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[1].ty,
+    )?;
 
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
@@ -1107,8 +1132,13 @@ pub fn build_get<'ctx, 'this>(
             valid_block.extract_value(context, location, entry.argument(1)?.into(), ptr_ty, 0)?;
         let is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)?;
 
-        let offset = valid_block.append_op_result(arith::extui(
+        let offset = valid_block.append_op_result(arith::addi(
             array_start,
+            entry.argument(2)?.into(),
+            location,
+        ))?;
+        let offset = valid_block.append_op_result(arith::extui(
+            offset,
             IntegerType::new(context, 64).into(),
             location,
         ))?;
@@ -1230,11 +1260,11 @@ pub fn build_get<'ctx, 'this>(
                 context,
                 valid_block,
                 location,
-                &info.signature.param_signatures[0].ty,
+                &info.signature.param_signatures[1].ty,
                 entry.argument(1)?.into(),
             )?;
 
-        valid_block.append_operation(helper.br(1, &[range_check, value_ptr], location));
+        valid_block.append_operation(helper.br(0, &[range_check, value_ptr], location));
     }
 
     {
@@ -1245,7 +1275,7 @@ pub fn build_get<'ctx, 'this>(
                 context,
                 error_block,
                 location,
-                &info.signature.param_signatures[0].ty,
+                &info.signature.param_signatures[1].ty,
                 entry.argument(1)?.into(),
             )?;
 

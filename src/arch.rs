@@ -98,9 +98,9 @@ impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
                 let abi = unsafe { abi_ptr.cast::<ArrayAbi<()>>().as_ref() };
 
                 abi.ptr.to_bytes(buffer)?;
-                abi.since.to_bytes(buffer)?;
-                abi.until.to_bytes(buffer)?;
-                abi.capacity.to_bytes(buffer)?;
+                (abi.since as u64).to_bytes(buffer)?;
+                (abi.until as u64).to_bytes(buffer)?;
+                (abi.capacity as u64).to_bytes(buffer)?;
             }
             (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => todo!(),
             (Value::Bytes31(value), CoreTypeConcrete::Bytes31(_)) => value.to_bytes(buffer)?,
