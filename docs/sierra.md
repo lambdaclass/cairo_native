@@ -1,10 +1,14 @@
 # Sierra Resources
 
+- [Cairo and Sierra](https://docs.starknet.io/architecture-and-concepts/smart-contracts/cairo-and-sierra/)
 - [StarkWare Sessions 23 | Sierra - Enforcing Safety Using Typesystems | Shahar Papini](https://www.youtube.com/watch?v=-EHwaQuPuAA)
 - [Reading Sierra: Starknet's secret sauce for Cairo 1.0](https://medium.com/yagi-fi/reading-sierra-starknets-secret-sauce-for-cairo-1-0-5bc73409e43c)
 - [Under the hood of Cairo 1.0: Exploring Sierra Part 1](https://medium.com/nethermind-eth/under-the-hood-of-cairo-1-0-exploring-sierra-7f32808421f5)
 - [Under the hood of Cairo 1.0: Exploring Sierra Part 2](https://medium.com/nethermind-eth/under-the-hood-of-cairo-1-0-exploring-sierra-9355d618b26f)
 - [Under the hood of Cairo 1.0: Exploring Sierra Part 3](https://medium.com/nethermind-eth/under-the-hood-of-cairo-1-0-exploring-sierra-1220f6dbcf9)
+- [Understanding Sierra: Gas accounting](https://blog.kakarot.org/understanding-sierra-gas-accounting-19d6141d28b9)
+- [Equivalence Between Loops and Recursive Functions](https://book.cairo-lang.org/ch02-05-control-flow.html#equivalence-between-loops-and-recursive-functions)
+- [Inlining in Cairo](https://book.cairo-lang.org/ch11-06-inlining-in-cairo.html)
 - Crate documentation
     - [docs.rs: cairo_lang_sierra](https://docs.rs/cairo-lang-sierra/latest/cairo_lang_sierra/)
     - [docs.rs: cairo_lang_sierra_ap_change](https://docs.rs/cairo-lang-sierra-ap-change/latest/cairo_lang_sierra_ap_change/)
