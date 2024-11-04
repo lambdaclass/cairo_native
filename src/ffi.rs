@@ -293,7 +293,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 "-shared".into(),
                 "-L/lib/../lib64".into(),
                 "-L/usr/lib/../lib64".into(),
-                "--no-strip-discarded".into(),
             ];
 
             args.extend([
