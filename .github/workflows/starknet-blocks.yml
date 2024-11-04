@@ -116,6 +116,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check and free hdd space left
+        if: ${{ matrix.runner == 'native' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^temurin-.*'
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          echo "Removing large directories"
+          # deleting 15GB
+          sudo rm -rf /usr/share/dotnet/
+          sudo rm -rf /usr/local/lib/android
+
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
         with:
