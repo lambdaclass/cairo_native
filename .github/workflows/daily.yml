@@ -40,8 +40,6 @@ jobs:
         shell: bash
         working-directory: ./starknet-replay
 
-    # todo: build first on a single job, and run the blocks after
-
     steps:
       # We checkout replay first, as it's the main repository for this workflow
       - name: Checkout Replay
