@@ -74,7 +74,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
-          ref: 3950531b49799d1a020edd57b919b015ccd448f7
+          ref: 47fa90bb2f1fda6e6a2c032719f897b2c0070e18
           path: replay
 
       - name: Install Starknet Replay deps
