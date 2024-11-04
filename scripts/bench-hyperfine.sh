@@ -42,9 +42,9 @@ run_bench() {
     base_name=$(basename $base_path)
 
     "$COMPILER_CLI" \
-        "$base_path.cairo" \
-        --output-mlir "$OUTPUT_DIR/$base_name.mlir" \
-        --output-library "$OUTPUT_DIR/$base_name.so" \
+        -s "$base_path.cairo" \
+        "$OUTPUT_DIR/$base_name.mlir" \
+        "$OUTPUT_DIR/lib$base_name.so" \
         >> /dev/stderr
 
     "$MLIR_DIR/bin/clang" \
@@ -55,8 +55,9 @@ run_bench() {
         "$base_path.c" \
         -L "$OUTPUT_DIR/" \
         -Wl,-rpath "$MLIR_DIR/lib" \
-        -Wl,-rpath "$OUTPUT_DIR/" \
-        -l:"$OUTPUT_DIR/$base_name.so" \
+        -Wl,-rpath "$OUTPUT_DIR" \
+        -lm \
+        -l"$base_name" \
         -o "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
 
@@ -67,7 +68,6 @@ run_bench() {
         -n "Cairo-vm (Rust, Cairo 1)" "$CAIRO_RUN --available-gas 18446744073709551615 -s $base_path.cairo" \
         -n "cairo-native (embedded AOT)" "$JIT_CLI --run-mode=aot -s $base_path.cairo --opt-level 3 --available-gas 18446744073709551615 " \
         -n "cairo-native (embedded JIT using LLVM's ORC Engine)" "$JIT_CLI --run-mode=jit -s $base_path.cairo --opt-level 3 --available-gas 18446744073709551615 " \
-        -n "cairo-native (standalone AOT)" "$OUTPUT_DIR/$base_name" \
         -n "cairo-native (standalone AOT with -march=native)" "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
 }
