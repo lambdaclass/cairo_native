@@ -281,6 +281,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 "-o".into(),
                 Cow::from(output_path),
                 "-lSystem".into(),
+                "--whole-archive".into(), // needed so `cairo_native__set_costs_builtin` is always available
                 Cow::from(runtime_library_path),
             ]);
 
