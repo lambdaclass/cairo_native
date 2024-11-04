@@ -20,7 +20,7 @@ static void run_bench(map_return_values_t *, uint64_t)
     __attribute__((weakref("_mlir_ciface_logistic_map::logistic_map::main(f2)")));
 
 static void cairo_native__set_costs_builtin(uint64_t*)
-__attribute__((weakref("cairo_native__set_costs_builtin)")));
+__attribute__((weakref("cairo_native__set_costs_builtin")));
 
 int main()
 {
