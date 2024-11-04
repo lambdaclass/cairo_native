@@ -10,7 +10,7 @@ CAIRO_SRCS=$(find \
 IFS=$'\n' read -rd '' -a CAIRO_SRCS <<<"$CAIRO_SRCS"
 
 CAIRO_RUN="$ROOT_DIR/cairo2/bin/cairo-run"
-COMPILER_CLI="$ROOT_DIR/target/release/cairo-native-dump"
+COMPILER_CLI="$ROOT_DIR/target/release/cairo-native-compile"
 JIT_CLI="$ROOT_DIR/target/release/cairo-native-run"
 OUTPUT_DIR="$ROOT_DIR/target/bench-outputs"
 
@@ -43,38 +43,8 @@ run_bench() {
 
     "$COMPILER_CLI" \
         "$base_path.cairo" \
-        --output "$OUTPUT_DIR/$base_name.mlir" \
-        >> /dev/stderr
-
-    "$MLIR_DIR/bin/mlir-opt" \
-        --canonicalize \
-        --convert-scf-to-cf \
-        --canonicalize \
-        --cse \
-        --expand-strided-metadata \
-        --finalize-memref-to-llvm \
-        --convert-func-to-llvm \
-        --convert-index-to-llvm \
-        --reconcile-unrealized-casts \
-        "$OUTPUT_DIR/$base_name.mlir" \
-        -o "$OUTPUT_DIR/$base_name.opt.mlir" \
-        >> /dev/stderr
-
-    "$MLIR_DIR/bin/mlir-translate" \
-        --mlir-to-llvmir \
-        "$OUTPUT_DIR/$base_name.opt.mlir" \
-        -o "$OUTPUT_DIR/$base_name.ll" \
-        >> /dev/stderr
-
-    "$MLIR_DIR/bin/clang" \
-        -O3 \
-        -Wno-override-module \
-        "$base_path.c" \
-        "$OUTPUT_DIR/$base_name.ll" \
-        -L "target/release" \
-        -Wl,-rpath "$MLIR_DIR/lib" \
-        -Wl,-rpath "target/release" \
-        -o "$OUTPUT_DIR/$base_name" \
+        --output-mlir "$OUTPUT_DIR/$base_name.mlir" \
+        --output-library "$OUTPUT_DIR/$base_name.so" \
         >> /dev/stderr
 
     "$MLIR_DIR/bin/clang" \
@@ -83,10 +53,10 @@ run_bench() {
         -mtune=native \
         -Wno-override-module \
         "$base_path.c" \
-        "$OUTPUT_DIR/$base_name.ll" \
-        -L "target/release" \
+        -L "$OUTPUT_DIR/" \
         -Wl,-rpath "$MLIR_DIR/lib" \
-        -Wl,-rpath "target/release" \
+        -Wl,-rpath "$OUTPUT_DIR/" \
+        -l:"$OUTPUT_DIR/$base_name.so" \
         -o "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
 

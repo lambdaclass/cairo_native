@@ -97,6 +97,7 @@ doc-open: check-llvm
 .PHONY: bench
 bench: needs-cairo2 runtime
 	cargo b --release --bin cairo-native-run
+	cargo b --release --bin cairo-native-compile
 	./scripts/bench-hyperfine.sh
 
 .PHONY: bench-ci
