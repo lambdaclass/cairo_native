@@ -326,7 +326,7 @@ pub fn build_const<'ctx, 'this>(
     info: &Felt252ConstConcreteLibfunc,
 ) -> Result<()> {
     let value = match info.c.sign() {
-        Sign::Minus => (&info.c + BigInt::from_biguint(Sign::Minus, PRIME.clone()))
+        Sign::Minus => (&info.c + BigInt::from_biguint(Sign::Plus, PRIME.clone()))
             .magnitude()
             .clone(),
         _ => info.c.magnitude().clone(),
@@ -406,8 +406,15 @@ pub mod test {
         // TODO: Add test program for `felt252_div_const`.
 
         static ref FELT252_CONST: (String, Program) = load_cairo! {
+            extern fn felt252_const<const value: felt252>() -> felt252 nopanic;
+
             fn run_test() -> (felt252, felt252, felt252, felt252) {
-                (0, 1, -2, -1)
+                (
+                    felt252_const::<0>(),
+                    felt252_const::<1>(),
+                    felt252_const::<-2>(),
+                    felt252_const::<-1>()
+                )
             }
         };
 
