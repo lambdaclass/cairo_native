@@ -6,13 +6,12 @@ on:
   - cron: "0 0 * * *"
 
 env:
-  RANGE_SIZE: 50
+  RANGE_SIZE: 25
   SEQUENCER_REV: 1b1b95cae7ae07b9bc778443ca75ee18008a6bc8
 
 jobs:
-  run-and-compare:
+  run:
     runs-on: ubuntu-latest
-    timeout-minutes: 1440
     env:
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
@@ -32,6 +31,9 @@ jobs:
           - 747000
           - 748000
           - 749000
+        runner:
+          - native
+          - vm
       fail-fast: false
     defaults:
       run:
@@ -79,17 +81,95 @@ jobs:
           grep $GIT Cargo.toml
           
       - name: Run with Native
+        if: ${{ matrix.runner == 'native' }}
         run: |
           BLOCK_START=${{ matrix.block }}
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
           cargo run --release --features state_dump block-range $BLOCK_START $BLOCK_END mainnet
-        continue-on-error: true
       - name: Run with VM
+        if: ${{ matrix.runner == 'vm' }}
         run: |
           BLOCK_START=${{ matrix.block }}
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
           cargo run --release --features state_dump,only_cairo_vm block-range $BLOCK_START $BLOCK_END mainnet
+
+      # We always upload the dump, even if the job fails
+      - name: Upload dumps
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: dump-${{matrix.block}}-${{matrix.runner}}
+          path: starknet-replay/state_dumps/${{matrix.runner}}
+
+
+  compare:
+    needs: [run]
+    runs-on: ubuntu-latest
+    # We always run the compare job, to ensure that a single run job failing
+    # would not cancel the whole comparison.
+    if: ${{ always() }}
+    strategy:
+      matrix:
+        block:
+          - 740000
+          - 741000
+          - 742000
+          - 743000
+          - 744000
+          - 745000
+          - 746000
+          - 747000
+          - 748000
+          - 749000
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch Native dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-${{matrix.block}}-native
+          path: state_dumps/native
+        continue-on-error: true
+      - name: Fetch VM dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-${{matrix.block}}-vm
+          path: state_dumps/vm
         continue-on-error: true
 
       - name: Compare states
-        run: ../cairo_native/scripts/cmp_state_dumps.sh
+        run: |
+          ./scripts/cmp_state_dumps.sh | tee output
+
+      - name: Prepare env vars
+        if: ${{ always() }}
+        run: |
+          # Save blocks to env var
+          BLOCK_START=${{ matrix.block }}
+          BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
+          echo "BLOCK_END=$BLOCK_END" | tee -a $GITHUB_ENV
+          echo "BLOCK_START=$BLOCK_START" | tee -a $GITHUB_ENV
+
+          # Save workflow url
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
+
+          # Save output
+          {
+            echo 'OUTPUT<<EOF'
+            cat output
+            echo EOF
+          } >> "$GITHUB_ENV"
+
+      - name: Create Issue
+        if: ${{ failure() }}
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/daily_failure.md
