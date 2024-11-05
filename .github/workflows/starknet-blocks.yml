@@ -26,6 +26,8 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: "ref-ae8b771795f3504101574ae8876fa80e3eb285d8"
 
       - name: Check and free hdd space left
         if: ${{ matrix.runner == 'native' }}
