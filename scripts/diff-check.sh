@@ -15,8 +15,6 @@ for vm_dump in state_dumps/vm/*/*.json; do
     continue
   fi
 
-  base=$(basename "$vm_dump")
-
   if ! cmp -s \
       <(sed '/"reverted": /d' "$native_dump" 2>/dev/null) \
       <(sed '/"reverted": /d' "$vm_dump" 2>/dev/null)

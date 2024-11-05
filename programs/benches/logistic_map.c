@@ -10,7 +10,8 @@ typedef struct map_return_values
         uint8_t discriminant;
         struct {
             void *ptr;
-            uint32_t len;
+            uint32_t start;
+            uint32_t end;
             uint32_t cap;
         } err;
     } result;
@@ -31,7 +32,7 @@ int main()
     map_return_values_t return_values;
 
     run_bench(&return_values, 0);
-    assert(return_values.result.discriminant == 0);
+    assert((return_values.result.discriminant & 0x1) == 0);
 
     return 0;
 }

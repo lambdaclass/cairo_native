@@ -10,7 +10,8 @@ typedef struct factorial_return_values
         uint8_t discriminant;
         struct {
             void* ptr;
-            uint32_t len;
+            uint32_t start;
+            uint32_t end;
             uint32_t cap;
         } err;
     } result;
@@ -32,7 +33,7 @@ int main()
     cairo_native__set_costs_builtin(&BuiltinCosts[0]);
 
     run_bench(&return_values, 0);
-    assert(return_values.result.discriminant == 0);
+    assert((return_values.result.discriminant & 0x1) == 0);
 
     return 0;
 }
