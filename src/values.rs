@@ -533,6 +533,7 @@ impl Value {
         ptr: NonNull<()>,
         type_id: &ConcreteTypeId,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        should_drop: bool,
     ) -> Result<Self, Error> {
         let ty = registry.get_type(type_id)?;
 
@@ -558,10 +559,31 @@ impl Value {
                         .cast::<u32>()
                         .as_ref();
 
-                    // this pointer can be null if the array has a size of 0.
+                    // This pointer can be null if the array is empty.
                     let init_data_ptr = *ptr.cast::<*mut ()>().as_ref();
                     let data_ptr =
                         init_data_ptr.byte_add(elem_stride * start_offset_value as usize);
+
+                    let refcount_offset = get_integer_layout(32)
+                        .align_to(elem_layout.align())
+                        .unwrap()
+                        .pad_to_align()
+                        .size();
+                    let should_drop = if !init_data_ptr.is_null()
+                        && init_data_ptr.byte_sub(refcount_offset).cast::<u32>().read() == 1
+                    {
+                        should_drop
+                    } else {
+                        if !init_data_ptr.is_null() && should_drop {
+                            *init_data_ptr
+                                .byte_sub(refcount_offset)
+                                .cast::<u32>()
+                                .as_mut()
+                                .unwrap() -= 1;
+                        }
+
+                        false
+                    };
 
                     assert!(end_offset_value >= start_offset_value);
                     let num_elems = (end_offset_value - start_offset_value) as usize;
@@ -572,19 +594,28 @@ impl Value {
                         let cur_elem_ptr =
                             NonNull::new(data_ptr.byte_add(elem_stride * i)).unwrap();
 
-                        array_value.push(Self::from_ptr(cur_elem_ptr, &info.ty, registry)?);
+                        array_value.push(Self::from_ptr(
+                            cur_elem_ptr,
+                            &info.ty,
+                            registry,
+                            should_drop,
+                        )?);
                     }
 
-                    if !init_data_ptr.is_null() {
-                        libc_free(init_data_ptr.cast());
+                    if should_drop && !init_data_ptr.is_null() {
+                        libc_free(init_data_ptr.byte_sub(refcount_offset).cast());
                     }
 
                     Self::Array(array_value)
                 }
                 CoreTypeConcrete::Box(info) => {
                     let inner = *ptr.cast::<NonNull<()>>().as_ptr();
-                    let value = Self::from_ptr(inner, &info.ty, registry)?;
-                    libc_free(inner.as_ptr().cast());
+                    let value = Self::from_ptr(inner, &info.ty, registry, should_drop)?;
+
+                    if should_drop {
+                        libc_free(inner.as_ptr().cast());
+                    }
+
                     value
                 }
                 CoreTypeConcrete::EcPoint(_) => {
@@ -627,7 +658,9 @@ impl Value {
                 CoreTypeConcrete::Sint32(_) => Self::Sint32(*ptr.cast::<i32>().as_ref()),
                 CoreTypeConcrete::Sint64(_) => Self::Sint64(*ptr.cast::<i64>().as_ref()),
                 CoreTypeConcrete::Sint128(_) => Self::Sint128(*ptr.cast::<i128>().as_ref()),
-                CoreTypeConcrete::NonZero(info) => Self::from_ptr(ptr, &info.ty, registry)?,
+                CoreTypeConcrete::NonZero(info) => {
+                    Self::from_ptr(ptr, &info.ty, registry, should_drop)?
+                }
                 CoreTypeConcrete::Nullable(info) => {
                     let inner_ptr = *ptr.cast::<*mut ()>().as_ptr();
                     if inner_ptr.is_null() {
@@ -637,8 +670,13 @@ impl Value {
                             NonNull::new_unchecked(inner_ptr).cast(),
                             &info.ty,
                             registry,
+                            should_drop,
                         )?;
-                        libc_free(inner_ptr.cast());
+
+                        if should_drop {
+                            libc_free(inner_ptr.cast());
+                        }
+
                         value
                     }
                 }
@@ -679,7 +717,12 @@ impl Value {
                     let payload_ptr =
                         NonNull::new(ptr.as_ptr().byte_add(tag_layout.extend(payload_layout)?.1))
                             .unwrap();
-                    let payload = Self::from_ptr(payload_ptr, &info.variants[tag_value], registry)?;
+                    let payload = Self::from_ptr(
+                        payload_ptr,
+                        &info.variants[tag_value],
+                        registry,
+                        should_drop,
+                    )?;
 
                     Self::Enum {
                         tag: tag_value,
@@ -705,6 +748,7 @@ impl Value {
                             NonNull::new(ptr.as_ptr().byte_add(offset)).unwrap(),
                             member_ty,
                             registry,
+                            should_drop,
                         )?);
                     }
 
@@ -715,19 +759,20 @@ impl Value {
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
-                    let FeltDict { inner, .. } = *Box::from_raw(
-                        ptr.cast::<NonNull<()>>()
-                            .as_ref()
-                            .cast::<FeltDict>()
-                            .as_ptr(),
-                    );
+                    let inner = &ptr
+                        .cast::<NonNull<()>>()
+                        .as_ref()
+                        .cast::<FeltDict>()
+                        .as_ref()
+                        .inner;
 
                     let mut output_map = HashMap::with_capacity(inner.len());
-                    for (mut key, val_ptr) in inner.into_iter() {
+                    for (&key, &val_ptr) in inner.iter() {
                         if val_ptr.is_null() {
                             continue;
                         }
 
+                        let mut key = key;
                         key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
                         let key = Felt::from_bytes_le(&key);
@@ -737,9 +782,22 @@ impl Value {
                                 NonNull::new(val_ptr).unwrap().cast(),
                                 &info.ty,
                                 registry,
+                                should_drop,
                             )?,
                         );
-                        libc_free(val_ptr);
+
+                        if should_drop {
+                            libc_free(val_ptr);
+                        }
+                    }
+
+                    if should_drop {
+                        drop(Box::from_raw(
+                            ptr.cast::<NonNull<()>>()
+                                .as_ref()
+                                .cast::<FeltDict>()
+                                .as_ptr(),
+                        ));
                     }
 
                     Self::Felt252Dict {
@@ -788,7 +846,9 @@ impl Value {
                     StarkNetTypeConcrete::Sha256StateHandle(_) => todo!(),
                 },
                 CoreTypeConcrete::Span(_) => todo!("implement span from_ptr"),
-                CoreTypeConcrete::Snapshot(info) => Self::from_ptr(ptr, &info.ty, registry)?,
+                CoreTypeConcrete::Snapshot(info) => {
+                    Self::from_ptr(ptr, &info.ty, registry, should_drop)?
+                }
                 CoreTypeConcrete::Bytes31(_) => {
                     let data = *ptr.cast::<[u8; 31]>().as_ref();
                     Self::Bytes31(data)
