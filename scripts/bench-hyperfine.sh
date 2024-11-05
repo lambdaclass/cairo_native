@@ -49,6 +49,7 @@ run_bench() {
 
     "$MLIR_DIR/bin/clang" \
         -O3 \
+        -g \
         -march=native \
         -mtune=native \
         -Wno-override-module \

@@ -62,7 +62,7 @@ jobs:
         run: make deps
       - name: Build Cairo Native project
         if: ${{ matrix.runner == 'native' }}
-        run: cargo b --release --all-features
+        run: cargo b --release
       - name: Build runtime
         if: ${{ matrix.runner == 'native' }}
         run: |
