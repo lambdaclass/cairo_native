@@ -248,8 +248,19 @@ impl AotContractExecutor {
         }
 
         let felt_layout = get_integer_layout(252).pad_to_align();
-        let ptr: *mut () = unsafe { libc_malloc(felt_layout.size() * args.len()).cast() };
+        let refcount_offset = get_integer_layout(32)
+            .align_to(felt_layout.align())
+            .unwrap()
+            .pad_to_align()
+            .size();
+
+        let ptr: *mut () =
+            unsafe { libc_malloc(felt_layout.size() * args.len() + refcount_offset).cast() };
         let len: u32 = args.len().try_into().unwrap();
+
+        // Write reference count.
+        unsafe { ptr.cast::<u32>().write(1) };
+        let ptr = unsafe { ptr.byte_add(refcount_offset) };
 
         ptr.to_bytes(&mut invoke_data)?;
         0u32.to_bytes(&mut invoke_data)?; // start
@@ -392,7 +403,12 @@ impl AotContractExecutor {
         }
 
         if !array_ptr.is_null() {
-            unsafe { libc_free(array_ptr.cast()) };
+            unsafe {
+                let ptr = array_ptr.byte_sub(refcount_offset);
+                assert_eq!(ptr.cast::<u32>().read(), 1);
+
+                libc_free(ptr.cast());
+            }
         }
 
         let mut error_msg = None;

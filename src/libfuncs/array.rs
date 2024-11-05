@@ -464,6 +464,8 @@ pub fn build_append<'ctx, 'this>(
      * 4. Append element.
      */
 
+    metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
+
     let self_ty = registry.build_type(
         context,
         helper,
@@ -479,7 +481,7 @@ pub fn build_append<'ctx, 'this>(
         registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
     let elem_stride = entry.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
 
-    let k0 = entry.const_int(context, location, 1, 32)?;
+    let k0 = entry.const_int(context, location, 0, 32)?;
     let k1 = entry.const_int(context, location, 1, 32)?;
 
     let array_ptr = entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
@@ -540,7 +542,38 @@ pub fn build_append<'ctx, 'this>(
         Result::Ok((realloc_len, realloc_size))
     }
 
-    let is_shared = is_shared(context, entry, location, array_ptr, elem_layout)?;
+    let is_empty = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Eq,
+        array_capacity,
+        k0,
+        location,
+    ))?;
+
+    let is_shared = entry.append_op_result(scf::r#if(
+        is_empty,
+        &[IntegerType::new(context, 1).into()],
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            let k0 = block.const_int(context, location, 0, 1)?;
+
+            block.append_operation(scf::r#yield(&[k0], location));
+            region
+        },
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            let is_shared = is_shared(context, entry, location, array_ptr, elem_layout)?;
+
+            block.append_operation(scf::r#yield(&[is_shared], location));
+            region
+        },
+        location,
+    ))?;
+
     let value = entry.append_op_result(scf::r#if(
         is_shared,
         &[self_ty],
@@ -750,13 +783,19 @@ pub fn build_append<'ctx, 'this>(
                             let region = Region::new();
                             let block = region.append_block(Block::new(&[]));
 
-                            let array_ptr = block.gep(
+                            let offset_array_ptr = block.gep(
                                 context,
                                 location,
                                 array_ptr,
                                 &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
                                 IntegerType::new(context, 8).into(),
                             )?;
+                            let array_ptr = block.append_op_result(arith::select(
+                                is_empty,
+                                array_ptr,
+                                offset_array_ptr,
+                                location,
+                            ))?;
 
                             let (realloc_len, realloc_size) = compute_next_capacity(
                                 context,
@@ -784,6 +823,13 @@ pub fn build_append<'ctx, 'this>(
                                     realloc_size_with_refcount,
                                     location,
                                 ))?;
+
+                            let ref_count = block.load(context, location, array_ptr, len_ty)?;
+                            let ref_count = block.append_op_result(arith::select(
+                                is_empty, k1, ref_count, location,
+                            ))?;
+                            block.store(context, location, array_ptr, ref_count)?;
+
                             let array_ptr = block.gep(
                                 context,
                                 location,
@@ -842,6 +888,9 @@ pub fn build_append<'ctx, 'this>(
         IntegerType::new(context, 8).into(),
     )?;
     entry.store(context, location, data_ptr, entry.argument(1)?.into())?;
+
+    let array_end = entry.append_op_result(arith::addi(array_end, k1, location))?;
+    let value = entry.insert_value(context, location, value, array_end, 2)?;
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())
@@ -1399,7 +1448,7 @@ pub fn build_get<'ctx, 'this>(
                         ))?;
                         let o1 = block.append_op_result(arith::addi(
                             array_start,
-                            entry.argument(1)?.into(),
+                            entry.argument(2)?.into(),
                             location,
                         ))?;
                         let o1 = block.append_op_result(arith::extui(
@@ -1498,6 +1547,7 @@ pub fn build_slice<'ctx, 'this>(
 
     let slice_start = entry.argument(2)?.into();
     let slice_len = entry.argument(3)?.into();
+    let slice_end = entry.append_op_result(arith::addi(slice_start, slice_len, location))?;
 
     let slice_lhs_bound = entry.append_op_result(arith::cmpi(
         context,
@@ -1509,7 +1559,7 @@ pub fn build_slice<'ctx, 'this>(
     let slice_rhs_bound = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Ule,
-        slice_len,
+        slice_end,
         array_end,
         location,
     ))?;
@@ -2211,7 +2261,6 @@ mod test {
                 //data.append(5_u32);
                 *slice.get(0).unwrap().unbox()
             }
-
         );
         let result = run_program(&program, "run_test", &[]).return_value;
 
