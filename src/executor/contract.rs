@@ -303,13 +303,14 @@ impl AotContractExecutor {
         let function_ptr = self.find_function_ptr(&function_id, true)?;
 
         let builtin_costs = builtin_costs.unwrap_or_default();
-        let builtin_costs: [u64; 7] = builtin_costs.into();
+        let builtin_costs_stack: [u64; 7] = builtin_costs.into();
+        let builtin_costs = Box::into_raw(Box::new(builtin_costs_stack));
         // set the builtin costs using the utility method to set the thread local
         let set_costs_builtin = unsafe {
             self.library
                 .get::<extern "C" fn(*const u64)>(b"cairo_native__set_costs_builtin")?
         };
-        set_costs_builtin(builtin_costs.as_ptr());
+        set_costs_builtin(builtin_costs.cast());
 
         let initial_gas_cost = {
             let mut cost = 0;
@@ -322,7 +323,7 @@ impl AotContractExecutor {
                 .initial_cost
                 .iter()
             {
-                let token_cost = builtin_costs[*offset as usize] * val;
+                let token_cost = builtin_costs_stack[*offset as usize] * val;
                 cost += token_cost;
             }
             cost as u128
@@ -342,7 +343,7 @@ impl AotContractExecutor {
         let return_ptr = arena.alloc_layout(unsafe {
             // 64 = size of enum + builtin sizes
             // align is 16 because of the u128 from gas
-            Layout::from_size_align_unchecked(64 + builtins_size, 16)
+            Layout::from_size_align_unchecked(128 + builtins_size, 16)
         });
 
         return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
@@ -356,7 +357,7 @@ impl AotContractExecutor {
                 }
                 BuiltinType::BuiltinCosts => {
                     // todo: check if valid
-                    builtin_costs.as_ptr().to_bytes(&mut invoke_data)?;
+                    builtin_costs_stack.as_ptr().to_bytes(&mut invoke_data)?;
                 }
                 BuiltinType::System => {
                     (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
@@ -614,6 +615,38 @@ mod tests {
     }
 
     #[fixture]
+    fn starknet_program_factorial() -> ContractClass {
+        let (_, program) = load_starknet_contract! {
+            #[starknet::interface]
+            trait ISimpleStorage<TContractState> {
+                fn get(self: @TContractState, x: felt252) -> felt252;
+            }
+
+            #[starknet::contract]
+            mod contract {
+                #[storage]
+                struct Storage {}
+
+                #[abi(embed_v0)]
+                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
+                    fn get(self: @ContractState, x: felt252) -> felt252 {
+                        factorial(1, x)
+                    }
+                }
+
+                fn factorial(value: felt252, n: felt252) -> felt252 {
+                    if (n == 1) {
+                        value
+                    } else {
+                        factorial(value * n, n - 1)
+                    }
+                }
+            }
+        };
+        program
+    }
+
+    #[fixture]
     fn starknet_program_empty() -> ContractClass {
         let (_, program) = load_starknet_contract! {
             #[starknet::interface]
@@ -709,6 +742,42 @@ mod tests {
             .unwrap();
 
         assert_eq!(result.return_values, vec![Felt::from(2), Felt::from(4)]);
+    }
+
+    #[rstest]
+    #[case(OptLevel::Aggressive)]
+    fn test_contract_executor_factorial(
+        starknet_program_factorial: ContractClass,
+        #[case] optlevel: OptLevel,
+    ) {
+        let executor = AotContractExecutor::new(
+            &starknet_program_factorial.extract_sierra_program().unwrap(),
+            &starknet_program_factorial.entry_points_by_type,
+            optlevel,
+        )
+        .unwrap();
+
+        // The last function in the program is the `get` wrapper function.
+        let selector = starknet_program_factorial
+            .entry_points_by_type
+            .external
+            .last()
+            .unwrap()
+            .selector
+            .clone();
+
+        let result = executor
+            .run(
+                Felt::from(&selector),
+                &[10.into()],
+                Some(u64::MAX as u128),
+                None,
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap();
+
+        assert_eq!(result.return_values, vec![Felt::from(3628800)]);
+        assert_eq!(result.remaining_gas, 18446744073709533805);
     }
 
     #[rstest]

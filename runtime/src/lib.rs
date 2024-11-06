@@ -493,10 +493,14 @@ pub extern "C" fn cairo_native__set_costs_builtin(ptr: *const u64) {
 /// Get the gas builtin from the internal thread local.
 #[no_mangle]
 pub extern "C" fn cairo_native__get_costs_builtin() -> *const u64 {
+    //dbg!(BUILTIN_COSTS.get());
     if BUILTIN_COSTS.get().is_null() {
         // We shouldn't panic here, but we can print a big message.
         eprintln!("BUILTIN_COSTS POINTER IS NULL!");
     }
+    //let ptr = BUILTIN_COSTS.get();
+    //let x = unsafe { std::slice::from_raw_parts(ptr, 7) };
+    //dbg!(x);
     BUILTIN_COSTS.get()
 }
 

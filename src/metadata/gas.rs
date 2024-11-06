@@ -136,11 +136,11 @@ impl GasMetadata {
     pub fn get_gas_costs_for_statement(&self, idx: StatementIdx) -> Vec<(u128, CostTokenType)> {
         let mut costs = Vec::new();
         for cost_type in CostTokenType::iter_casm_tokens() {
-            if let Some(amount) =
+            if let Some(cost_count) =
                 self.get_gas_cost_for_statement_and_cost_token_type(idx, *cost_type)
             {
-                if amount > 0 {
-                    costs.push((amount, *cost_type));
+                if cost_count > 0 {
+                    costs.push((cost_count, *cost_type));
                 }
             }
         }
