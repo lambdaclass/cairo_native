@@ -82,10 +82,12 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_costs_builtin: extern "C" fn(*const u64) = unsafe {
+        let set_costs_builtin: extern "C" fn(*const u64) -> *const u64 = unsafe {
             std::mem::transmute(
                 self.library
-                    .get::<extern "C" fn(*const u64)>(b"cairo_native__set_costs_builtin")?
+                    .get::<extern "C" fn(*const u64) -> *const u64>(
+                        b"cairo_native__set_costs_builtin",
+                    )?
                     .into_raw()
                     .into_raw(),
             )
@@ -114,10 +116,12 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_costs_builtin: extern "C" fn(*const u64) = unsafe {
+        let set_costs_builtin: extern "C" fn(*const u64) -> *const u64 = unsafe {
             std::mem::transmute(
                 self.library
-                    .get::<extern "C" fn(*const u64)>(b"cairo_native__set_costs_builtin")?
+                    .get::<extern "C" fn(*const u64) -> *const u64>(
+                        b"cairo_native__set_costs_builtin",
+                    )?
                     .into_raw()
                     .into_raw(),
             )
@@ -146,10 +150,12 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_costs_builtin: extern "C" fn(*const u64) = unsafe {
+        let set_costs_builtin: extern "C" fn(*const u64) -> *const u64 = unsafe {
             std::mem::transmute(
                 self.library
-                    .get::<extern "C" fn(*const u64)>(b"cairo_native__set_costs_builtin")?
+                    .get::<extern "C" fn(*const u64) -> *const u64>(
+                        b"cairo_native__set_costs_builtin",
+                    )?
                     .into_raw()
                     .into_raw(),
             )
@@ -164,7 +170,6 @@ impl AotNativeExecutor {
                 fields: vec![Value::Array(
                     args.iter().cloned().map(Value::Felt252).collect(),
                 )],
-                // TODO: Populate `debug_name`.
                 debug_name: None,
             }],
             available_gas,

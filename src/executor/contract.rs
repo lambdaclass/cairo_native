@@ -304,13 +304,18 @@ impl AotContractExecutor {
 
         let builtin_costs = builtin_costs.unwrap_or_default();
         let builtin_costs_stack: [u64; 7] = builtin_costs.into();
-        let builtin_costs = Box::into_raw(Box::new(builtin_costs_stack));
-        // set the builtin costs using the utility method to set the thread local
+        // Note: the ptr into a slice is valid, it can be used with cast()
+        // Care should be taken if you dereference it and take the .as_ptr() of the slice, since when you
+        // deref it, it will be a copy on the stack, so you will get the ptr of the value in the stack.
+        let builtin_costs: *mut [u64; 7] = Box::into_raw(Box::new(builtin_costs_stack));
         let set_costs_builtin = unsafe {
             self.library
-                .get::<extern "C" fn(*const u64)>(b"cairo_native__set_costs_builtin")?
+                .get::<extern "C" fn(*const u64) -> *const u64>(
+                    b"cairo_native__set_costs_builtin",
+                )?
         };
-        set_costs_builtin(builtin_costs.cast());
+        // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
+        let old_builtincosts_ptr = set_costs_builtin(builtin_costs.cast());
 
         let initial_gas_cost = {
             let mut cost = 0;
@@ -535,6 +540,15 @@ impl AotContractExecutor {
             error_msg = Some(str_error);
         }
 
+        // Restore the old ptr and get back our builtincost box and free it.
+        let our_builtincosts_ptr = set_costs_builtin(old_builtincosts_ptr);
+
+        if !our_builtincosts_ptr.is_null() && old_builtincosts_ptr.is_aligned() {
+            unsafe {
+                let _ = Box::<[u64; 7]>::from_raw(our_builtincosts_ptr.cast_mut().cast());
+            };
+        }
+
         #[cfg(feature = "with-mem-tracing")]
         crate::utils::mem_tracing::report_stats();
 
@@ -589,6 +603,8 @@ mod tests {
     use cairo_lang_starknet_classes::contract_class::ContractClass;
     use rayon::iter::ParallelBridge;
     use rstest::*;
+
+    // todo add recursive contract test
 
     #[fixture]
     fn starknet_program() -> ContractClass {
