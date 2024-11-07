@@ -1,0 +1,132 @@
+name: Execute blocks
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  run-blocks:
+    name: Run Blocks
+    runs-on: ubuntu-latest
+    env:
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+      RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
+      RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
+    strategy:
+      matrix:
+        runner: [native, vm]
+        block: [742001, 769597, 779328, 801008, 803072]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.82.0
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check and free hdd space left
+        if: ${{ matrix.runner == 'native' }}
+        run: |
+          echo "Listing 20 largest packages"
+          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+          df -h
+          sudo apt-get update
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^temurin-.*'
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          df -h
+          echo "Removing large directories"
+          # deleting 15GB
+          sudo rm -rf /usr/share/dotnet/
+          sudo rm -rf /usr/local/lib/android
+          df -h
+
+      - name: add llvm deb repository
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
+          repo-name: llvm-repo
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+      - name: Install LLVM
+        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
+
+      - name: Install Cairo Native deps
+        if: ${{ matrix.runner == 'native' }}
+        run: make deps
+      - name: Build Cairo Native project
+        if: ${{ matrix.runner == 'native' }}
+        run: cargo b --release --all-features
+      - name: Build runtime
+        if: ${{ matrix.runner == 'native' }}
+        run: |
+          make runtime
+          cargo update
+          echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
+
+      - name: Checkout Starknet Replay
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/starknet-replay
+          ref: 08aa133b11e1e319036354c9acd8270483c844b5
+          path: replay
+
+      - name: Install Starknet Replay deps
+        run: make deps
+
+      - name: Patch Cairo Native's version
+        if: ${{ matrix.runner == 'native' }}
+        run: |
+          cd replay
+          sed -r -i 's/cairo-native.*/cairo-native = { path = ".." }/' Cargo.toml
+
+      - name: Run Blocks Native
+        if: ${{ matrix.runner == 'native' }}
+        run: |
+          cd replay
+          cargo build --release --bin replay
+          cargo run --release --features state_dump block mainnet ${{ matrix.block }}
+
+      - name: Run Blocks VM
+        if: ${{ matrix.runner == 'vm' }}
+        run: |
+          cd replay
+          cargo build --release --bin replay
+          cargo run --release --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
+
+      - name: Upload dumps
+        uses: actions/upload-artifact@v4
+        with:
+          name: dump-${{matrix.block}}-${{matrix.runner}}
+          path: replay/state_dumps/${{matrix.runner}}
+
+  compare-dumps:
+    needs: [run-blocks]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        block: [742001, 769597, 779328, 801008, 803072]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch Native dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-${{matrix.block}}-native
+          path: state_dumps/native
+
+      - name: Fetch VM dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: dump-${{matrix.block}}-vm
+          path: state_dumps/vm
+
+      - name: Check Diffs
+        run: ./scripts/diff-check.sh

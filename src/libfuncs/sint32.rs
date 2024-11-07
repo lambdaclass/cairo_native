@@ -22,6 +22,7 @@ use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
         cf, llvm,
+        ods::math,
     },
     ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
@@ -273,11 +274,33 @@ pub fn build_to_felt252<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
+    let prime = entry.const_int_from_type(context, location, PRIME.clone(), felt252_ty)?;
+
     let value: Value = entry.argument(0)?.into();
+    let value_type = value.r#type();
 
-    let result = entry.append_op_result(arith::extui(value, felt252_ty, location))?;
+    let is_negative = entry.append_op_result(arith::cmpi(
+        context,
+        arith::CmpiPredicate::Slt,
+        value,
+        entry.const_int_from_type(context, location, 0, value_type)?,
+        location,
+    ))?;
 
-    entry.append_operation(helper.br(0, &[result], location));
+    let value_abs = entry.append_op_result(math::absi(context, value, location).into())?;
+
+    let result = entry.append_op_result(arith::extui(value_abs, felt252_ty, location))?;
+
+    let prime_minus_result = entry.append_op_result(arith::subi(prime, result, location))?;
+
+    let final_result = entry.append_op_result(arith::select(
+        is_negative,
+        prime_minus_result,
+        result,
+        location,
+    ))?;
+
+    entry.append_operation(helper.br(0, &[final_result], location));
 
     Ok(())
 }
@@ -504,7 +527,7 @@ mod test {
     }
 
     #[test]
-    fn i32_to_felt252() {
+    fn pos_i32_to_felt252() {
         let program = load_cairo!(
             use traits::Into;
 
@@ -514,6 +537,18 @@ mod test {
         );
 
         run_program_assert_output(&program, "run_test", &[], Felt::from(2).into());
+    }
+
+    #[test]
+    fn neg_i32_to_felt252() {
+        let program = load_cairo!(
+            use traits::Into;
+
+            fn run_test() -> felt252 {
+                -396372_i32.into()
+            }
+        );
+        run_program_assert_output(&program, "run_test", &[], Felt::from(-396372).into());
     }
 
     #[test]

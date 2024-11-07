@@ -8,7 +8,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::{snapshot_clones::SnapshotClonesMeta, MetadataStorage},
+    metadata::{dup_overrides::DupOverridesMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -25,7 +25,7 @@ use melior::{
 /// Generate MLIR operations for the `dup` libfunc.
 pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
@@ -36,32 +36,16 @@ pub fn build<'ctx, 'this>(
     //   not all of them. For example, it'll not generate a clone implementation for `Box<T>`.
     //   That's why we need to check for clone implementations within the compiler.
 
-    match metadata
-        .get::<SnapshotClonesMeta>()
-        .and_then(|meta| meta.wrap_invoke(&info.signature.param_signatures[0].ty))
-    {
-        Some(clone_fn) => {
-            let original_value = entry.argument(0)?.into();
-            let (entry, cloned_value) = clone_fn(
-                context,
-                registry,
-                entry,
-                location,
-                helper,
-                metadata,
-                original_value,
-            )?;
-
-            entry.append_operation(helper.br(0, &[original_value, cloned_value], location));
-        }
-        None => {
-            entry.append_operation(helper.br(
-                0,
-                &[entry.argument(0)?.into(), entry.argument(0)?.into()],
-                location,
-            ));
-        }
-    }
+    let values = metadata
+        .get_or_insert_with(DupOverridesMeta::default)
+        .invoke_override(
+            context,
+            entry,
+            location,
+            &info.signature.param_signatures[0].ty,
+            entry.argument(0)?.into(),
+        )?;
+    entry.append_operation(helper.br(0, &[values.0, values.1], location));
 
     Ok(())
 }
