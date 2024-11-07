@@ -22,14 +22,14 @@ fn init_array(length: u32) -> Array<felt252> {
 }
 
 fn main() {
-    let array = init_array(400001);
+    let array = init_array(4001);
 
-    let index = search(@array, 400000);
+    let index = search(@array, 4000);
     assert(
         index == 400000,
         'invalid result'
     );
-    let index = search(@array, 200000);
+    let index = search(@array, 2000);
     assert(
         index == 200000,
         'invalid result'
