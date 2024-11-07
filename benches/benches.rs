@@ -1,7 +1,7 @@
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
-use cairo_lang_runner::{SierraCasmRunner, StarknetState};
+use cairo_lang_runner::{RunResultValue, SierraCasmRunner, StarknetState};
 use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::get_contracts_info;
@@ -9,7 +9,7 @@ use cairo_native::{
     cache::{AotProgramCache, JitProgramCache},
     context::NativeContext,
     utils::find_function_id,
-    OptLevel,
+    OptLevel, Value,
 };
 use criterion::{criterion_group, criterion_main, Criterion};
 use starknet_types_core::felt::Felt;
@@ -58,20 +58,36 @@ fn criterion_benchmark(c: &mut Criterion) {
         let mut factorial_group = c.benchmark_group("factorial_2M");
 
         factorial_group.bench_function("Cached JIT", |b| {
-            b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
+            b.iter(|| {
+                let result = jit_factorial
+                    .invoke_dynamic(factorial_function_id, &[], Some(u128::MAX))
+                    .unwrap();
+                let value = result.return_value;
+                assert!(matches!(value, Value::Enum { tag: 0, .. }))
+            });
         });
         factorial_group.bench_function("Cached AOT", |b| {
-            b.iter(|| aot_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
+            b.iter(|| {
+                let result = aot_factorial
+                    .invoke_dynamic(factorial_function_id, &[], Some(u128::MAX))
+                    .unwrap();
+                let value = result.return_value;
+                assert!(matches!(value, Value::Enum { tag: 0, .. }))
+            });
         });
 
         factorial_group.bench_function("VM", |b| {
             b.iter(|| {
-                factorial_runner.run_function_with_starknet_context(
-                    factorial_function,
-                    &[],
-                    Some(usize::MAX),
-                    StarknetState::default(),
-                )
+                let result = factorial_runner
+                    .run_function_with_starknet_context(
+                        factorial_function,
+                        &[],
+                        Some(usize::MAX),
+                        StarknetState::default(),
+                    )
+                    .unwrap();
+                let value = result.value;
+                assert!(matches!(value, RunResultValue::Success(_)))
             });
         });
 
@@ -82,19 +98,35 @@ fn criterion_benchmark(c: &mut Criterion) {
         let mut fibonacci_group = c.benchmark_group("fibonacci_2M");
 
         fibonacci_group.bench_function("Cached JIT", |b| {
-            b.iter(|| jit_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
+            b.iter(|| {
+                let result = jit_fibonacci
+                    .invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX))
+                    .unwrap();
+                let value = result.return_value;
+                assert!(matches!(value, Value::Enum { tag: 0, .. }))
+            });
         });
         fibonacci_group.bench_function("Cached AOT", |b| {
-            b.iter(|| aot_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
+            b.iter(|| {
+                let result = aot_fibonacci
+                    .invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX))
+                    .unwrap();
+                let value = result.return_value;
+                assert!(matches!(value, Value::Enum { tag: 0, .. }))
+            })
         });
         fibonacci_group.bench_function("VM", |b| {
             b.iter(|| {
-                fibonacci_runner.run_function_with_starknet_context(
-                    fibonacci_function,
-                    &[],
-                    Some(usize::MAX),
-                    StarknetState::default(),
-                )
+                let result = fibonacci_runner
+                    .run_function_with_starknet_context(
+                        fibonacci_function,
+                        &[],
+                        Some(usize::MAX),
+                        StarknetState::default(),
+                    )
+                    .unwrap();
+                let value = result.value;
+                assert!(matches!(value, RunResultValue::Success(_)))
             });
         });
 
@@ -106,24 +138,36 @@ fn criterion_benchmark(c: &mut Criterion) {
 
         logistic_map_group.bench_function("Cached JIT", |b| {
             b.iter(|| {
-                jit_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX))
+                let result = jit_logistic_map
+                    .invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX))
+                    .unwrap();
+                let value = result.return_value;
+                assert!(matches!(value, Value::Enum { tag: 0, .. }))
             });
         });
 
         logistic_map_group.bench_function("Cached AOT", |b| {
             b.iter(|| {
-                aot_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX))
+                let result = aot_logistic_map
+                    .invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX))
+                    .unwrap();
+                let value = result.return_value;
+                assert!(matches!(value, Value::Enum { tag: 0, .. }))
             });
         });
 
         logistic_map_group.bench_function("VM", |b| {
             b.iter(|| {
-                logistic_map_runner.run_function_with_starknet_context(
-                    logistic_map_function,
-                    &[],
-                    Some(usize::MAX),
-                    StarknetState::default(),
-                )
+                let result = logistic_map_runner
+                    .run_function_with_starknet_context(
+                        logistic_map_function,
+                        &[],
+                        Some(usize::MAX),
+                        StarknetState::default(),
+                    )
+                    .unwrap();
+                let value = result.value;
+                assert!(matches!(value, RunResultValue::Success(_)))
             });
         });
 
