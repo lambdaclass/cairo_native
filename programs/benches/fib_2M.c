@@ -20,8 +20,7 @@ typedef struct fib_return_values
 static void run_bench(fib_return_values_t *, uint64_t)
     __attribute__((weakref("_mlir_ciface_fib_2M::fib_2M::main(f1)")));
 
-static void cairo_native__set_costs_builtin(uint64_t*)
-__attribute__((weakref("cairo_native__set_costs_builtin")));
+extern uint64_t* cairo_native__set_costs_builtin(uint64_t*);
 
 int main()
 {

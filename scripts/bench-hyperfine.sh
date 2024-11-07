@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Configuration.
-ROOT_DIR="$(dirname "$(dirname "${0%/*}")")"
+ROOT_DIR="$(dirname "$(readlink -f "${0%/*}")")"
 MLIR_DIR="$MLIR_SYS_190_PREFIX"
 
 CAIRO_SRCS=$(find \
@@ -49,14 +49,15 @@ run_bench() {
 
     "$MLIR_DIR/bin/clang" \
         -O3 \
-        -g \
         -march=native \
         -mtune=native \
+        -fPIC \
         -Wno-override-module \
         "$base_path.c" \
-        -L "$OUTPUT_DIR/" \
+        -L"$OUTPUT_DIR/" \
         -Wl,-rpath "$MLIR_DIR/lib" \
         -Wl,-rpath "$OUTPUT_DIR" \
+        -Wl,--rpath-link "$OUTPUT_DIR" \
         -lm \
         -l"$base_name" \
         -o "$OUTPUT_DIR/$base_name-march-native" \
