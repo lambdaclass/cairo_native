@@ -24,26 +24,34 @@ fn criterion_benchmark(c: &mut Criterion) {
     let factorial = load_contract("programs/benches/factorial_2M.cairo");
     let fibonacci = load_contract("programs/benches/fib_2M.cairo");
     let logistic_map = load_contract("programs/benches/logistic_map.cairo");
+    let linear_search = load_contract("programs/benches/linear_search.cairo");
 
     let aot_factorial = aot_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive);
     let aot_fibonacci = aot_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive);
     let aot_logistic_map =
         aot_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive);
+    let aot_linear_search =
+        aot_cache.compile_and_insert(Felt::from(2), &linear_search, OptLevel::Aggressive);
 
     let jit_factorial = jit_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive);
     let jit_fibonacci = jit_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive);
     let jit_logistic_map =
         jit_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive);
+    let jit_linear_search =
+        jit_cache.compile_and_insert(Felt::from(2), &linear_search, OptLevel::Aggressive);
 
     let factorial_function_id =
         find_function_id(&factorial, "factorial_2M::factorial_2M::main").unwrap();
     let fibonacci_function_id = find_function_id(&fibonacci, "fib_2M::fib_2M::main").unwrap();
     let logistic_map_function_id =
         find_function_id(&logistic_map, "logistic_map::logistic_map::main").unwrap();
+    let linear_search_function_id =
+        find_function_id(&linear_search, "linear_search::linear_search::main").unwrap();
 
     let factorial_runner = load_contract_for_vm("programs/benches/factorial_2M.cairo");
     let fibonacci_runner = load_contract_for_vm("programs/benches/fib_2M.cairo");
     let logistic_map_runner = load_contract_for_vm("programs/benches/logistic_map.cairo");
+    let linear_search_runner = load_contract_for_vm("programs/benches/linear_search.cairo");
 
     let factorial_function = factorial_runner
         .find_function("main")
@@ -52,6 +60,9 @@ fn criterion_benchmark(c: &mut Criterion) {
         .find_function("main")
         .expect("failed to find main fibonacci function");
     let logistic_map_function = logistic_map_runner
+        .find_function("main")
+        .expect("failed to find main logistic map function");
+    let linear_search_function = linear_search_runner
         .find_function("main")
         .expect("failed to find main logistic map function");
 
@@ -72,6 +83,46 @@ fn criterion_benchmark(c: &mut Criterion) {
         });
 
         logistic_map_compilation_group.finish();
+    }
+
+    {
+        let mut linear_search_group = c.benchmark_group("linear_search");
+
+        linear_search_group.bench_function("Cached JIT", |b| {
+            b.iter(|| {
+                let result = jit_linear_search
+                    .invoke_dynamic(linear_search_function_id, &[], Some(u128::MAX))
+                    .unwrap();
+                let value = result.return_value;
+                assert!(matches!(value, Value::Enum { tag: 0, .. }))
+            });
+        });
+        linear_search_group.bench_function("Cached AOT", |b| {
+            b.iter(|| {
+                let result = aot_linear_search
+                    .invoke_dynamic(linear_search_function_id, &[], Some(u128::MAX))
+                    .unwrap();
+                let value = result.return_value;
+                assert!(matches!(value, Value::Enum { tag: 0, .. }))
+            });
+        });
+
+        linear_search_group.bench_function("VM", |b| {
+            b.iter(|| {
+                let result = linear_search_runner
+                    .run_function_with_starknet_context(
+                        linear_search_function,
+                        &[],
+                        Some(usize::MAX),
+                        StarknetState::default(),
+                    )
+                    .unwrap();
+                let value = result.value;
+                assert!(matches!(value, RunResultValue::Success(_)))
+            });
+        });
+
+        linear_search_group.finish();
     }
 
     {
