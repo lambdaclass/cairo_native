@@ -1,7 +1,9 @@
 //! # Various utilities
 
 pub(crate) use self::{
-    block_ext::BlockExt, program_registry_ext::ProgramRegistryExt, range_ext::RangeExt,
+    block_ext::{BlockExt, GepIndex},
+    program_registry_ext::ProgramRegistryExt,
+    range_ext::RangeExt,
 };
 use crate::{metadata::MetadataStorage, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
@@ -23,12 +25,12 @@ use std::{
     fmt::{self, Display},
     ops::Neg,
     path::Path,
-    ptr::NonNull,
     sync::Arc,
 };
 use thiserror::Error;
 
 mod block_ext;
+pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
 
@@ -48,6 +50,15 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
         .parse()
         .unwrap()
 });
+
+#[cfg(feature = "with-mem-tracing")]
+#[allow(unused_imports)]
+pub(crate) use self::mem_tracing::{
+    _wrapped_free as libc_free, _wrapped_malloc as libc_malloc, _wrapped_realloc as libc_realloc,
+};
+#[cfg(not(feature = "with-mem-tracing"))]
+#[allow(unused_imports)]
+pub(crate) use libc::{free as libc_free, malloc as libc_malloc, realloc as libc_realloc};
 
 /// Generate a function name.
 ///
@@ -227,6 +238,9 @@ pub fn create_engine(
         .unwrap()
         .register_impls(&engine);
 
+    #[cfg(feature = "with-mem-tracing")]
+    self::mem_tracing::register_bindings(&engine);
+
     engine
 }
 
@@ -302,24 +316,24 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
         );
 
         engine.register_symbol(
-            "cairo_native__alloc_dict",
-            cairo_native_runtime::cairo_native__alloc_dict as *const fn() -> *mut FeltDict
+            "cairo_native__dict_new",
+            cairo_native_runtime::cairo_native__dict_new as *const fn() -> *mut FeltDict as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__dict_drop",
+            cairo_native_runtime::cairo_native__dict_drop
+                as *const fn(*mut FeltDict, Option<extern "C" fn(*mut std::ffi::c_void)>) -> ()
                 as *mut (),
         );
 
         engine.register_symbol(
-            "cairo_native__dict_free",
-            cairo_native_runtime::cairo_native__dict_free as *const fn(*mut FeltDict) -> ()
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_values",
-            cairo_native_runtime::cairo_native__dict_values
+            "cairo_native__dict_dup",
+            cairo_native_runtime::cairo_native__dict_dup
                 as *const fn(
                     *mut FeltDict,
-                    *mut u64,
-                ) -> *mut ([u8; 32], std::ptr::NonNull<libc::c_void>) as *mut (),
+                    extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
+                ) -> *mut FeltDict as *mut (),
         );
 
         engine.register_symbol(
@@ -327,17 +341,6 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
             cairo_native_runtime::cairo_native__dict_get
                 as *const fn(*mut FeltDict, &[u8; 32]) -> *mut std::ffi::c_void
                 as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_insert",
-            cairo_native_runtime::cairo_native__dict_insert
-                as *const fn(
-                    *mut FeltDict,
-                    &[u8; 32],
-                    NonNull<std::ffi::c_void>,
-                    usize,
-                ) -> *mut std::ffi::c_void as *mut (),
         );
 
         engine.register_symbol(
@@ -597,8 +600,7 @@ pub mod test {
             .compile(program, false)
             .expect("Could not compile test program to MLIR.");
 
-        // FIXME: There are some bugs with non-zero LLVM optimization levels.
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Less);
         executor
             .invoke_dynamic_with_syscall_handler(
                 entry_point_id,

@@ -5,12 +5,12 @@
 
 pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNativeExecutor};
 use crate::{
-    arch::{AbiArgument, JitValueWithInfoWrapper},
+    arch::{AbiArgument, ValueWithInfoWrapper},
     error::Error,
     execution_result::{BuiltinStats, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::RangeExt,
+    utils::{libc_free, RangeExt},
     values::Value,
 };
 use bumpalo::Bump;
@@ -167,7 +167,7 @@ fn invoke_dynamic(
                     .to_bytes(&mut invoke_data)?;
             }
             type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
-            type_info => JitValueWithInfoWrapper {
+            type_info => ValueWithInfoWrapper {
                 value: iter.next().unwrap(),
                 type_id,
                 info: type_info,
@@ -240,13 +240,14 @@ fn invoke_dynamic(
                     }
                 });
             }
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => match &mut return_ptr {
-                Some(return_ptr) => unsafe {
-                    let ptr = return_ptr.cast::<*mut ()>();
-                    *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
-                },
-                None => {}
-            },
+            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+                if let Some(return_ptr) = &mut return_ptr {
+                    unsafe {
+                        let ptr = return_ptr.cast::<*mut ()>();
+                        *return_ptr = NonNull::new_unchecked(ptr.as_ptr().add(1)).cast();
+                    }
+                }
+            }
             _ if type_info.is_builtin() => {
                 if !type_info.is_zst(registry)? {
                     let value = match &mut return_ptr {
@@ -298,6 +299,9 @@ fn invoke_dynamic(
             debug_name: None,
         });
 
+    #[cfg(feature = "with-mem-tracing")]
+    crate::utils::mem_tracing::report_stats();
+
     Ok(ExecutionResult {
         remaining_gas,
         return_value,
@@ -332,15 +336,15 @@ fn parse_result(
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => Ok(Value::from_jit(return_ptr.unwrap(), type_id, registry)?),
+        CoreTypeConcrete::Array(_) => Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
-            let value = Value::from_jit(ptr, &info.ty, registry)?;
-            libc::free(ptr.cast().as_ptr());
+            let value = Value::from_ptr(ptr, &info.ty, registry)?;
+            libc_free(ptr.cast().as_ptr());
             Ok(value)
         },
         CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
-            Ok(Value::from_jit(return_ptr.unwrap(), type_id, registry)?)
+            Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?)
         }
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
@@ -349,7 +353,7 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => Ok(Value::from_jit(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -358,15 +362,17 @@ fn parse_result(
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
-                Ok(Value::Felt252(
-                    starknet_types_core::felt::Felt::from_bytes_le(unsafe {
-                        std::mem::transmute::<&[u64; 4], &[u8; 32]>(&ret_registers)
-                    }),
-                ))
+                Ok(Value::Felt252({
+                    let data = unsafe {
+                        std::mem::transmute::<&mut [u64; 4], &mut [u8; 32]>(&mut ret_registers)
+                    };
+                    data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    starknet_types_core::felt::Felt::from_bytes_le(data)
+                }))
             }
         },
         CoreTypeConcrete::Bytes31(_) => match return_ptr {
-            Some(return_ptr) => Ok(Value::from_jit(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -381,7 +387,7 @@ fn parse_result(
             }
         },
         CoreTypeConcrete::BoundedInt(info) => match return_ptr {
-            Some(return_ptr) => Ok(Value::from_jit(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry)?),
             None => {
                 let mut data = if info.range.offset_bit_width() <= 64 {
                     BigInt::from(ret_registers[0])
@@ -453,8 +459,8 @@ fn parse_result(
                 Ok(Value::Null)
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
-                let value = Value::from_jit(ptr, &info.ty, registry)?;
-                libc::free(ptr.as_ptr().cast());
+                let value = Value::from_ptr(ptr, &info.ty, registry)?;
+                libc_free(ptr.as_ptr().cast());
                 Ok(value)
             }
         },
@@ -475,6 +481,12 @@ fn parse_result(
                         _ => return Err(Error::ParseAttributeError),
                     }
                 };
+
+                // Filter out bits that are not part of the enum's tag.
+                let tag = tag
+                    & 1usize
+                        .wrapping_shl(info.variants.len().next_power_of_two().trailing_zeros())
+                        .wrapping_sub(1);
 
                 (
                     tag,
@@ -503,7 +515,7 @@ fn parse_result(
                 }
             };
             let value = match ptr {
-                Ok(ptr) => Box::new(Value::from_jit(ptr, &info.variants[tag], registry)?),
+                Ok(ptr) => Box::new(Value::from_ptr(ptr, &info.variants[tag], registry)?),
                 Err(offset) => {
                     ret_registers.copy_within(offset.., 0);
                     Box::new(parse_result(
@@ -528,14 +540,14 @@ fn parse_result(
                     debug_name: Some(debug_name),
                 })
             } else {
-                Ok(Value::from_jit(return_ptr.unwrap(), type_id, registry)?)
+                Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?)
             }
         }
         CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
                 addr_of_mut!(ret_registers[0]) as *mut ()
             ));
-            Ok(Value::from_jit(ptr, type_id, registry)?)
+            Ok(Value::from_ptr(ptr, type_id, registry)?)
         },
 
         CoreTypeConcrete::Snapshot(info) => {

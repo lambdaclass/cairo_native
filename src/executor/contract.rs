@@ -40,7 +40,9 @@ use crate::{
     module::NativeModule,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::{decode_error_message, generate_function_name, get_integer_layout},
+    utils::{
+        decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
+    },
     OptLevel,
 };
 use bumpalo::Bump;
@@ -246,7 +248,7 @@ impl AotContractExecutor {
         }
 
         let felt_layout = get_integer_layout(252).pad_to_align();
-        let ptr: *mut () = unsafe { libc::malloc(felt_layout.size() * args.len()).cast() };
+        let ptr: *mut () = unsafe { libc_malloc(felt_layout.size() * args.len()).cast() };
         let len: u32 = args.len().try_into().unwrap();
 
         ptr.to_bytes(&mut invoke_data)?;
@@ -353,6 +355,8 @@ impl AotContractExecutor {
         };
 
         let tag = *unsafe { enum_ptr.cast::<u8>().as_ref() } as usize;
+        let tag = tag & 0x01; // Filter out bits that are not part of the enum's tag.
+
         // layout of both enum variants, both are a array of felts
         let value_layout = unsafe { Layout::from_size_align_unchecked(24, 8) };
         let value_ptr = unsafe {
@@ -380,14 +384,15 @@ impl AotContractExecutor {
         for i in 0..num_elems {
             // safe to create a NonNull because if the array has elements, the data_ptr can't be null.
             let cur_elem_ptr = NonNull::new(unsafe { data_ptr.byte_add(elem_stride * i) }).unwrap();
-            let data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().as_ref() };
+            let data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().as_mut() };
+            data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
             let data = Felt::from_bytes_le_slice(data);
 
             array_value.push(data);
         }
 
         if !array_ptr.is_null() {
-            unsafe { libc::free(array_ptr.cast()) };
+            unsafe { libc_free(array_ptr.cast()) };
         }
 
         let mut error_msg = None;
@@ -403,6 +408,9 @@ impl AotContractExecutor {
 
             error_msg = Some(str_error);
         }
+
+        #[cfg(feature = "with-mem-tracing")]
+        crate::utils::mem_tracing::report_stats();
 
         Ok(ContractExecutionResult {
             remaining_gas,

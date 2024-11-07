@@ -54,8 +54,11 @@ pub enum Error {
     #[error(transparent)]
     GasMetadataError(#[from] GasMetadataError),
 
-    #[error("llvm error")]
+    #[error("llvm compile error: {0}")]
     LLVMCompileError(String),
+
+    #[error("ld link error: {0}")]
+    LinkError(String),
 
     #[error("cairo const data mismatch")]
     ConstDataMismatch,

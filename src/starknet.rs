@@ -1,5 +1,6 @@
 //! Starknet related code for `cairo_native`
 
+use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
@@ -13,14 +14,58 @@ pub struct ArrayAbi<T> {
     pub capacity: u32,
 }
 
+impl From<&ArrayAbi<Felt252Abi>> for Vec<Felt> {
+    fn from(value: &ArrayAbi<Felt252Abi>) -> Self {
+        unsafe {
+            let since_offset = value.since as usize;
+            let until_offset = value.until as usize;
+            debug_assert!(since_offset <= until_offset);
+            let len = until_offset - since_offset;
+            match len {
+                0 => &[],
+                _ => std::slice::from_raw_parts(value.ptr.add(since_offset), len),
+            }
+        }
+        .iter()
+        .map(Felt::from)
+        .collect()
+    }
+}
+
 /// Binary representation of a `Felt` (in MLIR).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 #[repr(C, align(16))]
 pub struct Felt252Abi(pub [u8; 32]);
+
+impl From<Felt252Abi> for Felt {
+    fn from(mut value: Felt252Abi) -> Felt {
+        value.0[31] &= 0x0F;
+        Felt::from_bytes_le(&value.0)
+    }
+}
+
+impl From<&Felt252Abi> for Felt {
+    fn from(value: &Felt252Abi) -> Felt {
+        let mut value = *value;
+        value.0[31] &= 0x0F;
+        Felt::from_bytes_le(&value.0)
+    }
+}
+
 /// Binary representation of a `u256` (in MLIR).
 // TODO: This shouldn't need to be public.
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    Default,
 )]
 #[repr(C, align(16))]
 pub struct U256 {
@@ -100,16 +145,40 @@ pub struct TxInfo {
     pub nonce: Felt,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize, Default)]
+#[repr(C, align(16))]
 pub struct Secp256k1Point {
     pub x: U256,
     pub y: U256,
+    pub is_infinity: bool,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+impl Secp256k1Point {
+    pub fn new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -> Self {
+        Self {
+            x: U256 { lo: x_lo, hi: x_hi },
+            y: U256 { lo: y_lo, hi: y_hi },
+            is_infinity,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize, Default)]
+#[repr(C, align(16))]
 pub struct Secp256r1Point {
     pub x: U256,
     pub y: U256,
+    pub is_infinity: bool,
+}
+
+impl Secp256r1Point {
+    pub fn new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -> Self {
+        Self {
+            x: U256 { lo: x_lo, hi: x_hi },
+            y: U256 { lo: y_lo, hi: y_hi },
+            is_infinity,
+        }
+    }
 }
 
 pub trait StarknetSyscallHandler {
@@ -251,10 +320,10 @@ pub trait StarknetSyscallHandler {
 
     fn sha256_process_block(
         &mut self,
-        prev_state: &[u32; 8],
-        current_block: &[u32; 16],
+        state: &mut [u32; 8],
+        block: &[u32; 16],
         remaining_gas: &mut u128,
-    ) -> SyscallResult<[u32; 8]>;
+    ) -> SyscallResult<()>;
 
     #[cfg(feature = "with-cheatcode")]
     fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
@@ -450,10 +519,10 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 
     fn sha256_process_block(
         &mut self,
-        _prev_state: &[u32; 8],
-        _current_block: &[u32; 16],
+        _state: &mut [u32; 8],
+        _block: &[u32; 16],
         _remaining_gas: &mut u128,
-    ) -> SyscallResult<[u32; 8]> {
+    ) -> SyscallResult<()> {
         unimplemented!()
     }
 }
@@ -461,8 +530,10 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
+    use crate::utils::{libc_free, libc_malloc};
     use std::{
         alloc::Layout,
+        ffi::c_void,
         fmt::Debug,
         mem::{size_of, ManuallyDrop, MaybeUninit},
         ptr::{null_mut, NonNull},
@@ -727,8 +798,8 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<*mut [u32; 8]>,
             ptr: &mut T,
             gas: &mut u128,
-            prev_state: &[u32; 8],
-            current_block: &[u32; 16],
+            state: *mut [u32; 8],
+            block: &[u32; 16],
         ),
         // testing syscalls
         #[cfg(feature = "with-cheatcode")]
@@ -818,8 +889,7 @@ pub(crate) mod handler {
                     capacity: 0,
                 },
                 _ => {
-                    let ptr =
-                        libc::malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
+                    let ptr = libc_malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
 
                     let len: u32 = data.len().try_into().unwrap();
                     for (i, val) in data.iter().enumerate() {
@@ -874,20 +944,15 @@ pub(crate) mod handler {
             selector: &Felt252Abi,
             input: &ArrayAbi<Felt252Abi>,
         ) {
-            let input: Vec<_> = unsafe {
-                let since_offset = input.since as usize;
-                let until_offset = input.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                std::slice::from_raw_parts(input.ptr.add(since_offset), len)
+            let selector = Felt::from(selector);
+            let input_vec: Vec<_> = input.into();
+
+            unsafe {
+                libc_free(input.ptr as *mut c_void);
             }
-            .iter()
-            .map(|x| Felt::from_bytes_le(&x.0))
-            .collect();
-            let selector = Felt::from_bytes_le(&selector.0);
 
             let result = ptr
-                .cheatcode(selector, &input)
+                .cheatcode(selector, &input_vec)
                 .into_iter()
                 .map(|x| Felt252Abi(x.to_bytes_le()))
                 .collect::<Vec<_>>();
@@ -907,20 +972,19 @@ pub(crate) mod handler {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
                         payload: unsafe {
-                            let mut block_info_ptr =
-                                NonNull::new(
-                                    libc::malloc(size_of::<BlockInfoAbi>()) as *mut BlockInfoAbi
-                                )
-                                .unwrap();
+                            let mut block_info_ptr = NonNull::new(libc_malloc(
+                                size_of::<BlockInfoAbi>(),
+                            )
+                                as *mut BlockInfoAbi)
+                            .unwrap();
                             block_info_ptr.as_mut().block_number = x.block_info.block_number;
                             block_info_ptr.as_mut().block_timestamp = x.block_info.block_timestamp;
                             block_info_ptr.as_mut().sequencer_address =
                                 Felt252Abi(x.block_info.sequencer_address.to_bytes_le());
 
-                            let mut tx_info_ptr = NonNull::new(
-                                libc::malloc(size_of::<TxInfoAbi>()) as *mut TxInfoAbi,
-                            )
-                            .unwrap();
+                            let mut tx_info_ptr =
+                                NonNull::new(libc_malloc(size_of::<TxInfoAbi>()) as *mut TxInfoAbi)
+                                    .unwrap();
                             tx_info_ptr.as_mut().version =
                                 Felt252Abi(x.tx_info.version.to_bytes_le());
                             tx_info_ptr.as_mut().account_contract_address =
@@ -940,7 +1004,7 @@ pub(crate) mod handler {
                             tx_info_ptr.as_mut().nonce = Felt252Abi(x.tx_info.nonce.to_bytes_le());
 
                             let mut execution_info_ptr =
-                                NonNull::new(libc::malloc(size_of::<ExecutionInfoAbi>())
+                                NonNull::new(libc_malloc(size_of::<ExecutionInfoAbi>())
                                     as *mut ExecutionInfoAbi)
                                 .unwrap();
                             execution_info_ptr.as_mut().block_info = block_info_ptr;
@@ -973,22 +1037,22 @@ pub(crate) mod handler {
                         tag: 0u8,
                         payload: unsafe {
                             let mut execution_info_ptr =
-                                NonNull::new(libc::malloc(size_of::<ExecutionInfoV2Abi>())
+                                NonNull::new(libc_malloc(size_of::<ExecutionInfoV2Abi>())
                                     as *mut ExecutionInfoV2Abi)
                                 .unwrap();
 
-                            let mut block_info_ptr =
-                                NonNull::new(
-                                    libc::malloc(size_of::<BlockInfoAbi>()) as *mut BlockInfoAbi
-                                )
-                                .unwrap();
+                            let mut block_info_ptr = NonNull::new(libc_malloc(
+                                size_of::<BlockInfoAbi>(),
+                            )
+                                as *mut BlockInfoAbi)
+                            .unwrap();
                             block_info_ptr.as_mut().block_number = x.block_info.block_number;
                             block_info_ptr.as_mut().block_timestamp = x.block_info.block_timestamp;
                             block_info_ptr.as_mut().sequencer_address =
                                 Felt252Abi(x.block_info.sequencer_address.to_bytes_le());
 
                             let mut tx_info_ptr = NonNull::new(
-                                libc::malloc(size_of::<TxInfoV2Abi>()) as *mut TxInfoV2Abi,
+                                libc_malloc(size_of::<TxInfoV2Abi>()) as *mut TxInfoV2Abi,
                             )
                             .unwrap();
                             tx_info_ptr.as_mut().version =
@@ -1067,41 +1131,19 @@ pub(crate) mod handler {
             calldata: &ArrayAbi<Felt252Abi>,
             deploy_from_zero: bool,
         ) {
-            let class_hash = Felt::from_bytes_be(&{
-                let mut data = class_hash.0;
-                data.reverse();
-                data
-            });
-            let contract_address_salt = Felt::from_bytes_be(&{
-                let mut data = contract_address_salt.0;
-                data.reverse();
-                data
-            });
+            let class_hash = Felt::from(class_hash);
+            let contract_address_salt = Felt::from(contract_address_salt);
 
-            let calldata: Vec<_> = unsafe {
-                let since_offset = calldata.since as usize;
-                let until_offset = calldata.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
-                }
+            let calldata_vec: Vec<_> = calldata.into();
+
+            unsafe {
+                libc_free(calldata.ptr as *mut c_void);
             }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
 
             let result = ptr.deploy(
                 class_hash,
                 contract_address_salt,
-                &calldata,
+                &calldata_vec,
                 deploy_from_zero,
                 gas,
             );
@@ -1127,11 +1169,7 @@ pub(crate) mod handler {
             gas: &mut u128,
             class_hash: &Felt252Abi,
         ) {
-            let class_hash = Felt::from_bytes_be(&{
-                let mut data = class_hash.0;
-                data.reverse();
-                data
-            });
+            let class_hash = Felt::from(class_hash);
             let result = ptr.replace_class(class_hash, gas);
 
             *result_ptr = match result {
@@ -1153,38 +1191,16 @@ pub(crate) mod handler {
             function_selector: &Felt252Abi,
             calldata: &ArrayAbi<Felt252Abi>,
         ) {
-            let class_hash = Felt::from_bytes_be(&{
-                let mut data = class_hash.0;
-                data.reverse();
-                data
-            });
-            let function_selector = Felt::from_bytes_be(&{
-                let mut data = function_selector.0;
-                data.reverse();
-                data
-            });
+            let class_hash = Felt::from(class_hash);
+            let function_selector = Felt::from(function_selector);
 
-            let calldata: Vec<_> = unsafe {
-                let since_offset = calldata.since as usize;
-                let until_offset = calldata.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
-                }
+            let calldata_vec: Vec<Felt> = calldata.into();
+
+            unsafe {
+                libc_free(calldata.ptr as *mut c_void);
             }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
 
-            let result = ptr.library_call(class_hash, function_selector, &calldata, gas);
+            let result = ptr.library_call(class_hash, function_selector, &calldata_vec, gas);
 
             *result_ptr = match result {
                 Ok(x) => {
@@ -1209,38 +1225,16 @@ pub(crate) mod handler {
             entry_point_selector: &Felt252Abi,
             calldata: &ArrayAbi<Felt252Abi>,
         ) {
-            let address = Felt::from_bytes_be(&{
-                let mut data = address.0;
-                data.reverse();
-                data
-            });
-            let entry_point_selector = Felt::from_bytes_be(&{
-                let mut data = entry_point_selector.0;
-                data.reverse();
-                data
-            });
+            let address = Felt::from(address);
+            let entry_point_selector = Felt::from(entry_point_selector);
 
-            let calldata: Vec<_> = unsafe {
-                let since_offset = calldata.since as usize;
-                let until_offset = calldata.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(calldata.ptr.add(since_offset), len),
-                }
+            let calldata_vec: Vec<Felt> = calldata.into();
+
+            unsafe {
+                libc_free(calldata.ptr as *mut c_void);
             }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
 
-            let result = ptr.call_contract(address, entry_point_selector, &calldata, gas);
+            let result = ptr.call_contract(address, entry_point_selector, &calldata_vec, gas);
 
             *result_ptr = match result {
                 Ok(x) => {
@@ -1264,11 +1258,7 @@ pub(crate) mod handler {
             address_domain: u32,
             address: &Felt252Abi,
         ) {
-            let address = Felt::from_bytes_be(&{
-                let mut data = address.0;
-                data.reverse();
-                data
-            });
+            let address = Felt::from(address);
             let result = ptr.storage_read(address_domain, address, gas);
 
             *result_ptr = match result {
@@ -1290,16 +1280,8 @@ pub(crate) mod handler {
             address: &Felt252Abi,
             value: &Felt252Abi,
         ) {
-            let address = Felt::from_bytes_be(&{
-                let mut data = address.0;
-                data.reverse();
-                data
-            });
-            let value = Felt::from_bytes_be(&{
-                let mut data = value.0;
-                data.reverse();
-                data
-            });
+            let address = Felt::from(address);
+            let value = Felt::from(value);
             let result = ptr.storage_write(address_domain, address, value, gas);
 
             *result_ptr = match result {
@@ -1320,47 +1302,19 @@ pub(crate) mod handler {
             keys: &ArrayAbi<Felt252Abi>,
             data: &ArrayAbi<Felt252Abi>,
         ) {
-            let keys: Vec<_> = unsafe {
-                let since_offset = keys.since as usize;
-                let until_offset = keys.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(keys.ptr.add(since_offset), len),
-                }
-            }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
+            let keys_vec: Vec<_> = keys.into();
 
-            let data: Vec<_> = unsafe {
-                let since_offset = data.since as usize;
-                let until_offset = data.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(data.ptr.add(since_offset), len),
-                }
+            unsafe {
+                libc_free(keys.ptr as *mut c_void);
             }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
 
-            let result = ptr.emit_event(&keys, &data, gas);
+            let data_vec: Vec<_> = data.into();
+
+            unsafe {
+                libc_free(data.ptr as *mut c_void);
+            }
+
+            let result = ptr.emit_event(&keys_vec, &data_vec, gas);
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1380,32 +1334,14 @@ pub(crate) mod handler {
             to_address: &Felt252Abi,
             payload: &ArrayAbi<Felt252Abi>,
         ) {
-            let to_address = Felt::from_bytes_be(&{
-                let mut data = to_address.0;
-                data.reverse();
-                data
-            });
-            let payload: Vec<_> = unsafe {
-                let since_offset = payload.since as usize;
-                let until_offset = payload.until as usize;
-                debug_assert!(since_offset <= until_offset);
-                let len = until_offset - since_offset;
-                match len {
-                    0 => &[],
-                    _ => std::slice::from_raw_parts(payload.ptr.add(since_offset), len),
-                }
-            }
-            .iter()
-            .map(|x| {
-                Felt::from_bytes_be(&{
-                    let mut data = x.0;
-                    data.reverse();
-                    data
-                })
-            })
-            .collect();
+            let to_address = Felt::from(to_address);
+            let payload_vec: Vec<_> = payload.into();
 
-            let result = ptr.send_message_to_l1(to_address, &payload, gas);
+            unsafe {
+                libc_free(payload.ptr as *mut c_void);
+            }
+
+            let result = ptr.send_message_to_l1(to_address, &payload_vec, gas);
 
             *result_ptr = match result {
                 Ok(_) => SyscallResultAbi {
@@ -1424,7 +1360,7 @@ pub(crate) mod handler {
             gas: &mut u128,
             input: &ArrayAbi<u64>,
         ) {
-            let input = unsafe {
+            let input_vec = unsafe {
                 let since_offset = input.since as usize;
                 let until_offset = input.until as usize;
                 debug_assert!(since_offset <= until_offset);
@@ -1435,7 +1371,10 @@ pub(crate) mod handler {
                 }
             };
 
-            let result = ptr.keccak(input, gas);
+            let result = ptr.keccak(input_vec, gas);
+            unsafe {
+                libc_free(input.ptr as *mut c_void);
+            }
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1681,26 +1620,17 @@ pub(crate) mod handler {
             result_ptr: &mut SyscallResultAbi<*mut [u32; 8]>,
             ptr: &mut T,
             gas: &mut u128,
-            prev_state: &[u32; 8],
-            current_block: &[u32; 16],
+            state: *mut [u32; 8],
+            block: &[u32; 16],
         ) {
-            let result = ptr.sha256_process_block(prev_state, current_block, gas);
+            let state_ref = unsafe { state.as_mut().unwrap() };
+            let result = ptr.sha256_process_block(state_ref, block, gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
-                        payload: ManuallyDrop::new({
-                            unsafe {
-                                let data = libc::malloc(std::mem::size_of_val(&x)).cast();
-                                std::ptr::copy_nonoverlapping::<u32>(
-                                    x.as_ptr().cast(),
-                                    data,
-                                    x.len(),
-                                );
-                                data.cast()
-                            }
-                        }),
+                        payload: ManuallyDrop::new(state),
                     }),
                 },
                 Err(e) => Self::wrap_error(&e),
