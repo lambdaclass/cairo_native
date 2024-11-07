@@ -8,6 +8,7 @@ use cairo_lang_starknet::contract::get_contracts_info;
 use cairo_native::{
     cache::{AotProgramCache, JitProgramCache},
     context::NativeContext,
+    executor::AotNativeExecutor,
     utils::find_function_id,
     OptLevel, Value,
 };
@@ -53,6 +54,25 @@ fn criterion_benchmark(c: &mut Criterion) {
     let logistic_map_function = logistic_map_runner
         .find_function("main")
         .expect("failed to find main logistic map function");
+
+    {
+        let mut logistic_map_compilation_group = c.benchmark_group("logistic_map_compilation");
+
+        logistic_map_compilation_group.bench_function("Native", |b| {
+            b.iter(|| {
+                let context = NativeContext::new();
+                let module = context.compile(&logistic_map, false).unwrap();
+                AotNativeExecutor::from_native_module(module, OptLevel::Aggressive);
+            });
+        });
+        logistic_map_compilation_group.bench_function("VM", |b| {
+            b.iter(|| {
+                load_contract_for_vm("programs/benches/logistic_map.cairo");
+            });
+        });
+
+        logistic_map_compilation_group.finish();
+    }
 
     {
         let mut factorial_group = c.benchmark_group("factorial_2M");
