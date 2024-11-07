@@ -198,7 +198,7 @@ fn load_contract_for_vm(path: impl AsRef<Path>) -> SierraCasmRunner {
         .expect("failed to build database");
     let main_crate_ids = setup_project(&mut db, path.as_ref()).expect("failed to setup project");
     let program = compile_prepared_db(
-        &mut db,
+        &db,
         main_crate_ids.clone(),
         CompilerConfig {
             replace_ids: true,
