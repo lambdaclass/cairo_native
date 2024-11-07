@@ -5,7 +5,7 @@
 typedef struct factorial_return_values
 {
     uint64_t range_check_counter;
-    unsigned __int128 remaining_gas;
+    uint64_t remaining_gas;
     struct {
         uint8_t discriminant;
         struct {
@@ -17,15 +17,15 @@ typedef struct factorial_return_values
 } factorial_return_values_t;
 
 
-static void run_bench(factorial_return_values_t*, uint64_t)
-__attribute__((weakref("_mlir_ciface_factorial_2M::factorial_2M::main(f1)")));
+static void run_bench(factorial_return_values_t*, uint64_t, uint64_t)
+    __attribute__((weakref("_mlir_ciface_factorial_2M::factorial_2M::main(f1)")));
 
 
 int main()
 {
     factorial_return_values_t return_values;
 
-    run_bench(&return_values, 0);
+    run_bench(&return_values, 0, 0xFFFFFFFFFFFFFFFF);
     assert(return_values.result.discriminant == 0);
 
     return 0;
