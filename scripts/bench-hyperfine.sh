@@ -58,8 +58,8 @@ run_bench() {
         -Wl,-rpath "$MLIR_DIR/lib" \
         -Wl,-rpath "$OUTPUT_DIR" \
         -Wl,--rpath-link "$OUTPUT_DIR" \
-        -lm \
         -l"$base_name" \
+        -lm \
         -o "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
 
