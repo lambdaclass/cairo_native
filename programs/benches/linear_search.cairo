@@ -26,12 +26,12 @@ fn main() {
 
     let index = search(@array, 4000);
     assert(
-        index == 400000,
+        index == 4000,
         'invalid result'
     );
     let index = search(@array, 2000);
     assert(
-        index == 200000,
+        index == 2000,
         'invalid result'
     );
 }
