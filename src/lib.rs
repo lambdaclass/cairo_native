@@ -11,6 +11,7 @@
 #![deny(clippy::expect_used)]
 #![deny(clippy::unreachable)]
 #![deny(clippy::unimplemented)]
+#![deny(clippy::panic)]
 
 pub use self::{
     compiler::compile,
