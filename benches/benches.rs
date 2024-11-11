@@ -31,10 +31,15 @@ fn criterion_benchmark(c: &mut Criterion) {
         .compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive)
         .unwrap();
 
-    let jit_factorial = jit_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive);
-    let jit_fibonacci = jit_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive);
-    let jit_logistic_map =
-        jit_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive);
+    let jit_factorial = jit_cache
+        .compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive)
+        .unwrap();
+    let jit_fibonacci = jit_cache
+        .compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive)
+        .unwrap();
+    let jit_logistic_map = jit_cache
+        .compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive)
+        .unwrap();
 
     let factorial_function_id =
         find_function_id(&factorial, "factorial_2M::factorial_2M::main").unwrap();
