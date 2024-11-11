@@ -18,7 +18,7 @@ typedef struct linear_search_return_values
 } linear_search_return_values_t;
 
 static void run_bench(linear_search_return_values_t *, uint64_t)
-    __attribute__((weakref("_mlir_ciface_linear_search::linear_search::main(f1)")));
+    __attribute__((weakref("_mlir_ciface_linear_search::linear_search::main(f4)")));
 
 extern uint64_t* cairo_native__set_costs_builtin(uint64_t*);
 
