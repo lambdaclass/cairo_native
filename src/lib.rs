@@ -7,6 +7,7 @@
 // page.
 //! [developer documentation]: docs
 #![doc = include_str!("../README.md")]
+// We could remove this eventually, but it's useful to see where we have unwraps
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::unreachable)]
