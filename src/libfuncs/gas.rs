@@ -71,7 +71,7 @@ pub fn build_get_available_gas<'ctx, 'this>(
 /// Generate MLIR operations for the `withdraw_gas` libfunc.
 pub fn build_withdraw_gas<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,

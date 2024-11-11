@@ -331,7 +331,7 @@ impl AotContractExecutor {
                 let token_cost = builtin_costs_stack[*offset as usize] * val;
                 cost += token_cost;
             }
-            cost as u128
+            cost
         };
         let gas = gas
             .unwrap_or(initial_gas_cost)
@@ -715,7 +715,7 @@ mod tests {
                 .run(
                     Felt::from(&selector),
                     &[n.into()],
-                    Some(u64::MAX as u128),
+                    Some(u64::MAX),
                     None,
                     &mut StubSyscallHandler::default(),
                 )
@@ -785,7 +785,7 @@ mod tests {
             .run(
                 Felt::from(&selector),
                 &[10.into()],
-                Some(u64::MAX as u128),
+                Some(u64::MAX),
                 None,
                 &mut StubSyscallHandler::default(),
             )
