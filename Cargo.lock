@@ -987,6 +987,7 @@ dependencies = [
  "num-traits 0.2.19",
  "pretty_assertions_sorted",
  "proptest",
+ "rayon",
  "rstest",
  "scarb-metadata",
  "scarb-ui",
