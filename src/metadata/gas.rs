@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::gas::CostTokenType,
@@ -20,8 +22,9 @@ pub struct GasMetadata {
     pub gas_info: GasInfo,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct GasCost(pub Option<u64>);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+// Cost, token type (index into builtin costs).
+pub struct GasCost(pub Vec<(u64, CostTokenType)>);
 
 /// Configuration for metadata computation.
 #[derive(Debug, Clone)]
@@ -102,16 +105,46 @@ impl GasMetadata {
         )
     }
 
-    pub fn get_gas_cost_for_statement(&self, idx: StatementIdx) -> Option<u64> {
-        let mut cost = None;
+    pub fn initial_required_gas_for_entry_points(&self) -> BTreeMap<u64, BTreeMap<u64, u64>> {
+        self.gas_info
+            .function_costs
+            .iter()
+            .map(|func| {
+                (func.0.id, {
+                    let mut costs = BTreeMap::new();
+
+                    for (token, val) in func.1.iter() {
+                        let offset: u64 = match token {
+                            CostTokenType::Const => 0,
+                            CostTokenType::Pedersen => 1,
+                            CostTokenType::Bitwise => 2,
+                            CostTokenType::EcOp => 3,
+                            CostTokenType::Poseidon => 4,
+                            CostTokenType::AddMod => 5,
+                            CostTokenType::MulMod => 6,
+                            _ => unreachable!(),
+                        };
+                        costs.insert(offset, *val as u64);
+                    }
+
+                    costs
+                })
+            })
+            .collect()
+    }
+
+    pub fn get_gas_costs_for_statement(&self, idx: StatementIdx) -> Vec<(u64, CostTokenType)> {
+        let mut costs = Vec::new();
         for cost_type in CostTokenType::iter_casm_tokens() {
-            if let Some(amount) =
+            if let Some(cost_count) =
                 self.get_gas_cost_for_statement_and_cost_token_type(idx, *cost_type)
             {
-                *cost.get_or_insert(0) += amount * token_gas_cost(*cost_type) as u64;
+                if cost_count > 0 {
+                    costs.push((cost_count, *cost_type));
+                }
             }
         }
-        cost
+        costs
     }
 
     pub fn get_gas_cost_for_statement_and_cost_token_type(

@@ -7,7 +7,9 @@ pub(crate) use self::{
 };
 use crate::{metadata::MetadataStorage, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
+    extensions::gas::CostTokenType,
     ids::FunctionId,
     program::{GenFunction, Program, StatementIdx},
 };
@@ -17,6 +19,7 @@ use melior::{
     Context, Error, ExecutionEngine,
 };
 use num_bigint::{BigInt, BigUint, Sign};
+use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::sync::LazyLock;
 use std::{
@@ -50,6 +53,47 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
         .parse()
         .unwrap()
 });
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub struct BuiltinCosts {
+    pub r#const: u64,
+    pub pedersen: u64,
+    pub bitwise: u64,
+    pub ecop: u64,
+    pub poseidon: u64,
+    pub add_mod: u64,
+    pub mul_mod: u64,
+}
+
+impl From<BuiltinCosts> for [u64; 7] {
+    // Order matters, for the libfunc impl
+    // https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
+    fn from(value: BuiltinCosts) -> Self {
+        [
+            value.r#const,
+            value.pedersen,
+            value.bitwise,
+            value.ecop,
+            value.poseidon,
+            value.add_mod,
+            value.mul_mod,
+        ]
+    }
+}
+
+impl Default for BuiltinCosts {
+    fn default() -> Self {
+        Self {
+            r#const: token_gas_cost(CostTokenType::Const) as u64,
+            pedersen: token_gas_cost(CostTokenType::Pedersen) as u64,
+            bitwise: token_gas_cost(CostTokenType::Bitwise) as u64,
+            ecop: token_gas_cost(CostTokenType::EcOp) as u64,
+            poseidon: token_gas_cost(CostTokenType::Poseidon) as u64,
+            add_mod: token_gas_cost(CostTokenType::AddMod) as u64,
+            mul_mod: token_gas_cost(CostTokenType::MulMod) as u64,
+        }
+    }
+}
 
 #[cfg(feature = "with-mem-tracing")]
 #[allow(unused_imports)]
@@ -349,6 +393,18 @@ pub fn register_runtime_symbols(engine: &ExecutionEngine) {
                 as *mut (),
         );
 
+        engine.register_symbol(
+            "cairo_native__set_costs_builtin",
+            cairo_native_runtime::cairo_native__set_costs_builtin as *const fn(*const u64) -> ()
+                as *mut (),
+        );
+
+        engine.register_symbol(
+            "cairo_native__get_costs_builtin",
+            cairo_native_runtime::cairo_native__get_costs_builtin as *const fn() -> *const u64
+                as *mut (),
+        );
+
         #[cfg(feature = "with-cheatcode")]
         {
             engine.register_symbol(
@@ -475,7 +531,8 @@ pub mod test {
         program::Program,
         program::{FunctionSignature, GenFunction, StatementIdx},
     };
-    use cairo_lang_starknet::starknet_plugin_suite;
+    use cairo_lang_starknet::{compile::compile_contract_in_prepared_db, starknet_plugin_suite};
+    use cairo_lang_starknet_classes::contract_class::ContractClass;
     use pretty_assertions_sorted::assert_eq;
     use std::io::Write;
     use std::{env::var, fmt::Formatter, fs, path::Path};
@@ -490,8 +547,14 @@ pub mod test {
             $crate::utils::test::load_starknet_str(stringify!($($program)+))
         };
     }
+    macro_rules! load_starknet_contract {
+        ( $( $program:tt )+ ) => {
+            $crate::utils::test::load_starknet_contract_str(stringify!($($program)+))
+        };
+    }
     pub(crate) use load_cairo;
     pub(crate) use load_starknet;
+    pub(crate) use load_starknet_contract;
 
     // Helper macros for faster testing.
     macro_rules! jit_struct {
@@ -548,6 +611,49 @@ pub mod test {
                 .build()
                 .unwrap(),
         )
+    }
+
+    pub(crate) fn load_starknet_contract_str(program_str: &str) -> (String, ContractClass) {
+        compile_contract(
+            program_str,
+            RootDatabase::builder()
+                .with_plugin_suite(starknet_plugin_suite())
+                .build()
+                .unwrap(),
+        )
+    }
+
+    pub(crate) fn compile_contract(
+        program_str: &str,
+        mut db: RootDatabase,
+    ) -> (String, ContractClass) {
+        let mut program_file = tempfile::Builder::new()
+            .prefix("test_")
+            .suffix(".cairo")
+            .tempfile()
+            .unwrap();
+        fs::write(&mut program_file, program_str).unwrap();
+
+        init_dev_corelib(
+            &mut db,
+            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
+        );
+        let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
+        let contract = compile_contract_in_prepared_db(
+            &db,
+            None,
+            main_crate_ids,
+            CompilerConfig {
+                diagnostics_reporter: DiagnosticsReporter::stderr(),
+                replace_ids: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let module_name = program_file.path().with_extension("");
+        let module_name = module_name.file_name().unwrap().to_str().unwrap();
+        (module_name.to_string(), contract)
     }
 
     pub(crate) fn compile_program(program_str: &str, mut db: RootDatabase) -> (String, Program) {
