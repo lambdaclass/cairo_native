@@ -7,6 +7,10 @@
 // page.
 //! [developer documentation]: docs
 #![doc = include_str!("../README.md")]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::unimplemented)]
 
 pub use self::{
     compiler::compile,
