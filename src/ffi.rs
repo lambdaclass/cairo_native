@@ -281,6 +281,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 "-o".into(),
                 Cow::from(output_path),
                 "-lSystem".into(),
+                "-force_load".into(), // needed so `cairo_native__set_costs_builtin` is always available
                 Cow::from(runtime_library_path),
             ]);
 
@@ -290,7 +291,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
         {
             let mut args: Vec<Cow<'static, str>> = vec![
                 "--hash-style=gnu".into(),
-                "--eh-frame-hdr".into(),
                 "-shared".into(),
                 "-L/lib/../lib64".into(),
                 "-L/usr/lib/../lib64".into(),
@@ -301,6 +301,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 Cow::from(output_path),
                 "-lc".into(),
                 Cow::from(file_path),
+                "--whole-archive".into(), // needed so `cairo_native__set_costs_builtin` is always available
                 Cow::from(runtime_library_path),
             ]);
 
