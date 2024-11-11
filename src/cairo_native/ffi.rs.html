@@ -422,6 +422,7 @@
 <a href="#422" id="422">422</a>
 <a href="#423" id="423">423</a>
 <a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # FFI Wrappers
 //!
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
@@ -705,7 +706,8 @@
                 <span class="string">"-o"</span>.into(),
                 Cow::from(output_path),
                 <span class="string">"-lSystem"</span>.into(),
-                Cow::from(runtime_library_path),
+                <span class="string">"-force_load"</span>.into(), <span class="comment">// needed so `cairo_native__set_costs_builtin` is always available
+                </span>Cow::from(runtime_library_path),
             ]);
 
             args
@@ -714,7 +716,6 @@
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>args: Vec&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt; = <span class="macro">vec!</span>[
                 <span class="string">"--hash-style=gnu"</span>.into(),
-                <span class="string">"--eh-frame-hdr"</span>.into(),
                 <span class="string">"-shared"</span>.into(),
                 <span class="string">"-L/lib/../lib64"</span>.into(),
                 <span class="string">"-L/usr/lib/../lib64"</span>.into(),
@@ -725,7 +726,8 @@
                 Cow::from(output_path),
                 <span class="string">"-lc"</span>.into(),
                 Cow::from(file_path),
-                Cow::from(runtime_library_path),
+                <span class="string">"--whole-archive"</span>.into(), <span class="comment">// needed so `cairo_native__set_costs_builtin` is always available
+                </span>Cow::from(runtime_library_path),
             ]);
 
             args

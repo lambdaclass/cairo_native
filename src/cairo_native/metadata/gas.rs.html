@@ -199,7 +199,42 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_runner::token_gas_cost;
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
+
+<span class="kw">use </span>cairo_lang_runner::token_gas_cost;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::gas::CostTokenType,
     ids::FunctionId,
@@ -221,8 +256,9 @@
     <span class="kw">pub </span>gas_info: GasInfo,
 }
 
-<span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-</span><span class="kw">pub struct </span>GasCost(<span class="kw">pub </span><span class="prelude-ty">Option</span>&lt;u128&gt;);
+<span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+</span><span class="comment">// Cost, token type (index into builtin costs).
+</span><span class="kw">pub struct </span>GasCost(<span class="kw">pub </span>Vec&lt;(u128, CostTokenType)&gt;);
 
 <span class="doccomment">/// Configuration for metadata computation.
 </span><span class="attr">#[derive(Debug, Clone)]
@@ -303,16 +339,46 @@
         )
     }
 
-    <span class="kw">pub fn </span>get_gas_cost_for_statement(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: StatementIdx) -&gt; <span class="prelude-ty">Option</span>&lt;u128&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>cost = <span class="prelude-val">None</span>;
+    <span class="kw">pub fn </span>initial_required_gas_for_entry_points(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeMap&lt;u64, BTreeMap&lt;u64, u64&gt;&gt; {
+        <span class="self">self</span>.gas_info
+            .function_costs
+            .iter()
+            .map(|func| {
+                (func.<span class="number">0</span>.id, {
+                    <span class="kw">let </span><span class="kw-2">mut </span>costs = BTreeMap::new();
+
+                    <span class="kw">for </span>(token, val) <span class="kw">in </span>func.<span class="number">1</span>.iter() {
+                        <span class="kw">let </span>offset: u64 = <span class="kw">match </span>token {
+                            CostTokenType::Const =&gt; <span class="number">0</span>,
+                            CostTokenType::Pedersen =&gt; <span class="number">1</span>,
+                            CostTokenType::Bitwise =&gt; <span class="number">2</span>,
+                            CostTokenType::EcOp =&gt; <span class="number">3</span>,
+                            CostTokenType::Poseidon =&gt; <span class="number">4</span>,
+                            CostTokenType::AddMod =&gt; <span class="number">5</span>,
+                            CostTokenType::MulMod =&gt; <span class="number">6</span>,
+                            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                        };
+                        costs.insert(offset, <span class="kw-2">*</span>val <span class="kw">as </span>u64);
+                    }
+
+                    costs
+                })
+            })
+            .collect()
+    }
+
+    <span class="kw">pub fn </span>get_gas_costs_for_statement(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: StatementIdx) -&gt; Vec&lt;(u128, CostTokenType)&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>costs = Vec::new();
         <span class="kw">for </span>cost_type <span class="kw">in </span>CostTokenType::iter_casm_tokens() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) =
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(cost_count) =
                 <span class="self">self</span>.get_gas_cost_for_statement_and_cost_token_type(idx, <span class="kw-2">*</span>cost_type)
             {
-                <span class="kw-2">*</span>cost.get_or_insert(<span class="number">0</span>) += amount * token_gas_cost(<span class="kw-2">*</span>cost_type) <span class="kw">as </span>u128;
+                <span class="kw">if </span>cost_count &gt; <span class="number">0 </span>{
+                    costs.push((cost_count, <span class="kw-2">*</span>cost_type));
+                }
             }
         }
-        cost
+        costs
     }
 
     <span class="kw">pub fn </span>get_gas_cost_for_statement_and_cost_token_type(
