@@ -46,7 +46,7 @@
 
 use crate::{
     debug::libfunc_to_name,
-    error::{Error, ToNativeExpect},
+    error::{panic::ToNativeExpect, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},

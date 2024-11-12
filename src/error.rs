@@ -5,8 +5,7 @@ use cairo_lang_sierra::{
     edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
 };
 use num_bigint::BigInt;
-use std::backtrace::{Backtrace, BacktraceStatus};
-use std::panic::Location;
+use panic::NativeAssertError;
 use std::{alloc::LayoutError, num::TryFromIntError};
 use thiserror::Error;
 
@@ -115,72 +114,6 @@ pub enum SierraAssertError {
     ImpossibleCircuit,
 }
 
-#[derive(Debug)]
-pub struct NativeAssertError {
-    msg: String,
-    info: BacktraceOrLocation,
-}
-
-impl std::error::Error for NativeAssertError {}
-
-impl NativeAssertError {
-    pub fn new(msg: String) -> Self {
-        let backtrace = Backtrace::capture();
-        let info = if let BacktraceStatus::Captured = backtrace.status() {
-            BacktraceOrLocation::Backtrace(backtrace)
-        } else {
-            BacktraceOrLocation::Location(std::panic::Location::caller())
-        };
-
-        Self { msg, info }
-    }
-}
-
-pub trait ToNativeExpect<T> {
-    fn native_expect(self, msg: &str) -> Result<T>;
-}
-
-impl<T> ToNativeExpect<T> for Option<T> {
-    fn native_expect(self, msg: &str) -> Result<T> {
-        self.ok_or_else(|| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
-    }
-}
-
-impl<T> ToNativeExpect<T> for Result<T> {
-    fn native_expect(self, msg: &str) -> Result<T> {
-        self.map_err(|_| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
-    }
-}
-
-#[macro_export]
-macro_rules! native_panic {
-    ($arg:tt) => {
-        return Err($crate::error::Error::NativeAssert(
-            $crate::error::NativeAssertError::new(format!($arg)),
-        ))
-    };
-}
-
-#[derive(Debug)]
-enum BacktraceOrLocation {
-    Backtrace(Backtrace),
-    Location(&'static Location<'static>),
-}
-
-impl std::fmt::Display for NativeAssertError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", &self.msg)?;
-        match &self.info {
-            BacktraceOrLocation::Backtrace(backtrace) => {
-                writeln!(f, "Stack backtrace:\n{}", backtrace)
-            }
-            BacktraceOrLocation::Location(location) => {
-                writeln!(f, "Location: {}", location)
-            }
-        }
-    }
-}
-
 #[derive(Error, Debug)]
 pub enum CompilerError {
     #[error("BoundedInt value is out of range: {:?} not within [{:?}, {:?})", value, range.0, range.1)]
@@ -188,6 +121,80 @@ pub enum CompilerError {
         value: Box<BigInt>,
         range: Box<(BigInt, BigInt)>,
     },
+}
+
+pub mod panic {
+    use super::{Error, Result};
+    use std::{
+        backtrace::{Backtrace, BacktraceStatus},
+        panic::Location,
+    };
+
+    #[derive(Debug)]
+    pub struct NativeAssertError {
+        msg: String,
+        info: BacktraceOrLocation,
+    }
+
+    impl std::error::Error for NativeAssertError {}
+
+    impl NativeAssertError {
+        pub fn new(msg: String) -> Self {
+            let backtrace = Backtrace::capture();
+            let info = if let BacktraceStatus::Captured = backtrace.status() {
+                BacktraceOrLocation::Backtrace(backtrace)
+            } else {
+                BacktraceOrLocation::Location(std::panic::Location::caller())
+            };
+
+            Self { msg, info }
+        }
+    }
+
+    pub trait ToNativeExpect<T> {
+        fn native_expect(self, msg: &str) -> Result<T>;
+    }
+
+    impl<T> ToNativeExpect<T> for Option<T> {
+        fn native_expect(self, msg: &str) -> Result<T> {
+            self.ok_or_else(|| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
+        }
+    }
+
+    impl<T> ToNativeExpect<T> for Result<T> {
+        fn native_expect(self, msg: &str) -> Result<T> {
+            self.map_err(|_| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
+        }
+    }
+
+    #[macro_export]
+    macro_rules! native_panic {
+        ($arg:tt) => {
+            return Err($crate::error::Error::NativeAssert(
+                $crate::error::panic::NativeAssertError::new(format!($arg)),
+            ))
+        };
+    }
+
+    #[derive(Debug)]
+    enum BacktraceOrLocation {
+        Backtrace(Backtrace),
+        Location(&'static Location<'static>),
+    }
+
+    impl std::fmt::Display for NativeAssertError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            writeln!(f, "{}", &self.msg)?;
+            match &self.info {
+                BacktraceOrLocation::Backtrace(backtrace) => {
+                    writeln!(f, "Stack backtrace:\n{}", backtrace)
+                }
+                BacktraceOrLocation::Location(location) => {
+                    writeln!(f, "Location: {}", location)
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
