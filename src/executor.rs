@@ -6,7 +6,7 @@
 pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNativeExecutor};
 use crate::{
     arch::{AbiArgument, ValueWithInfoWrapper},
-    error::Error,
+    error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ExecutionResult},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
@@ -171,7 +171,7 @@ fn invoke_dynamic(
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
-                    .expect("syscall handler is required");
+                    .to_native_assert_error("syscall handler should be available")?;
 
                 (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
                     .to_bytes(&mut invoke_data)?;
@@ -181,7 +181,9 @@ fn invoke_dynamic(
             }
             type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
             type_info => ValueWithInfoWrapper {
-                value: iter.next().unwrap(),
+                value: iter
+                    .next()
+                    .to_native_assert_error("entrypoint argument is missing")?,
                 type_id,
                 info: type_info,
 
@@ -351,7 +353,7 @@ fn parse_result(
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> Result<Value, Error> {
-    let type_info = registry.get_type(type_id).unwrap();
+    let type_info = registry.get_type(type_id)?;
     let debug_name = type_info.info().long_id.to_string();
 
     // Align the pointer to the actual return value.
@@ -364,22 +366,28 @@ fn parse_result(
 
         *return_ptr = unsafe {
             NonNull::new(return_ptr.cast::<u8>().as_ptr().add(align_offset))
-                .expect("nonnull is null")
+                .to_native_assert_error("return pointer should not be null")?
                 .cast()
         };
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?),
+        CoreTypeConcrete::Array(_) => Ok(Value::from_ptr(
+            return_ptr.to_native_assert_error("return pointer should not be valid")?,
+            type_id,
+            registry,
+        )?),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
             let value = Value::from_ptr(ptr, &info.ty, registry)?;
             libc_free(ptr.cast().as_ptr());
             Ok(value)
         },
-        CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
-            Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?)
-        }
+        CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => Ok(Value::from_ptr(
+            return_ptr.to_native_assert_error("return pointer should not be valid")?,
+            type_id,
+            registry,
+        )?),
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
@@ -503,7 +511,8 @@ fn parse_result(
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants)?;
 
             let (tag, ptr) = if type_info.is_memory_allocated(registry)? || return_ptr.is_some() {
-                let ptr = return_ptr.unwrap();
+                let ptr =
+                    return_ptr.to_native_assert_error("return pointer should not be valid")?;
 
                 let tag = unsafe {
                     match tag_layout.size() {
@@ -574,7 +583,11 @@ fn parse_result(
                     debug_name: Some(debug_name),
                 })
             } else {
-                Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?)
+                Ok(Value::from_ptr(
+                    return_ptr.to_native_assert_error("return pointer should not be valid")?,
+                    type_id,
+                    registry,
+                )?)
             }
         }
         CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
