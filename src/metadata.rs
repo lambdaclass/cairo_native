@@ -61,9 +61,10 @@ impl MetadataStorage {
     where
         T: Any,
     {
-        self.entries
-            .remove(&TypeId::of::<T>())
-            .map(|meta| *(Box::<(dyn Any + 'static)>::downcast::<T>(meta).unwrap()))
+        self.entries.remove(&TypeId::of::<T>()).map(|meta| {
+            *(Box::<(dyn Any + 'static)>::downcast::<T>(meta)
+                .expect("the given type does not match the actual"))
+        })
     }
 
     /// Retrieve a reference to some metadata.
@@ -74,9 +75,10 @@ impl MetadataStorage {
     where
         T: Any,
     {
-        self.entries
-            .get(&TypeId::of::<T>())
-            .map(|meta| meta.downcast_ref::<T>().unwrap())
+        self.entries.get(&TypeId::of::<T>()).map(|meta| {
+            meta.downcast_ref::<T>()
+                .expect("the given type does not match the actual")
+        })
     }
 
     /// Retrieve a mutable reference to some metadata.
