@@ -259,7 +259,7 @@ pub fn build_finalize<'ctx, 'this>(
         let value_len = block_vacant.const_int(context, location, value_layout.size(), 64)?;
         let value_ptr = block_vacant.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, value_len, location,
-        ))?;
+        )?)?;
 
         block_vacant.store(context, location, value_ptr_ptr, value_ptr)?;
         block_vacant.append_operation(cf::br(block_final, &[value_ptr], location));

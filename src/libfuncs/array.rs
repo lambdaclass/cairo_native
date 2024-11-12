@@ -293,7 +293,7 @@ pub fn build_append<'ctx, 'this>(
             ptr,
             realloc_size,
             location,
-        ))?;
+        )?)?;
 
         // No need to memmove, guaranteed by the fact that if we needed to memmove we'd have gone
         // through the memmove block instead of reallocating.
@@ -494,7 +494,7 @@ pub fn build_get<'ctx, 'this>(
         )?;
         let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))?;
+        )?)?;
         assert_nonnull(
             context,
             valid_block,
@@ -684,7 +684,7 @@ pub fn build_pop_front<'ctx, 'this>(
         )?;
         let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))?;
+        )?)?;
         assert_nonnull(
             context,
             valid_block,
@@ -784,7 +784,7 @@ pub fn build_pop_front_consume<'ctx, 'this>(
         )?;
         let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))?;
+        )?)?;
         assert_nonnull(
             context,
             valid_block,
@@ -910,7 +910,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
         )?;
         let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))?;
+        )?)?;
         assert_nonnull(
             context,
             valid_block,
@@ -1031,7 +1031,7 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
                 null_ptr,
                 popped_size_value,
                 location,
-            ))?
+            )?)?
         };
 
         valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
@@ -1160,7 +1160,7 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
                 null_ptr,
                 popped_size_value,
                 location,
-            ))?
+            )?)?
         };
 
         valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
@@ -1410,7 +1410,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context, ptr, total_size, location,
-    ))?;
+    )?)?;
 
     for (i, _) in fields.iter().enumerate() {
         let value: Value = entry.extract_value(context, location, container, field_ty, i)?;
@@ -1599,7 +1599,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
             let box_ptr = block_clone.append_op_result(ReallocBindingsMeta::realloc(
                 context, box_ptr, tuple_len, location,
-            ))?;
+            )?)?;
 
             let elem_offset = block_clone.append_op_result(arith::extui(
                 array_start,

@@ -178,7 +178,7 @@ fn build_dup<'ctx>(
                 null_ptr,
                 dst_value_len,
                 location,
-            ))?
+            )?)?
         };
 
         let src_value_ptr = {

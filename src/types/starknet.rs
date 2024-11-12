@@ -215,7 +215,7 @@ pub fn build_sha256_state_handle<'ctx>(
         let k32 = block.const_int(context, location, 32, 64)?;
         let new_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, k32, location,
-        ))?;
+        )?)?;
 
         block.append_operation(
             ods::llvm::intr_memcpy_inline(

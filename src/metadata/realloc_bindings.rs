@@ -65,7 +65,7 @@ impl ReallocBindingsMeta {
         ptr: Value<'c, 'a>,
         len: Value<'c, 'a>,
         location: Location<'c>,
-    ) -> Operation<'c> {
+    ) -> Result<Operation<'c>, Error> {
         OperationBuilder::new("llvm.call", location)
             .add_attributes(&[(
                 Identifier::new(context, "callee"),
@@ -74,7 +74,6 @@ impl ReallocBindingsMeta {
             .add_operands(&[ptr, len])
             .add_results(&[llvm::r#type::pointer(context, 0)])
             .build()
-            .unwrap()
     }
 
     /// Calls the `free` function.
