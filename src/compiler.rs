@@ -587,7 +587,9 @@ fn compile_func(
                                         op0.result(0)?.into(),
                                         &entry_block,
                                     ))
-                                    .native_expect("tail recursion metadata already inserted")?;
+                                    .native_expect(
+                                        "tail recursion metadata shouldn't be inserted",
+                                    )?;
                             }
                         }
                     }
