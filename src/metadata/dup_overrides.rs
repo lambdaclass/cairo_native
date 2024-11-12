@@ -92,11 +92,11 @@ impl DupOverridesMeta {
                         ),
                         (
                             Identifier::new(context, "llvm.CConv"),
-                            Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                            Attribute::parse(context, "#llvm.cconv<fastcc>")?,
                         ),
                         (
                             Identifier::new(context, "llvm.linkage"),
-                            Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+                            Attribute::parse(context, "#llvm.linkage<private>")?,
                         ),
                     ],
                     Location::unknown(context),

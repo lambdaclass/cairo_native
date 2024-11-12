@@ -37,8 +37,7 @@ impl AutoBreakpoint {
     ) -> Result<(), Error> {
         if self.has_event(event) {
             metadata
-                .get::<DebugUtils>()
-                .unwrap()
+                .get::<DebugUtils>()?
                 .debug_breakpoint_trap(block, location)?;
         }
 
