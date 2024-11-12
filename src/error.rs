@@ -123,6 +123,11 @@ pub enum CompilerError {
     },
 }
 
+/// In Cairo Native we want to avoid the use of panic, even in situation where
+/// it *should* never happen. The downside of this is that we lose:
+/// - Possible compiler opitimizations
+/// - Stack backtrace on error
+/// This modules aims to avoid panics while still obtaining a stack backtrace on eventual errors.
 pub mod panic {
     use super::{Error, Result};
     use std::{
@@ -130,6 +135,9 @@ pub mod panic {
         panic::Location,
     };
 
+    /// `NativeAssertError` acts as a non-panicking alternative to Rust's panic.
+    /// When the error is created the backtrace or location is captured, which
+    /// is useful for debugging.
     #[derive(Debug)]
     pub struct NativeAssertError {
         msg: String,
@@ -151,6 +159,7 @@ pub mod panic {
         }
     }
 
+    /// Extension trait used to easly convert `Result`s and `Option`s to `NativeAssertError`
     pub trait ToNativeAssert<T> {
         fn to_native_assert(self, msg: &str) -> Result<T>;
     }
@@ -167,6 +176,8 @@ pub mod panic {
         }
     }
 
+    /// Macro that mimicks the behaviour of `panic!`.
+    /// It should only be used inside of a function that returns Result<T, cairo_native::error::Error>
     #[macro_export]
     macro_rules! native_panic {
         ($arg:tt) => {
@@ -176,6 +187,8 @@ pub mod panic {
         };
     }
 
+    /// If `RUST_BACKTRACE` env var is not set, then the backtrace won't be captured.
+    /// In that case, only the location is saved, which is better than nothing.
     #[derive(Debug)]
     enum BacktraceOrLocation {
         Backtrace(Backtrace),
