@@ -92,11 +92,11 @@ impl DropOverridesMeta {
                         ),
                         (
                             Identifier::new(context, "llvm.CConv"),
-                            Attribute::parse(context, "#llvm.cconv<fastcc>")?,
+                            Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
                         ),
                         (
                             Identifier::new(context, "llvm.linkage"),
-                            Attribute::parse(context, "#llvm.linkage<private>")?,
+                            Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
                         ),
                     ],
                     Location::unknown(context),

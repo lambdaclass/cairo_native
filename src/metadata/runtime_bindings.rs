@@ -3,7 +3,7 @@
 //! This metadata ensures that the bindings to the runtime functions exist in the current
 //! compilation context.
 
-use crate::{error::Result, utils::BlockExt};
+use crate::{error::{ Error, Result}, utils::BlockExt};
 use melior::{
     dialect::{func, llvm, ods},
     ir::{
@@ -84,7 +84,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -142,7 +142,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -198,7 +198,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -246,7 +246,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -294,7 +294,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -337,7 +337,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -389,7 +389,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -444,7 +444,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -498,7 +498,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 location,
@@ -551,7 +551,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -616,7 +616,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -678,7 +678,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -735,7 +735,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -794,7 +794,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -847,7 +847,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -890,7 +890,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -950,7 +950,7 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")?,
+                        Attribute::parse(context, "#llvm.linkage<external>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),

@@ -21,7 +21,7 @@
 //! where `{type id}` is the numeric value of the `ConcreteTypeId`.
 
 use super::MetadataStorage;
-use crate::{error::Result, utils::ProgramRegistryExt};
+use crate::{error::{ Result, Error }, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::ConcreteTypeId,
@@ -92,11 +92,11 @@ impl DupOverridesMeta {
                         ),
                         (
                             Identifier::new(context, "llvm.CConv"),
-                            Attribute::parse(context, "#llvm.cconv<fastcc>")?,
+                            Attribute::parse(context, "#llvm.cconv<fastcc>").ok_or(Error::ParseAttributeError)?,
                         ),
                         (
                             Identifier::new(context, "llvm.linkage"),
-                            Attribute::parse(context, "#llvm.linkage<private>")?,
+                            Attribute::parse(context, "#llvm.linkage<private>").ok_or(Error::ParseAttributeError)?,
                         ),
                     ],
                     Location::unknown(context),
