@@ -120,7 +120,7 @@ pub struct TxV2Info {
 pub struct ResourceBounds {
     pub resource: Felt,
     pub max_amount: u64,
-    pub max_price_per_unit: u128,
+    pub max_price_per_unit: u64,
 }
 
 #[derive(
@@ -605,7 +605,7 @@ pub(crate) mod handler {
     struct ResourceBoundsAbi {
         resource: Felt252Abi,
         max_amount: u64,
-        max_price_per_unit: u128,
+        max_price_per_unit: u64,
     }
 
     #[repr(C)]
