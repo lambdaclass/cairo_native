@@ -52,7 +52,7 @@ pub fn build<'ctx, 'this>(
 
 /// Generate MLIR operations for the `get_available_gas` libfunc.
 pub fn build_get_available_gas<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -60,11 +60,14 @@ pub fn build_get_available_gas<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    entry.append_operation(helper.br(
-        0,
-        &[entry.argument(0)?.into(), entry.argument(0)?.into()],
+    let gas = entry.argument(0)?.into();
+    let gas_u128 = entry.append_op_result(arith::extui(
+        gas,
+        IntegerType::new(context, 128).into(),
         location,
-    ));
+    ))?;
+    // The gas is returned as u128 on the second arg.
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), gas_u128], location));
     Ok(())
 }
 
