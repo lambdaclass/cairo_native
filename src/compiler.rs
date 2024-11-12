@@ -131,7 +131,7 @@ pub fn compile(
 ) -> Result<(), Error> {
     if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
         if x == "1" || x == "true" {
-            std::fs::write("program.sierra", program.to_string()).expect("failed to dump sierra");
+            std::fs::write("program.sierra", program.to_string())?;
         }
     }
 
@@ -902,11 +902,13 @@ fn compile_func(
             ),
             (
                 Identifier::new(context, "linkage"),
-                Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+                Attribute::parse(context, "#llvm.linkage<private>")
+                    .expect("hardcoded attribute is valid"),
             ),
             (
                 Identifier::new(context, "CConv"),
-                Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                Attribute::parse(context, "#llvm.cconv<fastcc>")
+                    .expect("hardcoded attribute is valid"),
             ),
         ],
         Location::fused(
@@ -1333,7 +1335,8 @@ fn generate_entry_point_wrapper<'c>(
                 ),
                 (
                     Identifier::new(context, "CConv"),
-                    Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                    Attribute::parse(context, "#llvm.cconv<fastcc>")
+                        .expect("hardcoded attribute is valid"),
                 ),
             ])
             .add_operands(&args)
@@ -1367,11 +1370,13 @@ fn generate_entry_point_wrapper<'c>(
             ),
             (
                 Identifier::new(context, "llvm.linkage"),
-                Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+                Attribute::parse(context, "#llvm.linkage<private>")
+                    .expect("hardcoded attribute is valid"),
             ),
             (
                 Identifier::new(context, "llvm.CConv"),
-                Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                Attribute::parse(context, "#llvm.cconv<fastcc>")
+                    .expect("hardcoded attribute is valid"),
             ),
             (
                 Identifier::new(context, "llvm.emit_c_interface"),
