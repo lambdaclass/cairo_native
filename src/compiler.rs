@@ -906,12 +906,12 @@ fn compile_func(
             (
                 Identifier::new(context, "linkage"),
                 Attribute::parse(context, "#llvm.linkage<private>")
-                    .expect("hardcoded attribute is valid"),
+                    .expect("hardcoded attribute should be valid"),
             ),
             (
                 Identifier::new(context, "CConv"),
                 Attribute::parse(context, "#llvm.cconv<fastcc>")
-                    .expect("hardcoded attribute is valid"),
+                    .expect("hardcoded attribute should be valid"),
             ),
         ],
         Location::fused(
@@ -1339,7 +1339,7 @@ fn generate_entry_point_wrapper<'c>(
                 (
                     Identifier::new(context, "CConv"),
                     Attribute::parse(context, "#llvm.cconv<fastcc>")
-                        .expect("hardcoded attribute is valid"),
+                        .expect("hardcoded attribute should be valid"),
                 ),
             ])
             .add_operands(&args)
@@ -1374,12 +1374,12 @@ fn generate_entry_point_wrapper<'c>(
             (
                 Identifier::new(context, "llvm.linkage"),
                 Attribute::parse(context, "#llvm.linkage<private>")
-                    .expect("hardcoded attribute is valid"),
+                    .expect("hardcoded attribute should be valid"),
             ),
             (
                 Identifier::new(context, "llvm.CConv"),
                 Attribute::parse(context, "#llvm.cconv<fastcc>")
-                    .expect("hardcoded attribute is valid"),
+                    .expect("hardcoded attribute should be valid"),
             ),
             (
                 Identifier::new(context, "llvm.emit_c_interface"),
