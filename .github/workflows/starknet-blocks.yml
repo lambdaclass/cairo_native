@@ -27,7 +27,7 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          key: "ref-233ebb4d5feb5944c6c5e561b924e0cb8d9d8871"
+          key: "ref-d2873c43c05808d63ac1a2a93cdf85e31c0b78ed"
 
       - name: Check and free hdd space left
         if: ${{ matrix.runner == 'native' }}
@@ -76,7 +76,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
-          ref: 233ebb4d5feb5944c6c5e561b924e0cb8d9d8871
+          ref: d2873c43c05808d63ac1a2a93cdf85e31c0b78ed
           path: replay
 
       - name: Install Starknet Replay deps
