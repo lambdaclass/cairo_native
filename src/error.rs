@@ -127,6 +127,10 @@ impl std::error::Error for NativeAssertError {}
 pub enum NativeAssertErrorKind {
     #[error("statement index already present in block")]
     DuplicatedStatementIndex,
+    #[error("tail recursion metadata already inserted")]
+    DuplicatedTailRecursionMetadata,
+    #[error("block should exist")]
+    MissingBlock,
 }
 
 impl NativeAssertError {
