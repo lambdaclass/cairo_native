@@ -127,6 +127,7 @@ pub enum CompilerError {
 /// it *should* never happen. The downside of this is that we lose:
 /// - Possible compiler opitimizations
 /// - Stack backtrace on error
+///
 /// This modules aims to avoid panics while still obtaining a stack backtrace on eventual errors.
 pub mod panic {
     use super::{Error, Result};
