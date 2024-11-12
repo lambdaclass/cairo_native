@@ -46,7 +46,7 @@
 
 use crate::{
     debug::libfunc_to_name,
-    error::{panic::ToNativeAssert, Error},
+    error::{panic::ToNativeAssertError, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
@@ -587,7 +587,7 @@ fn compile_func(
                                         op0.result(0)?.into(),
                                         &entry_block,
                                     ))
-                                    .to_native_assert(
+                                    .to_native_assert_error(
                                         "tail recursion metadata shouldn't be inserted",
                                     )?;
                             }
@@ -988,7 +988,7 @@ fn generate_function_structure<'c, 'a>(
                     e.insert(Block::new(&[]));
                     blocks
                         .get_mut(&statement_idx.0)
-                        .to_native_assert("block should exist")?
+                        .to_native_assert_error("block should exist")?
                 } else {
                     native_panic!("statement index already present in block")
                 }

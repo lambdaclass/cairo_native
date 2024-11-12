@@ -161,18 +161,18 @@ pub mod panic {
     }
 
     /// Extension trait used to easly convert `Result`s and `Option`s to `NativeAssertError`
-    pub trait ToNativeAssert<T> {
-        fn to_native_assert(self, msg: &str) -> Result<T>;
+    pub trait ToNativeAssertError<T> {
+        fn to_native_assert_error(self, msg: &str) -> Result<T>;
     }
 
-    impl<T> ToNativeAssert<T> for Option<T> {
-        fn to_native_assert(self, msg: &str) -> Result<T> {
+    impl<T> ToNativeAssertError<T> for Option<T> {
+        fn to_native_assert_error(self, msg: &str) -> Result<T> {
             self.ok_or_else(|| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
         }
     }
 
-    impl<T> ToNativeAssert<T> for Result<T> {
-        fn to_native_assert(self, msg: &str) -> Result<T> {
+    impl<T> ToNativeAssertError<T> for Result<T> {
+        fn to_native_assert_error(self, msg: &str) -> Result<T> {
             self.map_err(|_| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
         }
     }
