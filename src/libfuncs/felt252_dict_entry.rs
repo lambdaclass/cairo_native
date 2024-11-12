@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error,Result},
+    error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,

@@ -5,10 +5,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result},
+    error::{panic::ToNativeAssertError, Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
+    native_panic,
     types::TypeBuilder,
     utils::{BlockExt, GepIndex, ProgramRegistryExt},
 };
@@ -17,7 +18,7 @@ use cairo_lang_sierra::{
         array::{ArrayConcreteLibfunc, ConcreteMultiPopLibfunc},
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
-        ConcreteLibfunc, ConcreteType,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -1483,9 +1484,9 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         CoreTypeConcrete::Array(info) => (&info.ty, registry.get_type(&info.ty)?),
         CoreTypeConcrete::Snapshot(info) => match registry.get_type(&info.ty)? {
             CoreTypeConcrete::Array(info) => (&info.ty, registry.get_type(&info.ty)?),
-            _ => return Err(Error::UnexpectedCoreTypeConcrete),
+            _ => native_panic!("unexpected CoreTypeConcrete found"),
         },
-        _ => return Err(Error::UnexpectedCoreTypeConcrete),
+        _ => native_panic!("unexpected CoreTypeConcrete found"),
     };
     let elem_layout = elem_ty.layout(registry)?;
 
@@ -1506,7 +1507,10 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
     let (tuple_len, tuple_len_val) = {
-        let fields = registry.get_type(&info.ty)?.fields().unwrap();
+        let fields = registry
+            .get_type(&info.ty)?
+            .fields()
+            .to_native_assert_error("missing filed")?;
         assert!(fields.iter().all(|f| f.id == elem_id.id));
 
         (

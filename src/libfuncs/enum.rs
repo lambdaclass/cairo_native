@@ -4,8 +4,9 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result},
+    error::{panic::ToNativeAssertError, Error, Result},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
+    native_panic,
     types::TypeBuilder,
     utils::BlockExt,
 };
@@ -119,11 +120,13 @@ pub fn build_enum_value<'ctx, 'this>(
         helper,
         registry,
         metadata,
-        type_info.variants().unwrap(),
+        type_info
+            .variants()
+            .to_native_assert_error("couldn't get enum's variants")?,
     )?;
 
     Ok(match variant_tys.len() {
-        0 => panic!("attempt to initialize a zero-variant enum"),
+        0 => native_panic!("attempt to initialize a zero-variant enum"),
         1 => payload_value,
         _ => {
             let enum_ty = llvm::r#type::r#struct(
@@ -257,7 +260,9 @@ pub fn build_match<'ctx, 'this>(
 ) -> Result<()> {
     let type_info = registry.get_type(&info.param_signatures()[0].ty)?;
 
-    let variant_ids = type_info.variants().unwrap();
+    let variant_ids = type_info
+        .variants()
+        .to_native_assert_error("couldn't get enum's variants")?;
     match variant_ids.len() {
         0 => {
             // The Cairo compiler will generate an enum match for enums without variants, so this

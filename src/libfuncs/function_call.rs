@@ -197,7 +197,8 @@ pub fn build<'ctx, 'this>(
                     ),
                     (
                         Identifier::new(context, "CConv"),
-                        Attribute::parse(context, "#llvm.cconv<fastcc>").ok_or(Error::ParseAttributeError)?,
+                        Attribute::parse(context, "#llvm.cconv<fastcc>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ])
                 .add_operands(&arguments)
