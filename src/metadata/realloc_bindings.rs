@@ -4,7 +4,6 @@
 //! compilation context.
 
 use melior::{
-    Error,
     dialect::llvm,
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
@@ -12,7 +11,7 @@ use melior::{
         r#type::IntegerType,
         Identifier, Location, Module, Operation, Region, Value,
     },
-    Context,
+    Context, Error,
 };
 
 /// Memory allocation `realloc` metadata.
