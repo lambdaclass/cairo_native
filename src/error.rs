@@ -151,18 +151,18 @@ pub mod panic {
         }
     }
 
-    pub trait ToNativeExpect<T> {
-        fn native_expect(self, msg: &str) -> Result<T>;
+    pub trait ToNativeAssert<T> {
+        fn to_native_assert(self, msg: &str) -> Result<T>;
     }
 
-    impl<T> ToNativeExpect<T> for Option<T> {
-        fn native_expect(self, msg: &str) -> Result<T> {
+    impl<T> ToNativeAssert<T> for Option<T> {
+        fn to_native_assert(self, msg: &str) -> Result<T> {
             self.ok_or_else(|| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
         }
     }
 
-    impl<T> ToNativeExpect<T> for Result<T> {
-        fn native_expect(self, msg: &str) -> Result<T> {
+    impl<T> ToNativeAssert<T> for Result<T> {
+        fn to_native_assert(self, msg: &str) -> Result<T> {
             self.map_err(|_| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
         }
     }
