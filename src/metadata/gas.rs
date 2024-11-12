@@ -100,7 +100,7 @@ impl GasMetadata {
         Some(
             self.gas_info.function_costs[func]
                 .iter()
-                .map(|(token_type, val)| val.into_or_panic::<usize>() * token_gas_cost(*token_type))
+                .map(|(token_type, val)| (*val as usize) * token_gas_cost(*token_type))
                 .sum::<usize>() as u128,
         )
     }
