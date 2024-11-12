@@ -5,6 +5,8 @@ use cairo_lang_sierra::{
     edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
 };
 use num_bigint::BigInt;
+use std::backtrace::{Backtrace, BacktraceStatus};
+use std::panic::Location;
 use std::{alloc::LayoutError, num::TryFromIntError};
 use thiserror::Error;
 
@@ -44,6 +46,9 @@ pub enum Error {
 
     #[error(transparent)]
     SierraAssert(#[from] SierraAssertError),
+
+    #[error(transparent)]
+    NativeAssert(#[from] NativeAssertError),
 
     #[error(transparent)]
     Compiler(#[from] CompilerError),
@@ -108,6 +113,42 @@ pub enum SierraAssertError {
     BadTypeInfo,
     #[error("circuit cannot be evaluated")]
     ImpossibleCircuit,
+}
+
+#[derive(Debug)]
+pub struct NativeAssertError {
+    kind: NativeAssertErrorKind,
+    location: &'static Location<'static>,
+    backtrace: Backtrace,
+}
+
+impl std::error::Error for NativeAssertError {}
+
+#[derive(Error, Debug)]
+pub enum NativeAssertErrorKind {
+    #[error("statement index already present in block")]
+    DuplicatedStatementIndex,
+}
+
+impl std::fmt::Display for NativeAssertError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", &self.kind)?;
+        writeln!(f, "Location: {}", &self.location)?;
+        if let BacktraceStatus::Captured = self.backtrace.status() {
+            writeln!(f, "Backtrace:\n{}", &self.backtrace)?;
+        }
+        Ok(())
+    }
+}
+
+impl NativeAssertError {
+    pub fn new(kind: NativeAssertErrorKind) -> Self {
+        Self {
+            kind,
+            location: std::panic::Location::caller(),
+            backtrace: std::backtrace::Backtrace::capture(),
+        }
+    }
 }
 
 #[derive(Error, Debug)]
