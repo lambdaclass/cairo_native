@@ -5,7 +5,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
@@ -197,7 +197,7 @@ pub fn build<'ctx, 'this>(
                     ),
                     (
                         Identifier::new(context, "CConv"),
-                        Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                        Attribute::parse(context, "#llvm.cconv<fastcc>").ok_or(Error::ParseAttributeError)?,
                     ),
                 ])
                 .add_operands(&arguments)

@@ -5,7 +5,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
@@ -17,7 +17,7 @@ use cairo_lang_sierra::{
         array::{ArrayConcreteLibfunc, ConcreteMultiPopLibfunc},
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
-        ConcreteLibfunc,
+        ConcreteLibfunc, ConcreteType,
     },
     program_registry::ProgramRegistry,
 };
@@ -593,7 +593,7 @@ pub fn build_get<'ctx, 'this>(
 
     metadata
         .get::<DropOverridesMeta>()
-        .unwrap()
+        .ok_or(Error::MissingMetadata)?
         .invoke_override(
             context,
             error_block,
@@ -804,7 +804,7 @@ pub fn build_pop_front_consume<'ctx, 'this>(
 
     metadata
         .get::<DropOverridesMeta>()
-        .unwrap()
+        .ok_or(Error::MissingMetadata)?
         .invoke_override(
             context,
             empty_block,
@@ -1324,11 +1324,9 @@ pub fn build_slice<'ctx, 'this>(
             &info.signature.param_signatures[1].ty,
         )?;
 
-        // The following unwrap is unreachable because an array always has a drop implementation,
-        // which at this point is always inserted thanks to the `build_type()` just above.
         metadata
             .get::<DropOverridesMeta>()
-            .unwrap()
+            .ok_or(Error::MissingMetadata)?
             .invoke_override(
                 context,
                 error_block,
@@ -1485,9 +1483,9 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         CoreTypeConcrete::Array(info) => (&info.ty, registry.get_type(&info.ty)?),
         CoreTypeConcrete::Snapshot(info) => match registry.get_type(&info.ty)? {
             CoreTypeConcrete::Array(info) => (&info.ty, registry.get_type(&info.ty)?),
-            _ => unreachable!(),
+            _ => return Err(Error::UnexpectedCoreTypeConcrete),
         },
-        _ => unreachable!(),
+        _ => return Err(Error::UnexpectedCoreTypeConcrete),
     };
     let elem_layout = elem_ty.layout(registry)?;
 
@@ -1648,11 +1646,9 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             &info.signature.param_signatures[0].ty,
         )?;
 
-        // The following unwrap is unreachable because an array always has a drop implementation,
-        // which at this point is always inserted thanks to the `build_type()` just above.
         metadata
             .get::<DropOverridesMeta>()
-            .unwrap()
+            .ok_or(Error::MissingMetadata)?
             .invoke_override(
                 context,
                 block_err,

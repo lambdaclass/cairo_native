@@ -63,6 +63,9 @@ pub enum Error {
     #[error("cairo const data mismatch")]
     ConstDataMismatch,
 
+    #[error("unexpected cairo type found")]
+    UnexpectedCoreTypeConcrete,
+
     #[error("expected an integer-like type")]
     IntegerLikeTypeExpected,
 

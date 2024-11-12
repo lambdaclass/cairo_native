@@ -66,7 +66,7 @@ pub fn build_const_as_box<'ctx, 'this>(
     // Create constant
     let const_type = match &const_type_outer {
         CoreTypeConcrete::Const(inner) => inner,
-        _ => unreachable!(),
+        _ => return Err(Error::UnexpectedCoreTypeConcrete),
     };
 
     let value = build_const_type_value(
@@ -105,7 +105,7 @@ pub fn build_const_as_immediate<'ctx, 'this>(
 
     let const_type = match &const_ty {
         CoreTypeConcrete::Const(inner) => inner,
-        _ => unreachable!(),
+        _ => return Err(Error::UnexpectedCoreTypeConcrete),
     };
 
     let value = build_const_type_value(
@@ -147,7 +147,7 @@ pub fn build_const_type_value<'ctx, 'this>(
 
                         let const_field_type = match &field_type {
                             CoreTypeConcrete::Const(inner) => inner,
-                            _ => unreachable!(),
+                            _ => return Err(Error::UnexpectedCoreTypeConcrete),
                         };
 
                         let field_value = build_const_type_value(
@@ -181,7 +181,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 let payload_type = registry.get_type(payload_ty)?;
                 let const_payload_type = match payload_type {
                     CoreTypeConcrete::Const(inner) => inner,
-                    _ => unreachable!(),
+                    _ => return Err(Error::UnexpectedCoreTypeConcrete),
                 };
 
                 let payload_value = build_const_type_value(
@@ -218,7 +218,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 let inner_type = registry.get_type(inner)?;
                 let const_inner_type = match inner_type {
                     CoreTypeConcrete::Const(inner) => inner,
-                    _ => unreachable!(),
+                    _ => return Err(Error::UnexpectedCoreTypeConcrete),
                 };
 
                 build_const_type_value(
