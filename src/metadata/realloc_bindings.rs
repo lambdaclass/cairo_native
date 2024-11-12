@@ -4,6 +4,7 @@
 //! compilation context.
 
 use melior::{
+    Error,
     dialect::llvm,
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
@@ -81,7 +82,7 @@ impl ReallocBindingsMeta {
         context: &'c Context,
         ptr: Value<'c, '_>,
         location: Location<'c>,
-    ) -> Operation<'c> {
+    ) -> Result<Operation<'c>, Error> {
         OperationBuilder::new("llvm.call", location)
             .add_attributes(&[(
                 Identifier::new(context, "callee"),
@@ -89,6 +90,5 @@ impl ReallocBindingsMeta {
             )])
             .add_operands(&[ptr])
             .build()
-            .unwrap()
     }
 }

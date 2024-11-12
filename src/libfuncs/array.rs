@@ -586,7 +586,7 @@ pub fn build_get<'ctx, 'this>(
             }
             _ => {}
         }
-        valid_block.append_operation(ReallocBindingsMeta::free(context, ptr, location));
+        valid_block.append_operation(ReallocBindingsMeta::free(context, ptr, location)?);
 
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
     }
@@ -1371,7 +1371,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         context,
         entry.argument(0)?.into(),
         location,
-    ));
+    )?);
 
     let fields = struct_type_info.fields().expect("should have fields");
     let (field_ty, field_layout) =
@@ -1632,7 +1632,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 .into(),
             );
 
-            block_clone.append_operation(ReallocBindingsMeta::free(context, array_ptr, location));
+            block_clone.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
             block_clone.append_operation(helper.br(0, &[box_ptr], location));
         }
 

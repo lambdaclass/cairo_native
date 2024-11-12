@@ -233,7 +233,7 @@ fn build_drop<'ctx>(
             _ => {}
         }
 
-        block_free.append_operation(ReallocBindingsMeta::free(context, value, location));
+        block_free.append_operation(ReallocBindingsMeta::free(context, value, location)?);
         block_free.append_operation(func::r#return(&[], location));
     }
 

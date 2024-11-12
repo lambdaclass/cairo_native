@@ -142,7 +142,7 @@ pub fn build_unbox<'ctx, 'this>(
         context,
         entry.argument(0)?.into(),
         location,
-    ));
+    )?);
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())

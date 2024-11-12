@@ -244,7 +244,7 @@ pub fn build_sha256_state_handle<'ctx>(
             context,
             block.argument(0)?.into(),
             location,
-        ));
+        )?);
 
         block.append_operation(func::r#return(&[], location));
         Ok(Some(region))
