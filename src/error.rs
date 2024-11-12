@@ -36,7 +36,7 @@ pub enum Error {
     #[error(transparent)]
     TryFromIntError(#[from] TryFromIntError),
 
-    #[error("error parsing melior Attribute")]
+    #[error("error parsing attribute")]
     ParseAttributeError,
 
     #[error("missing metadata")]
