@@ -118,8 +118,7 @@ pub enum SierraAssertError {
 #[derive(Debug)]
 pub struct NativeAssertError {
     kind: NativeAssertErrorKind,
-    location: &'static Location<'static>,
-    backtrace: Backtrace,
+    info: BacktraceOrLocation,
 }
 
 impl std::error::Error for NativeAssertError {}
@@ -130,23 +129,35 @@ pub enum NativeAssertErrorKind {
     DuplicatedStatementIndex,
 }
 
-impl std::fmt::Display for NativeAssertError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", &self.kind)?;
-        writeln!(f, "Location: {}", &self.location)?;
-        if let BacktraceStatus::Captured = self.backtrace.status() {
-            writeln!(f, "Backtrace:\n{}", &self.backtrace)?;
-        }
-        Ok(())
+impl NativeAssertError {
+    pub fn new(kind: NativeAssertErrorKind) -> Self {
+        let backtrace = Backtrace::capture();
+        let info = if let BacktraceStatus::Captured = backtrace.status() {
+            BacktraceOrLocation::Backtrace(backtrace)
+        } else {
+            BacktraceOrLocation::Location(std::panic::Location::caller())
+        };
+
+        Self { kind, info }
     }
 }
 
-impl NativeAssertError {
-    pub fn new(kind: NativeAssertErrorKind) -> Self {
-        Self {
-            kind,
-            location: std::panic::Location::caller(),
-            backtrace: std::backtrace::Backtrace::capture(),
+#[derive(Debug)]
+enum BacktraceOrLocation {
+    Backtrace(Backtrace),
+    Location(&'static Location<'static>),
+}
+
+impl std::fmt::Display for NativeAssertError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", &self.kind)?;
+        match &self.info {
+            BacktraceOrLocation::Backtrace(backtrace) => {
+                writeln!(f, "Stack backtrace:\n{}", backtrace)
+            }
+            BacktraceOrLocation::Location(location) => {
+                writeln!(f, "Location: {}", location)
+            }
         }
     }
 }
