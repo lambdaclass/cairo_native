@@ -180,9 +180,9 @@ pub mod panic {
     /// It should only be used inside of a function that returns Result<T, cairo_native::error::Error>
     #[macro_export]
     macro_rules! native_panic {
-        ($arg:tt) => {
+        ($($arg:tt)*) => {
             return Err($crate::error::Error::NativeAssert(
-                $crate::error::panic::NativeAssertError::new(format!($arg)),
+                $crate::error::panic::NativeAssertError::new(format!($($arg)*)),
             ))
         };
     }
