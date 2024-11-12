@@ -117,24 +117,14 @@ pub enum SierraAssertError {
 
 #[derive(Debug)]
 pub struct NativeAssertError {
-    kind: NativeAssertErrorKind,
+    msg: String,
     info: BacktraceOrLocation,
 }
 
 impl std::error::Error for NativeAssertError {}
 
-#[derive(Error, Debug)]
-pub enum NativeAssertErrorKind {
-    #[error("statement index already present in block")]
-    DuplicatedStatementIndex,
-    #[error("tail recursion metadata already inserted")]
-    DuplicatedTailRecursionMetadata,
-    #[error("block should exist")]
-    MissingBlock,
-}
-
 impl NativeAssertError {
-    pub fn new(kind: NativeAssertErrorKind) -> Self {
+    pub fn new(msg: String) -> Self {
         let backtrace = Backtrace::capture();
         let info = if let BacktraceStatus::Captured = backtrace.status() {
             BacktraceOrLocation::Backtrace(backtrace)
@@ -142,8 +132,33 @@ impl NativeAssertError {
             BacktraceOrLocation::Location(std::panic::Location::caller())
         };
 
-        Self { kind, info }
+        Self { msg, info }
     }
+}
+
+pub trait ToNativeExpect<T> {
+    fn native_expect(self, msg: &str) -> Result<T>;
+}
+
+impl<T> ToNativeExpect<T> for Option<T> {
+    fn native_expect(self, msg: &str) -> Result<T> {
+        self.ok_or_else(|| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
+    }
+}
+
+impl<T> ToNativeExpect<T> for Result<T> {
+    fn native_expect(self, msg: &str) -> Result<T> {
+        self.map_err(|_| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
+    }
+}
+
+#[macro_export]
+macro_rules! native_panic {
+    ($arg:tt) => {
+        return Err($crate::error::Error::NativeAssert(
+            $crate::error::NativeAssertError::new(format!($arg)),
+        ))
+    };
 }
 
 #[derive(Debug)]
@@ -154,7 +169,7 @@ enum BacktraceOrLocation {
 
 impl std::fmt::Display for NativeAssertError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", &self.kind)?;
+        writeln!(f, "{}", &self.msg)?;
         match &self.info {
             BacktraceOrLocation::Backtrace(backtrace) => {
                 writeln!(f, "Stack backtrace:\n{}", backtrace)

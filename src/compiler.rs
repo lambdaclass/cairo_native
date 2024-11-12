@@ -46,13 +46,14 @@
 
 use crate::{
     debug::libfunc_to_name,
-    error::{Error, NativeAssertError, NativeAssertErrorKind},
+    error::{Error, ToNativeExpect},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
+    native_panic,
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
 };
@@ -586,11 +587,7 @@ fn compile_func(
                                         op0.result(0)?.into(),
                                         &entry_block,
                                     ))
-                                    .ok_or_else(|| {
-                                        NativeAssertError::new(
-                                            NativeAssertErrorKind::DuplicatedTailRecursionMetadata,
-                                        )
-                                    })?;
+                                    .native_expect("tail recursion metadata already inserted")?;
                             }
                         }
                     }
@@ -987,13 +984,11 @@ fn generate_function_structure<'c, 'a>(
                 if let std::collections::btree_map::Entry::Vacant(e) = blocks.entry(statement_idx.0)
                 {
                     e.insert(Block::new(&[]));
-                    blocks.get_mut(&statement_idx.0).ok_or_else(|| {
-                        NativeAssertError::new(NativeAssertErrorKind::MissingBlock)
-                    })?
+                    blocks
+                        .get_mut(&statement_idx.0)
+                        .native_expect("block should exist")?
                 } else {
-                    return Err(NativeAssertError::new(
-                        NativeAssertErrorKind::DuplicatedStatementIndex,
-                    ))?;
+                    native_panic!("statement index already present in block")
                 }
             };
 
