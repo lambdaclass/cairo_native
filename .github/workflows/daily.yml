@@ -7,7 +7,7 @@ on:
 
 env:
   RANGE_SIZE: 25
-  SEQUENCER_REV: 1b1b95cae7ae07b9bc778443ca75ee18008a6bc8
+  SEQUENCER_REV: ecf6bc799e7e47f30cd599b8f344eb0d1fc76b38
 
 jobs:
   run:
@@ -56,7 +56,7 @@ jobs:
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.80.0
+        uses: dtolnay/rust-toolchain@1.82.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: Build Cairo Native Runtime Library
@@ -65,7 +65,7 @@ jobs:
           cd ../cairo_native
           make runtime
           echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
-      
+
       - name: Patch dependencies
         run: |
           # Patches native dependency to local path, to use current cairo native version
@@ -79,7 +79,7 @@ jobs:
           NEW_REV="$SEQUENCER_REV"
           sed -Ei "s#(\"$GIT\" *, *rev *= *\").?*(\".*)#\1$NEW_REV\2#" Cargo.toml
           grep $GIT Cargo.toml
-          
+
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
         run: |
