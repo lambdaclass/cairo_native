@@ -8,6 +8,7 @@ use crate::{
     arch::{AbiArgument, ValueWithInfoWrapper},
     error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ExecutionResult},
+    native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{libc_free, BuiltinCosts, RangeExt},
@@ -295,7 +296,7 @@ fn invoke_dynamic(
                             CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
                                 builtin_stats.circuit_mul = value
                             }
-                            _ => unreachable!("{type_id:?}"),
+                            _ => native_panic!("given type should be a builtin: {type_id:?}"),
                         }
                     }
                 }
@@ -611,7 +612,9 @@ fn parse_result(
         | CoreTypeConcrete::Pedersen(_)
         | CoreTypeConcrete::Poseidon(_)
         | CoreTypeConcrete::SegmentArena(_)
-        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => unreachable!(),
+        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+            native_panic!("builtins should have been handled before")
+        }
 
         CoreTypeConcrete::Felt252DictEntry(_)
         | CoreTypeConcrete::Span(_)
