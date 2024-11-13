@@ -122,7 +122,7 @@ pub fn build_enum_value<'ctx, 'this>(
         metadata,
         type_info
             .variants()
-            .to_native_assert_error("couldn't get enum's variants")?,
+            .to_native_assert_error("found non-enum type where an enum is required")?,
     )?;
 
     Ok(match variant_tys.len() {
@@ -262,7 +262,7 @@ pub fn build_match<'ctx, 'this>(
 
     let variant_ids = type_info
         .variants()
-        .to_native_assert_error("couldn't get enum's variants")?;
+        .to_native_assert_error("found non-enum type where an enum is required")?;
     match variant_ids.len() {
         0 => {
             // The Cairo compiler will generate an enum match for enums without variants, so this

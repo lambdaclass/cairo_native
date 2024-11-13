@@ -9,7 +9,7 @@ use crate::{
     metadata::{
         drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    native_panic,
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::{BlockExt, GepIndex, ProgramRegistryExt},
 };
@@ -1512,9 +1512,10 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             .fields()
             .to_native_assert_error("missing filed")?;
 
-        if !fields.iter().all(|f| f.id == elem_id.id) {
-            native_panic!("all the elements of the array must have the same type");
-        }
+        native_assert!(
+            fields.iter().all(|f| f.id == elem_id.id),
+            "all the elements of the array must have the same type"
+        );
 
         (
             entry.const_int(context, location, fields.len(), 32)?,

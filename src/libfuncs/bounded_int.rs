@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::MetadataStorage,
-    native_panic,
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::{BlockExt, RangeExt},
 };
@@ -115,12 +115,14 @@ fn build_add<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    if !compute_range.offset_bit_width() >= lhs_width {
-        native_panic!("the lhs_range bit_width must be less or equal than the compute_range");
-    }
-    if !compute_range.offset_bit_width() >= rhs_width {
-        native_panic!("the rhs_range bit_width must be less or equal than the compute_range");
-    }
+    assert!(
+        compute_range.offset_bit_width() >= lhs_width,
+        "the lhs_range bit_width must be less or equal than the compute_range"
+    );
+    assert!(
+        compute_range.offset_bit_width() >= rhs_width,
+        "the rhs_range bit_width must be less or equal than the compute_range"
+    );
 
     let lhs_value = if compute_range.offset_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
@@ -241,12 +243,14 @@ fn build_sub<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    if !compute_range.offset_bit_width() >= lhs_width {
-        native_panic!("the lhs_range bit_width must be less or equal than the compute_range");
-    }
-    if !compute_range.offset_bit_width() >= rhs_width {
-        native_panic!("the rhs_range bit_width must be less or equal than the compute_range");
-    }
+    assert!(
+        compute_range.offset_bit_width() >= lhs_width,
+        "the lhs_range bit_width must be less or equal than the compute_range"
+    );
+    assert!(
+        compute_range.offset_bit_width() >= rhs_width,
+        "the rhs_range bit_width must be less or equal than the compute_range"
+    );
 
     let lhs_value = if compute_range.offset_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
@@ -368,12 +372,14 @@ fn build_mul<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    if !compute_range.offset_bit_width() >= lhs_width {
-        native_panic!("the lhs_range bit_width must be less or equal than the compute_range");
-    }
-    if !compute_range.offset_bit_width() >= rhs_width {
-        native_panic!("the rhs_range bit_width must be less or equal than the compute_range");
-    }
+    assert!(
+        compute_range.offset_bit_width() >= lhs_width,
+        "the lhs_range bit_width must be less or equal than the compute_range"
+    );
+    assert!(
+        compute_range.offset_bit_width() >= rhs_width,
+        "the rhs_range bit_width must be less or equal than the compute_range"
+    );
 
     let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
@@ -494,12 +500,14 @@ fn build_divrem<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    if !compute_range.offset_bit_width() >= lhs_width {
-        native_panic!("the lhs_range bit_width must be less or equal than the compute_range");
-    }
-    if !compute_range.offset_bit_width() >= rhs_width {
-        native_panic!("the rhs_range bit_width must be less or equal than the compute_range");
-    }
+    assert!(
+        compute_range.offset_bit_width() >= lhs_width,
+        "the lhs_range bit_width must be less or equal than the compute_range"
+    );
+    assert!(
+        compute_range.offset_bit_width() >= rhs_width,
+        "the rhs_range bit_width must be less or equal than the compute_range"
+    );
 
     let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
@@ -708,9 +716,10 @@ fn build_is_zero<'ctx, 'this>(
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let src_range = src_ty.integer_range(registry)?;
 
-    if !(src_range.lower <= BigInt::ZERO && BigInt::ZERO < src_range.upper) {
-        native_panic!("value can never be zero")
-    }
+    native_assert!(
+        src_range.lower <= BigInt::ZERO && BigInt::ZERO < src_range.upper,
+        "value can never be zero"
+    );
 
     let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
     let src_is_zero = entry.append_op_result(arith::cmpi(
@@ -747,9 +756,10 @@ fn build_wrap_non_zero<'ctx, 'this>(
         .get_type(&info.signature.param_signatures[0].ty)?
         .integer_range(registry)?;
 
-    if !(src_range.lower > BigInt::ZERO || BigInt::ZERO >= src_range.upper) {
-        native_panic!("value must not be zero")
-    }
+    assert!(
+        src_range.lower > BigInt::ZERO || BigInt::ZERO >= src_range.upper,
+        "value must not be zero"
+    );
 
     entry.append_operation(helper.br(0, &[src_value], location));
     Ok(())
