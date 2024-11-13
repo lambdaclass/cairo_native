@@ -15,10 +15,7 @@ use cairo_lang_sierra_gas::{
 };
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 
-use crate::{
-    error::{Error, Result as NativeResult},
-    native_panic,
-};
+use crate::{error::Result as NativeResult, native_panic};
 
 /// Holds global gas info.
 #[derive(Debug, Default, PartialEq, Eq)]
