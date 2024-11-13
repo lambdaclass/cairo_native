@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
+#[cfg(feature = "with-cheatcode")]
+use crate::error::Result;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
 
@@ -326,7 +328,7 @@ pub trait StarknetSyscallHandler {
     ) -> SyscallResult<()>;
 
     #[cfg(feature = "with-cheatcode")]
-    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
+    fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Result<Vec<Felt>> {
         unimplemented!();
     }
 }

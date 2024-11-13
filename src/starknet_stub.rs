@@ -1,6 +1,6 @@
 //! A (somewhat) usable implementation of the starknet syscall handler trait.
 
-#[cfg(feature = "with-cheatcode")]
+//#[cfg(feature = "with-cheatcode")]
 use crate::error::{panic::ToNativeAssertError, Result as NativeResult};
 use crate::starknet::{
     BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
