@@ -1,6 +1,6 @@
 //! # Circuit libfuncs
 
-use super::{increment_builtin_counter, increment_builtin_counter_by, LibfuncHelper};
+use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
@@ -63,11 +63,20 @@ pub fn build<'ctx, 'this>(
         CircuitConcreteLibfunc::FailureGuaranteeVerify(info) => build_failure_guarantee_verify(
             context, registry, entry, location, helper, metadata, info,
         ),
-        CircuitConcreteLibfunc::IntoU96Guarantee(info) => {
-            build_into_u96_guarantee(context, registry, entry, location, helper, metadata, info)
-        }
-        CircuitConcreteLibfunc::U96GuaranteeVerify(info) => {
-            build_u96_guarantee_verify(context, registry, entry, location, helper, metadata, info)
+        CircuitConcreteLibfunc::IntoU96Guarantee(SignatureAndTypeConcreteLibfunc {
+            signature,
+            ..
+        })
+        | CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
+            super::build_noop::<1>(
+                context,
+                registry,
+                entry,
+                location,
+                helper,
+                metadata,
+                &signature.param_signatures,
+            )
         }
         CircuitConcreteLibfunc::U96LimbsLessThanGuaranteeVerify(info) => {
             build_u96_limbs_less_than_guarantee_verify(
@@ -121,35 +130,6 @@ fn build_init_circuit_data<'ctx, 'this>(
     )?;
 
     entry.append_operation(helper.br(0, &[rc, accumulator], location));
-
-    Ok(())
-}
-
-/// Generate MLIR operations for the `into_u96_guarantee` libfunc.
-#[allow(clippy::too_many_arguments)]
-fn build_into_u96_guarantee<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()> {
-    // input is a BoundedInt<0, 79228162514264337593543950335>
-    let input: Value = entry.argument(0)?.into();
-    // output is a U96Guarantee
-    let output_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.branch_signatures()[0].vars[0].ty,
-    )?;
-    // they have the same type (i96)
-    debug_assert_eq!(input.r#type(), output_ty);
-
-    entry.append_operation(helper.br(0, &[input], location));
 
     Ok(())
 }
@@ -805,26 +785,6 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
         [&[guarantee], &[u96]],
         location,
     ));
-
-    Ok(())
-}
-
-/// Generate MLIR operations for the `u96_guarantee_verify` libfunc.
-/// NOOP
-#[allow(clippy::too_many_arguments)]
-fn build_u96_guarantee_verify<'ctx, 'this>(
-    context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    let rc = entry.argument(0)?.into();
-    let rc = increment_builtin_counter(context, entry, location, rc)?;
-
-    entry.append_operation(helper.br(0, &[rc], location));
 
     Ok(())
 }
