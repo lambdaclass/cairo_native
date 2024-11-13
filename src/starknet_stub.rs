@@ -5,6 +5,7 @@ use std::{
     fmt,
 };
 
+use crate::error::NativeResult;
 use crate::starknet::{
     BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
     StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
@@ -420,10 +421,9 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
 
         if remainder != 0 {
             // In VM this error is wrapped into `SyscallExecutionError::SyscallError`
-            return Err(vec![Felt::from_hex(
+            return Err(vec![Felt::from_hex_unchecked(
                 "0x000000000000000000000000496e76616c696420696e707574206c656e677468",
-            )
-            .unwrap()]);
+            )]);
         }
 
         let mut state = [0u64; 25];
@@ -542,16 +542,16 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
 
     #[cfg(feature = "with-cheatcode")]
     #[instrument(skip(self))]
-    fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt> {
+    fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> NativeResult<Vec<Felt>> {
         tracing::debug!("called");
         let selector_bytes = selector.to_bytes_be();
 
         let selector = match std::str::from_utf8(&selector_bytes) {
             Ok(selector) => selector.trim_start_matches('\0'),
-            Err(_) => return Vec::new(),
+            Err(_) => return Ok(Vec::new()),
         };
 
-        match selector {
+        Ok(match selector {
             "set_sequencer_address" => {
                 self.execution_info.block_info.sequencer_address = input[0];
                 vec![]
@@ -585,17 +585,29 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 vec![]
             }
             "set_max_fee" => {
-                let max_fee = input[0].to_biguint().try_into().unwrap();
+                let max_fee = input[0]
+                    .to_biguint()
+                    .try_into()
+                    .ok()
+                    .to_native_assert_error("can't convert BigUint to u128")?;
                 self.execution_info.tx_info.max_fee = max_fee;
                 vec![]
             }
             "set_block_number" => {
-                let block_number = input[0].to_biguint().try_into().unwrap();
+                let block_number = input[0]
+                    .to_biguint()
+                    .try_into()
+                    .ok()
+                    .to_native_assert_error("can't convert BigUint to u128")?;
                 self.execution_info.block_info.block_number = block_number;
                 vec![]
             }
             "set_block_timestamp" => {
-                let block_timestamp = input[0].to_biguint().try_into().unwrap();
+                let block_timestamp = input[0]
+                    .to_biguint()
+                    .try_into()
+                    .ok()
+                    .to_native_assert_error("can't convert BigUint to u128")?;
                 self.execution_info.block_info.block_timestamp = block_timestamp;
                 vec![]
             }
@@ -629,7 +641,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 })
                 .unwrap_or_default(),
             _ => vec![],
-        }
+        })
     }
 
     fn sha256_process_block(
