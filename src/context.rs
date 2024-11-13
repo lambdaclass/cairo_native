@@ -7,7 +7,7 @@ use crate::{
         MetadataStorage,
     },
     module::NativeModule,
-    native_panic,
+    native_assert,
     utils::run_pass_manager,
 };
 use cairo_lang_sierra::{
@@ -152,9 +152,7 @@ impl NativeContext {
         .add_regions([module_region])
         .build()?;
 
-        if !op.verify() {
-            native_panic!("module operation is not valid");
-        }
+        native_assert!(op.verify(), "module operation should be valid");
 
         let mut module = Module::from_operation(op)
             .to_native_assert_error("value should be module operation")?;
