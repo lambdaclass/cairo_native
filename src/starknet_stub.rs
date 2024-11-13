@@ -1,10 +1,7 @@
 //! A (somewhat) usable implementation of the starknet syscall handler trait.
 
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt,
-};
-
+#[cfg(feature = "with-cheatcode")]
+use crate::error::{panic::ToNativeAssertError, Result as NativeResult};
 use crate::starknet::{
     BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
     StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
@@ -15,6 +12,10 @@ use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::Zero;
 use starknet_types_core::felt::Felt;
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+};
 use tracing::instrument;
 
 /// A (somewhat) usable implementation of the starknet syscall handler trait.
