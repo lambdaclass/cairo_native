@@ -1511,7 +1511,10 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             .get_type(&info.ty)?
             .fields()
             .to_native_assert_error("missing filed")?;
-        assert!(fields.iter().all(|f| f.id == elem_id.id));
+
+        if !fields.iter().all(|f| f.id == elem_id.id) {
+            native_panic!("all the elements of the array must have the same type");
+        }
 
         (
             entry.const_int(context, location, fields.len(), 32)?,
