@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::MetadataStorage,
-    native_assert, native_panic,
+    native_assert,
     types::TypeBuilder,
     utils::{BlockExt, RangeExt},
 };

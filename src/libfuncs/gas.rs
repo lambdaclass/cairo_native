@@ -116,7 +116,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
-            _ => native_panic!("matched unexpected CostTokenType"),
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
         };
 
         let cost_count_value =
@@ -200,7 +200,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
-            _ => native_panic!("matched unexpected CostTokenType"),
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
         };
 
         let cost_count_value =

@@ -1325,6 +1325,8 @@ pub fn build_slice<'ctx, 'this>(
             &info.signature.param_signatures[1].ty,
         )?;
 
+        // The following operation will because an array always has a drop implementation,
+        // which at this point is always inserted thanks to the `build_type()` just above.
         metadata
             .get::<DropOverridesMeta>()
             .ok_or(Error::MissingMetadata)?
@@ -1484,9 +1486,9 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         CoreTypeConcrete::Array(info) => (&info.ty, registry.get_type(&info.ty)?),
         CoreTypeConcrete::Snapshot(info) => match registry.get_type(&info.ty)? {
             CoreTypeConcrete::Array(info) => (&info.ty, registry.get_type(&info.ty)?),
-            _ => native_panic!("unexpected CoreTypeConcrete found"),
+            _ => native_panic!("matched an unexpected CoreTypeConcrete that is not a Array or Snapshot"),
         },
-        _ => native_panic!("unexpected CoreTypeConcrete found"),
+        _ => native_panic!("matched an unexpected CoreTypeConcrete that is not a Array or Snapshot"),
     };
     let elem_layout = elem_ty.layout(registry)?;
 
@@ -1510,7 +1512,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         let fields = registry
             .get_type(&info.ty)?
             .fields()
-            .to_native_assert_error("missing filed")?;
+            .to_native_assert_error("missing field")?;
 
         native_assert!(
             fields.iter().all(|f| f.id == elem_id.id),
@@ -1654,6 +1656,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             &info.signature.param_signatures[0].ty,
         )?;
 
+        // The following operation will because an array always has a drop implementation,
+        // which at this point is always inserted thanks to the `build_type()` just above.
         metadata
             .get::<DropOverridesMeta>()
             .ok_or(Error::MissingMetadata)?
