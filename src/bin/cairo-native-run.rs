@@ -77,7 +77,8 @@ fn main() -> anyhow::Result<()> {
     let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> = match args.run_mode {
         RunMode::Aot => {
             let executor =
-                AotNativeExecutor::from_native_module(native_module, args.opt_level.into());
+                AotNativeExecutor::from_native_module(native_module, args.opt_level.into())
+                    .unwrap();
             Box::new(move |function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
