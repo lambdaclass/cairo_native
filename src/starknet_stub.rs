@@ -5,7 +5,6 @@ use std::{
     fmt,
 };
 
-use crate::error::NativeResult;
 use crate::starknet::{
     BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
     StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
