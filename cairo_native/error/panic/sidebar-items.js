@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["NativeAssertError"],"trait":["ToNativeAssertError"]};
