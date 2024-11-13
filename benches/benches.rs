@@ -21,15 +21,25 @@ fn criterion_benchmark(c: &mut Criterion) {
     let fibonacci = load_contract("programs/benches/fib_2M.cairo");
     let logistic_map = load_contract("programs/benches/logistic_map.cairo");
 
-    let aot_factorial = aot_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive);
-    let aot_fibonacci = aot_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive);
-    let aot_logistic_map =
-        aot_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive);
+    let aot_factorial = aot_cache
+        .compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive)
+        .unwrap();
+    let aot_fibonacci = aot_cache
+        .compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive)
+        .unwrap();
+    let aot_logistic_map = aot_cache
+        .compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive)
+        .unwrap();
 
-    let jit_factorial = jit_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive);
-    let jit_fibonacci = jit_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive);
-    let jit_logistic_map =
-        jit_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive);
+    let jit_factorial = jit_cache
+        .compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive)
+        .unwrap();
+    let jit_fibonacci = jit_cache
+        .compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive)
+        .unwrap();
+    let jit_logistic_map = jit_cache
+        .compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive)
+        .unwrap();
 
     let factorial_function_id =
         find_function_id(&factorial, "factorial_2M::factorial_2M::main").unwrap();
