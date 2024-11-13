@@ -237,7 +237,7 @@ pub fn run_native_program(
     );
 
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
-    let executor = JitNativeExecutor::from_native_module(module, OptLevel::None);
+    let executor = JitNativeExecutor::from_native_module(module, OptLevel::None).unwrap();
     match syscall_handler {
         Some(syscall_handler) => executor
             .invoke_dynamic_with_syscall_handler(entry_point_id, args, gas, syscall_handler)

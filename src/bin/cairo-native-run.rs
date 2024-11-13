@@ -89,7 +89,7 @@ fn main() -> anyhow::Result<()> {
         }
         RunMode::Jit => {
             let executor =
-                JitNativeExecutor::from_native_module(native_module, args.opt_level.into());
+                JitNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
             Box::new(move |function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
