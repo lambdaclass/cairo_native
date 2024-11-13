@@ -157,7 +157,7 @@ impl AotContractExecutor {
         } = module;
 
         let initial_gas_costs = {
-            let gas_meta: &GasMetadata = metadata.get().unwrap();
+            let gas_meta: &GasMetadata = metadata.get().ok_or(Error::MissingMetadata)?;
             gas_meta.initial_required_gas_for_entry_points()
         };
 

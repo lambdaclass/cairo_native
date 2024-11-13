@@ -1,5 +1,5 @@
 use crate::{
-    error::Result,
+    error::{Error, Result},
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::gas::GasMetadata,
     module::NativeModule,
@@ -55,7 +55,10 @@ impl<'m> JitNativeExecutor<'m> {
             engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
-            gas_metadata: metadata.get::<GasMetadata>().cloned().unwrap(),
+            gas_metadata: metadata
+                .get::<GasMetadata>()
+                .cloned()
+                .ok_or(Error::MissingMetadata)?,
         })
     }
 

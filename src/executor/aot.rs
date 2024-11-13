@@ -1,7 +1,7 @@
 use std::io;
 
 use crate::{
-    error::Result,
+    error::{Error, Result},
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::gas::GasMetadata,
     module::NativeModule,
@@ -68,7 +68,7 @@ impl AotNativeExecutor {
         Ok(Self {
             library: unsafe { Library::new(&library_path)? },
             registry,
-            gas_metadata: metadata.remove().unwrap(),
+            gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)?,
         })
     }
 
