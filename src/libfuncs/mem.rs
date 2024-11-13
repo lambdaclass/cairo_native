@@ -38,6 +38,9 @@ pub fn build<'ctx, 'this>(
         MemConcreteLibfunc::AllocLocal(info) => {
             build_alloc_local(context, registry, entry, location, helper, metadata, info)
         }
+        MemConcreteLibfunc::StoreLocal(info) => {
+            build_store_local(context, registry, entry, location, helper, metadata, info)
+        }
         MemConcreteLibfunc::FinalizeLocals(info) => super::build_noop::<0, true>(
             context,
             registry,
@@ -48,7 +51,6 @@ pub fn build<'ctx, 'this>(
             &info.signature.param_signatures,
         ),
         MemConcreteLibfunc::Rename(SignatureOnlyConcreteLibfunc { signature })
-        | MemConcreteLibfunc::StoreLocal(SignatureAndTypeConcreteLibfunc { signature, .. })
         | MemConcreteLibfunc::StoreTemp(SignatureAndTypeConcreteLibfunc { signature, .. }) => {
             super::build_noop::<1, false>(
                 context,
@@ -84,5 +86,19 @@ pub fn build_alloc_local<'ctx, 'this>(
     let value = entry.append_op_result(llvm::undef(target_type, location))?;
 
     entry.append_operation(helper.br(0, &[value], location));
+    Ok(())
+}
+
+/// Generate MLIR operations for the `store_local` libfunc.
+pub fn build_store_local<'ctx, 'this>(
+    _context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()> {
+    entry.append_operation(helper.br(0, &[entry.argument(1)?.into()], location));
     Ok(())
 }
