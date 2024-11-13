@@ -43,7 +43,7 @@ pub fn build<'ctx, 'this>(
         BoxConcreteLibfunc::Unbox(info) => {
             build_unbox(context, registry, entry, location, helper, metadata, info)
         }
-        BoxConcreteLibfunc::ForwardSnapshot(info) => super::build_noop::<1>(
+        BoxConcreteLibfunc::ForwardSnapshot(info) => super::build_noop::<1, true>(
             context,
             registry,
             entry,

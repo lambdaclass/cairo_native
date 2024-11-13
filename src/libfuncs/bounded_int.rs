@@ -726,7 +726,7 @@ fn build_wrap_non_zero<'ctx, 'this>(
         .integer_range(registry)?;
     assert!(src_range.lower > BigInt::ZERO || BigInt::ZERO >= src_range.upper);
 
-    super::build_noop::<1>(
+    super::build_noop::<1, true>(
         context,
         registry,
         entry,

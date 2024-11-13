@@ -38,7 +38,7 @@ pub fn build<'ctx, 'this>(
         MemConcreteLibfunc::AllocLocal(info) => {
             build_alloc_local(context, registry, entry, location, helper, metadata, info)
         }
-        MemConcreteLibfunc::FinalizeLocals(info) => super::build_noop::<0>(
+        MemConcreteLibfunc::FinalizeLocals(info) => super::build_noop::<0, true>(
             context,
             registry,
             entry,
@@ -50,7 +50,7 @@ pub fn build<'ctx, 'this>(
         MemConcreteLibfunc::Rename(SignatureOnlyConcreteLibfunc { signature })
         | MemConcreteLibfunc::StoreLocal(SignatureAndTypeConcreteLibfunc { signature, .. })
         | MemConcreteLibfunc::StoreTemp(SignatureAndTypeConcreteLibfunc { signature, .. }) => {
-            super::build_noop::<1>(
+            super::build_noop::<1, false>(
                 context,
                 registry,
                 entry,

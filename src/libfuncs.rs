@@ -11,8 +11,9 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::ParamSignature,
+        starknet::StarkNetTypeConcrete,
         ConcreteLibfunc,
     },
     ids::FunctionId,
@@ -105,7 +106,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
     ) -> Result<()> {
         match self {
             Self::ApTracking(_) | Self::BranchAlign(_) | Self::UnconditionalJump(_) => {
-                build_noop::<0>(
+                build_noop::<0, true>(
                     context,
                     registry,
                     entry,
@@ -229,7 +230,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Uint512(selector) => self::uint512::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::UnwrapNonZero(info) => build_noop::<1>(
+            Self::UnwrapNonZero(info) => build_noop::<1, true>(
                 context,
                 registry,
                 entry,
@@ -445,7 +446,7 @@ fn increment_builtin_counter_by<'ctx: 'a, 'a>(
     ))
 }
 
-fn build_noop<'ctx, 'this, const N: usize>(
+fn build_noop<'ctx, 'this, const N: usize, const PROCESS_BUILTINS: bool>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
@@ -461,7 +462,16 @@ fn build_noop<'ctx, 'this, const N: usize>(
         let param_ty = registry.get_type(&param_signatures[i].ty)?;
         let mut param_val = entry.argument(i)?.into();
 
-        if param_ty.is_builtin() {
+        if PROCESS_BUILTINS
+            && param_ty.is_builtin()
+            && !matches!(
+                param_ty,
+                CoreTypeConcrete::BuiltinCosts(_)
+                    | CoreTypeConcrete::Coupon(_)
+                    | CoreTypeConcrete::GasBuiltin(_)
+                    | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+            )
+        {
             param_val = increment_builtin_counter(context, entry, location, param_val)?;
         }
 

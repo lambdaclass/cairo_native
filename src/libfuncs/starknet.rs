@@ -51,7 +51,7 @@ pub fn build<'ctx, 'this>(
         | StarkNetConcreteLibfunc::StorageAddressFromBase(info)
         | StarkNetConcreteLibfunc::StorageAddressToFelt252(info)
         | StarkNetConcreteLibfunc::Sha256StateHandleInit(info)
-        | StarkNetConcreteLibfunc::Sha256StateHandleDigest(info) => super::build_noop::<1>(
+        | StarkNetConcreteLibfunc::Sha256StateHandleDigest(info) => super::build_noop::<1, true>(
             context,
             registry,
             entry,
