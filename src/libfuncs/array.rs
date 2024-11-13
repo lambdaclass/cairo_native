@@ -1486,9 +1486,13 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         CoreTypeConcrete::Array(info) => (&info.ty, registry.get_type(&info.ty)?),
         CoreTypeConcrete::Snapshot(info) => match registry.get_type(&info.ty)? {
             CoreTypeConcrete::Array(info) => (&info.ty, registry.get_type(&info.ty)?),
-            _ => native_panic!("matched an unexpected CoreTypeConcrete that is not a Array or Snapshot"),
+            _ => native_panic!(
+                "matched an unexpected CoreTypeConcrete that is not a Array or Snapshot"
+            ),
         },
-        _ => native_panic!("matched an unexpected CoreTypeConcrete that is not a Array or Snapshot"),
+        _ => {
+            native_panic!("matched an unexpected CoreTypeConcrete that is not a Array or Snapshot")
+        }
     };
     let elem_layout = elem_ty.layout(registry)?;
 

@@ -148,7 +148,9 @@ pub fn build_const_type_value<'ctx, 'this>(
 
                         let const_field_type = match &field_type {
                             CoreTypeConcrete::Const(inner) => inner,
-                            _ => native_panic!("matched an unexpected CoreTypeConcrete that is not a Const"),
+                            _ => native_panic!(
+                                "matched an unexpected CoreTypeConcrete that is not a Const"
+                            ),
                         };
 
                         let field_value = build_const_type_value(
@@ -182,7 +184,9 @@ pub fn build_const_type_value<'ctx, 'this>(
                 let payload_type = registry.get_type(payload_ty)?;
                 let const_payload_type = match payload_type {
                     CoreTypeConcrete::Const(inner) => inner,
-                    _ => native_panic!("matched an unexpected CoreTypeConcrete that is not a Const"),
+                    _ => {
+                        native_panic!("matched an unexpected CoreTypeConcrete that is not a Const")
+                    }
                 };
 
                 let payload_value = build_const_type_value(
