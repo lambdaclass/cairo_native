@@ -7,7 +7,7 @@ on:
 
 env:
   RANGE_SIZE: 25
-  SEQUENCER_REV: ecf6bc799e7e47f30cd599b8f344eb0d1fc76b38
+  SEQUENCER_REV: ca101fab2888a0d65d28e18c5dfb8cbeceedcf62
 
 jobs:
   run:
