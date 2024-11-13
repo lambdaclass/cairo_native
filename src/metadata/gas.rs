@@ -129,7 +129,7 @@ impl GasMetadata {
                             CostTokenType::Poseidon => 4,
                             CostTokenType::AddMod => 5,
                             CostTokenType::MulMod => 6,
-                            _ => native_panic!(""),
+                            _ => native_panic!("matched an unexpected CostTokenType"),
                         };
                         costs.insert(offset, *val as u64);
                     }
