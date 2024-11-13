@@ -34,11 +34,12 @@
 use crate::{
     arch::AbiArgument,
     context::NativeContext,
-    error::{Error, Result},
+    error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
     metadata::gas::GasMetadata,
     module::NativeModule,
+    native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{
@@ -217,7 +218,7 @@ impl AotContractExecutor {
                         CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                             builtins.push(BuiltinType::System)
                         }
-                        _ => unreachable!("{:?}", ty.info()),
+                        _ => native_panic!("given type should be a builtin {:?}", ty.info()),
                     }
                 } else {
                     break;
@@ -236,7 +237,7 @@ impl AotContractExecutor {
         let library_path = NamedTempFile::new()?
             .into_temp_path()
             .keep()
-            .expect("can only fail on windows");
+            .to_native_assert_error("can only fail on windows")?;
 
         let object_data = crate::module_to_object(&module, opt_level)?;
         crate::object_to_shared_lib(&object_data, &library_path)?;
@@ -324,7 +325,7 @@ impl AotContractExecutor {
                 .contract_info
                 .entry_points_info
                 .get(&function_id.id)
-                .unwrap()
+                .to_native_assert_error("entry point info for function should be available")?
                 .initial_cost
                 .iter()
             {
@@ -376,7 +377,10 @@ impl AotContractExecutor {
 
         let felt_layout = get_integer_layout(252).pad_to_align();
         let ptr: *mut () = unsafe { libc_malloc(felt_layout.size() * args.len()).cast() };
-        let len: u32 = args.len().try_into().unwrap();
+        let len: u32 = args
+            .len()
+            .try_into()
+            .to_native_assert_error("number of arguments should fit into a u32")?;
 
         ptr.to_bytes(&mut invoke_data)?;
         0u32.to_bytes(&mut invoke_data)?; // start
@@ -482,7 +486,7 @@ impl AotContractExecutor {
         let tag_layout = Layout::from_size_align(1, 1)?;
         let enum_ptr = unsafe {
             NonNull::new(return_ptr.cast::<u8>().as_ptr().add(align_offset))
-                .expect("nonnull is null")
+                .to_native_assert_error("return ptr should not be null")?
         };
 
         let tag = *unsafe { enum_ptr.cast::<u8>().as_ref() } as usize;
@@ -514,7 +518,8 @@ impl AotContractExecutor {
 
         for i in 0..num_elems {
             // safe to create a NonNull because if the array has elements, the data_ptr can't be null.
-            let cur_elem_ptr = NonNull::new(unsafe { data_ptr.byte_add(elem_stride * i) }).unwrap();
+            let cur_elem_ptr = NonNull::new(unsafe { data_ptr.byte_add(elem_stride * i) })
+                .to_native_assert_error("data_ptr should not be null")?;
             let data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().as_mut() };
             data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
             let data = Felt::from_bytes_le_slice(data);
