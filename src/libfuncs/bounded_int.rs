@@ -2,7 +2,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result, metadata::MetadataStorage, native_panic, types::TypeBuilder, utils::{BlockExt, RangeExt}
+    error::Result,
+    metadata::MetadataStorage,
+    native_panic,
+    types::TypeBuilder,
+    utils::{BlockExt, RangeExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -744,7 +748,7 @@ fn build_wrap_non_zero<'ctx, 'this>(
         .integer_range(registry)?;
 
     if !(src_range.lower > BigInt::ZERO || BigInt::ZERO >= src_range.upper) {
-        native_panic!("")
+        native_panic!("value must not be zero")
     }
 
     entry.append_operation(helper.br(0, &[src_value], location));
