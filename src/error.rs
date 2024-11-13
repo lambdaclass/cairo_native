@@ -5,6 +5,7 @@ use cairo_lang_sierra::{
     edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
 };
 use num_bigint::BigInt;
+use panic::NativeAssertError;
 use std::{alloc::LayoutError, num::TryFromIntError};
 use thiserror::Error;
 
@@ -44,6 +45,9 @@ pub enum Error {
 
     #[error(transparent)]
     SierraAssert(#[from] SierraAssertError),
+
+    #[error(transparent)]
+    NativeAssert(#[from] NativeAssertError),
 
     #[error(transparent)]
     Compiler(#[from] CompilerError),
@@ -117,6 +121,94 @@ pub enum CompilerError {
         value: Box<BigInt>,
         range: Box<(BigInt, BigInt)>,
     },
+}
+
+/// In Cairo Native we want to avoid the use of panic, even in situation where
+/// it *should* never happen. The downside of this is that we lose:
+/// - Possible compiler opitimizations
+/// - Stack backtrace on error
+///
+/// This modules aims to avoid panics while still obtaining a stack backtrace on eventual errors.
+pub mod panic {
+    use super::{Error, Result};
+    use std::{
+        backtrace::{Backtrace, BacktraceStatus},
+        panic::Location,
+    };
+
+    /// `NativeAssertError` acts as a non-panicking alternative to Rust's panic.
+    /// When the error is created the backtrace or location is captured, which
+    /// is useful for debugging.
+    #[derive(Debug)]
+    pub struct NativeAssertError {
+        msg: String,
+        info: BacktraceOrLocation,
+    }
+
+    impl std::error::Error for NativeAssertError {}
+
+    impl NativeAssertError {
+        pub fn new(msg: String) -> Self {
+            let backtrace = Backtrace::capture();
+            let info = if let BacktraceStatus::Captured = backtrace.status() {
+                BacktraceOrLocation::Backtrace(backtrace)
+            } else {
+                BacktraceOrLocation::Location(std::panic::Location::caller())
+            };
+
+            Self { msg, info }
+        }
+    }
+
+    /// Extension trait used to easly convert `Result`s and `Option`s to `NativeAssertError`
+    pub trait ToNativeAssertError<T> {
+        fn to_native_assert_error(self, msg: &str) -> Result<T>;
+    }
+
+    impl<T> ToNativeAssertError<T> for Option<T> {
+        fn to_native_assert_error(self, msg: &str) -> Result<T> {
+            self.ok_or_else(|| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
+        }
+    }
+
+    impl<T> ToNativeAssertError<T> for Result<T> {
+        fn to_native_assert_error(self, msg: &str) -> Result<T> {
+            self.map_err(|_| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
+        }
+    }
+
+    /// Macro that mimicks the behaviour of `panic!`.
+    /// It should only be used inside of a function that returns Result<T, cairo_native::error::Error>
+    #[macro_export]
+    macro_rules! native_panic {
+        ($($arg:tt)*) => {
+            return Err($crate::error::Error::NativeAssert(
+                $crate::error::panic::NativeAssertError::new(format!($($arg)*)),
+            ))
+        };
+    }
+
+    /// If `RUST_BACKTRACE` env var is not set, then the backtrace won't be captured.
+    /// In that case, only the location is saved, which is better than nothing.
+    #[derive(Debug)]
+    enum BacktraceOrLocation {
+        Backtrace(Backtrace),
+        Location(&'static Location<'static>),
+    }
+
+    impl std::fmt::Display for NativeAssertError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            writeln!(f, "{}", &self.msg)?;
+            match &self.info {
+                BacktraceOrLocation::Backtrace(backtrace) => {
+                    writeln!(f, "Stack backtrace:\n{}", backtrace)
+                }
+                BacktraceOrLocation::Location(location) => {
+                    writeln!(f, "Location: {}", location)
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
