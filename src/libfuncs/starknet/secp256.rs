@@ -343,8 +343,6 @@ pub fn build_k1_add<'ctx, 'this>(
         metadata,
         &info.param_signatures()[0].ty,
     )?;
-    dbg!(&gas_ty);
-    dbg!(&gas_layout);
     let gas_builtin_ptr =
         helper
             .init_block()
@@ -364,7 +362,6 @@ pub fn build_k1_add<'ctx, 'this>(
         metadata,
         &info.signature.param_signatures[2].ty,
     )?;
-    dbg!(&p0_layout);
     let (p1_ty, p1_layout) = registry.build_type_with_layout(
         context,
         helper,
