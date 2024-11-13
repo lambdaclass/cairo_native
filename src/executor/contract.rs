@@ -157,7 +157,7 @@ impl AotContractExecutor {
 
         let initial_gas_costs = {
             let gas_meta: &GasMetadata = metadata.get().unwrap();
-            gas_meta.initial_required_gas_for_entry_points()
+            gas_meta.initial_required_gas_for_entry_points()?
         };
 
         let mut infos = BTreeMap::new();
