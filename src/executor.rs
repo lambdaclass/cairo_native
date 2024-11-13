@@ -373,7 +373,7 @@ fn parse_result(
 
     match type_info {
         CoreTypeConcrete::Array(_) => Ok(Value::from_ptr(
-            return_ptr.to_native_assert_error("return pointer should not be valid")?,
+            return_ptr.to_native_assert_error("return pointer should be valid")?,
             type_id,
             registry,
         )?),
@@ -384,7 +384,7 @@ fn parse_result(
             Ok(value)
         },
         CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => Ok(Value::from_ptr(
-            return_ptr.to_native_assert_error("return pointer should not be valid")?,
+            return_ptr.to_native_assert_error("return pointer should be valid")?,
             type_id,
             registry,
         )?),
@@ -511,8 +511,7 @@ fn parse_result(
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants)?;
 
             let (tag, ptr) = if type_info.is_memory_allocated(registry)? || return_ptr.is_some() {
-                let ptr =
-                    return_ptr.to_native_assert_error("return pointer should not be valid")?;
+                let ptr = return_ptr.to_native_assert_error("return pointer should be valid")?;
 
                 let tag = unsafe {
                     match tag_layout.size() {
@@ -584,7 +583,7 @@ fn parse_result(
                 })
             } else {
                 Ok(Value::from_ptr(
-                    return_ptr.to_native_assert_error("return pointer should not be valid")?,
+                    return_ptr.to_native_assert_error("return pointer should be valid")?,
                     type_id,
                     registry,
                 )?)
