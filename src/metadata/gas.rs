@@ -15,7 +15,10 @@ use cairo_lang_sierra_gas::{
 };
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 
-use crate::{error::Result as NativeResult, native_panic};
+use crate::{
+    error::{panic::{IntoOrNativePanic, ToNativeAssertError}, Result as NativeResult},
+    native_panic,
+};
 
 /// Holds global gas info.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -84,7 +87,7 @@ impl GasMetadata {
         // In case we don't have any costs - it means no gas equations were solved (and we are in
         // the case of no gas checking enabled) - so the gas builtin is irrelevant, and we
         // can return any value.
-        let Some(required_gas) = self.initial_required_gas(func) else {
+        let Some(required_gas) = self.initial_required_gas(func).to_native_assert_error(msg) else {
             return Ok(0);
         };
 
@@ -95,16 +98,19 @@ impl GasMetadata {
             })
     }
 
-    pub fn initial_required_gas(&self, func: &FunctionId) -> Option<u128> {
+    pub fn initial_required_gas(&self, func: &FunctionId) -> NativeResult<Option<u128>> {
         if self.gas_info.function_costs.is_empty() {
-            return None;
+            return Ok(None);
         }
-        Some(
+        Ok(Some(
             self.gas_info.function_costs[func]
                 .iter()
-                .map(|(token_type, val)| (*val as usize) * token_gas_cost(*token_type))
+                .map(|(token_type, val)| {
+                    val.into_or_native_panic::<usize>()?
+                        * token_gas_cost(*token_type)
+                })
                 .sum::<usize>() as u128,
-        )
+        ))
     }
 
     pub fn initial_required_gas_for_entry_points(
