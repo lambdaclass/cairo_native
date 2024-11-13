@@ -279,9 +279,9 @@ where
             x.into_iter()
                 .enumerate()
                 .map(|(arg_idx, x)| {
-                    x.into_inner().to_native_assert_error(
-                       &format!("Argument #{arg_idx} of branch {branch_idx} doesn't have a value."),
-                    )
+                    x.into_inner().to_native_assert_error(&format!(
+                        "Argument #{arg_idx} of branch {branch_idx} doesn't have a value."
+                    ))
                 })
                 .collect()
         })
