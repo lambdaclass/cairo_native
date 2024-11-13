@@ -111,7 +111,9 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#114" id="114">114</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::{Error, <span class="prelude-ty">Result</span>};
+<span class="kw">use crate</span>::{
     context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
     module::NativeModule, utils::SHARED_LIBRARY_EXT, OptLevel,
 };
@@ -152,39 +154,38 @@
         key: K,
         program: <span class="kw-2">&amp;</span>Program,
         opt_level: OptLevel,
-    ) -&gt; Arc&lt;AotNativeExecutor&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Arc&lt;AotNativeExecutor&gt;&gt; {
         <span class="kw">let </span>NativeModule {
             module,
             registry,
             metadata,
-        } = <span class="self">self
-            </span>.context
-            .compile(program, <span class="bool-val">false</span>)
-            .expect(<span class="string">"should compile"</span>);
+        } = <span class="self">self</span>.context.compile(program, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Compile module into an object.
-        </span><span class="kw">let </span>object_data = <span class="kw">crate</span>::ffi::module_to_object(<span class="kw-2">&amp;</span>module, opt_level).unwrap();
+        </span><span class="kw">let </span>object_data = <span class="kw">crate</span>::ffi::module_to_object(<span class="kw-2">&amp;</span>module, opt_level)<span class="question-mark">?</span>;
 
         <span class="comment">// Compile object into a shared library.
         </span><span class="kw">let </span>shared_library_path = tempfile::Builder::new()
             .prefix(<span class="string">"lib"</span>)
             .suffix(SHARED_LIBRARY_EXT)
-            .tempfile()
-            .unwrap()
-            .into_temp_path();
-        <span class="kw">crate</span>::ffi::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>shared_library_path).unwrap();
+            .tempfile()<span class="question-mark">?
+            </span>.into_temp_path();
+        <span class="kw">crate</span>::ffi::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>shared_library_path)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>shared_library = <span class="kw">unsafe </span>{ Library::new(shared_library_path).unwrap() };
+        <span class="kw">let </span>shared_library = <span class="kw">unsafe </span>{ Library::new(shared_library_path)<span class="question-mark">? </span>};
         <span class="kw">let </span>executor = AotNativeExecutor::new(
             shared_library,
             registry,
-            metadata.get::&lt;GasMetadata&gt;().cloned().unwrap(),
+            metadata
+                .get::&lt;GasMetadata&gt;()
+                .cloned()
+                .ok_or(Error::MissingMetadata)<span class="question-mark">?</span>,
         );
 
         <span class="kw">let </span>executor = Arc::new(executor);
         <span class="self">self</span>.cache.insert(key, executor.clone());
 
-        executor
+        <span class="prelude-val">Ok</span>(executor)
     }
 }
 
@@ -217,6 +218,7 @@
         <span class="kw">let </span>function_id = <span class="kw-2">&amp;</span>program.funcs.first().expect(<span class="string">"should have a function"</span>).id;
         <span class="kw">let </span>executor = cache.compile_and_insert((), <span class="kw-2">&amp;</span>program, OptLevel::default());
         <span class="kw">let </span>res = executor
+            .unwrap()
             .invoke_dynamic(function_id, <span class="kw-2">&amp;</span>[], <span class="prelude-val">Some</span>(u128::MAX))
             .expect(<span class="string">"should run"</span>);
 
