@@ -3,12 +3,9 @@
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
 use crate::{
-    error::{CompilerError, Error},
-    starknet::{Secp256k1Point, Secp256r1Point},
-    types::TypeBuilder,
-    utils::{
+    error::{panic::ToNativeAssertError, CompilerError, Error}, native_assert, native_panic, starknet::{Secp256k1Point, Secp256r1Point}, types::TypeBuilder, utils::{
         felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc, RangeExt, PRIME,
-    },
+    }
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -348,7 +345,7 @@ impl Value {
                 }
                 Self::Enum { tag, value, .. } => {
                     if let CoreTypeConcrete::Enum(info) = Self::resolve_type(ty, registry)? {
-                        assert!(*tag < info.variants.len(), "Variant index out of range.");
+                        native_assert!(*tag < info.variants.len(), "Variant index out of range.");
 
                         let payload_type_id = &info.variants[*tag];
                         let payload = value.to_ptr(arena, registry, payload_type_id)?;
@@ -359,7 +356,7 @@ impl Value {
                         let ptr = arena.alloc_layout(layout).cast::<()>().as_ptr();
 
                         match tag_layout.size() {
-                            0 => panic!("An enum without variants cannot be instantiated."),
+                            0 => native_panic!("An enum without variants cannot be instantiated."),
                             1 => *ptr.cast::<u8>() = *tag as u8,
                             2 => *ptr.cast::<u16>() = *tag as u16,
                             4 => *ptr.cast::<u32>() = *tag as u32,
@@ -536,12 +533,12 @@ impl Value {
 
                     let (ptr_layout, offset) = ptr_layout.extend(len_layout)?;
                     let start_offset_value = *NonNull::new(ptr.as_ptr().byte_add(offset))
-                        .unwrap()
+                        .to_native_assert_error("tried to make a non-null ptr out of a null one")?
                         .cast::<u32>()
                         .as_ref();
                     let (_, offset) = ptr_layout.extend(len_layout)?;
                     let end_offset_value = *NonNull::new(ptr.as_ptr().byte_add(offset))
-                        .unwrap()
+                        .to_native_assert_error("tried to make a non-null ptr out of a null one")?
                         .cast::<u32>()
                         .as_ref();
 
