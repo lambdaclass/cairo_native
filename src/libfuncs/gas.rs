@@ -4,6 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    native_panic,
     utils::{BlockExt, GepIndex},
 };
 use cairo_lang_sierra::{
@@ -115,7 +116,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
-            _ => unreachable!(),
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
         };
 
         let cost_count_value =
@@ -199,7 +200,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
-            _ => unreachable!(),
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
         };
 
         let cost_count_value =
