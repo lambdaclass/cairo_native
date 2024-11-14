@@ -3,7 +3,7 @@
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
 //! APIs that are missing from melior.
 
-use crate::error::{Error, Result};
+use crate::error::{panic::ToNativeAssertError, Error, Result};
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -165,7 +165,9 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
             OptLevel::Default => 2,
             OptLevel::Aggressive => 3,
         };
-        let passes = CString::new(format!("default<O{opt}>")).unwrap();
+        let passes = CString::new(format!("default<O{opt}>")).to_native_assert_error(
+            "only fails if hardcoded string does not contain a null byte",
+        )?;
 
         trace!("starting llvm passes");
         let pre_passes_instant = Instant::now();
@@ -248,17 +250,11 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
         if path.is_absolute() {
             extra_dir
         } else {
-            let mut absolute_path = env::current_dir()
-                .expect("Failed to get the current directory")
-                .join(path);
-            absolute_path = absolute_path
-                .canonicalize()
-                .expect("Failed to cannonicalize path");
-            String::from(
-                absolute_path
-                    .to_str()
-                    .expect("Absolute path contains non-utf8 characters"),
-            )
+            let absolute_path = env::current_dir()?.join(path).canonicalize()?;
+            absolute_path
+                .to_str()
+                .to_native_assert_error("absolute path should not contain non-utf8 characters")?
+                .to_string()
         }
     } else {
         String::from("libcairo_native_runtime.a")
