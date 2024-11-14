@@ -7,7 +7,7 @@ on:
 
 env:
   RANGE_SIZE: 25
-  SEQUENCER_REV: 1b1b95cae7ae07b9bc778443ca75ee18008a6bc8
+  SEQUENCER_REV: 478b71d7d5fb3eb4e2d00f233008111e155ab76c
 
 jobs:
   run:
@@ -65,7 +65,7 @@ jobs:
           cd ../cairo_native
           make runtime
           echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
-      
+
       - name: Patch dependencies
         run: |
           # Patches native dependency to local path, to use current cairo native version
@@ -79,7 +79,7 @@ jobs:
           NEW_REV="$SEQUENCER_REV"
           sed -Ei "s#(\"$GIT\" *, *rev *= *\").?*(\".*)#\1$NEW_REV\2#" Cargo.toml
           grep $GIT Cargo.toml
-          
+
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
         run: |
