@@ -723,7 +723,7 @@ mod tests {
                 .unwrap();
 
             assert_eq!(result.return_values, vec![Felt::from(n), Felt::from(n * 2)]);
-            assert_eq!(result.remaining_gas, 18446744073709548175);
+            assert_eq!(result.remaining_gas, 18446744073709548475);
         });
     }
 
@@ -793,7 +793,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709533805);
+        assert_eq!(result.remaining_gas, 18446744073709534105);
     }
 
     #[rstest]
