@@ -420,9 +420,9 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
 
         if remainder != 0 {
             // In VM this error is wrapped into `SyscallExecutionError::SyscallError`
-            return Err(vec![Felt::from_hex_unchecked(
+            return Err(vec![Felt::from_hex(
                 "0x000000000000000000000000496e76616c696420696e707574206c656e677468",
-            )]);
+            ).expect("can't create felt out of an invalid hex string")]);
         }
 
         let mut state = [0u64; 25];
