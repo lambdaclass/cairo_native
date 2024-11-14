@@ -826,8 +826,6 @@ impl Value {
 
 #[cfg(test)]
 mod test {
-    use crate::error::panic::NativeAssertError;
-
     use super::*;
     use bumpalo::Bump;
     use cairo_lang_sierra::extensions::types::{InfoAndTypeConcreteType, TypeInfo};
