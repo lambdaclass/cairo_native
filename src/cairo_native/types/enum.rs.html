@@ -844,6 +844,7 @@
 <a href="#844" id="844">844</a>
 <a href="#845" id="845">845</a>
 <a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum type
 //!
 //! Enumerations are special because they can potentially represent an unlimited amount of things at
@@ -1249,10 +1250,11 @@
 
 </span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
     },
+    native_panic,
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -1301,8 +1303,8 @@
                 registry.build_type(context, module, registry, metadata, variant)<span class="question-mark">?</span>;
                 <span class="kw">if </span>metadata
                     .get::&lt;DupOverridesMeta&gt;()
-                    .unwrap()
-                    .is_overriden(variant)
+                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                    </span>.is_overriden(variant)
                 {
                     needs_override = <span class="bool-val">true</span>;
                     <span class="kw">break</span>;
@@ -1328,8 +1330,8 @@
                 registry.build_type(context, module, registry, metadata, variant)<span class="question-mark">?</span>;
                 <span class="kw">if </span>metadata
                     .get::&lt;DropOverridesMeta&gt;()
-                    .unwrap()
-                    .is_overriden(variant)
+                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                    </span>.is_overriden(variant)
                 {
                     needs_override = <span class="bool-val">true</span>;
                     <span class="kw">break</span>;
@@ -1412,14 +1414,14 @@
     )<span class="question-mark">?</span>;
 
     <span class="kw">match </span>variant_tys.len() {
-        <span class="number">0 </span>=&gt; <span class="macro">panic!</span>(<span class="string">"attempt to clone a zero-variant enum"</span>),
+        <span class="number">0 </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"attempt to clone a zero-variant enum"</span>),
         <span class="number">1 </span>=&gt; {
             <span class="comment">// The following unwrap is unreachable because the registration logic will always insert
             // it.
             </span><span class="kw">let </span>values = metadata
                 .get::&lt;DupOverridesMeta&gt;()
-                .unwrap()
-                .invoke_override(
+                .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                </span>.invoke_override(
                     context,
                     <span class="kw-2">&amp;</span>entry,
                     location,
@@ -1454,8 +1456,8 @@
                     // always insert it.
                     </span><span class="kw">let </span>values = metadata
                         .get::&lt;DupOverridesMeta&gt;()
-                        .unwrap()
-                        .invoke_override(context, block, location, variant_id, value)<span class="question-mark">?</span>;
+                        .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                        </span>.invoke_override(context, block, location, variant_id, value)<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>value = block.insert_value(context, location, container, values.<span class="number">0</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
                     block.store(context, location, ptr, value)<span class="question-mark">?</span>;
@@ -1516,14 +1518,14 @@
     )<span class="question-mark">?</span>;
 
     <span class="kw">match </span>variant_tys.len() {
-        <span class="number">0 </span>=&gt; <span class="macro">panic!</span>(<span class="string">"attempt to drop a zero-variant enum"</span>),
+        <span class="number">0 </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"attempt to drop a zero-variant enum"</span>),
         <span class="number">1 </span>=&gt; {
             <span class="comment">// The following unwrap is unreachable because the registration logic will always insert
             // it.
             </span>metadata
                 .get::&lt;DropOverridesMeta&gt;()
-                .unwrap()
-                .invoke_override(
+                .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                </span>.invoke_override(
                     context,
                     <span class="kw-2">&amp;</span>entry,
                     location,
@@ -1558,8 +1560,8 @@
                     // always insert it.
                     </span>metadata
                         .get::&lt;DropOverridesMeta&gt;()
-                        .unwrap()
-                        .invoke_override(context, block, location, variant_id, value)<span class="question-mark">?</span>;
+                        .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                        </span>.invoke_override(context, block, location, variant_id, value)<span class="question-mark">?</span>;
 
                     block.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
                 }

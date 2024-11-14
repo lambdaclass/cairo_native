@@ -497,6 +497,10 @@
 <a href="#497" id="497">497</a>
 <a href="#498" id="498">498</a>
 <a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary type
 //!
 //! A key value storage for values whose type implement Copy. The key is always a felt.
@@ -507,7 +511,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::WithSelf;
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
@@ -632,7 +636,8 @@
                 ),
                 (
                     Identifier::new(context, <span class="string">"linkage"</span>),
-                    Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>).unwrap(),
+                    Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>)
+                        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                 ),
             ],
             location,
@@ -656,8 +661,8 @@
     </span><span class="kw">let </span>value0 = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
     <span class="kw">let </span>value1 = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .unwrap()
-        .dict_dup(context, module, <span class="kw-2">&amp;</span>entry, value0, dup_fn, location)<span class="question-mark">?</span>;
+        .ok_or(Error::MissingMetadata)<span class="question-mark">?
+        </span>.dict_dup(context, module, <span class="kw-2">&amp;</span>entry, value0, dup_fn, location)<span class="question-mark">?</span>;
 
     entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[value0, value1], location));
     <span class="prelude-val">Ok</span>(region)
@@ -706,7 +711,8 @@
                     ),
                     (
                         Identifier::new(context, <span class="string">"llvm.linkage"</span>),
-                        Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>).unwrap(),
+                        Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>)
+                            .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                     ),
                 ],
                 location,
@@ -736,7 +742,9 @@
     };
 
     <span class="comment">// The following unwrap is unreachable because the registration logic will always insert it.
-    </span><span class="kw">let </span>runtime_bindings_meta = metadata.get_mut::&lt;RuntimeBindingsMeta&gt;().unwrap();
+    </span><span class="kw">let </span>runtime_bindings_meta = metadata
+        .get_mut::&lt;RuntimeBindingsMeta&gt;()
+        .ok_or(Error::MissingMetadata)<span class="question-mark">?</span>;
     runtime_bindings_meta.dict_drop(
         context,
         module,

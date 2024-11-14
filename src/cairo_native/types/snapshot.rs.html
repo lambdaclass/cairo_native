@@ -174,7 +174,7 @@
 
 </span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage,
@@ -229,8 +229,8 @@
             // calling this closure.
             </span>metadata
                 .get::&lt;DupOverridesMeta&gt;()
-                .unwrap()
-                .is_overriden(<span class="kw-2">&amp;</span>info.ty)
+                .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                </span>.is_overriden(<span class="kw-2">&amp;</span>info.ty)
                 .then(|| build_dup(context, module, registry, metadata, <span class="kw-2">&amp;</span>info))
                 .transpose()
         },
@@ -249,8 +249,8 @@
             // calling this closure.
             </span>metadata
                 .get::&lt;DropOverridesMeta&gt;()
-                .unwrap()
-                .is_overriden(<span class="kw-2">&amp;</span>info.ty)
+                .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                </span>.is_overriden(<span class="kw-2">&amp;</span>info.ty)
                 .then(|| build_drop(context, module, registry, metadata, <span class="kw-2">&amp;</span>info))
                 .transpose()
         },
@@ -276,8 +276,8 @@
     <span class="comment">// The following unwrap is unreachable because the registration logic will always insert it.
     </span><span class="kw">let </span>values = metadata
         .get::&lt;DupOverridesMeta&gt;()
-        .unwrap()
-        .invoke_override(
+        .ok_or(Error::MissingMetadata)<span class="question-mark">?
+        </span>.invoke_override(
             context,
             <span class="kw-2">&amp;</span>entry,
             location,
@@ -306,8 +306,8 @@
     <span class="comment">// The following unwrap is unreachable because the registration logic will always insert it.
     </span>metadata
         .get::&lt;DropOverridesMeta&gt;()
-        .unwrap()
-        .invoke_override(
+        .ok_or(Error::MissingMetadata)<span class="question-mark">?
+        </span>.invoke_override(
             context,
             <span class="kw-2">&amp;</span>entry,
             location,

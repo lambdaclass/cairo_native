@@ -226,7 +226,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::WithSelf;
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
     },
@@ -269,8 +269,8 @@
                 registry.build_type(context, module, registry, metadata, member)<span class="question-mark">?</span>;
                 <span class="kw">if </span>metadata
                     .get::&lt;DupOverridesMeta&gt;()
-                    .unwrap()
-                    .is_overriden(member)
+                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                    </span>.is_overriden(member)
                 {
                     needs_override = <span class="bool-val">true</span>;
                     <span class="kw">break</span>;
@@ -296,8 +296,8 @@
                 registry.build_type(context, module, registry, metadata, member)<span class="question-mark">?</span>;
                 <span class="kw">if </span>metadata
                     .get::&lt;DropOverridesMeta&gt;()
-                    .unwrap()
-                    .is_overriden(member)
+                    .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                    </span>.is_overriden(member)
                 {
                     needs_override = <span class="bool-val">true</span>;
                     <span class="kw">break</span>;
@@ -342,8 +342,8 @@
         <span class="comment">// The following unwrap is unreachable because the registration logic will always insert it.
         </span><span class="kw">let </span>values = metadata
             .get::&lt;DupOverridesMeta&gt;()
-            .unwrap()
-            .invoke_override(context, <span class="kw-2">&amp;</span>entry, location, member_id, member_val)<span class="question-mark">?</span>;
+            .ok_or(Error::MissingMetadata)<span class="question-mark">?
+            </span>.invoke_override(context, <span class="kw-2">&amp;</span>entry, location, member_id, member_val)<span class="question-mark">?</span>;
 
         src_value = entry.insert_value(context, location, src_value, values.<span class="number">0</span>, idx)<span class="question-mark">?</span>;
         dst_value = entry.insert_value(context, location, dst_value, values.<span class="number">1</span>, idx)<span class="question-mark">?</span>;
@@ -375,8 +375,8 @@
         <span class="comment">// The following unwrap is unreachable because the registration logic will always insert it.
         </span>metadata
             .get::&lt;DropOverridesMeta&gt;()
-            .unwrap()
-            .invoke_override(context, <span class="kw-2">&amp;</span>entry, location, member_id, member_val)<span class="question-mark">?</span>;
+            .ok_or(Error::MissingMetadata)<span class="question-mark">?
+            </span>.invoke_override(context, <span class="kw-2">&amp;</span>entry, location, member_id, member_val)<span class="question-mark">?</span>;
     }
 
     entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));

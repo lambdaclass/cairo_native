@@ -999,6 +999,7 @@
 <a href="#999" id="999">999</a>
 <a href="#1000" id="1000">1000</a>
 <a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
@@ -1007,6 +1008,7 @@
     error::Error <span class="kw">as </span>CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
+    native_panic,
     utils::{get_integer_layout, layout_repeat, BlockExt, RangeExt, PRIME},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -1922,7 +1924,7 @@
 
                     entry.insert_value(context, location, value, tag, <span class="number">0</span>)<span class="question-mark">?
                 </span>}
-                <span class="kw">_ </span>=&gt; <span class="macro">unimplemented!</span>(<span class="string">"unsupported dict value type"</span>),
+                <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"unsupported dict value type"</span>),
             },
             <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">252</span>)<span class="question-mark">?</span>,
             <span class="self">Self</span>::Nullable(<span class="kw">_</span>) =&gt; {
@@ -1933,7 +1935,7 @@
             <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">32</span>)<span class="question-mark">?</span>,
             <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">64</span>)<span class="question-mark">?</span>,
             <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">128</span>)<span class="question-mark">?</span>,
-            <span class="kw">_ </span>=&gt; <span class="macro">unimplemented!</span>(<span class="string">"unsupported dict value type"</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"unsupported dict value type"</span>),
         })
     }
 }

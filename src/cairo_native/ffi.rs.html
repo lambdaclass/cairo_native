@@ -418,17 +418,12 @@
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # FFI Wrappers
 //!
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
 //! APIs that are missing from melior.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::error::{Error, <span class="prelude-ty">Result</span>};
+</span><span class="kw">use </span><span class="kw">crate</span>::error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -590,7 +585,8 @@
             </span>OptLevel::Default =&gt; <span class="number">2</span>,
             OptLevel::Aggressive =&gt; <span class="number">3</span>,
         };
-        <span class="kw">let </span>passes = CString::new(<span class="macro">format!</span>(<span class="string">"default&lt;O{opt}&gt;"</span>)).unwrap();
+        <span class="kw">let </span>passes = CString::new(<span class="macro">format!</span>(<span class="string">"default&lt;O{opt}&gt;"</span>))
+            .to_native_assert_error(<span class="string">"only fails if the hardcoded string contains a null byte"</span>)<span class="question-mark">?</span>;
 
         <span class="macro">trace!</span>(<span class="string">"starting llvm passes"</span>);
         <span class="kw">let </span>pre_passes_instant = Instant::now();
@@ -673,17 +669,11 @@
         <span class="kw">if </span>path.is_absolute() {
             extra_dir
         } <span class="kw">else </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>absolute_path = env::current_dir()
-                .expect(<span class="string">"Failed to get the current directory"</span>)
-                .join(path);
-            absolute_path = absolute_path
-                .canonicalize()
-                .expect(<span class="string">"Failed to cannonicalize path"</span>);
-            String::from(
-                absolute_path
-                    .to_str()
-                    .expect(<span class="string">"Absolute path contains non-utf8 characters"</span>),
-            )
+            <span class="kw">let </span>absolute_path = env::current_dir()<span class="question-mark">?</span>.join(path).canonicalize()<span class="question-mark">?</span>;
+            absolute_path
+                .to_str()
+                .to_native_assert_error(<span class="string">"absolute path should not contain non-utf8 characters"</span>)<span class="question-mark">?
+                </span>.to_string()
         }
     } <span class="kw">else </span>{
         String::from(<span class="string">"libcairo_native_runtime.a"</span>)

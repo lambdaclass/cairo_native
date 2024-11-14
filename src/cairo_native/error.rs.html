@@ -422,7 +422,7 @@
         }
     }
 
-    <span class="kw">impl</span>&lt;T&gt; ToNativeAssertError&lt;T&gt; <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;T&gt; {
+    <span class="kw">impl</span>&lt;T, E&gt; ToNativeAssertError&lt;T&gt; <span class="kw">for </span>std::result::Result&lt;T, E&gt; {
         <span class="kw">fn </span>to_native_assert_error(<span class="self">self</span>, msg: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;T&gt; {
             <span class="self">self</span>.map_err(|<span class="kw">_</span>| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
         }
