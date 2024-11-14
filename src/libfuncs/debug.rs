@@ -11,7 +11,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -111,7 +111,7 @@ pub fn build_print<'ctx>(
     registry.build_type(context, helper, registry, metadata, input_ty)?;
     metadata
         .get::<DropOverridesMeta>()
-        .unwrap()
+        .ok_or(Error::MissingMetadata)?
         .invoke_override(
             context,
             entry,
