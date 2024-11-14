@@ -6,6 +6,7 @@ use crate::{
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
+    native_panic,
     utils::{get_integer_layout, layout_repeat, BlockExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
@@ -921,7 +922,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
                     entry.insert_value(context, location, value, tag, 0)?
                 }
-                _ => unimplemented!("unsupported dict value type"),
+                _ => native_panic!("unsupported dict value type"),
             },
             Self::Felt252(_) => entry.const_int(context, location, 0, 252)?,
             Self::Nullable(_) => {
@@ -932,7 +933,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint32(_) => entry.const_int(context, location, 0, 32)?,
             Self::Uint64(_) => entry.const_int(context, location, 0, 64)?,
             Self::Uint128(_) => entry.const_int(context, location, 0, 128)?,
-            _ => unimplemented!("unsupported dict value type"),
+            _ => native_panic!("unsupported dict value type"),
         })
     }
 }
