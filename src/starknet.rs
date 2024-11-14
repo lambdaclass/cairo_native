@@ -1,9 +1,9 @@
 //! Starknet related code for `cairo_native`
 
-use serde::{Deserialize, Serialize};
-use starknet_types_core::felt::Felt;
 #[cfg(feature = "with-cheatcode")]
 use crate::error::Result;
+use serde::{Deserialize, Serialize};
+use starknet_types_core::felt::Felt;
 
 pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
 
