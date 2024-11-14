@@ -695,12 +695,16 @@
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
     error::Result,
     metadata::MetadataStorage,
+    native_panic,
     types::TypeBuilder,
     utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
 };
@@ -943,7 +947,9 @@
             (<span class="prelude-val">Some</span>(lower_check), <span class="prelude-val">None</span>) =&gt; lower_check,
             (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(upper_check)) =&gt; upper_check,
             <span class="comment">// its always in bounds since dst is larger than src (i.e no bounds checks needed)
-            </span>(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="macro">unreachable!</span>(),
+            </span>(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; {
+                <span class="macro">native_panic!</span>(<span class="string">"matched an unreachable: no bounds checks are being performed"</span>)
+            }
         };
 
         <span class="kw">let </span>dst_value = <span class="kw">if </span>dst_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; dst_range.lower != BigInt::ZERO {

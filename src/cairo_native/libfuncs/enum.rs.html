@@ -642,14 +642,20 @@
 <a href="#642" id="642">642</a>
 <a href="#643" id="643">643</a>
 <a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::{Error, <span class="prelude-ty">Result</span>},
+    error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
+    native_panic,
     types::TypeBuilder,
     utils::BlockExt,
 };
@@ -763,11 +769,13 @@
         helper,
         registry,
         metadata,
-        type_info.variants().unwrap(),
+        type_info
+            .variants()
+            .to_native_assert_error(<span class="string">"found non-enum type where an enum is required"</span>)<span class="question-mark">?</span>,
     )<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(<span class="kw">match </span>variant_tys.len() {
-        <span class="number">0 </span>=&gt; <span class="macro">panic!</span>(<span class="string">"attempt to initialize a zero-variant enum"</span>),
+        <span class="number">0 </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"attempt to initialize a zero-variant enum"</span>),
         <span class="number">1 </span>=&gt; payload_value,
         <span class="kw">_ </span>=&gt; {
             <span class="kw">let </span>enum_ty = llvm::r#type::r#struct(
@@ -901,7 +909,9 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>variant_ids = type_info.variants().unwrap();
+    <span class="kw">let </span>variant_ids = type_info
+        .variants()
+        .to_native_assert_error(<span class="string">"found non-enum type where an enum is required"</span>)<span class="question-mark">?</span>;
     <span class="kw">match </span>variant_ids.len() {
         <span class="number">0 </span>=&gt; {
             <span class="comment">// The Cairo compiler will generate an enum match for enums without variants, so this

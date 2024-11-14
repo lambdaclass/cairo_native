@@ -731,12 +731,46 @@
 <a href="#731" id="731">731</a>
 <a href="#732" id="732">732</a>
 <a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Bounded int libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
     error::Result,
     metadata::MetadataStorage,
+    native_assert,
     types::TypeBuilder,
     utils::{BlockExt, RangeExt},
 };
@@ -847,8 +881,15 @@
     <span class="kw">let </span>compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
 
     <span class="comment">// Zero-extend operands into the computation range.
-    </span><span class="macro">assert!</span>(compute_range.offset_bit_width() &gt;= lhs_width);
-    <span class="macro">assert!</span>(compute_range.offset_bit_width() &gt;= rhs_width);
+    </span><span class="macro">assert!</span>(
+        compute_range.offset_bit_width() &gt;= lhs_width,
+        <span class="string">"the lhs_range bit_width must be less or equal than the compute_range"
+    </span>);
+    <span class="macro">assert!</span>(
+        compute_range.offset_bit_width() &gt;= rhs_width,
+        <span class="string">"the rhs_range bit_width must be less or equal than the compute_range"
+    </span>);
+
     <span class="kw">let </span>lhs_value = <span class="kw">if </span>compute_range.offset_bit_width() &gt; lhs_width {
         <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))<span class="question-mark">?
@@ -968,8 +1009,15 @@
     <span class="kw">let </span>compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
 
     <span class="comment">// Zero-extend operands into the computation range.
-    </span><span class="macro">assert!</span>(compute_range.offset_bit_width() &gt;= lhs_width);
-    <span class="macro">assert!</span>(compute_range.offset_bit_width() &gt;= rhs_width);
+    </span><span class="macro">assert!</span>(
+        compute_range.offset_bit_width() &gt;= lhs_width,
+        <span class="string">"the lhs_range bit_width must be less or equal than the compute_range"
+    </span>);
+    <span class="macro">assert!</span>(
+        compute_range.offset_bit_width() &gt;= rhs_width,
+        <span class="string">"the rhs_range bit_width must be less or equal than the compute_range"
+    </span>);
+
     <span class="kw">let </span>lhs_value = <span class="kw">if </span>compute_range.offset_bit_width() &gt; lhs_width {
         <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))<span class="question-mark">?
@@ -1090,8 +1138,15 @@
     <span class="kw">let </span>compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
     <span class="comment">// Zero-extend operands into the computation range.
-    </span><span class="macro">assert!</span>(compute_range.zero_based_bit_width() &gt;= lhs_width);
-    <span class="macro">assert!</span>(compute_range.zero_based_bit_width() &gt;= rhs_width);
+    </span><span class="macro">assert!</span>(
+        compute_range.offset_bit_width() &gt;= lhs_width,
+        <span class="string">"the lhs_range bit_width must be less or equal than the compute_range"
+    </span>);
+    <span class="macro">assert!</span>(
+        compute_range.offset_bit_width() &gt;= rhs_width,
+        <span class="string">"the rhs_range bit_width must be less or equal than the compute_range"
+    </span>);
+
     <span class="kw">let </span>lhs_value = <span class="kw">if </span>compute_range.zero_based_bit_width() &gt; lhs_width {
         <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))<span class="question-mark">?
@@ -1211,8 +1266,15 @@
     <span class="kw">let </span>compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
     <span class="comment">// Zero-extend operands into the computation range.
-    </span><span class="macro">assert!</span>(compute_range.zero_based_bit_width() &gt;= lhs_width);
-    <span class="macro">assert!</span>(compute_range.zero_based_bit_width() &gt;= rhs_width);
+    </span><span class="macro">assert!</span>(
+        compute_range.offset_bit_width() &gt;= lhs_width,
+        <span class="string">"the lhs_range bit_width must be less or equal than the compute_range"
+    </span>);
+    <span class="macro">assert!</span>(
+        compute_range.offset_bit_width() &gt;= rhs_width,
+        <span class="string">"the rhs_range bit_width must be less or equal than the compute_range"
+    </span>);
+
     <span class="kw">let </span>lhs_value = <span class="kw">if </span>compute_range.zero_based_bit_width() &gt; lhs_width {
         <span class="kw">if </span>lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))<span class="question-mark">?
@@ -1420,7 +1482,7 @@
     <span class="kw">let </span>src_ty = registry.get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>src_range = src_ty.integer_range(registry)<span class="question-mark">?</span>;
 
-    <span class="macro">assert!</span>(
+    <span class="macro">native_assert!</span>(
         src_range.lower &lt;= BigInt::ZERO &amp;&amp; BigInt::ZERO &lt; src_range.upper,
         <span class="string">"value can never be zero"
     </span>);
@@ -1459,7 +1521,11 @@
     <span class="kw">let </span>src_range = registry
         .get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?
         </span>.integer_range(registry)<span class="question-mark">?</span>;
-    <span class="macro">assert!</span>(src_range.lower &gt; BigInt::ZERO || BigInt::ZERO &gt;= src_range.upper);
+
+    <span class="macro">assert!</span>(
+        src_range.lower &gt; BigInt::ZERO || BigInt::ZERO &gt;= src_range.upper,
+        <span class="string">"value must not be zero"
+    </span>);
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[src_value], location));
     <span class="prelude-val">Ok</span>(())

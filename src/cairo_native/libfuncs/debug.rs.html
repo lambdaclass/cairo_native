@@ -152,7 +152,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{
         drop_overrides::DropOverridesMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -252,8 +252,8 @@
     registry.build_type(context, helper, registry, metadata, input_ty)<span class="question-mark">?</span>;
     metadata
         .get::&lt;DropOverridesMeta&gt;()
-        .unwrap()
-        .invoke_override(
+        .ok_or(Error::MissingMetadata)<span class="question-mark">?
+        </span>.invoke_override(
             context,
             entry,
             location,

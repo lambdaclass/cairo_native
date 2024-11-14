@@ -3102,7 +3102,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{Error, <span class="prelude-ty">Result</span>},
     ffi::get_struct_field_type_at,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
     starknet::handler::StarknetSyscallHandlerCallbacks,
@@ -3514,7 +3514,7 @@
             context,
             <span class="string">"3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252"</span>,
         )
-        .unwrap(),
+        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ))<span class="question-mark">?</span>;
     <span class="kw">let </span>is_in_range = entry.append_op_result(arith::cmpi(
@@ -3578,7 +3578,7 @@
             context,
             <span class="string">"3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252"</span>,
         )
-        .unwrap(),
+        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ))<span class="question-mark">?</span>;
     <span class="kw">let </span>is_in_range = entry.append_op_result(arith::cmpi(
@@ -3989,7 +3989,7 @@
             context,
             <span class="string">"3618502788666131106986593281521497120414687020801267626233049500247285300992 : i252"</span>,
         )
-        .unwrap(),
+        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ))<span class="question-mark">?</span>;
 
@@ -4080,7 +4080,7 @@
             context,
             <span class="string">"3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252"</span>,
         )
-        .unwrap(),
+        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
         location,
     ))<span class="question-mark">?</span>;
     <span class="kw">let </span>is_in_range = entry.append_op_result(arith::cmpi(
@@ -5881,8 +5881,8 @@
     )<span class="question-mark">?</span>;
     metadata
         .get::&lt;DropOverridesMeta&gt;()
-        .unwrap()
-        .invoke_override(
+        .ok_or(Error::MissingMetadata)<span class="question-mark">?
+        </span>.invoke_override(
             context,
             entry,
             location,

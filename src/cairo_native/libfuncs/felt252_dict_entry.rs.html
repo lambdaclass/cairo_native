@@ -371,7 +371,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
@@ -452,8 +452,8 @@
     <span class="comment">// Double pointer. Avoid allocating an element on a dict getter.
     </span><span class="kw">let </span>entry_value_ptr_ptr = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .unwrap()
-        .dict_get(context, helper, entry, dict_ptr, entry_key_ptr, location)<span class="question-mark">?</span>;
+        .ok_or(Error::MissingMetadata)<span class="question-mark">?
+        </span>.dict_get(context, helper, entry, dict_ptr, entry_key_ptr, location)<span class="question-mark">?</span>;
     <span class="kw">let </span>entry_value_ptr = entry.load(
         context,
         location,

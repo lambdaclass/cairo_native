@@ -310,12 +310,14 @@
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Gas management libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
     error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    native_panic,
     utils::{BlockExt, GepIndex},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -427,7 +429,7 @@
             CostTokenType::Poseidon =&gt; <span class="number">4</span>,
             CostTokenType::AddMod =&gt; <span class="number">5</span>,
             CostTokenType::MulMod =&gt; <span class="number">6</span>,
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"matched an unexpected CostTokenType which is not being used"</span>),
         };
 
         <span class="kw">let </span>cost_count_value =
@@ -511,7 +513,7 @@
             CostTokenType::Poseidon =&gt; <span class="number">4</span>,
             CostTokenType::AddMod =&gt; <span class="number">5</span>,
             CostTokenType::MulMod =&gt; <span class="number">6</span>,
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"matched an unexpected CostTokenType which is not being used"</span>),
         };
 
         <span class="kw">let </span>cost_count_value =

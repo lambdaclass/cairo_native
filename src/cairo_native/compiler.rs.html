@@ -1400,6 +1400,7 @@
 <a href="#1400" id="1400">1400</a>
 <a href="#1401" id="1401">1401</a>
 <a href="#1402" id="1402">1402</a>
+<a href="#1403" id="1403">1403</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
@@ -2018,6 +2019,7 @@
                             .iter()
                             .zip(helper.results())
                             .map(|(branch_info, result_values)| {
+                                <span class="kw">let </span>result_values = result_values<span class="question-mark">?</span>;
                                 <span class="macro">assert_eq!</span>(
                                     branch_info.results.len(),
                                     result_values.len(),

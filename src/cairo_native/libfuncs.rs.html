@@ -435,11 +435,19 @@
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
-</span><span class="kw">use crate</span>::{error::Error <span class="kw">as </span>CoreLibfuncBuilderError, metadata::MetadataStorage, utils::BlockExt};
+</span><span class="kw">use crate</span>::{
+    error::{panic::ToNativeAssertError, Error <span class="kw">as </span>CoreLibfuncBuilderError, <span class="prelude-ty">Result </span><span class="kw">as </span>NativeResult},
+    metadata::MetadataStorage,
+    utils::BlockExt,
+};
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
@@ -707,14 +715,14 @@
     </span><span class="lifetime">'this</span>: <span class="lifetime">'ctx</span>,
 {
     <span class="attr">#[doc(hidden)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>results(<span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Vec&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>results(<span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = NativeResult&lt;Vec&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;&gt;&gt; {
         <span class="self">self</span>.results.into_iter().enumerate().map(|(branch_idx, x)| {
             x.into_iter()
                 .enumerate()
                 .map(|(arg_idx, x)| {
-                    x.into_inner().unwrap_or_else(|| {
-                        <span class="macro">panic!</span>(<span class="string">"Argument #{arg_idx} of branch {branch_idx} doesn't have a value."</span>)
-                    })
+                    x.into_inner().to_native_assert_error(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                        <span class="string">"Argument #{arg_idx} of branch {branch_idx} doesn't have a value."
+                    </span>))
                 })
                 .collect()
         })

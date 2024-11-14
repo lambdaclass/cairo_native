@@ -311,6 +311,11 @@
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Const libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -318,6 +323,7 @@
     error::{Error, <span class="prelude-ty">Result</span>},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    native_panic,
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt, RangeExt, PRIME},
 };
@@ -379,7 +385,7 @@
     <span class="comment">// Create constant
     </span><span class="kw">let </span>const_type = <span class="kw">match </span><span class="kw-2">&amp;</span>const_type_outer {
         CoreTypeConcrete::Const(inner) =&gt; inner,
-        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+        <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"matched an unexpected CoreTypeConcrete that is not a Const"</span>),
     };
 
     <span class="kw">let </span>value = build_const_type_value(
@@ -418,7 +424,7 @@
 
     <span class="kw">let </span>const_type = <span class="kw">match </span><span class="kw-2">&amp;</span>const_ty {
         CoreTypeConcrete::Const(inner) =&gt; inner,
-        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+        <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"matched an unexpected CoreTypeConcrete that is not a Const"</span>),
     };
 
     <span class="kw">let </span>value = build_const_type_value(
@@ -460,7 +466,9 @@
 
                         <span class="kw">let </span>const_field_type = <span class="kw">match </span><span class="kw-2">&amp;</span>field_type {
                             CoreTypeConcrete::Const(inner) =&gt; inner,
-                            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(
+                                <span class="string">"matched an unexpected CoreTypeConcrete that is not a Const"
+                            </span>),
                         };
 
                         <span class="kw">let </span>field_value = build_const_type_value(
@@ -494,7 +502,9 @@
                 <span class="kw">let </span>payload_type = registry.get_type(payload_ty)<span class="question-mark">?</span>;
                 <span class="kw">let </span>const_payload_type = <span class="kw">match </span>payload_type {
                     CoreTypeConcrete::Const(inner) =&gt; inner,
-                    <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="macro">native_panic!</span>(<span class="string">"matched an unexpected CoreTypeConcrete that is not a Const"</span>)
+                    }
                 };
 
                 <span class="kw">let </span>payload_value = build_const_type_value(
@@ -531,7 +541,7 @@
                 <span class="kw">let </span>inner_type = registry.get_type(inner)<span class="question-mark">?</span>;
                 <span class="kw">let </span>const_inner_type = <span class="kw">match </span>inner_type {
                     CoreTypeConcrete::Const(inner) =&gt; inner,
-                    <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                    <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"unreachable: unexpected CoreTypeConcrete found"</span>),
                 };
 
                 build_const_type_value(

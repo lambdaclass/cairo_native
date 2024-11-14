@@ -753,6 +753,21 @@
 <a href="#753" id="753">753</a>
 <a href="#754" id="754">754</a>
 <a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -761,8 +776,9 @@
 </span><span class="kw">pub use </span><span class="self">self</span>::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNativeExecutor};
 <span class="kw">use crate</span>::{
     arch::{AbiArgument, ValueWithInfoWrapper},
-    error::Error,
+    error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ExecutionResult},
+    native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{libc_free, BuiltinCosts, RangeExt},
@@ -926,7 +942,7 @@
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
                 <span class="kw">let </span>syscall_handler = syscall_handler
                     .as_mut()
-                    .expect(<span class="string">"syscall handler is required"</span>);
+                    .to_native_assert_error(<span class="string">"syscall handler should be available"</span>)<span class="question-mark">?</span>;
 
                 (syscall_handler <span class="kw">as </span><span class="kw-2">*mut </span>StarknetSyscallHandlerCallbacks&lt;<span class="kw">_</span>&gt;)
                     .to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
@@ -936,7 +952,9 @@
             }
             type_info <span class="kw">if </span>type_info.is_builtin() =&gt; <span class="number">0u64</span>.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>,
             type_info =&gt; ValueWithInfoWrapper {
-                value: iter.next().unwrap(),
+                value: iter
+                    .next()
+                    .to_native_assert_error(<span class="string">"entrypoint argument is missing"</span>)<span class="question-mark">?</span>,
                 type_id,
                 info: type_info,
 
@@ -1048,7 +1066,7 @@
                             CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(<span class="kw">_</span>)) =&gt; {
                                 builtin_stats.circuit_mul = value
                             }
-                            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">"{type_id:?}"</span>),
+                            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"given type should be a builtin: {type_id:?}"</span>),
                         }
                     }
                 }
@@ -1106,7 +1124,7 @@
     <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">2</span>],
     <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)] </span><span class="kw-2">mut </span>ret_registers: [u64; <span class="number">4</span>],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Value, Error&gt; {
-    <span class="kw">let </span>type_info = registry.get_type(type_id).unwrap();
+    <span class="kw">let </span>type_info = registry.get_type(type_id)<span class="question-mark">?</span>;
     <span class="kw">let </span>debug_name = type_info.info().long_id.to_string();
 
     <span class="comment">// Align the pointer to the actual return value.
@@ -1119,22 +1137,28 @@
 
         <span class="kw-2">*</span>return_ptr = <span class="kw">unsafe </span>{
             NonNull::new(return_ptr.cast::&lt;u8&gt;().as_ptr().add(align_offset))
-                .expect(<span class="string">"nonnull is null"</span>)
-                .cast()
+                .to_native_assert_error(<span class="string">"return pointer should not be null"</span>)<span class="question-mark">?
+                </span>.cast()
         };
     }
 
     <span class="kw">match </span>type_info {
-        CoreTypeConcrete::Array(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(Value::from_ptr(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>),
+        CoreTypeConcrete::Array(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(Value::from_ptr(
+            return_ptr.to_native_assert_error(<span class="string">"return pointer should be valid"</span>)<span class="question-mark">?</span>,
+            type_id,
+            registry,
+        )<span class="question-mark">?</span>),
         CoreTypeConcrete::Box(info) =&gt; <span class="kw">unsafe </span>{
             <span class="kw">let </span>ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[<span class="number">0</span>] <span class="kw">as </span><span class="kw-2">*mut </span>()));
             <span class="kw">let </span>value = Value::from_ptr(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
             libc_free(ptr.cast().as_ptr());
             <span class="prelude-val">Ok</span>(value)
         },
-        CoreTypeConcrete::EcPoint(<span class="kw">_</span>) | CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; {
-            <span class="prelude-val">Ok</span>(Value::from_ptr(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>)
-        }
+        CoreTypeConcrete::EcPoint(<span class="kw">_</span>) | CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(Value::from_ptr(
+            return_ptr.to_native_assert_error(<span class="string">"return pointer should be valid"</span>)<span class="question-mark">?</span>,
+            type_id,
+            registry,
+        )<span class="question-mark">?</span>),
         CoreTypeConcrete::Felt252(<span class="kw">_</span>)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>)
@@ -1258,7 +1282,7 @@
                 <span class="kw">crate</span>::types::r#enum::get_layout_for_variants(registry, <span class="kw-2">&amp;</span>info.variants)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>(tag, ptr) = <span class="kw">if </span>type_info.is_memory_allocated(registry)<span class="question-mark">? </span>|| return_ptr.is_some() {
-                <span class="kw">let </span>ptr = return_ptr.unwrap();
+                <span class="kw">let </span>ptr = return_ptr.to_native_assert_error(<span class="string">"return pointer should be valid"</span>)<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>tag = <span class="kw">unsafe </span>{
                     <span class="kw">match </span>tag_layout.size() {
@@ -1329,7 +1353,11 @@
                     debug_name: <span class="prelude-val">Some</span>(debug_name),
                 })
             } <span class="kw">else </span>{
-                <span class="prelude-val">Ok</span>(Value::from_ptr(return_ptr.unwrap(), type_id, registry)<span class="question-mark">?</span>)
+                <span class="prelude-val">Ok</span>(Value::from_ptr(
+                    return_ptr.to_native_assert_error(<span class="string">"return pointer should be valid"</span>)<span class="question-mark">?</span>,
+                    type_id,
+                    registry,
+                )<span class="question-mark">?</span>)
             }
         }
         CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) | CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; <span class="kw">unsafe </span>{
@@ -1354,7 +1382,9 @@
         | CoreTypeConcrete::Pedersen(<span class="kw">_</span>)
         | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
         | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>)
-        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; <span class="macro">unreachable!</span>(),
+        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
+            <span class="macro">native_panic!</span>(<span class="string">"builtins should have been handled before"</span>)
+        }
 
         CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>)
         | CoreTypeConcrete::Span(<span class="kw">_</span>)

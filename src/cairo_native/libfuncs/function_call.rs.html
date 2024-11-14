@@ -298,6 +298,7 @@
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Function call libfuncs
 //!
 //! Includes logic for handling direct tail recursive function calls. More information on this topic
@@ -305,7 +306,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
@@ -497,7 +498,8 @@
                     ),
                     (
                         Identifier::new(context, <span class="string">"CConv"</span>),
-                        Attribute::parse(context, <span class="string">"#llvm.cconv&lt;fastcc&gt;"</span>).unwrap(),
+                        Attribute::parse(context, <span class="string">"#llvm.cconv&lt;fastcc&gt;"</span>)
+                            .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                     ),
                 ])
                 .add_operands(<span class="kw-2">&amp;</span>arguments)

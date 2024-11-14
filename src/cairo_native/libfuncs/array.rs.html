@@ -2638,6 +2638,18 @@
 <a href="#2638" id="2638">2638</a>
 <a href="#2639" id="2639">2639</a>
 <a href="#2640" id="2640">2640</a>
+<a href="#2641" id="2641">2641</a>
+<a href="#2642" id="2642">2642</a>
+<a href="#2643" id="2643">2643</a>
+<a href="#2644" id="2644">2644</a>
+<a href="#2645" id="2645">2645</a>
+<a href="#2646" id="2646">2646</a>
+<a href="#2647" id="2647">2647</a>
+<a href="#2648" id="2648">2648</a>
+<a href="#2649" id="2649">2649</a>
+<a href="#2650" id="2650">2650</a>
+<a href="#2651" id="2651">2651</a>
+<a href="#2652" id="2652">2652</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="comment">// TODO: A future possible improvement would be to put the array behind a double pointer and a
@@ -2645,10 +2657,11 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>},
     metadata::{
         drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::{BlockExt, GepIndex, ProgramRegistryExt},
 };
@@ -3233,8 +3246,8 @@
 
     metadata
         .get::&lt;DropOverridesMeta&gt;()
-        .unwrap()
-        .invoke_override(
+        .ok_or(Error::MissingMetadata)<span class="question-mark">?
+        </span>.invoke_override(
             context,
             error_block,
             location,
@@ -3444,8 +3457,8 @@
 
     metadata
         .get::&lt;DropOverridesMeta&gt;()
-        .unwrap()
-        .invoke_override(
+        .ok_or(Error::MissingMetadata)<span class="question-mark">?
+        </span>.invoke_override(
             context,
             empty_block,
             location,
@@ -3964,12 +3977,12 @@
             <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// The following unwrap is unreachable because an array always has a drop implementation,
+        <span class="comment">// The following operation will because an array always has a drop implementation,
         // which at this point is always inserted thanks to the `build_type()` just above.
         </span>metadata
             .get::&lt;DropOverridesMeta&gt;()
-            .unwrap()
-            .invoke_override(
+            .ok_or(Error::MissingMetadata)<span class="question-mark">?
+            </span>.invoke_override(
                 context,
                 error_block,
                 location,
@@ -4125,9 +4138,13 @@
         CoreTypeConcrete::Array(info) =&gt; (<span class="kw-2">&amp;</span>info.ty, registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>),
         CoreTypeConcrete::Snapshot(info) =&gt; <span class="kw">match </span>registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">? </span>{
             CoreTypeConcrete::Array(info) =&gt; (<span class="kw-2">&amp;</span>info.ty, registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>),
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(
+                <span class="string">"matched an unexpected CoreTypeConcrete that is not a Array or Snapshot"
+            </span>),
         },
-        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+        <span class="kw">_ </span>=&gt; {
+            <span class="macro">native_panic!</span>(<span class="string">"matched an unexpected CoreTypeConcrete that is not a Array or Snapshot"</span>)
+        }
     };
     <span class="kw">let </span>elem_layout = elem_ty.layout(registry)<span class="question-mark">?</span>;
 
@@ -4148,8 +4165,15 @@
 
     <span class="kw">let </span>array_len = entry.append_op_result(arith::subi(array_end, array_start, location))<span class="question-mark">?</span>;
     <span class="kw">let </span>(tuple_len, tuple_len_val) = {
-        <span class="kw">let </span>fields = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.fields().unwrap();
-        <span class="macro">assert!</span>(fields.iter().all(|f| f.id == elem_id.id));
+        <span class="kw">let </span>fields = registry
+            .get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?
+            </span>.fields()
+            .to_native_assert_error(<span class="string">"missing field"</span>)<span class="question-mark">?</span>;
+
+        <span class="macro">native_assert!</span>(
+            fields.iter().all(|f| f.id == elem_id.id),
+            <span class="string">"all the elements of the array must have the same type"
+        </span>);
 
         (
             entry.const_int(context, location, fields.len(), <span class="number">32</span>)<span class="question-mark">?</span>,
@@ -4288,12 +4312,12 @@
             <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty,
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// The following unwrap is unreachable because an array always has a drop implementation,
+        <span class="comment">// The following operation will because an array always has a drop implementation,
         // which at this point is always inserted thanks to the `build_type()` just above.
         </span>metadata
             .get::&lt;DropOverridesMeta&gt;()
-            .unwrap()
-            .invoke_override(
+            .ok_or(Error::MissingMetadata)<span class="question-mark">?
+            </span>.invoke_override(
                 context,
                 block_err,
                 location,
