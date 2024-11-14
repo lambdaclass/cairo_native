@@ -8,7 +8,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::{dup_overrides::DupOverridesMeta, MetadataStorage},
+    metadata::{debug_utils::DebugUtils, dup_overrides::DupOverridesMeta, MetadataStorage},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -35,6 +35,11 @@ pub fn build<'ctx, 'this>(
     // Note: The Cairo compiler will avoid using `dup` for some non-trivially-copyable types, but
     //   not all of them. For example, it'll not generate a clone implementation for `Box<T>`.
     //   That's why we need to check for clone implementations within the compiler.
+
+    metadata
+        .get_mut::<DebugUtils>()
+        .unwrap()
+        .breakpoint_marker(context, helper, entry, location)?;
 
     let values = metadata
         .get_or_insert_with(DupOverridesMeta::default)
