@@ -826,6 +826,8 @@ impl Value {
 
 #[cfg(test)]
 mod test {
+    use crate::error::panic::NativeAssertError;
+
     use super::*;
     use bumpalo::Bump;
     use cairo_lang_sierra::extensions::types::{InfoAndTypeConcreteType, TypeInfo};
@@ -1432,7 +1434,6 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Variant index out of range.")]
     fn test_to_jit_enum_variant_out_of_range() {
         // Parse the program
         let program = ProgramParser::new()
@@ -1446,16 +1447,21 @@ mod test {
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
         // Call to_jit to get the value of the enum with tag value out of range
-        let _ = Value::Enum {
+        let result = Value::Enum {
             tag: 2,
             value: Box::new(Value::Uint8(10)),
             debug_name: None,
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id)
+        .unwrap_err();
+
+        let error = result.to_string().clone();
+        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
+
+        assert_eq!(error_msg, "Variant index out of range.");
     }
 
     #[test]
-    #[should_panic(expected = "An enum without variants cannot be instantiated.")]
     fn test_to_jit_enum_no_variant() {
         let program = ProgramParser::new()
             .parse(
@@ -1466,12 +1472,21 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        let _ = Value::Enum {
+        let result = Value::Enum {
             tag: 0,
             value: Box::new(Value::Uint8(10)),
             debug_name: None,
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id)
+        .unwrap_err();
+
+        let error = result.to_string().clone();
+        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
+
+        assert_eq!(
+            error_msg,
+            "An enum without variants cannot be instantiated."
+        )
     }
 
     #[test]
