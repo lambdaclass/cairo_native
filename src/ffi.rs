@@ -165,9 +165,8 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
             OptLevel::Default => 2,
             OptLevel::Aggressive => 3,
         };
-        let passes = CString::new(format!("default<O{opt}>")).to_native_assert_error(
-            "only fails if hardcoded string does not contain a null byte",
-        )?;
+        let passes = CString::new(format!("default<O{opt}>"))
+            .to_native_assert_error("only fails if the hardcoded string contains a null byte")?;
 
         trace!("starting llvm passes");
         let pre_passes_instant = Instant::now();
