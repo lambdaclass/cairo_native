@@ -103,7 +103,8 @@ impl GasMetadata {
             self.gas_info.function_costs[func]
                 .iter()
                 .map(|(token_type, val)| {
-                    TryInto::<usize>::try_into(*val).expect("could not cast gas cost from i64 to usize")
+                    TryInto::<usize>::try_into(*val)
+                        .expect("could not cast gas cost from i64 to usize")
                         * token_gas_cost(*token_type)
                 })
                 .sum::<usize>() as u128,
