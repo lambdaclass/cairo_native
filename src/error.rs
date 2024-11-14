@@ -188,6 +188,15 @@ pub mod panic {
         };
     }
 
+    #[macro_export]
+    macro_rules! native_assert {
+        ($cond:expr, $($arg:tt)*) => {
+            if !($cond) {
+                $crate::native_panic!($($arg)*);
+            }
+        };
+    }
+
     /// If `RUST_BACKTRACE` env var is not set, then the backtrace won't be captured.
     /// In that case, only the location is saved, which is better than nothing.
     #[derive(Debug)]
