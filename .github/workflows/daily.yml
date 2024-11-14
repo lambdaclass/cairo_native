@@ -2,12 +2,12 @@ name: Daily Block Run
 
 on:
   schedule:
-  # At the end of every day
-  - cron: "0 0 * * *"
+    # At the end of every day
+    - cron: "0 0 * * *"
 
 env:
   RANGE_SIZE: 25
-  SEQUENCER_REV: ecf6bc799e7e47f30cd599b8f344eb0d1fc76b38
+  SEQUENCER_REV: 38586bbd9e40c71ec46564026b0b86aa69798fb8
 
 jobs:
   run:
@@ -100,7 +100,6 @@ jobs:
         with:
           name: dump-${{matrix.block}}-${{matrix.runner}}
           path: starknet-replay/state_dumps/${{matrix.runner}}
-
 
   compare:
     needs: [run]
