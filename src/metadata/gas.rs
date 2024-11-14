@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::gas::CostTokenType,
@@ -14,6 +12,7 @@ use cairo_lang_sierra_gas::{
     compute_postcost_info, compute_precost_info, gas_info::GasInfo, CostError,
 };
 use cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
+use std::collections::BTreeMap;
 
 /// Holds global gas info.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -156,10 +155,7 @@ impl GasMetadata {
             .variable_values
             .get(&(idx, cost_type))
             .copied()
-            .map(|x| {
-                x.try_into()
-                    .expect("gas cost couldn't be converted to u128, should never happen")
-            })
+            .map(|x| x.try_into().expect("gas cost couldn't be converted to u64"))
     }
 }
 
