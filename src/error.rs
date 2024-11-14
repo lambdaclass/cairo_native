@@ -177,31 +177,6 @@ pub mod panic {
         }
     }
 
-    pub trait IntoOrNativePanic: Sized + Copy + core::fmt::Debug {
-        fn into_or_native_panic<T>(self) -> Result<T>
-        where
-            T: TryFrom<Self> + core::fmt::Debug,
-            <T as TryFrom<Self>>::Error: core::fmt::Debug,
-        {
-            let into_result: std::result::Result<T, _> = self.try_into();
-
-            into_result.map_err(|_| Error::NativeAssert(
-                NativeAssertError::new(format!("Unable to cast from {self:?}.")),
-            ))
-        }
-    }
-
-    impl IntoOrNativePanic for u16 {}
-    impl IntoOrNativePanic for i16 {}
-    impl IntoOrNativePanic for u32 {}
-    impl IntoOrNativePanic for i32 {}
-    impl IntoOrNativePanic for u64 {}
-    impl IntoOrNativePanic for i64 {}
-    impl IntoOrNativePanic for u128 {}
-    impl IntoOrNativePanic for i128 {}
-    impl IntoOrNativePanic for usize {}
-    impl IntoOrNativePanic for isize {}
-
     /// Macro that mimicks the behaviour of `panic!`.
     /// It should only be used inside of a function that returns Result<T, cairo_native::error::Error>
     #[macro_export]

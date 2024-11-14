@@ -13,12 +13,9 @@ use cairo_lang_sierra_ap_change::{
 use cairo_lang_sierra_gas::{
     compute_postcost_info, compute_precost_info, gas_info::GasInfo, CostError,
 };
-use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+use cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
 
-use crate::{
-    error::{panic::{IntoOrNativePanic, ToNativeAssertError}, Result as NativeResult},
-    native_panic,
-};
+use crate::{error::Result as NativeResult, native_panic};
 
 /// Holds global gas info.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -87,7 +84,7 @@ impl GasMetadata {
         // In case we don't have any costs - it means no gas equations were solved (and we are in
         // the case of no gas checking enabled) - so the gas builtin is irrelevant, and we
         // can return any value.
-        let Some(required_gas) = self.initial_required_gas(func).to_native_assert_error(msg) else {
+        let Some(required_gas) = self.initial_required_gas(func) else {
             return Ok(0);
         };
 
@@ -98,19 +95,16 @@ impl GasMetadata {
             })
     }
 
-    pub fn initial_required_gas(&self, func: &FunctionId) -> NativeResult<Option<u128>> {
+    pub fn initial_required_gas(&self, func: &FunctionId) -> Option<u128> {
         if self.gas_info.function_costs.is_empty() {
-            return Ok(None);
+            return None;
         }
-        Ok(Some(
+        Some(
             self.gas_info.function_costs[func]
                 .iter()
-                .map(|(token_type, val)| {
-                    val.into_or_native_panic::<usize>()?
-                        * token_gas_cost(*token_type)
-                })
+                .map(|(token_type, val)| val.into_or_panic::<usize>() * token_gas_cost(*token_type))
                 .sum::<usize>() as u128,
-        ))
+        )
     }
 
     pub fn initial_required_gas_for_entry_points(

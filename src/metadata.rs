@@ -63,7 +63,7 @@ impl MetadataStorage {
     {
         self.entries.remove(&TypeId::of::<T>()).map(|meta| {
             *(Box::<(dyn Any + 'static)>::downcast::<T>(meta)
-                .)
+                .expect("the given type does not match the actual"))
         })
     }
 
