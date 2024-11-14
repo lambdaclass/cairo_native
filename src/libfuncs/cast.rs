@@ -4,6 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::MetadataStorage,
+    native_panic,
     types::TypeBuilder,
     utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
 };
@@ -246,7 +247,9 @@ pub fn build_downcast<'ctx, 'this>(
             (Some(lower_check), None) => lower_check,
             (None, Some(upper_check)) => upper_check,
             // its always in bounds since dst is larger than src (i.e no bounds checks needed)
-            (None, None) => unreachable!(),
+            (None, None) => {
+                native_panic!("matched an unreachable: no bounds checks are being performed")
+            }
         };
 
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
