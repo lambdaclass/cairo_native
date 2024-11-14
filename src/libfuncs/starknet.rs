@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     ffi::get_struct_field_type_at,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
     starknet::handler::StarknetSyscallHandlerCallbacks,
@@ -395,7 +395,7 @@ pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
             context,
             "3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252",
         )
-        .unwrap(),
+        .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
     let is_in_range = entry.append_op_result(arith::cmpi(
@@ -459,7 +459,7 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
             context,
             "3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252",
         )
-        .unwrap(),
+        .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
     let is_in_range = entry.append_op_result(arith::cmpi(
@@ -857,7 +857,7 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
             context,
             "3618502788666131106986593281521497120414687020801267626233049500247285300992 : i252",
         )
-        .unwrap(),
+        .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
 
@@ -922,7 +922,7 @@ pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
             context,
             "3618502788666131106986593281521497120414687020801267626233049500247285301248 : i252",
         )
-        .unwrap(),
+        .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
     let is_in_range = entry.append_op_result(arith::cmpi(
@@ -2683,7 +2683,7 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
     )?;
     metadata
         .get::<DropOverridesMeta>()
-        .unwrap()
+        .ok_or(Error::MissingMetadata)?
         .invoke_override(
             context,
             entry,

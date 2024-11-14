@@ -280,14 +280,14 @@ where
     'this: 'ctx,
 {
     #[doc(hidden)]
-    pub(crate) fn results(self) -> impl Iterator<Item = Vec<Value<'ctx, 'this>>> {
+    pub(crate) fn results(self) -> impl Iterator<Item = NativeResult<Vec<Value<'ctx, 'this>>>> {
         self.results.into_iter().enumerate().map(|(branch_idx, x)| {
             x.into_iter()
                 .enumerate()
                 .map(|(arg_idx, x)| {
-                    x.into_inner().unwrap_or_else(|| {
-                        panic!("Argument #{arg_idx} of branch {branch_idx} doesn't have a value.")
-                    })
+                    x.into_inner().to_native_assert_error(&format!(
+                        "Argument #{arg_idx} of branch {branch_idx} doesn't have a value."
+                    ))
                 })
                 .collect()
         })
