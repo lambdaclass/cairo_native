@@ -13,7 +13,7 @@ use cairo_lang_sierra_ap_change::{
 use cairo_lang_sierra_gas::{
     compute_postcost_info, compute_precost_info, gas_info::GasInfo, CostError,
 };
-use cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
+use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 
 use crate::{error::Result as NativeResult, native_panic};
 
