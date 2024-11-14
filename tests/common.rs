@@ -116,11 +116,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
         .unwrap();
     fs::write(&mut program_file, program_str).unwrap();
 
-    let mut db = RootDatabase::default();
-    init_dev_corelib(
-        &mut db,
-        Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
-    );
+    let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
     let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
     let sierra_program_with_dbg = compile_prepared_db(
         &db,
@@ -131,18 +127,15 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
         },
     )
     .unwrap();
-    let mut program = sierra_program_with_dbg.program;
+    let program = sierra_program_with_dbg.program;
 
     let module_name = program_file.path().with_extension("");
     let module_name = module_name.file_name().unwrap().to_str().unwrap();
 
     let replacer = DebugReplacer { db: &db };
-    replacer.enrich_function_names(&mut program);
 
     let contracts = find_contracts((db).upcast(), &main_crate_ids);
     let contracts_info = get_contracts_info(&db, contracts, &replacer).unwrap();
-
-    let program = replacer.apply(&program);
 
     let runner = SierraCasmRunner::new(
         program.clone(),
