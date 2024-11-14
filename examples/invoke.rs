@@ -16,7 +16,7 @@ fn main() {
     let program_path = Path::new("programs/echo.cairo");
 
     // Compile the cairo program to sierra.
-    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path).unwrap();
 
     let native_context = NativeContext::new();
 
