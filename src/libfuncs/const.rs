@@ -5,6 +5,7 @@ use crate::{
     error::{Error, Result},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    native_panic,
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt, RangeExt, PRIME},
 };
@@ -66,7 +67,7 @@ pub fn build_const_as_box<'ctx, 'this>(
     // Create constant
     let const_type = match &const_type_outer {
         CoreTypeConcrete::Const(inner) => inner,
-        _ => unreachable!(),
+        _ => native_panic!("matched an unexpected CoreTypeConcrete that is not a Const"),
     };
 
     let value = build_const_type_value(
@@ -105,7 +106,7 @@ pub fn build_const_as_immediate<'ctx, 'this>(
 
     let const_type = match &const_ty {
         CoreTypeConcrete::Const(inner) => inner,
-        _ => unreachable!(),
+        _ => native_panic!("matched an unexpected CoreTypeConcrete that is not a Const"),
     };
 
     let value = build_const_type_value(
@@ -147,7 +148,9 @@ pub fn build_const_type_value<'ctx, 'this>(
 
                         let const_field_type = match &field_type {
                             CoreTypeConcrete::Const(inner) => inner,
-                            _ => unreachable!(),
+                            _ => native_panic!(
+                                "matched an unexpected CoreTypeConcrete that is not a Const"
+                            ),
                         };
 
                         let field_value = build_const_type_value(
@@ -181,7 +184,9 @@ pub fn build_const_type_value<'ctx, 'this>(
                 let payload_type = registry.get_type(payload_ty)?;
                 let const_payload_type = match payload_type {
                     CoreTypeConcrete::Const(inner) => inner,
-                    _ => unreachable!(),
+                    _ => {
+                        native_panic!("matched an unexpected CoreTypeConcrete that is not a Const")
+                    }
                 };
 
                 let payload_value = build_const_type_value(
@@ -218,7 +223,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 let inner_type = registry.get_type(inner)?;
                 let const_inner_type = match inner_type {
                     CoreTypeConcrete::Const(inner) => inner,
-                    _ => unreachable!(),
+                    _ => native_panic!("unreachable: unexpected CoreTypeConcrete found"),
                 };
 
                 build_const_type_value(
