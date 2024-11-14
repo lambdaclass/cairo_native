@@ -274,17 +274,24 @@ where
     'this: 'ctx,
 {
     #[doc(hidden)]
-    pub(crate) fn results(self) -> impl Iterator<Item = NativeResult<Vec<Value<'ctx, 'this>>>> {
-        self.results.into_iter().enumerate().map(|(branch_idx, x)| {
-            x.into_iter()
-                .enumerate()
-                .map(|(arg_idx, x)| {
-                    x.into_inner().to_native_assert_error(&format!(
-                        "Argument #{arg_idx} of branch {branch_idx} doesn't have a value."
-                    ))
-                })
-                .collect()
-        })
+    pub(crate) fn results(self) -> NativeResult<impl Iterator<Item = Vec<Value<'ctx, 'this>>>> {
+        let mut results = vec![];
+
+        for (branch_idx, x) in self.results.into_iter().enumerate() {
+            let mut branches = vec![];
+
+            for (arg_idx, x) in x.into_iter().enumerate() {
+                let x = x.into_inner().to_native_assert_error(&format!(
+                    "Argument #{arg_idx} of branch {branch_idx} doesn't have a value."
+                ))?;
+
+                branches.push(x);
+            }
+
+            results.push(branches);
+        }
+
+        Ok(results.into_iter())
     }
 
     /// Return the initialization block.
