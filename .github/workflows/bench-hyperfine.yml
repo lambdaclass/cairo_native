@@ -58,15 +58,11 @@ jobs:
       - name: Install hyperfine
         uses: taiki-e/install-action@v2
         with:
-          tool: hyperfine@1.16
+          tool: hyperfine@1.18
       - name: Install deps
         run: make deps
-      - name: Build project
-        run: make build
-      - name: Build runtime subproject
-        run: make runtime-ci
       - name: Run benchmarks
-        run: ./scripts/bench-hyperfine.sh programs/benches/*.cairo
+        run: make bench
       - name: Create markdown file
         run: bash .github/scripts/merge-benches.sh
 
