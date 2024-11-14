@@ -3,9 +3,13 @@
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
 use crate::{
-    error::{panic::ToNativeAssertError, CompilerError, Error}, native_assert, native_panic, starknet::{Secp256k1Point, Secp256r1Point}, types::TypeBuilder, utils::{
+    error::{panic::ToNativeAssertError, CompilerError, Error},
+    native_assert, native_panic,
+    starknet::{Secp256k1Point, Secp256r1Point},
+    types::TypeBuilder,
+    utils::{
         felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc, RangeExt, PRIME,
-    }
+    },
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -351,8 +355,10 @@ impl Value {
                         let payload = value.to_ptr(arena, registry, payload_type_id)?;
 
                         let (layout, tag_layout, variant_layouts) =
-                            crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
-                                .unwrap();
+                            crate::types::r#enum::get_layout_for_variants(
+                                registry,
+                                &info.variants,
+                            )?;
                         let ptr = arena.alloc_layout(layout).cast::<()>().as_ptr();
 
                         match tag_layout.size() {
@@ -361,7 +367,7 @@ impl Value {
                             2 => *ptr.cast::<u16>() = *tag as u16,
                             4 => *ptr.cast::<u32>() = *tag as u32,
                             8 => *ptr.cast::<u64>() = *tag as u64,
-                            _ => unreachable!(),
+                            _ => native_panic!("reached the maximum size for an enum"),
                         }
 
                         std::ptr::copy_nonoverlapping(
@@ -506,7 +512,9 @@ impl Value {
                 Self::Secp256K1Point { .. } => todo!(),
                 Self::Secp256R1Point { .. } => todo!(),
                 Self::Null => {
-                    unimplemented!("null is meant as return value for nullable for now")
+                    native_panic!(
+                        "unimplemented: null is meant as return value for nullable for now"
+                    )
                 }
             }
         })
@@ -547,14 +555,19 @@ impl Value {
                     let data_ptr =
                         init_data_ptr.byte_add(elem_stride * start_offset_value as usize);
 
-                    assert!(end_offset_value >= start_offset_value);
+                    native_assert!(
+                        end_offset_value >= start_offset_value,
+                        "can't have an array with negative length"
+                    );
                     let num_elems = (end_offset_value - start_offset_value) as usize;
                     let mut array_value = Vec::with_capacity(num_elems);
 
                     for i in 0..num_elems {
                         // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
-                        let cur_elem_ptr =
-                            NonNull::new(data_ptr.byte_add(elem_stride * i)).unwrap();
+                        let cur_elem_ptr = NonNull::new(data_ptr.byte_add(elem_stride * i))
+                            .to_native_assert_error(
+                                "tried to make a non-null ptr out of a null one",
+                            )?;
 
                         array_value.push(Self::from_ptr(cur_elem_ptr, &info.ty, registry)?);
                     }
@@ -639,7 +652,7 @@ impl Value {
                     let tag_value = match info.variants.len() {
                         0 => {
                             // An enum without variants is basically the `!` (never) type in Rust.
-                            panic!("An enum without variants is not a valid type.")
+                            native_panic!("An enum without variants is not a valid type.")
                         }
                         1 => 0,
                         _ => match tag_layout.size() {
@@ -647,7 +660,7 @@ impl Value {
                             2 => *ptr.cast::<u16>().as_ref() as usize,
                             4 => *ptr.cast::<u32>().as_ref() as usize,
                             8 => *ptr.cast::<u64>().as_ref() as usize,
-                            _ => unreachable!(),
+                            _ => native_panic!("reached the maximum size for an enum"),
                         },
                     };
 
@@ -660,9 +673,10 @@ impl Value {
                     let payload_ty = registry.get_type(&info.variants[tag_value])?;
                     let payload_layout = payload_ty.layout(registry)?;
 
-                    let payload_ptr =
-                        NonNull::new(ptr.as_ptr().byte_add(tag_layout.extend(payload_layout)?.1))
-                            .unwrap();
+                    let payload_ptr = NonNull::new(
+                        ptr.as_ptr().byte_add(tag_layout.extend(payload_layout)?.1),
+                    )
+                    .to_native_assert_error("tried to make a non-null ptr out of a null one")?;
                     let payload = Self::from_ptr(payload_ptr, &info.variants[tag_value], registry)?;
 
                     Self::Enum {
@@ -686,7 +700,9 @@ impl Value {
                         layout = Some(new_layout);
 
                         members.push(Self::from_ptr(
-                            NonNull::new(ptr.as_ptr().byte_add(offset)).unwrap(),
+                            NonNull::new(ptr.as_ptr().byte_add(offset)).to_native_assert_error(
+                                "tried to make a non-null ptr out of a null one",
+                            )?,
                             member_ty,
                             registry,
                         )?);
@@ -718,7 +734,11 @@ impl Value {
                         output_map.insert(
                             key,
                             Self::from_ptr(
-                                NonNull::new(val_ptr).unwrap().cast(),
+                                NonNull::new(val_ptr)
+                                    .to_native_assert_error(
+                                        "tried to make a non-null ptr out of a null one",
+                                    )?
+                                    .cast(),
                                 &info.ty,
                                 registry,
                             )?,
@@ -732,7 +752,7 @@ impl Value {
                     }
                 }
                 CoreTypeConcrete::Felt252DictEntry(_) => {
-                    unimplemented!("shouldn't be possible to return")
+                    native_panic!("unimplemented: shouldn't be possible to return")
                 }
                 CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
@@ -742,7 +762,7 @@ impl Value {
                 | CoreTypeConcrete::EcOp(_)
                 | CoreTypeConcrete::GasBuiltin(_)
                 | CoreTypeConcrete::SegmentArena(_) => {
-                    unreachable!("handled before: {:?}", type_id)
+                    native_panic!("handled before: {:?}", type_id)
                 }
                 // Does it make sense for programs to return this? Should it be implemented
                 CoreTypeConcrete::StarkNet(selector) => match selector {
@@ -757,7 +777,7 @@ impl Value {
                         Self::Felt252(data)
                     }
                     StarkNetTypeConcrete::System(_) => {
-                        unreachable!("should be handled before")
+                        native_panic!("should be handled before")
                     }
                     StarkNetTypeConcrete::Secp256Point(info) => match info {
                         Secp256PointTypeConcrete::K1(_) => {
