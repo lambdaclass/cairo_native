@@ -379,9 +379,9 @@ impl AotContractExecutor {
         let len: u32 = args.len().try_into().unwrap();
 
         ptr.to_bytes(&mut invoke_data)?;
-        (0u32 as u64).to_bytes(&mut invoke_data)?; // start
-        (len as u64).to_bytes(&mut invoke_data)?; // end
-        (len as u64).to_bytes(&mut invoke_data)?; // cap
+        0u32.to_bytes(&mut invoke_data)?; // start
+        len.to_bytes(&mut invoke_data)?; // end
+        len.to_bytes(&mut invoke_data)?; // cap
 
         for (idx, elem) in args.iter().enumerate() {
             let f = elem.to_bytes_le();
