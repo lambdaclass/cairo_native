@@ -177,7 +177,7 @@
     </span>allow_warnings: bool,
     <span class="doccomment">/// In cases where gas is available, the amount of provided gas.
     </span><span class="attr">#[arg(long)]
-    </span>available_gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
+    </span>available_gas: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     <span class="doccomment">/// Run with JIT or AOT (compiled).
     </span><span class="attr">#[arg(long, value_enum, default_value_t = RunMode::Jit)]
     </span>run_mode: RunMode,

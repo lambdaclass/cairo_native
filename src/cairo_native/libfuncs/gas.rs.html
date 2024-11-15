@@ -305,12 +305,6 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Gas management libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -366,7 +360,7 @@
 
 <span class="doccomment">/// Generate MLIR operations for the `get_available_gas` libfunc.
 </span><span class="kw">pub fn </span>build_get_available_gas&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
-    _context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
@@ -374,11 +368,14 @@
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    entry.append_operation(helper.br(
-        <span class="number">0</span>,
-        <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()],
+    <span class="kw">let </span>gas = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>gas_u128 = entry.append_op_result(arith::extui(
+        gas,
+        IntegerType::new(context, <span class="number">128</span>).into(),
         location,
-    ));
+    ))<span class="question-mark">?</span>;
+    <span class="comment">// The gas is returned as u128 on the second arg.
+    </span>entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), gas_u128], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -401,7 +398,6 @@
         .expect(<span class="string">"builtin_withdraw_gas should always have a gas cost"</span>)
         .clone();
 
-    <span class="kw">let </span>u128_type: melior::ir::Type = IntegerType::new(context, <span class="number">128</span>).into();
     <span class="kw">let </span>u64_type: melior::ir::Type = IntegerType::new(context, <span class="number">64</span>).into();
 
     <span class="kw">let </span>builtin_ptr = {
@@ -414,7 +410,7 @@
             </span>.into()
     };
 
-    <span class="kw">let </span><span class="kw-2">mut </span>total_gas_cost_value = entry.const_int_from_type(context, location, <span class="number">0</span>, u128_type)<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>total_gas_cost_value = entry.const_int_from_type(context, location, <span class="number">0</span>, u64_type)<span class="question-mark">?</span>;
 
     <span class="kw">for </span>(cost_count, token_type) <span class="kw">in </span><span class="kw-2">&amp;</span>gas_cost.<span class="number">0 </span>{
         <span class="kw">if </span><span class="kw-2">*</span>cost_count == <span class="number">0 </span>{
@@ -433,7 +429,7 @@
         };
 
         <span class="kw">let </span>cost_count_value =
-            entry.const_int_from_type(context, location, <span class="kw-2">*</span>cost_count, u128_type)<span class="question-mark">?</span>;
+            entry.const_int_from_type(context, location, <span class="kw-2">*</span>cost_count, u64_type)<span class="question-mark">?</span>;
         <span class="kw">let </span>builtin_costs_index_value =
             entry.const_int_from_type(context, location, builtin_costs_index, u64_type)<span class="question-mark">?</span>;
 
@@ -445,10 +441,8 @@
             u64_type,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)<span class="question-mark">?</span>;
-        <span class="kw">let </span>cost_value_ext =
-            entry.append_op_result(arith::extui(cost_value, u128_type, location))<span class="question-mark">?</span>;
         <span class="kw">let </span>gas_cost_value =
-            entry.append_op_result(arith::muli(cost_count_value, cost_value_ext, location))<span class="question-mark">?</span>;
+            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))<span class="question-mark">?</span>;
         total_gas_cost_value =
             entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))<span class="question-mark">?</span>;
     }
@@ -483,7 +477,7 @@
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    metadata: <span class="kw-2">&amp;</span>MetadataStorage,
+    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check =
@@ -495,10 +489,9 @@
         .get::&lt;GasCost&gt;()
         .expect(<span class="string">"builtin_withdraw_gas should always have a gas cost"</span>);
 
-    <span class="kw">let </span>u128_type: melior::ir::Type = IntegerType::new(context, <span class="number">128</span>).into();
     <span class="kw">let </span>u64_type: melior::ir::Type = IntegerType::new(context, <span class="number">64</span>).into();
 
-    <span class="kw">let </span><span class="kw-2">mut </span>total_gas_cost_value = entry.const_int_from_type(context, location, <span class="number">0</span>, u128_type)<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>total_gas_cost_value = entry.const_int_from_type(context, location, <span class="number">0</span>, u64_type)<span class="question-mark">?</span>;
 
     <span class="kw">for </span>(cost_count, token_type) <span class="kw">in </span><span class="kw-2">&amp;</span>gas_cost.<span class="number">0 </span>{
         <span class="kw">if </span><span class="kw-2">*</span>cost_count == <span class="number">0 </span>{
@@ -517,7 +510,7 @@
         };
 
         <span class="kw">let </span>cost_count_value =
-            entry.const_int_from_type(context, location, <span class="kw-2">*</span>cost_count, u128_type)<span class="question-mark">?</span>;
+            entry.const_int_from_type(context, location, <span class="kw-2">*</span>cost_count, u64_type)<span class="question-mark">?</span>;
         <span class="kw">let </span>builtin_costs_index_value =
             entry.const_int_from_type(context, location, builtin_costs_index, u64_type)<span class="question-mark">?</span>;
 
@@ -529,10 +522,8 @@
             u64_type,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)<span class="question-mark">?</span>;
-        <span class="kw">let </span>cost_value_ext =
-            entry.append_op_result(arith::extui(cost_value, u128_type, location))<span class="question-mark">?</span>;
         <span class="kw">let </span>gas_cost_value =
-            entry.append_op_result(arith::muli(cost_count_value, cost_value_ext, location))<span class="question-mark">?</span>;
+            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))<span class="question-mark">?</span>;
         total_gas_cost_value =
             entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))<span class="question-mark">?</span>;
     }
@@ -618,10 +609,7 @@
         );
 
         <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]);
-        <span class="macro">assert_eq!</span>(
-            result.remaining_gas,
-            <span class="prelude-val">Some</span>(<span class="number">340282366920938463463374607431768205035</span>),
-        );
+        <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="prelude-val">Some</span>(<span class="number">18446744073709545195</span>));
     }
 }
 </code></pre></div></section></main></body></html>

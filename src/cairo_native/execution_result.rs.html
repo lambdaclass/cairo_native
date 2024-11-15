@@ -194,7 +194,7 @@
 <span class="doccomment">/// The result of the JIT execution.
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 </span><span class="kw">pub struct </span>ExecutionResult {
-    <span class="kw">pub </span>remaining_gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
+    <span class="kw">pub </span>remaining_gas: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     <span class="kw">pub </span>return_value: Value,
     <span class="kw">pub </span>builtin_stats: BuiltinStats,
 }
@@ -213,7 +213,7 @@
     serde::Deserialize,
 )]
 </span><span class="kw">pub struct </span>ContractExecutionResult {
-    <span class="kw">pub </span>remaining_gas: u128,
+    <span class="kw">pub </span>remaining_gas: u64,
     <span class="kw">pub </span>failure_flag: bool,
     <span class="kw">pub </span>return_values: Vec&lt;Felt&gt;,
     <span class="kw">pub </span>error_msg: <span class="prelude-ty">Option</span>&lt;String&gt;,

@@ -2394,12 +2394,17 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate space and write the current gas.
-    </span><span class="kw">let </span>gas_builtin_ptr = helper.init_block().alloca1(
+    </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        get_integer_layout(<span class="number">128</span>).align(),
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -2534,12 +2539,7 @@
         entry.load(context, location, ptr, variant_tys[<span class="number">1</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -2606,12 +2606,17 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate space and write the current gas.
-    </span><span class="kw">let </span>gas_builtin_ptr = helper.init_block().alloca1(
+    </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        get_integer_layout(<span class="number">128</span>).align(),
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -2747,12 +2752,7 @@
         entry.load(context, location, ptr, variant_tys[<span class="number">1</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -2819,12 +2819,17 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate space and write the current gas.
-    </span><span class="kw">let </span>gas_builtin_ptr = helper.init_block().alloca1(
+    </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        get_integer_layout(<span class="number">128</span>).align(),
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -2960,12 +2965,7 @@
         entry.load(context, location, ptr, variant_tys[<span class="number">1</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -3032,12 +3032,17 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate space and write the current gas.
-    </span><span class="kw">let </span>gas_builtin_ptr = helper.init_block().alloca1(
+    </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        get_integer_layout(<span class="number">128</span>).align(),
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -3165,12 +3170,7 @@
         entry.load(context, location, ptr, variant_tys[<span class="number">1</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -3266,12 +3266,17 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate space and write the current gas.
-    </span><span class="kw">let </span>gas_builtin_ptr = helper.init_block().alloca1(
+    </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        get_integer_layout(<span class="number">128</span>).align(),
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -3412,12 +3417,7 @@
         entry.load(context, location, ptr, variant_tys[<span class="number">1</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -3489,12 +3489,17 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate space and write the current gas.
-    </span><span class="kw">let </span>gas_builtin_ptr = helper.init_block().alloca1(
+    </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        get_integer_layout(<span class="number">128</span>).align(),
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -3630,12 +3635,7 @@
         entry.load(context, location, ptr, variant_tys[<span class="number">1</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -3702,12 +3702,17 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate space and write the current gas.
-    </span><span class="kw">let </span>gas_builtin_ptr = helper.init_block().alloca1(
+    </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        get_integer_layout(<span class="number">128</span>).align(),
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -3843,12 +3848,7 @@
         entry.load(context, location, ptr, variant_tys[<span class="number">1</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -3915,12 +3915,17 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate space and write the current gas.
-    </span><span class="kw">let </span>gas_builtin_ptr = helper.init_block().alloca1(
+    </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        get_integer_layout(<span class="number">128</span>).align(),
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -4059,12 +4064,7 @@
         entry.load(context, location, ptr, variant_tys[<span class="number">1</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -4131,12 +4131,17 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate space and write the current gas.
-    </span><span class="kw">let </span>gas_builtin_ptr = helper.init_block().alloca1(
+    </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        get_integer_layout(<span class="number">128</span>).align(),
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -4265,12 +4270,7 @@
         entry.load(context, location, ptr, variant_tys[<span class="number">1</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -4366,12 +4366,17 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// Allocate space and write the current gas.
-    </span><span class="kw">let </span>gas_builtin_ptr = helper.init_block().alloca1(
+    </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        get_integer_layout(<span class="number">128</span>).align(),
+        helper,
+        registry,
+        metadata,
+        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())<span class="question-mark">?</span>;
     entry.append_operation(llvm::store(
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -4514,12 +4519,7 @@
         entry.load(context, location, ptr, variant_tys[<span class="number">1</span>].<span class="number">0</span>)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,

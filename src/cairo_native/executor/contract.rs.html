@@ -832,7 +832,6 @@
 <a href="#832" id="832">832</a>
 <a href="#833" id="833">833</a>
 <a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
@@ -1120,7 +1119,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         selector: Felt,
         args: <span class="kw-2">&amp;</span>[Felt],
-        gas: <span class="prelude-ty">Option</span>&lt;u128&gt;,
+        gas: <span class="prelude-ty">Option</span>&lt;u64&gt;,
         builtin_costs: <span class="prelude-ty">Option</span>&lt;BuiltinCosts&gt;,
         <span class="kw-2">mut </span>syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult&gt; {
@@ -1166,7 +1165,7 @@
                 <span class="kw">let </span>token_cost = builtin_costs_stack[<span class="kw-2">*</span>offset <span class="kw">as </span>usize] * val;
                 cost += token_cost;
             }
-            cost <span class="kw">as </span>u128
+            cost
         };
         <span class="kw">let </span>gas = gas
             .unwrap_or(initial_gas_cost)
@@ -1181,8 +1180,7 @@
 
         <span class="comment">// There is always a return ptr because contracts always return more than 1 thing (builtin counters, syscall, enum)
         </span><span class="kw">let </span>return_ptr = arena.alloc_layout(<span class="kw">unsafe </span>{
-            <span class="comment">// 64 = size of enum + builtin sizes
-            // align is 16 because of the u128 from gas
+            <span class="comment">// 56 = size of enum
             </span>Layout::from_size_align_unchecked(<span class="number">128 </span>+ builtins_size, <span class="number">16</span>)
         });
 
@@ -1276,7 +1274,7 @@
         <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.contract_info.entry_points_info[<span class="kw-2">&amp;</span>function_id.id].builtins {
             <span class="kw">match </span>b {
                 BuiltinType::Gas =&gt; {
-                    remaining_gas = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>read_value::&lt;u128&gt;(return_ptr) };
+                    remaining_gas = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>read_value::&lt;u64&gt;(return_ptr) };
                 }
                 BuiltinType::System =&gt; {
                     <span class="kw">unsafe </span>{ read_value::&lt;<span class="kw-2">*mut </span>()&gt;(return_ptr) };
@@ -1551,7 +1549,7 @@
                 .run(
                     Felt::from(<span class="kw-2">&amp;</span>selector),
                     <span class="kw-2">&amp;</span>[n.into()],
-                    <span class="prelude-val">Some</span>(u64::MAX <span class="kw">as </span>u128),
+                    <span class="prelude-val">Some</span>(u64::MAX),
                     <span class="prelude-val">None</span>,
                     <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
                 )
@@ -1586,7 +1584,7 @@
             .run(
                 Felt::from(<span class="kw-2">&amp;</span>selector),
                 <span class="kw-2">&amp;</span>[<span class="number">2</span>.into()],
-                <span class="prelude-val">Some</span>(u64::MAX <span class="kw">as </span>u128),
+                <span class="prelude-val">Some</span>(u64::MAX),
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )
@@ -1621,7 +1619,7 @@
             .run(
                 Felt::from(<span class="kw-2">&amp;</span>selector),
                 <span class="kw-2">&amp;</span>[<span class="number">10</span>.into()],
-                <span class="prelude-val">Some</span>(u64::MAX <span class="kw">as </span>u128),
+                <span class="prelude-val">Some</span>(u64::MAX),
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )
@@ -1659,7 +1657,7 @@
             .run(
                 Felt::from(<span class="kw-2">&amp;</span>selector),
                 <span class="kw-2">&amp;</span>[],
-                <span class="prelude-val">Some</span>(u64::MAX <span class="kw">as </span>u128),
+                <span class="prelude-val">Some</span>(u64::MAX),
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )

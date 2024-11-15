@@ -294,11 +294,6 @@
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -317,7 +312,7 @@
 };
 <span class="kw">use </span>melior::{
     dialect::arith,
-    ir::{r#type::IntegerType, Block, Location},
+    ir::{Block, Location},
     Context,
 };
 
@@ -387,11 +382,6 @@
         .dict_gas_refund(context, helper, entry, dict_ptr, location)<span class="question-mark">?
         </span>.result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
-    <span class="kw">let </span>gas_refund = entry.append_op_result(arith::extui(
-        gas_refund,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        location,
-    ))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>new_gas_builtin = entry.append_op_result(arith::addi(gas_builtin, gas_refund, location))<span class="question-mark">?</span>;
 

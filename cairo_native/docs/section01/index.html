@@ -68,12 +68,12 @@ from the program.</li>
  ├─ arch/               Architecture-specific code for the trampoline.
  ├─ bin/                Binary programs
  ├─ block_ext.rs        A melior (MLIR) block trait extension to write less code.
- ├─ cache.rs            Types and implementations of compiled program caches. 
+ ├─ cache.rs            Types and implementations of compiled program caches.
  ├─ compiler.rs         The glue code of the compiler, has the codegen for
                         the function signatures and calls the libfunc
                         codegen implementations.
  ├─ context.rs          The MLIR context wrapper, provides the compile method.
- ├─ debug.rs            
+ ├─ debug.rs
  ├─ docs.rs             Documentation modules.
  ├─ error.rs            Error handling,
  ├─ execution_result.rs Program result parsing.
@@ -85,7 +85,7 @@ from the program.</li>
  ├─ metadata.rs         Metadata injector to use within the compilation process.
  ├─ module.rs           The MLIR module wrapper.
  ├─ starknet.rs         Starknet syscall handler glue code.
- ├─ starknet_stub.rs    
+ ├─ starknet_stub.rs
  ├─ types.rs            Cairo to MLIR type information,
  ├─ utils.rs            Internal utilities.
  └─ values.rs           JIT serialization.
@@ -266,7 +266,7 @@ execute a program using the JIT.</p>
     <span class="kw">fn </span>get_block_hash(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         block_number: u64,
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;Felt&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `get_block_hash({block_number})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(Felt::from_bytes_be_slice(<span class="string">b"get_block_hash ok"</span>))
@@ -274,7 +274,7 @@ execute a program using the JIT.</p>
 
     <span class="kw">fn </span>get_execution_info(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;cairo_native::starknet::ExecutionInfo&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `get_execution_info()` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(ExecutionInfo {
@@ -304,7 +304,7 @@ execute a program using the JIT.</p>
         contract_address_salt: Felt,
         calldata: <span class="kw-2">&amp;</span>[Felt],
         deploy_from_zero: bool,
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;(Felt, Vec&lt;Felt&gt;)&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>((
@@ -316,7 +316,7 @@ execute a program using the JIT.</p>
     <span class="kw">fn </span>replace_class(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         class_hash: Felt,
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;()&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `replace_class({class_hash})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(())
@@ -327,7 +327,7 @@ execute a program using the JIT.</p>
         class_hash: Felt,
         function_selector: Felt,
         calldata: <span class="kw-2">&amp;</span>[Felt],
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
         <span class="macro">println!</span>(
             <span class="string">"Called `library_call({class_hash}, {function_selector}, {calldata:?})` from MLIR."
@@ -340,7 +340,7 @@ execute a program using the JIT.</p>
         address: Felt,
         entry_point_selector: Felt,
         calldata: <span class="kw-2">&amp;</span>[Felt],
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
         <span class="macro">println!</span>(
             <span class="string">"Called `call_contract({address}, {entry_point_selector}, {calldata:?})` from MLIR."
@@ -352,7 +352,7 @@ execute a program using the JIT.</p>
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         address_domain: u32,
         address: Felt,
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;Felt&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `storage_read({address_domain}, {address})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(address * Felt::from(<span class="number">3</span>))
@@ -363,7 +363,7 @@ execute a program using the JIT.</p>
         address_domain: u32,
         address: Felt,
         value: Felt,
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;()&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `storage_write({address_domain}, {address}, {value})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(())
@@ -373,7 +373,7 @@ execute a program using the JIT.</p>
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         keys: <span class="kw-2">&amp;</span>[Felt],
         data: <span class="kw-2">&amp;</span>[Felt],
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;()&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `emit_event({keys:?}, {data:?})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(())
@@ -383,7 +383,7 @@ execute a program using the JIT.</p>
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         to_address: Felt,
         payload: <span class="kw-2">&amp;</span>[Felt],
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;()&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `send_message_to_l1({to_address}, {payload:?})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(())
@@ -392,7 +392,7 @@ execute a program using the JIT.</p>
     <span class="kw">fn </span>keccak(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         input: <span class="kw-2">&amp;</span>[u64],
-        _gas: <span class="kw-2">&amp;mut </span>u128,
+        _gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;cairo_native::starknet::U256&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `keccak({input:?})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(U256(Felt::from(<span class="number">1234567890</span>).to_le_bytes()))

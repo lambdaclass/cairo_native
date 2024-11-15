@@ -1344,7 +1344,7 @@
     </span><span class="kw">fn </span>get_block_hash(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         block_number: u64,
-        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;Felt&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="prelude-val">Ok</span>(block_number.into())
@@ -1353,7 +1353,7 @@
     <span class="attr">#[instrument(skip(<span class="self">self</span>))]
     </span><span class="kw">fn </span>get_execution_info(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;<span class="kw">crate</span>::starknet::ExecutionInfo&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="prelude-val">Ok</span>(ExecutionInfo {
@@ -1376,7 +1376,7 @@
     <span class="attr">#[instrument(skip(<span class="self">self</span>))]
     </span><span class="kw">fn </span>get_execution_info_v2(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;<span class="kw">crate</span>::starknet::ExecutionInfoV2&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.execution_info.clone())
@@ -1389,7 +1389,7 @@
         contract_address_salt: Felt,
         calldata: <span class="kw-2">&amp;</span>[Felt],
         deploy_from_zero: bool,
-        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;(Felt, Vec&lt;Felt&gt;)&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="macro">todo!</span>()
@@ -1399,7 +1399,7 @@
     </span><span class="kw">fn </span>replace_class(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         class_hash: Felt,
-        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;()&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="macro">tracing::warn!</span>(<span class="string">"unimplemented"</span>);
@@ -1412,7 +1412,7 @@
         class_hash: Felt,
         function_selector: Felt,
         calldata: <span class="kw-2">&amp;</span>[Felt],
-        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="macro">tracing::warn!</span>(<span class="string">"unimplemented"</span>);
@@ -1425,7 +1425,7 @@
         address: Felt,
         entry_point_selector: Felt,
         calldata: <span class="kw-2">&amp;</span>[Felt],
-        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="macro">tracing::warn!</span>(<span class="string">"unimplemented"</span>);
@@ -1436,7 +1436,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         address_domain: u32,
         address: Felt,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;Felt&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <span class="self">self</span>.storage.get(<span class="kw-2">&amp;</span>(address_domain, address)) {
@@ -1452,7 +1452,7 @@
         address_domain: u32,
         address: Felt,
         value: Felt,
-        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;()&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="self">self</span>.storage.insert((address_domain, address), value);
@@ -1464,7 +1464,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         keys: <span class="kw-2">&amp;</span>[Felt],
         data: <span class="kw-2">&amp;</span>[Felt],
-        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;()&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="macro">tracing::warn!</span>(<span class="string">"unimplemented but stored"</span>);
@@ -1480,7 +1480,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         to_address: Felt,
         payload: <span class="kw-2">&amp;</span>[Felt],
-        remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; <span class="kw">crate</span>::starknet::SyscallResult&lt;()&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
         <span class="macro">tracing::warn!</span>(<span class="string">"unimplemented"</span>);
@@ -1488,7 +1488,7 @@
     }
 
     <span class="attr">#[instrument(skip(<span class="self">self</span>))]
-    </span><span class="kw">fn </span>keccak(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>[u64], gas: <span class="kw-2">&amp;mut </span>u128) -&gt; SyscallResult&lt;U256&gt; {
+    </span><span class="kw">fn </span>keccak(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>[u64], gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;U256&gt; {
         <span class="kw">const </span>KECCAK_FULL_RATE_IN_WORDS: usize = <span class="number">17</span>;
 
         <span class="kw">let </span>length = input.len();
@@ -1521,7 +1521,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: U256,
         y: U256,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;Secp256k1Point&gt;&gt; {
         Secp256Point::new(x, y).map(|op| op.map(|p| p.into()))
     }
@@ -1531,7 +1531,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         p0: Secp256k1Point,
         p1: Secp256k1Point,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;Secp256k1Point&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"called"</span>);
 
@@ -1543,7 +1543,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         p: Secp256k1Point,
         m: U256,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;Secp256k1Point&gt; {
         <span class="prelude-val">Ok</span>(Secp256Point::mul(p.into(), m).into())
     }
@@ -1553,7 +1553,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: U256,
         y_parity: bool,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;Secp256k1Point&gt;&gt; {
         Secp256Point::get_point_from_x(x, y_parity).map(|op| op.map(|p| p.into()))
     }
@@ -1562,7 +1562,7 @@
     </span><span class="kw">fn </span>secp256k1_get_xy(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         p: Secp256k1Point,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;(U256, U256)&gt; {
         <span class="prelude-val">Ok</span>((p.x, p.y))
     }
@@ -1572,7 +1572,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: U256,
         y: U256,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;Secp256r1Point&gt;&gt; {
         Secp256Point::new(x, y).map(|op| op.map(|p| p.into()))
     }
@@ -1582,7 +1582,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         p0: Secp256r1Point,
         p1: Secp256r1Point,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;Secp256r1Point&gt; {
         <span class="prelude-val">Ok</span>(Secp256Point::add(p0.into(), p1.into()).into())
     }
@@ -1592,7 +1592,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         p: Secp256r1Point,
         m: U256,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;Secp256r1Point&gt; {
         <span class="prelude-val">Ok</span>(Secp256Point::mul(p.into(), m).into())
     }
@@ -1602,7 +1602,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         x: U256,
         y_parity: bool,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;Secp256r1Point&gt;&gt; {
         Secp256Point::get_point_from_x(x, y_parity).map(|op| op.map(|p| p.into()))
     }
@@ -1611,7 +1611,7 @@
     </span><span class="kw">fn </span>secp256r1_get_xy(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         p: Secp256r1Point,
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;(U256, U256)&gt; {
         <span class="prelude-val">Ok</span>((p.x, p.y))
     }
@@ -1712,7 +1712,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         state: <span class="kw-2">&amp;mut </span>[u32; <span class="number">8</span>],
         block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
-        _remaining_gas: <span class="kw-2">&amp;mut </span>u128,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;()&gt; {
         <span class="comment">// reference impl
         // https://github.com/starkware-libs/cairo/blob/ba3f82b4a09972b6a24bf791e344cabce579bf69/crates/cairo-lang-runner/src/casm_run/mod.rs#L1292
