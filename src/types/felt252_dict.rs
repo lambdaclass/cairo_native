@@ -8,7 +8,7 @@
 
 use super::WithSelf;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
@@ -133,7 +133,8 @@ fn build_dup<'ctx>(
                 ),
                 (
                     Identifier::new(context, "linkage"),
-                    Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+                    Attribute::parse(context, "#llvm.linkage<private>")
+                        .ok_or(Error::ParseAttributeError)?,
                 ),
             ],
             location,
@@ -157,7 +158,7 @@ fn build_dup<'ctx>(
     let value0 = entry.argument(0)?.into();
     let value1 = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .unwrap()
+        .ok_or(Error::MissingMetadata)?
         .dict_dup(context, module, &entry, value0, dup_fn, location)?;
 
     entry.append_operation(func::r#return(&[value0, value1], location));
@@ -207,7 +208,8 @@ fn build_drop<'ctx>(
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<private>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 location,
@@ -237,7 +239,9 @@ fn build_drop<'ctx>(
     };
 
     // The following unwrap is unreachable because the registration logic will always insert it.
-    let runtime_bindings_meta = metadata.get_mut::<RuntimeBindingsMeta>().unwrap();
+    let runtime_bindings_meta = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .ok_or(Error::MissingMetadata)?;
     runtime_bindings_meta.dict_drop(
         context,
         module,

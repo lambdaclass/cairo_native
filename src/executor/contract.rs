@@ -285,7 +285,7 @@ impl AotContractExecutor {
         &self,
         selector: Felt,
         args: &[Felt],
-        gas: Option<u128>,
+        gas: Option<u64>,
         builtin_costs: Option<BuiltinCosts>,
         mut syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult> {
@@ -331,7 +331,7 @@ impl AotContractExecutor {
                 let token_cost = builtin_costs_stack[*offset as usize] * val;
                 cost += token_cost;
             }
-            cost as u128
+            cost
         };
         let gas = gas
             .unwrap_or(initial_gas_cost)
@@ -346,8 +346,7 @@ impl AotContractExecutor {
 
         // There is always a return ptr because contracts always return more than 1 thing (builtin counters, syscall, enum)
         let return_ptr = arena.alloc_layout(unsafe {
-            // 64 = size of enum + builtin sizes
-            // align is 16 because of the u128 from gas
+            // 56 = size of enum
             Layout::from_size_align_unchecked(128 + builtins_size, 16)
         });
 
@@ -441,7 +440,7 @@ impl AotContractExecutor {
         for b in &self.contract_info.entry_points_info[&function_id.id].builtins {
             match b {
                 BuiltinType::Gas => {
-                    remaining_gas = unsafe { *read_value::<u128>(return_ptr) };
+                    remaining_gas = unsafe { *read_value::<u64>(return_ptr) };
                 }
                 BuiltinType::System => {
                     unsafe { read_value::<*mut ()>(return_ptr) };
@@ -716,7 +715,7 @@ mod tests {
                 .run(
                     Felt::from(&selector),
                     &[n.into()],
-                    Some(u64::MAX as u128),
+                    Some(u64::MAX),
                     None,
                     &mut StubSyscallHandler::default(),
                 )
@@ -751,7 +750,7 @@ mod tests {
             .run(
                 Felt::from(&selector),
                 &[2.into()],
-                Some(u64::MAX as u128),
+                Some(u64::MAX),
                 None,
                 &mut StubSyscallHandler::default(),
             )
@@ -786,7 +785,7 @@ mod tests {
             .run(
                 Felt::from(&selector),
                 &[10.into()],
-                Some(u64::MAX as u128),
+                Some(u64::MAX),
                 None,
                 &mut StubSyscallHandler::default(),
             )
@@ -824,7 +823,7 @@ mod tests {
             .run(
                 Felt::from(&selector),
                 &[],
-                Some(u64::MAX as u128),
+                Some(u64::MAX),
                 None,
                 &mut StubSyscallHandler::default(),
             )

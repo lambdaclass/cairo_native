@@ -125,7 +125,7 @@ fn main() {
         let execution_result = {
             let now = Instant::now();
             let execution_result = executor
-                .invoke_contract_dynamic(&entry_point, &[], Some(u128::MAX), DummySyscallHandler)
+                .invoke_contract_dynamic(&entry_point, &[], Some(u64::MAX), DummySyscallHandler)
                 .expect("failed to execute contract");
             let elapsed = now.elapsed().as_millis();
             let result = execution_result.return_values[0];
