@@ -168,8 +168,13 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let (_, elem_layout) =
         registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
-    let array_len_bytes =
-        elem_layout.pad_to_align().size() * tuple_len + calc_refcount_offset(elem_layout);
+    let array_len_bytes = elem_layout.pad_to_align().size() * tuple_len;
+    let array_len_bytes_with_offset = entry.const_int(
+        context,
+        location,
+        array_len_bytes + calc_refcount_offset(elem_layout),
+        64,
+    )?;
     let array_len_bytes = entry.const_int(context, location, array_len_bytes, 64)?;
     let array_len = entry.const_int_from_type(context, location, tuple_len, len_ty)?;
 
@@ -180,7 +185,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let array_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context,
         array_ptr,
-        array_len_bytes,
+        array_len_bytes_with_offset,
         location,
     ))?;
     entry.store(context, location, array_ptr, k1)?;
