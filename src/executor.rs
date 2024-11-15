@@ -318,7 +318,6 @@ fn parse_result(
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> Result<Value, Error> {
     let type_info = registry.get_type(type_id).unwrap();
-    let debug_name = type_info.info().long_id.to_string();
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
@@ -538,14 +537,14 @@ fn parse_result(
             Ok(Value::Enum {
                 tag,
                 value,
-                debug_name: Some(debug_name),
+                debug_name: Some(type_info.info().long_id.to_string()),
             })
         }
         CoreTypeConcrete::Struct(info) => {
             if info.members.is_empty() {
                 Ok(Value::Struct {
                     fields: Vec::new(),
-                    debug_name: Some(debug_name),
+                    debug_name: Some(type_info.info().long_id.to_string()),
                 })
             } else {
                 Ok(Value::from_ptr(
