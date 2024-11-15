@@ -1,5 +1,10 @@
 use crate::{
-    error::Result, native_panic, starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point}, types::TypeBuilder, utils::libc_malloc, values::Value
+    error::Result,
+    native_panic,
+    starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
+    types::TypeBuilder,
+    utils::libc_malloc,
+    values::Value,
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -98,7 +103,9 @@ impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
                 abi.until.to_bytes(buffer)?;
                 abi.capacity.to_bytes(buffer)?;
             }
-            (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => native_panic!("todo: implement AbiArgument for Value::BoundedInt case"),
+            (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => {
+                native_panic!("todo: implement AbiArgument for Value::BoundedInt case")
+            }
             (Value::Bytes31(value), CoreTypeConcrete::Bytes31(_)) => value.to_bytes(buffer)?,
             (Value::EcPoint(x, y), CoreTypeConcrete::EcPoint(_)) => {
                 x.to_bytes(buffer)?;
