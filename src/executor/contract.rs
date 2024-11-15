@@ -393,6 +393,18 @@ impl AotContractExecutor {
             };
         }
 
+        // Pad invoke data to the 16 byte boundary avoid segfaults.
+        #[cfg(target_arch = "aarch64")]
+        const REGISTER_BYTES: usize = 64;
+        #[cfg(target_arch = "x86_64")]
+        const REGISTER_BYTES: usize = 48;
+        if invoke_data.len() > REGISTER_BYTES {
+            invoke_data.resize(
+                REGISTER_BYTES + (invoke_data.len() - REGISTER_BYTES).next_multiple_of(16),
+                0,
+            );
+        }
+
         // Invoke the trampoline.
         #[cfg(target_arch = "x86_64")]
         let mut ret_registers = [0; 2];
