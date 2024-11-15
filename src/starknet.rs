@@ -530,12 +530,12 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
-    use crate::utils::{libc_free, libc_malloc};
+    use crate::utils::{get_integer_layout, libc_free, libc_malloc};
     use std::{
         alloc::Layout,
         ffi::c_void,
         fmt::Debug,
-        mem::{size_of, ManuallyDrop, MaybeUninit},
+        mem::{self, size_of, ManuallyDrop, MaybeUninit},
         ptr::{null_mut, NonNull},
     };
 
@@ -889,7 +889,17 @@ pub(crate) mod handler {
                     capacity: 0,
                 },
                 _ => {
-                    let ptr = libc_malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
+                    let refcount_offset = get_integer_layout(32)
+                        .align_to(mem::align_of::<E>())
+                        .unwrap()
+                        .pad_to_align()
+                        .size();
+                    let ptr = libc_malloc(
+                        Layout::array::<E>(data.len()).unwrap().size() + refcount_offset,
+                    ) as *mut E;
+
+                    ptr.cast::<u32>().write(1);
+                    let ptr = ptr.byte_add(refcount_offset);
 
                     let len: u32 = data.len().try_into().unwrap();
                     for (i, val) in data.iter().enumerate() {
