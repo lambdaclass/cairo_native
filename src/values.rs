@@ -1432,6 +1432,7 @@ mod test {
     }
 
     #[test]
+    #[should_panic(expected = "Variant index out of range.")]
     fn test_to_jit_enum_variant_out_of_range() {
         // Parse the program
         let program = ProgramParser::new()
@@ -1451,15 +1452,11 @@ mod test {
             debug_name: None,
         }
         .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id)
-        .unwrap_err();
-
-        let error = result.to_string().clone();
-        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
-
-        assert_eq!(error_msg, "Variant index out of range.");
+        .unwrap();
     }
 
     #[test]
+    #[should_panic(expected = "An enum without variants cannot be instantiated.")]
     fn test_to_jit_enum_no_variant() {
         let program = ProgramParser::new()
             .parse(
@@ -1476,15 +1473,7 @@ mod test {
             debug_name: None,
         }
         .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id)
-        .unwrap_err();
-
-        let error = result.to_string().clone();
-        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
-
-        assert_eq!(
-            error_msg,
-            "An enum without variants cannot be instantiated."
-        )
+        .unwrap();
     }
 
     #[test]
