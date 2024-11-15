@@ -434,8 +434,6 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     }
 
     {
-        // The following unwrap should be unreachable because an array always has a drop
-        // implementation.
         metadata
             .get::<DropOverridesMeta>()
             .ok_or(Error::MissingMetadata)?
