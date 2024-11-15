@@ -2,12 +2,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{panic::ToNativeAssertError, Error, Result, SierraAssertError},
+    error::{Error, Result, SierraAssertError},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    native_assert, native_panic,
     utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
