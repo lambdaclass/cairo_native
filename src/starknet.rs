@@ -533,7 +533,6 @@ pub(crate) mod handler {
     use crate::utils::{get_integer_layout, libc_free, libc_malloc};
     use std::{
         alloc::Layout,
-        ffi::c_void,
         fmt::Debug,
         mem::{self, size_of, ManuallyDrop, MaybeUninit},
         ptr::{null_mut, NonNull},

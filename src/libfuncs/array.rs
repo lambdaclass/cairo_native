@@ -23,7 +23,9 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, llvm, ods, scf,
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Region, Value},
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Region, Value, ValueLike,
+    },
     Context,
 };
 use std::alloc::Layout;
@@ -907,7 +909,7 @@ enum PopInfo<'a> {
     Multi(&'a ConcreteMultiPopLibfunc),
 }
 
-/// Generate MLIR operations for the `array_pop_front` libfunc.
+/// Generate MLIR operations for the `array_pop_*` libfuncs.
 ///
 /// Template arguments:
 ///   - Consume: Whether to consume or not the array on failure.
@@ -1057,7 +1059,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             )?
         };
 
-        let array_ptr = valid_block.append_op_result(scf::r#if(
+        let new_array_ptr = valid_block.append_op_result(scf::r#if(
             is_shared,
             &[ptr_ty],
             {
@@ -1113,14 +1115,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                     _ => block.memcpy(context, location, data_ptr, value_ptr, value_size),
                 }
 
-                let array_ptr = if CONSUME {
-                    metadata
-                        .get::<DropOverridesMeta>()
-                        .unwrap()
-                        .invoke_override(context, &block, location, self_ty, array_value)?;
-
-                    array_ptr
-                } else {
+                let array_ptr = {
                     let array_len_bytes = elem_layout.pad_to_align().size() * extract_len
                         + calc_refcount_offset(elem_layout);
                     let array_len_bytes =
@@ -1168,13 +1163,13 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                         extract_len_value,
                         location,
                     ))?;
-                    let others_size = block.append_op_result(arith::extui(
+                    let others_len = block.append_op_result(arith::extui(
                         others_len,
                         IntegerType::new(context, 64).into(),
                         location,
                     ))?;
-                    let others_len =
-                        block.append_op_result(arith::muli(others_size, elem_stride, location))?;
+                    let others_size =
+                        block.append_op_result(arith::muli(others_len, elem_stride, location))?;
 
                     match metadata.get::<DupOverridesMeta>() {
                         Some(dup_overrides_meta) => {
@@ -1219,8 +1214,13 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                                 location,
                             ));
                         }
-                        _ => block.memcpy(context, location, data_ptr, clone_ptr, others_len),
+                        _ => block.memcpy(context, location, data_ptr, clone_ptr, others_size),
                     }
+
+                    metadata
+                        .get::<DropOverridesMeta>()
+                        .unwrap()
+                        .invoke_override(context, &block, location, self_ty, array_value)?;
 
                     clone_ptr
                 };
@@ -1240,22 +1240,65 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             location,
         ))?;
 
-        let array_value = valid_block.insert_value(context, location, array_value, array_ptr, 0)?;
-        let array_value = if REVERSE {
-            let array_end = valid_block.append_op_result(arith::subi(
-                array_end,
-                extract_len_value,
+        let array_value =
+            valid_block.insert_value(context, location, array_value, new_array_ptr, 0)?;
+
+        let has_realloc = valid_block.append_op_result(
+            ods::llvm::icmp(
+                context,
+                IntegerType::new(context, 1).into(),
+                array_ptr,
+                new_array_ptr,
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
                 location,
-            ))?;
-            valid_block.insert_value(context, location, array_value, array_end, 2)?
-        } else {
-            let array_start = valid_block.append_op_result(arith::addi(
-                array_start,
-                extract_len_value,
-                location,
-            ))?;
-            valid_block.insert_value(context, location, array_value, array_start, 1)?
-        };
+            )
+            .into(),
+        )?;
+        let array_value = valid_block.append_op_result(scf::r#if(
+            has_realloc,
+            &[array_value.r#type()],
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                let k0 = block.const_int_from_type(context, location, 0, len_ty)?;
+                let array_len =
+                    block.append_op_result(arith::subi(array_len, extract_len_value, location))?;
+
+                let array_value = block.insert_value(context, location, array_value, k0, 1)?;
+                let array_value =
+                    block.insert_value(context, location, array_value, array_len, 2)?;
+                let array_value =
+                    block.insert_value(context, location, array_value, array_len, 3)?;
+
+                block.append_operation(scf::r#yield(&[array_value], location));
+                region
+            },
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                let array_value = if REVERSE {
+                    let array_end = block.append_op_result(arith::subi(
+                        array_end,
+                        extract_len_value,
+                        location,
+                    ))?;
+                    block.insert_value(context, location, array_value, array_end, 2)?
+                } else {
+                    let array_start = block.append_op_result(arith::addi(
+                        array_start,
+                        extract_len_value,
+                        location,
+                    ))?;
+                    block.insert_value(context, location, array_value, array_start, 1)?
+                };
+
+                block.append_operation(scf::r#yield(&[array_value], location));
+                region
+            },
+            location,
+        ))?;
 
         branch_values.push(array_value);
         branch_values.push(value_ptr);
