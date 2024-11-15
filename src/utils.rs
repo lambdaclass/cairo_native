@@ -234,9 +234,9 @@ pub fn felt252_str(value: &str) -> Felt {
         .parse::<BigInt>()
         .expect("value must be a digit number");
 
-    let value = match value.to_biguint() {
-        Some(value) => value,
-        None => &*PRIME - value.neg().to_biguint().expect("is always positive"),
+    let value = match value.sign() {
+        Sign::Minus => &*PRIME - value.magnitude(),
+        _ => value.magnitude().clone(),
     };
 
     value.into()
