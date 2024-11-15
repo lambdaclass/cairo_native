@@ -26,7 +26,6 @@ use std::{
     alloc::Layout,
     borrow::Cow,
     fmt::{self, Display},
-    ops::Neg,
     path::Path,
 };
 use thiserror::Error;
