@@ -254,13 +254,18 @@ impl AotContractExecutor {
             .pad_to_align()
             .size();
 
-        let ptr: *mut () =
-            unsafe { libc_malloc(felt_layout.size() * args.len() + refcount_offset).cast() };
-        let len: u32 = args.len().try_into().unwrap();
+        let ptr = match args.len() {
+            0 => std::ptr::null_mut(),
+            _ => unsafe {
+                let ptr: *mut () =
+                    libc_malloc(felt_layout.size() * args.len() + refcount_offset).cast();
 
-        // Write reference count.
-        unsafe { ptr.cast::<u32>().write(1) };
-        let ptr = unsafe { ptr.byte_add(refcount_offset) };
+                // Write reference count.
+                ptr.cast::<u32>().write(1);
+                ptr.byte_add(refcount_offset)
+            },
+        };
+        let len: u32 = args.len().try_into().unwrap();
 
         ptr.to_bytes(&mut invoke_data)?;
         0u32.to_bytes(&mut invoke_data)?; // start
