@@ -916,6 +916,20 @@ pub(crate) mod handler {
             }
         }
 
+        unsafe fn drop_mlir_array<E>(data: &ArrayAbi<E>) {
+            let refcount_offset = get_integer_layout(32)
+                .align_to(mem::align_of::<E>())
+                .unwrap()
+                .pad_to_align()
+                .size();
+
+            let ptr = data.ptr.byte_sub(refcount_offset);
+            match ptr.cast::<u32>().read() {
+                1 => libc_free(ptr.cast()),
+                n => ptr.cast::<u32>().write(n - 1),
+            }
+        }
+
         fn wrap_error<E>(e: &[Felt]) -> SyscallResultAbi<E> {
             SyscallResultAbi {
                 err: ManuallyDrop::new(SyscallResultAbiErr {
@@ -958,7 +972,7 @@ pub(crate) mod handler {
             let input_vec: Vec<_> = input.into();
 
             unsafe {
-                libc_free(input.ptr as *mut c_void);
+                Self::drop_mlir_array(input);
             }
 
             let result = ptr
@@ -1147,7 +1161,7 @@ pub(crate) mod handler {
             let calldata_vec: Vec<_> = calldata.into();
 
             unsafe {
-                libc_free(calldata.ptr as *mut c_void);
+                Self::drop_mlir_array(calldata);
             }
 
             let result = ptr.deploy(
@@ -1207,7 +1221,7 @@ pub(crate) mod handler {
             let calldata_vec: Vec<Felt> = calldata.into();
 
             unsafe {
-                libc_free(calldata.ptr as *mut c_void);
+                Self::drop_mlir_array(calldata);
             }
 
             let result = ptr.library_call(class_hash, function_selector, &calldata_vec, gas);
@@ -1241,7 +1255,7 @@ pub(crate) mod handler {
             let calldata_vec: Vec<Felt> = calldata.into();
 
             unsafe {
-                libc_free(calldata.ptr as *mut c_void);
+                Self::drop_mlir_array(calldata);
             }
 
             let result = ptr.call_contract(address, entry_point_selector, &calldata_vec, gas);
@@ -1315,13 +1329,13 @@ pub(crate) mod handler {
             let keys_vec: Vec<_> = keys.into();
 
             unsafe {
-                libc_free(keys.ptr as *mut c_void);
+                Self::drop_mlir_array(keys);
             }
 
             let data_vec: Vec<_> = data.into();
 
             unsafe {
-                libc_free(data.ptr as *mut c_void);
+                Self::drop_mlir_array(data);
             }
 
             let result = ptr.emit_event(&keys_vec, &data_vec, gas);
@@ -1348,7 +1362,7 @@ pub(crate) mod handler {
             let payload_vec: Vec<_> = payload.into();
 
             unsafe {
-                libc_free(payload.ptr as *mut c_void);
+                Self::drop_mlir_array(payload);
             }
 
             let result = ptr.send_message_to_l1(to_address, &payload_vec, gas);
@@ -1383,7 +1397,7 @@ pub(crate) mod handler {
 
             let result = ptr.keccak(input_vec, gas);
             unsafe {
-                libc_free(input.ptr as *mut c_void);
+                Self::drop_mlir_array(input);
             }
 
             *result_ptr = match result {
