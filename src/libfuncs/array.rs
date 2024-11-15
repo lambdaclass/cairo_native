@@ -2,11 +2,12 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result, SierraAssertError},
+    error::{panic::ToNativeAssertError, Error, Result, SierraAssertError},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
+    native_assert, native_panic,
     utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -437,7 +438,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         // implementation.
         metadata
             .get::<DropOverridesMeta>()
-            .unwrap()
+            .ok_or(Error::MissingMetadata)?
             .invoke_override(
                 context,
                 error_block,
@@ -1853,7 +1854,7 @@ pub fn build_slice<'ctx, 'this>(
     {
         metadata
             .get::<DropOverridesMeta>()
-            .unwrap()
+            .ok_or(Error::MissingMetadata)?
             .invoke_override(
                 context,
                 error_block,

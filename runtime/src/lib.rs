@@ -14,7 +14,8 @@ use starknet_types_core::{
     hash::StarkHash,
 };
 use std::{
-    collections::HashMap, ffi::c_void, fs::File, io::Write, mem::ManuallyDrop, os::fd::FromRawFd,
+    cell::Cell, collections::HashMap, ffi::c_void, fs::File, io::Write, mem::ManuallyDrop,
+    os::fd::FromRawFd, ptr::null,
 };
 use std::{ops::Mul, vec::IntoIter};
 
@@ -473,6 +474,32 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
 
         true
     }
+}
+
+thread_local! {
+    // We can use cell because a ptr is copy.
+    static BUILTIN_COSTS: Cell<*const u64> = const {
+        Cell::new(null())
+    };
+}
+
+/// Store the gas builtin in the internal thread local. Returns the old pointer, to restore it after execution.
+/// Not a runtime metadata method, it should be called before the program is executed.
+#[no_mangle]
+pub extern "C" fn cairo_native__set_costs_builtin(ptr: *const u64) -> *const u64 {
+    let old = BUILTIN_COSTS.get();
+    BUILTIN_COSTS.set(ptr);
+    old
+}
+
+/// Get the gas builtin from the internal thread local.
+#[no_mangle]
+pub extern "C" fn cairo_native__get_costs_builtin() -> *const u64 {
+    if BUILTIN_COSTS.get().is_null() {
+        // We shouldn't panic here, but we can print a big message.
+        eprintln!("BUILTIN_COSTS POINTER IS NULL!");
+    }
+    BUILTIN_COSTS.get()
 }
 
 /// Utility methods for the print runtime function

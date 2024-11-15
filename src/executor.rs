@@ -6,11 +6,12 @@
 pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNativeExecutor};
 use crate::{
     arch::{AbiArgument, ValueWithInfoWrapper},
-    error::Error,
+    error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ExecutionResult},
+    native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
-    utils::{libc_free, RangeExt},
+    utils::{libc_free, BuiltinCosts, RangeExt},
     values::Value,
 };
 use bumpalo::Bump;
@@ -69,9 +70,10 @@ extern "C" {
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
+    set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64,
     function_signature: &FunctionSignature,
     args: &[Value],
-    gas: u128,
+    gas: u64,
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
@@ -141,6 +143,15 @@ fn invoke_dynamic(
         previous_syscall_handler
     });
 
+    // Order matters, for the libfunc impl
+    let builtin_costs_stack: [u64; 7] = BuiltinCosts::default().into();
+    // Note: the ptr into a slice is valid, it can be used with cast()
+    // Care should be taken if you dereference it and take the .as_ptr() of the slice, since when you
+    // deref it, it will be a copy on the stack, so you will get the ptr of the value in the stack.
+    let builtin_costs: *mut [u64; 7] = Box::into_raw(Box::new(builtin_costs_stack));
+    // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
+    let old_builtincosts_ptr = set_builtin_costs_fnptr(builtin_costs.cast());
+
     // Generate argument list.
     let mut iter = args.iter();
     for item in function_signature.param_types.iter().filter_map(|type_id| {
@@ -161,14 +172,19 @@ fn invoke_dynamic(
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
-                    .expect("syscall handler is required");
+                    .to_native_assert_error("syscall handler should be available")?;
 
                 (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
                     .to_bytes(&mut invoke_data)?;
             }
+            CoreTypeConcrete::BuiltinCosts(_) => {
+                builtin_costs.to_bytes(&mut invoke_data)?;
+            }
             type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
             type_info => ValueWithInfoWrapper {
-                value: iter.next().unwrap(),
+                value: iter
+                    .next()
+                    .to_native_assert_error("entrypoint argument is missing")?,
                 type_id,
                 info: type_info,
 
@@ -232,11 +248,11 @@ fn invoke_dynamic(
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => {
                 remaining_gas = Some(match &mut return_ptr {
-                    Some(return_ptr) => unsafe { *read_value::<u128>(return_ptr) },
+                    Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
                     None => {
                         // If there's no return ptr then the function only returned the gas. We don't
                         // need to bother with the syscall handler builtin.
-                        ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128
+                        ret_registers[0]
                     }
                 });
             }
@@ -250,26 +266,38 @@ fn invoke_dynamic(
             }
             _ if type_info.is_builtin() => {
                 if !type_info.is_zst(registry)? {
-                    let value = match &mut return_ptr {
-                        Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
-                        None => ret_registers[0],
-                    } as usize;
+                    if let CoreTypeConcrete::BuiltinCosts(_) = type_info {
+                        // todo: should we use this value?
+                        let _value = match &mut return_ptr {
+                            Some(return_ptr) => unsafe { *read_value::<*mut u64>(return_ptr) },
+                            None => ret_registers[0] as *mut u64,
+                        };
+                    } else {
+                        let value = match &mut return_ptr {
+                            Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
+                            None => ret_registers[0],
+                        } as usize;
 
-                    match type_info {
-                        CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
-                        CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
-                        CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
-                        CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
-                        CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
-                        CoreTypeConcrete::SegmentArena(_) => builtin_stats.segment_arena = value,
-                        CoreTypeConcrete::RangeCheck96(_) => builtin_stats.range_check_96 = value,
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
-                            builtin_stats.circuit_add = value
+                        match type_info {
+                            CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
+                            CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
+                            CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
+                            CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
+                            CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
+                            CoreTypeConcrete::SegmentArena(_) => {
+                                builtin_stats.segment_arena = value
+                            }
+                            CoreTypeConcrete::RangeCheck96(_) => {
+                                builtin_stats.range_check_96 = value
+                            }
+                            CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                                builtin_stats.circuit_add = value
+                            }
+                            CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                                builtin_stats.circuit_mul = value
+                            }
+                            _ => native_panic!("given type should be a builtin: {type_id:?}"),
                         }
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
-                            builtin_stats.circuit_mul = value
-                        }
-                        _ => unreachable!("{type_id:?}"),
                     }
                 }
             }
@@ -299,6 +327,15 @@ fn invoke_dynamic(
             debug_name: None,
         });
 
+    // Restore the old ptr and get back our builtincost box and free it.
+    let our_builtincosts_ptr = set_builtin_costs_fnptr(old_builtincosts_ptr);
+
+    if !our_builtincosts_ptr.is_null() && old_builtincosts_ptr.is_aligned() {
+        unsafe {
+            let _ = Box::<[u64; 7]>::from_raw(our_builtincosts_ptr.cast_mut().cast());
+        };
+    }
+
     #[cfg(feature = "with-mem-tracing")]
     crate::utils::mem_tracing::report_stats();
 
@@ -317,7 +354,7 @@ fn parse_result(
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> Result<Value, Error> {
-    let type_info = registry.get_type(type_id).unwrap();
+    let type_info = registry.get_type(type_id)?;
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
@@ -329,14 +366,14 @@ fn parse_result(
 
         *return_ptr = unsafe {
             NonNull::new(return_ptr.cast::<u8>().as_ptr().add(align_offset))
-                .expect("nonnull is null")
+                .to_native_assert_error("return pointer should not be null")?
                 .cast()
         };
     }
 
     match type_info {
         CoreTypeConcrete::Array(_) => Ok(Value::from_ptr(
-            return_ptr.unwrap(),
+            return_ptr.to_native_assert_error("return pointer should be valid")?,
             type_id,
             registry,
             true,
@@ -348,7 +385,7 @@ fn parse_result(
             Ok(value)
         },
         CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => Ok(Value::from_ptr(
-            return_ptr.unwrap(),
+            return_ptr.to_native_assert_error("return pointer should be valid")?,
             type_id,
             registry,
             true,
@@ -476,7 +513,7 @@ fn parse_result(
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants)?;
 
             let (tag, ptr) = if type_info.is_memory_allocated(registry)? || return_ptr.is_some() {
-                let ptr = return_ptr.unwrap();
+                let ptr = return_ptr.to_native_assert_error("return pointer should be valid")?;
 
                 let tag = unsafe {
                     match tag_layout.size() {
@@ -548,7 +585,7 @@ fn parse_result(
                 })
             } else {
                 Ok(Value::from_ptr(
-                    return_ptr.unwrap(),
+                    return_ptr.to_native_assert_error("return pointer should be valid")?,
                     type_id,
                     registry,
                     true,
@@ -577,7 +614,9 @@ fn parse_result(
         | CoreTypeConcrete::Pedersen(_)
         | CoreTypeConcrete::Poseidon(_)
         | CoreTypeConcrete::SegmentArena(_)
-        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => unreachable!(),
+        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+            native_panic!("builtins should have been handled before")
+        }
 
         CoreTypeConcrete::Felt252DictEntry(_)
         | CoreTypeConcrete::Span(_)
@@ -653,7 +692,7 @@ mod tests {
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
         let result = executor
-            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u64::MAX))
             .unwrap();
 
         assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
@@ -671,7 +710,7 @@ mod tests {
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
         let result = executor
-            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u64::MAX))
             .unwrap();
 
         assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
@@ -696,7 +735,7 @@ mod tests {
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],
-                Some(u128::MAX),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
@@ -723,7 +762,7 @@ mod tests {
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],
-                Some(u128::MAX),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();

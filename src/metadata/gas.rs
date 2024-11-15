@@ -12,6 +12,7 @@ use cairo_lang_sierra_gas::{
     compute_postcost_info, compute_precost_info, gas_info::GasInfo, CostError,
 };
 use cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
+use std::collections::BTreeMap;
 
 /// Holds global gas info.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -20,8 +21,9 @@ pub struct GasMetadata {
     pub gas_info: GasInfo,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct GasCost(pub Option<u128>);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+// Cost, token type (index into builtin costs).
+pub struct GasCost(pub Vec<(u64, CostTokenType)>);
 
 /// Configuration for metadata computation.
 #[derive(Debug, Clone)]
@@ -40,7 +42,7 @@ pub enum GasMetadataError {
     #[error(transparent)]
     CostError(#[from] CostError),
     #[error("Not enough gas to run the operation. Required: {:?}, Available: {:?}.", gas.0, gas.1)]
-    NotEnoughGas { gas: Box<(u128, u128)> },
+    NotEnoughGas { gas: Box<(u64, u64)> },
 }
 
 impl Default for MetadataComputationConfig {
@@ -70,8 +72,8 @@ impl GasMetadata {
     pub fn get_initial_available_gas(
         &self,
         func: &FunctionId,
-        available_gas: Option<u128>,
-    ) -> Result<u128, GasMetadataError> {
+        available_gas: Option<u64>,
+    ) -> Result<u64, GasMetadataError> {
         let Some(available_gas) = available_gas else {
             return Ok(0);
         };
@@ -90,7 +92,7 @@ impl GasMetadata {
             })
     }
 
-    pub fn initial_required_gas(&self, func: &FunctionId) -> Option<u128> {
+    pub fn initial_required_gas(&self, func: &FunctionId) -> Option<u64> {
         if self.gas_info.function_costs.is_empty() {
             return None;
         }
@@ -98,35 +100,62 @@ impl GasMetadata {
             self.gas_info.function_costs[func]
                 .iter()
                 .map(|(token_type, val)| val.into_or_panic::<usize>() * token_gas_cost(*token_type))
-                .sum::<usize>() as u128,
+                .sum::<usize>() as u64,
         )
     }
 
-    pub fn get_gas_cost_for_statement(&self, idx: StatementIdx) -> Option<u128> {
-        let mut cost = None;
+    pub fn initial_required_gas_for_entry_points(&self) -> BTreeMap<u64, BTreeMap<u64, u64>> {
+        self.gas_info
+            .function_costs
+            .iter()
+            .map(|func| {
+                (func.0.id, {
+                    let mut costs = BTreeMap::new();
+
+                    for (token, val) in func.1.iter() {
+                        let offset: u64 = match token {
+                            CostTokenType::Const => 0,
+                            CostTokenType::Pedersen => 1,
+                            CostTokenType::Bitwise => 2,
+                            CostTokenType::EcOp => 3,
+                            CostTokenType::Poseidon => 4,
+                            CostTokenType::AddMod => 5,
+                            CostTokenType::MulMod => 6,
+                            _ => unreachable!(),
+                        };
+                        costs.insert(offset, *val as u64);
+                    }
+
+                    costs
+                })
+            })
+            .collect()
+    }
+
+    pub fn get_gas_costs_for_statement(&self, idx: StatementIdx) -> Vec<(u64, CostTokenType)> {
+        let mut costs = Vec::new();
         for cost_type in CostTokenType::iter_casm_tokens() {
-            if let Some(amount) =
+            if let Some(cost_count) =
                 self.get_gas_cost_for_statement_and_cost_token_type(idx, *cost_type)
             {
-                *cost.get_or_insert(0) += amount * token_gas_cost(*cost_type) as u128;
+                if cost_count > 0 {
+                    costs.push((cost_count, *cost_type));
+                }
             }
         }
-        cost
+        costs
     }
 
     pub fn get_gas_cost_for_statement_and_cost_token_type(
         &self,
         idx: StatementIdx,
         cost_type: CostTokenType,
-    ) -> Option<u128> {
+    ) -> Option<u64> {
         self.gas_info
             .variable_values
             .get(&(idx, cost_type))
             .copied()
-            .map(|x| {
-                x.try_into()
-                    .expect("gas cost couldn't be converted to u128, should never happen")
-            })
+            .map(|x| x.try_into().expect("gas cost couldn't be converted to u64"))
     }
 }
 

@@ -33,7 +33,7 @@ pub struct BuiltinStats {
 /// The result of the JIT execution.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ExecutionResult {
-    pub remaining_gas: Option<u128>,
+    pub remaining_gas: Option<u64>,
     pub return_value: Value,
     pub builtin_stats: BuiltinStats,
 }
@@ -52,7 +52,7 @@ pub struct ExecutionResult {
     serde::Deserialize,
 )]
 pub struct ContractExecutionResult {
-    pub remaining_gas: u128,
+    pub remaining_gas: u64,
     pub failure_flag: bool,
     pub return_values: Vec<Felt>,
     pub error_msg: Option<String>,

@@ -66,7 +66,7 @@ impl StarknetSyscallHandler for SyscallHandler {
     fn get_block_hash(
         &mut self,
         _block_number: u64,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
         Ok(Felt::from_dec_str(
             "1158579293198495875788224011889333769139150068959598053296510642728083832673",
@@ -74,7 +74,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         .unwrap())
     }
 
-    fn get_execution_info(&mut self, _remaining_gas: &mut u128) -> SyscallResult<ExecutionInfo> {
+    fn get_execution_info(&mut self, _remaining_gas: &mut u64) -> SyscallResult<ExecutionInfo> {
         Ok(ExecutionInfo {
             block_info: BlockInfo {
                 block_number: 10057862467973663535,
@@ -125,7 +125,7 @@ impl StarknetSyscallHandler for SyscallHandler {
 
     fn get_execution_info_v2(
         &mut self,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<ExecutionInfoV2> {
         Ok(ExecutionInfoV2 {
             block_info: BlockInfo {
@@ -187,7 +187,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         _contract_address_salt: Felt,
         _calldata: &[Felt],
         _deploy_from_zero: bool,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<(Felt, Vec<Felt>)> {
         Ok((
             Felt::from_dec_str(
@@ -198,7 +198,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         ))
     }
 
-    fn replace_class(&mut self, _class_hash: Felt, _remaining_gas: &mut u128) -> SyscallResult<()> {
+    fn replace_class(&mut self, _class_hash: Felt, _remaining_gas: &mut u64) -> SyscallResult<()> {
         Ok(())
     }
 
@@ -207,7 +207,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         _class_hash: Felt,
         _function_selector: Felt,
         _calldata: &[Felt],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Vec<Felt>> {
         Ok(vec![
             Felt::from_dec_str(
@@ -230,7 +230,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         _address: Felt,
         _entry_point_selector: Felt,
         _calldata: &[Felt],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Vec<Felt>> {
         Ok(vec![
             Felt::from_dec_str(
@@ -252,7 +252,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _address_domain: u32,
         _address: Felt,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
         Ok(Felt::from_dec_str(
             "1013181629378419652272218169322268188846114273878719855200100663863924329981",
@@ -265,7 +265,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         _address_domain: u32,
         _address: Felt,
         _value: Felt,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
         Ok(())
     }
@@ -274,7 +274,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _keys: &[Felt],
         _data: &[Felt],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
         Ok(())
     }
@@ -283,7 +283,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         to_address: Felt,
         payload: &[Felt],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
         assert_eq!(
             to_address,
@@ -294,7 +294,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         Ok(())
     }
 
-    fn keccak(&mut self, _input: &[u64], _remaining_gas: &mut u128) -> SyscallResult<U256> {
+    fn keccak(&mut self, _input: &[u64], _remaining_gas: &mut u64) -> SyscallResult<U256> {
         Ok(U256 {
             hi: 330939983442938156232262046592599923289,
             lo: 288102973244655531496349286021939642254,
@@ -305,7 +305,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _x: U256,
         _y: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
@@ -315,7 +315,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _p0: Secp256k1Point,
         _p1: Secp256k1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256k1Point> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
@@ -325,7 +325,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _p: Secp256k1Point,
         _m: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256k1Point> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
@@ -335,7 +335,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _x: U256,
         _y_parity: bool,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
@@ -344,7 +344,7 @@ impl StarknetSyscallHandler for SyscallHandler {
     fn secp256k1_get_xy(
         &mut self,
         _p: Secp256k1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<(U256, U256)> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
@@ -354,7 +354,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _x: U256,
         _y: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256r1Point>> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
@@ -364,7 +364,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _p0: Secp256r1Point,
         _p1: Secp256r1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256r1Point> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
@@ -374,7 +374,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _p: Secp256r1Point,
         _m: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256r1Point> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
@@ -384,7 +384,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _x: U256,
         _y_parity: bool,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256r1Point>> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
@@ -393,7 +393,7 @@ impl StarknetSyscallHandler for SyscallHandler {
     fn secp256r1_get_xy(
         &mut self,
         _p: Secp256r1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<(U256, U256)> {
         // Tested in `tests/tests/starknet/secp256.rs`.
         unimplemented!()
@@ -498,7 +498,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _state: &mut [u32; 8],
         _block: &[u32; 16],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
         Ok(())
     }
@@ -515,7 +515,7 @@ fn get_block_hash() {
         &SYSCALLS_PROGRAM,
         "get_block_hash",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -540,7 +540,7 @@ fn get_execution_info() {
         &SYSCALLS_PROGRAM,
         "get_execution_info",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -619,7 +619,7 @@ fn get_execution_info_v2() {
         &SYSCALLS_PROGRAM,
         "get_execution_info_v2",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -711,7 +711,7 @@ fn deploy() {
         &SYSCALLS_PROGRAM,
         "deploy",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -743,7 +743,7 @@ fn replace_class() {
         &SYSCALLS_PROGRAM,
         "replace_class",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -766,7 +766,7 @@ fn library_call() {
         &SYSCALLS_PROGRAM,
         "library_call",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -802,7 +802,7 @@ fn call_contract() {
         &SYSCALLS_PROGRAM,
         "call_contract",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -838,7 +838,7 @@ fn storage_read() {
         &SYSCALLS_PROGRAM,
         "storage_read",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -866,7 +866,7 @@ fn storage_write() {
         &SYSCALLS_PROGRAM,
         "storage_write",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -892,7 +892,7 @@ fn emit_event() {
         &SYSCALLS_PROGRAM,
         "emit_event",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -915,7 +915,7 @@ fn send_message_to_l1() {
         &SYSCALLS_PROGRAM,
         "send_message_to_l1",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -938,7 +938,7 @@ fn keccak() {
         &SYSCALLS_PROGRAM,
         "keccak",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
@@ -968,7 +968,7 @@ fn set_sequencer_address() {
         &SYSCALLS_PROGRAM,
         "set_sequencer_address",
         &[Value::Felt252(address)],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
 
@@ -994,7 +994,7 @@ fn set_max_fee() {
         &SYSCALLS_PROGRAM,
         "set_max_fee",
         &[Value::Felt252(Felt::from(max_fee))],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
 
@@ -1026,7 +1026,7 @@ fn set_signature() {
         &SYSCALLS_PROGRAM,
         "set_signature",
         &[Value::Array(signature_jit)],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
 
@@ -1060,7 +1060,7 @@ fn pop_log() {
         &SYSCALLS_PROGRAM,
         "pop_log",
         &[Value::Felt252(log_index)],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
 
@@ -1103,7 +1103,7 @@ fn pop_log_empty() {
         &SYSCALLS_PROGRAM,
         "pop_log",
         &[Value::Felt252(log_index)],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
 
@@ -1134,7 +1134,7 @@ fn pop_l2_to_l1_message() {
         &SYSCALLS_PROGRAM,
         "pop_l2_to_l1_message",
         &[Value::Felt252(log_index)],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::with(state.clone())),
     );
 
@@ -1172,7 +1172,7 @@ fn sha256_process() {
         &SYSCALLS_PROGRAM,
         "sha256_process",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 
