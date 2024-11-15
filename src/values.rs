@@ -244,7 +244,7 @@ impl Value {
                         let ptr = match elem_layout.size() * data.len() {
                             0 => std::ptr::null_mut(),
                             len => {
-                                let ptr: *mut () = libc_malloc(len).cast();
+                                let ptr: *mut () = libc_malloc(len + refcount_offset).cast();
 
                                 // Write reference count.
                                 ptr.cast::<u32>().write(1);
