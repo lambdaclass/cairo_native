@@ -794,10 +794,10 @@ pub mod trace_dump {
             CoreTypeConcrete::Uint8(_) => Value::U8(value_ptr.cast().read()),
             CoreTypeConcrete::Uint16(_) => Value::U16(value_ptr.cast().read()),
             CoreTypeConcrete::Uint32(_) => Value::U32(value_ptr.cast().read()),
-            CoreTypeConcrete::Uint64(_) => Value::U64(value_ptr.cast().read()),
-            CoreTypeConcrete::Uint128(_) | CoreTypeConcrete::GasBuiltin(_) => {
-                Value::U128(value_ptr.cast().read())
+            CoreTypeConcrete::Uint64(_) | CoreTypeConcrete::GasBuiltin(_) => {
+                Value::U64(value_ptr.cast().read())
             }
+            CoreTypeConcrete::Uint128(_) => Value::U128(value_ptr.cast().read()),
 
             CoreTypeConcrete::BoundedInt(BoundedIntConcreteType { range, .. }) => {
                 let n_bits = ((range.size() - BigInt::one()).bits() as u32).max(1);
