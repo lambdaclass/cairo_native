@@ -187,7 +187,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: bin/cairo-native-run-${{ matrix.branch }}
-          key: binary-${{ github.event.pull_request.${{ matrix.branch }}.sha }}
+          key: binary-${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: Fetch ${{ matrix.branch }} runtime-library
         uses: actions/cache/restore@v3
