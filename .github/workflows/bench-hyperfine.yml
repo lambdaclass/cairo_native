@@ -92,7 +92,7 @@ jobs:
     strategy:
       matrix:
         branch: [ base, head ]
-    name: Run benches for ${{ matrix.branch }}
+    name: Build Binary for ${{ matrix.branch }}
     runs-on: ubuntu-24.04
     steps:
       - name: Cache binary
@@ -172,6 +172,7 @@ jobs:
         branch: [ base, head ]
     name: Run benches for ${{ matrix.branch }}
     runs-on: ubuntu-24.04
+    needs: [ build-binaries ]
     steps:
       - name: Checkout base commit
         uses: actions/checkout@v4
