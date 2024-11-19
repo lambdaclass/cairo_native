@@ -150,7 +150,7 @@ jobs:
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         run: sudo apt-get update && sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
 
-      - name: Checkout base commit
+      - name: Checkout commit
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v4
         with:
@@ -216,6 +216,7 @@ jobs:
           cp programs/benches/*.cairo $OUTPUT_DIR
           for f in $OUTPUT_DIR/*.cairo; do
             hyperfine \
+            --show-output \
             --export-markdown "${f%.*}.md" \
             --export-json "${f%.*}.json" \
             --warmup 3 \
