@@ -253,11 +253,8 @@
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    error::Error,
+    error::{panic::ToNativeAssertError, Error},
     ffi::{get_data_layout_rep, get_target_triple},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
@@ -265,6 +262,7 @@
         MetadataStorage,
     },
     module::NativeModule,
+    native_assert,
     utils::run_pass_manager,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -408,9 +406,11 @@
         ])
         .add_regions([module_region])
         .build()<span class="question-mark">?</span>;
-        <span class="macro">assert!</span>(op.verify(), <span class="string">"module operation is not valid"</span>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>module = Module::from_operation(op).expect(<span class="string">"module failed to create"</span>);
+        <span class="macro">native_assert!</span>(op.verify(), <span class="string">"module operation should be valid"</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>module = Module::from_operation(op)
+            .to_native_assert_error(<span class="string">"value should be module operation"</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>has_gas_builtin = program
             .type_declarations
@@ -451,22 +451,19 @@
 
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(x) = std::env::var(<span class="string">"NATIVE_DEBUG_DUMP"</span>) {
             <span class="kw">if </span>x == <span class="string">"1" </span>|| x == <span class="string">"true" </span>{
-                std::fs::write(<span class="string">"dump-prepass.mlir"</span>, module.as_operation().to_string())
-                    .expect(<span class="string">"should work"</span>);
+                std::fs::write(<span class="string">"dump-prepass.mlir"</span>, module.as_operation().to_string())<span class="question-mark">?</span>;
                 std::fs::write(
                     <span class="string">"dump-prepass-debug-valid.mlir"</span>,
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">false</span>),
                     )<span class="question-mark">?</span>,
-                )
-                .expect(<span class="string">"failed to write dump-prepass-debug-valid.mlir"</span>);
+                )<span class="question-mark">?</span>;
                 std::fs::write(
                     <span class="string">"dump-prepass-debug-pretty.mlir"</span>,
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">false</span>),
                     )<span class="question-mark">?</span>,
-                )
-                .expect(<span class="string">"failed to writedump-prepass-debug-pretty.mlir"</span>);
+                )<span class="question-mark">?</span>;
             }
         }
 
@@ -478,22 +475,19 @@
 
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(x) = std::env::var(<span class="string">"NATIVE_DEBUG_DUMP"</span>) {
             <span class="kw">if </span>x == <span class="string">"1" </span>|| x == <span class="string">"true" </span>{
-                std::fs::write(<span class="string">"dump.mlir"</span>, module.as_operation().to_string())
-                    .expect(<span class="string">"should work"</span>);
+                std::fs::write(<span class="string">"dump.mlir"</span>, module.as_operation().to_string())<span class="question-mark">?</span>;
                 std::fs::write(
                     <span class="string">"dump-debug-pretty.mlir"</span>,
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">false</span>),
                     )<span class="question-mark">?</span>,
-                )
-                .expect(<span class="string">"failed to write dump-debug-pretty.mlir"</span>);
+                )<span class="question-mark">?</span>;
                 std::fs::write(
                     <span class="string">"dump-debug.mlir"</span>,
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(<span class="bool-val">true</span>, <span class="bool-val">false</span>),
                     )<span class="question-mark">?</span>,
-                )
-                .expect(<span class="string">"failed to write dump-debug.mlir"</span>);
+                )<span class="question-mark">?</span>;
             }
         }
 

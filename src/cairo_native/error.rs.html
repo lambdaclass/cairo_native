@@ -249,6 +249,7 @@
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
 </span><span class="kw">use </span><span class="kw">crate</span>::metadata::gas::GasMetadataError;
 <span class="kw">use </span>cairo_lang_sierra::extensions::modules::utils::Range;
@@ -439,7 +440,9 @@
         };
     }
 
-    <span class="attr">#[macro_export]
+    <span class="doccomment">/// Macro that mimicks the behaviour of `assert!`.
+    /// It should only be used inside of a function that returns Result&lt;T, cairo_native::error::Error&gt;
+    </span><span class="attr">#[macro_export]
     </span><span class="macro">macro_rules!</span> native_assert {
         (<span class="macro-nonterminal">$cond</span>:expr, $(<span class="macro-nonterminal">$arg</span>:tt)<span class="kw-2">*</span>) =&gt; {
             <span class="kw">if </span>!(<span class="macro-nonterminal">$cond</span>) {
@@ -447,7 +450,6 @@
             }
         };
     }
-
     <span class="doccomment">/// If `RUST_BACKTRACE` env var is not set, then the backtrace won't be captured.
     /// In that case, only the location is saved, which is better than nothing.
     </span><span class="attr">#[derive(Debug)]
