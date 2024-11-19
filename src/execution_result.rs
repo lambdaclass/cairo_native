@@ -2,7 +2,7 @@
 ///
 /// This module contains the structures used to interpret the program execution results, either
 /// normal programs or starknet contracts.
-use crate::{error::Error, utils::decode_error_message, values::Value};
+use crate::{error::Error, native_panic, utils::decode_error_message, values::Value};
 use starknet_types_core::felt::Felt;
 
 #[derive(
@@ -33,7 +33,7 @@ pub struct BuiltinStats {
 /// The result of the JIT execution.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ExecutionResult {
-    pub remaining_gas: Option<u128>,
+    pub remaining_gas: Option<u64>,
     pub return_value: Value,
     pub builtin_stats: BuiltinStats,
 }
@@ -52,7 +52,7 @@ pub struct ExecutionResult {
     serde::Deserialize,
 )]
 pub struct ContractExecutionResult {
-    pub remaining_gas: u128,
+    pub remaining_gas: u64,
     pub failure_flag: bool,
     pub return_values: Vec<Felt>,
     pub error_msg: Option<String>,
@@ -76,12 +76,12 @@ impl ContractExecutionResult {
                                     .iter()
                                     .map(|x| {
                                         if let Value::Felt252(f) = x {
-                                            *f
+                                            Ok(*f)
                                         } else {
-                                            panic!("should always be a felt")
+                                            native_panic!("should always be a felt")
                                         }
                                     })
-                                    .collect();
+                                    .collect::<Result<_, _>>()?;
                                 felt_vec
                             } else {
                                 Err(Error::UnexpectedValue(format!(
@@ -113,12 +113,12 @@ impl ContractExecutionResult {
                             .iter()
                             .map(|x| {
                                 if let Value::Felt252(f) = x {
-                                    *f
+                                    Ok(*f)
                                 } else {
-                                    panic!("should always be a felt")
+                                    native_panic!("should always be a felt")
                                 }
                             })
-                            .collect();
+                            .collect::<Result<_, _>>()?;
 
                         let bytes_err: Vec<_> = felt_vec
                             .iter()

@@ -34,7 +34,7 @@
 
 use super::WithSelf;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
     },
@@ -77,7 +77,7 @@ pub fn build<'ctx>(
                 registry.build_type(context, module, registry, metadata, member)?;
                 if metadata
                     .get::<DupOverridesMeta>()
-                    .unwrap()
+                    .ok_or(Error::MissingMetadata)?
                     .is_overriden(member)
                 {
                     needs_override = true;
@@ -104,7 +104,7 @@ pub fn build<'ctx>(
                 registry.build_type(context, module, registry, metadata, member)?;
                 if metadata
                     .get::<DropOverridesMeta>()
-                    .unwrap()
+                    .ok_or(Error::MissingMetadata)?
                     .is_overriden(member)
                 {
                     needs_override = true;
@@ -150,7 +150,7 @@ fn build_dup<'ctx>(
         // The following unwrap is unreachable because the registration logic will always insert it.
         let values = metadata
             .get::<DupOverridesMeta>()
-            .unwrap()
+            .ok_or(Error::MissingMetadata)?
             .invoke_override(context, &entry, location, member_id, member_val)?;
 
         src_value = entry.insert_value(context, location, src_value, values.0, idx)?;
@@ -183,7 +183,7 @@ fn build_drop<'ctx>(
         // The following unwrap is unreachable because the registration logic will always insert it.
         metadata
             .get::<DropOverridesMeta>()
-            .unwrap()
+            .ok_or(Error::MissingMetadata)?
             .invoke_override(context, &entry, location, member_id, member_val)?;
     }
 
