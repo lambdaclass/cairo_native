@@ -151,6 +151,11 @@
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Code generation metadata
 //!
 //! The metadata is used for various stuff that would be otherwise difficult or plain impossible
@@ -214,9 +219,11 @@
     <span class="kw">where
         </span>T: Any,
     {
-        <span class="self">self</span>.entries
-            .remove(<span class="kw-2">&amp;</span>TypeId::of::&lt;T&gt;())
-            .map(|meta| <span class="kw-2">*</span>(Box::&lt;(<span class="kw">dyn </span>Any + <span class="lifetime">'static</span>)&gt;::downcast::&lt;T&gt;(meta).unwrap()))
+        <span class="self">self</span>.entries.remove(<span class="kw-2">&amp;</span>TypeId::of::&lt;T&gt;()).map(|meta| {
+            <span class="kw-2">*</span>(Box::&lt;(<span class="kw">dyn </span>Any + <span class="lifetime">'static</span>)&gt;::downcast::&lt;T&gt;(meta).expect(
+                <span class="string">"attempt to downcast a boxed value to a type which does not match the actual"</span>,
+            ))
+        })
     }
 
     <span class="doccomment">/// Retrieve a reference to some metadata.
@@ -227,9 +234,11 @@
     <span class="kw">where
         </span>T: Any,
     {
-        <span class="self">self</span>.entries
-            .get(<span class="kw-2">&amp;</span>TypeId::of::&lt;T&gt;())
-            .map(|meta| meta.downcast_ref::&lt;T&gt;().unwrap())
+        <span class="self">self</span>.entries.get(<span class="kw-2">&amp;</span>TypeId::of::&lt;T&gt;()).map(|meta| {
+            meta.downcast_ref::&lt;T&gt;().expect(
+                <span class="string">"attempt to downcast a boxed value to a type which does not match the actual"</span>,
+            )
+        })
     }
 
     <span class="doccomment">/// Retrieve a mutable reference to some metadata.
@@ -240,9 +249,10 @@
     <span class="kw">where
         </span>T: Any,
     {
-        <span class="self">self</span>.entries
-            .get_mut(<span class="kw-2">&amp;</span>TypeId::of::&lt;T&gt;())
-            .map(|meta| meta.downcast_mut::&lt;T&gt;().unwrap())
+        <span class="self">self</span>.entries.get_mut(<span class="kw-2">&amp;</span>TypeId::of::&lt;T&gt;()).map(|meta| {
+            meta.downcast_mut::&lt;T&gt;()
+                .expect(<span class="string">"the given type does not match the actual"</span>)
+        })
     }
 
     <span class="kw">pub fn </span>get_or_insert_with&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, meta_gen: <span class="kw">impl </span>FnOnce() -&gt; T) -&gt; <span class="kw-2">&amp;mut </span>T
@@ -253,7 +263,7 @@
             .entry(TypeId::of::&lt;T&gt;())
             .or_insert_with(|| Box::new(meta_gen()))
             .downcast_mut::&lt;T&gt;()
-            .unwrap()
+            .expect(<span class="string">"the given type does not match the actual"</span>)
     }
 }
 

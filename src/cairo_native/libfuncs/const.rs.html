@@ -401,7 +401,7 @@
     <span class="kw">let </span>ptr = entry.append_op_result(llvm::zero(pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
     <span class="kw">let </span>ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context, ptr, value_len, location,
-    ))<span class="question-mark">?</span>;
+    )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// Store constant in box
     </span>entry.store(context, location, ptr, value)<span class="question-mark">?</span>;

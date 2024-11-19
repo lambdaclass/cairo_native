@@ -142,6 +142,11 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Dropping logic overrides
 //!
 //! By default, values are discarded, but some cases (like arrays, boxes, nullables, dictionaries
@@ -165,7 +170,10 @@
 //! where `{type id}` is the numeric value of the `ConcreteTypeId`.
 
 </span><span class="kw">use </span><span class="kw">super</span>::MetadataStorage;
-<span class="kw">use crate</span>::{error::Result, utils::ProgramRegistryExt};
+<span class="kw">use crate</span>::{
+    error::{Error, <span class="prelude-ty">Result</span>},
+    utils::ProgramRegistryExt,
+};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::ConcreteTypeId,
@@ -236,11 +244,13 @@
                         ),
                         (
                             Identifier::new(context, <span class="string">"llvm.CConv"</span>),
-                            Attribute::parse(context, <span class="string">"#llvm.cconv&lt;fastcc&gt;"</span>).unwrap(),
+                            Attribute::parse(context, <span class="string">"#llvm.cconv&lt;fastcc&gt;"</span>)
+                                .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                         ),
                         (
                             Identifier::new(context, <span class="string">"llvm.linkage"</span>),
-                            Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>).unwrap(),
+                            Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>)
+                                .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
                         ),
                     ],
                     Location::unknown(context),

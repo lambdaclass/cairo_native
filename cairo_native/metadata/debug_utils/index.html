@@ -29,8 +29,8 @@
             </span>.into();
 
         metadata.get_mut::&lt;DebugUtils&gt;()
-            .unwrap()
-            .print_pointer(context, helper, entry, array_ptr, location)<span class="question-mark">?</span>;
+            .ok_or(Error::MissingMetadata)<span class="question-mark">?
+            </span>.print_pointer(context, helper, entry, array_ptr, location)<span class="question-mark">?</span>;
     }
 
     <span class="kw">let </span>array_len = entry

@@ -595,7 +595,7 @@
                 null_ptr,
                 dst_value_len,
                 location,
-            ))<span class="question-mark">?
+            )<span class="question-mark">?</span>)<span class="question-mark">?
         </span>};
 
         <span class="kw">let </span>src_value_ptr = {
@@ -789,7 +789,7 @@
         <span class="kw">_ </span>=&gt; {}
     }
 
-    entry.append_operation(ReallocBindingsMeta::free(context, value_ptr, location));
+    entry.append_operation(ReallocBindingsMeta::free(context, value_ptr, location)<span class="question-mark">?</span>);
     entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
     <span class="prelude-val">Ok</span>(region)
 }

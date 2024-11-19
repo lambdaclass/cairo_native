@@ -854,7 +854,7 @@
 //!             .into();
 //!
 //!         metadata.get_mut::&lt;DebugUtils&gt;()
-//!             .unwrap()
+//!             .ok_or(Error::MissingMetadata)?
 //!             .print_pointer(context, helper, entry, array_ptr, location)?;
 //!     }
 //!

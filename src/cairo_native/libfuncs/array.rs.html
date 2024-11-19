@@ -2946,7 +2946,7 @@
             ptr,
             realloc_size,
             location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// No need to memmove, guaranteed by the fact that if we needed to memmove we'd have gone
         // through the memmove block instead of reallocating.
@@ -3147,7 +3147,7 @@
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
         assert_nonnull(
             context,
             valid_block,
@@ -3239,7 +3239,7 @@
             }
             <span class="kw">_ </span>=&gt; {}
         }
-        valid_block.append_operation(ReallocBindingsMeta::free(context, ptr, location));
+        valid_block.append_operation(ReallocBindingsMeta::free(context, ptr, location)<span class="question-mark">?</span>);
 
         valid_block.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, target_ptr], location));
     }
@@ -3337,7 +3337,7 @@
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
         assert_nonnull(
             context,
             valid_block,
@@ -3437,7 +3437,7 @@
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
         assert_nonnull(
             context,
             valid_block,
@@ -3563,7 +3563,7 @@
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
         assert_nonnull(
             context,
             valid_block,
@@ -3684,7 +3684,7 @@
                 null_ptr,
                 popped_size_value,
                 location,
-            ))<span class="question-mark">?
+            )<span class="question-mark">?</span>)<span class="question-mark">?
         </span>};
 
         valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
@@ -3813,7 +3813,7 @@
                 null_ptr,
                 popped_size_value,
                 location,
-            ))<span class="question-mark">?
+            )<span class="question-mark">?</span>)<span class="question-mark">?
         </span>};
 
         valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
@@ -3977,7 +3977,7 @@
             <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// The following operation will because an array always has a drop implementation,
+        <span class="comment">// The metadata get will never fail because an array always has a drop implementation,
         // which at this point is always inserted thanks to the `build_type()` just above.
         </span>metadata
             .get::&lt;DropOverridesMeta&gt;()
@@ -4024,7 +4024,7 @@
         context,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
         location,
-    ));
+    )<span class="question-mark">?</span>);
 
     <span class="kw">let </span>fields = struct_type_info.fields().expect(<span class="string">"should have fields"</span>);
     <span class="kw">let </span>(field_ty, field_layout) =
@@ -4063,7 +4063,7 @@
 
     <span class="kw">let </span>ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context, ptr, total_size, location,
-    ))<span class="question-mark">?</span>;
+    )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="kw">for </span>(i, <span class="kw">_</span>) <span class="kw">in </span>fields.iter().enumerate() {
         <span class="kw">let </span>value: Value = entry.extract_value(context, location, container, field_ty, i)<span class="question-mark">?</span>;
@@ -4263,7 +4263,7 @@
                 .append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
             <span class="kw">let </span>box_ptr = block_clone.append_op_result(ReallocBindingsMeta::realloc(
                 context, box_ptr, tuple_len, location,
-            ))<span class="question-mark">?</span>;
+            )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>elem_offset = block_clone.append_op_result(arith::extui(
                 array_start,
@@ -4296,7 +4296,7 @@
                 .into(),
             );
 
-            block_clone.append_operation(ReallocBindingsMeta::free(context, array_ptr, location));
+            block_clone.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)<span class="question-mark">?</span>);
             block_clone.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[box_ptr], location));
         }
 
@@ -4312,7 +4312,7 @@
             <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty,
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// The following operation will because an array always has a drop implementation,
+        <span class="comment">// The metadata get will never fail because an array always has a drop implementation,
         // which at this point is always inserted thanks to the `build_type()` just above.
         </span>metadata
             .get::&lt;DropOverridesMeta&gt;()

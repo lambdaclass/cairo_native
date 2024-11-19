@@ -991,8 +991,8 @@
 
         <span class="kw">let </span>initial_gas_costs = {
             <span class="kw">let </span>gas_meta: <span class="kw-2">&amp;</span>GasMetadata = metadata.get().unwrap();
-            gas_meta.initial_required_gas_for_entry_points()
-        };
+            gas_meta.initial_required_gas_for_entry_points()<span class="question-mark">?
+        </span>};
 
         <span class="kw">let </span><span class="kw-2">mut </span>infos = BTreeMap::new();
 

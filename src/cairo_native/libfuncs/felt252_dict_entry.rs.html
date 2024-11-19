@@ -628,7 +628,7 @@
         <span class="kw">let </span>value_len = block_vacant.const_int(context, location, value_layout.size(), <span class="number">64</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>value_ptr = block_vacant.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, value_len, location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
         block_vacant.store(context, location, value_ptr_ptr, value_ptr)<span class="question-mark">?</span>;
         block_vacant.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[value_ptr], location));

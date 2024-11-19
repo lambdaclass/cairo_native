@@ -85,8 +85,8 @@
         <span class="kw">if </span><span class="self">self</span>.has_event(event) {
             metadata
                 .get::&lt;DebugUtils&gt;()
-                .unwrap()
-                .debug_breakpoint_trap(block, location)<span class="question-mark">?</span>;
+                .ok_or(Error::MissingMetadata)<span class="question-mark">?
+                </span>.debug_breakpoint_trap(block, location)<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(())

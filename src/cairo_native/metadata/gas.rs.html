@@ -228,6 +228,15 @@
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
 <a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_runner::token_gas_cost;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::gas::CostTokenType,
@@ -241,7 +250,10 @@
 <span class="kw">use </span>cairo_lang_sierra_gas::{
     compute_postcost_info, compute_precost_info, gas_info::GasInfo, CostError,
 };
-<span class="kw">use </span>cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
+<span class="kw">use </span>cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+
+<span class="kw">use crate</span>::{error::Result <span class="kw">as </span>NativeResult, native_panic};
+
 <span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="doccomment">/// Holds global gas info.
@@ -329,17 +341,23 @@
         <span class="prelude-val">Some</span>(
             <span class="self">self</span>.gas_info.function_costs[func]
                 .iter()
-                .map(|(token_type, val)| val.into_or_panic::&lt;usize&gt;() * token_gas_cost(<span class="kw-2">*</span>token_type))
+                .map(|(token_type, val)| {
+                    TryInto::&lt;usize&gt;::try_into(<span class="kw-2">*</span>val)
+                        .expect(<span class="string">"could not cast gas cost from i64 to usize"</span>)
+                        * token_gas_cost(<span class="kw-2">*</span>token_type)
+                })
                 .sum::&lt;usize&gt;() <span class="kw">as </span>u64,
         )
     }
 
-    <span class="kw">pub fn </span>initial_required_gas_for_entry_points(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeMap&lt;u64, BTreeMap&lt;u64, u64&gt;&gt; {
+    <span class="kw">pub fn </span>initial_required_gas_for_entry_points(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+    ) -&gt; NativeResult&lt;BTreeMap&lt;u64, BTreeMap&lt;u64, u64&gt;&gt;&gt; {
         <span class="self">self</span>.gas_info
             .function_costs
             .iter()
             .map(|func| {
-                (func.<span class="number">0</span>.id, {
+                <span class="prelude-val">Ok</span>((func.<span class="number">0</span>.id, {
                     <span class="kw">let </span><span class="kw-2">mut </span>costs = BTreeMap::new();
 
                     <span class="kw">for </span>(token, val) <span class="kw">in </span>func.<span class="number">1</span>.iter() {
@@ -351,13 +369,13 @@
                             CostTokenType::Poseidon =&gt; <span class="number">4</span>,
                             CostTokenType::AddMod =&gt; <span class="number">5</span>,
                             CostTokenType::MulMod =&gt; <span class="number">6</span>,
-                            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"matched an unexpected CostTokenType"</span>),
                         };
                         costs.insert(offset, <span class="kw-2">*</span>val <span class="kw">as </span>u64);
                     }
 
                     costs
-                })
+                }))
             })
             .collect()
     }

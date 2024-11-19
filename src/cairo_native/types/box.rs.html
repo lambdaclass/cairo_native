@@ -273,7 +273,7 @@
         null_ptr,
         inner_len_val,
         location,
-    ))<span class="question-mark">?</span>;
+    )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
         <span class="prelude-val">Some</span>(dup_override_meta) <span class="kw">if </span>dup_override_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
@@ -328,7 +328,7 @@
         <span class="kw">_ </span>=&gt; {}
     }
 
-    entry.append_operation(ReallocBindingsMeta::free(context, value, location));
+    entry.append_operation(ReallocBindingsMeta::free(context, value, location)<span class="question-mark">?</span>);
     entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
     <span class="prelude-val">Ok</span>(region)
 }

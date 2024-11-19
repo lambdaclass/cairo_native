@@ -608,7 +608,7 @@
         <span class="kw">let </span>old_ptr = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
         <span class="kw">let </span>new_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, inner_len, location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>value = entry.load(context, location, old_ptr, inner_ty)<span class="question-mark">?</span>;
         <span class="kw">let </span>values = metadata

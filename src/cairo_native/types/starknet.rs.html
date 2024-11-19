@@ -470,7 +470,7 @@
         <span class="kw">let </span>k32 = block.const_int(context, location, <span class="number">32</span>, <span class="number">64</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>new_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, k32, location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
         block.append_operation(
             ods::llvm::intr_memcpy_inline(
@@ -499,7 +499,7 @@
             context,
             block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
             location,
-        ));
+        )<span class="question-mark">?</span>);
 
         block.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(region))
