@@ -193,7 +193,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: lib/libcairo-native-runtime-base.a
-          key: library-${{ github.event.pull_request.${{ matrix.branch }}.sha }}
+          key: library-${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: Run Program
         run: |
