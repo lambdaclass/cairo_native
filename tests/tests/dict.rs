@@ -36,7 +36,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a), Value::Felt252(b)],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 

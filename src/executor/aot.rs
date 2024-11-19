@@ -76,8 +76,8 @@ impl AotNativeExecutor {
         &self,
         function_id: &FunctionId,
         args: &[Value],
-        gas: Option<u128>,
-    ) -> Result<ExecutionResult> {
+        gas: Option<u64>,
+    ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
@@ -109,7 +109,7 @@ impl AotNativeExecutor {
         &self,
         function_id: &FunctionId,
         args: &[Value],
-        gas: Option<u128>,
+        gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ExecutionResult> {
         let available_gas = self
@@ -143,7 +143,7 @@ impl AotNativeExecutor {
         &self,
         function_id: &FunctionId,
         args: &[Felt],
-        gas: Option<u128>,
+        gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult> {
         let available_gas = self
@@ -272,7 +272,7 @@ mod tests {
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
         let result = executor
-            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u64::MAX))
             .unwrap();
 
         assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
@@ -300,7 +300,7 @@ mod tests {
             .invoke_dynamic_with_syscall_handler(
                 entrypoint_function_id,
                 &[],
-                Some(u128::MAX),
+                Some(u64::MAX),
                 syscall_handler,
             )
             .unwrap();
@@ -339,7 +339,7 @@ mod tests {
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],
-                Some(u128::MAX),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();

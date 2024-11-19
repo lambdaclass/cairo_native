@@ -21,7 +21,7 @@ and greged’s about
 ### Gas builtin
 The gas builtin is used in Sierra in order to perform gas accounting. It is
 passed as an input to all function calls and holds the current remaining
-gas. It is represented in MLIR by a simple `u128`.
+gas. It is represented in MLIR by a simple `u64`.
 
 ### Gas metadata
 The process of calculating gas begins at the very outset of the compilation
@@ -236,4 +236,3 @@ constant 1.
 When this compiled MLIR code is called, the initial value of all builtin
 counters is set to `0` as can be seen in the
 [`invoke_dynamic` function](../src/executor.rs#L240).
-

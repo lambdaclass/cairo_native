@@ -63,7 +63,7 @@ fn array_get_test() {
         program,
         "run_test",
         &[Value::Felt252(10.into()), Value::Felt252(5.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -88,7 +88,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(value), Value::Felt252(idx.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
