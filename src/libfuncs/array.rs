@@ -1325,7 +1325,7 @@ pub fn build_slice<'ctx, 'this>(
             &info.signature.param_signatures[1].ty,
         )?;
 
-        // The following operation will because an array always has a drop implementation,
+        // The metadata get will never fail because an array always has a drop implementation,
         // which at this point is always inserted thanks to the `build_type()` just above.
         metadata
             .get::<DropOverridesMeta>()
@@ -1660,7 +1660,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             &info.signature.param_signatures[0].ty,
         )?;
 
-        // The following operation will because an array always has a drop implementation,
+        // The metadata get will never fail because an array always has a drop implementation,
         // which at this point is always inserted thanks to the `build_type()` just above.
         metadata
             .get::<DropOverridesMeta>()
