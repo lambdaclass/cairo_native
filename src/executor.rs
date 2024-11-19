@@ -6,8 +6,9 @@
 pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNativeExecutor};
 use crate::{
     arch::{AbiArgument, ValueWithInfoWrapper},
-    error::Error,
+    error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ExecutionResult},
+    native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{libc_free, BuiltinCosts, RangeExt},
@@ -72,7 +73,7 @@ fn invoke_dynamic(
     set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64,
     function_signature: &FunctionSignature,
     args: &[Value],
-    gas: u128,
+    gas: u64,
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
@@ -171,7 +172,7 @@ fn invoke_dynamic(
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
-                    .expect("syscall handler is required");
+                    .to_native_assert_error("syscall handler should be available")?;
 
                 (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
                     .to_bytes(&mut invoke_data)?;
@@ -181,7 +182,9 @@ fn invoke_dynamic(
             }
             type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
             type_info => ValueWithInfoWrapper {
-                value: iter.next().unwrap(),
+                value: iter
+                    .next()
+                    .to_native_assert_error("entrypoint argument is missing")?,
                 type_id,
                 info: type_info,
 
@@ -245,11 +248,11 @@ fn invoke_dynamic(
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => {
                 remaining_gas = Some(match &mut return_ptr {
-                    Some(return_ptr) => unsafe { *read_value::<u128>(return_ptr) },
+                    Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
                     None => {
                         // If there's no return ptr then the function only returned the gas. We don't
                         // need to bother with the syscall handler builtin.
-                        ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128
+                        ret_registers[0]
                     }
                 });
             }
@@ -293,7 +296,7 @@ fn invoke_dynamic(
                             CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
                                 builtin_stats.circuit_mul = value
                             }
-                            _ => unreachable!("{type_id:?}"),
+                            _ => native_panic!("given type should be a builtin: {type_id:?}"),
                         }
                     }
                 }
@@ -351,7 +354,7 @@ fn parse_result(
     #[cfg(target_arch = "x86_64")] mut ret_registers: [u64; 2],
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> Result<Value, Error> {
-    let type_info = registry.get_type(type_id).unwrap();
+    let type_info = registry.get_type(type_id)?;
     let debug_name = type_info.info().long_id.to_string();
 
     // Align the pointer to the actual return value.
@@ -364,22 +367,28 @@ fn parse_result(
 
         *return_ptr = unsafe {
             NonNull::new(return_ptr.cast::<u8>().as_ptr().add(align_offset))
-                .expect("nonnull is null")
+                .to_native_assert_error("return pointer should not be null")?
                 .cast()
         };
     }
 
     match type_info {
-        CoreTypeConcrete::Array(_) => Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?),
+        CoreTypeConcrete::Array(_) => Ok(Value::from_ptr(
+            return_ptr.to_native_assert_error("return pointer should be valid")?,
+            type_id,
+            registry,
+        )?),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
             let value = Value::from_ptr(ptr, &info.ty, registry)?;
             libc_free(ptr.cast().as_ptr());
             Ok(value)
         },
-        CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => {
-            Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?)
-        }
+        CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => Ok(Value::from_ptr(
+            return_ptr.to_native_assert_error("return pointer should be valid")?,
+            type_id,
+            registry,
+        )?),
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
             StarkNetTypeConcrete::ClassHash(_)
@@ -503,7 +512,7 @@ fn parse_result(
                 crate::types::r#enum::get_layout_for_variants(registry, &info.variants)?;
 
             let (tag, ptr) = if type_info.is_memory_allocated(registry)? || return_ptr.is_some() {
-                let ptr = return_ptr.unwrap();
+                let ptr = return_ptr.to_native_assert_error("return pointer should be valid")?;
 
                 let tag = unsafe {
                     match tag_layout.size() {
@@ -574,7 +583,11 @@ fn parse_result(
                     debug_name: Some(debug_name),
                 })
             } else {
-                Ok(Value::from_ptr(return_ptr.unwrap(), type_id, registry)?)
+                Ok(Value::from_ptr(
+                    return_ptr.to_native_assert_error("return pointer should be valid")?,
+                    type_id,
+                    registry,
+                )?)
             }
         }
         CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
@@ -599,7 +612,9 @@ fn parse_result(
         | CoreTypeConcrete::Pedersen(_)
         | CoreTypeConcrete::Poseidon(_)
         | CoreTypeConcrete::SegmentArena(_)
-        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => unreachable!(),
+        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+            native_panic!("builtins should have been handled before")
+        }
 
         CoreTypeConcrete::Felt252DictEntry(_)
         | CoreTypeConcrete::Span(_)
@@ -675,7 +690,7 @@ mod tests {
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
         let result = executor
-            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u64::MAX))
             .unwrap();
 
         assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
@@ -693,7 +708,7 @@ mod tests {
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
         let result = executor
-            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u64::MAX))
             .unwrap();
 
         assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
@@ -718,7 +733,7 @@ mod tests {
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],
-                Some(u128::MAX),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
@@ -745,7 +760,7 @@ mod tests {
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],
-                Some(u128::MAX),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();

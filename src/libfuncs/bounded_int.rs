@@ -4,6 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::MetadataStorage,
+    native_assert,
     types::TypeBuilder,
     utils::{BlockExt, RangeExt},
 };
@@ -114,8 +115,15 @@ fn build_add<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    assert!(compute_range.offset_bit_width() >= lhs_width);
-    assert!(compute_range.offset_bit_width() >= rhs_width);
+    assert!(
+        compute_range.offset_bit_width() >= lhs_width,
+        "the lhs_range bit_width must be less or equal than the compute_range"
+    );
+    assert!(
+        compute_range.offset_bit_width() >= rhs_width,
+        "the rhs_range bit_width must be less or equal than the compute_range"
+    );
+
     let lhs_value = if compute_range.offset_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
@@ -235,8 +243,15 @@ fn build_sub<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    assert!(compute_range.offset_bit_width() >= lhs_width);
-    assert!(compute_range.offset_bit_width() >= rhs_width);
+    assert!(
+        compute_range.offset_bit_width() >= lhs_width,
+        "the lhs_range bit_width must be less or equal than the compute_range"
+    );
+    assert!(
+        compute_range.offset_bit_width() >= rhs_width,
+        "the rhs_range bit_width must be less or equal than the compute_range"
+    );
+
     let lhs_value = if compute_range.offset_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
@@ -357,8 +372,15 @@ fn build_mul<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    assert!(compute_range.zero_based_bit_width() >= lhs_width);
-    assert!(compute_range.zero_based_bit_width() >= rhs_width);
+    assert!(
+        compute_range.offset_bit_width() >= lhs_width,
+        "the lhs_range bit_width must be less or equal than the compute_range"
+    );
+    assert!(
+        compute_range.offset_bit_width() >= rhs_width,
+        "the rhs_range bit_width must be less or equal than the compute_range"
+    );
+
     let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
@@ -478,8 +500,15 @@ fn build_divrem<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    assert!(compute_range.zero_based_bit_width() >= lhs_width);
-    assert!(compute_range.zero_based_bit_width() >= rhs_width);
+    assert!(
+        compute_range.offset_bit_width() >= lhs_width,
+        "the lhs_range bit_width must be less or equal than the compute_range"
+    );
+    assert!(
+        compute_range.offset_bit_width() >= rhs_width,
+        "the rhs_range bit_width must be less or equal than the compute_range"
+    );
+
     let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
@@ -687,7 +716,7 @@ fn build_is_zero<'ctx, 'this>(
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let src_range = src_ty.integer_range(registry)?;
 
-    assert!(
+    native_assert!(
         src_range.lower <= BigInt::ZERO && BigInt::ZERO < src_range.upper,
         "value can never be zero"
     );
@@ -726,7 +755,11 @@ fn build_wrap_non_zero<'ctx, 'this>(
     let src_range = registry
         .get_type(&info.signature.param_signatures[0].ty)?
         .integer_range(registry)?;
-    assert!(src_range.lower > BigInt::ZERO || BigInt::ZERO >= src_range.upper);
+
+    assert!(
+        src_range.lower > BigInt::ZERO || BigInt::ZERO >= src_range.upper,
+        "value must not be zero"
+    );
 
     entry.append_operation(helper.br(0, &[src_value], location));
     Ok(())

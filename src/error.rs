@@ -171,7 +171,7 @@ pub mod panic {
         }
     }
 
-    impl<T> ToNativeAssertError<T> for Result<T> {
+    impl<T, E> ToNativeAssertError<T> for std::result::Result<T, E> {
         fn to_native_assert_error(self, msg: &str) -> Result<T> {
             self.map_err(|_| Error::NativeAssert(NativeAssertError::new(msg.to_string())))
         }
@@ -185,6 +185,15 @@ pub mod panic {
             return Err($crate::error::Error::NativeAssert(
                 $crate::error::panic::NativeAssertError::new(format!($($arg)*)),
             ))
+        };
+    }
+
+    #[macro_export]
+    macro_rules! native_assert {
+        ($cond:expr, $($arg:tt)*) => {
+            if !($cond) {
+                $crate::native_panic!($($arg)*);
+            }
         };
     }
 

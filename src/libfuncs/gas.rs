@@ -4,6 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    native_panic,
     utils::{BlockExt, GepIndex},
 };
 use cairo_lang_sierra::{
@@ -52,7 +53,7 @@ pub fn build<'ctx, 'this>(
 
 /// Generate MLIR operations for the `get_available_gas` libfunc.
 pub fn build_get_available_gas<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -60,11 +61,14 @@ pub fn build_get_available_gas<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    entry.append_operation(helper.br(
-        0,
-        &[entry.argument(0)?.into(), entry.argument(0)?.into()],
+    let gas = entry.argument(0)?.into();
+    let gas_u128 = entry.append_op_result(arith::extui(
+        gas,
+        IntegerType::new(context, 128).into(),
         location,
-    ));
+    ))?;
+    // The gas is returned as u128 on the second arg.
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), gas_u128], location));
     Ok(())
 }
 
@@ -87,7 +91,6 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         .expect("builtin_withdraw_gas should always have a gas cost")
         .clone();
 
-    let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
 
     let builtin_ptr = {
@@ -100,7 +103,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             .into()
     };
 
-    let mut total_gas_cost_value = entry.const_int_from_type(context, location, 0, u128_type)?;
+    let mut total_gas_cost_value = entry.const_int_from_type(context, location, 0, u64_type)?;
 
     for (cost_count, token_type) in &gas_cost.0 {
         if *cost_count == 0 {
@@ -115,11 +118,11 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
-            _ => unreachable!(),
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
         };
 
         let cost_count_value =
-            entry.const_int_from_type(context, location, *cost_count, u128_type)?;
+            entry.const_int_from_type(context, location, *cost_count, u64_type)?;
         let builtin_costs_index_value =
             entry.const_int_from_type(context, location, builtin_costs_index, u64_type)?;
 
@@ -131,10 +134,8 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             u64_type,
         )?;
         let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
-        let cost_value_ext =
-            entry.append_op_result(arith::extui(cost_value, u128_type, location))?;
         let gas_cost_value =
-            entry.append_op_result(arith::muli(cost_count_value, cost_value_ext, location))?;
+            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))?;
         total_gas_cost_value =
             entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))?;
     }
@@ -169,7 +170,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &MetadataStorage,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check =
@@ -181,10 +182,9 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
         .get::<GasCost>()
         .expect("builtin_withdraw_gas should always have a gas cost");
 
-    let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
 
-    let mut total_gas_cost_value = entry.const_int_from_type(context, location, 0, u128_type)?;
+    let mut total_gas_cost_value = entry.const_int_from_type(context, location, 0, u64_type)?;
 
     for (cost_count, token_type) in &gas_cost.0 {
         if *cost_count == 0 {
@@ -199,11 +199,11 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
-            _ => unreachable!(),
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
         };
 
         let cost_count_value =
-            entry.const_int_from_type(context, location, *cost_count, u128_type)?;
+            entry.const_int_from_type(context, location, *cost_count, u64_type)?;
         let builtin_costs_index_value =
             entry.const_int_from_type(context, location, builtin_costs_index, u64_type)?;
 
@@ -215,10 +215,8 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
             u64_type,
         )?;
         let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
-        let cost_value_ext =
-            entry.append_op_result(arith::extui(cost_value, u128_type, location))?;
         let gas_cost_value =
-            entry.append_op_result(arith::muli(cost_count_value, cost_value_ext, location))?;
+            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))?;
         total_gas_cost_value =
             entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))?;
     }
@@ -304,9 +302,6 @@ mod test {
         );
 
         let result = run_program(&program, "run_test", &[]);
-        assert_eq!(
-            result.remaining_gas,
-            Some(340282366920938463463374607431768205035),
-        );
+        assert_eq!(result.remaining_gas, Some(18446744073709545195));
     }
 }
