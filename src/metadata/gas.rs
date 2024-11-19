@@ -11,7 +11,10 @@ use cairo_lang_sierra_ap_change::{
 use cairo_lang_sierra_gas::{
     compute_postcost_info, compute_precost_info, gas_info::GasInfo, CostError,
 };
-use cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
+use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+
+use crate::{error::Result as NativeResult, native_panic};
+
 use std::collections::BTreeMap;
 
 /// Holds global gas info.
@@ -99,17 +102,23 @@ impl GasMetadata {
         Some(
             self.gas_info.function_costs[func]
                 .iter()
-                .map(|(token_type, val)| val.into_or_panic::<usize>() * token_gas_cost(*token_type))
+                .map(|(token_type, val)| {
+                    TryInto::<usize>::try_into(*val)
+                        .expect("could not cast gas cost from i64 to usize")
+                        * token_gas_cost(*token_type)
+                })
                 .sum::<usize>() as u64,
         )
     }
 
-    pub fn initial_required_gas_for_entry_points(&self) -> BTreeMap<u64, BTreeMap<u64, u64>> {
+    pub fn initial_required_gas_for_entry_points(
+        &self,
+    ) -> NativeResult<BTreeMap<u64, BTreeMap<u64, u64>>> {
         self.gas_info
             .function_costs
             .iter()
             .map(|func| {
-                (func.0.id, {
+                Ok((func.0.id, {
                     let mut costs = BTreeMap::new();
 
                     for (token, val) in func.1.iter() {
@@ -121,13 +130,13 @@ impl GasMetadata {
                             CostTokenType::Poseidon => 4,
                             CostTokenType::AddMod => 5,
                             CostTokenType::MulMod => 6,
-                            _ => unreachable!(),
+                            _ => native_panic!("matched an unexpected CostTokenType"),
                         };
                         costs.insert(offset, *val as u64);
                     }
 
                     costs
-                })
+                }))
             })
             .collect()
     }

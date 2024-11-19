@@ -11,7 +11,7 @@ use melior::{
         r#type::IntegerType,
         Identifier, Location, Module, Operation, Region, Value,
     },
-    Context,
+    Context, Error,
 };
 
 /// Memory allocation `realloc` metadata.
@@ -64,7 +64,7 @@ impl ReallocBindingsMeta {
         ptr: Value<'c, 'a>,
         len: Value<'c, 'a>,
         location: Location<'c>,
-    ) -> Operation<'c> {
+    ) -> Result<Operation<'c>, Error> {
         OperationBuilder::new("llvm.call", location)
             .add_attributes(&[(
                 Identifier::new(context, "callee"),
@@ -73,7 +73,6 @@ impl ReallocBindingsMeta {
             .add_operands(&[ptr, len])
             .add_results(&[llvm::r#type::pointer(context, 0)])
             .build()
-            .unwrap()
     }
 
     /// Calls the `free` function.
@@ -81,7 +80,7 @@ impl ReallocBindingsMeta {
         context: &'c Context,
         ptr: Value<'c, '_>,
         location: Location<'c>,
-    ) -> Operation<'c> {
+    ) -> Result<Operation<'c>, Error> {
         OperationBuilder::new("llvm.call", location)
             .add_attributes(&[(
                 Identifier::new(context, "callee"),
@@ -89,6 +88,5 @@ impl ReallocBindingsMeta {
             )])
             .add_operands(&[ptr])
             .build()
-            .unwrap()
     }
 }
