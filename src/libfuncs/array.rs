@@ -294,7 +294,7 @@ pub fn build_append<'ctx, 'this>(
             ptr,
             realloc_size,
             location,
-        ))?;
+        )?)?;
 
         // No need to memmove, guaranteed by the fact that if we needed to memmove we'd have gone
         // through the memmove block instead of reallocating.
@@ -495,7 +495,7 @@ pub fn build_get<'ctx, 'this>(
         )?;
         let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))?;
+        )?)?;
         assert_nonnull(
             context,
             valid_block,
@@ -587,7 +587,7 @@ pub fn build_get<'ctx, 'this>(
             }
             _ => {}
         }
-        valid_block.append_operation(ReallocBindingsMeta::free(context, ptr, location));
+        valid_block.append_operation(ReallocBindingsMeta::free(context, ptr, location)?);
 
         valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
     }
@@ -685,7 +685,7 @@ pub fn build_pop_front<'ctx, 'this>(
         )?;
         let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))?;
+        )?)?;
         assert_nonnull(
             context,
             valid_block,
@@ -785,7 +785,7 @@ pub fn build_pop_front_consume<'ctx, 'this>(
         )?;
         let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))?;
+        )?)?;
         assert_nonnull(
             context,
             valid_block,
@@ -911,7 +911,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
         )?;
         let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, target_ptr, elem_size, location,
-        ))?;
+        )?)?;
         assert_nonnull(
             context,
             valid_block,
@@ -1032,7 +1032,7 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
                 null_ptr,
                 popped_size_value,
                 location,
-            ))?
+            )?)?
         };
 
         valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
@@ -1161,7 +1161,7 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
                 null_ptr,
                 popped_size_value,
                 location,
-            ))?
+            )?)?
         };
 
         valid_block.memcpy(context, location, popped_ptr, return_ptr, popped_size_value);
@@ -1325,7 +1325,7 @@ pub fn build_slice<'ctx, 'this>(
             &info.signature.param_signatures[1].ty,
         )?;
 
-        // The following operation will because an array always has a drop implementation,
+        // The metadata get will never fail because an array always has a drop implementation,
         // which at this point is always inserted thanks to the `build_type()` just above.
         metadata
             .get::<DropOverridesMeta>()
@@ -1372,7 +1372,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         context,
         entry.argument(0)?.into(),
         location,
-    ));
+    )?);
 
     let fields = struct_type_info.fields().expect("should have fields");
     let (field_ty, field_layout) =
@@ -1411,7 +1411,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context, ptr, total_size, location,
-    ))?;
+    )?)?;
 
     for (i, _) in fields.iter().enumerate() {
         let value: Value = entry.extract_value(context, location, container, field_ty, i)?;
@@ -1611,7 +1611,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
             let box_ptr = block_clone.append_op_result(ReallocBindingsMeta::realloc(
                 context, box_ptr, tuple_len, location,
-            ))?;
+            )?)?;
 
             let elem_offset = block_clone.append_op_result(arith::extui(
                 array_start,
@@ -1644,7 +1644,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 .into(),
             );
 
-            block_clone.append_operation(ReallocBindingsMeta::free(context, array_ptr, location));
+            block_clone.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
             block_clone.append_operation(helper.br(0, &[box_ptr], location));
         }
 
@@ -1660,7 +1660,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             &info.signature.param_signatures[0].ty,
         )?;
 
-        // The following operation will because an array always has a drop implementation,
+        // The metadata get will never fail because an array always has a drop implementation,
         // which at this point is always inserted thanks to the `build_type()` just above.
         metadata
             .get::<DropOverridesMeta>()

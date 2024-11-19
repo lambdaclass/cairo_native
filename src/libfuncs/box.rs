@@ -86,7 +86,7 @@ pub fn build_into_box<'ctx, 'this>(
     let ptr = entry
         .append_operation(ReallocBindingsMeta::realloc(
             context, ptr, value_len, location,
-        ))
+        )?)
         .result(0)?
         .into();
 
@@ -142,7 +142,7 @@ pub fn build_unbox<'ctx, 'this>(
         context,
         entry.argument(0)?.into(),
         location,
-    ));
+    )?);
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())
