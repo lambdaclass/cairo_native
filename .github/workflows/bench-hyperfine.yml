@@ -199,43 +199,66 @@ jobs:
       - name: Run Program
         run: |
           make deps
-          mkdir bench-results
-          cp programs/benches/*.cairo bench-results
-          for f in bench-results/*.cairo; do
+          mkdir bench-results-${{matrix.branch}}
+          cp programs/benches/*.cairo bench-results-${{matrix.branch}}
+          for f in bench-results-${{matrix.branch}}/*.cairo; do
             hyperfine \
-            --show-output \
-            --export-markdown "${f%.*}-${{matrix.branch}}.md" \
-            --export-json "${f%.*}-${{matrix.branch}}.json" \
+            --export-markdown "${f%.*}.md" \
+            --export-json "${f%.*}.json" \
             --warmup 3 \
             -n "${{matrix.branch}} $(basename $f) (JIT)" "./bin/cairo-native-run-${{ matrix.branch }} --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "${{matrix.branch}} $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-${{ matrix.branch }}.a ./bin/cairo-native-run-head --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "${{matrix.branch}} $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-${{ matrix.branch }}.a ./bin/cairo-native-run-${{matrix.branch}} --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
             >> /dev/stderr
           done
 
-      - name: Print tables
-        run: |
-          {
-            echo "${bold}Benchmark results Main vs HEAD.${normal}"
-            for f in bench-results/*.md; do
-              echo
-              cat $f
-            done
-          } | tee -a comment_body.md
-
-      - name: Find Bench Comment
-        continue-on-error: true
-        uses: peter-evans/find-comment@v3
-        id: fc
+      - name: Upload benches ${{matrix.branch}}
+        uses: actions/upload-artifact@v4
         with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: "github-actions[bot]"
-          body-includes: Benchmark results Main vs HEAD
+          name: results-${{matrix.branch}}
+          path: /bench-results-${{matrix.branch}}
 
-      - name: Create or update bench comment
-        continue-on-error: true
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body-path: comment_body.md
-          edit-mode: replace
+  show-outputs:
+    name: Print Bench Results
+    runs-on: ubuntu-24.04
+    needs: [ run-bench ]
+    steps:
+    - name: Fetch Base Result
+      uses: actions/download-artifact@v4
+      with:
+          name: results-base
+          path: /bench-results-base
+
+    - name: Fetch Head Result
+      uses: actions/download-artifact@v4
+      with:
+          name: results-head
+          path: /bench-results-head
+
+    - name: Print tables
+      run: |
+        {
+          echo "${bold}Benchmark results Main vs HEAD.${normal}"
+          for f in bench-results-base/*.md; do
+            echo
+            cat $f
+            cat bench-results-head/$(basename $f).md
+          done
+        } | tee -a comment_body.md
+
+    - name: Find Bench Comment
+      continue-on-error: true
+      uses: peter-evans/find-comment@v3
+      id: fc
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: "github-actions[bot]"
+        body-includes: Benchmark results Main vs HEAD
+
+    - name: Create or update bench comment
+      continue-on-error: true
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        comment-id: ${{ steps.fc.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body-path: comment_body.md
+        edit-mode: replace
