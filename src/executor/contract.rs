@@ -34,7 +34,7 @@
 use crate::{
     arch::AbiArgument,
     context::NativeContext,
-    error::{panic::ToNativeAssertError, Error, Result},
+    error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
     metadata::gas::GasMetadata,
@@ -146,7 +146,7 @@ impl AotContractExecutor {
         sierra_program: &Program,
         entry_points: &ContractEntryPoints,
         opt_level: OptLevel,
-    ) -> Result<Self> {
+    ) -> Result<Self, Error> {
         let native_context = NativeContext::new();
         let module = native_context.compile(sierra_program, true)?;
 
@@ -158,7 +158,7 @@ impl AotContractExecutor {
 
         let initial_gas_costs = {
             let gas_meta: &GasMetadata = metadata.get().ok_or(Error::MissingMetadata)?;
-            gas_meta.initial_required_gas_for_entry_points()
+            gas_meta.initial_required_gas_for_entry_points()?
         };
 
         let mut infos = BTreeMap::new();
@@ -255,7 +255,7 @@ impl AotContractExecutor {
     }
 
     /// Save the library to the desired path, alongside it is saved also a json file with additional info.
-    pub fn save(&mut self, to: impl AsRef<Path>) -> Result<()> {
+    pub fn save(&mut self, to: impl AsRef<Path>) -> Result<(), Error> {
         let to = to.as_ref();
         std::fs::copy(&self.path, to)?;
 
@@ -270,7 +270,7 @@ impl AotContractExecutor {
     }
 
     /// Load the executor from an already compiled library with the additional info json file.
-    pub fn load(library_path: &Path) -> Result<Self> {
+    pub fn load(library_path: &Path) -> Result<Self, Error> {
         let info_str = std::fs::read_to_string(library_path.with_extension("json"))?;
         let contract_info: NativeContractInfo = serde_json::from_str(&info_str)?;
         Ok(Self {
@@ -289,7 +289,7 @@ impl AotContractExecutor {
         gas: Option<u64>,
         builtin_costs: Option<BuiltinCosts>,
         mut syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult> {
+    ) -> Result<ContractExecutionResult, Error> {
         let arena = Bump::new();
         let mut invoke_data = Vec::<u8>::new();
 
@@ -568,7 +568,7 @@ impl AotContractExecutor {
         &self,
         function_id: &FunctionId,
         is_for_contract_executor: bool,
-    ) -> Result<*mut c_void> {
+    ) -> Result<*mut c_void, Error> {
         let function_name = generate_function_name(function_id, is_for_contract_executor);
         let function_name = format!("_mlir_ciface_{function_name}");
 

@@ -1,7 +1,7 @@
 use std::io;
 
 use crate::{
-    error::{Error, Result},
+    error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::gas::GasMetadata,
     module::NativeModule,
@@ -50,7 +50,7 @@ impl AotNativeExecutor {
     }
 
     /// Utility to convert a [`NativeModule`] into an [`AotNativeExecutor`].
-    pub fn from_native_module(module: NativeModule, opt_level: OptLevel) -> Result<Self> {
+    pub fn from_native_module(module: NativeModule, opt_level: OptLevel) -> Result<Self, Error> {
         let NativeModule {
             module,
             registry,
@@ -111,7 +111,7 @@ impl AotNativeExecutor {
         args: &[Value],
         gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ExecutionResult> {
+    ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
@@ -145,7 +145,7 @@ impl AotNativeExecutor {
         args: &[Felt],
         gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult> {
+    ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
@@ -178,7 +178,7 @@ impl AotNativeExecutor {
         )?)
     }
 
-    pub fn find_function_ptr(&self, function_id: &FunctionId) -> Result<*mut c_void> {
+    pub fn find_function_ptr(&self, function_id: &FunctionId) -> Result<*mut c_void, Error> {
         let function_name = generate_function_name(function_id, false);
         let function_name = format!("_mlir_ciface_{function_name}");
 
@@ -201,7 +201,7 @@ impl AotNativeExecutor {
         }
     }
 
-    fn extract_signature(&self, function_id: &FunctionId) -> Result<&FunctionSignature> {
+    fn extract_signature(&self, function_id: &FunctionId) -> Result<&FunctionSignature, Error> {
         Ok(&self.registry.get_function(function_id)?.signature)
     }
 }

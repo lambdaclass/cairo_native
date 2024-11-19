@@ -1,5 +1,5 @@
 use crate::{
-    error::{Error, Result},
+    error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::gas::GasMetadata,
     module::NativeModule,
@@ -44,7 +44,7 @@ impl<'m> JitNativeExecutor<'m> {
     pub fn from_native_module(
         native_module: NativeModule<'m>,
         opt_level: OptLevel,
-    ) -> Result<Self> {
+    ) -> Result<Self, Error> {
         let NativeModule {
             module,
             registry,
@@ -103,7 +103,7 @@ impl<'m> JitNativeExecutor<'m> {
         args: &[Value],
         gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ExecutionResult> {
+    ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
@@ -129,7 +129,7 @@ impl<'m> JitNativeExecutor<'m> {
         args: &[Felt],
         gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult> {
+    ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
@@ -172,7 +172,7 @@ impl<'m> JitNativeExecutor<'m> {
         }
     }
 
-    fn extract_signature(&self, function_id: &FunctionId) -> Result<&FunctionSignature> {
+    fn extract_signature(&self, function_id: &FunctionId) -> Result<&FunctionSignature, Error> {
         Ok(self
             .program_registry()
             .get_function(function_id)
