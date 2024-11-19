@@ -146,11 +146,16 @@ jobs:
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         run: sudo apt-get update && sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
 
-      - name: Checkout commit
+      - name: Checkout base commit
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request[matrix.branch].sha }}
+
+      - name: Install Hyperfine
+        uses: taiki-e/install-action@v2
+        with:
+          tool: hyperfine@1.16
 
       - name: Fetch Rust cache
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
@@ -160,73 +165,44 @@ jobs:
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         run: |
           make build
-          mkdir lib bin
-          cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
-          cp target/release/libcairo_native_runtime.a lib/libcairo-native-runtime-${{ matrix.branch }}.a
-
-  hyperfine-prs:
-    name: Bench PR (linux, amd64)
-    needs: [ build-binaries ]
-    runs-on: ubuntu-24.04
-    env:
-      PROGRAM: fib_2M
-      OUTPUT_DIR: bench-outputs
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Hyperfine
-        uses: taiki-e/install-action@v2
-        with:
-          tool: hyperfine@1.16
-
-      - name: Fetch base binary
-        uses: actions/cache/restore@v3
-        with:
-          path: bin/cairo-native-run-base
-          key: binary-${{ github.event.pull_request.base.sha }}
-
-      - name: Fetch HEAD binary
-        uses: actions/cache/restore@v3
-        with:
-          path: bin/cairo-native-run-head
-          key: binary-${{ github.event.pull_request.head.sha }}
-
-      - name: Fetch base runtime-library
-        uses: actions/cache/restore@v3
-        with:
-          path: lib/libcairo-native-runtime-base.a
-          key: library-${{ github.event.pull_request.base.sha }}
-
-      - name: Fetch head runtime-library
-        uses: actions/cache/restore@v3
-        with:
-          path: lib/libcairo-native-runtime-head.a
-          key: library-${{ github.event.pull_request.head.sha }}
-
-      - name: Build Dependencies
-        run: make deps
 
       - name: Run Program
         run: |
-          mkdir $OUTPUT_DIR
+          make deps
+          mkdir bench-results
           cp programs/benches/*.cairo $OUTPUT_DIR
           for f in $OUTPUT_DIR/*.cairo; do
             hyperfine \
-            --show-output \
-            --export-markdown "${f%.*}.md" \
-            --export-json "${f%.*}.json" \
+            --export-markdown "${f%.*}-${{matrix.branch}}.md" \
+            --export-json "${f%.*}-${{matrix.branch}}.json" \
             --warmup 3 \
-            -n "head $(basename $f) (JIT)" "./bin/cairo-native-run-head --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "base $(basename $f) (JIT)" "./bin/cairo-native-run-base --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "head $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-head.a ./bin/cairo-native-run-head --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "base $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-base.a ./bin/cairo-native-run-base --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "${{matrix.branch}} $(basename $f) (JIT)" "./target/release/cairo-native-run --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "${{matrix.branch}} $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=./target/release/libcairo_native_runtime.a ./bin/cairo-native-run-head --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
             >> /dev/stderr
           done
+
+      - name: Upload dumps
+        uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: bench-results/
+
+  print-results:
+    name: Bench PR (linux, amd64)
+    needs: [ build-binaries ]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fetch VM dumps
+        uses: actions/download-artifact@v4
+        with:
+          name: results
+          path: bench-results
+
       - name: Print tables
         run: |
           {
             echo "${bold}Benchmark results Main vs HEAD.${normal}"
-            for f in $OUTPUT_DIR/*.md; do
+            for f in bench-results/*.md; do
               echo
               cat $f
             done
