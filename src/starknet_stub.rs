@@ -651,7 +651,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     fn get_class_hash_at(
         &mut self,
         contract_address: Felt,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
         Ok(contract_address)
     }

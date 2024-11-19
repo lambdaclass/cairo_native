@@ -506,7 +506,7 @@ impl StarknetSyscallHandler for SyscallHandler {
     fn get_class_hash_at(
         &mut self,
         contract_address: Felt,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
         Ok(contract_address)
     }
@@ -1215,7 +1215,7 @@ fn get_class_hash_at() {
         &SYSCALLS_PROGRAM,
         "get_class_hash_at",
         &[],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(SyscallHandler::new()),
     );
 

@@ -324,7 +324,7 @@ pub trait StarknetSyscallHandler {
     fn get_class_hash_at(
         &mut self,
         contract_address: Felt,
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Felt>;
 
     #[cfg(feature = "with-cheatcode")]
@@ -531,7 +531,7 @@ impl StarknetSyscallHandler for DummySyscallHandler {
     fn get_class_hash_at(
         &mut self,
         _contract_address: Felt,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
         unimplemented!()
     }
@@ -814,7 +814,7 @@ pub(crate) mod handler {
         get_class_hash_at: extern "C" fn(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
             ptr: &mut T,
-            gas: &mut u128,
+            gas: &mut u64,
             contract_address: &Felt252Abi,
         ),
         // testing syscalls
@@ -1658,7 +1658,7 @@ pub(crate) mod handler {
         extern "C" fn wrap_get_class_hash_at(
             result_ptr: &mut SyscallResultAbi<Felt252Abi>,
             ptr: &mut T,
-            gas: &mut u128,
+            gas: &mut u64,
             contract_address: &Felt252Abi,
         ) {
             let result = ptr.get_class_hash_at(contract_address.into(), gas);

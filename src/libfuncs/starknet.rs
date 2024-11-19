@@ -2887,18 +2887,24 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
-    entry.store(
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
+    entry.append_operation(llvm::store(
         context,
-        location,
-        gas_builtin_ptr,
         entry.argument(0)?.into(),
-    )?;
+        gas_builtin_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
 
     // Allocate `contract_address` argument and write the value.
     let contract_address_ptr = helper.init_block().alloca_int(context, location, 252)?;
@@ -2976,12 +2982,7 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
         entry.extract_value(context, location, value, variant_tys[1].0, 1)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
