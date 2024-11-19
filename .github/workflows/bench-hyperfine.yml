@@ -216,7 +216,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: results-${{matrix.branch}}
-          path: /bench-results-${{matrix.branch}}
+          path: bench-results-${{matrix.branch}}
 
   show-outputs:
     name: Print Bench Results
@@ -227,13 +227,13 @@ jobs:
       uses: actions/download-artifact@v4
       with:
           name: results-base
-          path: /bench-results-base
+          path: bench-results-base
 
     - name: Fetch Head Result
       uses: actions/download-artifact@v4
       with:
           name: results-head
-          path: /bench-results-head
+          path: bench-results-head
 
     - name: Print tables
       run: |
