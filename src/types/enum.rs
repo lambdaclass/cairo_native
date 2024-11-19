@@ -403,10 +403,11 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
     },
+    native_panic,
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -455,7 +456,7 @@ pub fn build<'ctx>(
                 registry.build_type(context, module, registry, metadata, variant)?;
                 if metadata
                     .get::<DupOverridesMeta>()
-                    .unwrap()
+                    .ok_or(Error::MissingMetadata)?
                     .is_overriden(variant)
                 {
                     needs_override = true;
@@ -482,7 +483,7 @@ pub fn build<'ctx>(
                 registry.build_type(context, module, registry, metadata, variant)?;
                 if metadata
                     .get::<DropOverridesMeta>()
-                    .unwrap()
+                    .ok_or(Error::MissingMetadata)?
                     .is_overriden(variant)
                 {
                     needs_override = true;
@@ -566,13 +567,13 @@ fn build_dup<'ctx>(
     )?;
 
     match variant_tys.len() {
-        0 => panic!("attempt to clone a zero-variant enum"),
+        0 => native_panic!("attempt to clone a zero-variant enum"),
         1 => {
             // The following unwrap is unreachable because the registration logic will always insert
             // it.
             let values = metadata
                 .get::<DupOverridesMeta>()
-                .unwrap()
+                .ok_or(Error::MissingMetadata)?
                 .invoke_override(
                     context,
                     &entry,
@@ -608,7 +609,7 @@ fn build_dup<'ctx>(
                     // always insert it.
                     let values = metadata
                         .get::<DupOverridesMeta>()
-                        .unwrap()
+                        .ok_or(Error::MissingMetadata)?
                         .invoke_override(context, block, location, variant_id, value)?;
 
                     let value = block.insert_value(context, location, container, values.0, 1)?;
@@ -670,13 +671,13 @@ fn build_drop<'ctx>(
     )?;
 
     match variant_tys.len() {
-        0 => panic!("attempt to drop a zero-variant enum"),
+        0 => native_panic!("attempt to drop a zero-variant enum"),
         1 => {
             // The following unwrap is unreachable because the registration logic will always insert
             // it.
             metadata
                 .get::<DropOverridesMeta>()
-                .unwrap()
+                .ok_or(Error::MissingMetadata)?
                 .invoke_override(
                     context,
                     &entry,
@@ -712,7 +713,7 @@ fn build_drop<'ctx>(
                     // always insert it.
                     metadata
                         .get::<DropOverridesMeta>()
-                        .unwrap()
+                        .ok_or(Error::MissingMetadata)?
                         .invoke_override(context, block, location, variant_id, value)?;
 
                     block.append_operation(func::r#return(&[], location));

@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
@@ -83,7 +83,7 @@ pub fn build_get<'ctx, 'this>(
     // Double pointer. Avoid allocating an element on a dict getter.
     let entry_value_ptr_ptr = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .unwrap()
+        .ok_or(Error::MissingMetadata)?
         .dict_get(context, helper, entry, dict_ptr, entry_key_ptr, location)?;
     let entry_value_ptr = entry.load(
         context,
@@ -259,7 +259,7 @@ pub fn build_finalize<'ctx, 'this>(
         let value_len = block_vacant.const_int(context, location, value_layout.size(), 64)?;
         let value_ptr = block_vacant.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, value_len, location,
-        ))?;
+        )?)?;
 
         block_vacant.store(context, location, value_ptr_ptr, value_ptr)?;
         block_vacant.append_operation(cf::br(block_final, &[value_ptr], location));

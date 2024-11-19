@@ -106,7 +106,7 @@ fn build_dup<'ctx>(
         null_ptr,
         inner_len_val,
         location,
-    ))?;
+    )?)?;
 
     match metadata.get::<DupOverridesMeta>() {
         Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
@@ -161,7 +161,7 @@ fn build_drop<'ctx>(
         _ => {}
     }
 
-    entry.append_operation(ReallocBindingsMeta::free(context, value, location));
+    entry.append_operation(ReallocBindingsMeta::free(context, value, location)?);
     entry.append_operation(func::r#return(&[], location));
     Ok(region)
 }

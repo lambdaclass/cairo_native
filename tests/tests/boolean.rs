@@ -121,7 +121,7 @@ fn felt252_to_bool_bug() {
         program,
         "run_test",
         &[Value::Felt252(a.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -145,7 +145,7 @@ fn felt252_to_bool_bug() {
         program,
         "run_test",
         &[Value::Felt252(a.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -169,7 +169,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -192,7 +192,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -216,7 +216,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -240,7 +240,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -264,7 +264,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 

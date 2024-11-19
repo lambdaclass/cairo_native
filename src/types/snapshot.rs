@@ -14,7 +14,7 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage,
@@ -69,7 +69,7 @@ pub fn build<'ctx>(
             // calling this closure.
             metadata
                 .get::<DupOverridesMeta>()
-                .unwrap()
+                .ok_or(Error::MissingMetadata)?
                 .is_overriden(&info.ty)
                 .then(|| build_dup(context, module, registry, metadata, &info))
                 .transpose()
@@ -89,7 +89,7 @@ pub fn build<'ctx>(
             // calling this closure.
             metadata
                 .get::<DropOverridesMeta>()
-                .unwrap()
+                .ok_or(Error::MissingMetadata)?
                 .is_overriden(&info.ty)
                 .then(|| build_drop(context, module, registry, metadata, &info))
                 .transpose()
@@ -116,7 +116,7 @@ fn build_dup<'ctx>(
     // The following unwrap is unreachable because the registration logic will always insert it.
     let values = metadata
         .get::<DupOverridesMeta>()
-        .unwrap()
+        .ok_or(Error::MissingMetadata)?
         .invoke_override(
             context,
             &entry,
@@ -146,7 +146,7 @@ fn build_drop<'ctx>(
     // The following unwrap is unreachable because the registration logic will always insert it.
     metadata
         .get::<DropOverridesMeta>()
-        .unwrap()
+        .ok_or(Error::MissingMetadata)?
         .invoke_override(
             context,
             &entry,
