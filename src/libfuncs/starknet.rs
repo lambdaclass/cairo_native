@@ -195,12 +195,17 @@ pub fn build_call_contract<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(0)?.into(),
@@ -336,7 +341,7 @@ pub fn build_call_contract<'ctx, 'this>(
         context,
         location,
         gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
+        IntegerType::new(context, 64).into(),
     )?;
 
     entry.append_operation(helper.cond_br(
@@ -528,12 +533,17 @@ pub fn build_storage_read<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.store(
         context,
         location,
@@ -624,12 +634,7 @@ pub fn build_storage_read<'ctx, 'this>(
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -696,12 +701,17 @@ pub fn build_storage_write<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.store(
         context,
         location,
@@ -796,12 +806,7 @@ pub fn build_storage_write<'ctx, 'this>(
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -995,12 +1000,17 @@ pub fn build_emit_event<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(0)?.into(),
@@ -1126,12 +1136,7 @@ pub fn build_emit_event<'ctx, 'this>(
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -1194,12 +1199,17 @@ pub fn build_get_block_hash<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(0)?.into(),
@@ -1281,12 +1291,7 @@ pub fn build_get_block_hash<'ctx, 'this>(
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -1349,12 +1354,17 @@ pub fn build_get_execution_info<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.store(
         context,
         location,
@@ -1429,12 +1439,7 @@ pub fn build_get_execution_info<'ctx, 'this>(
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -1497,12 +1502,17 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.store(
         context,
         location,
@@ -1577,12 +1587,7 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -1688,12 +1693,17 @@ pub fn build_deploy<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.store(
         context,
         location,
@@ -1830,12 +1840,7 @@ pub fn build_deploy<'ctx, 'this>(
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -1915,12 +1920,17 @@ pub fn build_keccak<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.store(
         context,
         location,
@@ -2011,12 +2021,7 @@ pub fn build_keccak<'ctx, 'this>(
         )?;
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -2079,12 +2084,17 @@ pub fn build_library_call<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.store(
         context,
         location,
@@ -2211,12 +2221,7 @@ pub fn build_library_call<'ctx, 'this>(
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -2283,12 +2288,17 @@ pub fn build_replace_class<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.store(
         context,
         location,
@@ -2371,12 +2381,7 @@ pub fn build_replace_class<'ctx, 'this>(
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -2443,12 +2448,17 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.store(
         context,
         location,
@@ -2561,12 +2571,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         entry.load(context, location, ptr, variant_tys[1].0)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -2633,12 +2638,17 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
     )?;
 
     // Allocate space and write the current gas.
-    let gas_builtin_ptr = helper.init_block().alloca1(
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
-        location,
-        IntegerType::new(context, 128).into(),
-        get_integer_layout(128).align(),
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
     )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(0)?.into(),
@@ -2713,12 +2723,7 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
         entry.extract_value(context, location, value, variant_tys[1].0, 1)?
     };
 
-    let remaining_gas = entry.load(
-        context,
-        location,
-        gas_builtin_ptr,
-        IntegerType::new(context, 128).into(),
-    )?;
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     entry.append_operation(helper.cond_br(
         context,
