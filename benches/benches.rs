@@ -26,19 +26,31 @@ fn criterion_benchmark(c: &mut Criterion) {
     let logistic_map = load_contract("programs/benches/logistic_map.cairo");
     let linear_search = load_contract("programs/benches/linear_search.cairo");
 
-    let aot_factorial = aot_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive);
-    let aot_fibonacci = aot_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive);
-    let aot_logistic_map =
-        aot_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive);
-    let aot_linear_search =
-        aot_cache.compile_and_insert(Felt::from(2), &linear_search, OptLevel::Aggressive);
+    let aot_factorial = aot_cache
+        .compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive)
+        .unwrap();
+    let aot_fibonacci = aot_cache
+        .compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive)
+        .unwrap();
+    let aot_logistic_map = aot_cache
+        .compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive)
+        .unwrap();
+    let aot_linear_search = aot_cache
+        .compile_and_insert(Felt::from(2), &linear_search, OptLevel::Aggressive)
+        .unwrap();
 
-    let jit_factorial = jit_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive);
-    let jit_fibonacci = jit_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive);
-    let jit_logistic_map =
-        jit_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive);
-    let jit_linear_search =
-        jit_cache.compile_and_insert(Felt::from(2), &linear_search, OptLevel::Aggressive);
+    let jit_factorial = jit_cache
+        .compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive)
+        .unwrap();
+    let jit_fibonacci = jit_cache
+        .compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive)
+        .unwrap();
+    let jit_logistic_map = jit_cache
+        .compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive)
+        .unwrap();
+    let jit_linear_search = jit_cache
+        .compile_and_insert(Felt::from(2), &linear_search, OptLevel::Aggressive)
+        .unwrap();
 
     let factorial_function_id =
         find_function_id(&factorial, "factorial_2M::factorial_2M::main").unwrap();
@@ -73,7 +85,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             b.iter(|| {
                 let context = NativeContext::new();
                 let module = context.compile(&logistic_map, false).unwrap();
-                AotNativeExecutor::from_native_module(module, OptLevel::Aggressive);
+                AotNativeExecutor::from_native_module(module, OptLevel::Aggressive).unwrap();
             });
         });
         logistic_map_compilation_group.bench_function("VM", |b| {
@@ -91,7 +103,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         linear_search_group.bench_function("Cached JIT", |b| {
             b.iter(|| {
                 let result = jit_linear_search
-                    .invoke_dynamic(linear_search_function_id, &[], Some(u128::MAX))
+                    .invoke_dynamic(linear_search_function_id, &[], Some(u64::MAX))
                     .unwrap();
                 let value = result.return_value;
                 assert!(matches!(value, Value::Enum { tag: 0, .. }))
@@ -100,7 +112,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         linear_search_group.bench_function("Cached AOT", |b| {
             b.iter(|| {
                 let result = aot_linear_search
-                    .invoke_dynamic(linear_search_function_id, &[], Some(u128::MAX))
+                    .invoke_dynamic(linear_search_function_id, &[], Some(u64::MAX))
                     .unwrap();
                 let value = result.return_value;
                 assert!(matches!(value, Value::Enum { tag: 0, .. }))
@@ -131,7 +143,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         factorial_group.bench_function("Cached JIT", |b| {
             b.iter(|| {
                 let result = jit_factorial
-                    .invoke_dynamic(factorial_function_id, &[], Some(u128::MAX))
+                    .invoke_dynamic(factorial_function_id, &[], Some(u64::MAX))
                     .unwrap();
                 let value = result.return_value;
                 assert!(matches!(value, Value::Enum { tag: 0, .. }))
@@ -140,7 +152,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         factorial_group.bench_function("Cached AOT", |b| {
             b.iter(|| {
                 let result = aot_factorial
-                    .invoke_dynamic(factorial_function_id, &[], Some(u128::MAX))
+                    .invoke_dynamic(factorial_function_id, &[], Some(u64::MAX))
                     .unwrap();
                 let value = result.return_value;
                 assert!(matches!(value, Value::Enum { tag: 0, .. }))
@@ -171,7 +183,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         fibonacci_group.bench_function("Cached JIT", |b| {
             b.iter(|| {
                 let result = jit_fibonacci
-                    .invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX))
+                    .invoke_dynamic(fibonacci_function_id, &[], Some(u64::MAX))
                     .unwrap();
                 let value = result.return_value;
                 assert!(matches!(value, Value::Enum { tag: 0, .. }))
@@ -180,7 +192,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         fibonacci_group.bench_function("Cached AOT", |b| {
             b.iter(|| {
                 let result = aot_fibonacci
-                    .invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX))
+                    .invoke_dynamic(fibonacci_function_id, &[], Some(u64::MAX))
                     .unwrap();
                 let value = result.return_value;
                 assert!(matches!(value, Value::Enum { tag: 0, .. }))
@@ -210,7 +222,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         logistic_map_group.bench_function("Cached JIT", |b| {
             b.iter(|| {
                 let result = jit_logistic_map
-                    .invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX))
+                    .invoke_dynamic(logistic_map_function_id, &[], Some(u64::MAX))
                     .unwrap();
                 let value = result.return_value;
                 assert!(matches!(value, Value::Enum { tag: 0, .. }))
@@ -220,7 +232,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         logistic_map_group.bench_function("Cached AOT", |b| {
             b.iter(|| {
                 let result = aot_logistic_map
-                    .invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX))
+                    .invoke_dynamic(logistic_map_function_id, &[], Some(u64::MAX))
                     .unwrap();
                 let value = result.return_value;
                 assert!(matches!(value, Value::Enum { tag: 0, .. }))

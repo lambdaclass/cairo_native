@@ -41,19 +41,25 @@ impl std::fmt::Debug for JitNativeExecutor<'_> {
 }
 
 impl<'m> JitNativeExecutor<'m> {
-    pub fn from_native_module(native_module: NativeModule<'m>, opt_level: OptLevel) -> Self {
+    pub fn from_native_module(
+        native_module: NativeModule<'m>,
+        opt_level: OptLevel,
+    ) -> Result<Self, Error> {
         let NativeModule {
             module,
             registry,
             metadata,
         } = native_module;
 
-        Self {
+        Ok(Self {
             engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
-            gas_metadata: metadata.get::<GasMetadata>().cloned().unwrap(),
-        }
+            gas_metadata: metadata
+                .get::<GasMetadata>()
+                .cloned()
+                .ok_or(Error::MissingMetadata)?,
+        })
     }
 
     pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
@@ -69,7 +75,7 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[Value],
-        gas: Option<u128>,
+        gas: Option<u64>,
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
@@ -83,7 +89,7 @@ impl<'m> JitNativeExecutor<'m> {
             &self.registry,
             self.find_function_ptr(function_id),
             set_builtin_costs_fnptr,
-            self.extract_signature(function_id).unwrap(),
+            self.extract_signature(function_id)?,
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
@@ -95,7 +101,7 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[Value],
-        gas: Option<u128>,
+        gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
@@ -110,7 +116,7 @@ impl<'m> JitNativeExecutor<'m> {
             &self.registry,
             self.find_function_ptr(function_id),
             set_builtin_costs_fnptr,
-            self.extract_signature(function_id).unwrap(),
+            self.extract_signature(function_id)?,
             args,
             available_gas,
             Some(syscall_handler),
@@ -121,7 +127,7 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[Felt],
-        gas: Option<u128>,
+        gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
@@ -136,7 +142,7 @@ impl<'m> JitNativeExecutor<'m> {
             &self.registry,
             self.find_function_ptr(function_id),
             set_builtin_costs_fnptr,
-            self.extract_signature(function_id).unwrap(),
+            self.extract_signature(function_id)?,
             &[Value::Struct {
                 fields: vec![Value::Array(
                     args.iter().cloned().map(Value::Felt252).collect(),
@@ -166,10 +172,10 @@ impl<'m> JitNativeExecutor<'m> {
         }
     }
 
-    fn extract_signature(&self, function_id: &FunctionId) -> Option<&FunctionSignature> {
-        self.program_registry()
+    fn extract_signature(&self, function_id: &FunctionId) -> Result<&FunctionSignature, Error> {
+        Ok(self
+            .program_registry()
             .get_function(function_id)
-            .ok()
-            .map(|func| &func.signature)
+            .map(|func| &func.signature)?)
     }
 }
