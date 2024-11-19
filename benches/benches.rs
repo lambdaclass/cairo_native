@@ -21,15 +21,25 @@ fn criterion_benchmark(c: &mut Criterion) {
     let fibonacci = load_contract("programs/benches/fib_2M.cairo");
     let logistic_map = load_contract("programs/benches/logistic_map.cairo");
 
-    let aot_factorial = aot_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::None);
-    let aot_fibonacci = aot_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::None);
-    let aot_logistic_map =
-        aot_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::None);
+    let aot_factorial = aot_cache
+        .compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive)
+        .unwrap();
+    let aot_fibonacci = aot_cache
+        .compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive)
+        .unwrap();
+    let aot_logistic_map = aot_cache
+        .compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive)
+        .unwrap();
 
-    let jit_factorial = jit_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::None);
-    let jit_fibonacci = jit_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::None);
-    let jit_logistic_map =
-        jit_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::None);
+    let jit_factorial = jit_cache
+        .compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive)
+        .unwrap();
+    let jit_fibonacci = jit_cache
+        .compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive)
+        .unwrap();
+    let jit_logistic_map = jit_cache
+        .compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive)
+        .unwrap();
 
     let factorial_function_id =
         find_function_id(&factorial, "factorial_2M::factorial_2M::main").unwrap();
@@ -38,98 +48,24 @@ fn criterion_benchmark(c: &mut Criterion) {
         find_function_id(&logistic_map, "logistic_map::logistic_map::main").unwrap();
 
     c.bench_function("Cached JIT factorial_2M", |b| {
-        b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
+        b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u64::MAX)));
     });
     c.bench_function("Cached JIT fib_2M", |b| {
-        b.iter(|| jit_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
+        b.iter(|| jit_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u64::MAX)));
     });
     c.bench_function("Cached JIT logistic_map", |b| {
-        b.iter(|| jit_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX)));
+        b.iter(|| jit_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u64::MAX)));
     });
 
     c.bench_function("Cached AOT factorial_2M", |b| {
-        b.iter(|| aot_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
+        b.iter(|| aot_factorial.invoke_dynamic(factorial_function_id, &[], Some(u64::MAX)));
     });
     c.bench_function("Cached AOT fib_2M", |b| {
-        b.iter(|| aot_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
+        b.iter(|| aot_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u64::MAX)));
     });
     c.bench_function("Cached AOT logistic_map", |b| {
-        b.iter(|| aot_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX)));
+        b.iter(|| aot_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u64::MAX)));
     });
-
-    #[cfg(target_arch = "x86_64")]
-    {
-        use std::mem::MaybeUninit;
-
-        #[allow(dead_code)]
-        struct PanicResult {
-            tag: u8,
-            payload: MaybeUninit<(i32, i32, *mut [u64; 4])>,
-        }
-
-        let aot_factorial_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                aot_factorial
-                    .find_function_ptr(factorial_function_id)
-                    .cast(),
-            )
-        };
-        let aot_fibonacci_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                aot_fibonacci
-                    .find_function_ptr(fibonacci_function_id)
-                    .cast(),
-            )
-        };
-        let aot_logistic_map_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                aot_logistic_map
-                    .find_function_ptr(logistic_map_function_id)
-                    .cast(),
-            )
-        };
-        let jit_factorial_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                jit_factorial
-                    .find_function_ptr(factorial_function_id)
-                    .cast(),
-            )
-        };
-        let jit_fibonacci_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                jit_fibonacci
-                    .find_function_ptr(fibonacci_function_id)
-                    .cast(),
-            )
-        };
-        let jit_logistic_map_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                jit_logistic_map
-                    .find_function_ptr(logistic_map_function_id)
-                    .cast(),
-            )
-        };
-
-        c.bench_function("Cached JIT factorial_2M (direct invoke)", |b| {
-            b.iter(|| jit_factorial_fn(u128::MAX));
-        });
-        c.bench_function("Cached JIT fib_2M (direct invoke)", |b| {
-            b.iter(|| jit_fibonacci_fn(u128::MAX));
-        });
-        c.bench_function("Cached JIT logistic_map (direct invoke)", |b| {
-            b.iter(|| jit_logistic_map_fn(u128::MAX));
-        });
-
-        c.bench_function("Cached AOT factorial_2M (direct invoke)", |b| {
-            b.iter(|| aot_factorial_fn(u128::MAX));
-        });
-        c.bench_function("Cached AOT fib_2M (direct invoke)", |b| {
-            b.iter(|| aot_fibonacci_fn(u128::MAX));
-        });
-        c.bench_function("Cached AOT logistic_map (direct invoke)", |b| {
-            b.iter(|| aot_logistic_map_fn(u128::MAX));
-        });
-    }
 }
 
 fn load_contract(path: impl AsRef<Path>) -> Program {

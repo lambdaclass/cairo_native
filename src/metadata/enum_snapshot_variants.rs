@@ -9,14 +9,8 @@ pub struct EnumSnapshotVariantsMeta {
 }
 
 impl EnumSnapshotVariantsMeta {
-    pub fn set_mapping(
-        &mut self,
-        snapshot_id: &ConcreteTypeId,
-        enum_variants: Option<&[ConcreteTypeId]>,
-    ) {
-        if let Some(variants) = enum_variants {
-            self.map.insert(snapshot_id.clone(), variants.to_vec());
-        }
+    pub fn set_mapping(&mut self, snapshot_id: &ConcreteTypeId, variants: &[ConcreteTypeId]) {
+        self.map.insert(snapshot_id.clone(), variants.to_vec());
     }
 
     pub fn get_variants(&self, snapshot_id: &ConcreteTypeId) -> Option<&Vec<ConcreteTypeId>> {

@@ -5,7 +5,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
@@ -23,7 +23,7 @@ use melior::{
         attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Identifier, Location, Type, Value,
+        Attribute, Block, Identifier, Location, Type, Value,
     },
     Context,
 };
@@ -195,10 +195,11 @@ pub fn build<'ctx, 'this>(
                         )
                         .into(),
                     ),
-                    // (
-                    //     Identifier::new(context, "CConv"),
-                    //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
-                    // ),
+                    (
+                        Identifier::new(context, "CConv"),
+                        Attribute::parse(context, "#llvm.cconv<fastcc>")
+                            .ok_or(Error::ParseAttributeError)?,
+                    ),
                 ])
                 .add_operands(&arguments)
                 .add_results(&[llvm::r#type::r#struct(context, &result_types, false)])

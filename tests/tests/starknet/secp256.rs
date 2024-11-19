@@ -35,21 +35,21 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
     fn get_block_hash(
         &mut self,
         _block_number: u64,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
         unimplemented!()
     }
 
     fn get_execution_info(
         &mut self,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
         unimplemented!()
     }
 
     fn get_execution_info_v2(
         &mut self,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV2> {
         unimplemented!()
     }
@@ -60,12 +60,12 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         _contract_address_salt: Felt,
         _calldata: &[Felt],
         _deploy_from_zero: bool,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<(Felt, Vec<Felt>)> {
         unimplemented!()
     }
 
-    fn replace_class(&mut self, _class_hash: Felt, _remaining_gas: &mut u128) -> SyscallResult<()> {
+    fn replace_class(&mut self, _class_hash: Felt, _remaining_gas: &mut u64) -> SyscallResult<()> {
         unimplemented!()
     }
 
@@ -74,7 +74,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         _class_hash: Felt,
         _function_selector: Felt,
         _calldata: &[Felt],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Vec<Felt>> {
         unimplemented!()
     }
@@ -84,7 +84,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         _address: Felt,
         _entry_point_selector: Felt,
         _calldata: &[Felt],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Vec<Felt>> {
         unimplemented!()
     }
@@ -93,7 +93,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         _address_domain: u32,
         _address: Felt,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
         unimplemented!()
     }
@@ -103,7 +103,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         _address_domain: u32,
         _address: Felt,
         _value: Felt,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
         unimplemented!()
     }
@@ -112,7 +112,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         _keys: &[Felt],
         _data: &[Felt],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
         unimplemented!()
     }
@@ -121,12 +121,12 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         _to_address: Felt,
         _payload: &[Felt],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
         unimplemented!()
     }
 
-    fn keccak(&mut self, _input: &[u64], _remaining_gas: &mut u128) -> SyscallResult<U256> {
+    fn keccak(&mut self, _input: &[u64], _remaining_gas: &mut u64) -> SyscallResult<U256> {
         unimplemented!()
     }
 
@@ -134,7 +134,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         x: U256,
         y: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>> {
         let (args, rets) = &mut self.secp256k1_new;
 
@@ -146,7 +146,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         p0: Secp256k1Point,
         p1: Secp256k1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256k1Point> {
         let (args, rets) = &mut self.secp256k1_add;
 
@@ -158,7 +158,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         p: Secp256k1Point,
         m: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256k1Point> {
         let (args, rets) = &mut self.secp256k1_mul;
 
@@ -170,7 +170,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         x: U256,
         y_parity: bool,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>> {
         let (args, rets) = &mut self.secp256k1_get_point_from_x;
 
@@ -181,7 +181,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
     fn secp256k1_get_xy(
         &mut self,
         p: Secp256k1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<(U256, U256)> {
         let (args, rets) = &mut self.secp256k1_get_xy;
 
@@ -193,7 +193,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         x: U256,
         y: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256r1Point>> {
         let (args, rets) = &mut self.secp256r1_new;
 
@@ -205,7 +205,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         p0: Secp256r1Point,
         p1: Secp256r1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256r1Point> {
         let (args, rets) = &mut self.secp256r1_add;
 
@@ -217,7 +217,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         p: Secp256r1Point,
         m: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256r1Point> {
         let (args, rets) = &mut self.secp256r1_mul;
 
@@ -229,7 +229,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         &mut self,
         x: U256,
         y_parity: bool,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256r1Point>> {
         let (args, rets) = &mut self.secp256r1_get_point_from_x;
 
@@ -240,7 +240,7 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
     fn secp256r1_get_xy(
         &mut self,
         p: Secp256r1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<(U256, U256)> {
         let (args, rets) = &mut self.secp256r1_get_xy;
 
@@ -250,10 +250,10 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
 
     fn sha256_process_block(
         &mut self,
-        _prev_state: &[u32; 8],
-        _current_block: &[u32; 16],
-        _remaining_gas: &mut u128,
-    ) -> SyscallResult<[u32; 8]> {
+        _state: &mut [u32; 8],
+        _block: &[u32; 16],
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<()> {
         unimplemented!()
     }
 }
@@ -273,6 +273,7 @@ fn secp256k1_new() {
                 Some(Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 }),
                 Some(Secp256k1Point {
                     x: U256 {
@@ -283,6 +284,7 @@ fn secp256k1_new() {
                         hi: u128::MAX,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 }),
             ]),
         ),
@@ -302,7 +304,7 @@ fn secp256k1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -334,7 +336,7 @@ fn secp256k1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -343,10 +345,7 @@ fn secp256k1_new() {
             tag: 0,
             value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Secp256K1Point {
-                    x: (0, 0),
-                    y: (0, 0),
-                }),
+                value: Box::new(Value::Secp256K1Point(Secp256k1Point::default())),
                 debug_name: None,
             }),
             debug_name: None,
@@ -366,7 +365,7 @@ fn secp256k1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -375,10 +374,13 @@ fn secp256k1_new() {
             tag: 0,
             value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Secp256K1Point {
-                    x: (u128::MAX, u128::MAX),
-                    y: (u128::MAX, u128::MAX),
-                }),
+                value: Box::new(Value::Secp256K1Point(Secp256k1Point::new(
+                    u128::MAX,
+                    u128::MAX,
+                    u128::MAX,
+                    u128::MAX,
+                    false
+                ))),
                 debug_name: None,
             }),
             debug_name: None,
@@ -423,6 +425,7 @@ fn secp256k1_add() {
                 Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -433,6 +436,7 @@ fn secp256k1_add() {
                         lo: 0,
                         hi: u128::MAX,
                     },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -443,6 +447,7 @@ fn secp256k1_add() {
                         lo: u128::MAX,
                         hi: u128::MAX,
                     },
+                    is_infinity: false,
                 },
             ]),
         ),
@@ -453,26 +458,17 @@ fn secp256k1_add() {
         &SECP256_PROGRAM,
         "secp256k1_add",
         &[
-            Value::Secp256K1Point {
-                x: (0, 0),
-                y: (0, 0),
-            },
-            Value::Secp256K1Point {
-                x: (0, 0),
-                y: (0, 0),
-            },
+            Value::Secp256K1Point(Secp256k1Point::default()),
+            Value::Secp256K1Point(Secp256k1Point::default()),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256K1Point {
-                x: (0, 0),
-                y: (0, 0),
-            }),
+            value: Box::new(Value::Secp256K1Point(Secp256k1Point::default())),
             debug_name: None,
         },
     );
@@ -481,26 +477,23 @@ fn secp256k1_add() {
         &SECP256_PROGRAM,
         "secp256k1_add",
         &[
-            Value::Secp256K1Point {
-                x: (0, u128::MAX),
-                y: (u128::MAX, 0),
-            },
-            Value::Secp256K1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
-            },
+            Value::Secp256K1Point(Secp256k1Point::new(0, u128::MAX, u128::MAX, 0, false)),
+            Value::Secp256K1Point(Secp256k1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256K1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
-            }),
+            value: Box::new(Value::Secp256K1Point(Secp256k1Point::new(
+                u128::MAX,
+                0,
+                0,
+                u128::MAX,
+                false
+            ))),
             debug_name: None,
         },
     );
@@ -509,26 +502,35 @@ fn secp256k1_add() {
         &SECP256_PROGRAM,
         "secp256k1_add",
         &[
-            Value::Secp256K1Point {
-                x: (u128::MAX, u128::MAX),
-                y: (u128::MAX, u128::MAX),
-            },
-            Value::Secp256K1Point {
-                x: (u128::MAX, u128::MAX),
-                y: (u128::MAX, u128::MAX),
-            },
+            Value::Secp256K1Point(Secp256k1Point::new(
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                false,
+            )),
+            Value::Secp256K1Point(Secp256k1Point::new(
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                false,
+            )),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256K1Point {
-                x: (u128::MAX, u128::MAX),
-                y: (u128::MAX, u128::MAX),
-            }),
+            value: Box::new(Value::Secp256K1Point(Secp256k1Point::new(
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                false
+            ))),
             debug_name: None,
         },
     );
@@ -540,10 +542,12 @@ fn secp256k1_add() {
                 Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 },
             ),
             (
@@ -556,6 +560,7 @@ fn secp256k1_add() {
                         hi: 0,
                         lo: u128::MAX
                     },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -566,6 +571,7 @@ fn secp256k1_add() {
                         hi: u128::MAX,
                         lo: 0
                     },
+                    is_infinity: false,
                 },
             ),
             (
@@ -578,6 +584,7 @@ fn secp256k1_add() {
                         lo: u128::MAX,
                         hi: u128::MAX
                     },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -588,6 +595,7 @@ fn secp256k1_add() {
                         lo: u128::MAX,
                         hi: u128::MAX
                     },
+                    is_infinity: false,
                 },
             ),
         ],
@@ -604,6 +612,7 @@ fn secp256k1_mul() {
                 Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -614,6 +623,7 @@ fn secp256k1_mul() {
                         hi: 0,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
                 Secp256k1Point {
                     x: U256 {
@@ -624,6 +634,7 @@ fn secp256k1_mul() {
                         hi: u128::MAX,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
             ]),
         ),
@@ -634,26 +645,20 @@ fn secp256k1_mul() {
         &SECP256_PROGRAM,
         "secp256k1_mul",
         &[
-            Value::Secp256K1Point {
-                x: (0, 0),
-                y: (0, 0),
-            },
+            Value::Secp256K1Point(Secp256k1Point::default()),
             Value::Struct {
                 fields: vec![Value::Uint128(0), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256K1Point {
-                x: (0, 0),
-                y: (0, 0),
-            }),
+            value: Box::new(Value::Secp256K1Point(Secp256k1Point::default())),
             debug_name: None,
         },
     );
@@ -662,26 +667,26 @@ fn secp256k1_mul() {
         &SECP256_PROGRAM,
         "secp256k1_mul",
         &[
-            Value::Secp256K1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
-            },
+            Value::Secp256K1Point(Secp256k1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
             Value::Struct {
                 fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256K1Point {
-                x: (0, u128::MAX),
-                y: (u128::MAX, 0),
-            }),
+            value: Box::new(Value::Secp256K1Point(Secp256k1Point::new(
+                0,
+                u128::MAX,
+                u128::MAX,
+                0,
+                false
+            ))),
             debug_name: None,
         },
     );
@@ -690,26 +695,26 @@ fn secp256k1_mul() {
         &SECP256_PROGRAM,
         "secp256k1_mul",
         &[
-            Value::Secp256K1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
-            },
+            Value::Secp256K1Point(Secp256k1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
             Value::Struct {
                 fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256K1Point {
-                x: (u128::MAX, u128::MAX),
-                y: (u128::MAX, u128::MAX),
-            }),
+            value: Box::new(Value::Secp256K1Point(Secp256k1Point::new(
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                false
+            ))),
             debug_name: None,
         },
     );
@@ -717,40 +722,16 @@ fn secp256k1_mul() {
     assert_eq!(
         syscall_handler.secp256k1_mul.0,
         [
+            (Secp256k1Point::default(), U256 { hi: 0, lo: 0 },),
             (
-                Secp256k1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 { hi: 0, lo: 0 },
-                },
-                U256 { hi: 0, lo: 0 },
-            ),
-            (
-                Secp256k1Point {
-                    x: U256 {
-                        lo: u128::MAX,
-                        hi: 0
-                    },
-                    y: U256 {
-                        lo: 0,
-                        hi: u128::MAX,
-                    },
-                },
+                Secp256k1Point::new(u128::MAX, 0, 0, u128::MAX, false),
                 U256 {
                     lo: u128::MAX,
                     hi: 0,
                 },
             ),
             (
-                Secp256k1Point {
-                    x: U256 {
-                        hi: 0,
-                        lo: u128::MAX,
-                    },
-                    y: U256 {
-                        hi: u128::MAX,
-                        lo: 0,
-                    },
-                },
+                Secp256k1Point::new(u128::MAX, 0, 0, u128::MAX, false),
                 U256 {
                     hi: 0,
                     lo: u128::MAX,
@@ -771,6 +752,7 @@ fn secp256k1_get_point_from_x() {
                 Some(Secp256k1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 }),
                 Some(Secp256k1Point {
                     x: U256 {
@@ -781,6 +763,7 @@ fn secp256k1_get_point_from_x() {
                         hi: u128::MAX,
                         lo: 0,
                     },
+                    is_infinity: false,
                 }),
                 Some(Secp256k1Point {
                     x: U256 {
@@ -791,6 +774,7 @@ fn secp256k1_get_point_from_x() {
                         hi: 0,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 }),
             ]),
         ),
@@ -814,7 +798,7 @@ fn secp256k1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -850,7 +834,7 @@ fn secp256k1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -859,10 +843,7 @@ fn secp256k1_get_point_from_x() {
             tag: 0,
             value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Secp256K1Point {
-                    x: (0, 0),
-                    y: (0, 0),
-                }),
+                value: Box::new(Value::Secp256K1Point(Secp256k1Point::default())),
                 debug_name: None,
             }),
             debug_name: None,
@@ -886,7 +867,7 @@ fn secp256k1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -895,10 +876,13 @@ fn secp256k1_get_point_from_x() {
             tag: 0,
             value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Secp256K1Point {
-                    x: (u128::MAX, 0),
-                    y: (0, u128::MAX),
-                }),
+                value: Box::new(Value::Secp256K1Point(Secp256k1Point::new(
+                    u128::MAX,
+                    0,
+                    0,
+                    u128::MAX,
+                    false
+                ))),
                 debug_name: None,
             }),
             debug_name: None,
@@ -922,7 +906,7 @@ fn secp256k1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -931,10 +915,13 @@ fn secp256k1_get_point_from_x() {
             tag: 0,
             value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Secp256K1Point {
-                    x: (0, u128::MAX),
-                    y: (u128::MAX, 0),
-                }),
+                value: Box::new(Value::Secp256K1Point(Secp256k1Point::new(
+                    0,
+                    u128::MAX,
+                    u128::MAX,
+                    0,
+                    false
+                ))),
                 debug_name: None,
             }),
             debug_name: None,
@@ -1016,11 +1003,8 @@ fn secp256k1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256k1_get_xy",
-        &[Value::Secp256K1Point {
-            x: (0, 0),
-            y: (0, 0),
-        }],
-        Some(u128::MAX),
+        &[Value::Secp256K1Point(Secp256k1Point::default())],
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1047,11 +1031,14 @@ fn secp256k1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256k1_get_xy",
-        &[Value::Secp256K1Point {
-            x: (0, u128::MAX),
-            y: (u128::MAX, 0),
-        }],
-        Some(u128::MAX),
+        &[Value::Secp256K1Point(Secp256k1Point::new(
+            0,
+            u128::MAX,
+            u128::MAX,
+            0,
+            false,
+        ))],
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1078,11 +1065,14 @@ fn secp256k1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256k1_get_xy",
-        &[Value::Secp256K1Point {
-            x: (u128::MAX, 0),
-            y: (0, u128::MAX),
-        }],
-        Some(u128::MAX),
+        &[Value::Secp256K1Point(Secp256k1Point::new(
+            u128::MAX,
+            0,
+            0,
+            u128::MAX,
+            false,
+        ))],
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1109,11 +1099,14 @@ fn secp256k1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256k1_get_xy",
-        &[Value::Secp256K1Point {
-            x: (u128::MAX, u128::MAX),
-            y: (u128::MAX, u128::MAX),
-        }],
-        Some(u128::MAX),
+        &[Value::Secp256K1Point(Secp256k1Point::new(
+            u128::MAX,
+            u128::MAX,
+            u128::MAX,
+            u128::MAX,
+            false,
+        ))],
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1143,6 +1136,7 @@ fn secp256k1_get_xy() {
             Secp256k1Point {
                 x: U256 { hi: 0, lo: 0 },
                 y: U256 { hi: 0, lo: 0 },
+                is_infinity: false
             },
             Secp256k1Point {
                 x: U256 {
@@ -1153,6 +1147,7 @@ fn secp256k1_get_xy() {
                     lo: u128::MAX,
                     hi: 0,
                 },
+                is_infinity: false
             },
             Secp256k1Point {
                 x: U256 {
@@ -1163,6 +1158,7 @@ fn secp256k1_get_xy() {
                     lo: 0,
                     hi: u128::MAX,
                 },
+                is_infinity: false
             },
             Secp256k1Point {
                 x: U256 {
@@ -1173,6 +1169,7 @@ fn secp256k1_get_xy() {
                     hi: u128::MAX,
                     lo: u128::MAX,
                 },
+                is_infinity: false
             },
         ],
     );
@@ -1189,6 +1186,7 @@ fn secp256r1_new() {
                 Some(Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 }),
                 Some(Secp256r1Point {
                     x: U256 {
@@ -1199,6 +1197,7 @@ fn secp256r1_new() {
                         hi: u128::MAX,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 }),
             ]),
         ),
@@ -1218,7 +1217,7 @@ fn secp256r1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1250,7 +1249,7 @@ fn secp256r1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1259,10 +1258,7 @@ fn secp256r1_new() {
             tag: 0,
             value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Secp256R1Point {
-                    x: (0, 0),
-                    y: (0, 0),
-                }),
+                value: Box::new(Value::Secp256R1Point(Secp256r1Point::default())),
                 debug_name: None,
             }),
             debug_name: None,
@@ -1282,7 +1278,7 @@ fn secp256r1_new() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1291,10 +1287,13 @@ fn secp256r1_new() {
             tag: 0,
             value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Secp256R1Point {
-                    x: (u128::MAX, u128::MAX),
-                    y: (u128::MAX, u128::MAX),
-                }),
+                value: Box::new(Value::Secp256R1Point(Secp256r1Point::new(
+                    u128::MAX,
+                    u128::MAX,
+                    u128::MAX,
+                    u128::MAX,
+                    false
+                ))),
                 debug_name: None,
             }),
             debug_name: None,
@@ -1339,6 +1338,7 @@ fn secp256r1_add() {
                 Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 },
                 Secp256r1Point {
                     x: U256 {
@@ -1349,6 +1349,7 @@ fn secp256r1_add() {
                         hi: 0,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
                 Secp256r1Point {
                     x: U256 {
@@ -1359,6 +1360,7 @@ fn secp256r1_add() {
                         hi: u128::MAX,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
             ]),
         ),
@@ -1369,26 +1371,17 @@ fn secp256r1_add() {
         &SECP256_PROGRAM,
         "secp256r1_add",
         &[
-            Value::Secp256R1Point {
-                x: (0, 0),
-                y: (0, 0),
-            },
-            Value::Secp256R1Point {
-                x: (0, 0),
-                y: (0, 0),
-            },
+            Value::Secp256R1Point(Secp256r1Point::default()),
+            Value::Secp256R1Point(Secp256r1Point::default()),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256R1Point {
-                x: (0, 0),
-                y: (0, 0),
-            }),
+            value: Box::new(Value::Secp256R1Point(Secp256r1Point::default())),
             debug_name: None,
         },
     );
@@ -1397,26 +1390,23 @@ fn secp256r1_add() {
         &SECP256_PROGRAM,
         "secp256r1_add",
         &[
-            Value::Secp256R1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
-            },
-            Value::Secp256R1Point {
-                x: (0, u128::MAX),
-                y: (u128::MAX, 0),
-            },
+            Value::Secp256R1Point(Secp256r1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
+            Value::Secp256R1Point(Secp256r1Point::new(0, u128::MAX, u128::MAX, 0, false)),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256R1Point {
-                x: (0, u128::MAX),
-                y: (u128::MAX, 0),
-            }),
+            value: Box::new(Value::Secp256R1Point(Secp256r1Point::new(
+                0,
+                u128::MAX,
+                u128::MAX,
+                0,
+                false
+            ))),
             debug_name: None,
         },
     );
@@ -1425,26 +1415,35 @@ fn secp256r1_add() {
         &SECP256_PROGRAM,
         "secp256r1_add",
         &[
-            Value::Secp256R1Point {
-                x: (u128::MAX, u128::MAX),
-                y: (u128::MAX, u128::MAX),
-            },
-            Value::Secp256R1Point {
-                x: (u128::MAX, u128::MAX),
-                y: (u128::MAX, u128::MAX),
-            },
+            Value::Secp256R1Point(Secp256r1Point::new(
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                false,
+            )),
+            Value::Secp256R1Point(Secp256r1Point::new(
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                false,
+            )),
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256R1Point {
-                x: (u128::MAX, u128::MAX),
-                y: (u128::MAX, u128::MAX),
-            }),
+            value: Box::new(Value::Secp256R1Point(Secp256r1Point::new(
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                false
+            )),),
             debug_name: None,
         },
     );
@@ -1452,59 +1451,14 @@ fn secp256r1_add() {
     assert_eq!(
         syscall_handler.secp256r1_add.0,
         [
+            (Secp256r1Point::default(), Secp256r1Point::default(),),
             (
-                Secp256r1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 { hi: 0, lo: 0 },
-                },
-                Secp256r1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 { hi: 0, lo: 0 },
-                },
+                Secp256r1Point::new(u128::MAX, 0, 0, u128::MAX, false),
+                Secp256r1Point::new(0, u128::MAX, u128::MAX, 0, false),
             ),
             (
-                Secp256r1Point {
-                    x: U256 {
-                        lo: u128::MAX,
-                        hi: 0
-                    },
-                    y: U256 {
-                        lo: 0,
-                        hi: u128::MAX
-                    },
-                },
-                Secp256r1Point {
-                    x: U256 {
-                        lo: 0,
-                        hi: u128::MAX
-                    },
-                    y: U256 {
-                        lo: u128::MAX,
-                        hi: 0
-                    },
-                },
-            ),
-            (
-                Secp256r1Point {
-                    x: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
-                    },
-                    y: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
-                    },
-                },
-                Secp256r1Point {
-                    x: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
-                    },
-                    y: U256 {
-                        hi: u128::MAX,
-                        lo: u128::MAX
-                    },
-                },
+                Secp256r1Point::new(u128::MAX, u128::MAX, u128::MAX, u128::MAX, false),
+                Secp256r1Point::new(u128::MAX, u128::MAX, u128::MAX, u128::MAX, false),
             ),
         ],
     );
@@ -1520,6 +1474,7 @@ fn secp256r1_mul() {
                 Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 },
                 Secp256r1Point {
                     x: U256 {
@@ -1530,6 +1485,7 @@ fn secp256r1_mul() {
                         hi: 0,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
                 Secp256r1Point {
                     x: U256 {
@@ -1540,6 +1496,7 @@ fn secp256r1_mul() {
                         hi: u128::MAX,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 },
             ]),
         ),
@@ -1550,26 +1507,20 @@ fn secp256r1_mul() {
         &SECP256_PROGRAM,
         "secp256r1_mul",
         &[
-            Value::Secp256R1Point {
-                x: (0, 0),
-                y: (0, 0),
-            },
+            Value::Secp256R1Point(Secp256r1Point::default()),
             Value::Struct {
                 fields: vec![Value::Uint128(0), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256R1Point {
-                x: (0, 0),
-                y: (0, 0),
-            }),
+            value: Box::new(Value::Secp256R1Point(Secp256r1Point::default())),
             debug_name: None,
         },
     );
@@ -1578,26 +1529,26 @@ fn secp256r1_mul() {
         &SECP256_PROGRAM,
         "secp256r1_mul",
         &[
-            Value::Secp256R1Point {
-                x: (u128::MAX, 0),
-                y: (0, u128::MAX),
-            },
+            Value::Secp256R1Point(Secp256r1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
             Value::Struct {
                 fields: vec![Value::Uint128(u128::MAX), Value::Uint128(0)],
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256R1Point {
-                x: (0, u128::MAX),
-                y: (u128::MAX, 0),
-            }),
+            value: Box::new(Value::Secp256R1Point(Secp256r1Point::new(
+                0,
+                u128::MAX,
+                u128::MAX,
+                0,
+                false
+            ))),
             debug_name: None,
         },
     );
@@ -1606,26 +1557,26 @@ fn secp256r1_mul() {
         &SECP256_PROGRAM,
         "secp256r1_mul",
         &[
-            Value::Secp256R1Point {
-                x: (0, u128::MAX),
-                y: (u128::MAX, 0),
-            },
+            Value::Secp256R1Point(Secp256r1Point::new(0, u128::MAX, u128::MAX, 0, false)),
             Value::Struct {
                 fields: vec![Value::Uint128(0), Value::Uint128(u128::MAX)],
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
         result.return_value,
         Value::Enum {
             tag: 0,
-            value: Box::new(Value::Secp256R1Point {
-                x: (u128::MAX, u128::MAX),
-                y: (u128::MAX, u128::MAX),
-            }),
+            value: Box::new(Value::Secp256R1Point(Secp256r1Point::new(
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                u128::MAX,
+                false
+            ))),
             debug_name: None,
         },
     );
@@ -1633,40 +1584,16 @@ fn secp256r1_mul() {
     assert_eq!(
         syscall_handler.secp256r1_mul.0,
         [
+            (Secp256r1Point::default(), U256 { hi: 0, lo: 0 },),
             (
-                Secp256r1Point {
-                    x: U256 { hi: 0, lo: 0 },
-                    y: U256 { hi: 0, lo: 0 },
-                },
-                U256 { hi: 0, lo: 0 },
-            ),
-            (
-                Secp256r1Point {
-                    x: U256 {
-                        lo: u128::MAX,
-                        hi: 0
-                    },
-                    y: U256 {
-                        lo: 0,
-                        hi: u128::MAX,
-                    },
-                },
+                Secp256r1Point::new(u128::MAX, 0, 0, u128::MAX, false),
                 U256 {
                     lo: u128::MAX,
                     hi: 0,
                 },
             ),
             (
-                Secp256r1Point {
-                    x: U256 {
-                        lo: 0,
-                        hi: u128::MAX,
-                    },
-                    y: U256 {
-                        lo: u128::MAX,
-                        hi: 0,
-                    },
-                },
+                Secp256r1Point::new(0, u128::MAX, u128::MAX, 0, false),
                 U256 {
                     lo: 0,
                     hi: u128::MAX,
@@ -1687,6 +1614,7 @@ fn secp256r1_get_point_from_x() {
                 Some(Secp256r1Point {
                     x: U256 { hi: 0, lo: 0 },
                     y: U256 { hi: 0, lo: 0 },
+                    is_infinity: false,
                 }),
                 Some(Secp256r1Point {
                     x: U256 {
@@ -1697,6 +1625,7 @@ fn secp256r1_get_point_from_x() {
                         hi: u128::MAX,
                         lo: 0,
                     },
+                    is_infinity: false,
                 }),
                 Some(Secp256r1Point {
                     x: U256 {
@@ -1707,6 +1636,7 @@ fn secp256r1_get_point_from_x() {
                         hi: 0,
                         lo: u128::MAX,
                     },
+                    is_infinity: false,
                 }),
             ]),
         ),
@@ -1730,7 +1660,7 @@ fn secp256r1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1766,7 +1696,7 @@ fn secp256r1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1775,10 +1705,7 @@ fn secp256r1_get_point_from_x() {
             tag: 0,
             value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Secp256R1Point {
-                    x: (0, 0),
-                    y: (0, 0),
-                }),
+                value: Box::new(Value::Secp256R1Point(Secp256r1Point::default())),
                 debug_name: None,
             }),
             debug_name: None,
@@ -1802,7 +1729,7 @@ fn secp256r1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1811,10 +1738,13 @@ fn secp256r1_get_point_from_x() {
             tag: 0,
             value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Secp256R1Point {
-                    x: (u128::MAX, 0),
-                    y: (0, u128::MAX),
-                }),
+                value: Box::new(Value::Secp256R1Point(Secp256r1Point::new(
+                    u128::MAX,
+                    0,
+                    0,
+                    u128::MAX,
+                    false
+                ))),
                 debug_name: None,
             }),
             debug_name: None,
@@ -1838,7 +1768,7 @@ fn secp256r1_get_point_from_x() {
                 debug_name: None,
             },
         ],
-        Some(u128::MAX),
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1847,10 +1777,13 @@ fn secp256r1_get_point_from_x() {
             tag: 0,
             value: Box::new(Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Secp256R1Point {
-                    x: (0, u128::MAX),
-                    y: (u128::MAX, 0),
-                }),
+                value: Box::new(Value::Secp256R1Point(Secp256r1Point::new(
+                    0,
+                    u128::MAX,
+                    u128::MAX,
+                    0,
+                    false
+                ))),
                 debug_name: None,
             }),
             debug_name: None,
@@ -1932,11 +1865,8 @@ fn secp256r1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256r1_get_xy",
-        &[Value::Secp256R1Point {
-            x: (0, 0),
-            y: (0, 0),
-        }],
-        Some(u128::MAX),
+        &[Value::Secp256R1Point(Secp256r1Point::default())],
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1963,11 +1893,14 @@ fn secp256r1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256r1_get_xy",
-        &[Value::Secp256R1Point {
-            x: (0, u128::MAX),
-            y: (u128::MAX, 0),
-        }],
-        Some(u128::MAX),
+        &[Value::Secp256R1Point(Secp256r1Point::new(
+            0,
+            u128::MAX,
+            u128::MAX,
+            0,
+            false,
+        ))],
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -1994,11 +1927,14 @@ fn secp256r1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256r1_get_xy",
-        &[Value::Secp256R1Point {
-            x: (u128::MAX, 0),
-            y: (0, u128::MAX),
-        }],
-        Some(u128::MAX),
+        &[Value::Secp256R1Point(Secp256r1Point::new(
+            u128::MAX,
+            0,
+            0,
+            u128::MAX,
+            false,
+        ))],
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -2025,11 +1961,14 @@ fn secp256r1_get_xy() {
     let result = run_native_program(
         &SECP256_PROGRAM,
         "secp256r1_get_xy",
-        &[Value::Secp256R1Point {
-            x: (u128::MAX, u128::MAX),
-            y: (u128::MAX, u128::MAX),
-        }],
-        Some(u128::MAX),
+        &[Value::Secp256R1Point(Secp256r1Point::new(
+            u128::MAX,
+            u128::MAX,
+            u128::MAX,
+            u128::MAX,
+            false,
+        ))],
+        Some(u64::MAX),
         Some(&mut syscall_handler),
     );
     assert_eq!(
@@ -2059,6 +1998,7 @@ fn secp256r1_get_xy() {
             Secp256r1Point {
                 x: U256 { hi: 0, lo: 0 },
                 y: U256 { hi: 0, lo: 0 },
+                is_infinity: false
             },
             Secp256r1Point {
                 x: U256 {
@@ -2069,6 +2009,7 @@ fn secp256r1_get_xy() {
                     lo: u128::MAX,
                     hi: 0,
                 },
+                is_infinity: false
             },
             Secp256r1Point {
                 x: U256 {
@@ -2079,6 +2020,7 @@ fn secp256r1_get_xy() {
                     lo: 0,
                     hi: u128::MAX,
                 },
+                is_infinity: false
             },
             Secp256r1Point {
                 x: U256 {
@@ -2089,6 +2031,7 @@ fn secp256r1_get_xy() {
                     hi: u128::MAX,
                     lo: u128::MAX,
                 },
+                is_infinity: false
             },
         ],
     );

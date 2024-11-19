@@ -46,13 +46,14 @@
 
 use crate::{
     debug::libfunc_to_name,
-    error::Error,
+    error::{panic::ToNativeAssertError, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
+    native_panic,
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
 };
@@ -131,7 +132,7 @@ pub fn compile(
 ) -> Result<(), Error> {
     if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
         if x == "1" || x == "true" {
-            std::fs::write("program.sierra", program.to_string()).expect("failed to dump sierra");
+            std::fs::write("program.sierra", program.to_string())?;
         }
     }
 
@@ -446,7 +447,7 @@ fn compile_func(
         initial_state,
         |statement_idx, mut state| {
             if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
-                let gas_cost = gas_metadata.get_gas_cost_for_statement(statement_idx);
+                let gas_cost = gas_metadata.get_gas_costs_for_statement(statement_idx);
                 metadata.remove::<GasCost>();
                 metadata.insert(GasCost(gas_cost));
             }
@@ -586,7 +587,9 @@ fn compile_func(
                                         op0.result(0)?.into(),
                                         &entry_block,
                                     ))
-                                    .expect("tail recursion metadata shouldn't be inserted");
+                                    .to_native_assert_error(
+                                        "tail recursion metadata shouldn't be inserted",
+                                    )?;
                             }
                         }
                     }
@@ -613,6 +616,7 @@ fn compile_func(
                             .iter()
                             .zip(helper.results())
                             .map(|(branch_info, result_values)| {
+                                let result_values = result_values?;
                                 assert_eq!(
                                     branch_info.results.len(),
                                     result_values.len(),
@@ -898,12 +902,18 @@ fn compile_func(
         &[
             (
                 Identifier::new(context, "sym_visibility"),
-                StringAttribute::new(context, "public").into(),
+                StringAttribute::new(context, "private").into(),
             ),
-            // (
-            //     Identifier::new(context, "CConv"),
-            //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
-            // ),
+            (
+                Identifier::new(context, "linkage"),
+                Attribute::parse(context, "#llvm.linkage<private>")
+                    .ok_or(Error::ParseAttributeError)?,
+            ),
+            (
+                Identifier::new(context, "CConv"),
+                Attribute::parse(context, "#llvm.cconv<fastcc>")
+                    .ok_or(Error::ParseAttributeError)?,
+            ),
         ],
         Location::fused(
             context,
@@ -979,9 +989,9 @@ fn generate_function_structure<'c, 'a>(
                     e.insert(Block::new(&[]));
                     blocks
                         .get_mut(&statement_idx.0)
-                        .expect("the block should exist")
+                        .to_native_assert_error("block should exist")?
                 } else {
-                    panic!("statement index already present in block");
+                    native_panic!("statement index already present in block")
                 }
             };
 
@@ -1327,10 +1337,11 @@ fn generate_entry_point_wrapper<'c>(
                     Identifier::new(context, "callee"),
                     FlatSymbolRefAttribute::new(context, private_symbol).into(),
                 ),
-                // (
-                //     Identifier::new(context, "CConv"),
-                //     Attribute::parse(context, "#llvm.cconv<tailcc>").unwrap(),
-                // ),
+                (
+                    Identifier::new(context, "CConv"),
+                    Attribute::parse(context, "#llvm.cconv<fastcc>")
+                        .ok_or(Error::ParseAttributeError)?,
+                ),
             ])
             .add_operands(&args)
             .add_results(&[llvm::r#type::r#struct(context, ret_types, false)])
@@ -1360,6 +1371,16 @@ fn generate_entry_point_wrapper<'c>(
             (
                 Identifier::new(context, "sym_visibility"),
                 StringAttribute::new(context, "public").into(),
+            ),
+            (
+                Identifier::new(context, "llvm.linkage"),
+                Attribute::parse(context, "#llvm.linkage<private>")
+                    .ok_or(Error::ParseAttributeError)?,
+            ),
+            (
+                Identifier::new(context, "llvm.CConv"),
+                Attribute::parse(context, "#llvm.cconv<fastcc>")
+                    .ok_or(Error::ParseAttributeError)?,
             ),
             (
                 Identifier::new(context, "llvm.emit_c_interface"),
