@@ -188,7 +188,7 @@ jobs:
 
   print-results:
     name: Bench PR (linux, amd64)
-    needs: [ build-binaries ]
+    needs: [ run-bench ]
     runs-on: ubuntu-24.04
     steps:
       - name: Fetch VM dumps
