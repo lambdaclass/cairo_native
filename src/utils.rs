@@ -21,14 +21,12 @@ use melior::{
 use num_bigint::{BigInt, BigUint, Sign};
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::{
     alloc::Layout,
     borrow::Cow,
     fmt::{self, Display},
-    ops::Neg,
     path::Path,
-    sync::Arc,
 };
 use thiserror::Error;
 
@@ -46,12 +44,12 @@ pub const SHARED_LIBRARY_EXT: &str = "so";
 pub static PRIME: LazyLock<BigUint> = LazyLock::new(|| {
     "3618502788666131213697322783095070105623107215331596699973092056135872020481"
         .parse()
-        .unwrap()
+        .expect("hardcoded prime constant should be valid")
 });
 pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
     "1809251394333065606848661391547535052811553607665798349986546028067936010240"
         .parse()
-        .unwrap()
+        .expect("hardcoded half prime constant should be valid")
 });
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -163,12 +161,13 @@ pub fn get_integer_layout(width: u32) -> Layout {
         Layout::new::<u128>()
     } else {
         // According to the docs this should never return an error.
-        Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16).unwrap()
+        Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16)
+            .expect("only fails if size is greater than ISIZE::MAX")
     }
 }
 
 /// Compile a cairo program found at the given path to sierra.
-pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
+pub fn cairo_to_sierra(program: &Path) -> anyhow::Result<Arc<Program>> {
     if program
         .extension()
         .map(|x| {
@@ -185,14 +184,13 @@ pub fn cairo_to_sierra(program: &Path) -> Arc<Program> {
                 ..Default::default()
             },
         )
-        .unwrap()
-        .into()
+        .map(Arc::new)
     } else {
-        let source = std::fs::read_to_string(program).unwrap();
+        let source = std::fs::read_to_string(program)?;
         cairo_lang_sierra::ProgramParser::new()
             .parse(&source)
-            .unwrap()
-            .into()
+            .map_err(|err| anyhow::Error::msg(err.to_string()))
+            .map(Arc::new)
     }
 }
 
@@ -234,9 +232,10 @@ pub fn felt252_str(value: &str) -> Felt {
     let value = value
         .parse::<BigInt>()
         .expect("value must be a digit number");
+
     let value = match value.sign() {
-        Sign::Minus => &*PRIME - value.neg().to_biguint().unwrap(),
-        _ => value.to_biguint().unwrap(),
+        Sign::Minus => &*PRIME - value.magnitude(),
+        _ => value.magnitude().clone(),
     };
 
     value.into()
@@ -1086,7 +1085,7 @@ pub mod test {
         // Define the path to the cairo program.
         let program_path = Path::new("programs/examples/hello.cairo");
         // Compile the cairo program to sierra.
-        let sierra_program = cairo_to_sierra(program_path);
+        let sierra_program = cairo_to_sierra(program_path).unwrap();
 
         // Define the entry point function for comparison.
         let entry_point = "hello::hello::greet";
@@ -1112,7 +1111,7 @@ pub mod test {
         let file_path = file.path().to_path_buf();
 
         // Compile the cairo program to sierra using the path of the temporary file.
-        let sierra_program = cairo_to_sierra(&file_path);
+        let sierra_program = cairo_to_sierra(&file_path).unwrap();
 
         // Assert that the sierra program has no library function declarations, statements, or functions.
         assert!(sierra_program.libfunc_declarations.is_empty());
