@@ -126,7 +126,7 @@ fn fib() {
         &FIB,
         "run_test",
         &[Value::Felt252(10.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -152,7 +152,7 @@ fn logistic_map() {
         &LOGISTIC_MAP,
         "run_test",
         &[Value::Felt252(1000.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -198,7 +198,7 @@ fn pedersen() {
                 "2392090257937917229310563411601744459500735555884672871108624696010915493156",
             )),
         ],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -224,7 +224,7 @@ fn factorial() {
         &FACTORIAL,
         "run_test",
         &[Value::Felt252(13.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -251,7 +251,7 @@ proptest! {
             &FIB,
             "run_test",
             &[Value::Felt252(n.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -276,7 +276,7 @@ proptest! {
             &LOGISTIC_MAP,
             "run_test",
             &[Value::Felt252(n.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -301,7 +301,7 @@ proptest! {
             &FACTORIAL,
             "run_test",
             &[Value::Felt252(n.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -327,7 +327,7 @@ proptest! {
             &PEDERSEN,
             "run_test",
             &[Value::Felt252(a), Value::Felt252(b)],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -355,7 +355,7 @@ proptest! {
             &POSEIDON,
             "run_test",
             &[Value::Felt252(a), Value::Felt252(b), Value::Felt252(c)],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -381,7 +381,7 @@ fn self_referencing_struct() {
         &SELF_REFERENCING,
         "run_test",
         &[],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -401,7 +401,7 @@ fn no_op() {
         &NO_OP,
         "run_test",
         &[],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 

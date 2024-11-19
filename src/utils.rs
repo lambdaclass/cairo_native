@@ -710,7 +710,7 @@ pub mod test {
             .invoke_dynamic_with_syscall_handler(
                 entry_point_id,
                 args,
-                Some(u128::MAX),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap()
