@@ -105,7 +105,7 @@ mod tests {
         let executor = cache.compile_and_insert((), &program, OptLevel::default());
         let res = executor
             .unwrap()
-            .invoke_dynamic(function_id, &[], Some(u128::MAX))
+            .invoke_dynamic(function_id, &[], Some(u64::MAX))
             .expect("should run");
 
         // After compiling and inserting the program, we should be able to run it.

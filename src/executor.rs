@@ -73,7 +73,7 @@ fn invoke_dynamic(
     set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64,
     function_signature: &FunctionSignature,
     args: &[Value],
-    gas: u128,
+    gas: u64,
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
@@ -248,11 +248,11 @@ fn invoke_dynamic(
         match type_info {
             CoreTypeConcrete::GasBuiltin(_) => {
                 remaining_gas = Some(match &mut return_ptr {
-                    Some(return_ptr) => unsafe { *read_value::<u128>(return_ptr) },
+                    Some(return_ptr) => unsafe { *read_value::<u64>(return_ptr) },
                     None => {
                         // If there's no return ptr then the function only returned the gas. We don't
                         // need to bother with the syscall handler builtin.
-                        ((ret_registers[1] as u128) << 64) | ret_registers[0] as u128
+                        ret_registers[0]
                     }
                 });
             }
@@ -684,13 +684,13 @@ mod tests {
         let module = native_context
             .compile(&program, false)
             .expect("failed to compile context");
-        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
         let result = executor
-            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u64::MAX))
             .unwrap();
 
         assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
@@ -702,13 +702,13 @@ mod tests {
         let module = native_context
             .compile(&program, false)
             .expect("failed to compile context");
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
         let result = executor
-            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u64::MAX))
             .unwrap();
 
         assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
@@ -720,7 +720,7 @@ mod tests {
         let module = native_context
             .compile(&starknet_program, false)
             .expect("failed to compile context");
-        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
@@ -733,7 +733,7 @@ mod tests {
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],
-                Some(u128::MAX),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
@@ -747,7 +747,7 @@ mod tests {
         let module = native_context
             .compile(&starknet_program, false)
             .expect("failed to compile context");
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
@@ -760,7 +760,7 @@ mod tests {
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],
-                Some(u128::MAX),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();

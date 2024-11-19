@@ -105,7 +105,7 @@ fn build_dup<'ctx>(
         let old_ptr = entry.argument(0)?.into();
         let new_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, inner_len, location,
-        ))?;
+        )?)?;
 
         let value = entry.load(context, location, old_ptr, inner_ty)?;
         let values = metadata

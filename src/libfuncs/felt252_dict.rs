@@ -16,7 +16,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::arith,
-    ir::{r#type::IntegerType, Block, Location},
+    ir::{Block, Location},
     Context,
 };
 
@@ -86,11 +86,6 @@ pub fn build_squash<'ctx, 'this>(
         .dict_gas_refund(context, helper, entry, dict_ptr, location)?
         .result(0)?
         .into();
-    let gas_refund = entry.append_op_result(arith::extui(
-        gas_refund,
-        IntegerType::new(context, 128).into(),
-        location,
-    ))?;
 
     let new_gas_builtin = entry.append_op_result(arith::addi(gas_builtin, gas_refund, location))?;
 

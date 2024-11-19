@@ -56,14 +56,14 @@ impl SyscallHandler {
 }
 
 impl StarknetSyscallHandler for SyscallHandler {
-    fn get_block_hash(&mut self, block_number: u64, _gas: &mut u128) -> SyscallResult<Felt> {
+    fn get_block_hash(&mut self, block_number: u64, _gas: &mut u64) -> SyscallResult<Felt> {
         println!("Called `get_block_hash({block_number})` from MLIR.");
         Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
     }
 
     fn get_execution_info(
         &mut self,
-        _gas: &mut u128,
+        _gas: &mut u64,
     ) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
         println!("Called `get_execution_info()` from MLIR.");
         Ok(ExecutionInfo {
@@ -89,7 +89,7 @@ impl StarknetSyscallHandler for SyscallHandler {
 
     fn get_execution_info_v2(
         &mut self,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV2> {
         println!("Called `get_execution_info_v2()` from MLIR.");
         Ok(ExecutionInfoV2 {
@@ -129,7 +129,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         contract_address_salt: Felt,
         calldata: &[Felt],
         deploy_from_zero: bool,
-        _gas: &mut u128,
+        _gas: &mut u64,
     ) -> SyscallResult<(Felt, Vec<Felt>)> {
         println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
         Ok((
@@ -138,7 +138,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         ))
     }
 
-    fn replace_class(&mut self, class_hash: Felt, _gas: &mut u128) -> SyscallResult<()> {
+    fn replace_class(&mut self, class_hash: Felt, _gas: &mut u64) -> SyscallResult<()> {
         println!("Called `replace_class({class_hash})` from MLIR.");
         Ok(())
     }
@@ -148,7 +148,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         class_hash: Felt,
         function_selector: Felt,
         calldata: &[Felt],
-        _gas: &mut u128,
+        _gas: &mut u64,
     ) -> SyscallResult<Vec<Felt>> {
         println!(
             "Called `library_call({class_hash}, {function_selector}, {calldata:?})` from MLIR."
@@ -161,7 +161,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         address: Felt,
         entry_point_selector: Felt,
         calldata: &[Felt],
-        _gas: &mut u128,
+        _gas: &mut u64,
     ) -> SyscallResult<Vec<Felt>> {
         println!(
             "Called `call_contract({address}, {entry_point_selector}, {calldata:?})` from MLIR."
@@ -173,7 +173,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         address_domain: u32,
         address: Felt,
-        _gas: &mut u128,
+        _gas: &mut u64,
     ) -> SyscallResult<Felt> {
         println!("Called `storage_read({address_domain}, {address})` from MLIR.");
         Ok(address * Felt::from(3))
@@ -184,13 +184,13 @@ impl StarknetSyscallHandler for SyscallHandler {
         address_domain: u32,
         address: Felt,
         value: Felt,
-        _gas: &mut u128,
+        _gas: &mut u64,
     ) -> SyscallResult<()> {
         println!("Called `storage_write({address_domain}, {address}, {value})` from MLIR.");
         Ok(())
     }
 
-    fn emit_event(&mut self, keys: &[Felt], data: &[Felt], _gas: &mut u128) -> SyscallResult<()> {
+    fn emit_event(&mut self, keys: &[Felt], data: &[Felt], _gas: &mut u64) -> SyscallResult<()> {
         println!("Called `emit_event({keys:?}, {data:?})` from MLIR.");
         Ok(())
     }
@@ -199,7 +199,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         to_address: Felt,
         payload: &[Felt],
-        _gas: &mut u128,
+        _gas: &mut u64,
     ) -> SyscallResult<()> {
         println!("Called `send_message_to_l1({to_address}, {payload:?})` from MLIR.");
         Ok(())
@@ -208,7 +208,7 @@ impl StarknetSyscallHandler for SyscallHandler {
     fn keccak(
         &mut self,
         input: &[u64],
-        _gas: &mut u128,
+        _gas: &mut u64,
     ) -> SyscallResult<cairo_native::starknet::U256> {
         println!("Called `keccak({input:?})` from MLIR.");
         Ok(U256 {
@@ -221,7 +221,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _x: U256,
         _y: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>> {
         unimplemented!()
     }
@@ -230,7 +230,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _p0: Secp256k1Point,
         _p1: Secp256k1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256k1Point> {
         unimplemented!()
     }
@@ -239,7 +239,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _p: Secp256k1Point,
         _m: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256k1Point> {
         unimplemented!()
     }
@@ -248,7 +248,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _x: U256,
         _y_parity: bool,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>> {
         unimplemented!()
     }
@@ -256,7 +256,7 @@ impl StarknetSyscallHandler for SyscallHandler {
     fn secp256k1_get_xy(
         &mut self,
         _p: Secp256k1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<(U256, U256)> {
         unimplemented!()
     }
@@ -265,7 +265,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _x: U256,
         _y: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256r1Point>> {
         unimplemented!()
     }
@@ -274,7 +274,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _p0: Secp256r1Point,
         _p1: Secp256r1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256r1Point> {
         unimplemented!()
     }
@@ -283,7 +283,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _p: Secp256r1Point,
         _m: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256r1Point> {
         unimplemented!()
     }
@@ -292,7 +292,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _x: U256,
         _y_parity: bool,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256r1Point>> {
         unimplemented!()
     }
@@ -300,7 +300,7 @@ impl StarknetSyscallHandler for SyscallHandler {
     fn secp256r1_get_xy(
         &mut self,
         _p: Secp256r1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<(U256, U256)> {
         unimplemented!()
     }
@@ -401,7 +401,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _state: &mut [u32; 8],
         _block: &[u32; 16],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
         unimplemented!()
     }
@@ -442,10 +442,11 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
     let result = native_executor
-        .invoke_contract_dynamic(fn_id, &[Felt::ONE], Some(u128::MAX), SyscallHandler::new())
+        .invoke_contract_dynamic(fn_id, &[Felt::ONE], Some(u64::MAX), SyscallHandler::new())
         .expect("failed to execute the given contract");
 
     println!();

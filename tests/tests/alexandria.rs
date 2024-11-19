@@ -29,7 +29,7 @@ fn compare_inputless_function(function_name: &str) {
         program,
         function_name,
         &[],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
