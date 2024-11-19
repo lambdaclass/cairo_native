@@ -945,7 +945,7 @@ dependencies = [
 
 [[package]]
 name = "cairo-native"
-version = "0.2.2-alpha.0"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "aquamarine",
@@ -1008,7 +1008,7 @@ dependencies = [
 
 [[package]]
 name = "cairo-native-runtime"
-version = "0.2.2-alpha.0"
+version = "0.2.3"
 dependencies = [
  "cairo-lang-sierra-gas",
  "itertools 0.13.0",
