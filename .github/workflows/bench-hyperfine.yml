@@ -241,7 +241,7 @@ jobs:
           for f in bench-results-base/*.md; do
             echo
             cat $f
-            cat bench-results-head/$(basename $f).md
+            cat bench-results-head/${f%.*}.md
           done
         } | tee -a comment_body.md
 
