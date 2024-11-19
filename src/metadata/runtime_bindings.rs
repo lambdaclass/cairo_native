@@ -3,7 +3,10 @@
 //! This metadata ensures that the bindings to the runtime functions exist in the current
 //! compilation context.
 
-use crate::{error::Result, utils::BlockExt};
+use crate::{
+    error::{Error, Result},
+    utils::BlockExt,
+};
 use melior::{
     dialect::{func, llvm, ods},
     ir::{
@@ -31,6 +34,7 @@ enum RuntimeBinding {
     DictGasRefund,
     DictDrop,
     DictDup,
+    GetGasBuiltin,
     DebugPrint,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
@@ -83,7 +87,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -141,7 +146,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -197,7 +203,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -245,7 +252,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -293,7 +301,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -336,7 +345,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -388,7 +398,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -443,7 +454,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -497,7 +509,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 location,
@@ -550,7 +563,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -615,7 +629,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -677,7 +692,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -734,7 +750,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -793,7 +810,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -846,7 +864,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),
@@ -858,6 +877,50 @@ impl RuntimeBindingsMeta {
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_gas_refund"),
             &[dict_ptr],
             &[IntegerType::new(context, 64).into()],
+            location,
+        )))
+    }
+
+    // Register if necessary, then invoke the `set_gas_builtin()` function.
+    #[allow(clippy::too_many_arguments)]
+    pub fn get_gas_builtin<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        if self.active_map.insert(RuntimeBinding::GetGasBuiltin) {
+            module.body().append_operation(func::func(
+                context,
+                StringAttribute::new(context, "cairo_native__get_costs_builtin"),
+                TypeAttribute::new(
+                    FunctionType::new(context, &[], &[llvm::r#type::pointer(context, 0)]).into(),
+                ),
+                Region::new(),
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "private").into(),
+                    ),
+                    (
+                        Identifier::new(context, "llvm.linkage"),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
+                    ),
+                ],
+                Location::unknown(context),
+            ));
+        }
+
+        Ok(block.append_operation(func::call(
+            context,
+            FlatSymbolRefAttribute::new(context, "cairo_native__get_costs_builtin"),
+            &[],
+            &[llvm::r#type::pointer(context, 0)],
             location,
         )))
     }
@@ -906,7 +969,8 @@ impl RuntimeBindingsMeta {
                     ),
                     (
                         Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
+                        Attribute::parse(context, "#llvm.linkage<external>")
+                            .ok_or(Error::ParseAttributeError)?,
                     ),
                 ],
                 Location::unknown(context),

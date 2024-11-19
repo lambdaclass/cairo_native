@@ -2,23 +2,23 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::{gas::GasCost, MetadataStorage},
-    utils::{BlockExt, ProgramRegistryExt},
+    error::{Error, Result},
+    metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    native_panic,
+    utils::{BlockExt, GepIndex},
 };
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        gas::GasConcreteLibfunc,
+        gas::{CostTokenType, GasConcreteLibfunc},
         lib_func::SignatureOnlyConcreteLibfunc,
-        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm, ods,
+        ods,
     },
     ir::{r#type::IntegerType, Block, Location},
     Context,
@@ -51,9 +51,9 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Generate MLIR operations for the `get_builtin_costs` libfunc.
+/// Generate MLIR operations for the `get_available_gas` libfunc.
 pub fn build_get_available_gas<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -61,11 +61,14 @@ pub fn build_get_available_gas<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    entry.append_operation(helper.br(
-        0,
-        &[entry.argument(0)?.into(), entry.argument(0)?.into()],
+    let gas = entry.argument(0)?.into();
+    let gas_u128 = entry.append_op_result(arith::extui(
+        gas,
+        IntegerType::new(context, 128).into(),
         location,
-    ));
+    ))?;
+    // The gas is returned as u128 on the second arg.
+    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), gas_u128], location));
     Ok(())
 }
 
@@ -76,36 +79,84 @@ pub fn build_withdraw_gas<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &MetadataStorage,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
     let current_gas = entry.argument(1)?.into();
 
-    let cost = metadata.get::<GasCost>().and_then(|x| x.0);
+    let gas_cost = metadata
+        .get::<GasCost>()
+        .expect("builtin_withdraw_gas should always have a gas cost")
+        .clone();
 
-    let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
-    let gas_cost_val =
-        entry.const_int_from_type(context, location, cost.unwrap_or(0), u128_type)?;
+    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
+
+    let builtin_ptr = {
+        let runtime = metadata
+            .get_mut::<RuntimeBindingsMeta>()
+            .ok_or(Error::MissingMetadata)?;
+        runtime
+            .get_gas_builtin(context, helper, entry, location)?
+            .result(0)?
+            .into()
+    };
+
+    let mut total_gas_cost_value = entry.const_int_from_type(context, location, 0, u64_type)?;
+
+    for (cost_count, token_type) in &gas_cost.0 {
+        if *cost_count == 0 {
+            continue;
+        }
+
+        let builtin_costs_index = match token_type {
+            CostTokenType::Const => 0,
+            CostTokenType::Pedersen => 1,
+            CostTokenType::Bitwise => 2,
+            CostTokenType::EcOp => 3,
+            CostTokenType::Poseidon => 4,
+            CostTokenType::AddMod => 5,
+            CostTokenType::MulMod => 6,
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
+        };
+
+        let cost_count_value =
+            entry.const_int_from_type(context, location, *cost_count, u64_type)?;
+        let builtin_costs_index_value =
+            entry.const_int_from_type(context, location, builtin_costs_index, u64_type)?;
+
+        let builtin_cost_value_ptr = entry.gep(
+            context,
+            location,
+            builtin_ptr,
+            &[GepIndex::Value(builtin_costs_index_value)],
+            u64_type,
+        )?;
+        let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
+        let gas_cost_value =
+            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))?;
+        total_gas_cost_value =
+            entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))?;
+    }
 
     let is_enough = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
         current_gas,
-        gas_cost_val,
+        total_gas_cost_value,
         location,
     ))?;
 
     let resulting_gas = entry.append_op_result(
-        ods::llvm::intr_usub_sat(context, current_gas, gas_cost_val, location).into(),
+        ods::llvm::intr_usub_sat(context, current_gas, total_gas_cost_value, location).into(),
     )?;
 
     entry.append_operation(helper.cond_br(
         context,
         is_enough,
         [0, 1],
-        [&[range_check, resulting_gas]; 2],
+        [&[range_check, resulting_gas], &[range_check, current_gas]],
         location,
     ));
 
@@ -119,35 +170,74 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &MetadataStorage,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
     let current_gas = entry.argument(1)?.into();
-    let cost = metadata.get::<GasCost>().and_then(|x| x.0);
+    let builtin_ptr = entry.argument(2)?.into();
 
-    let u128_type: melior::ir::Type = IntegerType::new(context, 128).into();
-    let gas_cost_val =
-        entry.const_int_from_type(context, location, cost.unwrap_or(0), u128_type)?;
+    let gas_cost = metadata
+        .get::<GasCost>()
+        .expect("builtin_withdraw_gas should always have a gas cost");
+
+    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
+
+    let mut total_gas_cost_value = entry.const_int_from_type(context, location, 0, u64_type)?;
+
+    for (cost_count, token_type) in &gas_cost.0 {
+        if *cost_count == 0 {
+            continue;
+        }
+
+        let builtin_costs_index = match token_type {
+            CostTokenType::Const => 0,
+            CostTokenType::Pedersen => 1,
+            CostTokenType::Bitwise => 2,
+            CostTokenType::EcOp => 3,
+            CostTokenType::Poseidon => 4,
+            CostTokenType::AddMod => 5,
+            CostTokenType::MulMod => 6,
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
+        };
+
+        let cost_count_value =
+            entry.const_int_from_type(context, location, *cost_count, u64_type)?;
+        let builtin_costs_index_value =
+            entry.const_int_from_type(context, location, builtin_costs_index, u64_type)?;
+
+        let builtin_cost_value_ptr = entry.gep(
+            context,
+            location,
+            builtin_ptr,
+            &[GepIndex::Value(builtin_costs_index_value)],
+            u64_type,
+        )?;
+        let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
+        let gas_cost_value =
+            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))?;
+        total_gas_cost_value =
+            entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))?;
+    }
 
     let is_enough = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Uge,
         current_gas,
-        gas_cost_val,
+        total_gas_cost_value,
         location,
     ))?;
 
     let resulting_gas = entry.append_op_result(
-        ods::llvm::intr_usub_sat(context, current_gas, gas_cost_val, location).into(),
+        ods::llvm::intr_usub_sat(context, current_gas, total_gas_cost_value, location).into(),
     )?;
 
     entry.append_operation(helper.cond_br(
         context,
         is_enough,
         [0, 1],
-        [&[range_check, resulting_gas]; 2],
+        [&[range_check, resulting_gas], &[range_check, current_gas]],
         location,
     ));
 
@@ -157,25 +247,25 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
 /// Generate MLIR operations for the `get_builtin_costs` libfunc.
 pub fn build_get_builtin_costs<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let builtin_costs_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.branch_signatures()[0].vars[0].ty,
-    )?;
+    // Get the ptr to the global, holding a ptr to the list.
+    let builtin_ptr = {
+        let runtime = metadata
+            .get_mut::<RuntimeBindingsMeta>()
+            .ok_or(Error::MissingMetadata)?;
+        runtime
+            .get_gas_builtin(context, helper, entry, location)?
+            .result(0)?
+            .into()
+    };
 
-    // TODO: Implement libfunc.
-    let op0 = entry.append_op_result(llvm::undef(builtin_costs_ty, location))?;
-
-    entry.append_operation(helper.br(0, &[op0], location));
+    entry.append_operation(helper.br(0, &[builtin_ptr], location));
 
     Ok(())
 }
@@ -212,9 +302,6 @@ mod test {
         );
 
         let result = run_program(&program, "run_test", &[]);
-        assert_eq!(
-            result.remaining_gas,
-            Some(340282366920938463463374607431768205035),
-        );
+        assert_eq!(result.remaining_gas, Some(18446744073709545195));
     }
 }

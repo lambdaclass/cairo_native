@@ -106,8 +106,6 @@ lazy_static! {
     };
 }
 
-// Since comparing a felt to 1 to create boolean (uses felt252_is_zero and felt sub,add) has a bug,
-// we'll be using use u8 on other tests until this is fixed. The bug may be in felt subtraction.
 #[test]
 fn felt252_to_bool_bug() {
     let program = &FELT252_TO_BOOL;
@@ -123,7 +121,7 @@ fn felt252_to_bool_bug() {
         program,
         "run_test",
         &[Value::Felt252(a.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -147,7 +145,7 @@ fn felt252_to_bool_bug() {
         program,
         "run_test",
         &[Value::Felt252(a.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -171,7 +169,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -194,7 +192,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -218,7 +216,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -242,7 +240,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -266,7 +264,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 

@@ -43,7 +43,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
-      - uses: dtolnay/rust-toolchain@1.81.0
+      - uses: dtolnay/rust-toolchain@1.82.0
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -58,15 +58,11 @@ jobs:
       - name: Install hyperfine
         uses: taiki-e/install-action@v2
         with:
-          tool: hyperfine@1.16
+          tool: hyperfine@1.18
       - name: Install deps
         run: make deps
-      - name: Build project
-        run: make build
-      - name: Build runtime subproject
-        run: make runtime-ci
       - name: Run benchmarks
-        run: ./scripts/bench-hyperfine.sh programs/benches/*.cairo
+        run: make bench
       - name: Create markdown file
         run: bash .github/scripts/merge-benches.sh
 
@@ -136,7 +132,7 @@ jobs:
 
       - name: Install Rust
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
-        uses: dtolnay/rust-toolchain@1.81.0
+        uses: dtolnay/rust-toolchain@1.82.0
 
       - name: add llvm deb repository
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
@@ -219,10 +215,10 @@ jobs:
             --export-markdown "${f%.*}.md" \
             --export-json "${f%.*}.json" \
             --warmup 3 \
-            -n "head $(basename $f) (JIT)" "./bin/cairo-native-run-head --run-mode=jit -s $f --opt-level 3 --available-gas 19446744073709551615" \
-            -n "base $(basename $f) (JIT)" "./bin/cairo-native-run-base --run-mode=jit -s $f --opt-level 3 --available-gas 19446744073709551615" \
-            -n "head $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-head.a ./bin/cairo-native-run-head --run-mode=aot -s $f --opt-level 3 --available-gas 19446744073709551615" \
-            -n "base $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-base.a ./bin/cairo-native-run-base --run-mode=aot -s $f --opt-level 3 --available-gas 19446744073709551615" \
+            -n "head $(basename $f) (JIT)" "./bin/cairo-native-run-head --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "base $(basename $f) (JIT)" "./bin/cairo-native-run-base --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "head $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-head.a ./bin/cairo-native-run-head --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "base $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-base.a ./bin/cairo-native-run-base --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
             >> /dev/stderr
           done
       - name: Print tables

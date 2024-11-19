@@ -62,9 +62,11 @@ impl MetadataStorage {
     where
         T: Any,
     {
-        self.entries
-            .remove(&TypeId::of::<T>())
-            .map(|meta| *(Box::<(dyn Any + 'static)>::downcast::<T>(meta).unwrap()))
+        self.entries.remove(&TypeId::of::<T>()).map(|meta| {
+            *(Box::<(dyn Any + 'static)>::downcast::<T>(meta).expect(
+                "attempt to downcast a boxed value to a type which does not match the actual",
+            ))
+        })
     }
 
     /// Retrieve a reference to some metadata.
@@ -75,9 +77,11 @@ impl MetadataStorage {
     where
         T: Any,
     {
-        self.entries
-            .get(&TypeId::of::<T>())
-            .map(|meta| meta.downcast_ref::<T>().unwrap())
+        self.entries.get(&TypeId::of::<T>()).map(|meta| {
+            meta.downcast_ref::<T>().expect(
+                "attempt to downcast a boxed value to a type which does not match the actual",
+            )
+        })
     }
 
     /// Retrieve a mutable reference to some metadata.
@@ -88,9 +92,10 @@ impl MetadataStorage {
     where
         T: Any,
     {
-        self.entries
-            .get_mut(&TypeId::of::<T>())
-            .map(|meta| meta.downcast_mut::<T>().unwrap())
+        self.entries.get_mut(&TypeId::of::<T>()).map(|meta| {
+            meta.downcast_mut::<T>()
+                .expect("the given type does not match the actual")
+        })
     }
 
     pub fn get_or_insert_with<T>(&mut self, meta_gen: impl FnOnce() -> T) -> &mut T
@@ -101,7 +106,7 @@ impl MetadataStorage {
             .entry(TypeId::of::<T>())
             .or_insert_with(|| Box::new(meta_gen()))
             .downcast_mut::<T>()
-            .unwrap()
+            .expect("the given type does not match the actual")
     }
 }
 

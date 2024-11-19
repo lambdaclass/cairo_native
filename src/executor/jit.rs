@@ -41,19 +41,25 @@ impl std::fmt::Debug for JitNativeExecutor<'_> {
 }
 
 impl<'m> JitNativeExecutor<'m> {
-    pub fn from_native_module(native_module: NativeModule<'m>, opt_level: OptLevel) -> Self {
+    pub fn from_native_module(
+        native_module: NativeModule<'m>,
+        opt_level: OptLevel,
+    ) -> Result<Self, Error> {
         let NativeModule {
             module,
             registry,
             metadata,
         } = native_module;
 
-        Self {
+        Ok(Self {
             engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
-            gas_metadata: metadata.get::<GasMetadata>().cloned().unwrap(),
-        }
+            gas_metadata: metadata
+                .get::<GasMetadata>()
+                .cloned()
+                .ok_or(Error::MissingMetadata)?,
+        })
     }
 
     pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
@@ -69,17 +75,21 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[Value],
-        gas: Option<u128>,
+        gas: Option<u64>,
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
+        let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
+            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
+
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.extract_signature(function_id).unwrap(),
+            set_builtin_costs_fnptr,
+            self.extract_signature(function_id)?,
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
@@ -91,7 +101,7 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[Value],
-        gas: Option<u128>,
+        gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
@@ -99,10 +109,14 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
+        let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
+            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
+
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.extract_signature(function_id).unwrap(),
+            set_builtin_costs_fnptr,
+            self.extract_signature(function_id)?,
             args,
             available_gas,
             Some(syscall_handler),
@@ -113,23 +127,26 @@ impl<'m> JitNativeExecutor<'m> {
         &self,
         function_id: &FunctionId,
         args: &[Felt],
-        gas: Option<u128>,
+        gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
-        // TODO: Check signature for contract interface.
+
+        let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
+            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
+
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            self.extract_signature(function_id).unwrap(),
+            set_builtin_costs_fnptr,
+            self.extract_signature(function_id)?,
             &[Value::Struct {
                 fields: vec![Value::Array(
                     args.iter().cloned().map(Value::Felt252).collect(),
                 )],
-                // TODO: Populate `debug_name`.
                 debug_name: None,
             }],
             available_gas,
@@ -145,10 +162,20 @@ impl<'m> JitNativeExecutor<'m> {
         self.engine.lookup(&function_name) as *mut c_void
     }
 
-    fn extract_signature(&self, function_id: &FunctionId) -> Option<&FunctionSignature> {
-        self.program_registry()
+    pub fn find_symbol_ptr(&self, name: &str) -> Option<*mut c_void> {
+        let ptr = self.engine.lookup(name) as *mut c_void;
+
+        if ptr.is_null() {
+            None
+        } else {
+            Some(ptr)
+        }
+    }
+
+    fn extract_signature(&self, function_id: &FunctionId) -> Result<&FunctionSignature, Error> {
+        Ok(self
+            .program_registry()
             .get_function(function_id)
-            .ok()
-            .map(|func| &func.signature)
+            .map(|func| &func.signature)?)
     }
 }
