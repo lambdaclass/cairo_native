@@ -12,7 +12,7 @@ fn main() {
     let native_context = NativeContext::new();
 
     // Compile the cairo program to sierra.
-    let sierra_program = cairo_to_sierra(program_path);
+    let sierra_program = cairo_to_sierra(program_path).unwrap();
 
     // Compile the sierra program into a MLIR module.
     let native_program = native_context.compile(&sierra_program, false).unwrap();
