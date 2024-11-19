@@ -173,6 +173,12 @@
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -216,19 +222,25 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'m</span>&gt; JitNativeExecutor&lt;<span class="lifetime">'m</span>&gt; {
-    <span class="kw">pub fn </span>from_native_module(native_module: NativeModule&lt;<span class="lifetime">'m</span>&gt;, opt_level: OptLevel) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>from_native_module(
+        native_module: NativeModule&lt;<span class="lifetime">'m</span>&gt;,
+        opt_level: OptLevel,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="kw">let </span>NativeModule {
             module,
             registry,
             metadata,
         } = native_module;
 
-        <span class="self">Self </span>{
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             engine: create_engine(<span class="kw-2">&amp;</span>module, <span class="kw-2">&amp;</span>metadata, opt_level),
             module,
             registry,
-            gas_metadata: metadata.get::&lt;GasMetadata&gt;().cloned().unwrap(),
-        }
+            gas_metadata: metadata
+                .get::&lt;GasMetadata&gt;()
+                .cloned()
+                .ok_or(Error::MissingMetadata)<span class="question-mark">?</span>,
+        })
     }
 
     <span class="kw">pub fn </span>program_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
@@ -258,7 +270,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
             set_builtin_costs_fnptr,
-            <span class="self">self</span>.extract_signature(function_id).unwrap(),
+            <span class="self">self</span>.extract_signature(function_id)<span class="question-mark">?</span>,
             args,
             available_gas,
             <span class="prelude-ty">Option</span>::&lt;DummySyscallHandler&gt;::None,
@@ -285,7 +297,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
             set_builtin_costs_fnptr,
-            <span class="self">self</span>.extract_signature(function_id).unwrap(),
+            <span class="self">self</span>.extract_signature(function_id)<span class="question-mark">?</span>,
             args,
             available_gas,
             <span class="prelude-val">Some</span>(syscall_handler),
@@ -311,7 +323,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
             set_builtin_costs_fnptr,
-            <span class="self">self</span>.extract_signature(function_id).unwrap(),
+            <span class="self">self</span>.extract_signature(function_id)<span class="question-mark">?</span>,
             <span class="kw-2">&amp;</span>[Value::Struct {
                 fields: <span class="macro">vec!</span>[Value::Array(
                     args.iter().cloned().map(Value::Felt252).collect(),
@@ -341,11 +353,11 @@
         }
     }
 
-    <span class="kw">fn </span>extract_signature(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>FunctionSignature&gt; {
-        <span class="self">self</span>.program_registry()
+    <span class="kw">fn </span>extract_signature(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>FunctionSignature, Error&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">self
+            </span>.program_registry()
             .get_function(function_id)
-            .ok()
-            .map(|func| <span class="kw-2">&amp;</span>func.signature)
+            .map(|func| <span class="kw-2">&amp;</span>func.signature)<span class="question-mark">?</span>)
     }
 }
 </code></pre></div></section></main></body></html>

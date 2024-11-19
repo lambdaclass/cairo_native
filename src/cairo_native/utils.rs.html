@@ -1835,7 +1835,7 @@
             .compile(program, <span class="bool-val">false</span>)
             .expect(<span class="string">"Could not compile test program to MLIR."</span>);
 
-        <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, OptLevel::Less);
+        <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, OptLevel::Less).unwrap();
         executor
             .invoke_dynamic_with_syscall_handler(
                 entry_point_id,

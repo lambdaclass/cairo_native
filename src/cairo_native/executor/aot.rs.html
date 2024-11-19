@@ -346,7 +346,10 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#349" id="349">349</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::io;
+
+<span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::gas::GasMetadata,
@@ -396,27 +399,26 @@
     }
 
     <span class="doccomment">/// Utility to convert a [`NativeModule`] into an [`AotNativeExecutor`].
-    </span><span class="kw">pub fn </span>from_native_module(module: NativeModule, opt_level: OptLevel) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>from_native_module(module: NativeModule, opt_level: OptLevel) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="kw">let </span>NativeModule {
             module,
             registry,
             <span class="kw-2">mut </span>metadata,
         } = module;
 
-        <span class="kw">let </span>library_path = NamedTempFile::new()
-            .unwrap()
-            .into_temp_path()
+        <span class="kw">let </span>library_path = NamedTempFile::new()<span class="question-mark">?
+            </span>.into_temp_path()
             .keep()
-            .unwrap();
+            .map_err(io::Error::from)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level).unwrap();
-        <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>library_path).unwrap();
+        <span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level)<span class="question-mark">?</span>;
+        <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>library_path)<span class="question-mark">?</span>;
 
-        <span class="self">Self </span>{
-            library: <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>library_path).unwrap() },
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            library: <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>library_path)<span class="question-mark">? </span>},
             registry,
-            gas_metadata: metadata.remove().unwrap(),
-        }
+            gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)<span class="question-mark">?</span>,
+        })
     }
 
     <span class="kw">pub fn </span>invoke_dynamic(
@@ -443,9 +445,9 @@
 
         <span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
-            <span class="self">self</span>.find_function_ptr(function_id),
+            <span class="self">self</span>.find_function_ptr(function_id)<span class="question-mark">?</span>,
             set_costs_builtin,
-            <span class="self">self</span>.extract_signature(function_id),
+            <span class="self">self</span>.extract_signature(function_id)<span class="question-mark">?</span>,
             args,
             available_gas,
             <span class="prelude-ty">Option</span>::&lt;DummySyscallHandler&gt;::None,
@@ -477,9 +479,9 @@
 
         <span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
-            <span class="self">self</span>.find_function_ptr(function_id),
+            <span class="self">self</span>.find_function_ptr(function_id)<span class="question-mark">?</span>,
             set_costs_builtin,
-            <span class="self">self</span>.extract_signature(function_id),
+            <span class="self">self</span>.extract_signature(function_id)<span class="question-mark">?</span>,
             args,
             available_gas,
             <span class="prelude-val">Some</span>(syscall_handler),
@@ -511,9 +513,9 @@
 
         ContractExecutionResult::from_execution_result(<span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
-            <span class="self">self</span>.find_function_ptr(function_id),
+            <span class="self">self</span>.find_function_ptr(function_id)<span class="question-mark">?</span>,
             set_costs_builtin,
-            <span class="self">self</span>.extract_signature(function_id),
+            <span class="self">self</span>.extract_signature(function_id)<span class="question-mark">?</span>,
             <span class="kw-2">&amp;</span>[Value::Struct {
                 fields: <span class="macro">vec!</span>[Value::Array(
                     args.iter().cloned().map(Value::Felt252).collect(),
@@ -525,17 +527,17 @@
         )<span class="question-mark">?</span>)
     }
 
-    <span class="kw">pub fn </span>find_function_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">*mut </span>c_void {
+    <span class="kw">pub fn </span>find_function_ptr(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">*mut </span>c_void, Error&gt; {
         <span class="kw">let </span>function_name = generate_function_name(function_id, <span class="bool-val">false</span>);
         <span class="kw">let </span>function_name = <span class="macro">format!</span>(<span class="string">"_mlir_ciface_{function_name}"</span>);
 
         <span class="comment">// Arguments and return values are hardcoded since they'll be handled by the trampoline.
         </span><span class="kw">unsafe </span>{
-            <span class="self">self</span>.library
-                .get::&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>()&gt;(function_name.as_bytes())
-                .unwrap()
-                .into_raw()
-                .into_raw()
+            <span class="prelude-val">Ok</span>(<span class="self">self
+                </span>.library
+                .get::&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>()&gt;(function_name.as_bytes())<span class="question-mark">?
+                </span>.into_raw()
+                .into_raw())
         }
     }
 
@@ -548,8 +550,8 @@
         }
     }
 
-    <span class="kw">fn </span>extract_signature(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="kw-2">&amp;</span>FunctionSignature {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.registry.get_function(function_id).unwrap().signature
+    <span class="kw">fn </span>extract_signature(<span class="kw-2">&amp;</span><span class="self">self</span>, function_id: <span class="kw-2">&amp;</span>FunctionId) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>FunctionSignature, Error&gt; {
+        <span class="prelude-val">Ok</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.registry.get_function(function_id)<span class="question-mark">?</span>.signature)
     }
 }
 
@@ -613,7 +615,7 @@
         <span class="kw">let </span>module = native_context
             .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile context"</span>);
-        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel);
+        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 
         <span class="comment">// The first function in the program is `run_test`.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>program.funcs.first().expect(<span class="string">"should have a function"</span>).id;
@@ -634,7 +636,7 @@
         <span class="kw">let </span>module = native_context
             .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile context"</span>);
-        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel);
+        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 
         <span class="comment">// The second function in the program is `get_block_hash`.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>program.funcs.get(<span class="number">1</span>).expect(<span class="string">"should have a function"</span>).id;
@@ -673,7 +675,7 @@
         <span class="kw">let </span>module = native_context
             .compile(<span class="kw-2">&amp;</span>starknet_program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile context"</span>);
-        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel);
+        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 
         <span class="comment">// The last function in the program is the `get` wrapper function.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>starknet_program

@@ -1454,7 +1454,7 @@
         <span class="kw">let </span>module = native_context
             .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile context"</span>);
-        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         <span class="comment">// The first function in the program is `run_test`.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>program.funcs.first().expect(<span class="string">"should have a function"</span>).id;
@@ -1472,7 +1472,7 @@
         <span class="kw">let </span>module = native_context
             .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile context"</span>);
-        <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
+        <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         <span class="comment">// The first function in the program is `run_test`.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>program.funcs.first().expect(<span class="string">"should have a function"</span>).id;
@@ -1490,7 +1490,7 @@
         <span class="kw">let </span>module = native_context
             .compile(<span class="kw-2">&amp;</span>starknet_program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile context"</span>);
-        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         <span class="comment">// The last function in the program is the `get` wrapper function.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>starknet_program
@@ -1517,7 +1517,7 @@
         <span class="kw">let </span>module = native_context
             .compile(<span class="kw-2">&amp;</span>starknet_program, <span class="bool-val">false</span>)
             .expect(<span class="string">"failed to compile context"</span>);
-        <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
+        <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         <span class="comment">// The last function in the program is the `get` wrapper function.
         </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>starknet_program

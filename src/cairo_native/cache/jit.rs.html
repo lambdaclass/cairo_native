@@ -162,7 +162,7 @@
         opt_level: OptLevel,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Arc&lt;JitNativeExecutor&lt;<span class="lifetime">'a</span>&gt;&gt;&gt; {
         <span class="kw">let </span>module = <span class="self">self</span>.context.compile(program, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, opt_level);
+        <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, opt_level)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>executor = Arc::new(executor);
         <span class="self">self</span>.cache.insert(key, executor.clone());

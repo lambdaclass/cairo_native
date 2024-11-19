@@ -217,7 +217,7 @@
     <span class="kw">let </span>native_executor: Box&lt;<span class="kw">dyn </span>Fn(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">&amp;mut </span>StubSyscallHandler) -&gt; <span class="kw">_</span>&gt; = <span class="kw">match </span>args.run_mode {
         RunMode::Aot =&gt; {
             <span class="kw">let </span>executor =
-                AotNativeExecutor::from_native_module(native_module, args.opt_level.into());
+                AotNativeExecutor::from_native_module(native_module, args.opt_level.into())<span class="question-mark">?</span>;
             Box::new(<span class="kw">move </span>|function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
@@ -229,7 +229,7 @@
         }
         RunMode::Jit =&gt; {
             <span class="kw">let </span>executor =
-                JitNativeExecutor::from_native_module(native_module, args.opt_level.into());
+                JitNativeExecutor::from_native_module(native_module, args.opt_level.into())<span class="question-mark">?</span>;
             Box::new(<span class="kw">move </span>|function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
