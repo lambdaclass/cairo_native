@@ -172,6 +172,7 @@ jobs:
           cp programs/benches/*.cairo bench-results
           for f in bench-results/*.cairo; do
             hyperfine \
+            --show-output \
             --export-markdown "${f%.*}-${{matrix.branch}}.md" \
             --export-json "${f%.*}-${{matrix.branch}}.json" \
             --warmup 3 \
