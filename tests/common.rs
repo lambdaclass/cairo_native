@@ -216,7 +216,7 @@ pub fn run_native_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
     args: &[Value],
-    gas: Option<u128>,
+    gas: Option<u64>,
     syscall_handler: Option<impl StarknetSyscallHandler>,
 ) -> ExecutionResult {
     let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
@@ -405,7 +405,7 @@ pub fn compare_inputless_program(program_path: &str) {
         program,
         "main",
         &[],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -434,7 +434,7 @@ pub fn run_native_starknet_contract(
 
     let native_executor = AotNativeExecutor::from_native_module(native_program, Default::default());
     native_executor
-        .invoke_contract_dynamic(entry_point_id, args, u128::MAX.into(), handler)
+        .invoke_contract_dynamic(entry_point_id, args, u64::MAX.into(), handler)
         .expect("failed to execute the given contract")
 }
 
@@ -451,7 +451,7 @@ pub fn run_native_starknet_aot_contract(
     )
     .unwrap();
     native_executor
-        .run(Felt::from(selector), args, u128::MAX.into(), None, handler)
+        .run(Felt::from(selector), args, u64::MAX.into(), None, handler)
         .expect("failed to execute the given contract")
 }
 

@@ -268,7 +268,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     fn get_block_hash(
         &mut self,
         block_number: u64,
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Felt> {
         tracing::debug!("called");
         Ok(block_number.into())
@@ -277,7 +277,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     #[instrument(skip(self))]
     fn get_execution_info(
         &mut self,
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<crate::starknet::ExecutionInfo> {
         tracing::debug!("called");
         Ok(ExecutionInfo {
@@ -300,7 +300,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     #[instrument(skip(self))]
     fn get_execution_info_v2(
         &mut self,
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<crate::starknet::ExecutionInfoV2> {
         tracing::debug!("called");
         Ok(self.execution_info.clone())
@@ -313,7 +313,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         contract_address_salt: Felt,
         calldata: &[Felt],
         deploy_from_zero: bool,
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<(Felt, Vec<Felt>)> {
         tracing::debug!("called");
         todo!()
@@ -323,7 +323,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     fn replace_class(
         &mut self,
         class_hash: Felt,
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
         tracing::warn!("unimplemented");
@@ -336,7 +336,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         class_hash: Felt,
         function_selector: Felt,
         calldata: &[Felt],
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
         tracing::debug!("called");
         tracing::warn!("unimplemented");
@@ -349,7 +349,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         address: Felt,
         entry_point_selector: Felt,
         calldata: &[Felt],
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
         tracing::debug!("called");
         tracing::warn!("unimplemented");
@@ -360,7 +360,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         address_domain: u32,
         address: Felt,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Felt> {
         tracing::debug!("called");
         if let Some(value) = self.storage.get(&(address_domain, address)) {
@@ -376,7 +376,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         address_domain: u32,
         address: Felt,
         value: Felt,
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
         self.storage.insert((address_domain, address), value);
@@ -388,7 +388,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         keys: &[Felt],
         data: &[Felt],
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
         tracing::warn!("unimplemented but stored");
@@ -404,7 +404,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         to_address: Felt,
         payload: &[Felt],
-        remaining_gas: &mut u128,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
         tracing::warn!("unimplemented");
@@ -412,7 +412,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     }
 
     #[instrument(skip(self))]
-    fn keccak(&mut self, input: &[u64], gas: &mut u128) -> SyscallResult<U256> {
+    fn keccak(&mut self, input: &[u64], gas: &mut u64) -> SyscallResult<U256> {
         const KECCAK_FULL_RATE_IN_WORDS: usize = 17;
 
         let length = input.len();
@@ -445,7 +445,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         x: U256,
         y: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>> {
         Secp256Point::new(x, y).map(|op| op.map(|p| p.into()))
     }
@@ -455,7 +455,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         p0: Secp256k1Point,
         p1: Secp256k1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256k1Point> {
         tracing::debug!("called");
 
@@ -467,7 +467,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         p: Secp256k1Point,
         m: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256k1Point> {
         Ok(Secp256Point::mul(p.into(), m).into())
     }
@@ -477,7 +477,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         x: U256,
         y_parity: bool,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>> {
         Secp256Point::get_point_from_x(x, y_parity).map(|op| op.map(|p| p.into()))
     }
@@ -486,7 +486,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     fn secp256k1_get_xy(
         &mut self,
         p: Secp256k1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<(U256, U256)> {
         Ok((p.x, p.y))
     }
@@ -496,7 +496,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         x: U256,
         y: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256r1Point>> {
         Secp256Point::new(x, y).map(|op| op.map(|p| p.into()))
     }
@@ -506,7 +506,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         p0: Secp256r1Point,
         p1: Secp256r1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256r1Point> {
         Ok(Secp256Point::add(p0.into(), p1.into()).into())
     }
@@ -516,7 +516,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         p: Secp256r1Point,
         m: U256,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256r1Point> {
         Ok(Secp256Point::mul(p.into(), m).into())
     }
@@ -526,7 +526,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         x: U256,
         y_parity: bool,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256r1Point>> {
         Secp256Point::get_point_from_x(x, y_parity).map(|op| op.map(|p| p.into()))
     }
@@ -535,7 +535,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     fn secp256r1_get_xy(
         &mut self,
         p: Secp256r1Point,
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<(U256, U256)> {
         Ok((p.x, p.y))
     }
@@ -636,7 +636,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         state: &mut [u32; 8],
         block: &[u32; 16],
-        _remaining_gas: &mut u128,
+        _remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
         // reference impl
         // https://github.com/starkware-libs/cairo/blob/ba3f82b4a09972b6a24bf791e344cabce579bf69/crates/cairo-lang-runner/src/casm_run/mod.rs#L1292

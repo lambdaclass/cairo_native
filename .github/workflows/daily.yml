@@ -2,8 +2,8 @@ name: Daily Block Run
 
 on:
   schedule:
-  # At the end of every day
-  - cron: "0 0 * * *"
+    # At the end of every day
+    - cron: "0 0 * * *"
 
 env:
   RANGE_SIZE: 25
@@ -31,6 +31,36 @@ jobs:
           - 747000
           - 748000
           - 749000
+          - 800000
+          - 800050
+          - 800100
+          - 800150
+          - 800200
+          - 800250
+          - 800300
+          - 800350
+          - 800400
+          - 800450
+          - 800500
+          - 800550
+          - 800600
+          - 800650
+          - 800700
+          - 800750
+          - 800800
+          - 800850
+          - 800900
+          - 800950
+          - 900000
+          - 900100
+          - 900200
+          - 900300
+          - 900400
+          - 900500
+          - 900600
+          - 900700
+          - 900800
+          - 900900
         runner:
           - native
           - vm
@@ -56,7 +86,7 @@ jobs:
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.80.0
+        uses: dtolnay/rust-toolchain@1.82.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: Build Cairo Native Runtime Library
@@ -101,7 +131,6 @@ jobs:
           name: dump-${{matrix.block}}-${{matrix.runner}}
           path: starknet-replay/state_dumps/${{matrix.runner}}
 
-
   compare:
     needs: [run]
     runs-on: ubuntu-latest
@@ -121,6 +150,36 @@ jobs:
           - 747000
           - 748000
           - 749000
+          - 800000
+          - 800050
+          - 800100
+          - 800150
+          - 800200
+          - 800250
+          - 800300
+          - 800350
+          - 800400
+          - 800450
+          - 800500
+          - 800550
+          - 800600
+          - 800650
+          - 800700
+          - 800750
+          - 800800
+          - 800850
+          - 800900
+          - 800950
+          - 900000
+          - 900100
+          - 900200
+          - 900300
+          - 900400
+          - 900500
+          - 900600
+          - 900700
+          - 900800
+          - 900900
       fail-fast: false
     defaults:
       run:

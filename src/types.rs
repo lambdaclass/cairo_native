@@ -6,6 +6,7 @@ use crate::{
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
+    native_panic,
     utils::{get_integer_layout, layout_repeat, BlockExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
@@ -467,7 +468,7 @@ impl TypeBuilder for CoreTypeConcrete {
             // Builtins.
             CoreTypeConcrete::Bitwise(_)
             | CoreTypeConcrete::EcOp(_)
-            | CoreTypeConcrete::GasBuiltin(_) // u128 is not complex
+            | CoreTypeConcrete::GasBuiltin(_)
             | CoreTypeConcrete::BuiltinCosts(_)
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
@@ -650,7 +651,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
             CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
-            CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(128),
+            CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(64),
             CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<*const ()>(),
             CoreTypeConcrete::Uint8(_) => get_integer_layout(8),
             CoreTypeConcrete::Uint16(_) => get_integer_layout(16),
@@ -942,7 +943,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
                     entry.insert_value(context, location, value, tag, 0)?
                 }
-                _ => unimplemented!("unsupported dict value type"),
+                _ => native_panic!("unsupported dict value type"),
             },
             Self::Felt252(_) => entry.const_int(context, location, 0, 252)?,
             Self::Nullable(_) => {
@@ -953,7 +954,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint32(_) => entry.const_int(context, location, 0, 32)?,
             Self::Uint64(_) => entry.const_int(context, location, 0, 64)?,
             Self::Uint128(_) => entry.const_int(context, location, 0, 128)?,
-            _ => unimplemented!("unsupported dict value type"),
+            _ => native_panic!("unsupported dict value type"),
         })
     }
 }
