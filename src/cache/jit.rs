@@ -47,7 +47,7 @@ where
         opt_level: OptLevel,
     ) -> Result<Arc<JitNativeExecutor<'a>>> {
         let module = self.context.compile(program, false)?;
-        let executor = JitNativeExecutor::from_native_module(module, opt_level);
+        let executor = JitNativeExecutor::from_native_module(module, opt_level)?;
 
         let executor = Arc::new(executor);
         self.cache.insert(key, executor.clone());

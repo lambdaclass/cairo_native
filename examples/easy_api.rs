@@ -26,7 +26,8 @@ fn main() {
         .expect("entry point not found");
 
     // Instantiate the executor.
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
     // Execute the program.
     let result = native_executor
