@@ -188,6 +188,8 @@ pub mod panic {
         };
     }
 
+    /// Macro that mimicks the behaviour of `assert!`.
+    /// It should only be used inside of a function that returns Result<T, cairo_native::error::Error>
     #[macro_export]
     macro_rules! native_assert {
         ($cond:expr, $($arg:tt)*) => {
@@ -196,7 +198,6 @@ pub mod panic {
             }
         };
     }
-
     /// If `RUST_BACKTRACE` env var is not set, then the backtrace won't be captured.
     /// In that case, only the location is saved, which is better than nothing.
     #[derive(Debug)]

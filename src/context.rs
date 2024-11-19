@@ -1,5 +1,5 @@
 use crate::{
-    error::Error,
+    error::{panic::ToNativeAssertError, Error},
     ffi::{get_data_layout_rep, get_target_triple},
     metadata::{
         gas::{GasMetadata, MetadataComputationConfig},
@@ -7,6 +7,7 @@ use crate::{
         MetadataStorage,
     },
     module::NativeModule,
+    native_assert,
     utils::run_pass_manager,
 };
 use cairo_lang_sierra::{
@@ -150,9 +151,11 @@ impl NativeContext {
         ])
         .add_regions([module_region])
         .build()?;
-        assert!(op.verify(), "module operation is not valid");
 
-        let mut module = Module::from_operation(op).expect("module failed to create");
+        native_assert!(op.verify(), "module operation should be valid");
+
+        let mut module = Module::from_operation(op)
+            .to_native_assert_error("value should be module operation")?;
 
         let has_gas_builtin = program
             .type_declarations
@@ -193,22 +196,19 @@ impl NativeContext {
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {
-                std::fs::write("dump-prepass.mlir", module.as_operation().to_string())
-                    .expect("should work");
+                std::fs::write("dump-prepass.mlir", module.as_operation().to_string())?;
                 std::fs::write(
                     "dump-prepass-debug-valid.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
-                )
-                .expect("failed to write dump-prepass-debug-valid.mlir");
+                )?;
                 std::fs::write(
                     "dump-prepass-debug-pretty.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
-                )
-                .expect("failed to writedump-prepass-debug-pretty.mlir");
+                )?;
             }
         }
 
@@ -220,22 +220,19 @@ impl NativeContext {
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {
-                std::fs::write("dump.mlir", module.as_operation().to_string())
-                    .expect("should work");
+                std::fs::write("dump.mlir", module.as_operation().to_string())?;
                 std::fs::write(
                     "dump-debug-pretty.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
-                )
-                .expect("failed to write dump-debug-pretty.mlir");
+                )?;
                 std::fs::write(
                     "dump-debug.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
-                )
-                .expect("failed to write dump-debug.mlir");
+                )?;
             }
         }
 
