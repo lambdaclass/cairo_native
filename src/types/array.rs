@@ -178,7 +178,7 @@ fn build_dup<'ctx>(
                 null_ptr,
                 dst_value_len,
                 location,
-            ))?
+            )?)?
         };
 
         let src_value_ptr = {
@@ -372,7 +372,7 @@ fn build_drop<'ctx>(
         _ => {}
     }
 
-    entry.append_operation(ReallocBindingsMeta::free(context, value_ptr, location));
+    entry.append_operation(ReallocBindingsMeta::free(context, value_ptr, location)?);
     entry.append_operation(func::r#return(&[], location));
     Ok(region)
 }
