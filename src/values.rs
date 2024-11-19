@@ -1432,7 +1432,6 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Variant index out of range.")]
     fn test_to_jit_enum_variant_out_of_range() {
         // Parse the program
         let program = ProgramParser::new()
@@ -1440,7 +1439,12 @@ mod test {
                 "type u8 = u8;
             type MyEnum = Enum<ut@MyEnum, u8, u8>;",
             )
-            .unwrap();
+            .unwrap_err();
+
+        let error = result.to_string().clone();
+        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
+
+        assert_eq!(error_msg, "Variant index out of range.");
 
         // Create the registry for the program
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1456,14 +1460,21 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "An enum without variants cannot be instantiated.")]
     fn test_to_jit_enum_no_variant() {
         let program = ProgramParser::new()
             .parse(
                 "type u8 = u8;
                 type MyEnum = Enum<ut@MyEnum, u8>;",
             )
-            .unwrap();
+            .unwrap_err();
+
+        let error = result.to_string().clone();
+        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
+
+        assert_eq!(
+            error_msg,
+            "An enum without variants cannot be instantiated."
+        );
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
