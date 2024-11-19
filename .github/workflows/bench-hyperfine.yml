@@ -92,7 +92,7 @@ jobs:
     strategy:
       matrix:
         branch: [ base, head ]
-    name: Build cairo-native-run for ${{ matrix.branch }}
+    name: Run benches for ${{ matrix.branch }}
     runs-on: ubuntu-24.04
     steps:
       - name: Cache binary
@@ -175,8 +175,8 @@ jobs:
             --export-markdown "${f%.*}-${{matrix.branch}}.md" \
             --export-json "${f%.*}-${{matrix.branch}}.json" \
             --warmup 3 \
-            -n "${{matrix.branch}} $(basename $f) (JIT)" "./target/release/cairo-native-run --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "${{matrix.branch}} $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=./target/release/libcairo_native_runtime.a ./bin/cairo-native-run-head --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "${{matrix.branch}} $(basename $f) (JIT)" "bin/cairo-native-run-${{ matrix.branch }} --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "${{matrix.branch}} $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-${{ matrix.branch }}.a ./bin/cairo-native-run-head --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
             >> /dev/stderr
           done
 
