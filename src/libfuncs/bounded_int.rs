@@ -115,11 +115,11 @@ fn build_add<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    assert!(
+    native_assert!(
         compute_range.offset_bit_width() >= lhs_width,
         "the lhs_range bit_width must be less or equal than the compute_range"
     );
-    assert!(
+    native_assert!(
         compute_range.offset_bit_width() >= rhs_width,
         "the rhs_range bit_width must be less or equal than the compute_range"
     );
@@ -243,11 +243,11 @@ fn build_sub<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    assert!(
+    native_assert!(
         compute_range.offset_bit_width() >= lhs_width,
         "the lhs_range bit_width must be less or equal than the compute_range"
     );
-    assert!(
+    native_assert!(
         compute_range.offset_bit_width() >= rhs_width,
         "the rhs_range bit_width must be less or equal than the compute_range"
     );
@@ -372,11 +372,11 @@ fn build_mul<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    assert!(
+    native_assert!(
         compute_range.offset_bit_width() >= lhs_width,
         "the lhs_range bit_width must be less or equal than the compute_range"
     );
-    assert!(
+    native_assert!(
         compute_range.offset_bit_width() >= rhs_width,
         "the rhs_range bit_width must be less or equal than the compute_range"
     );
@@ -500,11 +500,11 @@ fn build_divrem<'ctx, 'this>(
     let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
     // Zero-extend operands into the computation range.
-    assert!(
+    native_assert!(
         compute_range.offset_bit_width() >= lhs_width,
         "the lhs_range bit_width must be less or equal than the compute_range"
     );
-    assert!(
+    native_assert!(
         compute_range.offset_bit_width() >= rhs_width,
         "the rhs_range bit_width must be less or equal than the compute_range"
     );
@@ -754,7 +754,7 @@ fn build_wrap_non_zero<'ctx, 'this>(
         .get_type(&info.signature.param_signatures[0].ty)?
         .integer_range(registry)?;
 
-    assert!(
+    native_assert!(
         src_range.lower > BigInt::ZERO || BigInt::ZERO >= src_range.upper,
         "value must not be zero"
     );
