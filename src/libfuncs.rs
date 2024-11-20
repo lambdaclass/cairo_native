@@ -47,6 +47,7 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
+mod int_range;
 mod mem;
 mod nullable;
 mod pedersen;
@@ -174,6 +175,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 context, registry, entry, location, helper, metadata, info,
             ),
             Self::Gas(selector) => self::gas::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::IntRange(selector) => self::int_range::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Mem(selector) => self::mem::build(

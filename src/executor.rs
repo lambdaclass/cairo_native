@@ -624,6 +624,8 @@ fn parse_result(
         | CoreTypeConcrete::Uint128MulGuarantee(_)
         | CoreTypeConcrete::Circuit(_)
         | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+        // 2.9.0
+        CoreTypeConcrete::IntRange(_) => todo!(),
     }
 }
 

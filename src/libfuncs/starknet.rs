@@ -109,6 +109,9 @@ pub fn build<'ctx, 'this>(
         StarkNetConcreteLibfunc::GetBlockHash(info) => {
             build_get_block_hash(context, registry, entry, location, helper, metadata, info)
         }
+        StarkNetConcreteLibfunc::GetClassHashAt(info) => {
+            build_get_class_hash_at(context, registry, entry, location, helper, metadata, info)
+        }
         StarkNetConcreteLibfunc::GetExecutionInfo(info) => {
             build_get_execution_info(context, registry, entry, location, helper, metadata, info)
         }
@@ -2703,6 +2706,164 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
         )?;
 
     let result_tag = entry.load(context, location, result_ptr, result_tag_ty)?;
+
+    let payload_ok = {
+        let value = entry.load(
+            context,
+            location,
+            result_ptr,
+            llvm::r#type::r#struct(context, &[result_tag_ty, variant_tys[0].0], false),
+        )?;
+        entry.extract_value(context, location, value, variant_tys[0].0, 1)?
+    };
+    let payload_err = {
+        let value = entry.load(
+            context,
+            location,
+            result_ptr,
+            llvm::r#type::r#struct(context, &[result_tag_ty, variant_tys[1].0], false),
+        )?;
+        entry.extract_value(context, location, value, variant_tys[1].0, 1)?
+    };
+
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
+
+    entry.append_operation(helper.cond_br(
+        context,
+        result_tag,
+        [1, 0],
+        [
+            &[remaining_gas, entry.argument(1)?.into(), payload_err],
+            &[remaining_gas, entry.argument(1)?.into(), payload_ok],
+        ],
+        location,
+    ));
+    Ok(())
+}
+
+pub fn build_get_class_hash_at<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    // Extract self pointer.
+    let ptr = entry.load(
+        context,
+        location,
+        entry.argument(1)?.into(),
+        llvm::r#type::pointer(context, 0),
+    )?;
+
+    // Allocate space for the return value.
+    let (result_layout, (result_tag_ty, _), variant_tys) =
+        crate::types::r#enum::get_type_for_variants(
+            context,
+            helper,
+            registry,
+            metadata,
+            &[
+                info.branch_signatures()[0].vars[2].ty.clone(),
+                info.branch_signatures()[1].vars[2].ty.clone(),
+            ],
+        )?;
+
+    let result_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        llvm::r#type::r#struct(
+            context,
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+        result_layout.align(),
+    )?;
+
+    // Allocate space and write the current gas.
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
+    entry.append_operation(llvm::store(
+        context,
+        entry.argument(0)?.into(),
+        gas_builtin_ptr,
+        location,
+        LoadStoreOptions::default(),
+    ));
+
+    // Allocate `contract_address` argument and write the value.
+    let contract_address_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    entry.store(
+        context,
+        location,
+        contract_address_ptr,
+        entry.argument(2)?.into(),
+    )?;
+
+    // Extract function pointer.
+    let fn_ptr = entry.gep(
+        context,
+        location,
+        entry.argument(1)?.into(),
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::GET_CLASS_HASH_AT.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
+
+    entry.append_operation(
+        OperationBuilder::new("llvm.call", location)
+            .add_operands(&[
+                fn_ptr,
+                result_ptr,
+                ptr,
+                gas_builtin_ptr,
+                contract_address_ptr,
+            ])
+            .build()?,
+    );
+
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
+            context,
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
 
     let payload_ok = {
         let value = entry.load(
