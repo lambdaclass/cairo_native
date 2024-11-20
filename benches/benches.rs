@@ -4,7 +4,8 @@ use cairo_lang_compiler::{
 use cairo_lang_runner::{RunResultValue, SierraCasmRunner, StarknetState};
 use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
-use cairo_lang_starknet::contract::get_contracts_info;
+use cairo_lang_starknet::contract::{find_contracts, get_contracts_info};
+use cairo_lang_utils::Upcast;
 use cairo_native::{
     cache::{AotProgramCache, JitProgramCache},
     context::NativeContext,
@@ -291,8 +292,9 @@ fn load_contract_for_vm(path: impl AsRef<Path>) -> SierraCasmRunner {
     .expect("failed to compile program");
 
     let replacer = DebugReplacer { db: &db };
+    let contracts = find_contracts((db).upcast(), &main_crate_ids);
     let contracts_info =
-        get_contracts_info(&db, main_crate_ids, &replacer).expect("failed to get contracts info");
+        get_contracts_info(&db, contracts, &replacer).expect("failed to get contracts info");
 
     SierraCasmRunner::new(
         program.program.clone(),
