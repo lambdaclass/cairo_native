@@ -1,5 +1,6 @@
 use crate::{
-    error,
+    error::Result,
+    native_panic,
     starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::libc_malloc,
@@ -23,7 +24,7 @@ mod x86_64;
 pub trait AbiArgument {
     /// Serialize the argument into the buffer. This method should keep track of arch-dependent
     /// stuff like register vs stack allocation.
-    fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), error::Error>;
+    fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<()>;
 }
 
 /// A wrapper that implements `AbiArgument` for `Value`s. It contains all the required stuff to
@@ -42,7 +43,7 @@ impl<'a> ValueWithInfoWrapper<'a> {
         &'b self,
         value: &'b Value,
         type_id: &'b ConcreteTypeId,
-    ) -> Result<ValueWithInfoWrapper<'b>, error::Error>
+    ) -> Result<ValueWithInfoWrapper<'b>>
     where
         'b: 'a,
     {
@@ -57,7 +58,7 @@ impl<'a> ValueWithInfoWrapper<'a> {
 }
 
 impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
-    fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), error::Error> {
+    fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<()> {
         match (self.value, self.info) {
             (value, CoreTypeConcrete::Box(info)) => {
                 let ptr = value.to_ptr(self.arena, self.registry, self.type_id)?;
@@ -102,7 +103,9 @@ impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
                 abi.until.to_bytes(buffer)?;
                 abi.capacity.to_bytes(buffer)?;
             }
-            (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => todo!(),
+            (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => {
+                native_panic!("todo: implement AbiArgument for Value::BoundedInt case")
+            }
             (Value::Bytes31(value), CoreTypeConcrete::Bytes31(_)) => value.to_bytes(buffer)?,
             (Value::EcPoint(x, y), CoreTypeConcrete::EcPoint(_)) => {
                 x.to_bytes(buffer)?;
@@ -141,7 +144,7 @@ impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
             ) => value.to_bytes(buffer)?,
             (Value::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(_)) => {
                 #[cfg(not(feature = "with-runtime"))]
-                unimplemented!("enable the `with-runtime` feature to use felt252 dicts");
+                native_panic!("enable the `with-runtime` feature to use felt252 dicts");
 
                 // TODO: Assert that `info.ty` matches all the values' types.
 
@@ -183,8 +186,8 @@ impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
             (Value::Uint32(value), CoreTypeConcrete::Uint32(_)) => value.to_bytes(buffer)?,
             (Value::Uint64(value), CoreTypeConcrete::Uint64(_)) => value.to_bytes(buffer)?,
             (Value::Uint8(value), CoreTypeConcrete::Uint8(_)) => value.to_bytes(buffer)?,
-            _ => todo!(
-                "abi argument unimplemented for ({:?}, {:?})",
+            _ => native_panic!(
+                "todo: abi argument unimplemented for ({:?}, {:?})",
                 self.value,
                 self.type_id
             ),

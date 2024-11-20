@@ -1,6 +1,7 @@
 use anyhow::bail;
 use cairo_lang_compiler::{
     db::RootDatabase,
+    diagnostics::DiagnosticsReporter,
     project::{check_compiler_path, setup_project},
 };
 use cairo_lang_filesystem::cfg::{Cfg, CfgSet};
@@ -83,15 +84,18 @@ fn main() -> anyhow::Result<()> {
         starknet: args.starknet,
         add_statements_functions: false,
         add_statements_code_locations: false,
+        contract_declarations: None,
+        contract_crate_ids: None,
+        executable_crate_ids: None,
     };
 
-    let build_test_compilation = compile_test_prepared_db(
-        &db,
-        test_config,
-        main_crate_ids.clone(),
-        test_crate_ids.clone(),
-        args.allow_warnings,
-    )?;
+    let mut diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_ids);
+    if args.allow_warnings {
+        diag_reporter = diag_reporter.allow_warnings();
+    }
+
+    let build_test_compilation =
+        compile_test_prepared_db(&db, test_config, test_crate_ids.clone(), diag_reporter)?;
 
     let (compiled, filtered_out) = filter_test_cases(
         build_test_compilation,
