@@ -520,25 +520,25 @@ impl Value {
                         let inner = registry.get_type(&info.ty)?;
                         let inner_layout = inner.layout(registry)?;
 
-                        let mut data = Vec::with_capacity(2);
+                        let x_ptr = x.to_ptr(arena, registry, &info.ty)?;
 
-                        let member_ptr = x.to_ptr(arena, registry, &info.ty)?;
-                        data.push((inner_layout, 0, member_ptr));
+                        let (struct_layout, y_offset) = inner_layout.extend(inner_layout)?;
 
-                        let (struct_layout, offset) = inner_layout.extend(inner_layout)?;
-
-                        let member_ptr = y.to_ptr(arena, registry, &info.ty)?;
-                        data.push((inner_layout, offset, member_ptr));
+                        let y_ptr = y.to_ptr(arena, registry, &info.ty)?;
 
                         let ptr = arena.alloc_layout(struct_layout.pad_to_align()).as_ptr();
 
-                        for (layout, offset, member_ptr) in data {
-                            std::ptr::copy_nonoverlapping(
-                                member_ptr.cast::<u8>().as_ptr(),
-                                ptr.byte_add(offset),
-                                layout.size(),
-                            );
-                        }
+                        std::ptr::copy_nonoverlapping(
+                            x_ptr.cast::<u8>().as_ptr(),
+                            ptr,
+                            inner_layout.size(),
+                        );
+
+                        std::ptr::copy_nonoverlapping(
+                            y_ptr.cast::<u8>().as_ptr(),
+                            ptr.byte_add(y_offset),
+                            inner_layout.size(),
+                        );
 
                         NonNull::new_unchecked(ptr).cast()
                     } else {
@@ -837,28 +837,21 @@ impl Value {
                 | CoreTypeConcrete::Circuit(_)
                 | CoreTypeConcrete::RangeCheck96(_) => todo!(),
                 CoreTypeConcrete::IntRange(info) => {
-                    let mut layout: Option<Layout> = None;
-                    let mut members = Vec::with_capacity(2);
+                    let member = registry.get_type(&info.ty)?;
+                    let member_layout = member.layout(registry)?;
 
-                    for member_ty in &[&info.ty, &info.ty] {
-                        let member = registry.get_type(member_ty)?;
-                        let member_layout = member.layout(registry)?;
+                    let x =
+                        Self::from_ptr(NonNull::new(ptr.as_ptr()).unwrap(), &info.ty, registry)?;
 
-                        let (new_layout, offset) = match layout {
-                            Some(layout) => layout.extend(member_layout)?,
-                            None => (member_layout, 0),
-                        };
-                        layout = Some(new_layout);
-
-                        members.push(Self::from_ptr(
-                            NonNull::new(ptr.as_ptr().byte_add(offset)).unwrap(),
-                            member_ty,
-                            registry,
-                        )?);
-                    }
-
-                    let y = members.pop().unwrap();
-                    let x = members.pop().unwrap();
+                    let y = Self::from_ptr(
+                        NonNull::new(
+                            ptr.as_ptr()
+                                .byte_add(member_layout.extend(member_layout).unwrap().1),
+                        )
+                        .unwrap(),
+                        &info.ty,
+                        registry,
+                    )?;
 
                     Self::IntRange {
                         x: x.into(),
