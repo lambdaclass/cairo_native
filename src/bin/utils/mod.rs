@@ -178,6 +178,7 @@ fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
             vec![x.lo.into(), x.hi.into(), y.lo.into(), y.hi.into()]
         }
         Value::Null => vec![0.into()],
+        Value::IntRange { x, y } => [jitvalue_to_felt(x), jitvalue_to_felt(y)].concat(),
     }
 }
 
