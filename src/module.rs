@@ -16,7 +16,7 @@ pub struct NativeModule<'m> {
 }
 
 impl<'m> NativeModule<'m> {
-    pub fn new(
+    pub const fn new(
         module: Module<'m>,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: MetadataStorage,
@@ -58,15 +58,15 @@ impl<'m> NativeModule<'m> {
         self.metadata.get::<T>()
     }
 
-    pub fn metadata(&self) -> &MetadataStorage {
+    pub const fn metadata(&self) -> &MetadataStorage {
         &self.metadata
     }
 
-    pub fn module(&self) -> &Module {
+    pub const fn module(&self) -> &Module {
         &self.module
     }
 
-    pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
+    pub const fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
         &self.registry
     }
 }

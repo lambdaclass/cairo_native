@@ -33,7 +33,7 @@ use cairo_lang_sierra::extensions::{
     structure::StructConcreteLibfunc,
 };
 
-pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
+pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
     match value {
         CoreConcreteLibfunc::ApTracking(value) => match value {
             cairo_lang_sierra::extensions::ap_tracking::ApTrackingConcreteLibfunc::Revoke(_) => {

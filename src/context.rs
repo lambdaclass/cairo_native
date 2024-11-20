@@ -58,7 +58,7 @@ impl NativeContext {
         Self { context }
     }
 
-    pub fn context(&self) -> &Context {
+    pub const fn context(&self) -> &Context {
         &self.context
     }
 

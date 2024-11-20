@@ -29,11 +29,7 @@ use cairo_lang_sierra::{
 use libc::c_void;
 use num_bigint::BigInt;
 use num_traits::One;
-use std::{
-    alloc::Layout,
-    arch::global_asm,
-    ptr::{addr_of_mut, NonNull},
-};
+use std::{alloc::Layout, arch::global_asm, ptr::NonNull};
 
 mod aot;
 mod contract;
@@ -379,7 +375,8 @@ fn parse_result(
             registry,
         )?),
         CoreTypeConcrete::Box(info) => unsafe {
-            let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[0] as *mut ()));
+            let ptr = return_ptr
+                .unwrap_or_else(|| NonNull::new_unchecked((&raw mut ret_registers[0]) as *mut ()));
             let value = Value::from_ptr(ptr, &info.ty, registry)?;
             libc_free(ptr.cast().as_ptr());
             Ok(value)
@@ -591,9 +588,8 @@ fn parse_result(
             }
         }
         CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
-            let ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
-                addr_of_mut!(ret_registers[0]) as *mut ()
-            ));
+            let ptr = return_ptr
+                .unwrap_or_else(|| NonNull::new_unchecked((&raw mut ret_registers[0]) as *mut ()));
             Ok(Value::from_ptr(ptr, type_id, registry)?)
         },
 

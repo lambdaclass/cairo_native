@@ -789,7 +789,7 @@ fn compile_func(
                     }
 
                     // Store the return value in the return pointer, if there's one.
-                    if let Some(true) = has_return_ptr {
+                    if Some(true) == has_return_ptr {
                         let (_ret_type_id, ret_type_info) = return_type_infos[0];
                         let ret_layout = ret_type_info.layout(registry)?;
 
