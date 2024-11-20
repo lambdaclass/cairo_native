@@ -375,8 +375,8 @@ fn parse_result(
             registry,
         )?),
         CoreTypeConcrete::Box(info) => unsafe {
-            let ptr = return_ptr
-                .unwrap_or_else(|| NonNull::new_unchecked(ret_registers[0] as *mut ()));
+            let ptr =
+                return_ptr.unwrap_or_else(|| NonNull::new_unchecked(ret_registers[0] as *mut ()));
             let value = Value::from_ptr(ptr, &info.ty, registry)?;
             libc_free(ptr.cast().as_ptr());
             Ok(value)
