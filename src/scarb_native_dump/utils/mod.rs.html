@@ -579,6 +579,7 @@
 <a href="#579" id="579">579</a>
 <a href="#580" id="580">580</a>
 <a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
 </pre></div><pre class="rust"><code><span class="attr">#![cfg(feature = <span class="string">"build-cli"</span>)]
 #![allow(dead_code)]
 
@@ -759,6 +760,7 @@
             <span class="macro">vec!</span>[x.lo.into(), x.hi.into(), y.lo.into(), y.hi.into()]
         }
         Value::Null =&gt; <span class="macro">vec!</span>[<span class="number">0</span>.into()],
+        Value::IntRange { x, y } =&gt; [jitvalue_to_felt(x), jitvalue_to_felt(y)].concat(),
     }
 }
 

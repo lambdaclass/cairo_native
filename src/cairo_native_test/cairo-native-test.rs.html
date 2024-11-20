@@ -123,9 +123,14 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::bail;
 <span class="kw">use </span>cairo_lang_compiler::{
     db::RootDatabase,
+    diagnostics::DiagnosticsReporter,
     project::{check_compiler_path, setup_project},
 };
 <span class="kw">use </span>cairo_lang_filesystem::cfg::{Cfg, CfgSet};
@@ -208,15 +213,18 @@
         starknet: args.starknet,
         add_statements_functions: <span class="bool-val">false</span>,
         add_statements_code_locations: <span class="bool-val">false</span>,
+        contract_declarations: <span class="prelude-val">None</span>,
+        contract_crate_ids: <span class="prelude-val">None</span>,
+        executable_crate_ids: <span class="prelude-val">None</span>,
     };
 
-    <span class="kw">let </span>build_test_compilation = compile_test_prepared_db(
-        <span class="kw-2">&amp;</span>db,
-        test_config,
-        main_crate_ids.clone(),
-        test_crate_ids.clone(),
-        args.allow_warnings,
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>diag_reporter = DiagnosticsReporter::stderr().with_crates(<span class="kw-2">&amp;</span>main_crate_ids);
+    <span class="kw">if </span>args.allow_warnings {
+        diag_reporter = diag_reporter.allow_warnings();
+    }
+
+    <span class="kw">let </span>build_test_compilation =
+        compile_test_prepared_db(<span class="kw-2">&amp;</span>db, test_config, test_crate_ids.clone(), diag_reporter)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>(compiled, filtered_out) = filter_test_cases(
         build_test_compilation,

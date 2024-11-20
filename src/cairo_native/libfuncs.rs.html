@@ -439,6 +439,10 @@
 <a href="#439" id="439">439</a>
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -484,6 +488,7 @@
 <span class="kw">mod </span>felt252_dict_entry;
 <span class="kw">mod </span>function_call;
 <span class="kw">mod </span>gas;
+<span class="kw">mod </span>int_range;
 <span class="kw">mod </span>mem;
 <span class="kw">mod </span>nullable;
 <span class="kw">mod </span>pedersen;
@@ -674,6 +679,9 @@
             <span class="self">Self</span>::BoundedInt(info) =&gt; {
                 <span class="self">self</span>::bounded_int::build(context, registry, entry, location, helper, metadata, info)
             }
+            <span class="self">Self</span>::IntRange(selector) =&gt; <span class="self">self</span>::int_range::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
         }
     }
 

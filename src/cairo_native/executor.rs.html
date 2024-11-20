@@ -768,6 +768,8 @@
 <a href="#768" id="768">768</a>
 <a href="#769" id="769">769</a>
 <a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -1394,6 +1396,8 @@
         | CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>)
         | CoreTypeConcrete::Circuit(<span class="kw">_</span>)
         | CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        <span class="comment">// 2.9.0
+        </span>CoreTypeConcrete::IntRange(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
     }
 }
 

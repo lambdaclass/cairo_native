@@ -1662,6 +1662,47 @@
 <a href="#1662" id="1662">1662</a>
 <a href="#1663" id="1663">1663</a>
 <a href="#1664" id="1664">1664</a>
+<a href="#1665" id="1665">1665</a>
+<a href="#1666" id="1666">1666</a>
+<a href="#1667" id="1667">1667</a>
+<a href="#1668" id="1668">1668</a>
+<a href="#1669" id="1669">1669</a>
+<a href="#1670" id="1670">1670</a>
+<a href="#1671" id="1671">1671</a>
+<a href="#1672" id="1672">1672</a>
+<a href="#1673" id="1673">1673</a>
+<a href="#1674" id="1674">1674</a>
+<a href="#1675" id="1675">1675</a>
+<a href="#1676" id="1676">1676</a>
+<a href="#1677" id="1677">1677</a>
+<a href="#1678" id="1678">1678</a>
+<a href="#1679" id="1679">1679</a>
+<a href="#1680" id="1680">1680</a>
+<a href="#1681" id="1681">1681</a>
+<a href="#1682" id="1682">1682</a>
+<a href="#1683" id="1683">1683</a>
+<a href="#1684" id="1684">1684</a>
+<a href="#1685" id="1685">1685</a>
+<a href="#1686" id="1686">1686</a>
+<a href="#1687" id="1687">1687</a>
+<a href="#1688" id="1688">1688</a>
+<a href="#1689" id="1689">1689</a>
+<a href="#1690" id="1690">1690</a>
+<a href="#1691" id="1691">1691</a>
+<a href="#1692" id="1692">1692</a>
+<a href="#1693" id="1693">1693</a>
+<a href="#1694" id="1694">1694</a>
+<a href="#1695" id="1695">1695</a>
+<a href="#1696" id="1696">1696</a>
+<a href="#1697" id="1697">1697</a>
+<a href="#1698" id="1698">1698</a>
+<a href="#1699" id="1699">1699</a>
+<a href="#1700" id="1700">1700</a>
+<a href="#1701" id="1701">1701</a>
+<a href="#1702" id="1702">1702</a>
+<a href="#1703" id="1703">1703</a>
+<a href="#1704" id="1704">1704</a>
+<a href="#1705" id="1705">1705</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -1985,6 +2026,12 @@
         remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;()&gt;;
 
+    <span class="kw">fn </span>get_class_hash_at(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        contract_address: Felt,
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Felt&gt;;
+
     <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
     </span><span class="kw">fn </span>cheatcode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _selector: Felt, _input: <span class="kw-2">&amp;</span>[Felt]) -&gt; Vec&lt;Felt&gt; {
         <span class="macro">unimplemented!</span>();
@@ -2183,6 +2230,14 @@
         _block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
         _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;()&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>get_class_hash_at(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _contract_address: Felt,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Felt&gt; {
         <span class="macro">unimplemented!</span>()
     }
 }
@@ -2461,6 +2516,12 @@
             state: <span class="kw-2">*mut </span>[u32; <span class="number">8</span>],
             block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
         ),
+        get_class_hash_at: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
+            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Felt252Abi&gt;,
+            ptr: <span class="kw-2">&amp;mut </span>T,
+            gas: <span class="kw-2">&amp;mut </span>u64,
+            contract_address: <span class="kw-2">&amp;</span>Felt252Abi,
+        ),
         <span class="comment">// testing syscalls
         </span><span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
         </span><span class="kw">pub </span>cheatcode: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(
@@ -2501,7 +2562,10 @@
         <span class="kw">pub const </span>SECP256R1_GET_POINT_FROM_X: usize =
             <span class="macro">field_offset!</span>(<span class="self">Self</span>, secp256r1_get_point_from_x) &gt;&gt; <span class="number">3</span>;
         <span class="kw">pub const </span>SECP256R1_GET_XY: usize = <span class="macro">field_offset!</span>(<span class="self">Self</span>, secp256r1_get_xy) &gt;&gt; <span class="number">3</span>;
+
         <span class="kw">pub const </span>SHA256_PROCESS_BLOCK: usize = <span class="macro">field_offset!</span>(<span class="self">Self</span>, sha256_process_block) &gt;&gt; <span class="number">3</span>;
+
+        <span class="kw">pub const </span>GET_CLASS_HASH_AT: usize = <span class="macro">field_offset!</span>(<span class="self">Self</span>, get_class_hash_at) &gt;&gt; <span class="number">3</span>;
     }
 
     <span class="attr">#[allow(unused_variables)]
@@ -2535,6 +2599,7 @@
                 secp256r1_get_point_from_x: <span class="self">Self</span>::wrap_secp256r1_get_point_from_x,
                 secp256r1_get_xy: <span class="self">Self</span>::wrap_secp256r1_get_xy,
                 sha256_process_block: <span class="self">Self</span>::wrap_sha256_process_block,
+                get_class_hash_at: <span class="self">Self</span>::wrap_get_class_hash_at,
                 <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
                 </span>cheatcode: <span class="self">Self</span>::wrap_cheatcode,
             }
@@ -2780,9 +2845,7 @@
             };
         }
 
-        <span class="comment">// TODO: change all from_bytes_be to from_bytes_ne when added and undo byte swapping.
-
-        </span><span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_deploy(
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_deploy(
             result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;(Felt252Abi, ArrayAbi&lt;Felt252Abi&gt;)&gt;,
             ptr: <span class="kw-2">&amp;mut </span>T,
             gas: <span class="kw-2">&amp;mut </span>u64,
@@ -3291,6 +3354,25 @@
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: <span class="number">0u8</span>,
                         payload: ManuallyDrop::new(state),
+                    }),
+                },
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="self">Self</span>::wrap_error(<span class="kw-2">&amp;</span>e),
+            };
+        }
+
+        <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn </span>wrap_get_class_hash_at(
+            result_ptr: <span class="kw-2">&amp;mut </span>SyscallResultAbi&lt;Felt252Abi&gt;,
+            ptr: <span class="kw-2">&amp;mut </span>T,
+            gas: <span class="kw-2">&amp;mut </span>u64,
+            contract_address: <span class="kw-2">&amp;</span>Felt252Abi,
+        ) {
+            <span class="kw">let </span>result = ptr.get_class_hash_at(contract_address.into(), gas);
+
+            <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {
+                <span class="prelude-val">Ok</span>(x) =&gt; SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: <span class="number">0u8</span>,
+                        payload: ManuallyDrop::new(Felt252Abi(x.to_bytes_le())),
                     }),
                 },
                 <span class="prelude-val">Err</span>(e) =&gt; <span class="self">Self</span>::wrap_error(<span class="kw-2">&amp;</span>e),

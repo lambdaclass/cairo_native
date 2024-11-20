@@ -409,6 +409,12 @@
 <a href="#409" id="409">409</a>
 <a href="#410" id="410">410</a>
 <a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::extensions::{
     array::ArrayConcreteLibfunc,
     boolean::BoolConcreteLibfunc,
@@ -435,6 +441,7 @@
     nullable::NullableConcreteLibfunc,
     pedersen::PedersenConcreteLibfunc,
     poseidon::PoseidonConcreteLibfunc,
+    range::IntRangeConcreteLibfunc,
     starknet::{
         secp256::{Secp256ConcreteLibfunc, Secp256OpConcreteLibfunc},
         testing::TestingConcreteLibfunc,
@@ -782,6 +789,7 @@
             StarkNetConcreteLibfunc::Sha256ProcessBlock(<span class="kw">_</span>) =&gt; <span class="string">"sha256_process_block"</span>,
             StarkNetConcreteLibfunc::Sha256StateHandleInit(<span class="kw">_</span>) =&gt; <span class="string">"sha256_state_handle_init"</span>,
             StarkNetConcreteLibfunc::Sha256StateHandleDigest(<span class="kw">_</span>) =&gt; <span class="string">"sha256_state_handle_digest"</span>,
+            StarkNetConcreteLibfunc::GetClassHashAt(<span class="kw">_</span>) =&gt; <span class="string">"get_class_hash_at_syscall"</span>,
         },
         CoreConcreteLibfunc::Debug(value) =&gt; <span class="kw">match </span>value {
             DebugConcreteLibfunc::Print(<span class="kw">_</span>) =&gt; <span class="string">"debug_print"</span>,
@@ -817,6 +825,10 @@
             BoundedIntConcreteLibfunc::Constrain(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_constrain"</span>,
             BoundedIntConcreteLibfunc::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_is_zero"</span>,
             BoundedIntConcreteLibfunc::WrapNonZero(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_wrap_non_zero"</span>,
+        },
+        CoreConcreteLibfunc::IntRange(selector) =&gt; <span class="kw">match </span>selector {
+            IntRangeConcreteLibfunc::TryNew(<span class="kw">_</span>) =&gt; <span class="string">"int_range_try_new"</span>,
+            IntRangeConcreteLibfunc::PopFront(<span class="kw">_</span>) =&gt; <span class="string">"int_range_pop_front"</span>,
         },
     }
 }

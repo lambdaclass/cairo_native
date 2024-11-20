@@ -1566,7 +1566,7 @@
                 .unwrap();
 
             <span class="macro">assert_eq!</span>(result.return_values, <span class="macro">vec!</span>[Felt::from(n), Felt::from(n * <span class="number">2</span>)]);
-            <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709548175</span>);
+            <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709548475</span>);
         });
     }
 
@@ -1636,7 +1636,7 @@
             .unwrap();
 
         <span class="macro">assert_eq!</span>(result.return_values, <span class="macro">vec!</span>[Felt::from(<span class="number">3628800</span>)]);
-        <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709533805</span>);
+        <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709534105</span>);
     }
 
     <span class="attr">#[rstest]

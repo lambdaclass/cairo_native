@@ -1074,6 +1074,14 @@
 <a href="#1074" id="1074">1074</a>
 <a href="#1075" id="1075">1075</a>
 <a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A (somewhat) usable implementation of the starknet syscall handler trait.
 
 </span><span class="kw">use </span>std::{
@@ -1722,6 +1730,14 @@
         .unwrap();
         sha2::compress256(state, <span class="kw-2">&amp;</span>[data_as_bytes]);
         <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>get_class_hash_at(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        contract_address: Felt,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Felt&gt; {
+        <span class="prelude-val">Ok</span>(contract_address)
     }
 }
 
