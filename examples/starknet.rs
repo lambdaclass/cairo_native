@@ -411,7 +411,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         _contract_address: Felt,
         _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
-        todo!()
+        unimplemented!()
     }
 }
 
