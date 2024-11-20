@@ -4,6 +4,7 @@
 
 use crate::{
     error::{CompilerError, Error},
+    native_panic,
     starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::{
@@ -542,7 +543,9 @@ impl Value {
 
                         NonNull::new_unchecked(ptr).cast()
                     } else {
-                        unreachable!()
+                        native_panic!(
+                            "an IntRange value should always have an IntRange CoreTypeConcrete"
+                        )
                     }
                 }
             }
@@ -846,7 +849,7 @@ impl Value {
                     let y = Self::from_ptr(
                         NonNull::new(
                             ptr.as_ptr()
-                                .byte_add(member_layout.extend(member_layout).unwrap().1),
+                                .byte_add(member_layout.extend(member_layout)?.1),
                         )
                         .unwrap(),
                         &info.ty,
