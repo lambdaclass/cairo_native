@@ -189,7 +189,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         array_ptr,
         array_len_bytes_with_offset,
         location,
-    ))?;
+    )?)?;
     entry.store(context, location, array_ptr, k1)?;
 
     let array_ptr = entry.gep(
@@ -210,7 +210,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         context,
         entry.argument(0)?.into(),
         location,
-    ));
+    )?);
 
     let value = entry.append_op_result(llvm::undef(
         llvm::r#type::r#struct(context, &[ptr_ty, len_ty, len_ty, len_ty], false),
@@ -312,7 +312,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         let value = valid_block.append_op_result(llvm::zero(ptr_ty, location))?;
         let value = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, value, value_size, location,
-        ))?;
+        )?)?;
 
         let is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)?;
 
@@ -421,7 +421,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                     &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
                     IntegerType::new(context, 8).into(),
                 )?;
-                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location));
+                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
 
                 block.append_operation(scf::r#yield(&[], location));
                 region
@@ -642,7 +642,7 @@ pub fn build_append<'ctx, 'this>(
                 clone_ptr,
                 clone_size_with_refcount,
                 location,
-            ))?;
+            )?)?;
             block.store(context, location, clone_ptr, k1)?;
 
             let clone_ptr = block.gep(
@@ -827,7 +827,7 @@ pub fn build_append<'ctx, 'this>(
                                     array_ptr,
                                     realloc_size_with_refcount,
                                     location,
-                                ))?;
+                                )?)?;
 
                             let ref_count = block.load(context, location, array_ptr, len_ty)?;
                             let ref_count = block.append_op_result(arith::select(
@@ -1026,7 +1026,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
         let value_ptr = valid_block.append_op_result(llvm::zero(ptr_ty, location))?;
         let value_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, value_ptr, value_size, location,
-        ))?;
+        )?)?;
 
         let array_ptr = valid_block.extract_value(context, location, array_value, ptr_ty, 0)?;
         let is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)?;
@@ -1125,7 +1125,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                         clone_ptr,
                         array_len_bytes,
                         location,
-                    ))?;
+                    )?)?;
                     block.store(context, location, clone_ptr, k1)?;
 
                     let clone_ptr = block.gep(
@@ -1387,7 +1387,7 @@ pub fn build_get<'ctx, 'this>(
             value_ptr,
             elem_stride,
             location,
-        ))?;
+        )?)?;
 
         let array_ptr =
             valid_block.extract_value(context, location, entry.argument(1)?.into(), ptr_ty, 0)?;
@@ -1525,7 +1525,7 @@ pub fn build_get<'ctx, 'this>(
                     &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
                     IntegerType::new(context, 8).into(),
                 )?;
-                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location));
+                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
 
                 block.append_operation(scf::r#yield(&[], location));
                 region
@@ -1652,7 +1652,7 @@ pub fn build_slice<'ctx, 'this>(
             slice_ptr,
             slice_size_with_offset,
             location,
-        ))?;
+        )?)?;
         valid_block.store(context, location, slice_ptr, k1)?;
 
         let slice_ptr = valid_block.gep(
@@ -1829,7 +1829,7 @@ pub fn build_slice<'ctx, 'this>(
                     &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
                     IntegerType::new(context, 8).into(),
                 )?;
-                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location));
+                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
 
                 block.append_operation(scf::r#yield(&[], location));
                 region

@@ -43,9 +43,15 @@ pub fn build<'ctx, 'this>(
         BoxConcreteLibfunc::Unbox(info) => {
             build_unbox(context, registry, entry, location, helper, metadata, info)
         }
-        BoxConcreteLibfunc::ForwardSnapshot(info) => {
-            build_forward_snapshot(context, registry, entry, location, helper, metadata, info)
-        }
+        BoxConcreteLibfunc::ForwardSnapshot(info) => super::build_noop::<1, true>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            &info.signature.param_signatures,
+        ),
     }
 }
 
@@ -86,7 +92,7 @@ pub fn build_into_box<'ctx, 'this>(
     let ptr = entry
         .append_operation(ReallocBindingsMeta::realloc(
             context, ptr, value_len, location,
-        ))
+        )?)
         .result(0)?
         .into();
 
@@ -142,22 +148,9 @@ pub fn build_unbox<'ctx, 'this>(
         context,
         entry.argument(0)?.into(),
         location,
-    ));
+    )?);
 
     entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
-}
-
-fn build_forward_snapshot<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
     Ok(())
 }
 

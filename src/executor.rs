@@ -626,6 +626,8 @@ fn parse_result(
         | CoreTypeConcrete::Uint128MulGuarantee(_)
         | CoreTypeConcrete::Circuit(_)
         | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+        // 2.9.0
+        CoreTypeConcrete::IntRange(_) => todo!(),
     }
 }
 
@@ -686,7 +688,7 @@ mod tests {
         let module = native_context
             .compile(&program, false)
             .expect("failed to compile context");
-        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
@@ -704,7 +706,7 @@ mod tests {
         let module = native_context
             .compile(&program, false)
             .expect("failed to compile context");
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
@@ -722,7 +724,7 @@ mod tests {
         let module = native_context
             .compile(&starknet_program, false)
             .expect("failed to compile context");
-        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
@@ -749,7 +751,7 @@ mod tests {
         let module = native_context
             .compile(&starknet_program, false)
             .expect("failed to compile context");
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default());
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
         // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program

@@ -61,7 +61,7 @@
 //!             .into();
 //!
 //!         metadata.get_mut::<DebugUtils>()
-//!             .unwrap()
+//!             .ok_or(Error::MissingMetadata)?
 //!             .print_pointer(context, helper, entry, array_ptr, location)?;
 //!     }
 //!

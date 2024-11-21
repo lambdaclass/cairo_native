@@ -405,6 +405,14 @@ impl StarknetSyscallHandler for SyscallHandler {
     ) -> SyscallResult<()> {
         unimplemented!()
     }
+
+    fn get_class_hash_at(
+        &mut self,
+        _contract_address: Felt,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt> {
+        unimplemented!()
+    }
 }
 
 fn main() {
@@ -442,7 +450,8 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
     let result = native_executor
         .invoke_contract_dynamic(fn_id, &[Felt::ONE], Some(u64::MAX), SyscallHandler::new())

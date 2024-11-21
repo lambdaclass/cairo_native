@@ -372,7 +372,7 @@ fn build_drop<'ctx>(
                         context,
                         refcount_ptr,
                         location,
-                    ));
+                    )?);
                     block.append_operation(scf::r#yield(&[], location));
                     region
                 },

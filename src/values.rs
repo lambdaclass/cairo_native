@@ -4,6 +4,7 @@
 
 use crate::{
     error::{CompilerError, Error},
+    native_panic,
     starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::{
@@ -75,6 +76,10 @@ pub enum Value {
         value: Felt,
         #[serde(with = "range_serde")]
         range: Range,
+    },
+    IntRange {
+        x: Box<Value>,
+        y: Box<Value>,
     },
     /// Used as return value for Nullables that are null.
     Null,
@@ -524,6 +529,38 @@ impl Value {
                 Self::Null => {
                     unimplemented!("null is meant as return value for nullable for now")
                 }
+                Self::IntRange { x, y } => {
+                    if let CoreTypeConcrete::IntRange(info) = Self::resolve_type(ty, registry)? {
+                        let inner = registry.get_type(&info.ty)?;
+                        let inner_layout = inner.layout(registry)?;
+
+                        let x_ptr = x.to_ptr(arena, registry, &info.ty)?;
+
+                        let (struct_layout, y_offset) = inner_layout.extend(inner_layout)?;
+
+                        let y_ptr = y.to_ptr(arena, registry, &info.ty)?;
+
+                        let ptr = arena.alloc_layout(struct_layout.pad_to_align()).as_ptr();
+
+                        std::ptr::copy_nonoverlapping(
+                            x_ptr.cast::<u8>().as_ptr(),
+                            ptr,
+                            inner_layout.size(),
+                        );
+
+                        std::ptr::copy_nonoverlapping(
+                            y_ptr.cast::<u8>().as_ptr(),
+                            ptr.byte_add(y_offset),
+                            inner_layout.size(),
+                        );
+
+                        NonNull::new_unchecked(ptr).cast()
+                    } else {
+                        native_panic!(
+                            "an IntRange value should always have an IntRange CoreTypeConcrete"
+                        )
+                    }
+                }
             }
         })
     }
@@ -875,6 +912,33 @@ impl Value {
                 CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::Circuit(_)
                 | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+                CoreTypeConcrete::IntRange(info) => {
+                    let member = registry.get_type(&info.ty)?;
+                    let member_layout = member.layout(registry)?;
+
+                    let x = Self::from_ptr(
+                        NonNull::new(ptr.as_ptr()).unwrap(),
+                        &info.ty,
+                        registry,
+                        should_drop,
+                    )?;
+
+                    let y = Self::from_ptr(
+                        NonNull::new(
+                            ptr.as_ptr()
+                                .byte_add(member_layout.extend(member_layout)?.1),
+                        )
+                        .unwrap(),
+                        &info.ty,
+                        registry,
+                        should_drop,
+                    )?;
+
+                    Self::IntRange {
+                        x: x.into(),
+                        y: y.into(),
+                    }
+                }
             }
         })
     }

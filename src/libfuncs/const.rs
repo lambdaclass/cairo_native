@@ -83,7 +83,7 @@ pub fn build_const_as_box<'ctx, 'this>(
     let ptr = entry.append_op_result(llvm::zero(pointer(context, 0), location))?;
     let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context, ptr, value_len, location,
-    ))?;
+    )?)?;
 
     // Store constant in box
     entry.store(context, location, ptr, value)?;

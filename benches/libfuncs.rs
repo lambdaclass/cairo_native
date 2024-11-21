@@ -57,7 +57,8 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                         let module = native_context.compile(program, false).unwrap();
                         // pass manager internally verifies the MLIR output is correct.
                         let native_executor =
-                            JitNativeExecutor::from_native_module(module, OptLevel::Aggressive);
+                            JitNativeExecutor::from_native_module(module, OptLevel::Aggressive)
+                                .unwrap();
 
                         // Execute the program.
                         let result = native_executor
@@ -76,7 +77,8 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                     let module = native_context.compile(program, false).unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                     let native_executor =
-                        JitNativeExecutor::from_native_module(module, OptLevel::Aggressive);
+                        JitNativeExecutor::from_native_module(module, OptLevel::Aggressive)
+                            .unwrap();
 
                     // warmup
                     for _ in 0..5 {
@@ -104,7 +106,8 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                         let module = native_context.compile(program, false).unwrap();
                         // pass manager internally verifies the MLIR output is correct.
                         let native_executor =
-                            AotNativeExecutor::from_native_module(module, OptLevel::Aggressive);
+                            AotNativeExecutor::from_native_module(module, OptLevel::Aggressive)
+                                .unwrap();
 
                         // Execute the program.
                         let result = native_executor
@@ -123,7 +126,8 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                     let module = native_context.compile(program, false).unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                     let native_executor =
-                        AotNativeExecutor::from_native_module(module, OptLevel::Aggressive);
+                        AotNativeExecutor::from_native_module(module, OptLevel::Aggressive)
+                            .unwrap();
 
                     // warmup
                     for _ in 0..5 {
