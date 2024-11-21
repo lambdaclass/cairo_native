@@ -37,7 +37,6 @@ use crate::{
     error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
-    metadata::gas::GasMetadata,
     module::NativeModule,
     native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -98,7 +97,6 @@ pub enum ContractInfoVersion {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntryPointInfo {
     pub builtins: Vec<BuiltinType>,
-    pub initial_cost: BTreeMap<u64, u64>, // cost token type offset, cost
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -136,6 +134,9 @@ impl BuiltinType {
     }
 }
 
+/// The default initial gas cost for all entry points.
+pub const INITIAL_GAS_COST: u64 = 10_000;
+
 impl AotContractExecutor {
     /// Create the executor from a sierra program with the given optimization level.
     /// You can save the library on the desired location later using `save`.
@@ -153,13 +154,8 @@ impl AotContractExecutor {
         let NativeModule {
             module,
             registry,
-            metadata,
+            metadata: _,
         } = module;
-
-        let initial_gas_costs = {
-            let gas_meta: &GasMetadata = metadata.get().ok_or(Error::MissingMetadata)?;
-            gas_meta.initial_required_gas_for_entry_points()?
-        };
 
         let mut infos = BTreeMap::new();
 
@@ -225,13 +221,7 @@ impl AotContractExecutor {
                 }
             }
 
-            infos.insert(
-                x.id.id,
-                EntryPointInfo {
-                    builtins,
-                    initial_cost: initial_gas_costs.get(&x.id.id).cloned().unwrap_or_default(),
-                },
-            );
+            infos.insert(x.id.id, EntryPointInfo { builtins });
         }
 
         let library_path = NamedTempFile::new()?
@@ -281,12 +271,20 @@ impl AotContractExecutor {
         })
     }
 
-    /// Runs the given entry point.
+    /// Runs the entry point by the given selector.
+    ///
+    /// - selector: The selector of the entry point to run.
+    /// - args: The calldata.
+    /// - gas: The gas for the execution.
+    /// - initial_gas_cost: is the gas cost for the called entry point, usually 10k ( `INITIAL_GAS_COST` ).
+    /// - builtin_costs: An optional argument to customize the costs of the builtins.
+    /// - syscall_handler: The syscall handler implementation to use when executing the contract.
     pub fn run(
         &self,
         selector: Felt,
         args: &[Felt],
         gas: Option<u64>,
+        initial_gas_cost: u64,
         builtin_costs: Option<BuiltinCosts>,
         mut syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, Error> {
@@ -318,25 +316,12 @@ impl AotContractExecutor {
         // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
         let old_builtincosts_ptr = set_costs_builtin(builtin_costs.cast());
 
-        let initial_gas_cost = {
-            let mut cost = 0;
-
-            for (offset, val) in self
-                .contract_info
-                .entry_points_info
-                .get(&function_id.id)
-                .to_native_assert_error("entry point info for function should be available")?
-                .initial_cost
-                .iter()
-            {
-                let token_cost = builtin_costs_stack[*offset as usize] * val;
-                cost += token_cost;
-            }
-            cost
-        };
-        let gas = gas
-            .unwrap_or(initial_gas_cost)
-            .saturating_sub(initial_gas_cost);
+        let gas = gas.unwrap_or(initial_gas_cost);
+        let gas = gas.checked_sub(initial_gas_cost).ok_or_else(|| {
+            Error::GasMetadataError(crate::metadata::gas::GasMetadataError::NotEnoughGas {
+                gas: Box::new((gas, initial_gas_cost)),
+            })
+        })?;
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         let builtins_size: usize = self.contract_info.entry_points_info[&function_id.id]
@@ -721,13 +706,14 @@ mod tests {
                     Felt::from(&selector),
                     &[n.into()],
                     Some(u64::MAX),
+                    INITIAL_GAS_COST,
                     None,
                     &mut StubSyscallHandler::default(),
                 )
                 .unwrap();
 
             assert_eq!(result.return_values, vec![Felt::from(n), Felt::from(n * 2)]);
-            assert_eq!(result.remaining_gas, 18446744073709548475);
+            assert_eq!(result.remaining_gas, 18446744073709539845);
         });
     }
 
@@ -756,6 +742,7 @@ mod tests {
                 Felt::from(&selector),
                 &[2.into()],
                 Some(u64::MAX),
+                INITIAL_GAS_COST,
                 None,
                 &mut StubSyscallHandler::default(),
             )
@@ -791,13 +778,14 @@ mod tests {
                 Felt::from(&selector),
                 &[10.into()],
                 Some(u64::MAX),
+                INITIAL_GAS_COST,
                 None,
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
 
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709534105);
+        assert_eq!(result.remaining_gas, 18446744073709525475);
     }
 
     #[rstest]
@@ -829,6 +817,7 @@ mod tests {
                 Felt::from(&selector),
                 &[],
                 Some(u64::MAX),
+                INITIAL_GAS_COST,
                 None,
                 &mut StubSyscallHandler::default(),
             )
