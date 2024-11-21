@@ -443,18 +443,70 @@
 <a href="#443" id="443">443</a>
 <a href="#444" id="444">444</a>
 <a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
 </span><span class="kw">use crate</span>::{
-    error::{panic::ToNativeAssertError, Error <span class="kw">as </span>CoreLibfuncBuilderError, <span class="prelude-ty">Result </span><span class="kw">as </span>NativeResult},
+    error::{panic::ToNativeAssertError, Error <span class="kw">as </span>CoreLibfuncBuilderError, <span class="prelude-ty">Result</span>},
     metadata::MetadataStorage,
+    types::TypeBuilder,
     utils::BlockExt,
 };
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
-    extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
+    extensions::{
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
+        lib_func::ParamSignature,
+        starknet::StarkNetTypeConcrete,
+        ConcreteLibfunc,
+    },
     ids::FunctionId,
     program_registry::ProgramRegistry,
 };
@@ -466,13 +518,11 @@
 <span class="kw">use </span>num_bigint::BigInt;
 <span class="kw">use </span>std::{cell::Cell, error::Error, ops::Deref};
 
-<span class="kw">mod </span>ap_tracking;
 <span class="kw">mod </span>array;
 <span class="kw">mod </span>bitwise;
 <span class="kw">mod </span>r#bool;
 <span class="kw">mod </span>bounded_int;
 <span class="kw">mod </span>r#box;
-<span class="kw">mod </span>branch_align;
 <span class="kw">mod </span>bytes31;
 <span class="kw">mod </span>cast;
 <span class="kw">mod </span>circuit;
@@ -498,7 +548,6 @@
 <span class="kw">mod </span>sint32;
 <span class="kw">mod </span>sint64;
 <span class="kw">mod </span>sint8;
-<span class="kw">mod </span>snapshot_take;
 <span class="kw">mod </span>starknet;
 <span class="kw">mod </span>r#struct;
 <span class="kw">mod </span>uint128;
@@ -508,8 +557,6 @@
 <span class="kw">mod </span>uint512;
 <span class="kw">mod </span>uint64;
 <span class="kw">mod </span>uint8;
-<span class="kw">mod </span>unconditional_jump;
-<span class="kw">mod </span>unwrap_non_zero;
 
 <span class="doccomment">/// Generation of MLIR operations from their Sierra counterparts.
 ///
@@ -528,7 +575,7 @@
         location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
         helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt;;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;;
 
     <span class="doccomment">/// Return the target function if the statement is a function call.
     ///
@@ -548,20 +595,28 @@
         location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
         helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
         metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::ApTracking(selector) =&gt; <span class="self">self</span>::ap_tracking::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
+            <span class="self">Self</span>::ApTracking(<span class="kw">_</span>) | <span class="self">Self</span>::BranchAlign(<span class="kw">_</span>) | <span class="self">Self</span>::UnconditionalJump(<span class="kw">_</span>) =&gt; {
+                build_noop::&lt;<span class="number">0</span>, <span class="bool-val">true</span>&gt;(
+                    context,
+                    registry,
+                    entry,
+                    location,
+                    helper,
+                    metadata,
+                    <span class="self">self</span>.param_signatures(),
+                )
+            }
             <span class="self">Self</span>::Array(selector) =&gt; <span class="self">self</span>::array::build(
                 context, registry, entry, location, helper, metadata, selector,
-            ),
-            <span class="self">Self</span>::BranchAlign(info) =&gt; <span class="self">self</span>::branch_align::build(
-                context, registry, entry, location, helper, metadata, info,
             ),
             <span class="self">Self</span>::Bool(selector) =&gt; <span class="self">self</span>::r#bool::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            <span class="self">Self</span>::BoundedInt(info) =&gt; {
+                <span class="self">self</span>::bounded_int::build(context, registry, entry, location, helper, metadata, info)
+            }
             <span class="self">Self</span>::Box(selector) =&gt; <span class="self">self</span>::r#box::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -571,8 +626,17 @@
             <span class="self">Self</span>::Cast(selector) =&gt; <span class="self">self</span>::cast::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            <span class="self">Self</span>::Circuit(info) =&gt; {
+                <span class="self">self</span>::circuit::build(context, registry, entry, location, helper, metadata, info)
+            }
             <span class="self">Self</span>::Const(selector) =&gt; <span class="self">self</span>::r#const::build(
                 context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Coupon(info) =&gt; {
+                <span class="self">self</span>::coupon::build(context, registry, entry, location, helper, metadata, info)
+            }
+            <span class="self">Self</span>::CouponCall(info) =&gt; <span class="self">self</span>::function_call::build(
+                context, registry, entry, location, helper, metadata, info,
             ),
             <span class="self">Self</span>::Debug(selector) =&gt; <span class="self">self</span>::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
@@ -580,7 +644,7 @@
             <span class="self">Self</span>::Drop(info) =&gt; {
                 <span class="self">self</span>::drop::build(context, registry, entry, location, helper, metadata, info)
             }
-            <span class="self">Self</span>::Dup(info) =&gt; {
+            <span class="self">Self</span>::Dup(info) | <span class="self">Self</span>::SnapshotTake(info) =&gt; {
                 <span class="self">self</span>::dup::build(context, registry, entry, location, helper, metadata, info)
             }
             <span class="self">Self</span>::Ec(selector) =&gt; <span class="self">self</span>::ec::build(
@@ -602,6 +666,9 @@
                 context, registry, entry, location, helper, metadata, info,
             ),
             <span class="self">Self</span>::Gas(selector) =&gt; <span class="self">self</span>::gas::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::IntRange(selector) =&gt; <span class="self">self</span>::int_range::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             <span class="self">Self</span>::Mem(selector) =&gt; <span class="self">self</span>::mem::build(
@@ -631,9 +698,6 @@
             <span class="self">Self</span>::Sint128(info) =&gt; {
                 <span class="self">self</span>::sint128::build(context, registry, entry, location, helper, metadata, info)
             }
-            <span class="self">Self</span>::SnapshotTake(info) =&gt; <span class="self">self</span>::snapshot_take::build(
-                context, registry, entry, location, helper, metadata, info,
-            ),
             <span class="self">Self</span>::StarkNet(selector) =&gt; <span class="self">self</span>::starknet::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -661,26 +725,14 @@
             <span class="self">Self</span>::Uint512(selector) =&gt; <span class="self">self</span>::uint512::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::UnconditionalJump(info) =&gt; <span class="self">self</span>::unconditional_jump::build(
-                context, registry, entry, location, helper, metadata, info,
-            ),
-            <span class="self">Self</span>::UnwrapNonZero(info) =&gt; <span class="self">self</span>::unwrap_non_zero::build(
-                context, registry, entry, location, helper, metadata, info,
-            ),
-            <span class="self">Self</span>::Coupon(info) =&gt; {
-                <span class="self">self</span>::coupon::build(context, registry, entry, location, helper, metadata, info)
-            }
-            <span class="self">Self</span>::CouponCall(info) =&gt; <span class="self">self</span>::function_call::build(
-                context, registry, entry, location, helper, metadata, info,
-            ),
-            <span class="self">Self</span>::Circuit(info) =&gt; {
-                <span class="self">self</span>::circuit::build(context, registry, entry, location, helper, metadata, info)
-            }
-            <span class="self">Self</span>::BoundedInt(info) =&gt; {
-                <span class="self">self</span>::bounded_int::build(context, registry, entry, location, helper, metadata, info)
-            }
-            <span class="self">Self</span>::IntRange(selector) =&gt; <span class="self">self</span>::int_range::build(
-                context, registry, entry, location, helper, metadata, selector,
+            <span class="self">Self</span>::UnwrapNonZero(info) =&gt; build_noop::&lt;<span class="number">1</span>, <span class="bool-val">true</span>&gt;(
+                context,
+                registry,
+                entry,
+                location,
+                helper,
+                metadata,
+                <span class="kw-2">&amp;</span>info.signature.param_signatures,
             ),
         }
     }
@@ -723,17 +775,21 @@
     </span><span class="lifetime">'this</span>: <span class="lifetime">'ctx</span>,
 {
     <span class="attr">#[doc(hidden)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>results(<span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = NativeResult&lt;Vec&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;&gt;&gt; {
-        <span class="self">self</span>.results.into_iter().enumerate().map(|(branch_idx, x)| {
-            x.into_iter()
-                .enumerate()
-                .map(|(arg_idx, x)| {
-                    x.into_inner().to_native_assert_error(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
-                        <span class="string">"Argument #{arg_idx} of branch {branch_idx} doesn't have a value."
-                    </span>))
-                })
-                .collect()
-        })
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>results(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt;&gt;&gt; {
+        <span class="self">self</span>.results
+            .into_iter()
+            .enumerate()
+            .map(|(branch_idx, x)| {
+                x.into_iter()
+                    .enumerate()
+                    .map(|(arg_idx, x)| {
+                        x.into_inner().to_native_assert_error(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                            <span class="string">"Argument #{arg_idx} of branch {branch_idx} doesn't have a value."
+                        </span>))
+                    })
+                    .collect()
+            })
+            .collect()
     }
 
     <span class="doccomment">/// Return the initialization block.
@@ -887,5 +943,41 @@
         block.const_int(context, location, amount, <span class="number">64</span>)<span class="question-mark">?</span>,
         location,
     ))
+}
+
+<span class="kw">fn </span>build_noop&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>, <span class="kw">const </span>N: usize, <span class="kw">const </span>PROCESS_BUILTINS: bool&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
+    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    param_signatures: <span class="kw-2">&amp;</span>[ParamSignature],
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>params = Vec::with_capacity(N);
+
+    <span class="attr">#[allow(clippy::needless_range_loop)]
+    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N {
+        <span class="kw">let </span>param_ty = registry.get_type(<span class="kw-2">&amp;</span>param_signatures[i].ty)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>param_val = entry.argument(i)<span class="question-mark">?</span>.into();
+
+        <span class="kw">if </span>PROCESS_BUILTINS
+            &amp;&amp; param_ty.is_builtin()
+            &amp;&amp; !<span class="macro">matches!</span>(
+                param_ty,
+                CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>)
+                    | CoreTypeConcrete::Coupon(<span class="kw">_</span>)
+                    | CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>)
+                    | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>))
+            )
+        {
+            param_val = increment_builtin_counter(context, entry, location, param_val)<span class="question-mark">?</span>;
+        }
+
+        params.push(param_val);
+    }
+
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>params, location));
+    <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div></section></main></body></html>

@@ -102,37 +102,6 @@
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Memory-related libfuncs
 //!
 //! Natively compiled code doesn't need this kind of memory tracking because it has no notion of the
@@ -170,37 +139,34 @@
     selector: <span class="kw-2">&amp;</span>MemConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">match </span>selector {
-        MemConcreteLibfunc::StoreTemp(info) =&gt; {
-            build_store_temp(context, registry, entry, location, helper, info)
+        MemConcreteLibfunc::AllocLocal(info) =&gt; {
+            build_alloc_local(context, registry, entry, location, helper, metadata, info)
         }
         MemConcreteLibfunc::StoreLocal(info) =&gt; {
             build_store_local(context, registry, entry, location, helper, metadata, info)
         }
-        MemConcreteLibfunc::FinalizeLocals(info) =&gt; {
-            build_finalize_locals(context, registry, entry, location, helper, info)
-        }
-        MemConcreteLibfunc::AllocLocal(info) =&gt; {
-            build_alloc_local(context, registry, entry, location, helper, metadata, info)
-        }
-        MemConcreteLibfunc::Rename(info) =&gt; {
-            build_rename(context, registry, entry, location, helper, info)
+        MemConcreteLibfunc::FinalizeLocals(info) =&gt; <span class="kw">super</span>::build_noop::&lt;<span class="number">0</span>, <span class="bool-val">true</span>&gt;(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            <span class="kw-2">&amp;</span>info.signature.param_signatures,
+        ),
+        MemConcreteLibfunc::Rename(SignatureOnlyConcreteLibfunc { signature })
+        | MemConcreteLibfunc::StoreTemp(SignatureAndTypeConcreteLibfunc { signature, .. }) =&gt; {
+            <span class="kw">super</span>::build_noop::&lt;<span class="number">1</span>, <span class="bool-val">false</span>&gt;(
+                context,
+                registry,
+                entry,
+                location,
+                helper,
+                metadata,
+                <span class="kw-2">&amp;</span>signature.param_signatures,
+            )
         }
     }
-}
-
-<span class="doccomment">/// Generate MLIR operations for the `store_local` libfunc.
-</span><span class="kw">pub fn </span>build_store_local&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
-    _context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    _info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into()], location));
-
-    <span class="prelude-val">Ok</span>(())
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `alloc_local` libfunc.
@@ -221,51 +187,23 @@
         <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>value_undef = entry.append_op_result(llvm::undef(target_type, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>value = entry.append_op_result(llvm::undef(target_type, location))<span class="question-mark">?</span>;
 
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value_undef], location));
-
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `finalize_locals` libfunc.
-</span><span class="kw">pub fn </span>build_finalize_locals&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+<span class="doccomment">/// Generate MLIR operations for the `store_local` libfunc.
+</span><span class="kw">pub fn </span>build_store_local&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     _context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[], location));
-    <span class="prelude-val">Ok</span>(())
-}
-
-<span class="doccomment">/// Generate MLIR operations for the `store_temp` libfunc.
-</span><span class="kw">pub fn </span>build_store_temp&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
-    _context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
+    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
-
-    <span class="prelude-val">Ok</span>(())
-}
-
-<span class="doccomment">/// Generate MLIR operations for the `rename` libfunc.
-</span><span class="kw">pub fn </span>build_rename&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
-    _context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
-
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into()], location));
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div></section></main></body></html>

@@ -764,6 +764,11 @@
 <a href="#764" id="764">764</a>
 <a href="#765" id="765">765</a>
 <a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Bounded int libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -1508,16 +1513,14 @@
 
 <span class="doccomment">/// Generate MLIR operations for the `bounded_int_wrap_non_zero` libfunc.
 </span><span class="kw">fn </span>build_wrap_non_zero&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
-    _context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>src_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-
     <span class="kw">let </span>src_range = registry
         .get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?
         </span>.integer_range(registry)<span class="question-mark">?</span>;
@@ -1527,7 +1530,14 @@
         <span class="string">"value must not be zero"
     </span>);
 
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[src_value], location));
-    <span class="prelude-val">Ok</span>(())
+    <span class="kw">super</span>::build_noop::&lt;<span class="number">1</span>, <span class="bool-val">true</span>&gt;(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        <span class="kw-2">&amp;</span>info.signature.param_signatures,
+    )
 }
 </code></pre></div></section></main></body></html>

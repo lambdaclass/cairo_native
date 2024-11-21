@@ -310,13 +310,6 @@
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Box libfuncs
 //!
 //! A heap allocated value, which is internally a pointer that can't be null.
@@ -362,9 +355,15 @@
         BoxConcreteLibfunc::Unbox(info) =&gt; {
             build_unbox(context, registry, entry, location, helper, metadata, info)
         }
-        BoxConcreteLibfunc::ForwardSnapshot(info) =&gt; {
-            build_forward_snapshot(context, registry, entry, location, helper, metadata, info)
-        }
+        BoxConcreteLibfunc::ForwardSnapshot(info) =&gt; <span class="kw">super</span>::build_noop::&lt;<span class="number">1</span>, <span class="bool-val">true</span>&gt;(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            <span class="kw-2">&amp;</span>info.signature.param_signatures,
+        ),
     }
 }
 
@@ -464,19 +463,6 @@
     )<span class="question-mark">?</span>);
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
-    <span class="prelude-val">Ok</span>(())
-}
-
-<span class="kw">fn </span>build_forward_snapshot&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
-    _context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    _info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
     <span class="prelude-val">Ok</span>(())
 }
 
