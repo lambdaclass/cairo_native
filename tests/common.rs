@@ -455,8 +455,7 @@ pub fn run_native_starknet_aot_contract(
         .run(
             Felt::from(selector),
             args,
-            u64::MAX.into(),
-            INITIAL_GAS_COST,
+            u64::MAX,
             None,
             handler,
         )

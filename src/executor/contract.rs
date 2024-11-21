@@ -276,15 +276,15 @@ impl AotContractExecutor {
     /// - selector: The selector of the entry point to run.
     /// - args: The calldata.
     /// - gas: The gas for the execution.
-    /// - initial_gas_cost: is the gas cost for the called entry point, usually 10k ( `INITIAL_GAS_COST` ).
     /// - builtin_costs: An optional argument to customize the costs of the builtins.
     /// - syscall_handler: The syscall handler implementation to use when executing the contract.
+    ///
+    /// This method doesn't do any gas accounting, meaning it wont substract the initial gas cost of the entry point from the given gas.
     pub fn run(
         &self,
         selector: Felt,
         args: &[Felt],
-        gas: Option<u64>,
-        initial_gas_cost: u64,
+        gas: u64,
         builtin_costs: Option<BuiltinCosts>,
         mut syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, Error> {
@@ -315,13 +315,6 @@ impl AotContractExecutor {
         };
         // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
         let old_builtincosts_ptr = set_costs_builtin(builtin_costs.cast());
-
-        let gas = gas.unwrap_or(initial_gas_cost);
-        let gas = gas.checked_sub(initial_gas_cost).ok_or_else(|| {
-            Error::GasMetadataError(crate::metadata::gas::GasMetadataError::NotEnoughGas {
-                gas: Box::new((gas, initial_gas_cost)),
-            })
-        })?;
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         let builtins_size: usize = self.contract_info.entry_points_info[&function_id.id]
@@ -705,15 +698,14 @@ mod tests {
                 .run(
                     Felt::from(&selector),
                     &[n.into()],
-                    Some(u64::MAX),
-                    INITIAL_GAS_COST,
+                    u64::MAX,
                     None,
                     &mut StubSyscallHandler::default(),
                 )
                 .unwrap();
 
             assert_eq!(result.return_values, vec![Felt::from(n), Felt::from(n * 2)]);
-            assert_eq!(result.remaining_gas, 18446744073709539845);
+            assert_eq!(result.remaining_gas, 18446744073709549845);
         });
     }
 
@@ -741,8 +733,7 @@ mod tests {
             .run(
                 Felt::from(&selector),
                 &[2.into()],
-                Some(u64::MAX),
-                INITIAL_GAS_COST,
+                u64::MAX,
                 None,
                 &mut StubSyscallHandler::default(),
             )
@@ -777,15 +768,14 @@ mod tests {
             .run(
                 Felt::from(&selector),
                 &[10.into()],
-                Some(u64::MAX),
-                INITIAL_GAS_COST,
+                u64::MAX,
                 None,
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
 
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709525475);
+        assert_eq!(result.remaining_gas, 18446744073709535475);
     }
 
     #[rstest]
@@ -816,8 +806,7 @@ mod tests {
             .run(
                 Felt::from(&selector),
                 &[],
-                Some(u64::MAX),
-                INITIAL_GAS_COST,
+                u64::MAX,
                 None,
                 &mut StubSyscallHandler::default(),
             )
