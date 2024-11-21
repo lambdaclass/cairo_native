@@ -742,16 +742,14 @@ fn build_is_zero<'ctx, 'this>(
 
 /// Generate MLIR operations for the `bounded_int_wrap_non_zero` libfunc.
 fn build_wrap_non_zero<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let src_value = entry.argument(0)?.into();
-
     let src_range = registry
         .get_type(&info.signature.param_signatures[0].ty)?
         .integer_range(registry)?;
@@ -761,6 +759,13 @@ fn build_wrap_non_zero<'ctx, 'this>(
         "value must not be zero"
     );
 
-    entry.append_operation(helper.br(0, &[src_value], location));
-    Ok(())
+    super::build_noop::<1, true>(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        &info.signature.param_signatures,
+    )
 }
