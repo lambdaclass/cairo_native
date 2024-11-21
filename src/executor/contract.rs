@@ -134,9 +134,6 @@ impl BuiltinType {
     }
 }
 
-/// The default initial gas cost for all entry points.
-pub const INITIAL_GAS_COST: u64 = 10_000;
-
 impl AotContractExecutor {
     /// Create the executor from a sierra program with the given optimization level.
     /// You can save the library on the desired location later using `save`.

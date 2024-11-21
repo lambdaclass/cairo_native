@@ -34,7 +34,7 @@ use cairo_lang_utils::Upcast;
 use cairo_native::{
     context::NativeContext,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    executor::{AotContractExecutor, AotNativeExecutor, JitNativeExecutor, INITIAL_GAS_COST},
+    executor::{AotContractExecutor, AotNativeExecutor, JitNativeExecutor},
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{find_entry_point_by_idx, HALF_PRIME, PRIME},
     OptLevel, Value,
@@ -452,13 +452,7 @@ pub fn run_native_starknet_aot_contract(
     )
     .unwrap();
     native_executor
-        .run(
-            Felt::from(selector),
-            args,
-            u64::MAX,
-            None,
-            handler,
-        )
+        .run(Felt::from(selector), args, u64::MAX, None, handler)
         .expect("failed to execute the given contract")
 }
 

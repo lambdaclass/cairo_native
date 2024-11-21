@@ -3,11 +3,7 @@
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
 //! of time. It also provides a cache to avoid recompiling previously compiled programs.
 
-pub use self::{
-    aot::AotNativeExecutor,
-    contract::{AotContractExecutor, INITIAL_GAS_COST},
-    jit::JitNativeExecutor,
-};
+pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNativeExecutor};
 use crate::{
     arch::{AbiArgument, ValueWithInfoWrapper},
     error::{panic::ToNativeAssertError, Error},
