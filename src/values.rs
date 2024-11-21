@@ -77,6 +77,10 @@ pub enum Value {
         #[serde(with = "range_serde")]
         range: Range,
     },
+    IntRange {
+        x: Box<Value>,
+        y: Box<Value>,
+    },
     /// Used as return value for Nullables that are null.
     Null,
 }
@@ -516,6 +520,38 @@ impl Value {
                         "unimplemented: null is meant as return value for nullable for now"
                     )
                 }
+                Self::IntRange { x, y } => {
+                    if let CoreTypeConcrete::IntRange(info) = Self::resolve_type(ty, registry)? {
+                        let inner = registry.get_type(&info.ty)?;
+                        let inner_layout = inner.layout(registry)?;
+
+                        let x_ptr = x.to_ptr(arena, registry, &info.ty)?;
+
+                        let (struct_layout, y_offset) = inner_layout.extend(inner_layout)?;
+
+                        let y_ptr = y.to_ptr(arena, registry, &info.ty)?;
+
+                        let ptr = arena.alloc_layout(struct_layout.pad_to_align()).as_ptr();
+
+                        std::ptr::copy_nonoverlapping(
+                            x_ptr.cast::<u8>().as_ptr(),
+                            ptr,
+                            inner_layout.size(),
+                        );
+
+                        std::ptr::copy_nonoverlapping(
+                            y_ptr.cast::<u8>().as_ptr(),
+                            ptr.byte_add(y_offset),
+                            inner_layout.size(),
+                        );
+
+                        NonNull::new_unchecked(ptr).cast()
+                    } else {
+                        native_panic!(
+                            "an IntRange value should always have an IntRange CoreTypeConcrete"
+                        )
+                    }
+                }
             }
         })
     }
@@ -819,6 +855,28 @@ impl Value {
                 CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::Circuit(_)
                 | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+                CoreTypeConcrete::IntRange(info) => {
+                    let member = registry.get_type(&info.ty)?;
+                    let member_layout = member.layout(registry)?;
+
+                    let x =
+                        Self::from_ptr(NonNull::new(ptr.as_ptr()).unwrap(), &info.ty, registry)?;
+
+                    let y = Self::from_ptr(
+                        NonNull::new(
+                            ptr.as_ptr()
+                                .byte_add(member_layout.extend(member_layout)?.1),
+                        )
+                        .unwrap(),
+                        &info.ty,
+                        registry,
+                    )?;
+
+                    Self::IntRange {
+                        x: x.into(),
+                        y: y.into(),
+                    }
+                }
             }
         })
     }
@@ -1439,12 +1497,7 @@ mod test {
                 "type u8 = u8;
             type MyEnum = Enum<ut@MyEnum, u8, u8>;",
             )
-            .unwrap_err();
-
-        let error = result.to_string().clone();
-        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
-
-        assert_eq!(error_msg, "Variant index out of range.");
+            .unwrap();
 
         // Create the registry for the program
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1456,7 +1509,12 @@ mod test {
             debug_name: None,
         }
         .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id)
-        .unwrap();
+        .unwrap_err();
+
+        let error = result.to_string().clone();
+        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
+
+        assert_eq!(error_msg, "Variant index out of range.");
     }
 
     #[test]
@@ -1466,15 +1524,7 @@ mod test {
                 "type u8 = u8;
                 type MyEnum = Enum<ut@MyEnum, u8>;",
             )
-            .unwrap_err();
-
-        let error = result.to_string().clone();
-        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
-
-        assert_eq!(
-            error_msg,
-            "An enum without variants cannot be instantiated."
-        );
+            .unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
@@ -1484,7 +1534,15 @@ mod test {
             debug_name: None,
         }
         .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id)
-        .unwrap();
+        .unwrap_err();
+
+        let error = result.to_string().clone();
+        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
+
+        assert_eq!(
+            error_msg,
+            "An enum without variants cannot be instantiated."
+        );
     }
 
     #[test]

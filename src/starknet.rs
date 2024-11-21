@@ -321,6 +321,12 @@ pub trait StarknetSyscallHandler {
         remaining_gas: &mut u64,
     ) -> SyscallResult<()>;
 
+    fn get_class_hash_at(
+        &mut self,
+        contract_address: Felt,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt>;
+
     #[cfg(feature = "with-cheatcode")]
     fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
         unimplemented!();
@@ -519,6 +525,14 @@ impl StarknetSyscallHandler for DummySyscallHandler {
         _block: &[u32; 16],
         _remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
+        unimplemented!()
+    }
+
+    fn get_class_hash_at(
+        &mut self,
+        _contract_address: Felt,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt> {
         unimplemented!()
     }
 }
@@ -797,6 +811,12 @@ pub(crate) mod handler {
             state: *mut [u32; 8],
             block: &[u32; 16],
         ),
+        get_class_hash_at: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<Felt252Abi>,
+            ptr: &mut T,
+            gas: &mut u64,
+            contract_address: &Felt252Abi,
+        ),
         // testing syscalls
         #[cfg(feature = "with-cheatcode")]
         pub cheatcode: extern "C" fn(
@@ -837,7 +857,10 @@ pub(crate) mod handler {
         pub const SECP256R1_GET_POINT_FROM_X: usize =
             field_offset!(Self, secp256r1_get_point_from_x) >> 3;
         pub const SECP256R1_GET_XY: usize = field_offset!(Self, secp256r1_get_xy) >> 3;
+
         pub const SHA256_PROCESS_BLOCK: usize = field_offset!(Self, sha256_process_block) >> 3;
+
+        pub const GET_CLASS_HASH_AT: usize = field_offset!(Self, get_class_hash_at) >> 3;
     }
 
     #[allow(unused_variables)]
@@ -871,6 +894,7 @@ pub(crate) mod handler {
                 secp256r1_get_point_from_x: Self::wrap_secp256r1_get_point_from_x,
                 secp256r1_get_xy: Self::wrap_secp256r1_get_xy,
                 sha256_process_block: Self::wrap_sha256_process_block,
+                get_class_hash_at: Self::wrap_get_class_hash_at,
                 #[cfg(feature = "with-cheatcode")]
                 cheatcode: Self::wrap_cheatcode,
             }
@@ -1115,8 +1139,6 @@ pub(crate) mod handler {
                 Err(e) => Self::wrap_error(&e),
             };
         }
-
-        // TODO: change all from_bytes_be to from_bytes_ne when added and undo byte swapping.
 
         extern "C" fn wrap_deploy(
             result_ptr: &mut SyscallResultAbi<(Felt252Abi, ArrayAbi<Felt252Abi>)>,
@@ -1627,6 +1649,25 @@ pub(crate) mod handler {
                     ok: ManuallyDrop::new(SyscallResultAbiOk {
                         tag: 0u8,
                         payload: ManuallyDrop::new(state),
+                    }),
+                },
+                Err(e) => Self::wrap_error(&e),
+            };
+        }
+
+        extern "C" fn wrap_get_class_hash_at(
+            result_ptr: &mut SyscallResultAbi<Felt252Abi>,
+            ptr: &mut T,
+            gas: &mut u64,
+            contract_address: &Felt252Abi,
+        ) {
+            let result = ptr.get_class_hash_at(contract_address.into(), gas);
+
+            *result_ptr = match result {
+                Ok(x) => SyscallResultAbi {
+                    ok: ManuallyDrop::new(SyscallResultAbiOk {
+                        tag: 0u8,
+                        payload: ManuallyDrop::new(Felt252Abi(x.to_bytes_le())),
                     }),
                 },
                 Err(e) => Self::wrap_error(&e),
