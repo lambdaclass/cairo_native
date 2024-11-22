@@ -54,6 +54,13 @@ pub trait BlockExt<'ctx> {
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, '_>, Error>;
 
+    fn trunci(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
     fn shrui(
         &self,
         lhs: Value<'ctx, '_>,
@@ -258,6 +265,16 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, '_>, Error> {
         self.append_op_result(arith::extui(lhs, target_type, location))
+    }
+
+    #[inline]
+    fn trunci(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::trunci(lhs, target_type, location))
     }
 
     #[inline]
