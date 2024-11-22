@@ -1077,10 +1077,28 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                 }
 
                 let array_ptr = {
-                    let array_len_bytes = elem_layout.pad_to_align().size() * extract_len
-                        + calc_refcount_offset(elem_layout);
                     let array_len_bytes =
-                        block.const_int(context, location, array_len_bytes, 64)?;
+                        block.append_op_result(arith::subi(array_len, k1, location))?;
+                    let array_len_bytes = block.append_op_result(arith::extui(
+                        array_len_bytes,
+                        IntegerType::new(context, 64).into(),
+                        location,
+                    ))?;
+                    let array_len_bytes = block.append_op_result(arith::muli(
+                        array_len_bytes,
+                        elem_stride,
+                        location,
+                    ))?;
+                    let array_len_bytes = block.append_op_result(arith::addi(
+                        array_len_bytes,
+                        block.const_int(
+                            context,
+                            location,
+                            calc_refcount_offset(elem_layout),
+                            64,
+                        )?,
+                        location,
+                    ))?;
 
                     let clone_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
                     let clone_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
