@@ -32,17 +32,21 @@ pub fn build<'ctx, 'this>(
     selector: &NullableConcreteLibfunc,
 ) -> Result<()> {
     match selector {
-        NullableConcreteLibfunc::Null(info) => {
-            build_null(context, registry, entry, location, helper, metadata, info)
-        }
-        NullableConcreteLibfunc::NullableFromBox(info) => {
-            build_nullable_from_box(context, registry, entry, location, helper, metadata, info)
-        }
+        NullableConcreteLibfunc::ForwardSnapshot(info)
+        | NullableConcreteLibfunc::NullableFromBox(info) => super::build_noop::<1, true>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            &info.signature.param_signatures,
+        ),
         NullableConcreteLibfunc::MatchNullable(info) => {
             build_match_nullable(context, registry, entry, location, helper, metadata, info)
         }
-        NullableConcreteLibfunc::ForwardSnapshot(info) => {
-            build_forward_snapshot(context, registry, entry, location, helper, metadata, info)
+        NullableConcreteLibfunc::Null(info) => {
+            build_null(context, registry, entry, location, helper, metadata, info)
         }
     }
 }
@@ -58,27 +62,10 @@ fn build_null<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let op =
-        entry.append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into());
+    let value = entry
+        .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
 
-    entry.append_operation(helper.br(0, &[op.result(0)?.into()], location));
-
-    Ok(())
-}
-
-/// Generate MLIR operations for the `nullable_from_box` libfunc.
-#[allow(clippy::too_many_arguments)]
-fn build_nullable_from_box<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
-
+    entry.append_operation(helper.br(0, &[value], location));
     Ok(())
 }
 
@@ -125,19 +112,6 @@ fn build_match_nullable<'ctx, 'this>(
     block_is_null.append_operation(helper.br(0, &[], location));
     block_is_not_null.append_operation(helper.br(1, &[arg], location));
 
-    Ok(())
-}
-
-fn build_forward_snapshot<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
     Ok(())
 }
 
