@@ -267,7 +267,7 @@ pub fn build_append<'ctx, 'this>(
 
         // Array allocation growth formula:
         //   new_len = max(8, old_len + min(1024, 2 * old_len));
-        let new_capacity = realloc_block.append_op_result(arith::shli(array_end, k1, location))?;
+        let new_capacity = realloc_block.shli(array_end, k1, location)?;
         let new_capacity =
             realloc_block.append_op_result(arith::minui(new_capacity, k1024, location))?;
         let new_capacity =

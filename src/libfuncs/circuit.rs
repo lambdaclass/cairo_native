@@ -869,7 +869,7 @@ fn u384_struct_to_integer<'a>(
             location,
         ))?;
         let k96 = block.const_int(context, location, 96, 384)?;
-        block.append_op_result(arith::shli(limb, k96, location))?
+        block.shli(limb, k96, location)?
     };
 
     let limb3 = {
@@ -879,7 +879,7 @@ fn u384_struct_to_integer<'a>(
             location,
         ))?;
         let k192 = block.const_int(context, location, 96 * 2, 384)?;
-        block.append_op_result(arith::shli(limb, k192, location))?
+        block.shli(limb, k192, location)?
     };
 
     let limb4 = {
@@ -889,7 +889,7 @@ fn u384_struct_to_integer<'a>(
             location,
         ))?;
         let k288 = block.const_int(context, location, 96 * 3, 384)?;
-        block.append_op_result(arith::shli(limb, k288, location))?
+        block.shli(limb, k288, location)?
     };
 
     let value = block.append_op_result(arith::ori(limb1, limb2, location))?;

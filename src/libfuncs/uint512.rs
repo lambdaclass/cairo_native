@@ -92,14 +92,11 @@ pub fn build_divmod_u256<'ctx, 'this>(
 
     let dividend = (
         dividend.0,
-        entry.append_op_result(arith::shli(dividend.1, k128, location))?,
-        entry.append_op_result(arith::shli(dividend.2, k256, location))?,
-        entry.append_op_result(arith::shli(dividend.3, k384, location))?,
+        entry.shli(dividend.1, k128, location)?,
+        entry.shli(dividend.2, k256, location)?,
+        entry.shli(dividend.3, k384, location)?,
     );
-    let divisor = (
-        divisor.0,
-        entry.append_op_result(arith::shli(divisor.1, k128, location))?,
-    );
+    let divisor = (divisor.0, entry.shli(divisor.1, k128, location)?);
 
     let dividend = {
         let lhs_01 = entry.append_op_result(arith::ori(dividend.0, dividend.1, location))?;

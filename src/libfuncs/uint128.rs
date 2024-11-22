@@ -382,8 +382,7 @@ pub fn build_square_root<'ctx, 'this>(
                     let block = region
                         .append_block(Block::new(&[(i128_ty, location), (i128_ty, location)]));
 
-                    let result =
-                        block.append_op_result(arith::shli(block.arg(0)?, k1, location))?;
+                    let result = block.shli(block.arg(0)?, k1, location)?;
                     let large_candidate =
                         block.append_op_result(arith::xori(result, k1, location))?;
 
