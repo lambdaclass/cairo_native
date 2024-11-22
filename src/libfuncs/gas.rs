@@ -62,11 +62,7 @@ pub fn build_get_available_gas<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let gas = entry.arg(0)?;
-    let gas_u128 = entry.append_op_result(arith::extui(
-        gas,
-        IntegerType::new(context, 128).into(),
-        location,
-    ))?;
+    let gas_u128 = entry.extui(gas, IntegerType::new(context, 128).into(), location)?;
     // The gas is returned as u128 on the second arg.
     entry.append_operation(helper.br(0, &[entry.arg(0)?, gas_u128], location));
     Ok(())

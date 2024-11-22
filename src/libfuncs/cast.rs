@@ -339,17 +339,17 @@ pub fn build_upcast<'ctx, 'this>(
 
     let dst_value = if dst_width > src_width {
         if is_signed && !src_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extsi(
+            entry.extsi(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         } else {
-            entry.append_op_result(arith::extui(
+            entry.extui(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         }
     } else {
         src_value

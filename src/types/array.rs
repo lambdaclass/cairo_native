@@ -158,11 +158,8 @@ fn build_dup<'ctx>(
         let elem_stride = block_realloc.const_int(context, location, elem_stride, 64)?;
 
         let dst_value_len = {
-            let value_len = block_realloc.append_op_result(arith::extui(
-                value_len,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
+            let value_len =
+                block_realloc.extui(value_len, IntegerType::new(context, 64).into(), location)?;
 
             block_realloc.append_op_result(arith::muli(value_len, elem_stride, location))?
         };
@@ -176,11 +173,8 @@ fn build_dup<'ctx>(
         };
 
         let src_value_ptr = {
-            let value_offset = block_realloc.append_op_result(arith::extui(
-                value_start,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
+            let value_offset =
+                block_realloc.extui(value_start, IntegerType::new(context, 64).into(), location)?;
 
             let src_value_offset =
                 block_realloc.append_op_result(arith::muli(value_offset, elem_stride, location))?;
@@ -315,16 +309,10 @@ fn build_drop<'ctx>(
                 2,
             )?;
 
-            let value_start = entry.append_op_result(arith::extui(
-                value_start,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
-            let value_end = entry.append_op_result(arith::extui(
-                value_end,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
+            let value_start =
+                entry.extui(value_start, IntegerType::new(context, 64).into(), location)?;
+            let value_end =
+                entry.extui(value_end, IntegerType::new(context, 64).into(), location)?;
 
             let elem_stride = entry.const_int(context, location, elem_stride, 64)?;
             let offset_start =

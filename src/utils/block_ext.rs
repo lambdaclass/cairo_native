@@ -233,7 +233,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         target_type: Type<'ctx>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, '_>, Error> {
-        self.append_op_result(arith::extui(lhs, target_type, location))
+        self.append_op_result(arith::extsi(lhs, target_type, location))
     }
 
     #[inline]
@@ -243,7 +243,7 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         target_type: Type<'ctx>,
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, '_>, Error> {
-        self.append_op_result(arith::extsi(lhs, target_type, location))
+        self.append_op_result(arith::extui(lhs, target_type, location))
     }
 
     #[inline]

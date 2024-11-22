@@ -497,21 +497,21 @@ fn build_gate_evaluation<'ctx, 'this>(
                 // ADD: lhs + rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
                     // Extend to avoid overflow
-                    let lhs_value = block.append_op_result(arith::extui(
+                    let lhs_value = block.extui(
                         lhs_value,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
-                    let rhs_value = block.append_op_result(arith::extui(
+                    )?;
+                    let rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
-                    let circuit_modulus = block.append_op_result(arith::extui(
+                    )?;
+                    let circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
+                    )?;
                     // value = (lhs_value + rhs_value) % circuit_modulus
                     let value =
                         block.append_op_result(arith::addi(lhs_value, rhs_value, location))?;
@@ -528,21 +528,21 @@ fn build_gate_evaluation<'ctx, 'this>(
                 // SUB: lhs = out - rhs
                 (None, Some(rhs_value), Some(output_value)) => {
                     // Extend to avoid overflow
-                    let rhs_value = block.append_op_result(arith::extui(
+                    let rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
-                    let output_value = block.append_op_result(arith::extui(
+                    )?;
+                    let output_value = block.extui(
                         output_value,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
-                    let circuit_modulus = block.append_op_result(arith::extui(
+                    )?;
+                    let circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
+                    )?;
                     // value = (output_value + circuit_modulus - rhs_value) % circuit_modulus
                     let value = block.append_op_result(arith::addi(
                         output_value,
@@ -580,21 +580,21 @@ fn build_gate_evaluation<'ctx, 'this>(
                 // MUL: lhs * rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
                     // Extend to avoid overflow
-                    let lhs_value = block.append_op_result(arith::extui(
+                    let lhs_value = block.extui(
                         lhs_value,
                         IntegerType::new(context, 384 * 2).into(),
                         location,
-                    ))?;
-                    let rhs_value = block.append_op_result(arith::extui(
+                    )?;
+                    let rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, 384 * 2).into(),
                         location,
-                    ))?;
-                    let circuit_modulus = block.append_op_result(arith::extui(
+                    )?;
+                    let circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, 384 * 2).into(),
                         location,
-                    ))?;
+                    )?;
                     // value = (lhs_value * rhs_value) % circuit_modulus
                     let value =
                         block.append_op_result(arith::muli(lhs_value, rhs_value, location))?;
@@ -611,16 +611,16 @@ fn build_gate_evaluation<'ctx, 'this>(
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
                     // Extend to avoid overflow
-                    let rhs_value = block.append_op_result(arith::extui(
+                    let rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, 384 * 2).into(),
                         location,
-                    ))?;
-                    let circuit_modulus = block.append_op_result(arith::extui(
+                    )?;
+                    let circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, 384 * 2).into(),
                         location,
-                    ))?;
+                    )?;
                     let integer_type = rhs_value.r#type();
 
                     // Apply egcd to find gcd and inverse
@@ -844,38 +844,38 @@ fn u384_struct_to_integer<'a>(
 ) -> Result<Value<'a, 'a>> {
     let u96_type = IntegerType::new(context, 96).into();
 
-    let limb1 = block.append_op_result(arith::extui(
+    let limb1 = block.extui(
         block.extract_value(context, location, u384_struct, u96_type, 0)?,
         IntegerType::new(context, 384).into(),
         location,
-    ))?;
+    )?;
 
     let limb2 = {
-        let limb = block.append_op_result(arith::extui(
+        let limb = block.extui(
             block.extract_value(context, location, u384_struct, u96_type, 1)?,
             IntegerType::new(context, 384).into(),
             location,
-        ))?;
+        )?;
         let k96 = block.const_int(context, location, 96, 384)?;
         block.shli(limb, k96, location)?
     };
 
     let limb3 = {
-        let limb = block.append_op_result(arith::extui(
+        let limb = block.extui(
             block.extract_value(context, location, u384_struct, u96_type, 2)?,
             IntegerType::new(context, 384).into(),
             location,
-        ))?;
+        )?;
         let k192 = block.const_int(context, location, 96 * 2, 384)?;
         block.shli(limb, k192, location)?
     };
 
     let limb4 = {
-        let limb = block.append_op_result(arith::extui(
+        let limb = block.extui(
             block.extract_value(context, location, u384_struct, u96_type, 3)?,
             IntegerType::new(context, 384).into(),
             location,
-        ))?;
+        )?;
         let k288 = block.const_int(context, location, 96 * 3, 384)?;
         block.shli(limb, k288, location)?
     };

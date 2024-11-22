@@ -87,11 +87,8 @@ pub fn build_print<'ctx>(
     let values_len = entry.append_op_result(arith::subi(values_end, values_start, location))?;
 
     let values_ptr = {
-        let values_start = entry.append_op_result(arith::extui(
-            values_start,
-            IntegerType::new(context, 64).into(),
-            location,
-        ))?;
+        let values_start =
+            entry.extui(values_start, IntegerType::new(context, 64).into(), location)?;
 
         entry.append_op_result(llvm::get_element_ptr_dynamic(
             context,
