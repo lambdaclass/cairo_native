@@ -20,144 +20,128 @@ fn align_to(buffer: &mut Vec<u8>, align: usize) {
 
 impl AbiArgument for bool {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 48 {
-            buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
-        } else {
-            align_to(buffer, get_integer_layout(1).align());
-            buffer.push((*self) as u8);
-        }
+        buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for u8 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 48 {
-            buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
-        } else {
+        if buffer.len() >= 48 {
             align_to(buffer, get_integer_layout(8).align());
-            buffer.push(*self);
         }
+
+        buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for i8 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 48 {
-            buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
-        } else {
+        if buffer.len() >= 48 {
             align_to(buffer, get_integer_layout(8).align());
-            buffer.extend_from_slice(&self.to_ne_bytes());
         }
+
+        buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for u16 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 48 {
-            buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
-        } else {
+        if buffer.len() >= 48 {
             align_to(buffer, get_integer_layout(16).align());
-            buffer.extend_from_slice(&self.to_ne_bytes());
         }
+
+        buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for i16 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 48 {
-            buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
-        } else {
+        if buffer.len() >= 48 {
             align_to(buffer, get_integer_layout(16).align());
-            buffer.extend_from_slice(&self.to_ne_bytes());
         }
+
+        buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for u32 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 48 {
-            buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
-        } else {
+        if buffer.len() >= 48 {
             align_to(buffer, get_integer_layout(32).align());
-            buffer.extend_from_slice(&self.to_ne_bytes());
         }
+
+        buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for i32 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 48 {
-            buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
-        } else {
+        if buffer.len() >= 48 {
             align_to(buffer, get_integer_layout(32).align());
-            buffer.extend_from_slice(&self.to_ne_bytes());
         }
+
+        buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for u64 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 48 {
-            buffer.extend_from_slice(&self.to_ne_bytes());
-        } else {
+        if buffer.len() >= 48 {
             align_to(buffer, get_integer_layout(64).align());
-            buffer.extend_from_slice(&self.to_ne_bytes());
         }
+
+        buffer.extend_from_slice(&self.to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for i64 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 48 {
-            buffer.extend_from_slice(&self.to_ne_bytes());
-        } else {
+        if buffer.len() >= 48 {
             align_to(buffer, get_integer_layout(64).align());
-            buffer.extend_from_slice(&self.to_ne_bytes());
         }
+
+        buffer.extend_from_slice(&self.to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for u128 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 40 {
-            buffer.extend_from_slice(&self.to_ne_bytes());
-        } else {
+        if buffer.len() >= 40 {
             align_to(buffer, get_integer_layout(128).align());
-            buffer.extend_from_slice(&self.to_ne_bytes());
         }
+
+        buffer.extend_from_slice(&self.to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for i128 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 40 {
-            buffer.extend_from_slice(&self.to_ne_bytes());
-        } else {
+        if buffer.len() >= 40 {
             align_to(buffer, get_integer_layout(128).align());
-            buffer.extend_from_slice(&self.to_ne_bytes());
         }
+
+        buffer.extend_from_slice(&self.to_ne_bytes());
         Ok(())
     }
 }
 
 impl AbiArgument for Felt {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() < 40 {
-            buffer.extend_from_slice(&self.to_bytes_le());
-        } else {
+        if buffer.len() >= 40 {
             align_to(buffer, get_integer_layout(252).align());
-            buffer.extend_from_slice(&self.to_bytes_le());
         }
+
+        buffer.extend_from_slice(&self.to_bytes_le());
         Ok(())
     }
 }
@@ -173,15 +157,13 @@ impl AbiArgument for [u8; 31] {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
         // The `bytes31` type is treated as a 248-bit integer, therefore it follows the same
         // splitting rules as them.
-        if buffer.len() < 40 {
-            buffer.extend_from_slice(self);
-            buffer.push(0);
-        } else {
+
+        if buffer.len() >= 40 {
             align_to(buffer, get_integer_layout(252).align());
-            buffer.extend_from_slice(self);
-            buffer.push(0);
         }
 
+        buffer.extend_from_slice(self);
+        buffer.push(0);
         Ok(())
     }
 }
