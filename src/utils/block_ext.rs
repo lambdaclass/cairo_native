@@ -54,6 +54,20 @@ pub trait BlockExt<'ctx> {
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, '_>, Error>;
 
+    fn shrui(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    fn shli(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
     /// Appends the operation and returns the first result.
     fn append_op_result(&self, operation: Operation<'ctx>) -> Result<Value<'ctx, '_>, Error>;
 
@@ -230,6 +244,26 @@ impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
         location: Location<'ctx>,
     ) -> Result<Value<'ctx, '_>, Error> {
         self.append_op_result(arith::extsi(lhs, target_type, location))
+    }
+
+    #[inline]
+    fn shli(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::shli(lhs, rhs, location))
+    }
+
+    #[inline]
+    fn shrui(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::shrui(lhs, rhs, location))
     }
 
     #[inline]
