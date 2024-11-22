@@ -388,7 +388,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         location,
     ));
 
-    let value = block_success.append_op_result(arith::trunci(value, result_ty, location))?;
+    let value = block_success.trunci(value, result_ty, location)?;
 
     block_success.append_operation(helper.br(0, &[range_check, value], location));
     block_failure.append_operation(helper.br(1, &[range_check], location));

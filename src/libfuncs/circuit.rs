@@ -516,11 +516,8 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
                     // Truncate back
-                    let value = block.append_op_result(arith::trunci(
-                        value,
-                        IntegerType::new(context, 384).into(),
-                        location,
-                    ))?;
+                    let value =
+                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
                     values[add_gate_offset.output] = Some(value);
                 }
                 // SUB: lhs = out - rhs
@@ -547,11 +544,8 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
                     // Truncate back
-                    let value = block.append_op_result(arith::trunci(
-                        value,
-                        IntegerType::new(context, 384).into(),
-                        location,
-                    ))?;
+                    let value =
+                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
                     values[add_gate_offset.lhs] = Some(value);
                 }
                 // We can't solve this add gate yet, so we break from the loop
@@ -594,11 +588,8 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
                     // Truncate back
-                    let value = block.append_op_result(arith::trunci(
-                        value,
-                        IntegerType::new(context, 384).into(),
-                        location,
-                    ))?;
+                    let value =
+                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
                     values[output] = Some(value)
                 }
                 // INV: lhs = 1 / rhs
@@ -671,11 +662,8 @@ fn build_gate_evaluation<'ctx, 'this>(
                     ))?;
 
                     // Truncate back
-                    let inverse = block.append_op_result(arith::trunci(
-                        inverse,
-                        IntegerType::new(context, 384).into(),
-                        location,
-                    ))?;
+                    let inverse =
+                        block.trunci(inverse, IntegerType::new(context, 384).into(), location)?;
 
                     values[lhs] = Some(inverse);
                 }
@@ -887,25 +875,21 @@ fn u384_integer_to_struct<'a>(
 ) -> Result<Value<'a, 'a>> {
     let u96_type = IntegerType::new(context, 96).into();
 
-    let limb1 = block.append_op_result(arith::trunci(
-        integer,
-        IntegerType::new(context, 96).into(),
-        location,
-    ))?;
+    let limb1 = block.trunci(integer, IntegerType::new(context, 96).into(), location)?;
     let limb2 = {
         let k96 = block.const_int(context, location, 96, 384)?;
         let limb = block.shrui(integer, k96, location)?;
-        block.append_op_result(arith::trunci(limb, u96_type, location))?
+        block.trunci(limb, u96_type, location)?
     };
     let limb3 = {
         let k192 = block.const_int(context, location, 96 * 2, 384)?;
         let limb = block.shrui(integer, k192, location)?;
-        block.append_op_result(arith::trunci(limb, u96_type, location))?
+        block.trunci(limb, u96_type, location)?
     };
     let limb4 = {
         let k288 = block.const_int(context, location, 96 * 3, 384)?;
         let limb = block.shrui(integer, k288, location)?;
-        block.append_op_result(arith::trunci(limb, u96_type, location))?
+        block.trunci(limb, u96_type, location)?
     };
 
     let struct_type = llvm::r#type::r#struct(

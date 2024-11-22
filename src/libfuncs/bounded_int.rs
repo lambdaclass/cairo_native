@@ -181,11 +181,11 @@ fn build_add<'ctx, 'this>(
     };
 
     let res_value = if dst_range.offset_bit_width() < compute_range.offset_bit_width() {
-        entry.append_op_result(arith::trunci(
+        entry.trunci(
             res_value,
             IntegerType::new(context, dst_range.offset_bit_width()).into(),
             location,
-        ))?
+        )?
     } else {
         res_value
     };
@@ -309,11 +309,11 @@ fn build_sub<'ctx, 'this>(
     };
 
     let res_value = if dst_range.offset_bit_width() < compute_range.offset_bit_width() {
-        entry.append_op_result(arith::trunci(
+        entry.trunci(
             res_value,
             IntegerType::new(context, dst_range.offset_bit_width()).into(),
             location,
-        ))?
+        )?
     } else {
         res_value
     };
@@ -429,11 +429,11 @@ fn build_mul<'ctx, 'this>(
     };
 
     let res_value = if dst_range.offset_bit_width() < compute_range.zero_based_bit_width() {
-        entry.append_op_result(arith::trunci(
+        entry.trunci(
             res_value,
             IntegerType::new(context, dst_range.offset_bit_width()).into(),
             location,
-        ))?
+        )?
     } else {
         res_value
     };
@@ -565,20 +565,20 @@ fn build_divrem<'ctx, 'this>(
     };
 
     let div_value = if div_range.offset_bit_width() < compute_range.zero_based_bit_width() {
-        entry.append_op_result(arith::trunci(
+        entry.trunci(
             div_value,
             IntegerType::new(context, div_range.offset_bit_width()).into(),
             location,
-        ))?
+        )?
     } else {
         div_value
     };
     let rem_value = if rem_range.offset_bit_width() < compute_range.zero_based_bit_width() {
-        entry.append_op_result(arith::trunci(
+        entry.trunci(
             rem_value,
             IntegerType::new(context, rem_range.offset_bit_width()).into(),
             location,
-        ))?
+        )?
     } else {
         rem_value
     };
@@ -657,11 +657,11 @@ fn build_constrain<'ctx, 'this>(
         };
 
         let res_value = if src_width > lower_range.offset_bit_width() {
-            lower_block.append_op_result(arith::trunci(
+            lower_block.trunci(
                 res_value,
                 IntegerType::new(context, lower_range.offset_bit_width()).into(),
                 location,
-            ))?
+            )?
         } else {
             res_value
         };
@@ -684,11 +684,11 @@ fn build_constrain<'ctx, 'this>(
         };
 
         let res_value = if src_width > upper_range.offset_bit_width() {
-            upper_block.append_op_result(arith::trunci(
+            upper_block.trunci(
                 res_value,
                 IntegerType::new(context, upper_range.offset_bit_width()).into(),
                 location,
-            ))?
+            )?
         } else {
             res_value
         };

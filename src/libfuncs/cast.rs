@@ -172,11 +172,11 @@ pub fn build_downcast<'ctx, 'this>(
         };
 
         let dst_value = if dst_width < compute_width {
-            entry.append_op_result(arith::trunci(
+            entry.trunci(
                 dst_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         } else {
             dst_value
         };
@@ -259,11 +259,11 @@ pub fn build_downcast<'ctx, 'this>(
         };
 
         let dst_value = if dst_width < compute_width {
-            entry.append_op_result(arith::trunci(
+            entry.trunci(
                 dst_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         } else {
             dst_value
         };

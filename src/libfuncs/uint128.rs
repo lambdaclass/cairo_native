@@ -202,18 +202,10 @@ pub fn build_from_felt252<'ctx, 'this>(
 
     let is_wide = entry.cmpi(context, CmpiPredicate::Uge, value, k_u128_max_1, location)?;
 
-    let lsb_bits = entry.append_op_result(arith::trunci(
-        value,
-        IntegerType::new(context, 128).into(),
-        location,
-    ))?;
+    let lsb_bits = entry.trunci(value, IntegerType::new(context, 128).into(), location)?;
 
     let msb_bits = entry.shrui(value, k128, location)?;
-    let msb_bits = entry.append_op_result(arith::trunci(
-        msb_bits,
-        IntegerType::new(context, 128).into(),
-        location,
-    ))?;
+    let msb_bits = entry.trunci(msb_bits, IntegerType::new(context, 128).into(), location)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -433,7 +425,7 @@ pub fn build_square_root<'ctx, 'this>(
         location,
     ))?;
 
-    let result = entry.append_op_result(arith::trunci(result, i64_ty, location))?;
+    let result = entry.trunci(result, i64_ty, location)?;
 
     entry.append_operation(helper.br(0, &[range_check, result], location));
     Ok(())
@@ -486,12 +478,12 @@ pub fn build_guarantee_mul<'ctx, 'this>(
     let lhs = entry.extui(lhs, target_type, location)?;
     let rhs = entry.extui(rhs, target_type, location)?;
     let result = entry.muli(lhs, rhs, location)?;
-    let result_lo = entry.append_op_result(arith::trunci(result, origin_type, location))?;
+    let result_lo = entry.trunci(result, origin_type, location)?;
 
     let const_128 = entry.const_int_from_type(context, location, 128, target_type)?;
 
     let result_hi = entry.shrui(result, const_128, location)?;
-    let result_hi = entry.append_op_result(arith::trunci(result_hi, origin_type, location))?;
+    let result_hi = entry.trunci(result_hi, origin_type, location)?;
 
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 

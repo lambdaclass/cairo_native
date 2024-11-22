@@ -111,7 +111,7 @@ pub fn build_binary_operation<'ctx, 'this>(
                 result,
                 location,
             ))?;
-            entry.append_op_result(arith::trunci(result, felt252_ty, location))?
+            entry.trunci(result, felt252_ty, location)?
         }
         Felt252BinaryOperator::Sub => {
             let lhs = entry.extui(lhs, i256, location)?;
@@ -128,7 +128,7 @@ pub fn build_binary_operation<'ctx, 'this>(
                 result,
                 location,
             ))?;
-            entry.append_op_result(arith::trunci(result, felt252_ty, location))?
+            entry.trunci(result, felt252_ty, location)?
         }
         Felt252BinaryOperator::Mul => {
             let lhs = entry.extui(lhs, i512, location)?;
@@ -146,7 +146,7 @@ pub fn build_binary_operation<'ctx, 'this>(
                 result,
                 location,
             ))?;
-            entry.append_op_result(arith::trunci(result, felt252_ty, location))?
+            entry.trunci(result, felt252_ty, location)?
         }
         Felt252BinaryOperator::Div => {
             // The extended euclidean algorithm calculates the greatest common divisor of two integers,
@@ -270,8 +270,7 @@ pub fn build_binary_operation<'ctx, 'this>(
                 result,
                 location,
             ))?;
-            let result = inverse_result_block
-                .append_op_result(arith::trunci(result, felt252_ty, location))?;
+            let result = inverse_result_block.trunci(result, felt252_ty, location)?;
 
             inverse_result_block.append_operation(helper.br(0, &[result], location));
             return Ok(());

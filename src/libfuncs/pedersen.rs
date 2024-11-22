@@ -17,7 +17,6 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith,
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -95,7 +94,7 @@ pub fn build_pedersen<'ctx>(
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)?;
 
     let result = entry.load(context, location, dst_ptr, i256_ty)?;
-    let result = entry.append_op_result(arith::trunci(result, felt252_ty, location))?;
+    let result = entry.trunci(result, felt252_ty, location)?;
 
     entry.append_operation(helper.br(0, &[pedersen_builtin, result], location));
     Ok(())
