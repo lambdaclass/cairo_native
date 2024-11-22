@@ -20,12 +20,14 @@ type Log = (Vec<Felt>, Vec<Felt>);
 type L2ToL1Message = (Felt, Vec<Felt>);
 
 #[derive(Debug, Default)]
+#[allow(dead_code)]
 struct ContractLogs {
     events: VecDeque<Log>,
     l2_to_l1_messages: VecDeque<L2ToL1Message>,
 }
 
 #[derive(Debug, Default)]
+#[allow(dead_code)]
 struct TestingState {
     sequencer_address: Felt,
     caller_address: Felt,
@@ -43,6 +45,7 @@ struct TestingState {
 }
 
 #[derive(Debug, Default)]
+#[allow(dead_code)]
 struct SyscallHandler {
     testing_state: TestingState,
 }
