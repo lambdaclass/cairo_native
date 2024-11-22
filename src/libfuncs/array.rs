@@ -146,6 +146,8 @@ pub fn build_new<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `span_from_tuple` libfunc.
+///
+/// Note: The `&info.ty` field has the entire `[T; N]` tuple. It is not the `T` in `Array<T>`.
 pub fn build_span_from_tuple<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -167,14 +169,14 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();
-    let (_, elem_layout) =
+    let (_, tuple_layout) =
         registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
-    let array_len_bytes = elem_layout.pad_to_align().size() * tuple_len;
+    let array_len_bytes = tuple_layout.pad_to_align().size();
     let array_len_bytes_with_offset = entry.const_int(
         context,
         location,
-        array_len_bytes + calc_refcount_offset(elem_layout),
+        array_len_bytes + calc_refcount_offset(tuple_layout),
         64,
     )?;
     let array_len_bytes = entry.const_int(context, location, array_len_bytes, 64)?;
@@ -196,7 +198,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         context,
         location,
         array_ptr,
-        &[GepIndex::Const(calc_refcount_offset(elem_layout) as i32)],
+        &[GepIndex::Const(calc_refcount_offset(tuple_layout) as i32)],
         IntegerType::new(context, 8).into(),
     )?;
     entry.memcpy(
@@ -228,6 +230,8 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `tuple_from_span` libfunc.
+///
+/// Note: The `&info.ty` field has the entire `[T; N]` tuple. It is not the `T` in `Array<T>`.
 pub fn build_tuple_from_span<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -239,21 +243,20 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 ) -> Result<()> {
     metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
 
+    let elem_id = {
+        let CoreTypeConcrete::Snapshot(info) =
+            registry.get_type(&info.signature.param_signatures[0].ty)?
+        else {
+            return Err(Error::SierraAssert(SierraAssertError::BadTypeInfo));
+        };
+        let CoreTypeConcrete::Array(info) = registry.get_type(&info.ty)? else {
+            return Err(Error::SierraAssert(SierraAssertError::BadTypeInfo));
+        };
+
+        &info.ty
+    };
     let tuple_len_const = {
-        let [param] = info.signature.branch_signatures[0].vars.as_slice() else {
-            return Err(Error::SierraAssert(SierraAssertError::BadTypeInfo));
-        };
-
-        let CoreTypeConcrete::Box(param) = registry.get_type(&param.ty)? else {
-            return Err(Error::SierraAssert(SierraAssertError::BadTypeInfo));
-        };
-
-        debug_assert!(
-            param.ty == info.ty,
-            "invalid input tuple for libfunc `span_from_tuple`"
-        );
-
-        let CoreTypeConcrete::Struct(param) = registry.get_type(&param.ty)? else {
+        let CoreTypeConcrete::Struct(param) = registry.get_type(&info.ty)? else {
             return Err(Error::SierraAssert(SierraAssertError::BadTypeInfo));
         };
 
@@ -262,7 +265,9 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();
-    let (elem_ty, elem_layout) =
+    let (_, elem_layout) =
+        registry.build_type_with_layout(context, helper, registry, metadata, elem_id)?;
+    let (tuple_ty, tuple_layout) =
         registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
 
     let array_ptr = entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
@@ -302,12 +307,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     )?;
 
     {
-        let value_size = valid_block.const_int(
-            context,
-            location,
-            tuple_len_const * elem_layout.pad_to_align().size(),
-            64,
-        )?;
+        let value_size = valid_block.const_int(context, location, tuple_layout.size(), 64)?;
 
         let value = valid_block.append_op_result(llvm::zero(ptr_ty, location))?;
         let value = valid_block.append_op_result(ReallocBindingsMeta::realloc(
@@ -343,51 +343,14 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
                 match metadata.get::<DupOverridesMeta>() {
                     Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
-                        let k0 = block.const_int(context, location, 0, 64)?;
-                        let elem_stride = block.const_int(
-                            context,
-                            location,
-                            elem_layout.pad_to_align().size(),
-                            64,
-                        )?;
-                        block.append_operation(scf::r#for(
-                            k0,
-                            value_size,
-                            elem_stride,
-                            {
-                                let region = Region::new();
-                                let block = region.append_block(Block::new(&[(
-                                    IntegerType::new(context, 64).into(),
-                                    location,
-                                )]));
+                        let src_ptr = array_ptr;
+                        let dst_ptr = value;
 
-                                let offset = block.argument(0)?.into();
-                                let src_ptr = block.gep(
-                                    context,
-                                    location,
-                                    array_ptr,
-                                    &[GepIndex::Value(offset)],
-                                    IntegerType::new(context, 8).into(),
-                                )?;
-                                let dst_ptr = block.gep(
-                                    context,
-                                    location,
-                                    value,
-                                    &[GepIndex::Value(offset)],
-                                    IntegerType::new(context, 8).into(),
-                                )?;
-
-                                let value = block.load(context, location, src_ptr, elem_ty)?;
-                                let values = dup_overrides_meta
-                                    .invoke_override(context, &block, location, &info.ty, value)?;
-                                block.store(context, location, src_ptr, values.0)?;
-                                block.store(context, location, dst_ptr, values.1)?;
-
-                                block.append_operation(scf::r#yield(&[], location));
-                                region
-                            },
-                            location,
-                        ));
+                        let value = block.load(context, location, src_ptr, tuple_ty)?;
+                        let values = dup_overrides_meta
+                            .invoke_override(context, &block, location, &info.ty, value)?;
+                        block.store(context, location, src_ptr, values.0)?;
+                        block.store(context, location, dst_ptr, values.1)?;
                     }
                     _ => block.memcpy(context, location, array_ptr, value, value_size),
                 }
