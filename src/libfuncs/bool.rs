@@ -202,7 +202,7 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
     let value = entry.arg(0)?;
     let tag_value = entry.extract_value(context, location, value, tag_ty, 0)?;
 
-    let result = entry.append_op_result(arith::extui(tag_value, felt252_ty, location))?;
+    let result = entry.extui(tag_value, felt252_ty, location)?;
 
     entry.append_operation(helper.br(0, &[result], location));
     Ok(())

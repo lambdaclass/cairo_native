@@ -519,8 +519,8 @@ pub fn build_guarantee_mul<'ctx, 'this>(
         &info.output_types()[0][2],
     )?;
 
-    let lhs = entry.append_op_result(arith::extui(lhs, target_type, location))?;
-    let rhs = entry.append_op_result(arith::extui(rhs, target_type, location))?;
+    let lhs = entry.extui(lhs, target_type, location)?;
+    let rhs = entry.extui(rhs, target_type, location)?;
     let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
     let result_lo = entry.append_op_result(arith::trunci(result, origin_type, location))?;
 

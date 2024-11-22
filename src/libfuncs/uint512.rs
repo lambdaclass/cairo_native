@@ -76,14 +76,14 @@ pub fn build_divmod_u256<'ctx, 'this>(
     );
 
     let dividend = (
-        entry.append_op_result(arith::extui(dividend.0, i512_ty, location))?,
-        entry.append_op_result(arith::extui(dividend.1, i512_ty, location))?,
-        entry.append_op_result(arith::extui(dividend.2, i512_ty, location))?,
-        entry.append_op_result(arith::extui(dividend.3, i512_ty, location))?,
+        entry.extui(dividend.0, i512_ty, location)?,
+        entry.extui(dividend.1, i512_ty, location)?,
+        entry.extui(dividend.2, i512_ty, location)?,
+        entry.extui(dividend.3, i512_ty, location)?,
     );
     let divisor = (
-        entry.append_op_result(arith::extui(divisor.0, i512_ty, location))?,
-        entry.append_op_result(arith::extui(divisor.1, i512_ty, location))?,
+        entry.extui(divisor.0, i512_ty, location)?,
+        entry.extui(divisor.1, i512_ty, location)?,
     );
 
     let k128 = entry.const_int_from_type(context, location, 128, i512_ty)?;

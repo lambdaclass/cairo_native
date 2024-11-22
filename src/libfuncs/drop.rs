@@ -5,7 +5,7 @@
 //!
 //! However, types like an array need manual dropping.
 
-use super::LibfuncHelper;
+use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},

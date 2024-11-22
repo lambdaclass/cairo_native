@@ -1376,8 +1376,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
 
     let field_size: Value = entry.const_int(context, location, field_stride, 64)?;
-    let array_len_value_i64 =
-        entry.append_op_result(arith::extui(array_len_value, field_size.r#type(), location))?;
+    let array_len_value_i64 = entry.extui(array_len_value, field_size.r#type(), location)?;
     let total_size =
         entry.append_op_result(arith::muli(field_size, array_len_value_i64, location))?;
 

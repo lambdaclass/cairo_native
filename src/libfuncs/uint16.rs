@@ -255,8 +255,8 @@ pub fn build_widemul<'ctx, 'this>(
     let lhs: Value = entry.arg(0)?;
     let rhs: Value = entry.arg(1)?;
 
-    let lhs = entry.append_op_result(arith::extui(lhs, target_type, location))?;
-    let rhs = entry.append_op_result(arith::extui(rhs, target_type, location))?;
+    let lhs = entry.extui(lhs, target_type, location)?;
+    let rhs = entry.extui(rhs, target_type, location)?;
     let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
 
     entry.append_operation(helper.br(0, &[result], location));
@@ -282,7 +282,7 @@ pub fn build_to_felt252<'ctx, 'this>(
     )?;
     let value: Value = entry.arg(0)?;
 
-    let result = entry.append_op_result(arith::extui(value, felt252_ty, location))?;
+    let result = entry.extui(value, felt252_ty, location)?;
 
     entry.append_operation(helper.br(0, &[result], location));
 

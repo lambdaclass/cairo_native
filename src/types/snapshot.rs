@@ -12,7 +12,7 @@
 //! pub struct Snapshot<T>(pub T);
 //! ```
 
-use super::{TypeBuilder, WithSelf};
+use super::{BlockExt, TypeBuilder, WithSelf};
 use crate::{
     error::{Error, Result},
     metadata::{

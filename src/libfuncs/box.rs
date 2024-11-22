@@ -2,7 +2,7 @@
 //!
 //! A heap allocated value, which is internally a pointer that can't be null.
 
-use super::LibfuncHelper;
+use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},

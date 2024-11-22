@@ -290,7 +290,7 @@ pub fn build_to_felt252<'ctx, 'this>(
 
     let value_abs = entry.append_op_result(math::absi(context, value, location).into())?;
 
-    let result = entry.append_op_result(arith::extui(value_abs, felt252_ty, location))?;
+    let result = entry.extui(value_abs, felt252_ty, location)?;
 
     let prime_minus_result = entry.append_op_result(arith::subi(prime, result, location))?;
 

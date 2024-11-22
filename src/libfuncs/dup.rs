@@ -5,7 +5,7 @@
 //!
 //! However, types like an array need special handling.
 
-use super::LibfuncHelper;
+use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
     metadata::{dup_overrides::DupOverridesMeta, MetadataStorage},

@@ -126,7 +126,7 @@ fn build_add<'ctx, 'this>(
 
     let lhs_value = if compute_range.offset_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
+            entry.extui(lhs_value, compute_ty, location)?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
         }
@@ -135,7 +135,7 @@ fn build_add<'ctx, 'this>(
     };
     let rhs_value = if compute_range.offset_bit_width() > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
+            entry.extui(rhs_value, compute_ty, location)?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
         }
@@ -254,7 +254,7 @@ fn build_sub<'ctx, 'this>(
 
     let lhs_value = if compute_range.offset_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
+            entry.extui(lhs_value, compute_ty, location)?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
         }
@@ -263,7 +263,7 @@ fn build_sub<'ctx, 'this>(
     };
     let rhs_value = if compute_range.offset_bit_width() > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
+            entry.extui(rhs_value, compute_ty, location)?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
         }
@@ -383,7 +383,7 @@ fn build_mul<'ctx, 'this>(
 
     let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
+            entry.extui(lhs_value, compute_ty, location)?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
         }
@@ -392,7 +392,7 @@ fn build_mul<'ctx, 'this>(
     };
     let rhs_value = if compute_range.zero_based_bit_width() > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
+            entry.extui(rhs_value, compute_ty, location)?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
         }
@@ -510,7 +510,7 @@ fn build_divrem<'ctx, 'this>(
 
     let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extui(lhs_value, compute_ty, location))?
+            entry.extui(lhs_value, compute_ty, location)?
         } else {
             entry.append_op_result(arith::extsi(lhs_value, compute_ty, location))?
         }
@@ -519,7 +519,7 @@ fn build_divrem<'ctx, 'this>(
     };
     let rhs_value = if compute_range.zero_based_bit_width() > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extui(rhs_value, compute_ty, location))?
+            entry.extui(rhs_value, compute_ty, location)?
         } else {
             entry.append_op_result(arith::extsi(rhs_value, compute_ty, location))?
         }

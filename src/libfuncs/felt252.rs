@@ -96,8 +96,8 @@ pub fn build_binary_operation<'ctx, 'this>(
 
     let result = match op {
         Felt252BinaryOperator::Add => {
-            let lhs = entry.append_op_result(arith::extui(lhs, i256, location))?;
-            let rhs = entry.append_op_result(arith::extui(rhs, i256, location))?;
+            let lhs = entry.extui(lhs, i256, location)?;
+            let rhs = entry.extui(rhs, i256, location)?;
             let result = entry.append_op_result(arith::addi(lhs, rhs, location))?;
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
@@ -119,8 +119,8 @@ pub fn build_binary_operation<'ctx, 'this>(
             entry.append_op_result(arith::trunci(result, felt252_ty, location))?
         }
         Felt252BinaryOperator::Sub => {
-            let lhs = entry.append_op_result(arith::extui(lhs, i256, location))?;
-            let rhs = entry.append_op_result(arith::extui(rhs, i256, location))?;
+            let lhs = entry.extui(lhs, i256, location)?;
+            let rhs = entry.extui(rhs, i256, location)?;
             let result = entry.append_op_result(arith::subi(lhs, rhs, location))?;
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
@@ -142,8 +142,8 @@ pub fn build_binary_operation<'ctx, 'this>(
             entry.append_op_result(arith::trunci(result, felt252_ty, location))?
         }
         Felt252BinaryOperator::Mul => {
-            let lhs = entry.append_op_result(arith::extui(lhs, i512, location))?;
-            let rhs = entry.append_op_result(arith::extui(rhs, i512, location))?;
+            let lhs = entry.extui(lhs, i512, location)?;
+            let rhs = entry.extui(rhs, i512, location)?;
             let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i512)?;
@@ -274,8 +274,8 @@ pub fn build_binary_operation<'ctx, 'this>(
 
             // Div Logic Start
             // Fetch operands
-            let lhs = entry.append_op_result(arith::extui(lhs, i512, location))?;
-            let rhs = entry.append_op_result(arith::extui(rhs, i512, location))?;
+            let lhs = entry.extui(lhs, i512, location)?;
+            let rhs = entry.extui(rhs, i512, location)?;
             // Calculate inverse of rhs, callling the inverse implementation's starting block
             entry.append_operation(cf::br(start_block, &[rhs], location));
             // Fetch the inverse result from the result block

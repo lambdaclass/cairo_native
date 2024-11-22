@@ -81,8 +81,8 @@ pub fn build_pedersen<'ctx>(
         .init_block()
         .alloca1(context, location, i256_ty, layout_i256.align())?;
 
-    let lhs_i256 = entry.append_op_result(arith::extui(lhs, i256_ty, location))?;
-    let rhs_i256 = entry.append_op_result(arith::extui(rhs, i256_ty, location))?;
+    let lhs_i256 = entry.extui(lhs, i256_ty, location)?;
+    let rhs_i256 = entry.extui(rhs, i256_ty, location)?;
 
     entry.store(context, location, lhs_ptr, lhs_i256)?;
     entry.store(context, location, rhs_ptr, rhs_i256)?;

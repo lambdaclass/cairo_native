@@ -1,6 +1,6 @@
 //! # `u256`-related libfuncs
 
-use super::LibfuncHelper;
+use super::{BlockExt, LibfuncHelper};
 use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{

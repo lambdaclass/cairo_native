@@ -99,7 +99,7 @@ pub fn build_to_felt252<'ctx, 'this>(
     )?;
     let value: Value = entry.arg(0)?;
 
-    let result = entry.append_op_result(arith::extui(value, felt252_ty, location))?;
+    let result = entry.extui(value, felt252_ty, location)?;
 
     entry.append_operation(helper.br(0, &[result], location));
 
