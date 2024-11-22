@@ -386,11 +386,7 @@ pub fn build_square_root<'ctx, 'this>(
                         location,
                     ))?;
 
-                    let threshold = block.append_op_result(arith::shrui(
-                        entry.arg(1)?,
-                        block.arg(1)?,
-                        location,
-                    ))?;
+                    let threshold = block.shrui(entry.arg(1)?, block.arg(1)?, location)?;
                     let threshold_is_poison = block.append_op_result(arith::cmpi(
                         context,
                         CmpiPredicate::Eq,

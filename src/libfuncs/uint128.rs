@@ -214,7 +214,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         location,
     ))?;
 
-    let msb_bits = entry.append_op_result(arith::shrui(value, k128, location))?;
+    let msb_bits = entry.shrui(value, k128, location)?;
     let msb_bits = entry.append_op_result(arith::trunci(
         msb_bits,
         IntegerType::new(context, 128).into(),
@@ -393,11 +393,7 @@ pub fn build_square_root<'ctx, 'this>(
                         location,
                     ))?;
 
-                    let threshold = block.append_op_result(arith::shrui(
-                        entry.arg(1)?,
-                        block.arg(1)?,
-                        location,
-                    ))?;
+                    let threshold = block.shrui(entry.arg(1)?, block.arg(1)?, location)?;
                     let threshold_is_poison = block.append_op_result(arith::cmpi(
                         context,
                         CmpiPredicate::Eq,
@@ -526,7 +522,7 @@ pub fn build_guarantee_mul<'ctx, 'this>(
 
     let const_128 = entry.const_int_from_type(context, location, 128, target_type)?;
 
-    let result_hi = entry.append_op_result(arith::shrui(result, const_128, location))?;
+    let result_hi = entry.shrui(result, const_128, location)?;
     let result_hi = entry.append_op_result(arith::trunci(result_hi, origin_type, location))?;
 
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;

@@ -914,17 +914,17 @@ fn u384_integer_to_struct<'a>(
     ))?;
     let limb2 = {
         let k96 = block.const_int(context, location, 96, 384)?;
-        let limb = block.append_op_result(arith::shrui(integer, k96, location))?;
+        let limb = block.shrui(integer, k96, location)?;
         block.append_op_result(arith::trunci(limb, u96_type, location))?
     };
     let limb3 = {
         let k192 = block.const_int(context, location, 96 * 2, 384)?;
-        let limb = block.append_op_result(arith::shrui(integer, k192, location))?;
+        let limb = block.shrui(integer, k192, location)?;
         block.append_op_result(arith::trunci(limb, u96_type, location))?
     };
     let limb4 = {
         let k288 = block.const_int(context, location, 96 * 3, 384)?;
-        let limb = block.append_op_result(arith::shrui(integer, k288, location))?;
+        let limb = block.shrui(integer, k288, location)?;
         block.append_op_result(arith::trunci(limb, u96_type, location))?
     };
 

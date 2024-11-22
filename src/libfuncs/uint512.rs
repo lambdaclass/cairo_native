@@ -115,17 +115,17 @@ pub fn build_divmod_u256<'ctx, 'this>(
     let result_div = (
         entry.append_op_result(arith::trunci(result_div, i128_ty, location))?,
         entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_div, k128, location))?,
+            entry.shrui(result_div, k128, location)?,
             i128_ty,
             location,
         ))?,
         entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_div, k256, location))?,
+            entry.shrui(result_div, k256, location)?,
             i128_ty,
             location,
         ))?,
         entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_div, k384, location))?,
+            entry.shrui(result_div, k384, location)?,
             i128_ty,
             location,
         ))?,
@@ -134,7 +134,7 @@ pub fn build_divmod_u256<'ctx, 'this>(
     let result_rem = (
         entry.append_op_result(arith::trunci(result_rem, i128_ty, location))?,
         entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_rem, k128, location))?,
+            entry.shrui(result_rem, k128, location)?,
             i128_ty,
             location,
         ))?,
