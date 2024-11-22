@@ -110,8 +110,8 @@ pub fn build_operation<'ctx, 'this>(
     let range_check: Value =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
-    let lhs: Value = entry.argument(1)?.into();
-    let rhs: Value = entry.argument(2)?.into();
+    let lhs: Value = entry.arg(1)?;
+    let rhs: Value = entry.arg(2)?;
 
     let op_name = match info.operator {
         IntOperator::OverflowingAdd => "llvm.intr.uadd.with.overflow",
@@ -162,24 +162,12 @@ pub fn build_equal<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.argument(0)?.into();
-    let arg1: Value = entry.argument(1)?.into();
+    let arg0: Value = entry.arg(0)?;
+    let arg1: Value = entry.arg(1)?;
 
-    let op0 = entry.append_operation(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        arg0,
-        arg1,
-        location,
-    ));
+    let cond = entry.cmpi(context, CmpiPredicate::Eq, arg0, arg1, location)?;
 
-    entry.append_operation(helper.cond_br(
-        context,
-        op0.result(0)?.into(),
-        [1, 0],
-        [&[]; 2],
-        location,
-    ));
+    entry.append_operation(helper.cond_br(context, cond, [1, 0], [&[]; 2], location));
 
     Ok(())
 }
@@ -193,17 +181,11 @@ pub fn build_is_zero<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.argument(0)?.into();
+    let arg0: Value = entry.arg(0)?;
 
     let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
 
-    let condition = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        arg0,
-        const_0,
-        location,
-    ))?;
+    let condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, const_0, location)?;
 
     entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
 
@@ -249,11 +231,11 @@ pub fn build_widemul<'ctx, 'this>(
         metadata,
         &info.output_types()[0][0],
     )?;
-    let lhs: Value = entry.argument(0)?.into();
-    let rhs: Value = entry.argument(1)?.into();
+    let lhs: Value = entry.arg(0)?;
+    let rhs: Value = entry.arg(1)?;
 
-    let lhs = entry.append_op_result(arith::extui(lhs, target_type, location))?;
-    let rhs = entry.append_op_result(arith::extui(rhs, target_type, location))?;
+    let lhs = entry.extui(lhs, target_type, location)?;
+    let rhs = entry.extui(rhs, target_type, location)?;
     let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
 
     entry.append_operation(helper.br(0, &[result], location));
@@ -277,9 +259,9 @@ pub fn build_to_felt252<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
-    let value: Value = entry.argument(0)?.into();
+    let value: Value = entry.arg(0)?;
 
-    let result = entry.append_op_result(arith::extui(value, felt252_ty, location))?;
+    let result = entry.extui(value, felt252_ty, location)?;
 
     entry.append_operation(helper.br(0, &[result], location));
 
@@ -304,13 +286,7 @@ pub fn build_square_root<'ctx, 'this>(
 
     let k1 = entry.const_int_from_type(context, location, 1, i64_ty)?;
 
-    let is_small = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ule,
-        entry.argument(1)?.into(),
-        k1,
-        location,
-    ))?;
+    let is_small = entry.cmpi(context, CmpiPredicate::Ule, entry.arg(1)?, k1, location)?;
 
     let result = entry.append_op_result(scf::r#if(
         is_small,

@@ -110,17 +110,17 @@ pub fn build_downcast<'ctx, 'this>(
 
     let src_value = if compute_width > src_width {
         if is_signed && !src_ty.is_bounded_int(registry)? && !src_ty.is_felt252(registry)? {
-            entry.append_op_result(arith::extsi(
+            entry.extsi(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
                 location,
-            ))?
+            )?
         } else {
-            entry.append_op_result(arith::extui(
+            entry.extui(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
                 location,
-            ))?
+            )?
         }
     } else {
         src_value

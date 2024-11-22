@@ -2,7 +2,11 @@
 
 use crate::{error::Error, utils::get_integer_layout};
 use melior::{
-    dialect::{llvm::r#type::pointer, ods},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        llvm::r#type::pointer,
+        ods,
+    },
     ir::{
         attribute::{
             DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute,
@@ -24,6 +28,32 @@ pub enum GepIndex<'c, 'a> {
 }
 
 pub trait BlockExt<'ctx> {
+    fn arg(&self, idx: usize) -> Result<Value<'ctx, '_>, Error>;
+
+    /// Creates an arith.cmpi operation.
+    fn cmpi(
+        &self,
+        context: &'ctx Context,
+        pred: CmpiPredicate,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    fn extui(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    fn extsi(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
     /// Appends the operation and returns the first result.
     fn append_op_result(&self, operation: Operation<'ctx>) -> Result<Value<'ctx, '_>, Error>;
 
@@ -165,6 +195,43 @@ pub trait BlockExt<'ctx> {
 }
 
 impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
+    #[inline]
+    fn arg(&self, idx: usize) -> Result<Value<'ctx, '_>, Error> {
+        Ok(self.argument(idx)?.into())
+    }
+
+    #[inline]
+    fn cmpi(
+        &self,
+        context: &'ctx Context,
+        pred: CmpiPredicate,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::cmpi(context, pred, lhs, rhs, location))
+    }
+
+    #[inline]
+    fn extsi(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::extui(lhs, target_type, location))
+    }
+
+    #[inline]
+    fn extui(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::extsi(lhs, target_type, location))
+    }
+
     #[inline]
     fn const_int<T>(
         &self,
