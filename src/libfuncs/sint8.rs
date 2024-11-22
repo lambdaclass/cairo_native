@@ -250,8 +250,8 @@ pub fn build_widemul<'ctx, 'this>(
     let lhs: Value = entry.arg(0)?;
     let rhs: Value = entry.arg(1)?;
 
-    let lhs = entry.append_op_result(arith::extsi(lhs, target_type, location))?;
-    let rhs = entry.append_op_result(arith::extsi(rhs, target_type, location))?;
+    let lhs = entry.extsi(lhs, target_type, location)?;
+    let rhs = entry.extsi(rhs, target_type, location)?;
 
     let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
 
