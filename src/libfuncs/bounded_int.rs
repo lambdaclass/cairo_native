@@ -151,7 +151,7 @@ fn build_add<'ctx, 'this>(
     };
     let lhs_value = if lhs_offset != BigInt::ZERO {
         let lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)?;
-        entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))?
+        entry.addi(lhs_value, lhs_offset, location)?
     } else {
         lhs_value
     };
@@ -163,13 +163,13 @@ fn build_add<'ctx, 'this>(
     };
     let rhs_value = if rhs_offset != BigInt::ZERO {
         let rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)?;
-        entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))?
+        entry.addi(rhs_value, rhs_offset, location)?
     } else {
         rhs_value
     };
 
     // Compute the operation.
-    let res_value = entry.append_op_result(arith::addi(lhs_value, rhs_value, location))?;
+    let res_value = entry.addi(lhs_value, rhs_value, location)?;
 
     // Offset and truncate the result to the output type.
     let res_offset = &dst_range.lower - &compute_range.lower;
@@ -279,7 +279,7 @@ fn build_sub<'ctx, 'this>(
     };
     let lhs_value = if lhs_offset != BigInt::ZERO {
         let lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)?;
-        entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))?
+        entry.addi(lhs_value, lhs_offset, location)?
     } else {
         lhs_value
     };
@@ -291,7 +291,7 @@ fn build_sub<'ctx, 'this>(
     };
     let rhs_value = if rhs_offset != BigInt::ZERO {
         let rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)?;
-        entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))?
+        entry.addi(rhs_value, rhs_offset, location)?
     } else {
         rhs_value
     };
@@ -404,14 +404,14 @@ fn build_mul<'ctx, 'this>(
     let lhs_value = if lhs_ty.is_bounded_int(registry)? && lhs_range.lower != BigInt::ZERO {
         let lhs_offset =
             entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)?;
-        entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))?
+        entry.addi(lhs_value, lhs_offset, location)?
     } else {
         lhs_value
     };
     let rhs_value = if rhs_ty.is_bounded_int(registry)? && rhs_range.lower != BigInt::ZERO {
         let rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)?;
-        entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))?
+        entry.addi(rhs_value, rhs_offset, location)?
     } else {
         rhs_value
     };
@@ -531,14 +531,14 @@ fn build_divrem<'ctx, 'this>(
     let lhs_value = if lhs_ty.is_bounded_int(registry)? && lhs_range.lower != BigInt::ZERO {
         let lhs_offset =
             entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)?;
-        entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))?
+        entry.addi(lhs_value, lhs_offset, location)?
     } else {
         lhs_value
     };
     let rhs_value = if rhs_ty.is_bounded_int(registry)? && rhs_range.lower != BigInt::ZERO {
         let rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)?;
-        entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))?
+        entry.addi(rhs_value, rhs_offset, location)?
     } else {
         rhs_value
     };

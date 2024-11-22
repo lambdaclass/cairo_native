@@ -327,7 +327,7 @@ pub fn build_square_root<'ctx, 'this>(
 
             let num_bits = block.append_op_result(arith::subi(k8, leading_zeros, location))?;
 
-            let shift_amount = block.append_op_result(arith::addi(num_bits, k1, location))?;
+            let shift_amount = block.addi(num_bits, k1, location)?;
 
             let parity_mask = block.const_int_from_type(context, location, -2, i8_ty)?;
             let shift_amount =

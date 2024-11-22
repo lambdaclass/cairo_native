@@ -859,7 +859,7 @@ pub fn build_storage_address_from_base_and_offset<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let offset = entry.extui(entry.arg(1)?, entry.argument(0)?.r#type(), location)?;
-    let addr = entry.append_op_result(arith::addi(entry.arg(0)?, offset, location))?;
+    let addr = entry.addi(entry.arg(0)?, offset, location)?;
 
     entry.append_operation(helper.br(0, &[addr], location));
     Ok(())

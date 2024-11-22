@@ -184,8 +184,7 @@ fn build_add_input<'ctx, 'this>(
     {
         // Calculate next length: next_length = current_length + 1
         let k1 = middle_insert_block.const_int(context, location, 1, 64)?;
-        let next_length =
-            middle_insert_block.append_op_result(arith::addi(current_length, k1, location))?;
+        let next_length = middle_insert_block.addi(current_length, k1, location)?;
 
         // Insert next_length into accumulator
         let accumulator =
@@ -426,7 +425,7 @@ fn build_eval<'ctx, 'this>(
                 err_block.const_int(context, location, 4, 64)?,
                 location,
             )?;
-            err_block.append_op_result(arith::addi(mul_mod, mul_mod_usage, location))
+            err_block.addi(mul_mod, mul_mod_usage, location)
         }?;
 
         let partial_type_id = &info.branch_signatures()[1].vars[2].ty;
@@ -513,8 +512,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         location,
                     )?;
                     // value = (lhs_value + rhs_value) % circuit_modulus
-                    let value =
-                        block.append_op_result(arith::addi(lhs_value, rhs_value, location))?;
+                    let value = block.addi(lhs_value, rhs_value, location)?;
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
                     // Truncate back
@@ -544,11 +542,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         location,
                     )?;
                     // value = (output_value + circuit_modulus - rhs_value) % circuit_modulus
-                    let value = block.append_op_result(arith::addi(
-                        output_value,
-                        circuit_modulus,
-                        location,
-                    ))?;
+                    let value = block.addi(output_value, circuit_modulus, location)?;
                     let value = block.append_op_result(arith::subi(value, rhs_value, location))?;
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
@@ -668,8 +662,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         ))
                         .result(0)?
                         .into();
-                    let wrapped_inverse =
-                        block.append_op_result(arith::addi(inverse, circuit_modulus, location))?;
+                    let wrapped_inverse = block.addi(inverse, circuit_modulus, location)?;
                     let inverse = block.append_op_result(arith::select(
                         is_negative,
                         wrapped_inverse,

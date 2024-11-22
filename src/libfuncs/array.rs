@@ -257,8 +257,7 @@ pub fn build_append<'ctx, 'this>(
         let new_capacity = realloc_block.shli(array_end, k1, location)?;
         let new_capacity =
             realloc_block.append_op_result(arith::minui(new_capacity, k1024, location))?;
-        let new_capacity =
-            realloc_block.append_op_result(arith::addi(new_capacity, array_end, location))?;
+        let new_capacity = realloc_block.addi(new_capacity, array_end, location)?;
         let new_capacity =
             realloc_block.append_op_result(arith::maxui(new_capacity, k8, location))?;
 
@@ -307,7 +306,7 @@ pub fn build_append<'ctx, 'this>(
 
         append_block.store(context, location, ptr, entry.arg(1)?)?;
 
-        let array_len = append_block.append_op_result(arith::addi(array_end, k1, location))?;
+        let array_len = append_block.addi(array_end, k1, location)?;
         let value =
             append_block.insert_value(context, location, append_block.arg(0)?, array_len, 2)?;
 
@@ -422,7 +421,7 @@ pub fn build_get<'ctx, 'this>(
             valid_block.extui(array_start, IntegerType::new(context, 64).into(), location)?;
         let index = {
             let index = valid_block.extui(index, IntegerType::new(context, 64).into(), location)?;
-            valid_block.append_op_result(arith::addi(array_start, index, location))?
+            valid_block.addi(array_start, index, location)?
         };
 
         let elem_stride = valid_block.const_int(context, location, elem_stride, 64)?;
@@ -627,7 +626,7 @@ pub fn build_pop_front<'ctx, 'this>(
         valid_block.memcpy(context, location, ptr, target_ptr, elem_size);
 
         let k1 = valid_block.const_int(context, location, 1, 32)?;
-        let new_start = valid_block.append_op_result(arith::addi(array_start, k1, location))?;
+        let new_start = valid_block.addi(array_start, k1, location)?;
         let value = valid_block.insert_value(context, location, value, new_start, 1)?;
 
         valid_block.append_operation(helper.br(0, &[value, target_ptr], location));
@@ -717,7 +716,7 @@ pub fn build_pop_front_consume<'ctx, 'this>(
         valid_block.memcpy(context, location, ptr, target_ptr, elem_size);
 
         let k1 = valid_block.const_int(context, location, 1, 32)?;
-        let new_start = valid_block.append_op_result(arith::addi(array_start, k1, location))?;
+        let new_start = valid_block.addi(array_start, k1, location)?;
         let value = valid_block.insert_value(context, location, value, new_start, 1)?;
 
         valid_block.append_operation(helper.br(0, &[value, target_ptr], location));
@@ -950,11 +949,7 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
         // Update array start (removing popped elements)
 
         let array = {
-            let new_array_start = valid_block.append_op_result(arith::addi(
-                array_start,
-                popped_len_value,
-                location,
-            ))?;
+            let new_array_start = valid_block.addi(array_start, popped_len_value, location)?;
 
             valid_block.insert_value(context, location, array, new_array_start, 1)?
         };
@@ -1115,10 +1110,10 @@ pub fn build_slice<'ctx, 'this>(
 
     let slice_start = entry.arg(2)?;
     let slice_len = entry.arg(3)?;
-    let slice_end = entry.append_op_result(arith::addi(slice_start, slice_len, location))?;
+    let slice_end = entry.addi(slice_start, slice_len, location)?;
 
-    let slice_start = entry.append_op_result(arith::addi(array_start, slice_start, location))?;
-    let slice_end = entry.append_op_result(arith::addi(array_start, slice_end, location))?;
+    let slice_start = entry.addi(array_start, slice_start, location)?;
+    let slice_end = entry.addi(array_start, slice_end, location)?;
     let lhs_bound = entry.cmpi(
         context,
         CmpiPredicate::Uge,

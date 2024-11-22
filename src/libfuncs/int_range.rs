@@ -117,7 +117,7 @@ pub fn build_int_range_pop_front<'ctx, 'this>(
 
     let x = entry.extract_value(context, location, range, inner_ty, 0)?;
     let k1 = entry.const_int_from_type(context, location, 1, inner_ty)?;
-    let x_p_1 = entry.append_op_result(arith::addi(x, k1, location))?;
+    let x_p_1 = entry.addi(x, k1, location)?;
     let y = entry.extract_value(context, location, range, inner_ty, 1)?;
 
     // to know if it is signed

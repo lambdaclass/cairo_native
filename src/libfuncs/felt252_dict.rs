@@ -84,7 +84,7 @@ pub fn build_squash<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let new_gas_builtin = entry.append_op_result(arith::addi(gas_builtin, gas_refund, location))?;
+    let new_gas_builtin = entry.addi(gas_builtin, gas_refund, location)?;
 
     entry.append_operation(helper.br(
         0,

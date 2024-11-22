@@ -153,7 +153,7 @@ pub fn build_downcast<'ctx, 'this>(
             src_range.lower.clone(),
             src_value.r#type(),
         )?;
-        entry.append_op_result(arith::addi(src_value, dst_offset, location))?
+        entry.addi(src_value, dst_offset, location)?
     } else {
         src_value
     };
@@ -366,7 +366,7 @@ pub fn build_upcast<'ctx, 'this>(
             },
             dst_value.r#type(),
         )?;
-        entry.append_op_result(arith::addi(dst_value, dst_offset, location))?
+        entry.addi(dst_value, dst_offset, location)?
     } else {
         dst_value
     };
@@ -376,7 +376,7 @@ pub fn build_upcast<'ctx, 'this>(
         let is_negative = entry.cmpi(context, CmpiPredicate::Slt, dst_value, k0, location)?;
 
         let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
-        let adj_value = entry.append_op_result(arith::addi(dst_value, k_prime, location))?;
+        let adj_value = entry.addi(dst_value, k_prime, location)?;
 
         entry.append_op_result(arith::select(is_negative, adj_value, dst_value, location))?
     } else {

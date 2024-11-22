@@ -98,7 +98,7 @@ pub fn build_binary_operation<'ctx, 'this>(
         Felt252BinaryOperator::Add => {
             let lhs = entry.extui(lhs, i256, location)?;
             let rhs = entry.extui(rhs, i256, location)?;
-            let result = entry.append_op_result(arith::addi(lhs, rhs, location))?;
+            let result = entry.addi(lhs, rhs, location)?;
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
             let result_mod = entry.append_op_result(arith::subi(result, prime, location))?;
@@ -119,7 +119,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let result = entry.append_op_result(arith::subi(lhs, rhs, location))?;
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
-            let result_mod = entry.append_op_result(arith::addi(result, prime, location))?;
+            let result_mod = entry.addi(result, prime, location)?;
             let is_out_of_range = entry.cmpi(context, CmpiPredicate::Ult, lhs, rhs, location)?;
 
             let result = entry.append_op_result(arith::select(
@@ -235,8 +235,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             // if the inverse is < 0, add PRIME
             let prime =
                 negative_check_block.const_int_from_type(context, location, PRIME.clone(), i512)?;
-            let wrapped_inverse =
-                negative_check_block.append_op_result(arith::addi(inverse, prime, location))?;
+            let wrapped_inverse = negative_check_block.addi(inverse, prime, location)?;
             let inverse = negative_check_block.append_op_result(arith::select(
                 is_negative,
                 wrapped_inverse,
