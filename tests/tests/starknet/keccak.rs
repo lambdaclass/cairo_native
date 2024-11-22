@@ -1,4 +1,4 @@
-use crate::common::run_native_starknet_contract;
+use crate::common::{run_native_starknet_aot_contract, run_native_starknet_contract};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::compile::compile_path;
 use cairo_native::starknet_stub::StubSyscallHandler;
@@ -39,9 +39,9 @@ fn keccak_test() {
     assert_eq!(result.remaining_gas, 18446744073709483875);
     assert_eq!(result.return_values, vec![1.into()]);
 
-    let result_aot_ct = run_native_starknet_contract(
-        &program,
-        entry_point.function_idx,
+    let result_aot_ct = run_native_starknet_aot_contract(
+        contract,
+        &entry_point.selector,
         &[],
         &mut StubSyscallHandler::default(),
     );
