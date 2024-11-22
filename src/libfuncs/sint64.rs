@@ -128,13 +128,7 @@ pub fn build_operation<'ctx, 'this>(
     // Create a const operation to get the 0 value to compare against
     let zero_const = entry.const_int_from_type(context, location, 0, values_type)?;
     // Check if the result is positive
-    let is_positive = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Sge,
-        op_result,
-        zero_const,
-        location,
-    ))?;
+    let is_positive = entry.cmpi(context, CmpiPredicate::Sge, op_result, zero_const, location)?;
 
     // Check overflow flag
     let op_overflow = entry.extract_value(
@@ -216,13 +210,7 @@ pub fn build_is_zero<'ctx, 'this>(
 
     let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
 
-    let condition = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        arg0,
-        const_0,
-        location,
-    ))?;
+    let condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, const_0, location)?;
 
     entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
 
@@ -280,13 +268,13 @@ pub fn build_to_felt252<'ctx, 'this>(
     let value: Value = entry.arg(0)?;
     let value_type = value.r#type();
 
-    let is_negative = entry.append_op_result(arith::cmpi(
+    let is_negative = entry.cmpi(
         context,
         arith::CmpiPredicate::Slt,
         value,
         entry.const_int_from_type(context, location, 0, value_type)?,
         location,
-    ))?;
+    )?;
 
     let value_abs = entry.append_op_result(math::absi(context, value, location).into())?;
 
@@ -347,13 +335,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         let half_prime =
             block.const_int_from_type(context, location, HALF_PRIME.clone(), felt252_ty)?;
 
-        let is_felt_neg = block.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Ugt,
-            value,
-            half_prime,
-            location,
-        ))?;
+        let is_felt_neg = block.cmpi(context, CmpiPredicate::Ugt, value, half_prime, location)?;
 
         let is_neg_block = helper.append_block(Block::new(&[]));
         let is_not_neg_block = helper.append_block(Block::new(&[]));
@@ -388,21 +370,9 @@ pub fn build_from_felt252<'ctx, 'this>(
         block.arg(0)?
     };
 
-    let is_smaller_eq = block.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Sle,
-        value,
-        const_max,
-        location,
-    ))?;
+    let is_smaller_eq = block.cmpi(context, CmpiPredicate::Sle, value, const_max, location)?;
 
-    let is_bigger_eq = block.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Sge,
-        value,
-        const_min,
-        location,
-    ))?;
+    let is_bigger_eq = block.cmpi(context, CmpiPredicate::Sge, value, const_min, location)?;
 
     let is_ok = block.append_op_result(arith::andi(is_smaller_eq, is_bigger_eq, location))?;
 
@@ -443,8 +413,7 @@ pub fn build_diff<'ctx, 'this>(
     let rhs: Value = entry.arg(2)?;
 
     // Check if lhs >= rhs
-    let is_ge =
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Sge, lhs, rhs, location))?;
+    let is_ge = entry.cmpi(context, CmpiPredicate::Sge, lhs, rhs, location)?;
 
     let result = entry.append_op_result(arith::subi(lhs, rhs, location))?;
 

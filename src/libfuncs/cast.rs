@@ -137,13 +137,8 @@ pub fn build_downcast<'ctx, 'this>(
                 HALF_PRIME.clone(),
                 src_value.r#type(),
             )?;
-            let is_negative = entry.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Ugt,
-                src_value,
-                adj_offset,
-                location,
-            ))?;
+            let is_negative =
+                entry.cmpi(context, CmpiPredicate::Ugt, src_value, adj_offset, location)?;
 
             let k_prime =
                 entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
@@ -203,7 +198,7 @@ pub fn build_downcast<'ctx, 'this>(
                 dst_range.lower.clone(),
                 src_value.r#type(),
             )?;
-            Some(entry.append_op_result(arith::cmpi(
+            Some(entry.cmpi(
                 context,
                 if !is_signed {
                     CmpiPredicate::Uge
@@ -213,7 +208,7 @@ pub fn build_downcast<'ctx, 'this>(
                 src_value,
                 dst_lower,
                 location,
-            ))?)
+            )?)
         } else {
             None
         };
@@ -224,7 +219,7 @@ pub fn build_downcast<'ctx, 'this>(
                 dst_range.upper.clone(),
                 src_value.r#type(),
             )?;
-            Some(entry.append_op_result(arith::cmpi(
+            Some(entry.cmpi(
                 context,
                 if !is_signed {
                     CmpiPredicate::Ult
@@ -234,7 +229,7 @@ pub fn build_downcast<'ctx, 'this>(
                 src_value,
                 dst_upper,
                 location,
-            ))?)
+            )?)
         } else {
             None
         };
@@ -378,13 +373,7 @@ pub fn build_upcast<'ctx, 'this>(
 
     let dst_value = if dst_ty.is_felt252(registry)? && src_range.lower.sign() == Sign::Minus {
         let k0 = entry.const_int(context, location, 0, 252)?;
-        let is_negative = entry.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Slt,
-            dst_value,
-            k0,
-            location,
-        ))?;
+        let is_negative = entry.cmpi(context, CmpiPredicate::Slt, dst_value, k0, location)?;
 
         let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
         let adj_value = entry.append_op_result(arith::addi(dst_value, k_prime, location))?;

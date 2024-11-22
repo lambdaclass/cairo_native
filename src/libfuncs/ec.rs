@@ -89,8 +89,7 @@ pub fn build_is_zero<'ctx, 'this>(
     )?;
 
     let k0 = entry.const_int(context, location, 0, 252)?;
-    let y_is_zero =
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))?;
+    let y_is_zero = entry.cmpi(context, CmpiPredicate::Eq, y, k0, location)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -123,8 +122,7 @@ pub fn build_neg<'ctx, 'this>(
     let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
     let k0 = entry.const_int(context, location, 0, 252)?;
 
-    let y_is_zero =
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))?;
+    let y_is_zero = entry.cmpi(context, CmpiPredicate::Eq, y, k0, location)?;
 
     let y_neg = entry.append_op_result(arith::subi(k_prime, y, location))?;
     let y_neg = entry.append_op_result(

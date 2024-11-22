@@ -136,13 +136,7 @@ fn build_dup<'ctx>(
     let value_len = entry.append_op_result(arith::subi(value_end, value_start, location))?;
 
     let k0 = entry.const_int(context, location, 0, 32)?;
-    let value_is_empty = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        value_len,
-        k0,
-        location,
-    ))?;
+    let value_is_empty = entry.cmpi(context, CmpiPredicate::Eq, value_len, k0, location)?;
 
     let null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;

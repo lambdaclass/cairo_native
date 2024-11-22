@@ -618,7 +618,7 @@ fn build_constrain<'ctx, 'this>(
 
     let boundary =
         entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?;
-    let is_lower = entry.append_op_result(arith::cmpi(
+    let is_lower = entry.cmpi(
         context,
         if src_range.lower.sign() == Sign::Minus {
             CmpiPredicate::Slt
@@ -628,7 +628,7 @@ fn build_constrain<'ctx, 'this>(
         src_value,
         boundary,
         location,
-    ))?;
+    )?;
 
     let lower_block = helper.append_block(Block::new(&[]));
     let upper_block = helper.append_block(Block::new(&[]));
@@ -720,13 +720,7 @@ fn build_is_zero<'ctx, 'this>(
     );
 
     let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
-    let src_is_zero = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        src_value,
-        k0,
-        location,
-    ))?;
+    let src_is_zero = entry.cmpi(context, CmpiPredicate::Eq, src_value, k0, location)?;
 
     entry.append_operation(helper.cond_br(
         context,

@@ -145,13 +145,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         location,
     ))?;
 
-    let is_ule = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ule,
-        value,
-        const_max,
-        location,
-    ))?;
+    let is_ule = entry.cmpi(context, CmpiPredicate::Ule, value, const_max, location)?;
 
     let block_success = helper.append_block(Block::new(&[]));
     let block_failure = helper.append_block(Block::new(&[]));

@@ -160,13 +160,13 @@ fn build_add_input<'ctx, 'this>(
 
     // Check if last_insert: current_length == number_of_inputs - 1
     let n_inputs_minus_1 = entry.const_int(context, location, n_inputs - 1, 64)?;
-    let last_insert = entry.append_op_result(arith::cmpi(
+    let last_insert = entry.cmpi(
         context,
         arith::CmpiPredicate::Eq,
         current_length,
         n_inputs_minus_1,
         location,
-    ))?;
+    )?;
 
     let middle_insert_block = helper.append_block(Block::new(&[]));
     let last_insert_block = helper.append_block(Block::new(&[]));
@@ -318,13 +318,7 @@ fn build_try_into_circuit_modulus<'ctx, 'this>(
     let modulus = u384_struct_to_integer(context, entry, location, entry.arg(0)?)?;
     let k1 = entry.const_int(context, location, 1, 384)?;
 
-    let is_valid = entry.append_op_result(arith::cmpi(
-        context,
-        arith::CmpiPredicate::Ugt,
-        modulus,
-        k1,
-        location,
-    ))?;
+    let is_valid = entry.cmpi(context, arith::CmpiPredicate::Ugt, modulus, k1, location)?;
 
     entry.append_operation(helper.cond_br(context, is_valid, [0, 1], [&[modulus], &[]], location));
 
@@ -650,13 +644,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         gate_offset_idx,
                         IntegerType::new(context, 64).into(),
                     )?;
-                    let has_inverse = block.append_op_result(arith::cmpi(
-                        context,
-                        CmpiPredicate::Eq,
-                        gcd,
-                        one,
-                        location,
-                    ))?;
+                    let has_inverse = block.cmpi(context, CmpiPredicate::Eq, gcd, one, location)?;
                     let has_inverse_block = helper.append_block(Block::new(&[]));
                     block.append_operation(cf::cond_br(
                         context,
@@ -1014,13 +1002,8 @@ fn build_euclidean_algorithm<'ctx, 'this>(
     // - inv_i is the bezout coefficient x
 
     let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
-    let next_remainder_eq_zero = loop_block.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        next_remainder,
-        zero,
-        location,
-    ))?;
+    let next_remainder_eq_zero =
+        loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)?;
     loop_block.append_operation(cf::cond_br(
         context,
         next_remainder_eq_zero,

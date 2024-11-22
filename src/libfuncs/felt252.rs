@@ -102,13 +102,8 @@ pub fn build_binary_operation<'ctx, 'this>(
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
             let result_mod = entry.append_op_result(arith::subi(result, prime, location))?;
-            let is_out_of_range = entry.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Uge,
-                result,
-                prime,
-                location,
-            ))?;
+            let is_out_of_range =
+                entry.cmpi(context, CmpiPredicate::Uge, result, prime, location)?;
 
             let result = entry.append_op_result(arith::select(
                 is_out_of_range,
@@ -125,13 +120,7 @@ pub fn build_binary_operation<'ctx, 'this>(
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
             let result_mod = entry.append_op_result(arith::addi(result, prime, location))?;
-            let is_out_of_range = entry.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Ult,
-                lhs,
-                rhs,
-                location,
-            ))?;
+            let is_out_of_range = entry.cmpi(context, CmpiPredicate::Ult, lhs, rhs, location)?;
 
             let result = entry.append_op_result(arith::select(
                 is_out_of_range,
@@ -148,13 +137,8 @@ pub fn build_binary_operation<'ctx, 'this>(
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i512)?;
             let result_mod = entry.append_op_result(arith::remui(result, prime, location))?;
-            let is_out_of_range = entry.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Uge,
-                result,
-                prime,
-                location,
-            ))?;
+            let is_out_of_range =
+                entry.cmpi(context, CmpiPredicate::Uge, result, prime, location)?;
 
             let result = entry.append_op_result(arith::select(
                 is_out_of_range,
@@ -223,13 +207,8 @@ pub fn build_binary_operation<'ctx, 'this>(
 
             // If r_(i+1) is 0, then inv_i is the inverse
             let zero = loop_block.const_int_from_type(context, location, 0, i512)?;
-            let next_remainder_eq_zero = loop_block.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Eq,
-                next_remainder,
-                zero,
-                location,
-            ))?;
+            let next_remainder_eq_zero =
+                loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)?;
             loop_block.append_operation(cf::cond_br(
                 context,
                 next_remainder_eq_zero,
@@ -286,13 +265,8 @@ pub fn build_binary_operation<'ctx, 'this>(
             // Apply modulo and convert result to felt252
             let result_mod =
                 inverse_result_block.append_op_result(arith::remui(result, prime, location))?;
-            let is_out_of_range = inverse_result_block.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Uge,
-                result,
-                prime,
-                location,
-            ))?;
+            let is_out_of_range =
+                inverse_result_block.cmpi(context, CmpiPredicate::Uge, result, prime, location)?;
 
             let result = inverse_result_block.append_op_result(arith::select(
                 is_out_of_range,
@@ -356,8 +330,7 @@ pub fn build_is_zero<'ctx, 'this>(
     let arg0: Value = entry.arg(0)?;
 
     let k0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
-    let condition =
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, arg0, k0, location))?;
+    let condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, k0, location)?;
 
     entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
     Ok(())

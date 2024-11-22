@@ -115,13 +115,8 @@ pub fn build_print<'ctx>(
         .invoke_override(context, entry, location, input_ty, entry.arg(0)?)?;
 
     let k0 = entry.const_int(context, location, 0, 32)?;
-    let return_code_is_ok = entry.append_op_result(arith::cmpi(
-        context,
-        arith::CmpiPredicate::Eq,
-        return_code,
-        k0,
-        location,
-    ))?;
+    let return_code_is_ok =
+        entry.cmpi(context, arith::CmpiPredicate::Eq, return_code, k0, location)?;
     cf::assert(
         context,
         return_code_is_ok,

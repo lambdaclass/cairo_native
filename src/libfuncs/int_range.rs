@@ -71,9 +71,9 @@ pub fn build_int_range_try_new<'ctx, 'this>(
     let inner_range = inner.integer_range(registry)?;
 
     let is_valid = if inner_range.lower < BigInt::ZERO {
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Sle, x, y, location))?
+        entry.cmpi(context, CmpiPredicate::Sle, x, y, location)?
     } else {
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Ule, x, y, location))?
+        entry.cmpi(context, CmpiPredicate::Ule, x, y, location)?
     };
 
     let range =
@@ -124,9 +124,9 @@ pub fn build_int_range_pop_front<'ctx, 'this>(
     let inner_range = inner.integer_range(registry)?;
 
     let is_valid = if inner_range.lower < BigInt::ZERO {
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Slt, x, y, location))?
+        entry.cmpi(context, CmpiPredicate::Slt, x, y, location)?
     } else {
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Ult, x, y, location))?
+        entry.cmpi(context, CmpiPredicate::Ult, x, y, location)?
     };
     let range = entry.insert_value(context, location, range, x_p_1, 0)?;
 

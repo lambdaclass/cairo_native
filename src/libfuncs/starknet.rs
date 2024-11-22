@@ -400,13 +400,7 @@ pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
         .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
-    let is_in_range = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ult,
-        value,
-        limit,
-        location,
-    ))?;
+    let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, value, limit, location)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -463,13 +457,7 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
         .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
-    let is_in_range = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ult,
-        value,
-        limit,
-        location,
-    ))?;
+    let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, value, limit, location)?;
 
     entry.append_operation(helper.cond_br(
         context,
@@ -843,13 +831,13 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
 
     let limited_value = entry.append_op_result(arith::subi(entry.arg(1)?, k_limit, location))?;
 
-    let is_within_limit = entry.append_op_result(arith::cmpi(
+    let is_within_limit = entry.cmpi(
         context,
         CmpiPredicate::Ult,
         entry.arg(1)?,
         k_limit,
         location,
-    ))?;
+    )?;
     let value = entry.append_op_result(arith::select(
         is_within_limit,
         entry.arg(1)?,
@@ -903,13 +891,7 @@ pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
         .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
-    let is_in_range = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ult,
-        value,
-        limit,
-        location,
-    ))?;
+    let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, value, limit, location)?;
 
     entry.append_operation(helper.cond_br(
         context,

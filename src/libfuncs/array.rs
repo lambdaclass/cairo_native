@@ -164,13 +164,13 @@ pub fn build_append<'ctx, 'this>(
     let array_end = entry.extract_value(context, location, entry.arg(0)?, len_ty, 2)?;
     let array_capacity = entry.extract_value(context, location, entry.arg(0)?, len_ty, 3)?;
 
-    let has_tail_space = entry.append_op_result(arith::cmpi(
+    let has_tail_space = entry.cmpi(
         context,
         CmpiPredicate::Ult,
         array_end,
         array_capacity,
         location,
-    ))?;
+    )?;
 
     let handle_block = helper.append_block(Block::new(&[]));
     let memmove_block = helper.append_block(Block::new(&[]));
@@ -192,13 +192,8 @@ pub fn build_append<'ctx, 'this>(
         let array_start =
             handle_block.extract_value(context, location, entry.arg(0)?, len_ty, 1)?;
 
-        let has_head_space = handle_block.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Ne,
-            array_start,
-            k0,
-            location,
-        ))?;
+        let has_head_space =
+            handle_block.cmpi(context, CmpiPredicate::Ne, array_start, k0, location)?;
         handle_block.append_operation(cf::cond_br(
             context,
             has_head_space,
@@ -417,13 +412,7 @@ pub fn build_get<'ctx, 'this>(
     let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
 
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
-    let is_valid = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ult,
-        index,
-        array_len,
-        location,
-    ))?;
+    let is_valid = entry.cmpi(context, CmpiPredicate::Ult, index, array_len, location)?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let error_block = helper.append_block(Block::new(&[]));
@@ -618,13 +607,7 @@ pub fn build_pop_front<'ctx, 'this>(
     let array_start = entry.extract_value(context, location, value, len_ty, 1)?;
     let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
 
-    let is_empty = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        array_start,
-        array_end,
-        location,
-    ))?;
+    let is_empty = entry.cmpi(context, CmpiPredicate::Eq, array_start, array_end, location)?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let empty_block = helper.append_block(Block::new(&[]));
@@ -718,13 +701,7 @@ pub fn build_pop_front_consume<'ctx, 'this>(
     let array_start = entry.extract_value(context, location, value, len_ty, 1)?;
     let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
 
-    let is_empty = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        array_start,
-        array_end,
-        location,
-    ))?;
+    let is_empty = entry.cmpi(context, CmpiPredicate::Eq, array_start, array_end, location)?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let empty_block = helper.append_block(Block::new(&[]));
@@ -841,13 +818,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
 
     let array_start = entry.extract_value(context, location, value, len_ty, 1)?;
     let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
-    let is_empty = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        array_start,
-        array_end,
-        location,
-    ))?;
+    let is_empty = entry.cmpi(context, CmpiPredicate::Eq, array_start, array_end, location)?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let empty_block = helper.append_block(Block::new(&[]));
@@ -961,13 +932,13 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
 
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
     let popped_len_value = entry.const_int(context, location, popped_len, 32)?;
-    let is_valid = entry.append_op_result(arith::cmpi(
+    let is_valid = entry.cmpi(
         context,
         CmpiPredicate::Uge,
         array_len,
         popped_len_value,
         location,
-    ))?;
+    )?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let invalid_block = helper.append_block(Block::new(&[]));
@@ -1087,13 +1058,13 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
 
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
     let popped_len_value = entry.const_int(context, location, popped_len, 32)?;
-    let is_valid = entry.append_op_result(arith::cmpi(
+    let is_valid = entry.cmpi(
         context,
         CmpiPredicate::Uge,
         array_len,
         popped_len_value,
         location,
-    ))?;
+    )?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let invalid_block = helper.append_block(Block::new(&[]));
@@ -1187,20 +1158,14 @@ pub fn build_slice<'ctx, 'this>(
 
     let slice_start = entry.append_op_result(arith::addi(array_start, slice_start, location))?;
     let slice_end = entry.append_op_result(arith::addi(array_start, slice_end, location))?;
-    let lhs_bound = entry.append_op_result(arith::cmpi(
+    let lhs_bound = entry.cmpi(
         context,
         CmpiPredicate::Uge,
         slice_start,
         array_start,
         location,
-    ))?;
-    let rhs_bound = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ule,
-        slice_end,
-        array_end,
-        location,
-    ))?;
+    )?;
+    let rhs_bound = entry.cmpi(context, CmpiPredicate::Ule, slice_end, array_end, location)?;
 
     let is_valid = entry.append_op_result(arith::andi(lhs_bound, rhs_bound, location))?;
 
@@ -1500,13 +1465,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         )
     };
 
-    let len_matches = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        array_len,
-        tuple_len,
-        location,
-    ))?;
+    let len_matches = entry.cmpi(context, CmpiPredicate::Eq, array_len, tuple_len, location)?;
 
     let block_ok = helper.append_block(Block::new(&[]));
     let block_err = helper.append_block(Block::new(&[]));
@@ -1522,13 +1481,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
     {
         let k0 = block_ok.const_int(context, location, 0, 32)?;
-        let starts_at_zero = block_ok.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Eq,
-            array_start,
-            k0,
-            location,
-        ))?;
+        let starts_at_zero =
+            block_ok.cmpi(context, CmpiPredicate::Eq, array_start, k0, location)?;
 
         let array_cap = block_ok.extract_value(
             context,
@@ -1537,13 +1491,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             IntegerType::new(context, 32).into(),
             3,
         )?;
-        let capacity_matches = block_ok.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Eq,
-            array_cap,
-            tuple_len,
-            location,
-        ))?;
+        let capacity_matches =
+            block_ok.cmpi(context, CmpiPredicate::Eq, array_cap, tuple_len, location)?;
 
         let array_ptr = block_ok.extract_value(
             context,

@@ -139,13 +139,13 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))?;
     }
 
-    let is_enough = entry.append_op_result(arith::cmpi(
+    let is_enough = entry.cmpi(
         context,
         CmpiPredicate::Uge,
         current_gas,
         total_gas_cost_value,
         location,
-    ))?;
+    )?;
 
     let resulting_gas = entry.append_op_result(
         ods::llvm::intr_usub_sat(context, current_gas, total_gas_cost_value, location).into(),
@@ -219,13 +219,13 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
             entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))?;
     }
 
-    let is_enough = entry.append_op_result(arith::cmpi(
+    let is_enough = entry.cmpi(
         context,
         CmpiPredicate::Uge,
         current_gas,
         total_gas_cost_value,
         location,
-    ))?;
+    )?;
 
     let resulting_gas = entry.append_op_result(
         ods::llvm::intr_usub_sat(context, current_gas, total_gas_cost_value, location).into(),

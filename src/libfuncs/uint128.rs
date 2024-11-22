@@ -200,13 +200,7 @@ pub fn build_from_felt252<'ctx, 'this>(
     let bound = BigUint::from(u128::MAX) + 1u32;
     let k_u128_max_1 = entry.const_int(context, location, bound, 252)?;
 
-    let is_wide = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Uge,
-        value,
-        k_u128_max_1,
-        location,
-    ))?;
+    let is_wide = entry.cmpi(context, CmpiPredicate::Uge, value, k_u128_max_1, location)?;
 
     let lsb_bits = entry.append_op_result(arith::trunci(
         value,
@@ -245,13 +239,7 @@ pub fn build_is_zero<'ctx, 'this>(
 
     let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
 
-    let condition = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        arg0,
-        const_0,
-        location,
-    ))?;
+    let condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, const_0, location)?;
 
     entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
     Ok(())
@@ -329,13 +317,7 @@ pub fn build_square_root<'ctx, 'this>(
 
     let k1 = entry.const_int_from_type(context, location, 1, i128_ty)?;
 
-    let is_small = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ule,
-        entry.arg(1)?,
-        k1,
-        location,
-    ))?;
+    let is_small = entry.cmpi(context, CmpiPredicate::Ule, entry.arg(1)?, k1, location)?;
 
     let result = entry.append_op_result(scf::r#if(
         is_small,
@@ -393,13 +375,8 @@ pub fn build_square_root<'ctx, 'this>(
                     ))?;
 
                     let threshold = block.shrui(entry.arg(1)?, block.arg(1)?, location)?;
-                    let threshold_is_poison = block.append_op_result(arith::cmpi(
-                        context,
-                        CmpiPredicate::Eq,
-                        block.arg(1)?,
-                        k128,
-                        location,
-                    ))?;
+                    let threshold_is_poison =
+                        block.cmpi(context, CmpiPredicate::Eq, block.arg(1)?, k128, location)?;
                     let threshold = block.append_op_result(
                         OperationBuilder::new("arith.select", location)
                             .add_operands(&[threshold_is_poison, k0, threshold])
@@ -407,13 +384,13 @@ pub fn build_square_root<'ctx, 'this>(
                             .build()?,
                     )?;
 
-                    let is_in_range = block.append_op_result(arith::cmpi(
+                    let is_in_range = block.cmpi(
                         context,
                         CmpiPredicate::Ule,
                         large_candidate_squared,
                         threshold,
                         location,
-                    ))?;
+                    )?;
 
                     let result = block.append_op_result(
                         OperationBuilder::new("arith.select", location)
@@ -427,13 +404,8 @@ pub fn build_square_root<'ctx, 'this>(
                     let shift_amount =
                         block.append_op_result(arith::subi(block.arg(1)?, k2, location))?;
 
-                    let should_continue = block.append_op_result(arith::cmpi(
-                        context,
-                        CmpiPredicate::Sge,
-                        shift_amount,
-                        k0,
-                        location,
-                    ))?;
+                    let should_continue =
+                        block.cmpi(context, CmpiPredicate::Sge, shift_amount, k0, location)?;
                     block.append_operation(scf::condition(
                         should_continue,
                         &[result, shift_amount],
