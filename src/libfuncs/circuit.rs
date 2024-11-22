@@ -108,13 +108,7 @@ fn build_init_circuit_data<'ctx, 'this>(
         }
         _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
-    let rc = increment_builtin_counter_by(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-        rc_usage,
-    )?;
+    let rc = increment_builtin_counter_by(context, entry, location, entry.arg(0)?, rc_usage)?;
 
     let k0 = entry.const_int(context, location, 0, 64)?;
     let accumulator_ty = &info.branch_signatures()[0].vars[1].ty;
@@ -153,7 +147,7 @@ fn build_add_input<'ctx, 'this>(
     let accumulator_ctype = registry.get_type(accumulator_type_id)?;
     let accumulator_layout = accumulator_ctype.layout(registry)?;
 
-    let accumulator: Value = entry.argument(0)?.into();
+    let accumulator: Value = entry.arg(0)?;
 
     // Get accumulator current length
     let current_length = entry.extract_value(
@@ -219,7 +213,7 @@ fn build_add_input<'ctx, 'this>(
             ))?;
 
         // Interpret u384 struct (input) as u384 integer
-        let u384_struct = entry.argument(1)?.into();
+        let u384_struct = entry.arg(1)?;
         let new_input =
             u384_struct_to_integer(context, middle_insert_block, location, u384_struct)?;
 
@@ -285,7 +279,7 @@ fn build_add_input<'ctx, 'this>(
         );
 
         // Interpret u384 struct (input) as u384 integer
-        let u384_struct = entry.argument(1)?.into();
+        let u384_struct = entry.arg(1)?;
         let new_input = u384_struct_to_integer(context, last_insert_block, location, u384_struct)?;
 
         // Get pointer to data end
@@ -321,7 +315,7 @@ fn build_try_into_circuit_modulus<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let modulus = u384_struct_to_integer(context, entry, location, entry.argument(0)?.into())?;
+    let modulus = u384_struct_to_integer(context, entry, location, entry.arg(0)?)?;
     let k1 = entry.const_int(context, location, 1, 384)?;
 
     let is_valid = entry.append_op_result(arith::cmpi(
@@ -375,10 +369,10 @@ fn build_eval<'ctx, 'this>(
         CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => &info.circuit_info,
         _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
-    let add_mod = entry.argument(0)?.into();
-    let mul_mod = entry.argument(1)?.into();
-    let circuit_data = entry.argument(3)?.into();
-    let circuit_modulus = entry.argument(4)?.into();
+    let add_mod = entry.arg(0)?;
+    let mul_mod = entry.arg(1)?;
+    let circuit_data = entry.arg(3)?;
+    let circuit_modulus = entry.arg(4)?;
 
     // arguments 5 and 6 are used to build the gate 0 (with constant value 1)
     // let zero = entry.argument(5)?;
@@ -434,7 +428,7 @@ fn build_eval<'ctx, 'this>(
         // We only consider mul gates evaluated before failure
         let mul_mod = {
             let mul_mod_usage = err_block.append_op_result(arith::muli(
-                err_block.argument(0)?.into(),
+                err_block.arg(0)?,
                 err_block.const_int(context, location, 4, 64)?,
                 location,
             ))?;
@@ -644,8 +638,8 @@ fn build_gate_evaluation<'ctx, 'this>(
                         rhs_value,
                         circuit_modulus,
                     )?;
-                    let gcd = egcd_result_block.argument(0)?.into();
-                    let inverse = egcd_result_block.argument(1)?.into();
+                    let gcd = egcd_result_block.arg(0)?;
+                    let inverse = egcd_result_block.arg(1)?;
                     block = egcd_result_block;
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
@@ -737,8 +731,8 @@ fn build_failure_guarantee_verify<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let rc = entry.argument(0)?.into();
-    let mul_mod = entry.argument(1)?.into();
+    let rc = entry.arg(0)?;
+    let mul_mod = entry.arg(1)?;
     let rc = increment_builtin_counter_by(context, entry, location, rc, 4)?;
 
     let mul_mod = increment_builtin_counter_by(context, entry, location, mul_mod, 4)?;
@@ -834,7 +828,7 @@ fn build_get_output<'ctx, 'this>(
 
     let output_idx = output_offset_idx - circuit_info.n_inputs - 1;
 
-    let outputs = entry.argument(0)?.into();
+    let outputs = entry.arg(0)?;
     let output_integer = entry.extract_value(
         context,
         location,
@@ -997,10 +991,10 @@ fn build_euclidean_algorithm<'ctx, 'this>(
 
     // -- Loop body --
     // Arguments are rem_(i-1), rem, inv_(i-1), inv
-    let prev_remainder = loop_block.argument(0)?.into();
-    let remainder = loop_block.argument(1)?.into();
-    let prev_inverse = loop_block.argument(2)?.into();
-    let inverse = loop_block.argument(3)?.into();
+    let prev_remainder = loop_block.arg(0)?;
+    let remainder = loop_block.arg(1)?;
+    let prev_inverse = loop_block.arg(2)?;
+    let inverse = loop_block.arg(3)?;
 
     // First calculate q = rem_(i-1)/rem_i, rounded down
     let quotient =

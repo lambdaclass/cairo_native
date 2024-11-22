@@ -97,7 +97,7 @@ pub fn build_to_felt252<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
-    let value: Value = entry.argument(0)?.into();
+    let value: Value = entry.arg(0)?;
 
     let result = entry.append_op_result(arith::extui(value, felt252_ty, location))?;
 
@@ -117,9 +117,9 @@ pub fn build_from_felt252<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let value: Value = entry.argument(1)?.into();
+    let value: Value = entry.arg(1)?;
 
     let felt252_ty = registry.build_type(
         context,

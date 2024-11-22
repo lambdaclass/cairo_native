@@ -98,10 +98,10 @@ pub fn build_operation<'ctx, 'this>(
     info: &IntOperationConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let lhs: Value = entry.argument(1)?.into();
-    let rhs: Value = entry.argument(2)?.into();
+    let lhs: Value = entry.arg(1)?;
+    let rhs: Value = entry.arg(2)?;
 
     let op_name = match info.operator {
         IntOperator::OverflowingAdd => "llvm.intr.sadd.with.overflow",
@@ -181,8 +181,8 @@ pub fn build_equal<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.argument(0)?.into();
-    let arg1: Value = entry.argument(1)?.into();
+    let arg0: Value = entry.arg(0)?;
+    let arg1: Value = entry.arg(1)?;
 
     let op0 = entry.append_operation(arith::cmpi(
         context,
@@ -212,7 +212,7 @@ pub fn build_is_zero<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.argument(0)?.into();
+    let arg0: Value = entry.arg(0)?;
 
     let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
 
@@ -246,8 +246,8 @@ pub fn build_widemul<'ctx, 'this>(
         metadata,
         &info.output_types()[0][0],
     )?;
-    let lhs: Value = entry.argument(0)?.into();
-    let rhs: Value = entry.argument(1)?.into();
+    let lhs: Value = entry.arg(0)?;
+    let rhs: Value = entry.arg(1)?;
 
     let lhs = entry.append_op_result(arith::extsi(lhs, target_type, location))?;
     let rhs = entry.append_op_result(arith::extsi(rhs, target_type, location))?;
@@ -277,7 +277,7 @@ pub fn build_to_felt252<'ctx, 'this>(
     )?;
     let prime = entry.const_int_from_type(context, location, PRIME.clone(), felt252_ty)?;
 
-    let value: Value = entry.argument(0)?.into();
+    let value: Value = entry.arg(0)?;
     let value_type = value.r#type();
 
     let is_negative = entry.append_op_result(arith::cmpi(
@@ -317,9 +317,9 @@ pub fn build_from_felt252<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let value: Value = entry.argument(1)?.into();
+    let value: Value = entry.arg(1)?;
 
     let felt252_ty = registry.build_type(
         context,
@@ -385,7 +385,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         is_not_neg_block.append_operation(cf::br(final_block, &[value], location));
         block = final_block;
 
-        block.argument(0)?.into()
+        block.arg(0)?
     };
 
     let is_smaller_eq = block.append_op_result(arith::cmpi(
@@ -437,10 +437,10 @@ pub fn build_diff<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let lhs: Value = entry.argument(1)?.into();
-    let rhs: Value = entry.argument(2)?.into();
+    let lhs: Value = entry.arg(1)?;
+    let rhs: Value = entry.arg(2)?;
 
     // Check if lhs >= rhs
     let is_ge =

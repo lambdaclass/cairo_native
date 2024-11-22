@@ -56,9 +56,9 @@ pub fn build_int_range_try_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = entry.argument(0)?.into();
-    let x = entry.argument(1)?.into();
-    let y = entry.argument(2)?.into();
+    let range_check = entry.arg(0)?;
+    let x = entry.arg(1)?;
+    let y = entry.arg(2)?;
     let range_ty = registry.build_type(
         context,
         helper,
@@ -103,7 +103,7 @@ pub fn build_int_range_pop_front<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range = entry.argument(0)?.into();
+    let range = entry.arg(0)?;
 
     let inner_ty = registry.build_type(
         context,

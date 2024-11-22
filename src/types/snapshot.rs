@@ -117,13 +117,7 @@ fn build_dup<'ctx>(
     let values = metadata
         .get::<DupOverridesMeta>()
         .ok_or(Error::MissingMetadata)?
-        .invoke_override(
-            context,
-            &entry,
-            location,
-            &info.ty,
-            entry.argument(0)?.into(),
-        )?;
+        .invoke_override(context, &entry, location, &info.ty, entry.arg(0)?)?;
 
     entry.append_operation(func::r#return(&[values.0, values.1], location));
     Ok(region)
@@ -147,13 +141,7 @@ fn build_drop<'ctx>(
     metadata
         .get::<DropOverridesMeta>()
         .ok_or(Error::MissingMetadata)?
-        .invoke_override(
-            context,
-            &entry,
-            location,
-            &info.ty,
-            entry.argument(0)?.into(),
-        )?;
+        .invoke_override(context, &entry, location, &info.ty, entry.arg(0)?)?;
 
     entry.append_operation(func::r#return(&[], location));
     Ok(region)

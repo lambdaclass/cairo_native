@@ -47,7 +47,7 @@ pub fn build<'ctx, 'this>(
             entry,
             location,
             &info.signature.param_signatures[0].ty,
-            entry.argument(0)?.into(),
+            entry.arg(0)?,
         )?;
     }
 

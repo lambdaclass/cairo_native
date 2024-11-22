@@ -76,11 +76,9 @@ pub fn build_binary_operation<'ctx, 'this>(
     let i512 = IntegerType::new(context, 512).into();
 
     let (op, lhs, rhs) = match info {
-        Felt252BinaryOperationConcrete::WithVar(operation) => (
-            operation.operator,
-            entry.argument(0)?.into(),
-            entry.argument(1)?.into(),
-        ),
+        Felt252BinaryOperationConcrete::WithVar(operation) => {
+            (operation.operator, entry.arg(0)?, entry.arg(1)?)
+        }
         Felt252BinaryOperationConcrete::WithConst(operation) => {
             let value = match operation.c.sign() {
                 Sign::Minus => (&operation.c + BigInt::from_biguint(Sign::Minus, PRIME.clone()))
@@ -92,7 +90,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             // TODO: Ensure that the constant is on the correct side of the operation.
             let rhs = entry.const_int_from_type(context, location, value, felt252_ty)?;
 
-            (operation.operator, entry.argument(0)?.into(), rhs)
+            (operation.operator, entry.arg(0)?, rhs)
         }
     };
 
@@ -190,7 +188,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             // This order is chosen because if we reverse them, then the first iteration will just swap them
             let prev_remainder =
                 start_block.const_int_from_type(context, location, PRIME.clone(), i512)?;
-            let remainder = start_block.argument(0)?.into();
+            let remainder = start_block.arg(0)?;
             // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
             let prev_inverse = start_block.const_int_from_type(context, location, 0, i512)?;
             let inverse = start_block.const_int_from_type(context, location, 1, i512)?;
@@ -202,10 +200,10 @@ pub fn build_binary_operation<'ctx, 'this>(
 
             //---Loop body---
             // Arguments are rem_(i-1), rem, inv_(i-1), inv
-            let prev_remainder = loop_block.argument(0)?.into();
-            let remainder = loop_block.argument(1)?.into();
-            let prev_inverse = loop_block.argument(2)?.into();
-            let inverse = loop_block.argument(3)?.into();
+            let prev_remainder = loop_block.arg(0)?;
+            let remainder = loop_block.arg(1)?;
+            let prev_inverse = loop_block.arg(2)?;
+            let inverse = loop_block.arg(3)?;
 
             // First calculate q = rem_(i-1)/rem_i, rounded down
             let quotient =
@@ -281,7 +279,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             // Calculate inverse of rhs, callling the inverse implementation's starting block
             entry.append_operation(cf::br(start_block, &[rhs], location));
             // Fetch the inverse result from the result block
-            let inverse = inverse_result_block.argument(0)?.into();
+            let inverse = inverse_result_block.arg(0)?;
             // Peform lhs * (1/ rhs)
             let result =
                 inverse_result_block.append_op_result(arith::muli(lhs, inverse, location))?;
@@ -355,7 +353,7 @@ pub fn build_is_zero<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.argument(0)?.into();
+    let arg0: Value = entry.arg(0)?;
 
     let k0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
     let condition =

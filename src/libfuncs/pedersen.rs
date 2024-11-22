@@ -53,7 +53,7 @@ pub fn build_pedersen<'ctx>(
         .expect("Runtime library not available.");
 
     let pedersen_builtin =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let felt252_ty = registry.build_type(
         context,
@@ -66,8 +66,8 @@ pub fn build_pedersen<'ctx>(
     let i256_ty = IntegerType::new(context, 256).into();
     let layout_i256 = get_integer_layout(256);
 
-    let lhs = entry.argument(1)?.into();
-    let rhs = entry.argument(2)?.into();
+    let lhs = entry.arg(1)?;
+    let rhs = entry.arg(2)?;
 
     // We must extend to i256 because bswap must be an even number of bytes.
 

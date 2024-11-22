@@ -108,10 +108,10 @@ pub fn build_operation<'ctx, 'this>(
     info: &IntOperationConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let lhs: Value = entry.argument(1)?.into();
-    let rhs: Value = entry.argument(2)?.into();
+    let lhs: Value = entry.arg(1)?;
+    let rhs: Value = entry.arg(2)?;
 
     let op_name = match info.operator {
         IntOperator::OverflowingAdd => "llvm.intr.uadd.with.overflow",
@@ -162,8 +162,8 @@ pub fn build_equal<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.argument(0)?.into();
-    let arg1: Value = entry.argument(1)?.into();
+    let arg0: Value = entry.arg(0)?;
+    let arg1: Value = entry.arg(1)?;
 
     let op0 = entry.append_operation(arith::cmpi(
         context,
@@ -193,7 +193,7 @@ pub fn build_is_zero<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.argument(0)?.into();
+    let arg0: Value = entry.arg(0)?;
 
     let const_0 = entry.append_op_result(arith::constant(
         context,
@@ -223,11 +223,10 @@ pub fn build_divmod<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let lhs: Value = entry.argument(1)?.into();
-    let rhs: Value = entry.argument(2)?.into();
+    let lhs: Value = entry.arg(1)?;
+    let rhs: Value = entry.arg(2)?;
 
     let result_div = entry.append_op_result(arith::divui(lhs, rhs, location))?;
     let result_rem = entry.append_op_result(arith::remui(lhs, rhs, location))?;
@@ -253,8 +252,8 @@ pub fn build_widemul<'ctx, 'this>(
         metadata,
         &info.output_types()[0][0],
     )?;
-    let lhs: Value = entry.argument(0)?.into();
-    let rhs: Value = entry.argument(1)?.into();
+    let lhs: Value = entry.arg(0)?;
+    let rhs: Value = entry.arg(1)?;
 
     let lhs = entry.append_op_result(arith::extui(lhs, target_type, location))?;
     let rhs = entry.append_op_result(arith::extui(rhs, target_type, location))?;
@@ -281,7 +280,7 @@ pub fn build_to_felt252<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
-    let value: Value = entry.argument(0)?.into();
+    let value: Value = entry.arg(0)?;
 
     let result = entry.append_op_result(arith::extui(value, felt252_ty, location))?;
 
@@ -300,8 +299,7 @@ pub fn build_square_root<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let i8_ty = IntegerType::new(context, 8).into();
     let i16_ty = IntegerType::new(context, 16).into();
@@ -315,7 +313,7 @@ pub fn build_square_root<'ctx, 'this>(
     let is_small = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Ule,
-        entry.argument(1)?.into(),
+        entry.arg(1)?,
         k1,
         location,
     ))?;
@@ -327,7 +325,7 @@ pub fn build_square_root<'ctx, 'this>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            block.append_operation(scf::r#yield(&[entry.argument(1)?.into()], location));
+            block.append_operation(scf::r#yield(&[entry.arg(1)?], location));
 
             region
         },
@@ -345,7 +343,7 @@ pub fn build_square_root<'ctx, 'this>(
                 ods::llvm::intr_ctlz(
                     context,
                     i16_ty,
-                    entry.argument(1)?.into(),
+                    entry.arg(1)?,
                     IntegerAttribute::new(IntegerType::new(context, 1).into(), 1),
                     location,
                 )
@@ -377,11 +375,8 @@ pub fn build_square_root<'ctx, 'this>(
                     let block =
                         region.append_block(Block::new(&[(i16_ty, location), (i16_ty, location)]));
 
-                    let result = block.append_op_result(arith::shli(
-                        block.argument(0)?.into(),
-                        k1,
-                        location,
-                    ))?;
+                    let result =
+                        block.append_op_result(arith::shli(block.arg(0)?, k1, location))?;
                     let large_candidate =
                         block.append_op_result(arith::xori(result, k1, location))?;
 
@@ -392,14 +387,14 @@ pub fn build_square_root<'ctx, 'this>(
                     ))?;
 
                     let threshold = block.append_op_result(arith::shrui(
-                        entry.argument(1)?.into(),
-                        block.argument(1)?.into(),
+                        entry.arg(1)?,
+                        block.arg(1)?,
                         location,
                     ))?;
                     let threshold_is_poison = block.append_op_result(arith::cmpi(
                         context,
                         CmpiPredicate::Eq,
-                        block.argument(1)?.into(),
+                        block.arg(1)?,
                         k16,
                         location,
                     ))?;
@@ -431,11 +426,8 @@ pub fn build_square_root<'ctx, 'this>(
                         location,
                     ))?;
 
-                    let shift_amount = block.append_op_result(arith::subi(
-                        block.argument(1)?.into(),
-                        k2,
-                        location,
-                    ))?;
+                    let shift_amount =
+                        block.append_op_result(arith::subi(block.arg(1)?, k2, location))?;
 
                     let should_continue = block.append_op_result(arith::cmpi(
                         context,
@@ -458,7 +450,7 @@ pub fn build_square_root<'ctx, 'this>(
                         region.append_block(Block::new(&[(i16_ty, location), (i16_ty, location)]));
 
                     block.append_operation(scf::r#yield(
-                        &[block.argument(0)?.into(), block.argument(1)?.into()],
+                        &[block.arg(0)?, block.argument(1)?.into()],
                         location,
                     ));
 
@@ -491,9 +483,9 @@ pub fn build_from_felt252<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let value: Value = entry.argument(1)?.into();
+    let value: Value = entry.arg(1)?;
 
     let felt252_ty = registry.build_type(
         context,

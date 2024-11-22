@@ -83,7 +83,7 @@ pub fn build_is_zero<'ctx, 'this>(
     let y = entry.extract_value(
         context,
         location,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         IntegerType::new(context, 252).into(),
         1,
     )?;
@@ -96,7 +96,7 @@ pub fn build_is_zero<'ctx, 'this>(
         context,
         y_is_zero,
         [0, 1],
-        [&[], &[entry.argument(0)?.into()]],
+        [&[], &[entry.arg(0)?]],
         location,
     ));
     Ok(())
@@ -115,7 +115,7 @@ pub fn build_neg<'ctx, 'this>(
     let y = entry.extract_value(
         context,
         location,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         IntegerType::new(context, 252).into(),
         1,
     )?;
@@ -134,7 +134,7 @@ pub fn build_neg<'ctx, 'this>(
             .build()?,
     )?;
 
-    let result = entry.insert_value(context, location, entry.argument(0)?.into(), y_neg, 1)?;
+    let result = entry.insert_value(context, location, entry.arg(0)?, y_neg, 1)?;
 
     entry.append_operation(helper.br(0, &[result], location));
     Ok(())
@@ -150,8 +150,7 @@ pub fn build_point_from_x<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let ec_point_ty = llvm::r#type::r#struct(
         context,
@@ -170,7 +169,7 @@ pub fn build_point_from_x<'ctx, 'this>(
     )?;
 
     let point = entry.append_op_result(llvm::undef(ec_point_ty, location))?;
-    let point = entry.insert_value(context, location, point, entry.argument(1)?.into(), 0)?;
+    let point = entry.insert_value(context, location, point, entry.arg(1)?, 0)?;
 
     entry.store(context, location, point_ptr, point)?;
     let result = metadata
@@ -226,8 +225,8 @@ pub fn build_state_add<'ctx, 'this>(
         get_integer_layout(252).align(),
     )?;
 
-    entry.store(context, location, state_ptr, entry.argument(0)?.into())?;
-    entry.store(context, location, point_ptr, entry.argument(1)?.into())?;
+    entry.store(context, location, state_ptr, entry.arg(0)?)?;
+    entry.store(context, location, point_ptr, entry.arg(1)?)?;
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -250,8 +249,7 @@ pub fn build_state_add_mul<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let ec_op =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let ec_op = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let felt252_ty = IntegerType::new(context, 252).into();
     let ec_state_ty = llvm::r#type::r#struct(
@@ -280,9 +278,9 @@ pub fn build_state_add_mul<'ctx, 'this>(
         get_integer_layout(252).align(),
     )?;
 
-    entry.store(context, location, state_ptr, entry.argument(1)?.into())?;
-    entry.store(context, location, scalar_ptr, entry.argument(2)?.into())?;
-    entry.store(context, location, point_ptr, entry.argument(3)?.into())?;
+    entry.store(context, location, state_ptr, entry.arg(1)?)?;
+    entry.store(context, location, scalar_ptr, entry.arg(2)?)?;
+    entry.store(context, location, point_ptr, entry.arg(3)?)?;
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -328,7 +326,7 @@ pub fn build_state_finalize<'ctx, 'this>(
         get_integer_layout(252).align(),
     )?;
 
-    entry.store(context, location, state_ptr, entry.argument(0)?.into())?;
+    entry.store(context, location, state_ptr, entry.arg(0)?)?;
 
     let is_zero = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -409,8 +407,8 @@ pub fn build_try_new<'ctx, 'this>(
     )?;
 
     let point = entry.append_op_result(llvm::undef(ec_point_ty, location))?;
-    let point = entry.insert_value(context, location, point, entry.argument(0)?.into(), 0)?;
-    let point = entry.insert_value(context, location, point, entry.argument(1)?.into(), 1)?;
+    let point = entry.insert_value(context, location, point, entry.arg(0)?, 0)?;
+    let point = entry.insert_value(context, location, point, entry.arg(1)?, 1)?;
 
     entry.store(context, location, point_ptr, point)?;
 
@@ -438,7 +436,7 @@ pub fn build_unwrap_point<'ctx, 'this>(
     let x = entry.extract_value(
         context,
         location,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         registry.build_type(
             context,
             helper,
@@ -452,7 +450,7 @@ pub fn build_unwrap_point<'ctx, 'this>(
     let y = entry.extract_value(
         context,
         location,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         registry.build_type(
             context,
             helper,

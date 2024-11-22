@@ -98,7 +98,7 @@ pub fn build_into_box<'ctx, 'this>(
 
     entry.append_operation(llvm::store(
         context,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         ptr,
         location,
         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
@@ -133,7 +133,7 @@ pub fn build_unbox<'ctx, 'this>(
     let value = entry
         .append_operation(llvm::load(
             context,
-            entry.argument(0)?.into(),
+            entry.arg(0)?,
             inner_ty,
             location,
             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
@@ -144,11 +144,7 @@ pub fn build_unbox<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(ReallocBindingsMeta::free(
-        context,
-        entry.argument(0)?.into(),
-        location,
-    )?);
+    entry.append_operation(ReallocBindingsMeta::free(context, entry.arg(0)?, location)?);
 
     entry.append_operation(helper.br(0, &[value], location));
     Ok(())

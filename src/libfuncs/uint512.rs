@@ -48,8 +48,7 @@ pub fn build_divmod_u256<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i512_ty = IntegerType::new(context, 512).into();
@@ -62,8 +61,8 @@ pub fn build_divmod_u256<'ctx, 'this>(
         &info.output_types()[0][3],
     )?;
 
-    let lhs_struct: Value = entry.argument(1)?.into();
-    let rhs_struct: Value = entry.argument(2)?.into();
+    let lhs_struct: Value = entry.arg(1)?;
+    let rhs_struct: Value = entry.arg(2)?;
 
     let dividend = (
         entry.extract_value(context, location, lhs_struct, i128_ty, 0)?,

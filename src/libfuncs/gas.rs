@@ -61,14 +61,14 @@ pub fn build_get_available_gas<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let gas = entry.argument(0)?.into();
+    let gas = entry.arg(0)?;
     let gas_u128 = entry.append_op_result(arith::extui(
         gas,
         IntegerType::new(context, 128).into(),
         location,
     ))?;
     // The gas is returned as u128 on the second arg.
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), gas_u128], location));
+    entry.append_operation(helper.br(0, &[entry.arg(0)?, gas_u128], location));
     Ok(())
 }
 
@@ -82,9 +82,8 @@ pub fn build_withdraw_gas<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
-    let current_gas = entry.argument(1)?.into();
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let current_gas = entry.arg(1)?;
 
     let gas_cost = metadata
         .get::<GasCost>()
@@ -173,10 +172,9 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
-    let current_gas = entry.argument(1)?.into();
-    let builtin_ptr = entry.argument(2)?.into();
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let current_gas = entry.arg(1)?;
+    let builtin_ptr = entry.arg(2)?;
 
     let gas_cost = metadata
         .get::<GasCost>()

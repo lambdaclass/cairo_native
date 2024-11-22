@@ -77,8 +77,8 @@ fn build_add<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let lhs_value = entry.argument(0)?.into();
-    let rhs_value = entry.argument(1)?.into();
+    let lhs_value = entry.arg(0)?;
+    let rhs_value = entry.arg(1)?;
 
     // Extract the ranges for the operands and the result type.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
@@ -205,8 +205,8 @@ fn build_sub<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let lhs_value = entry.argument(0)?.into();
-    let rhs_value = entry.argument(1)?.into();
+    let lhs_value = entry.arg(0)?;
+    let rhs_value = entry.arg(1)?;
 
     // Extract the ranges for the operands and the result type.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
@@ -333,8 +333,8 @@ fn build_mul<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let lhs_value = entry.argument(0)?.into();
-    let rhs_value = entry.argument(1)?.into();
+    let lhs_value = entry.arg(0)?;
+    let rhs_value = entry.arg(1)?;
 
     // Extract the ranges for the operands and the result type.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
@@ -453,11 +453,10 @@ fn build_divrem<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &BoundedIntDivRemConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let lhs_value = entry.argument(1)?.into();
-    let rhs_value = entry.argument(2)?.into();
+    let lhs_value = entry.arg(1)?;
+    let rhs_value = entry.arg(2)?;
 
     // Extract the ranges for the operands and the result type.
     let lhs_ty = registry.get_type(&info.param_signatures()[1].ty)?;
@@ -598,9 +597,8 @@ fn build_constrain<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &BoundedIntConstrainConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
-    let src_value: Value = entry.argument(1)?.into();
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let src_value: Value = entry.arg(1)?;
 
     let src_ty = registry.get_type(&info.param_signatures()[1].ty)?;
     let src_range = src_ty.integer_range(registry)?;
@@ -711,7 +709,7 @@ fn build_is_zero<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let src_value: Value = entry.argument(0)?.into();
+    let src_value: Value = entry.arg(0)?;
 
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let src_range = src_ty.integer_range(registry)?;

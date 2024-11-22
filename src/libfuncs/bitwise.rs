@@ -25,11 +25,10 @@ pub fn build<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let bitwise =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let bitwise = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let lhs = entry.argument(1)?.into();
-    let rhs = entry.argument(2)?.into();
+    let lhs = entry.arg(1)?;
+    let rhs = entry.arg(2)?;
 
     let logical_and = entry.append_op_result(arith::andi(lhs, rhs, location))?;
     let logical_xor = entry.append_op_result(arith::xori(lhs, rhs, location))?;

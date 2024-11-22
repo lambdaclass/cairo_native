@@ -55,9 +55,8 @@ pub fn build_downcast<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &DowncastConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
-    let src_value: Value = entry.argument(1)?.into();
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let src_value: Value = entry.arg(1)?;
 
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
         let k0 = entry.const_int(context, location, 0, 1)?;
@@ -295,7 +294,7 @@ pub fn build_upcast<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let src_value = entry.argument(0)?.into();
+    let src_value = entry.arg(0)?;
 
     if info.signature.param_signatures[0].ty == info.signature.branch_signatures[0].vars[0].ty {
         entry.append_operation(helper.br(0, &[src_value], location));

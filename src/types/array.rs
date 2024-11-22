@@ -110,7 +110,7 @@ fn build_dup<'ctx>(
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    let src_value = entry.argument(0)?.into();
+    let src_value = entry.arg(0)?;
     let value_ptr = entry.extract_value(
         context,
         location,
@@ -213,7 +213,7 @@ fn build_dup<'ctx>(
                             location,
                         )]));
 
-                        let idx = block.argument(0)?.into();
+                        let idx = block.arg(0)?;
 
                         let src_value_ptr = block.gep(
                             context,
@@ -266,7 +266,7 @@ fn build_dup<'ctx>(
             context,
             location,
             dst_value,
-            &[block_finish.argument(0)?.into(), k0, value_len, value_len],
+            &[block_finish.arg(0)?, k0, value_len, value_len],
         )?;
 
         block_finish.append_operation(func::r#return(&[src_value, dst_value], location));
@@ -295,7 +295,7 @@ fn build_drop<'ctx>(
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    let src_value = entry.argument(0)?.into();
+    let src_value = entry.arg(0)?;
     let value_ptr = entry.extract_value(
         context,
         location,
@@ -349,7 +349,7 @@ fn build_drop<'ctx>(
                         location,
                     )]));
 
-                    let elem_offset = block.argument(0)?.into();
+                    let elem_offset = block.arg(0)?;
                     let elem_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
                         context,
                         value_ptr,
