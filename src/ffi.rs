@@ -230,7 +230,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
     // linker seems to need a file and doesn't accept stdin
     let mut file = NamedTempFile::new()?;
     file.write_all(object)?;
-    let file = file.into_temp_path();
+    let file = file.into_temp_path().keep().unwrap();
 
     let file_path = file.display().to_string();
     let output_path = output_filename.display().to_string();
