@@ -15,7 +15,6 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith,
     ir::{Block, Location},
     Context,
 };
