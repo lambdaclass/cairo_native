@@ -129,8 +129,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             u64_type,
         )?;
         let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
-        let gas_cost_value =
-            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))?;
+        let gas_cost_value = entry.muli(cost_count_value, cost_value, location)?;
         total_gas_cost_value =
             entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))?;
     }
@@ -209,8 +208,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
             u64_type,
         )?;
         let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
-        let gas_cost_value =
-            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))?;
+        let gas_cost_value = entry.muli(cost_count_value, cost_value, location)?;
         total_gas_cost_value =
             entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))?;
     }

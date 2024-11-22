@@ -133,7 +133,7 @@ pub fn build_binary_operation<'ctx, 'this>(
         Felt252BinaryOperator::Mul => {
             let lhs = entry.extui(lhs, i512, location)?;
             let rhs = entry.extui(rhs, i512, location)?;
-            let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
+            let result = entry.muli(lhs, rhs, location)?;
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i512)?;
             let result_mod = entry.append_op_result(arith::remui(result, prime, location))?;
@@ -193,10 +193,8 @@ pub fn build_binary_operation<'ctx, 'this>(
             let quotient =
                 loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
             // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
-            let rem_times_quo =
-                loop_block.append_op_result(arith::muli(remainder, quotient, location))?;
-            let inv_times_quo =
-                loop_block.append_op_result(arith::muli(inverse, quotient, location))?;
+            let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
+            let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
             let next_remainder = loop_block.append_op_result(arith::subi(
                 prev_remainder,
                 rem_times_quo,
@@ -260,8 +258,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             // Fetch the inverse result from the result block
             let inverse = inverse_result_block.arg(0)?;
             // Peform lhs * (1/ rhs)
-            let result =
-                inverse_result_block.append_op_result(arith::muli(lhs, inverse, location))?;
+            let result = inverse_result_block.muli(lhs, inverse, location)?;
             // Apply modulo and convert result to felt252
             let result_mod =
                 inverse_result_block.append_op_result(arith::remui(result, prime, location))?;

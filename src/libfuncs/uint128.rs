@@ -368,11 +368,8 @@ pub fn build_square_root<'ctx, 'this>(
                     let large_candidate =
                         block.append_op_result(arith::xori(result, k1, location))?;
 
-                    let large_candidate_squared = block.append_op_result(arith::muli(
-                        large_candidate,
-                        large_candidate,
-                        location,
-                    ))?;
+                    let large_candidate_squared =
+                        block.muli(large_candidate, large_candidate, location)?;
 
                     let threshold = block.shrui(entry.arg(1)?, block.arg(1)?, location)?;
                     let threshold_is_poison =
@@ -488,7 +485,7 @@ pub fn build_guarantee_mul<'ctx, 'this>(
 
     let lhs = entry.extui(lhs, target_type, location)?;
     let rhs = entry.extui(rhs, target_type, location)?;
-    let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
+    let result = entry.muli(lhs, rhs, location)?;
     let result_lo = entry.append_op_result(arith::trunci(result, origin_type, location))?;
 
     let const_128 = entry.const_int_from_type(context, location, 128, target_type)?;

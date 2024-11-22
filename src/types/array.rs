@@ -161,7 +161,7 @@ fn build_dup<'ctx>(
             let value_len =
                 block_realloc.extui(value_len, IntegerType::new(context, 64).into(), location)?;
 
-            block_realloc.append_op_result(arith::muli(value_len, elem_stride, location))?
+            block_realloc.muli(value_len, elem_stride, location)?
         };
         let dst_value_ptr = {
             block_realloc.append_op_result(ReallocBindingsMeta::realloc(
@@ -176,8 +176,7 @@ fn build_dup<'ctx>(
             let value_offset =
                 block_realloc.extui(value_start, IntegerType::new(context, 64).into(), location)?;
 
-            let src_value_offset =
-                block_realloc.append_op_result(arith::muli(value_offset, elem_stride, location))?;
+            let src_value_offset = block_realloc.muli(value_offset, elem_stride, location)?;
             block_realloc.gep(
                 context,
                 location,
@@ -315,10 +314,8 @@ fn build_drop<'ctx>(
                 entry.extui(value_end, IntegerType::new(context, 64).into(), location)?;
 
             let elem_stride = entry.const_int(context, location, elem_stride, 64)?;
-            let offset_start =
-                entry.append_op_result(arith::muli(value_start, elem_stride, location))?;
-            let offset_end =
-                entry.append_op_result(arith::muli(value_end, elem_stride, location))?;
+            let offset_start = entry.muli(value_start, elem_stride, location)?;
+            let offset_end = entry.muli(value_end, elem_stride, location)?;
 
             entry.append_operation(scf::r#for(
                 offset_start,

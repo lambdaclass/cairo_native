@@ -421,11 +421,11 @@ fn build_eval<'ctx, 'this>(
     {
         // We only consider mul gates evaluated before failure
         let mul_mod = {
-            let mul_mod_usage = err_block.append_op_result(arith::muli(
+            let mul_mod_usage = err_block.muli(
                 err_block.arg(0)?,
                 err_block.const_int(context, location, 4, 64)?,
                 location,
-            ))?;
+            )?;
             err_block.append_op_result(arith::addi(mul_mod, mul_mod_usage, location))
         }?;
 
@@ -596,8 +596,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         location,
                     )?;
                     // value = (lhs_value * rhs_value) % circuit_modulus
-                    let value =
-                        block.append_op_result(arith::muli(lhs_value, rhs_value, location))?;
+                    let value = block.muli(lhs_value, rhs_value, location)?;
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
                     // Truncate back
@@ -989,8 +988,8 @@ fn build_euclidean_algorithm<'ctx, 'this>(
         loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
 
     // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
-    let rem_times_quo = loop_block.append_op_result(arith::muli(remainder, quotient, location))?;
-    let inv_times_quo = loop_block.append_op_result(arith::muli(inverse, quotient, location))?;
+    let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
+    let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
     let next_remainder =
         loop_block.append_op_result(arith::subi(prev_remainder, rem_times_quo, location))?;
     let next_inverse =

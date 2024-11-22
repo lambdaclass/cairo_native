@@ -328,8 +328,7 @@ pub fn build_from_felt252<'ctx, 'this>(
                 is_neg_block.append_op_result(arith::subi(prime, value, location))?;
 
             let kneg1 = is_neg_block.const_int_from_type(context, location, -1, felt252_ty)?;
-            src_value_is_neg =
-                is_neg_block.append_op_result(arith::muli(src_value_is_neg, kneg1, location))?;
+            src_value_is_neg = is_neg_block.muli(src_value_is_neg, kneg1, location)?;
 
             is_neg_block.append_operation(cf::br(final_block, &[src_value_is_neg], location));
         }

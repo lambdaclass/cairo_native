@@ -247,7 +247,7 @@ pub fn build_widemul<'ctx, 'this>(
 
     let lhs = entry.extui(lhs, target_type, location)?;
     let rhs = entry.extui(rhs, target_type, location)?;
-    let result = entry.append_op_result(arith::muli(lhs, rhs, location))?;
+    let result = entry.muli(lhs, rhs, location)?;
 
     entry.append_operation(helper.br(0, &[result], location));
     Ok(())
@@ -347,11 +347,8 @@ pub fn build_square_root<'ctx, 'this>(
                     let large_candidate =
                         block.append_op_result(arith::xori(result, k1, location))?;
 
-                    let large_candidate_squared = block.append_op_result(arith::muli(
-                        large_candidate,
-                        large_candidate,
-                        location,
-                    ))?;
+                    let large_candidate_squared =
+                        block.muli(large_candidate, large_candidate, location)?;
 
                     let threshold = block.shrui(entry.arg(1)?, block.arg(1)?, location)?;
                     let threshold_is_poison =

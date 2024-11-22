@@ -417,7 +417,7 @@ fn build_mul<'ctx, 'this>(
     };
 
     // Compute the operation.
-    let res_value = entry.append_op_result(arith::muli(lhs_value, rhs_value, location))?;
+    let res_value = entry.muli(lhs_value, rhs_value, location)?;
 
     // Offset and truncate the result to the output type.
     let res_offset = (&dst_range.lower).max(&compute_range.lower).clone();

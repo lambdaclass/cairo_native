@@ -211,8 +211,7 @@ pub fn build_append<'ctx, 'this>(
 
         let start_offset =
             memmove_block.extui(array_start, IntegerType::new(context, 64).into(), location)?;
-        let start_offset =
-            memmove_block.append_op_result(arith::muli(start_offset, elem_stride, location))?;
+        let start_offset = memmove_block.muli(start_offset, elem_stride, location)?;
 
         let dst_ptr = memmove_block.extract_value(context, location, entry.arg(0)?, ptr_ty, 0)?;
         let src_ptr = memmove_block.append_op_result(llvm::get_element_ptr_dynamic(
@@ -229,8 +228,7 @@ pub fn build_append<'ctx, 'this>(
         let memmove_len =
             memmove_block.extui(array_len, IntegerType::new(context, 64).into(), location)?;
 
-        let memmove_len =
-            memmove_block.append_op_result(arith::muli(memmove_len, elem_stride, location))?;
+        let memmove_len = memmove_block.muli(memmove_len, elem_stride, location)?;
         memmove_block.append_operation(
             ods::llvm::intr_memmove(
                 context,
@@ -270,7 +268,7 @@ pub fn build_append<'ctx, 'this>(
                 IntegerType::new(context, 64).into(),
                 location,
             )?;
-            realloc_block.append_op_result(arith::muli(new_capacity, elem_stride, location))?
+            realloc_block.muli(new_capacity, elem_stride, location)?
         };
 
         let ptr = realloc_block.extract_value(context, location, entry.arg(0)?, ptr_ty, 0)?;
@@ -297,7 +295,7 @@ pub fn build_append<'ctx, 'this>(
 
         let offset =
             append_block.extui(array_end, IntegerType::new(context, 64).into(), location)?;
-        let offset = append_block.append_op_result(arith::muli(offset, elem_stride, location))?;
+        let offset = append_block.muli(offset, elem_stride, location)?;
         let ptr = append_block.append_op_result(llvm::get_element_ptr_dynamic(
             context,
             ptr,
@@ -428,8 +426,7 @@ pub fn build_get<'ctx, 'this>(
         };
 
         let elem_stride = valid_block.const_int(context, location, elem_stride, 64)?;
-        let elem_offset =
-            valid_block.append_op_result(arith::muli(elem_stride, index, location))?;
+        let elem_offset = valid_block.muli(elem_stride, index, location)?;
 
         let elem_ptr = valid_block.gep(
             context,
@@ -463,13 +460,8 @@ pub fn build_get<'ctx, 'this>(
                 let array_end =
                     valid_block.extui(array_end, IntegerType::new(context, 64).into(), location)?;
 
-                let array_start = valid_block.append_op_result(arith::muli(
-                    array_start,
-                    elem_stride,
-                    location,
-                ))?;
-                let array_end =
-                    valid_block.append_op_result(arith::muli(array_end, elem_stride, location))?;
+                let array_start = valid_block.muli(array_start, elem_stride, location)?;
+                let array_end = valid_block.muli(array_end, elem_stride, location)?;
 
                 valid_block.append_operation(scf::r#for(
                     array_start,
@@ -608,8 +600,7 @@ pub fn build_pop_front<'ctx, 'this>(
         let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
         let elem_offset =
             valid_block.extui(array_start, IntegerType::new(context, 64).into(), location)?;
-        let elem_offset =
-            valid_block.append_op_result(arith::muli(elem_offset, elem_size, location))?;
+        let elem_offset = valid_block.muli(elem_offset, elem_size, location)?;
         let ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
             context,
             ptr,
@@ -699,8 +690,7 @@ pub fn build_pop_front_consume<'ctx, 'this>(
         let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
         let elem_offset =
             valid_block.extui(array_start, IntegerType::new(context, 64).into(), location)?;
-        let elem_offset =
-            valid_block.append_op_result(arith::muli(elem_offset, elem_size, location))?;
+        let elem_offset = valid_block.muli(elem_offset, elem_size, location)?;
         let ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
             context,
             ptr,
@@ -816,8 +806,7 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
         let elem_size = valid_block.const_int(context, location, elem_layout.size(), 64)?;
         let elem_offset =
             valid_block.extui(new_end, IntegerType::new(context, 64).into(), location)?;
-        let elem_offset =
-            valid_block.append_op_result(arith::muli(elem_offset, elem_size, location))?;
+        let elem_offset = valid_block.muli(elem_offset, elem_size, location)?;
         let ptr = valid_block.append_op_result(llvm::get_element_ptr_dynamic(
             context,
             ptr,
@@ -1164,7 +1153,7 @@ pub fn build_slice<'ctx, 'this>(
             slice_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
         let prepare = |value| {
             let value = slice_block.extui(value, IntegerType::new(context, 64).into(), location)?;
-            slice_block.append_op_result(arith::muli(value, elem_stride, location))
+            slice_block.muli(value, elem_stride, location)
         };
 
         let ptr = slice_block.extract_value(
@@ -1310,8 +1299,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     let field_size: Value = entry.const_int(context, location, field_stride, 64)?;
     let array_len_value_i64 = entry.extui(array_len_value, field_size.r#type(), location)?;
-    let total_size =
-        entry.append_op_result(arith::muli(field_size, array_len_value_i64, location))?;
+    let total_size = entry.muli(field_size, array_len_value_i64, location)?;
 
     let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context, ptr, total_size, location,
@@ -1489,8 +1477,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 block_clone.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
             let tuple_len =
                 block_clone.extui(tuple_len, IntegerType::new(context, 64).into(), location)?;
-            let tuple_len =
-                block_clone.append_op_result(arith::muli(tuple_len, elem_stride, location))?;
+            let tuple_len = block_clone.muli(tuple_len, elem_stride, location)?;
 
             let box_ptr = block_clone
                 .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
@@ -1500,8 +1487,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
             let elem_offset =
                 block_clone.extui(array_start, IntegerType::new(context, 64).into(), location)?;
-            let elem_offset =
-                block_clone.append_op_result(arith::muli(elem_offset, elem_stride, location))?;
+            let elem_offset = block_clone.muli(elem_offset, elem_stride, location)?;
             let elem_ptr = block_clone.append_op_result(llvm::get_element_ptr_dynamic(
                 context,
                 array_ptr,
