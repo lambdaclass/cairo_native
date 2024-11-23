@@ -141,9 +141,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Const(selector) => self::r#const::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Coupon(info) => {
-                self::coupon::build(context, registry, entry, location, helper, metadata, info)
-            }
+            Self::Coupon(selector) => self::coupon::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::CouponCall(info) => self::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
