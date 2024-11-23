@@ -936,6 +936,10 @@ pub(crate) mod handler {
         }
 
         unsafe fn drop_mlir_array<E>(data: &ArrayAbi<E>) {
+            if data.ptr.is_null() {
+                return;
+            }
+
             let refcount_offset = get_integer_layout(32)
                 .align_to(mem::align_of::<E>())
                 .unwrap()
