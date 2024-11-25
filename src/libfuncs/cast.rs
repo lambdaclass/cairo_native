@@ -163,7 +163,7 @@ pub fn build_downcast<'ctx, 'this>(
             let dst_offset = entry.const_int_from_type(
                 context,
                 location,
-                dst_range.lower.clone(),
+                dst_range.lower,
                 src_value.r#type(),
             )?;
             entry.append_op_result(arith::subi(src_value, dst_offset, location))?
@@ -250,7 +250,7 @@ pub fn build_downcast<'ctx, 'this>(
             let dst_offset = entry.const_int_from_type(
                 context,
                 location,
-                dst_range.lower.clone(),
+                dst_range.lower,
                 src_value.r#type(),
             )?;
             entry.append_op_result(arith::subi(src_value, dst_offset, location))?

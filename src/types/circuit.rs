@@ -153,7 +153,7 @@ pub fn build_circuit_outputs<'ctx>(
     ))
 }
 
-pub fn is_complex(info: &CircuitTypeConcrete) -> bool {
+pub const fn is_complex(info: &CircuitTypeConcrete) -> bool {
     match *info {
         CircuitTypeConcrete::AddMod(_)
         | CircuitTypeConcrete::MulMod(_)
@@ -176,7 +176,7 @@ pub fn is_complex(info: &CircuitTypeConcrete) -> bool {
     }
 }
 
-pub fn is_zst(info: &CircuitTypeConcrete) -> bool {
+pub const fn is_zst(info: &CircuitTypeConcrete) -> bool {
     match *info {
         CircuitTypeConcrete::AddModGate(_)
         | CircuitTypeConcrete::SubModGate(_)
