@@ -5,7 +5,7 @@
 typedef struct linear_search_return_values
 {
     uint64_t range_check_counter;
-    unsigned __int128 remaining_gas;
+    uint64_t remaining_gas;
     struct {
         uint8_t discriminant;
         struct {
@@ -30,7 +30,7 @@ int main()
 
     linear_search_return_values_t return_values;
 
-    run_bench(&return_values, 0);
+    run_bench(&return_values, 0xFFFFFFFFFFFFFFFF);
     assert((return_values.result.discriminant & 0x1) == 0);
 
     return 0;
