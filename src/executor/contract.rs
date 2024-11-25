@@ -276,7 +276,7 @@ impl AotContractExecutor {
     /// - builtin_costs: An optional argument to customize the costs of the builtins.
     /// - syscall_handler: The syscall handler implementation to use when executing the contract.
     ///
-    /// This method doesn't do any gas accounting, meaning it wont substract the initial gas cost of the entry point from the given gas.
+    /// The entry point gas cost is not deducted from the gas counter.
     pub fn run(
         &self,
         selector: Felt,
