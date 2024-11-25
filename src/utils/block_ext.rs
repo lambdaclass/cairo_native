@@ -15,7 +15,7 @@ use melior::{
 use num_bigint::BigInt;
 
 /// Index types for LLVM GEP.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GepIndex<'c, 'a> {
     /// A compile time known index.
     Const(i32),

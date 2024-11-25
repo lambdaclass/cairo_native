@@ -154,7 +154,7 @@ pub struct Secp256k1Point {
 }
 
 impl Secp256k1Point {
-    pub fn new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -> Self {
+    pub const fn new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -> Self {
         Self {
             x: U256 { lo: x_lo, hi: x_hi },
             y: U256 { lo: y_lo, hi: y_hi },
@@ -172,7 +172,7 @@ pub struct Secp256r1Point {
 }
 
 impl Secp256r1Point {
-    pub fn new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -> Self {
+    pub const fn new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -> Self {
         Self {
             x: U256 { lo: x_lo, hi: x_hi },
             y: U256 { lo: y_lo, hi: y_hi },
@@ -560,21 +560,21 @@ pub(crate) mod handler {
     }
 
     #[repr(C)]
-    pub(crate) union SyscallResultAbi<T> {
+    pub union SyscallResultAbi<T> {
         pub ok: ManuallyDrop<SyscallResultAbiOk<T>>,
         pub err: ManuallyDrop<SyscallResultAbiErr>,
     }
 
     #[repr(C)]
     #[derive(Debug)]
-    pub(crate) struct SyscallResultAbiOk<T> {
+    pub struct SyscallResultAbiOk<T> {
         pub tag: u8,
         pub payload: ManuallyDrop<T>,
     }
 
     #[repr(C)]
     #[derive(Debug)]
-    pub(crate) struct SyscallResultAbiErr {
+    pub struct SyscallResultAbiErr {
         pub tag: u8,
         pub payload: ArrayAbi<Felt252Abi>,
     }
