@@ -332,7 +332,7 @@
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(self_ty, location)]));
 
-    <span class="kw">let </span><span class="kw-2">mut </span>src_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span><span class="kw-2">mut </span>src_value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>dst_value = entry.append_op_result(llvm::undef(self_ty, location))<span class="question-mark">?</span>;
 
     <span class="kw">for </span>(idx, member_id) <span class="kw">in </span>info.members.iter().enumerate() {
@@ -367,7 +367,7 @@
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(self_ty, location)]));
 
-    <span class="kw">let </span>value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">for </span>(idx, member_id) <span class="kw">in </span>info.members.iter().enumerate() {
         <span class="kw">let </span>member_ty = registry.build_type(context, module, registry, metadata, member_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>member_val = entry.extract_value(context, location, value, member_ty, idx)<span class="question-mark">?</span>;

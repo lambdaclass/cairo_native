@@ -825,10 +825,6 @@
 <a href="#825" id="825">825</a>
 <a href="#826" id="826">826</a>
 <a href="#827" id="827">827</a>
-<a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a>
-<a href="#830" id="830">830</a>
-<a href="#831" id="831">831</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Elliptic curve libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -914,20 +910,19 @@
     </span><span class="kw">let </span>y = entry.extract_value(
         context,
         location,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
         IntegerType::new(context, <span class="number">252</span>).into(),
         <span class="number">1</span>,
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">252</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>y_is_zero =
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>y_is_zero = entry.cmpi(context, CmpiPredicate::Eq, y, k0, location)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(
         context,
         y_is_zero,
         [<span class="number">0</span>, <span class="number">1</span>],
-        [<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()]],
+        [<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>]],
         location,
     ));
     <span class="prelude-val">Ok</span>(())
@@ -946,7 +941,7 @@
     <span class="kw">let </span>y = entry.extract_value(
         context,
         location,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
         IntegerType::new(context, <span class="number">252</span>).into(),
         <span class="number">1</span>,
     )<span class="question-mark">?</span>;
@@ -954,8 +949,7 @@
     <span class="kw">let </span>k_prime = entry.const_int(context, location, PRIME.clone(), <span class="number">252</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">252</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>y_is_zero =
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, y, k0, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>y_is_zero = entry.cmpi(context, CmpiPredicate::Eq, y, k0, location)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>y_neg = entry.append_op_result(arith::subi(k_prime, y, location))<span class="question-mark">?</span>;
     <span class="kw">let </span>y_neg = entry.append_op_result(
@@ -965,7 +959,7 @@
             .build()<span class="question-mark">?</span>,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>result = entry.insert_value(context, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), y_neg, <span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = entry.insert_value(context, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>, y_neg, <span class="number">1</span>)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
     <span class="prelude-val">Ok</span>(())
@@ -981,8 +975,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>range_check =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>ec_point_ty = llvm::r#type::r#struct(
         context,
@@ -1001,7 +994,7 @@
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>point = entry.append_op_result(llvm::undef(ec_point_ty, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>point = entry.insert_value(context, location, point, entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(), <span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>point = entry.insert_value(context, location, point, entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>, <span class="number">0</span>)<span class="question-mark">?</span>;
 
     entry.store(context, location, point_ptr, point)<span class="question-mark">?</span>;
     <span class="kw">let </span>result = metadata
@@ -1057,8 +1050,8 @@
         get_integer_layout(<span class="number">252</span>).align(),
     )<span class="question-mark">?</span>;
 
-    entry.store(context, location, state_ptr, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
-    entry.store(context, location, point_ptr, entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    entry.store(context, location, state_ptr, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+    entry.store(context, location, point_ptr, entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -1081,8 +1074,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>ec_op =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>ec_op = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>felt252_ty = IntegerType::new(context, <span class="number">252</span>).into();
     <span class="kw">let </span>ec_state_ty = llvm::r#type::r#struct(
@@ -1111,9 +1103,9 @@
         get_integer_layout(<span class="number">252</span>).align(),
     )<span class="question-mark">?</span>;
 
-    entry.store(context, location, state_ptr, entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
-    entry.store(context, location, scalar_ptr, entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
-    entry.store(context, location, point_ptr, entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    entry.store(context, location, state_ptr, entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+    entry.store(context, location, scalar_ptr, entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+    entry.store(context, location, point_ptr, entry.arg(<span class="number">3</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -1159,7 +1151,7 @@
         get_integer_layout(<span class="number">252</span>).align(),
     )<span class="question-mark">?</span>;
 
-    entry.store(context, location, state_ptr, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    entry.store(context, location, state_ptr, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>is_zero = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -1240,8 +1232,8 @@
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>point = entry.append_op_result(llvm::undef(ec_point_ty, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>point = entry.insert_value(context, location, point, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), <span class="number">0</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>point = entry.insert_value(context, location, point, entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(), <span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>point = entry.insert_value(context, location, point, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>, <span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>point = entry.insert_value(context, location, point, entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
 
     entry.store(context, location, point_ptr, point)<span class="question-mark">?</span>;
 
@@ -1269,7 +1261,7 @@
     <span class="kw">let </span>x = entry.extract_value(
         context,
         location,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
         registry.build_type(
             context,
             helper,
@@ -1283,7 +1275,7 @@
     <span class="kw">let </span>y = entry.extract_value(
         context,
         location,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
         registry.build_type(
             context,
             helper,

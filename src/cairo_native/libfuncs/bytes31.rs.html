@@ -206,12 +206,6 @@
 <a href="#206" id="206">206</a>
 <a href="#207" id="207">207</a>
 <a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Bytes31-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -311,9 +305,9 @@
         metadata,
         <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
-    <span class="kw">let </span>value: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value: Value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>result = entry.append_op_result(arith::extui(value, felt252_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = entry.extui(value, felt252_ty, location)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
 
@@ -331,9 +325,9 @@
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check: Value =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>value: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>felt252_ty = registry.build_type(
         context,
@@ -359,13 +353,7 @@
         location,
     ))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>is_ule = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ule,
-        value,
-        const_max,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>is_ule = entry.cmpi(context, CmpiPredicate::Ule, value, const_max, location)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>block_success = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     <span class="kw">let </span>block_failure = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
@@ -380,7 +368,7 @@
         location,
     ));
 
-    <span class="kw">let </span>value = block_success.append_op_result(arith::trunci(value, result_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>value = block_success.trunci(value, result_ty, location)<span class="question-mark">?</span>;
     block_success.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, value], location));
 
     block_failure.append_operation(helper.br(<span class="number">1</span>, <span class="kw-2">&amp;</span>[range_check], location));

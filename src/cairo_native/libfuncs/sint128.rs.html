@@ -725,38 +725,6 @@
 <a href="#725" id="725">725</a>
 <a href="#726" id="726">726</a>
 <a href="#727" id="727">727</a>
-<a href="#728" id="728">728</a>
-<a href="#729" id="729">729</a>
-<a href="#730" id="730">730</a>
-<a href="#731" id="731">731</a>
-<a href="#732" id="732">732</a>
-<a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
-<a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
-<a href="#753" id="753">753</a>
-<a href="#754" id="754">754</a>
-<a href="#755" id="755">755</a>
-<a href="#756" id="756">756</a>
-<a href="#757" id="757">757</a>
-<a href="#758" id="758">758</a>
-<a href="#759" id="759">759</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `i128`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -856,10 +824,10 @@
     info: <span class="kw-2">&amp;</span>IntOperationConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check: Value =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>lhs: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs: Value = entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op_name = <span class="kw">match </span>info.operator {
         IntOperator::OverflowingAdd =&gt; <span class="string">"llvm.intr.sadd.with.overflow"</span>,
@@ -886,13 +854,7 @@
     <span class="comment">// Create a const operation to get the 0 value to compare against
     </span><span class="kw">let </span>zero_const = entry.const_int_from_type(context, location, <span class="number">0</span>, values_type)<span class="question-mark">?</span>;
     <span class="comment">// Check if the result is positive
-    </span><span class="kw">let </span>is_positive = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Sge,
-        op_result,
-        zero_const,
-        location,
-    ))<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>is_positive = entry.cmpi(context, CmpiPredicate::Sge, op_result, zero_const, location)<span class="question-mark">?</span>;
 
     <span class="comment">// Check overflow flag
     </span><span class="kw">let </span>op_overflow = entry.extract_value(
@@ -939,8 +901,8 @@
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>arg0: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>arg1: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>arg0: Value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>arg1: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op0 = entry.append_operation(arith::cmpi(
         context,
@@ -970,17 +932,11 @@
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>arg0: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>arg0: Value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>const_0 = entry.const_int_from_type(context, location, <span class="number">0</span>, arg0.r#type())<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>condition = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        arg0,
-        const_0,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, const_0, location)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(context, condition, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[arg0]], location));
 
@@ -1006,20 +962,20 @@
     )<span class="question-mark">?</span>;
     <span class="kw">let </span>prime = entry.const_int_from_type(context, location, PRIME.clone(), felt252_ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>value: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value: Value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>value_type = value.r#type();
 
-    <span class="kw">let </span>is_negative = entry.append_op_result(arith::cmpi(
+    <span class="kw">let </span>is_negative = entry.cmpi(
         context,
         arith::CmpiPredicate::Slt,
         value,
         entry.const_int_from_type(context, location, <span class="number">0</span>, value_type)<span class="question-mark">?</span>,
         location,
-    ))<span class="question-mark">?</span>;
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>value_abs = entry.append_op_result(math::absi(context, value, location).into())<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>result = entry.append_op_result(arith::extui(value_abs, felt252_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = entry.extui(value_abs, felt252_ty, location)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>prime_minus_result = entry.append_op_result(arith::subi(prime, result, location))<span class="question-mark">?</span>;
 
@@ -1046,9 +1002,9 @@
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check: Value =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>value: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>felt252_ty = registry.build_type(
         context,
@@ -1076,13 +1032,7 @@
         <span class="kw">let </span>half_prime =
             block.const_int_from_type(context, location, HALF_PRIME.clone(), felt252_ty)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>is_felt_neg = block.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Ugt,
-            value,
-            half_prime,
-            location,
-        ))<span class="question-mark">?</span>;
+        <span class="kw">let </span>is_felt_neg = block.cmpi(context, CmpiPredicate::Ugt, value, half_prime, location)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>is_neg_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
         <span class="kw">let </span>is_not_neg_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
@@ -1105,8 +1055,7 @@
                 is_neg_block.append_op_result(arith::subi(prime, value, location))<span class="question-mark">?</span>;
 
             <span class="kw">let </span>kneg1 = is_neg_block.const_int_from_type(context, location, -<span class="number">1</span>, felt252_ty)<span class="question-mark">?</span>;
-            src_value_is_neg =
-                is_neg_block.append_op_result(arith::muli(src_value_is_neg, kneg1, location))<span class="question-mark">?</span>;
+            src_value_is_neg = is_neg_block.muli(src_value_is_neg, kneg1, location)<span class="question-mark">?</span>;
 
             is_neg_block.append_operation(cf::br(final_block, <span class="kw-2">&amp;</span>[src_value_is_neg], location));
         }
@@ -1114,24 +1063,12 @@
         is_not_neg_block.append_operation(cf::br(final_block, <span class="kw-2">&amp;</span>[value], location));
 
         block = final_block;
-        block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()
-    };
+        block.arg(<span class="number">0</span>)<span class="question-mark">?
+    </span>};
 
-    <span class="kw">let </span>is_smaller_eq = block.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Sle,
-        value,
-        const_max,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>is_smaller_eq = block.cmpi(context, CmpiPredicate::Sle, value, const_max, location)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>is_bigger_eq = block.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Sge,
-        value,
-        const_min,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>is_bigger_eq = block.cmpi(context, CmpiPredicate::Sge, value, const_min, location)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>is_ok = block.append_op_result(arith::andi(is_smaller_eq, is_bigger_eq, location))<span class="question-mark">?</span>;
 
@@ -1148,7 +1085,7 @@
         location,
     ));
 
-    <span class="kw">let </span>value = block_success.append_op_result(arith::trunci(value, result_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>value = block_success.trunci(value, result_ty, location)<span class="question-mark">?</span>;
 
     block_success.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, value], location));
     block_failure.append_operation(helper.br(<span class="number">1</span>, <span class="kw-2">&amp;</span>[range_check], location));
@@ -1166,14 +1103,13 @@
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check: Value =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>lhs: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs: Value = entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// Check if lhs &gt;= rhs
-    </span><span class="kw">let </span>is_ge =
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Sge, lhs, rhs, location))<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>is_ge = entry.cmpi(context, CmpiPredicate::Sge, lhs, rhs, location)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>result = entry.append_op_result(arith::subi(lhs, rhs, location))<span class="question-mark">?</span>;
 

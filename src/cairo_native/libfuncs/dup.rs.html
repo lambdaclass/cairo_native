@@ -56,7 +56,7 @@
 //!
 //! However, types like an array need special handling.
 
-</span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
+</span><span class="kw">use super</span>::{BlockExt, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::Result,
     metadata::{dup_overrides::DupOverridesMeta, MetadataStorage},
@@ -94,7 +94,7 @@
             entry,
             location,
             <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty,
-            entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+            entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
         )<span class="question-mark">?</span>;
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[values.<span class="number">0</span>, values.<span class="number">1</span>], location));
 

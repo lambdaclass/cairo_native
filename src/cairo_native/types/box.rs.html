@@ -267,7 +267,7 @@
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
     <span class="kw">let </span>inner_len_val = entry.const_int(context, location, inner_len, <span class="number">64</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>src_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>src_value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_value = entry.append_op_result(ReallocBindingsMeta::realloc(
         context,
         null_ptr,
@@ -319,7 +319,7 @@
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
 
-    <span class="kw">let </span>value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">match </span>metadata.get::&lt;DropOverridesMeta&gt;() {
         <span class="prelude-val">Some</span>(drop_override_meta) <span class="kw">if </span>drop_override_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
             <span class="kw">let </span>value = entry.load(context, location, value, inner_ty)<span class="question-mark">?</span>;

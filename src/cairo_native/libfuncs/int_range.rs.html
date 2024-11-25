@@ -237,9 +237,9 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>range_check = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>x = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>y = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>x = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>y = entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>range_ty = registry.build_type(
         context,
         helper,
@@ -252,9 +252,9 @@
     </span><span class="kw">let </span>inner_range = inner.integer_range(registry)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>is_valid = <span class="kw">if </span>inner_range.lower &lt; BigInt::ZERO {
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Sle, x, y, location))<span class="question-mark">?
+        entry.cmpi(context, CmpiPredicate::Sle, x, y, location)<span class="question-mark">?
     </span>} <span class="kw">else </span>{
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Ule, x, y, location))<span class="question-mark">?
+        entry.cmpi(context, CmpiPredicate::Ule, x, y, location)<span class="question-mark">?
     </span>};
 
     <span class="kw">let </span>range =
@@ -284,7 +284,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>range = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>inner_ty = registry.build_type(
         context,
@@ -298,16 +298,16 @@
 
     <span class="kw">let </span>x = entry.extract_value(context, location, range, inner_ty, <span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>k1 = entry.const_int_from_type(context, location, <span class="number">1</span>, inner_ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>x_p_1 = entry.append_op_result(arith::addi(x, k1, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>x_p_1 = entry.addi(x, k1, location)<span class="question-mark">?</span>;
     <span class="kw">let </span>y = entry.extract_value(context, location, range, inner_ty, <span class="number">1</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// to know if it is signed
     </span><span class="kw">let </span>inner_range = inner.integer_range(registry)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>is_valid = <span class="kw">if </span>inner_range.lower &lt; BigInt::ZERO {
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Slt, x, y, location))<span class="question-mark">?
+        entry.cmpi(context, CmpiPredicate::Slt, x, y, location)<span class="question-mark">?
     </span>} <span class="kw">else </span>{
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Ult, x, y, location))<span class="question-mark">?
+        entry.cmpi(context, CmpiPredicate::Ult, x, y, location)<span class="question-mark">?
     </span>};
     <span class="kw">let </span>range = entry.insert_value(context, location, range, x_p_1, <span class="number">0</span>)<span class="question-mark">?</span>;
 

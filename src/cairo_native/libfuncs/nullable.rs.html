@@ -311,7 +311,7 @@
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>arg = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>arg = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>nullptr = entry
         .append_op_result(ods::llvm::mlir_zero(context, pointer(context, <span class="number">0</span>), location).into())<span class="question-mark">?</span>;

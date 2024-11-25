@@ -246,13 +246,6 @@
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Starknet types
 //!
 //! ## ClassHash
@@ -476,7 +469,7 @@
             ods::llvm::intr_memcpy_inline(
                 context,
                 new_ptr,
-                block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                block.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
                 IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">32</span>),
                 IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
                 location,
@@ -484,10 +477,7 @@
             .into(),
         );
 
-        block.append_operation(func::r#return(
-            <span class="kw-2">&amp;</span>[block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), new_ptr],
-            location,
-        ));
+        block.append_operation(func::r#return(<span class="kw-2">&amp;</span>[block.arg(<span class="number">0</span>)<span class="question-mark">?</span>, new_ptr], location));
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(region))
     })<span class="question-mark">?</span>;
     DropOverridesMeta::register_with(context, module, registry, metadata, info.self_ty(), |<span class="kw">_</span>| {
@@ -495,11 +485,7 @@
         <span class="kw">let </span>block =
             region.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
 
-        block.append_operation(ReallocBindingsMeta::free(
-            context,
-            block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-            location,
-        )<span class="question-mark">?</span>);
+        block.append_operation(ReallocBindingsMeta::free(context, block.arg(<span class="number">0</span>)<span class="question-mark">?</span>, location)<span class="question-mark">?</span>);
 
         block.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(region))

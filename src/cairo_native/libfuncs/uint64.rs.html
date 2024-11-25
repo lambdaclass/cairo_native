@@ -854,65 +854,6 @@
 <a href="#854" id="854">854</a>
 <a href="#855" id="855">855</a>
 <a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
-<a href="#875" id="875">875</a>
-<a href="#876" id="876">876</a>
-<a href="#877" id="877">877</a>
-<a href="#878" id="878">878</a>
-<a href="#879" id="879">879</a>
-<a href="#880" id="880">880</a>
-<a href="#881" id="881">881</a>
-<a href="#882" id="882">882</a>
-<a href="#883" id="883">883</a>
-<a href="#884" id="884">884</a>
-<a href="#885" id="885">885</a>
-<a href="#886" id="886">886</a>
-<a href="#887" id="887">887</a>
-<a href="#888" id="888">888</a>
-<a href="#889" id="889">889</a>
-<a href="#890" id="890">890</a>
-<a href="#891" id="891">891</a>
-<a href="#892" id="892">892</a>
-<a href="#893" id="893">893</a>
-<a href="#894" id="894">894</a>
-<a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
-<a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
-<a href="#904" id="904">904</a>
-<a href="#905" id="905">905</a>
-<a href="#906" id="906">906</a>
-<a href="#907" id="907">907</a>
-<a href="#908" id="908">908</a>
-<a href="#909" id="909">909</a>
-<a href="#910" id="910">910</a>
-<a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
-<a href="#913" id="913">913</a>
-<a href="#914" id="914">914</a>
-<a href="#915" id="915">915</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u64`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -1023,10 +964,10 @@
     info: <span class="kw-2">&amp;</span>IntOperationConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check: Value =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>lhs: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs: Value = entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>op_name = <span class="kw">match </span>info.operator {
         IntOperator::OverflowingAdd =&gt; <span class="string">"llvm.intr.uadd.with.overflow"</span>,
@@ -1077,24 +1018,12 @@
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>arg0: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>arg1: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>arg0: Value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>arg1: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>op0 = entry.append_operation(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        arg0,
-        arg1,
-        location,
-    ));
+    <span class="kw">let </span>cond = entry.cmpi(context, CmpiPredicate::Eq, arg0, arg1, location)<span class="question-mark">?</span>;
 
-    entry.append_operation(helper.cond_br(
-        context,
-        op0.result(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        [<span class="number">1</span>, <span class="number">0</span>],
-        [<span class="kw-2">&amp;</span>[]; <span class="number">2</span>],
-        location,
-    ));
+    entry.append_operation(helper.cond_br(context, cond, [<span class="number">1</span>, <span class="number">0</span>], [<span class="kw-2">&amp;</span>[]; <span class="number">2</span>], location));
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -1108,17 +1037,11 @@
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>arg0: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>arg0: Value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>const_0 = entry.const_int_from_type(context, location, <span class="number">0</span>, arg0.r#type())<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>condition = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        arg0,
-        const_0,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, const_0, location)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(context, condition, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>[arg0]], location));
 
@@ -1134,11 +1057,10 @@
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>range_check =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>lhs: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs: Value = entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>result_div = entry.append_op_result(arith::divui(lhs, rhs, location))<span class="question-mark">?</span>;
     <span class="kw">let </span>result_rem = entry.append_op_result(arith::remui(lhs, rhs, location))<span class="question-mark">?</span>;
@@ -1164,12 +1086,12 @@
         metadata,
         <span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">0</span>],
     )<span class="question-mark">?</span>;
-    <span class="kw">let </span>lhs: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>rhs: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>lhs: Value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs = entry.append_op_result(arith::extui(lhs, target_type, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>rhs = entry.append_op_result(arith::extui(rhs, target_type, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>result = entry.append_op_result(arith::muli(lhs, rhs, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>lhs = entry.extui(lhs, target_type, location)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs = entry.extui(rhs, target_type, location)<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = entry.muli(lhs, rhs, location)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
     <span class="prelude-val">Ok</span>(())
@@ -1192,9 +1114,9 @@
         metadata,
         <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
-    <span class="kw">let </span>value: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value: Value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>result = entry.append_op_result(arith::extui(value, felt252_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = entry.extui(value, felt252_ty, location)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
 
@@ -1211,21 +1133,14 @@
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>range_check =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>i32_ty = IntegerType::new(context, <span class="number">32</span>).into();
     <span class="kw">let </span>i64_ty = IntegerType::new(context, <span class="number">64</span>).into();
 
     <span class="kw">let </span>k1 = entry.const_int_from_type(context, location, <span class="number">1</span>, i64_ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>is_small = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ule,
-        entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-        k1,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>is_small = entry.cmpi(context, CmpiPredicate::Ule, entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>, k1, location)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>result = entry.append_op_result(scf::r#if(
         is_small,
@@ -1234,7 +1149,7 @@
             <span class="kw">let </span>region = Region::new();
             <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
-            block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into()], location));
+            block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>], location));
 
             region
         },
@@ -1248,7 +1163,7 @@
                 ods::llvm::intr_ctlz(
                     context,
                     i64_ty,
-                    entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
+                    entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>,
                     IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">1</span>),
                     location,
                 )
@@ -1257,7 +1172,7 @@
 
             <span class="kw">let </span>num_bits = block.append_op_result(arith::subi(k64, leading_zeros, location))<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>shift_amount = block.append_op_result(arith::addi(num_bits, k1, location))<span class="question-mark">?</span>;
+            <span class="kw">let </span>shift_amount = block.addi(num_bits, k1, location)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>parity_mask = block.const_int_from_type(context, location, -<span class="number">2</span>, i64_ty)<span class="question-mark">?</span>;
             <span class="kw">let </span>shift_amount =
@@ -1272,32 +1187,16 @@
                     <span class="kw">let </span>block =
                         region.append_block(Block::new(<span class="kw-2">&amp;</span>[(i64_ty, location), (i64_ty, location)]));
 
-                    <span class="kw">let </span>result = block.append_op_result(arith::shli(
-                        block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                        k1,
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    <span class="kw">let </span>result = block.shli(block.arg(<span class="number">0</span>)<span class="question-mark">?</span>, k1, location)<span class="question-mark">?</span>;
                     <span class="kw">let </span>large_candidate =
                         block.append_op_result(arith::xori(result, k1, location))<span class="question-mark">?</span>;
 
-                    <span class="kw">let </span>large_candidate_squared = block.append_op_result(arith::muli(
-                        large_candidate,
-                        large_candidate,
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    <span class="kw">let </span>large_candidate_squared =
+                        block.muli(large_candidate, large_candidate, location)<span class="question-mark">?</span>;
 
-                    <span class="kw">let </span>threshold = block.append_op_result(arith::shrui(
-                        entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-                        block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-                        location,
-                    ))<span class="question-mark">?</span>;
-                    <span class="kw">let </span>threshold_is_poison = block.append_op_result(arith::cmpi(
-                        context,
-                        CmpiPredicate::Eq,
-                        block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-                        k64,
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    <span class="kw">let </span>threshold = block.shrui(entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>, block.arg(<span class="number">1</span>)<span class="question-mark">?</span>, location)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>threshold_is_poison =
+                        block.cmpi(context, CmpiPredicate::Eq, block.arg(<span class="number">1</span>)<span class="question-mark">?</span>, k64, location)<span class="question-mark">?</span>;
                     <span class="kw">let </span>threshold = block.append_op_result(
                         OperationBuilder::new(<span class="string">"arith.select"</span>, location)
                             .add_operands(<span class="kw-2">&amp;</span>[threshold_is_poison, k0, threshold])
@@ -1305,13 +1204,13 @@
                             .build()<span class="question-mark">?</span>,
                     )<span class="question-mark">?</span>;
 
-                    <span class="kw">let </span>is_in_range = block.append_op_result(arith::cmpi(
+                    <span class="kw">let </span>is_in_range = block.cmpi(
                         context,
                         CmpiPredicate::Ule,
                         large_candidate_squared,
                         threshold,
                         location,
-                    ))<span class="question-mark">?</span>;
+                    )<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>result = block.append_op_result(
                         OperationBuilder::new(<span class="string">"arith.select"</span>, location)
@@ -1322,19 +1221,11 @@
 
                     <span class="kw">let </span>k2 = block.const_int_from_type(context, location, <span class="number">2</span>, i64_ty)<span class="question-mark">?</span>;
 
-                    <span class="kw">let </span>shift_amount = block.append_op_result(arith::subi(
-                        block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-                        k2,
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    <span class="kw">let </span>shift_amount =
+                        block.append_op_result(arith::subi(block.arg(<span class="number">1</span>)<span class="question-mark">?</span>, k2, location))<span class="question-mark">?</span>;
 
-                    <span class="kw">let </span>should_continue = block.append_op_result(arith::cmpi(
-                        context,
-                        CmpiPredicate::Sge,
-                        shift_amount,
-                        k0,
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    <span class="kw">let </span>should_continue =
+                        block.cmpi(context, CmpiPredicate::Sge, shift_amount, k0, location)<span class="question-mark">?</span>;
                     block.append_operation(scf::condition(
                         should_continue,
                         <span class="kw-2">&amp;</span>[result, shift_amount],
@@ -1348,10 +1239,7 @@
                     <span class="kw">let </span>block =
                         region.append_block(Block::new(<span class="kw-2">&amp;</span>[(i64_ty, location), (i64_ty, location)]));
 
-                    block.append_operation(scf::r#yield(
-                        <span class="kw-2">&amp;</span>[block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into()],
-                        location,
-                    ));
+                    block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[block.arg(<span class="number">0</span>)<span class="question-mark">?</span>, block.arg(<span class="number">1</span>)<span class="question-mark">?</span>], location));
 
                     region
                 },
@@ -1365,7 +1253,7 @@
         location,
     ))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>result = entry.append_op_result(arith::trunci(result, i32_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = entry.trunci(result, i32_ty, location)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, result], location));
     <span class="prelude-val">Ok</span>(())
@@ -1382,9 +1270,9 @@
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check: Value =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>value: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>felt252_ty = registry.build_type(
         context,
@@ -1403,13 +1291,7 @@
 
     <span class="kw">let </span>const_max = entry.const_int_from_type(context, location, u64::MAX, felt252_ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>is_ule = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ule,
-        value,
-        const_max,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>is_ule = entry.cmpi(context, CmpiPredicate::Ule, value, const_max, location)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>block_success = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     <span class="kw">let </span>block_failure = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
@@ -1424,7 +1306,7 @@
         location,
     ));
 
-    <span class="kw">let </span>value = block_success.append_op_result(arith::trunci(value, result_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>value = block_success.trunci(value, result_ty, location)<span class="question-mark">?</span>;
 
     block_success.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[range_check, value], location));
     block_failure.append_operation(helper.br(<span class="number">1</span>, <span class="kw-2">&amp;</span>[range_check], location));

@@ -125,20 +125,6 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Debug libfuncs
 
 </span><span class="comment">// Printable: 9-13, 27, 32, 33-126
@@ -202,21 +188,21 @@
     <span class="kw">let </span>values_ptr = entry.extract_value(
         context,
         location,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
         llvm::r#type::pointer(context, <span class="number">0</span>),
         <span class="number">0</span>,
     )<span class="question-mark">?</span>;
     <span class="kw">let </span>values_start = entry.extract_value(
         context,
         location,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
         IntegerType::new(context, <span class="number">32</span>).into(),
         <span class="number">1</span>,
     )<span class="question-mark">?</span>;
     <span class="kw">let </span>values_end = entry.extract_value(
         context,
         location,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+        entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
         IntegerType::new(context, <span class="number">32</span>).into(),
         <span class="number">2</span>,
     )<span class="question-mark">?</span>;
@@ -228,11 +214,8 @@
     <span class="kw">let </span>values_len = entry.append_op_result(arith::subi(values_end, values_start, location))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>values_ptr = {
-        <span class="kw">let </span>values_start = entry.append_op_result(arith::extui(
-            values_start,
-            IntegerType::new(context, <span class="number">64</span>).into(),
-            location,
-        ))<span class="question-mark">?</span>;
+        <span class="kw">let </span>values_start =
+            entry.extui(values_start, IntegerType::new(context, <span class="number">64</span>).into(), location)<span class="question-mark">?</span>;
 
         entry.append_op_result(llvm::get_element_ptr_dynamic(
             context,
@@ -253,22 +236,11 @@
     metadata
         .get::&lt;DropOverridesMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?
-        </span>.invoke_override(
-            context,
-            entry,
-            location,
-            input_ty,
-            entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        )<span class="question-mark">?</span>;
+        </span>.invoke_override(context, entry, location, input_ty, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">32</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>return_code_is_ok = entry.append_op_result(arith::cmpi(
-        context,
-        arith::CmpiPredicate::Eq,
-        return_code,
-        k0,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>return_code_is_ok =
+        entry.cmpi(context, arith::CmpiPredicate::Eq, return_code, k0, location)<span class="question-mark">?</span>;
     cf::assert(
         context,
         return_code_is_ok,

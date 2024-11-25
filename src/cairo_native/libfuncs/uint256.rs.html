@@ -1255,32 +1255,9 @@
 <a href="#1255" id="1255">1255</a>
 <a href="#1256" id="1256">1256</a>
 <a href="#1257" id="1257">1257</a>
-<a href="#1258" id="1258">1258</a>
-<a href="#1259" id="1259">1259</a>
-<a href="#1260" id="1260">1260</a>
-<a href="#1261" id="1261">1261</a>
-<a href="#1262" id="1262">1262</a>
-<a href="#1263" id="1263">1263</a>
-<a href="#1264" id="1264">1264</a>
-<a href="#1265" id="1265">1265</a>
-<a href="#1266" id="1266">1266</a>
-<a href="#1267" id="1267">1267</a>
-<a href="#1268" id="1268">1268</a>
-<a href="#1269" id="1269">1269</a>
-<a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
-<a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a>
-<a href="#1277" id="1277">1277</a>
-<a href="#1278" id="1278">1278</a>
-<a href="#1279" id="1279">1279</a>
-<a href="#1280" id="1280">1280</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u256`-related libfuncs
 
-</span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
+</span><span class="kw">use super</span>::{BlockExt, LibfuncHelper};
 <span class="kw">use crate</span>::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
@@ -1341,8 +1318,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>range_check =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>i128_ty = IntegerType::new(context, <span class="number">128</span>).into();
     <span class="kw">let </span>i256_ty = IntegerType::new(context, <span class="number">256</span>).into();
@@ -1355,8 +1331,8 @@
         <span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">3</span>],
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_struct: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>rhs_struct: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>lhs_struct: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs_struct: Value = entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>lhs_lo = entry
         .append_operation(llvm::extract_value(
@@ -1556,7 +1532,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>i128_ty = IntegerType::new(context, <span class="number">128</span>).into();
 
-    <span class="kw">let </span>val_struct = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>val_struct = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>val_lo = entry
         .append_operation(llvm::extract_value(
             context,
@@ -1632,13 +1608,12 @@
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>range_check =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>i128_ty = IntegerType::new(context, <span class="number">128</span>).into();
     <span class="kw">let </span>i256_ty = IntegerType::new(context, <span class="number">256</span>).into();
 
-    <span class="kw">let </span>arg_struct = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>arg_struct = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>arg_lo = entry
         .append_operation(llvm::extract_value(
             context,
@@ -1789,11 +1764,7 @@
                             ]));
 
                             <span class="kw">let </span>result = block
-                                .append_operation(arith::shli(
-                                    block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                                    k1,
-                                    location,
-                                ))
+                                .append_operation(arith::shli(block.arg(<span class="number">0</span>)<span class="question-mark">?</span>, k1, location))
                                 .result(<span class="number">0</span>)<span class="question-mark">?
                                 </span>.into();
                             <span class="kw">let </span>large_candidate = block
@@ -1811,18 +1782,14 @@
                                 </span>.into();
 
                             <span class="kw">let </span>threshold = block
-                                .append_operation(arith::shrui(
-                                    arg_value,
-                                    block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-                                    location,
-                                ))
+                                .append_operation(arith::shrui(arg_value, block.arg(<span class="number">1</span>)<span class="question-mark">?</span>, location))
                                 .result(<span class="number">0</span>)<span class="question-mark">?
                                 </span>.into();
                             <span class="kw">let </span>threshold_is_poison = block
                                 .append_operation(arith::cmpi(
                                     context,
                                     CmpiPredicate::Eq,
-                                    block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
+                                    block.arg(<span class="number">1</span>)<span class="question-mark">?</span>,
                                     k128,
                                     location,
                                 ))
@@ -1869,11 +1836,7 @@
                                 </span>.into();
 
                             <span class="kw">let </span>shift_amount = block
-                                .append_operation(arith::subi(
-                                    block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-                                    k2,
-                                    location,
-                                ))
+                                .append_operation(arith::subi(block.arg(<span class="number">1</span>)<span class="question-mark">?</span>, k2, location))
                                 .result(<span class="number">0</span>)<span class="question-mark">?
                                 </span>.into();
 
@@ -1903,7 +1866,7 @@
                             ]));
 
                             block.append_operation(scf::r#yield(
-                                <span class="kw-2">&amp;</span>[block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into()],
+                                <span class="kw-2">&amp;</span>[block.arg(<span class="number">0</span>)<span class="question-mark">?</span>, block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into()],
                                 location,
                             ));
 
@@ -1945,7 +1908,7 @@
     <span class="kw">let </span>i128_ty = IntegerType::new(context, <span class="number">128</span>).into();
     <span class="kw">let </span>i256_ty = IntegerType::new(context, <span class="number">256</span>).into();
 
-    <span class="kw">let </span>lhs_struct = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>lhs_struct = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>lhs_lo = entry
         .append_operation(llvm::extract_value(
             context,
@@ -1967,7 +1930,7 @@
         .result(<span class="number">0</span>)<span class="question-mark">?
         </span>.into();
 
-    <span class="kw">let </span>rhs_struct = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>rhs_struct = entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>rhs_lo = entry
         .append_operation(llvm::extract_value(
             context,
@@ -2063,29 +2026,25 @@
             ]));
 
             <span class="kw">let </span>q = block
-                .append_operation(arith::divui(
-                    block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-                    block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                    location,
-                ))
+                .append_operation(arith::divui(block.arg(<span class="number">1</span>)<span class="question-mark">?</span>, block.arg(<span class="number">0</span>)<span class="question-mark">?</span>, location))
                 .result(<span class="number">0</span>)<span class="question-mark">?
                 </span>.into();
 
             <span class="kw">let </span>q_c = block
-                .append_operation(arith::muli(q, block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), location))
+                .append_operation(arith::muli(q, block.arg(<span class="number">0</span>)<span class="question-mark">?</span>, location))
                 .result(<span class="number">0</span>)<span class="question-mark">?
                 </span>.into();
             <span class="kw">let </span>c = block
-                .append_operation(arith::subi(block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(), q_c, location))
+                .append_operation(arith::subi(block.arg(<span class="number">1</span>)<span class="question-mark">?</span>, q_c, location))
                 .result(<span class="number">0</span>)<span class="question-mark">?
                 </span>.into();
 
             <span class="kw">let </span>q_uc = block
-                .append_operation(arith::muli(q, block.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(), location))
+                .append_operation(arith::muli(q, block.arg(<span class="number">2</span>)<span class="question-mark">?</span>, location))
                 .result(<span class="number">0</span>)<span class="question-mark">?
                 </span>.into();
             <span class="kw">let </span>u_c = block
-                .append_operation(arith::subi(block.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(), q_uc, location))
+                .append_operation(arith::subi(block.arg(<span class="number">3</span>)<span class="question-mark">?</span>, q_uc, location))
                 .result(<span class="number">0</span>)<span class="question-mark">?
                 </span>.into();
 
@@ -2095,7 +2054,7 @@
                 </span>.into();
             block.append_operation(scf::condition(
                 should_continue,
-                <span class="kw-2">&amp;</span>[c, block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), u_c, block.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into()],
+                <span class="kw-2">&amp;</span>[c, block.arg(<span class="number">0</span>)<span class="question-mark">?</span>, u_c, block.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into()],
                 location,
             ));
 
@@ -2111,12 +2070,7 @@
             ]));
 
             block.append_operation(scf::r#yield(
-                <span class="kw-2">&amp;</span>[
-                    block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                    block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-                    block.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into(),
-                    block.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into(),
-                ],
+                <span class="kw-2">&amp;</span>[block.arg(<span class="number">0</span>)<span class="question-mark">?</span>, block.arg(<span class="number">1</span>)<span class="question-mark">?</span>, block.arg(<span class="number">2</span>)<span class="question-mark">?</span>, block.arg(<span class="number">3</span>)<span class="question-mark">?</span>],
                 location,
             ));
 
@@ -2247,7 +2201,7 @@
         [<span class="number">0</span>, <span class="number">1</span>],
         [
             <span class="kw-2">&amp;</span>[
-                entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
                 result_inv,
                 guarantee,
                 guarantee,
@@ -2258,7 +2212,7 @@
                 guarantee,
                 guarantee,
             ],
-            <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), guarantee, guarantee],
+            <span class="kw-2">&amp;</span>[entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>, guarantee, guarantee],
         ],
         location,
     ));

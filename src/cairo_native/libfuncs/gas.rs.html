@@ -292,19 +292,6 @@
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Gas management libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -323,10 +310,7 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{
-        arith::{<span class="self">self</span>, CmpiPredicate},
-        ods,
-    },
+    dialect::{arith::CmpiPredicate, ods},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -368,14 +352,10 @@
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>gas = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>gas_u128 = entry.append_op_result(arith::extui(
-        gas,
-        IntegerType::new(context, <span class="number">128</span>).into(),
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>gas_u128 = entry.extui(gas, IntegerType::new(context, <span class="number">128</span>).into(), location)<span class="question-mark">?</span>;
     <span class="comment">// The gas is returned as u128 on the second arg.
-    </span>entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), gas_u128], location));
+    </span>entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>, gas_u128], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -389,9 +369,8 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>range_check =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
-    <span class="kw">let </span>current_gas = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>current_gas = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>gas_cost = metadata
         .get::&lt;GasCost&gt;()
@@ -441,19 +420,17 @@
             u64_type,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)<span class="question-mark">?</span>;
-        <span class="kw">let </span>gas_cost_value =
-            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))<span class="question-mark">?</span>;
-        total_gas_cost_value =
-            entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))<span class="question-mark">?</span>;
+        <span class="kw">let </span>gas_cost_value = entry.muli(cost_count_value, cost_value, location)<span class="question-mark">?</span>;
+        total_gas_cost_value = entry.addi(total_gas_cost_value, gas_cost_value, location)<span class="question-mark">?</span>;
     }
 
-    <span class="kw">let </span>is_enough = entry.append_op_result(arith::cmpi(
+    <span class="kw">let </span>is_enough = entry.cmpi(
         context,
         CmpiPredicate::Uge,
         current_gas,
         total_gas_cost_value,
         location,
-    ))<span class="question-mark">?</span>;
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>resulting_gas = entry.append_op_result(
         ods::llvm::intr_usub_sat(context, current_gas, total_gas_cost_value, location).into(),
@@ -480,10 +457,9 @@
     metadata: <span class="kw-2">&amp;</span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>range_check =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
-    <span class="kw">let </span>current_gas = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>builtin_ptr = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>current_gas = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>builtin_ptr = entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>gas_cost = metadata
         .get::&lt;GasCost&gt;()
@@ -522,19 +498,17 @@
             u64_type,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)<span class="question-mark">?</span>;
-        <span class="kw">let </span>gas_cost_value =
-            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))<span class="question-mark">?</span>;
-        total_gas_cost_value =
-            entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))<span class="question-mark">?</span>;
+        <span class="kw">let </span>gas_cost_value = entry.muli(cost_count_value, cost_value, location)<span class="question-mark">?</span>;
+        total_gas_cost_value = entry.addi(total_gas_cost_value, gas_cost_value, location)<span class="question-mark">?</span>;
     }
 
-    <span class="kw">let </span>is_enough = entry.append_op_result(arith::cmpi(
+    <span class="kw">let </span>is_enough = entry.cmpi(
         context,
         CmpiPredicate::Uge,
         current_gas,
         total_gas_cost_value,
         location,
-    ))<span class="question-mark">?</span>;
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>resulting_gas = entry.append_op_result(
         ods::llvm::intr_usub_sat(context, current_gas, total_gas_cost_value, location).into(),

@@ -1315,53 +1315,6 @@
 <a href="#1315" id="1315">1315</a>
 <a href="#1316" id="1316">1316</a>
 <a href="#1317" id="1317">1317</a>
-<a href="#1318" id="1318">1318</a>
-<a href="#1319" id="1319">1319</a>
-<a href="#1320" id="1320">1320</a>
-<a href="#1321" id="1321">1321</a>
-<a href="#1322" id="1322">1322</a>
-<a href="#1323" id="1323">1323</a>
-<a href="#1324" id="1324">1324</a>
-<a href="#1325" id="1325">1325</a>
-<a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
-<a href="#1353" id="1353">1353</a>
-<a href="#1354" id="1354">1354</a>
-<a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
-<a href="#1360" id="1360">1360</a>
-<a href="#1361" id="1361">1361</a>
-<a href="#1362" id="1362">1362</a>
-<a href="#1363" id="1363">1363</a>
-<a href="#1364" id="1364">1364</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Circuit libfuncs
 
 </span><span class="kw">use super</span>::{increment_builtin_counter_by, LibfuncHelper};
@@ -1472,13 +1425,7 @@
         }
         <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(SierraAssertError::BadTypeInfo.into()),
     };
-    <span class="kw">let </span>rc = increment_builtin_counter_by(
-        context,
-        entry,
-        location,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        rc_usage,
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>rc = increment_builtin_counter_by(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>, rc_usage)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">64</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>accumulator_ty = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty;
@@ -1517,7 +1464,7 @@
     <span class="kw">let </span>accumulator_ctype = registry.get_type(accumulator_type_id)<span class="question-mark">?</span>;
     <span class="kw">let </span>accumulator_layout = accumulator_ctype.layout(registry)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>accumulator: Value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>accumulator: Value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// Get accumulator current length
     </span><span class="kw">let </span>current_length = entry.extract_value(
@@ -1530,13 +1477,13 @@
 
     <span class="comment">// Check if last_insert: current_length == number_of_inputs - 1
     </span><span class="kw">let </span>n_inputs_minus_1 = entry.const_int(context, location, n_inputs - <span class="number">1</span>, <span class="number">64</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>last_insert = entry.append_op_result(arith::cmpi(
+    <span class="kw">let </span>last_insert = entry.cmpi(
         context,
         arith::CmpiPredicate::Eq,
         current_length,
         n_inputs_minus_1,
         location,
-    ))<span class="question-mark">?</span>;
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>middle_insert_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     <span class="kw">let </span>last_insert_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
@@ -1554,8 +1501,7 @@
     </span>{
         <span class="comment">// Calculate next length: next_length = current_length + 1
         </span><span class="kw">let </span>k1 = middle_insert_block.const_int(context, location, <span class="number">1</span>, <span class="number">64</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>next_length =
-            middle_insert_block.append_op_result(arith::addi(current_length, k1, location))<span class="question-mark">?</span>;
+        <span class="kw">let </span>next_length = middle_insert_block.addi(current_length, k1, location)<span class="question-mark">?</span>;
 
         <span class="comment">// Insert next_length into accumulator
         </span><span class="kw">let </span>accumulator =
@@ -1583,7 +1529,7 @@
             ))<span class="question-mark">?</span>;
 
         <span class="comment">// Interpret u384 struct (input) as u384 integer
-        </span><span class="kw">let </span>u384_struct = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+        </span><span class="kw">let </span>u384_struct = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>new_input =
             u384_struct_to_integer(context, middle_insert_block, location, u384_struct)<span class="question-mark">?</span>;
 
@@ -1649,7 +1595,7 @@
         );
 
         <span class="comment">// Interpret u384 struct (input) as u384 integer
-        </span><span class="kw">let </span>u384_struct = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+        </span><span class="kw">let </span>u384_struct = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>new_input = u384_struct_to_integer(context, last_insert_block, location, u384_struct)<span class="question-mark">?</span>;
 
         <span class="comment">// Get pointer to data end
@@ -1685,16 +1631,10 @@
     _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>modulus = u384_struct_to_integer(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>modulus = u384_struct_to_integer(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>k1 = entry.const_int(context, location, <span class="number">1</span>, <span class="number">384</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>is_valid = entry.append_op_result(arith::cmpi(
-        context,
-        arith::CmpiPredicate::Ugt,
-        modulus,
-        k1,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>is_valid = entry.cmpi(context, arith::CmpiPredicate::Ugt, modulus, k1, location)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.cond_br(context, is_valid, [<span class="number">0</span>, <span class="number">1</span>], [<span class="kw-2">&amp;</span>[modulus], <span class="kw-2">&amp;</span>[]], location));
 
@@ -1739,10 +1679,10 @@
         CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =&gt; <span class="kw-2">&amp;</span>info.circuit_info,
         <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(SierraAssertError::BadTypeInfo.into()),
     };
-    <span class="kw">let </span>add_mod = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>mul_mod = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>circuit_data = entry.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>circuit_modulus = entry.argument(<span class="number">4</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>add_mod = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>mul_mod = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>circuit_data = entry.arg(<span class="number">3</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>circuit_modulus = entry.arg(<span class="number">4</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// arguments 5 and 6 are used to build the gate 0 (with constant value 1)
     // let zero = entry.argument(5)?;
@@ -1797,12 +1737,12 @@
     </span>{
         <span class="comment">// We only consider mul gates evaluated before failure
         </span><span class="kw">let </span>mul_mod = {
-            <span class="kw">let </span>mul_mod_usage = err_block.append_op_result(arith::muli(
-                err_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+            <span class="kw">let </span>mul_mod_usage = err_block.muli(
+                err_block.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
                 err_block.const_int(context, location, <span class="number">4</span>, <span class="number">64</span>)<span class="question-mark">?</span>,
                 location,
-            ))<span class="question-mark">?</span>;
-            err_block.append_op_result(arith::addi(mul_mod, mul_mod_usage, location))
+            )<span class="question-mark">?</span>;
+            err_block.addi(mul_mod, mul_mod_usage, location)
         }<span class="question-mark">?</span>;
 
         <span class="kw">let </span>partial_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">1</span>].vars[<span class="number">2</span>].ty;
@@ -1873,67 +1813,56 @@
                 <span class="comment">// ADD: lhs + rhs = out
                 </span>(<span class="prelude-val">Some</span>(lhs_value), <span class="prelude-val">Some</span>(rhs_value), <span class="prelude-val">None</span>) =&gt; {
                     <span class="comment">// Extend to avoid overflow
-                    </span><span class="kw">let </span>lhs_value = block.append_op_result(arith::extui(
+                    </span><span class="kw">let </span>lhs_value = block.extui(
                         lhs_value,
                         IntegerType::new(context, <span class="number">384 </span>+ <span class="number">1</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
-                    <span class="kw">let </span>rhs_value = block.append_op_result(arith::extui(
+                    )<span class="question-mark">?</span>;
+                    <span class="kw">let </span>rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, <span class="number">384 </span>+ <span class="number">1</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
-                    <span class="kw">let </span>circuit_modulus = block.append_op_result(arith::extui(
+                    )<span class="question-mark">?</span>;
+                    <span class="kw">let </span>circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, <span class="number">384 </span>+ <span class="number">1</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
+                    )<span class="question-mark">?</span>;
                     <span class="comment">// value = (lhs_value + rhs_value) % circuit_modulus
-                    </span><span class="kw">let </span>value =
-                        block.append_op_result(arith::addi(lhs_value, rhs_value, location))<span class="question-mark">?</span>;
+                    </span><span class="kw">let </span>value = block.addi(lhs_value, rhs_value, location)<span class="question-mark">?</span>;
                     <span class="kw">let </span>value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))<span class="question-mark">?</span>;
                     <span class="comment">// Truncate back
-                    </span><span class="kw">let </span>value = block.append_op_result(arith::trunci(
-                        value,
-                        IntegerType::new(context, <span class="number">384</span>).into(),
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    </span><span class="kw">let </span>value =
+                        block.trunci(value, IntegerType::new(context, <span class="number">384</span>).into(), location)<span class="question-mark">?</span>;
                     values[add_gate_offset.output] = <span class="prelude-val">Some</span>(value);
                 }
                 <span class="comment">// SUB: lhs = out - rhs
                 </span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(rhs_value), <span class="prelude-val">Some</span>(output_value)) =&gt; {
                     <span class="comment">// Extend to avoid overflow
-                    </span><span class="kw">let </span>rhs_value = block.append_op_result(arith::extui(
+                    </span><span class="kw">let </span>rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, <span class="number">384 </span>+ <span class="number">1</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
-                    <span class="kw">let </span>output_value = block.append_op_result(arith::extui(
+                    )<span class="question-mark">?</span>;
+                    <span class="kw">let </span>output_value = block.extui(
                         output_value,
                         IntegerType::new(context, <span class="number">384 </span>+ <span class="number">1</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
-                    <span class="kw">let </span>circuit_modulus = block.append_op_result(arith::extui(
+                    )<span class="question-mark">?</span>;
+                    <span class="kw">let </span>circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, <span class="number">384 </span>+ <span class="number">1</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
+                    )<span class="question-mark">?</span>;
                     <span class="comment">// value = (output_value + circuit_modulus - rhs_value) % circuit_modulus
-                    </span><span class="kw">let </span>value = block.append_op_result(arith::addi(
-                        output_value,
-                        circuit_modulus,
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    </span><span class="kw">let </span>value = block.addi(output_value, circuit_modulus, location)<span class="question-mark">?</span>;
                     <span class="kw">let </span>value = block.append_op_result(arith::subi(value, rhs_value, location))<span class="question-mark">?</span>;
                     <span class="kw">let </span>value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))<span class="question-mark">?</span>;
                     <span class="comment">// Truncate back
-                    </span><span class="kw">let </span>value = block.append_op_result(arith::trunci(
-                        value,
-                        IntegerType::new(context, <span class="number">384</span>).into(),
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    </span><span class="kw">let </span>value =
+                        block.trunci(value, IntegerType::new(context, <span class="number">384</span>).into(), location)<span class="question-mark">?</span>;
                     values[add_gate_offset.lhs] = <span class="prelude-val">Some</span>(value);
                 }
                 <span class="comment">// We can't solve this add gate yet, so we break from the loop
@@ -1956,47 +1885,43 @@
                 <span class="comment">// MUL: lhs * rhs = out
                 </span>(<span class="prelude-val">Some</span>(lhs_value), <span class="prelude-val">Some</span>(rhs_value), <span class="prelude-val">None</span>) =&gt; {
                     <span class="comment">// Extend to avoid overflow
-                    </span><span class="kw">let </span>lhs_value = block.append_op_result(arith::extui(
+                    </span><span class="kw">let </span>lhs_value = block.extui(
                         lhs_value,
                         IntegerType::new(context, <span class="number">384 </span>* <span class="number">2</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
-                    <span class="kw">let </span>rhs_value = block.append_op_result(arith::extui(
+                    )<span class="question-mark">?</span>;
+                    <span class="kw">let </span>rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, <span class="number">384 </span>* <span class="number">2</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
-                    <span class="kw">let </span>circuit_modulus = block.append_op_result(arith::extui(
+                    )<span class="question-mark">?</span>;
+                    <span class="kw">let </span>circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, <span class="number">384 </span>* <span class="number">2</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
+                    )<span class="question-mark">?</span>;
                     <span class="comment">// value = (lhs_value * rhs_value) % circuit_modulus
-                    </span><span class="kw">let </span>value =
-                        block.append_op_result(arith::muli(lhs_value, rhs_value, location))<span class="question-mark">?</span>;
+                    </span><span class="kw">let </span>value = block.muli(lhs_value, rhs_value, location)<span class="question-mark">?</span>;
                     <span class="kw">let </span>value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))<span class="question-mark">?</span>;
                     <span class="comment">// Truncate back
-                    </span><span class="kw">let </span>value = block.append_op_result(arith::trunci(
-                        value,
-                        IntegerType::new(context, <span class="number">384</span>).into(),
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    </span><span class="kw">let </span>value =
+                        block.trunci(value, IntegerType::new(context, <span class="number">384</span>).into(), location)<span class="question-mark">?</span>;
                     values[output] = <span class="prelude-val">Some</span>(value)
                 }
                 <span class="comment">// INV: lhs = 1 / rhs
                 </span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(rhs_value), <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; {
                     <span class="comment">// Extend to avoid overflow
-                    </span><span class="kw">let </span>rhs_value = block.append_op_result(arith::extui(
+                    </span><span class="kw">let </span>rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, <span class="number">384 </span>* <span class="number">2</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
-                    <span class="kw">let </span>circuit_modulus = block.append_op_result(arith::extui(
+                    )<span class="question-mark">?</span>;
+                    <span class="kw">let </span>circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, <span class="number">384 </span>* <span class="number">2</span>).into(),
                         location,
-                    ))<span class="question-mark">?</span>;
+                    )<span class="question-mark">?</span>;
                     <span class="kw">let </span>integer_type = rhs_value.r#type();
 
                     <span class="comment">// Apply egcd to find gcd and inverse
@@ -2008,8 +1933,8 @@
                         rhs_value,
                         circuit_modulus,
                     )<span class="question-mark">?</span>;
-                    <span class="kw">let </span>gcd = egcd_result_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-                    <span class="kw">let </span>inverse = egcd_result_block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+                    <span class="kw">let </span>gcd = egcd_result_block.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>inverse = egcd_result_block.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
                     block = egcd_result_block;
 
                     <span class="comment">// if the gcd is not 1, then fail (a and b are not coprimes)
@@ -2020,13 +1945,7 @@
                         gate_offset_idx,
                         IntegerType::new(context, <span class="number">64</span>).into(),
                     )<span class="question-mark">?</span>;
-                    <span class="kw">let </span>has_inverse = block.append_op_result(arith::cmpi(
-                        context,
-                        CmpiPredicate::Eq,
-                        gcd,
-                        one,
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    <span class="kw">let </span>has_inverse = block.cmpi(context, CmpiPredicate::Eq, gcd, one, location)<span class="question-mark">?</span>;
                     <span class="kw">let </span>has_inverse_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
                     block.append_operation(cf::cond_br(
                         context,
@@ -2051,8 +1970,7 @@
                         ))
                         .result(<span class="number">0</span>)<span class="question-mark">?
                         </span>.into();
-                    <span class="kw">let </span>wrapped_inverse =
-                        block.append_op_result(arith::addi(inverse, circuit_modulus, location))<span class="question-mark">?</span>;
+                    <span class="kw">let </span>wrapped_inverse = block.addi(inverse, circuit_modulus, location)<span class="question-mark">?</span>;
                     <span class="kw">let </span>inverse = block.append_op_result(arith::select(
                         is_negative,
                         wrapped_inverse,
@@ -2061,11 +1979,8 @@
                     ))<span class="question-mark">?</span>;
 
                     <span class="comment">// Truncate back
-                    </span><span class="kw">let </span>inverse = block.append_op_result(arith::trunci(
-                        inverse,
-                        IntegerType::new(context, <span class="number">384</span>).into(),
-                        location,
-                    ))<span class="question-mark">?</span>;
+                    </span><span class="kw">let </span>inverse =
+                        block.trunci(inverse, IntegerType::new(context, <span class="number">384</span>).into(), location)<span class="question-mark">?</span>;
 
                     values[lhs] = <span class="prelude-val">Some</span>(inverse);
                 }
@@ -2101,8 +2016,8 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>rc = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>mul_mod = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>rc = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>mul_mod = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>rc = increment_builtin_counter_by(context, entry, location, rc, <span class="number">4</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>mul_mod = increment_builtin_counter_by(context, entry, location, mul_mod, <span class="number">4</span>)<span class="question-mark">?</span>;
@@ -2198,7 +2113,7 @@
 
     <span class="kw">let </span>output_idx = output_offset_idx - circuit_info.n_inputs - <span class="number">1</span>;
 
-    <span class="kw">let </span>outputs = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>outputs = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>output_integer = entry.extract_value(
         context,
         location,
@@ -2226,40 +2141,40 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'a</span>, <span class="lifetime">'a</span>&gt;&gt; {
     <span class="kw">let </span>u96_type = IntegerType::new(context, <span class="number">96</span>).into();
 
-    <span class="kw">let </span>limb1 = block.append_op_result(arith::extui(
+    <span class="kw">let </span>limb1 = block.extui(
         block.extract_value(context, location, u384_struct, u96_type, <span class="number">0</span>)<span class="question-mark">?</span>,
         IntegerType::new(context, <span class="number">384</span>).into(),
         location,
-    ))<span class="question-mark">?</span>;
+    )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>limb2 = {
-        <span class="kw">let </span>limb = block.append_op_result(arith::extui(
+        <span class="kw">let </span>limb = block.extui(
             block.extract_value(context, location, u384_struct, u96_type, <span class="number">1</span>)<span class="question-mark">?</span>,
             IntegerType::new(context, <span class="number">384</span>).into(),
             location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>k96 = block.const_int(context, location, <span class="number">96</span>, <span class="number">384</span>)<span class="question-mark">?</span>;
-        block.append_op_result(arith::shli(limb, k96, location))<span class="question-mark">?
+        block.shli(limb, k96, location)<span class="question-mark">?
     </span>};
 
     <span class="kw">let </span>limb3 = {
-        <span class="kw">let </span>limb = block.append_op_result(arith::extui(
+        <span class="kw">let </span>limb = block.extui(
             block.extract_value(context, location, u384_struct, u96_type, <span class="number">2</span>)<span class="question-mark">?</span>,
             IntegerType::new(context, <span class="number">384</span>).into(),
             location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>k192 = block.const_int(context, location, <span class="number">96 </span>* <span class="number">2</span>, <span class="number">384</span>)<span class="question-mark">?</span>;
-        block.append_op_result(arith::shli(limb, k192, location))<span class="question-mark">?
+        block.shli(limb, k192, location)<span class="question-mark">?
     </span>};
 
     <span class="kw">let </span>limb4 = {
-        <span class="kw">let </span>limb = block.append_op_result(arith::extui(
+        <span class="kw">let </span>limb = block.extui(
             block.extract_value(context, location, u384_struct, u96_type, <span class="number">3</span>)<span class="question-mark">?</span>,
             IntegerType::new(context, <span class="number">384</span>).into(),
             location,
-        ))<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>k288 = block.const_int(context, location, <span class="number">96 </span>* <span class="number">3</span>, <span class="number">384</span>)<span class="question-mark">?</span>;
-        block.append_op_result(arith::shli(limb, k288, location))<span class="question-mark">?
+        block.shli(limb, k288, location)<span class="question-mark">?
     </span>};
 
     <span class="kw">let </span>value = block.append_op_result(arith::ori(limb1, limb2, location))<span class="question-mark">?</span>;
@@ -2277,25 +2192,21 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'a</span>, <span class="lifetime">'a</span>&gt;&gt; {
     <span class="kw">let </span>u96_type = IntegerType::new(context, <span class="number">96</span>).into();
 
-    <span class="kw">let </span>limb1 = block.append_op_result(arith::trunci(
-        integer,
-        IntegerType::new(context, <span class="number">96</span>).into(),
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>limb1 = block.trunci(integer, IntegerType::new(context, <span class="number">96</span>).into(), location)<span class="question-mark">?</span>;
     <span class="kw">let </span>limb2 = {
         <span class="kw">let </span>k96 = block.const_int(context, location, <span class="number">96</span>, <span class="number">384</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>limb = block.append_op_result(arith::shrui(integer, k96, location))<span class="question-mark">?</span>;
-        block.append_op_result(arith::trunci(limb, u96_type, location))<span class="question-mark">?
+        <span class="kw">let </span>limb = block.shrui(integer, k96, location)<span class="question-mark">?</span>;
+        block.trunci(limb, u96_type, location)<span class="question-mark">?
     </span>};
     <span class="kw">let </span>limb3 = {
         <span class="kw">let </span>k192 = block.const_int(context, location, <span class="number">96 </span>* <span class="number">2</span>, <span class="number">384</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>limb = block.append_op_result(arith::shrui(integer, k192, location))<span class="question-mark">?</span>;
-        block.append_op_result(arith::trunci(limb, u96_type, location))<span class="question-mark">?
+        <span class="kw">let </span>limb = block.shrui(integer, k192, location)<span class="question-mark">?</span>;
+        block.trunci(limb, u96_type, location)<span class="question-mark">?
     </span>};
     <span class="kw">let </span>limb4 = {
         <span class="kw">let </span>k288 = block.const_int(context, location, <span class="number">96 </span>* <span class="number">3</span>, <span class="number">384</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>limb = block.append_op_result(arith::shrui(integer, k288, location))<span class="question-mark">?</span>;
-        block.append_op_result(arith::trunci(limb, u96_type, location))<span class="question-mark">?
+        <span class="kw">let </span>limb = block.shrui(integer, k288, location)<span class="question-mark">?</span>;
+        block.trunci(limb, u96_type, location)<span class="question-mark">?
     </span>};
 
     <span class="kw">let </span>struct_type = llvm::r#type::r#struct(
@@ -2361,18 +2272,18 @@
 
     <span class="comment">// -- Loop body --
     // Arguments are rem_(i-1), rem, inv_(i-1), inv
-    </span><span class="kw">let </span>prev_remainder = loop_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>remainder = loop_block.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>prev_inverse = loop_block.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>inverse = loop_block.argument(<span class="number">3</span>)<span class="question-mark">?</span>.into();
+    </span><span class="kw">let </span>prev_remainder = loop_block.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>remainder = loop_block.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>prev_inverse = loop_block.arg(<span class="number">2</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>inverse = loop_block.arg(<span class="number">3</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// First calculate q = rem_(i-1)/rem_i, rounded down
     </span><span class="kw">let </span>quotient =
         loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))<span class="question-mark">?</span>;
 
     <span class="comment">// Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
-    </span><span class="kw">let </span>rem_times_quo = loop_block.append_op_result(arith::muli(remainder, quotient, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>inv_times_quo = loop_block.append_op_result(arith::muli(inverse, quotient, location))<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>rem_times_quo = loop_block.muli(remainder, quotient, location)<span class="question-mark">?</span>;
+    <span class="kw">let </span>inv_times_quo = loop_block.muli(inverse, quotient, location)<span class="question-mark">?</span>;
     <span class="kw">let </span>next_remainder =
         loop_block.append_op_result(arith::subi(prev_remainder, rem_times_quo, location))<span class="question-mark">?</span>;
     <span class="kw">let </span>next_inverse =
@@ -2384,13 +2295,8 @@
     // - inv_i is the bezout coefficient x
 
     </span><span class="kw">let </span>zero = loop_block.const_int_from_type(context, location, <span class="number">0</span>, integer_type)<span class="question-mark">?</span>;
-    <span class="kw">let </span>next_remainder_eq_zero = loop_block.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        next_remainder,
-        zero,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>next_remainder_eq_zero =
+        loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)<span class="question-mark">?</span>;
     loop_block.append_operation(cf::cond_br(
         context,
         next_remainder_eq_zero,

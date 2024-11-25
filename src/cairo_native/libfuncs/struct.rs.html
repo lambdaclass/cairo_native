@@ -228,7 +228,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>container = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>container = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span><span class="kw-2">mut </span>fields = Vec::&lt;Value&gt;::with_capacity(info.branch_signatures()[<span class="number">0</span>].vars.len());
     <span class="kw">for </span>(i, var_info) <span class="kw">in </span>info.branch_signatures()[<span class="number">0</span>].vars.iter().enumerate() {

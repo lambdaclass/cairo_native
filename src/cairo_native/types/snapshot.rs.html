@@ -146,18 +146,6 @@
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Snapshot type
 //!
 //! The type snapshot for a given type `T`.
@@ -172,7 +160,7 @@
 //! pub struct Snapshot&lt;T&gt;(pub T);
 //! ```
 
-</span><span class="kw">use super</span>::{TypeBuilder, WithSelf};
+</span><span class="kw">use super</span>::{BlockExt, TypeBuilder, WithSelf};
 <span class="kw">use crate</span>::{
     error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{
@@ -277,13 +265,7 @@
     </span><span class="kw">let </span>values = metadata
         .get::&lt;DupOverridesMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?
-        </span>.invoke_override(
-            context,
-            <span class="kw-2">&amp;</span>entry,
-            location,
-            <span class="kw-2">&amp;</span>info.ty,
-            entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        )<span class="question-mark">?</span>;
+        </span>.invoke_override(context, <span class="kw-2">&amp;</span>entry, location, <span class="kw-2">&amp;</span>info.ty, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[values.<span class="number">0</span>, values.<span class="number">1</span>], location));
     <span class="prelude-val">Ok</span>(region)
@@ -307,13 +289,7 @@
     </span>metadata
         .get::&lt;DropOverridesMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?
-        </span>.invoke_override(
-            context,
-            <span class="kw-2">&amp;</span>entry,
-            location,
-            <span class="kw-2">&amp;</span>info.ty,
-            entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        )<span class="question-mark">?</span>;
+        </span>.invoke_override(context, <span class="kw-2">&amp;</span>entry, location, <span class="kw-2">&amp;</span>info.ty, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
     <span class="prelude-val">Ok</span>(region)

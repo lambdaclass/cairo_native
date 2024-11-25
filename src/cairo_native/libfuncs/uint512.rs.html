@@ -291,26 +291,6 @@
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `u512`-related libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -361,8 +341,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>range_check =
-        <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())<span class="question-mark">?</span>;
+    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>i128_ty = IntegerType::new(context, <span class="number">128</span>).into();
     <span class="kw">let </span>i512_ty = IntegerType::new(context, <span class="number">512</span>).into();
@@ -375,8 +354,8 @@
         <span class="kw-2">&amp;</span>info.output_types()[<span class="number">0</span>][<span class="number">3</span>],
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>lhs_struct: Value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>rhs_struct: Value = entry.argument(<span class="number">2</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>lhs_struct: Value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs_struct: Value = entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>dividend = (
         entry.extract_value(context, location, lhs_struct, i128_ty, <span class="number">0</span>)<span class="question-mark">?</span>,
@@ -390,14 +369,14 @@
     );
 
     <span class="kw">let </span>dividend = (
-        entry.append_op_result(arith::extui(dividend.<span class="number">0</span>, i512_ty, location))<span class="question-mark">?</span>,
-        entry.append_op_result(arith::extui(dividend.<span class="number">1</span>, i512_ty, location))<span class="question-mark">?</span>,
-        entry.append_op_result(arith::extui(dividend.<span class="number">2</span>, i512_ty, location))<span class="question-mark">?</span>,
-        entry.append_op_result(arith::extui(dividend.<span class="number">3</span>, i512_ty, location))<span class="question-mark">?</span>,
+        entry.extui(dividend.<span class="number">0</span>, i512_ty, location)<span class="question-mark">?</span>,
+        entry.extui(dividend.<span class="number">1</span>, i512_ty, location)<span class="question-mark">?</span>,
+        entry.extui(dividend.<span class="number">2</span>, i512_ty, location)<span class="question-mark">?</span>,
+        entry.extui(dividend.<span class="number">3</span>, i512_ty, location)<span class="question-mark">?</span>,
     );
     <span class="kw">let </span>divisor = (
-        entry.append_op_result(arith::extui(divisor.<span class="number">0</span>, i512_ty, location))<span class="question-mark">?</span>,
-        entry.append_op_result(arith::extui(divisor.<span class="number">1</span>, i512_ty, location))<span class="question-mark">?</span>,
+        entry.extui(divisor.<span class="number">0</span>, i512_ty, location)<span class="question-mark">?</span>,
+        entry.extui(divisor.<span class="number">1</span>, i512_ty, location)<span class="question-mark">?</span>,
     );
 
     <span class="kw">let </span>k128 = entry.const_int_from_type(context, location, <span class="number">128</span>, i512_ty)<span class="question-mark">?</span>;
@@ -406,14 +385,11 @@
 
     <span class="kw">let </span>dividend = (
         dividend.<span class="number">0</span>,
-        entry.append_op_result(arith::shli(dividend.<span class="number">1</span>, k128, location))<span class="question-mark">?</span>,
-        entry.append_op_result(arith::shli(dividend.<span class="number">2</span>, k256, location))<span class="question-mark">?</span>,
-        entry.append_op_result(arith::shli(dividend.<span class="number">3</span>, k384, location))<span class="question-mark">?</span>,
+        entry.shli(dividend.<span class="number">1</span>, k128, location)<span class="question-mark">?</span>,
+        entry.shli(dividend.<span class="number">2</span>, k256, location)<span class="question-mark">?</span>,
+        entry.shli(dividend.<span class="number">3</span>, k384, location)<span class="question-mark">?</span>,
     );
-    <span class="kw">let </span>divisor = (
-        divisor.<span class="number">0</span>,
-        entry.append_op_result(arith::shli(divisor.<span class="number">1</span>, k128, location))<span class="question-mark">?</span>,
-    );
+    <span class="kw">let </span>divisor = (divisor.<span class="number">0</span>, entry.shli(divisor.<span class="number">1</span>, k128, location)<span class="question-mark">?</span>);
 
     <span class="kw">let </span>dividend = {
         <span class="kw">let </span>lhs_01 = entry.append_op_result(arith::ori(dividend.<span class="number">0</span>, dividend.<span class="number">1</span>, location))<span class="question-mark">?</span>;
@@ -427,31 +403,15 @@
     <span class="kw">let </span>result_rem = entry.append_op_result(arith::remui(dividend, divisor, location))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>result_div = (
-        entry.append_op_result(arith::trunci(result_div, i128_ty, location))<span class="question-mark">?</span>,
-        entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_div, k128, location))<span class="question-mark">?</span>,
-            i128_ty,
-            location,
-        ))<span class="question-mark">?</span>,
-        entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_div, k256, location))<span class="question-mark">?</span>,
-            i128_ty,
-            location,
-        ))<span class="question-mark">?</span>,
-        entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_div, k384, location))<span class="question-mark">?</span>,
-            i128_ty,
-            location,
-        ))<span class="question-mark">?</span>,
+        entry.trunci(result_div, i128_ty, location)<span class="question-mark">?</span>,
+        entry.trunci(entry.shrui(result_div, k128, location)<span class="question-mark">?</span>, i128_ty, location)<span class="question-mark">?</span>,
+        entry.trunci(entry.shrui(result_div, k256, location)<span class="question-mark">?</span>, i128_ty, location)<span class="question-mark">?</span>,
+        entry.trunci(entry.shrui(result_div, k384, location)<span class="question-mark">?</span>, i128_ty, location)<span class="question-mark">?</span>,
     );
 
     <span class="kw">let </span>result_rem = (
-        entry.append_op_result(arith::trunci(result_rem, i128_ty, location))<span class="question-mark">?</span>,
-        entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_rem, k128, location))<span class="question-mark">?</span>,
-            i128_ty,
-            location,
-        ))<span class="question-mark">?</span>,
+        entry.trunci(result_rem, i128_ty, location)<span class="question-mark">?</span>,
+        entry.trunci(entry.shrui(result_rem, k128, location)<span class="question-mark">?</span>, i128_ty, location)<span class="question-mark">?</span>,
     );
 
     <span class="kw">let </span>result_div_val = entry.append_op_result(llvm::undef(

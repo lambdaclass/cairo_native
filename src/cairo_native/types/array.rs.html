@@ -394,27 +394,6 @@
 <a href="#394" id="394">394</a>
 <a href="#395" id="395">395</a>
 <a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array type
 //!
 //! An array type is a dynamically allocated list of items.
@@ -527,7 +506,7 @@
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(value_ty, location)]));
 
-    <span class="kw">let </span>src_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>src_value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>value_ptr = entry.extract_value(
         context,
         location,
@@ -553,13 +532,7 @@
     <span class="kw">let </span>value_len = entry.append_op_result(arith::subi(value_end, value_start, location))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">32</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>value_is_empty = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        value_len,
-        k0,
-        location,
-    ))<span class="question-mark">?</span>;
+    <span class="kw">let </span>value_is_empty = entry.cmpi(context, CmpiPredicate::Eq, value_len, k0, location)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
@@ -581,13 +554,10 @@
         <span class="kw">let </span>elem_stride = block_realloc.const_int(context, location, elem_stride, <span class="number">64</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>dst_value_len = {
-            <span class="kw">let </span>value_len = block_realloc.append_op_result(arith::extui(
-                value_len,
-                IntegerType::new(context, <span class="number">64</span>).into(),
-                location,
-            ))<span class="question-mark">?</span>;
+            <span class="kw">let </span>value_len =
+                block_realloc.extui(value_len, IntegerType::new(context, <span class="number">64</span>).into(), location)<span class="question-mark">?</span>;
 
-            block_realloc.append_op_result(arith::muli(value_len, elem_stride, location))<span class="question-mark">?
+            block_realloc.muli(value_len, elem_stride, location)<span class="question-mark">?
         </span>};
         <span class="kw">let </span>dst_value_ptr = {
             block_realloc.append_op_result(ReallocBindingsMeta::realloc(
@@ -599,14 +569,10 @@
         </span>};
 
         <span class="kw">let </span>src_value_ptr = {
-            <span class="kw">let </span>value_offset = block_realloc.append_op_result(arith::extui(
-                value_start,
-                IntegerType::new(context, <span class="number">64</span>).into(),
-                location,
-            ))<span class="question-mark">?</span>;
+            <span class="kw">let </span>value_offset =
+                block_realloc.extui(value_start, IntegerType::new(context, <span class="number">64</span>).into(), location)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>src_value_offset =
-                block_realloc.append_op_result(arith::muli(value_offset, elem_stride, location))<span class="question-mark">?</span>;
+            <span class="kw">let </span>src_value_offset = block_realloc.muli(value_offset, elem_stride, location)<span class="question-mark">?</span>;
             block_realloc.gep(
                 context,
                 location,
@@ -630,7 +596,7 @@
                             location,
                         )]));
 
-                        <span class="kw">let </span>idx = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+                        <span class="kw">let </span>idx = block.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
 
                         <span class="kw">let </span>src_value_ptr = block.gep(
                             context,
@@ -683,7 +649,7 @@
             context,
             location,
             dst_value,
-            <span class="kw-2">&amp;</span>[block_finish.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), k0, value_len, value_len],
+            <span class="kw-2">&amp;</span>[block_finish.arg(<span class="number">0</span>)<span class="question-mark">?</span>, k0, value_len, value_len],
         )<span class="question-mark">?</span>;
 
         block_finish.append_operation(func::r#return(<span class="kw-2">&amp;</span>[src_value, dst_value], location));
@@ -712,7 +678,7 @@
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(value_ty, location)]));
 
-    <span class="kw">let </span>src_value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>src_value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>value_ptr = entry.extract_value(
         context,
         location,
@@ -738,22 +704,14 @@
                 <span class="number">2</span>,
             )<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>value_start = entry.append_op_result(arith::extui(
-                value_start,
-                IntegerType::new(context, <span class="number">64</span>).into(),
-                location,
-            ))<span class="question-mark">?</span>;
-            <span class="kw">let </span>value_end = entry.append_op_result(arith::extui(
-                value_end,
-                IntegerType::new(context, <span class="number">64</span>).into(),
-                location,
-            ))<span class="question-mark">?</span>;
+            <span class="kw">let </span>value_start =
+                entry.extui(value_start, IntegerType::new(context, <span class="number">64</span>).into(), location)<span class="question-mark">?</span>;
+            <span class="kw">let </span>value_end =
+                entry.extui(value_end, IntegerType::new(context, <span class="number">64</span>).into(), location)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>elem_stride = entry.const_int(context, location, elem_stride, <span class="number">64</span>)<span class="question-mark">?</span>;
-            <span class="kw">let </span>offset_start =
-                entry.append_op_result(arith::muli(value_start, elem_stride, location))<span class="question-mark">?</span>;
-            <span class="kw">let </span>offset_end =
-                entry.append_op_result(arith::muli(value_end, elem_stride, location))<span class="question-mark">?</span>;
+            <span class="kw">let </span>offset_start = entry.muli(value_start, elem_stride, location)<span class="question-mark">?</span>;
+            <span class="kw">let </span>offset_end = entry.muli(value_end, elem_stride, location)<span class="question-mark">?</span>;
 
             entry.append_operation(scf::r#for(
                 offset_start,
@@ -766,7 +724,7 @@
                         location,
                     )]));
 
-                    <span class="kw">let </span>elem_offset = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+                    <span class="kw">let </span>elem_offset = block.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
                     <span class="kw">let </span>elem_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
                         context,
                         value_ptr,

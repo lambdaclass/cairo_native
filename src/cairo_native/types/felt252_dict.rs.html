@@ -494,13 +494,6 @@
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
 <a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
-<a href="#500" id="500">500</a>
-<a href="#501" id="501">501</a>
-<a href="#502" id="502">502</a>
-<a href="#503" id="503">503</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary type
 //!
 //! A key value storage for values whose type implement Copy. The key is always a felt.
@@ -605,7 +598,7 @@
             entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
         <span class="kw">let </span>inner_len = entry.const_int(context, location, inner_len, <span class="number">64</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>old_ptr = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+        <span class="kw">let </span>old_ptr = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>new_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, inner_len, location,
         )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
@@ -658,7 +651,7 @@
     )<span class="question-mark">?</span>;
 
     <span class="comment">// The following unwrap is unreachable because the registration logic will always insert it.
-    </span><span class="kw">let </span>value0 = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    </span><span class="kw">let </span>value0 = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>value1 = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?
@@ -689,7 +682,7 @@
             <span class="kw">let </span>entry =
                 region.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
 
-            <span class="kw">let </span>value = entry.load(context, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), inner_ty)<span class="question-mark">?</span>;
+            <span class="kw">let </span>value = entry.load(context, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>, inner_ty)<span class="question-mark">?</span>;
             drop_overrides_meta.invoke_override(context, <span class="kw-2">&amp;</span>entry, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
 
             entry.append_operation(llvm::r#return(<span class="prelude-val">None</span>, location));
@@ -745,14 +738,7 @@
     </span><span class="kw">let </span>runtime_bindings_meta = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?</span>;
-    runtime_bindings_meta.dict_drop(
-        context,
-        module,
-        <span class="kw-2">&amp;</span>entry,
-        entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        drop_fn,
-        location,
-    )<span class="question-mark">?</span>;
+    runtime_bindings_meta.dict_drop(context, module, <span class="kw-2">&amp;</span>entry, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>, drop_fn, location)<span class="question-mark">?</span>;
 
     entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
     <span class="prelude-val">Ok</span>(region)

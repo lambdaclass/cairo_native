@@ -478,8 +478,8 @@
         .trailing_zeros();
     <span class="kw">let </span>tag_ty = IntegerType::new(context, tag_bits).into();
 
-    <span class="kw">let </span>lhs = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>rhs = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>lhs = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rhs = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>lhs_tag = entry.extract_value(context, location, lhs, tag_ty, <span class="number">0</span>)<span class="question-mark">?</span>;
 
@@ -527,7 +527,7 @@
         .trailing_zeros();
     <span class="kw">let </span>tag_ty = IntegerType::new(context, tag_bits).into();
 
-    <span class="kw">let </span>value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>tag_value = entry.extract_value(context, location, value, tag_ty, <span class="number">0</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>const_1 = entry.const_int_from_type(context, location, <span class="number">1</span>, tag_ty)<span class="question-mark">?</span>;
@@ -577,10 +577,10 @@
         .trailing_zeros();
     <span class="kw">let </span>tag_ty = IntegerType::new(context, tag_bits).into();
 
-    <span class="kw">let </span>value = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>tag_value = entry.extract_value(context, location, value, tag_ty, <span class="number">0</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>result = entry.append_op_result(arith::extui(tag_value, felt252_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = entry.extui(tag_value, felt252_ty, location)<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[result], location));
     <span class="prelude-val">Ok</span>(())

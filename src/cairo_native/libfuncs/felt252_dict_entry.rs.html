@@ -362,11 +362,6 @@
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary entry libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -440,8 +435,8 @@
     )<span class="question-mark">?</span>;
     <span class="kw">let </span>value_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>dict_ptr = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>entry_key = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>dict_ptr = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>entry_key = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>entry_key_ptr =
         helper
@@ -526,7 +521,7 @@
     <span class="kw">let </span>entry =
         block_final.insert_values(context, location, entry, <span class="kw-2">&amp;</span>[dict_ptr, entry_value_ptr_ptr])<span class="question-mark">?</span>;
 
-    block_final.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry, block_final.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into()], location));
+    block_final.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry, block_final.arg(<span class="number">0</span>)<span class="question-mark">?</span>], location));
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -551,8 +546,8 @@
         <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>dict_entry = entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-    <span class="kw">let </span>entry_value = entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into();
+    <span class="kw">let </span>dict_entry = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>entry_value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>dict_ptr = entry.extract_value(
         context,
@@ -634,12 +629,7 @@
         block_vacant.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[value_ptr], location));
     }
 
-    block_final.store(
-        context,
-        location,
-        block_final.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-        entry_value,
-    )<span class="question-mark">?</span>;
+    block_final.store(context, location, block_final.arg(<span class="number">0</span>)<span class="question-mark">?</span>, entry_value)<span class="question-mark">?</span>;
     block_final.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[dict_ptr], location));
 
     <span class="prelude-val">Ok</span>(())

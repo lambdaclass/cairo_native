@@ -2192,7 +2192,7 @@
                         block.append_operation(llvm::store(
                             context,
                             ptr,
-                            pre_entry_block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
+                            pre_entry_block.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
                             location,
                             LoadStoreOptions::new().align(<span class="prelude-val">Some</span>(IntegerAttribute::new(
                                 IntegerType::new(context, <span class="number">64</span>).into(),
