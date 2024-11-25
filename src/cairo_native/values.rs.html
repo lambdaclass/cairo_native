@@ -1675,13 +1675,42 @@
 <a href="#1675" id="1675">1675</a>
 <a href="#1676" id="1676">1676</a>
 <a href="#1677" id="1677">1677</a>
+<a href="#1678" id="1678">1678</a>
+<a href="#1679" id="1679">1679</a>
+<a href="#1680" id="1680">1680</a>
+<a href="#1681" id="1681">1681</a>
+<a href="#1682" id="1682">1682</a>
+<a href="#1683" id="1683">1683</a>
+<a href="#1684" id="1684">1684</a>
+<a href="#1685" id="1685">1685</a>
+<a href="#1686" id="1686">1686</a>
+<a href="#1687" id="1687">1687</a>
+<a href="#1688" id="1688">1688</a>
+<a href="#1689" id="1689">1689</a>
+<a href="#1690" id="1690">1690</a>
+<a href="#1691" id="1691">1691</a>
+<a href="#1692" id="1692">1692</a>
+<a href="#1693" id="1693">1693</a>
+<a href="#1694" id="1694">1694</a>
+<a href="#1695" id="1695">1695</a>
+<a href="#1696" id="1696">1696</a>
+<a href="#1697" id="1697">1697</a>
+<a href="#1698" id="1698">1698</a>
+<a href="#1699" id="1699">1699</a>
+<a href="#1700" id="1700">1700</a>
+<a href="#1701" id="1701">1701</a>
+<a href="#1702" id="1702">1702</a>
+<a href="#1703" id="1703">1703</a>
+<a href="#1704" id="1704">1704</a>
+<a href="#1705" id="1705">1705</a>
+<a href="#1706" id="1706">1706</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
 //!
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
 </span><span class="kw">use crate</span>::{
-    error::{CompilerError, Error},
-    native_panic,
+    error::{panic::ToNativeAssertError, CompilerError, Error},
+    native_assert, native_panic,
     starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::{
@@ -2030,23 +2059,25 @@
                 }
                 <span class="self">Self</span>::Enum { tag, value, .. } =&gt; {
                     <span class="kw">if let </span>CoreTypeConcrete::Enum(info) = <span class="self">Self</span>::resolve_type(ty, registry)<span class="question-mark">? </span>{
-                        <span class="macro">assert!</span>(<span class="kw-2">*</span>tag &lt; info.variants.len(), <span class="string">"Variant index out of range."</span>);
+                        <span class="macro">native_assert!</span>(<span class="kw-2">*</span>tag &lt; info.variants.len(), <span class="string">"Variant index out of range."</span>);
 
                         <span class="kw">let </span>payload_type_id = <span class="kw-2">&amp;</span>info.variants[<span class="kw-2">*</span>tag];
                         <span class="kw">let </span>payload = value.to_ptr(arena, registry, payload_type_id)<span class="question-mark">?</span>;
 
                         <span class="kw">let </span>(layout, tag_layout, variant_layouts) =
-                            <span class="kw">crate</span>::types::r#enum::get_layout_for_variants(registry, <span class="kw-2">&amp;</span>info.variants)
-                                .unwrap();
+                            <span class="kw">crate</span>::types::r#enum::get_layout_for_variants(
+                                registry,
+                                <span class="kw-2">&amp;</span>info.variants,
+                            )<span class="question-mark">?</span>;
                         <span class="kw">let </span>ptr = arena.alloc_layout(layout).cast::&lt;()&gt;().as_ptr();
 
                         <span class="kw">match </span>tag_layout.size() {
-                            <span class="number">0 </span>=&gt; <span class="macro">panic!</span>(<span class="string">"An enum without variants cannot be instantiated."</span>),
+                            <span class="number">0 </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"An enum without variants cannot be instantiated."</span>),
                             <span class="number">1 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u8&gt;() = <span class="kw-2">*</span>tag <span class="kw">as </span>u8,
                             <span class="number">2 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u16&gt;() = <span class="kw-2">*</span>tag <span class="kw">as </span>u16,
                             <span class="number">4 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u32&gt;() = <span class="kw-2">*</span>tag <span class="kw">as </span>u32,
                             <span class="number">8 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u64&gt;() = <span class="kw-2">*</span>tag <span class="kw">as </span>u64,
-                            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"reached the maximum size for an enum"</span>),
                         }
 
                         std::ptr::copy_nonoverlapping(
@@ -2191,7 +2222,9 @@
                 <span class="self">Self</span>::Secp256K1Point { .. } =&gt; <span class="macro">todo!</span>(),
                 <span class="self">Self</span>::Secp256R1Point { .. } =&gt; <span class="macro">todo!</span>(),
                 <span class="self">Self</span>::Null =&gt; {
-                    <span class="macro">unimplemented!</span>(<span class="string">"null is meant as return value for nullable for now"</span>)
+                    <span class="macro">native_panic!</span>(
+                        <span class="string">"unimplemented: null is meant as return value for nullable for now"
+                    </span>)
                 }
                 <span class="self">Self</span>::IntRange { x, y } =&gt; {
                     <span class="kw">if let </span>CoreTypeConcrete::IntRange(info) = <span class="self">Self</span>::resolve_type(ty, registry)<span class="question-mark">? </span>{
@@ -2250,13 +2283,13 @@
 
                     <span class="kw">let </span>(ptr_layout, offset) = ptr_layout.extend(len_layout)<span class="question-mark">?</span>;
                     <span class="kw">let </span>start_offset_value = <span class="kw-2">*</span>NonNull::new(ptr.as_ptr().byte_add(offset))
-                        .unwrap()
-                        .cast::&lt;u32&gt;()
+                        .to_native_assert_error(<span class="string">"tried to make a non-null ptr out of a null one"</span>)<span class="question-mark">?
+                        </span>.cast::&lt;u32&gt;()
                         .as_ref();
                     <span class="kw">let </span>(<span class="kw">_</span>, offset) = ptr_layout.extend(len_layout)<span class="question-mark">?</span>;
                     <span class="kw">let </span>end_offset_value = <span class="kw-2">*</span>NonNull::new(ptr.as_ptr().byte_add(offset))
-                        .unwrap()
-                        .cast::&lt;u32&gt;()
+                        .to_native_assert_error(<span class="string">"tried to make a non-null ptr out of a null one"</span>)<span class="question-mark">?
+                        </span>.cast::&lt;u32&gt;()
                         .as_ref();
 
                     <span class="comment">// this pointer can be null if the array has a size of 0.
@@ -2264,14 +2297,19 @@
                     <span class="kw">let </span>data_ptr =
                         init_data_ptr.byte_add(elem_stride * start_offset_value <span class="kw">as </span>usize);
 
-                    <span class="macro">assert!</span>(end_offset_value &gt;= start_offset_value);
+                    <span class="macro">native_assert!</span>(
+                        end_offset_value &gt;= start_offset_value,
+                        <span class="string">"can't have an array with negative length"
+                    </span>);
                     <span class="kw">let </span>num_elems = (end_offset_value - start_offset_value) <span class="kw">as </span>usize;
                     <span class="kw">let </span><span class="kw-2">mut </span>array_value = Vec::with_capacity(num_elems);
 
                     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_elems {
                         <span class="comment">// safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
-                        </span><span class="kw">let </span>cur_elem_ptr =
-                            NonNull::new(data_ptr.byte_add(elem_stride * i)).unwrap();
+                        </span><span class="kw">let </span>cur_elem_ptr = NonNull::new(data_ptr.byte_add(elem_stride * i))
+                            .to_native_assert_error(
+                                <span class="string">"tried to make a non-null ptr out of a null one"</span>,
+                            )<span class="question-mark">?</span>;
 
                         array_value.push(<span class="self">Self</span>::from_ptr(cur_elem_ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>);
                     }
@@ -2356,7 +2394,7 @@
                     <span class="kw">let </span>tag_value = <span class="kw">match </span>info.variants.len() {
                         <span class="number">0 </span>=&gt; {
                             <span class="comment">// An enum without variants is basically the `!` (never) type in Rust.
-                            </span><span class="macro">panic!</span>(<span class="string">"An enum without variants is not a valid type."</span>)
+                            </span><span class="macro">native_panic!</span>(<span class="string">"An enum without variants is not a valid type."</span>)
                         }
                         <span class="number">1 </span>=&gt; <span class="number">0</span>,
                         <span class="kw">_ </span>=&gt; <span class="kw">match </span>tag_layout.size() {
@@ -2364,7 +2402,7 @@
                             <span class="number">2 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u16&gt;().as_ref() <span class="kw">as </span>usize,
                             <span class="number">4 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u32&gt;().as_ref() <span class="kw">as </span>usize,
                             <span class="number">8 </span>=&gt; <span class="kw-2">*</span>ptr.cast::&lt;u64&gt;().as_ref() <span class="kw">as </span>usize,
-                            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"reached the maximum size for an enum"</span>),
                         },
                     };
 
@@ -2377,9 +2415,10 @@
                     <span class="kw">let </span>payload_ty = registry.get_type(<span class="kw-2">&amp;</span>info.variants[tag_value])<span class="question-mark">?</span>;
                     <span class="kw">let </span>payload_layout = payload_ty.layout(registry)<span class="question-mark">?</span>;
 
-                    <span class="kw">let </span>payload_ptr =
-                        NonNull::new(ptr.as_ptr().byte_add(tag_layout.extend(payload_layout)<span class="question-mark">?</span>.<span class="number">1</span>))
-                            .unwrap();
+                    <span class="kw">let </span>payload_ptr = NonNull::new(
+                        ptr.as_ptr().byte_add(tag_layout.extend(payload_layout)<span class="question-mark">?</span>.<span class="number">1</span>),
+                    )
+                    .to_native_assert_error(<span class="string">"tried to make a non-null ptr out of a null one"</span>)<span class="question-mark">?</span>;
                     <span class="kw">let </span>payload = <span class="self">Self</span>::from_ptr(payload_ptr, <span class="kw-2">&amp;</span>info.variants[tag_value], registry)<span class="question-mark">?</span>;
 
                     <span class="self">Self</span>::Enum {
@@ -2403,7 +2442,9 @@
                         layout = <span class="prelude-val">Some</span>(new_layout);
 
                         members.push(<span class="self">Self</span>::from_ptr(
-                            NonNull::new(ptr.as_ptr().byte_add(offset)).unwrap(),
+                            NonNull::new(ptr.as_ptr().byte_add(offset)).to_native_assert_error(
+                                <span class="string">"tried to make a non-null ptr out of a null one"</span>,
+                            )<span class="question-mark">?</span>,
                             member_ty,
                             registry,
                         )<span class="question-mark">?</span>);
@@ -2435,7 +2476,11 @@
                         output_map.insert(
                             key,
                             <span class="self">Self</span>::from_ptr(
-                                NonNull::new(val_ptr).unwrap().cast(),
+                                NonNull::new(val_ptr)
+                                    .to_native_assert_error(
+                                        <span class="string">"tried to make a non-null ptr out of a null one"</span>,
+                                    )<span class="question-mark">?
+                                    </span>.cast(),
                                 <span class="kw-2">&amp;</span>info.ty,
                                 registry,
                             )<span class="question-mark">?</span>,
@@ -2449,7 +2494,7 @@
                     }
                 }
                 CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">unimplemented!</span>(<span class="string">"shouldn't be possible to return"</span>)
+                    <span class="macro">native_panic!</span>(<span class="string">"unimplemented: shouldn't be possible to return"</span>)
                 }
                 CoreTypeConcrete::Pedersen(<span class="kw">_</span>)
                 | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
@@ -2459,7 +2504,7 @@
                 | CoreTypeConcrete::EcOp(<span class="kw">_</span>)
                 | CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>)
                 | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">unreachable!</span>(<span class="string">"handled before: {:?}"</span>, type_id)
+                    <span class="macro">native_panic!</span>(<span class="string">"handled before: {:?}"</span>, type_id)
                 }
                 <span class="comment">// Does it make sense for programs to return this? Should it be implemented
                 </span>CoreTypeConcrete::StarkNet(selector) =&gt; <span class="kw">match </span>selector {
@@ -2474,7 +2519,7 @@
                         <span class="self">Self</span>::Felt252(data)
                     }
                     StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; {
-                        <span class="macro">unreachable!</span>(<span class="string">"should be handled before"</span>)
+                        <span class="macro">native_panic!</span>(<span class="string">"should be handled before"</span>)
                     }
                     StarkNetTypeConcrete::Secp256Point(info) =&gt; <span class="kw">match </span>info {
                         Secp256PointTypeConcrete::K1(<span class="kw">_</span>) =&gt; {
@@ -3151,7 +3196,6 @@
     }
 
     <span class="attr">#[test]
-    #[should_panic(expected = <span class="string">"Variant index out of range."</span>)]
     </span><span class="kw">fn </span>test_to_jit_enum_variant_out_of_range() {
         <span class="comment">// Parse the program
         </span><span class="kw">let </span>program = ProgramParser::new()
@@ -3165,16 +3209,21 @@
         </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 
         <span class="comment">// Call to_jit to get the value of the enum with tag value out of range
-        </span><span class="kw">let _ </span>= Value::Enum {
+        </span><span class="kw">let </span>result = Value::Enum {
             tag: <span class="number">2</span>,
             value: Box::new(Value::Uint8(<span class="number">10</span>)),
             debug_name: <span class="prelude-val">None</span>,
         }
-        .to_ptr(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">1</span>].id);
+        .to_ptr(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">1</span>].id)
+        .unwrap_err();
+
+        <span class="kw">let </span>error = result.to_string().clone();
+        <span class="kw">let </span>error_msg = error.split(<span class="string">"\n"</span>).collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>str&gt;&gt;()[<span class="number">0</span>];
+
+        <span class="macro">assert_eq!</span>(error_msg, <span class="string">"Variant index out of range."</span>);
     }
 
     <span class="attr">#[test]
-    #[should_panic(expected = <span class="string">"An enum without variants cannot be instantiated."</span>)]
     </span><span class="kw">fn </span>test_to_jit_enum_no_variant() {
         <span class="kw">let </span>program = ProgramParser::new()
             .parse(
@@ -3185,12 +3234,21 @@
 
         <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 
-        <span class="kw">let _ </span>= Value::Enum {
+        <span class="kw">let </span>result = Value::Enum {
             tag: <span class="number">0</span>,
             value: Box::new(Value::Uint8(<span class="number">10</span>)),
             debug_name: <span class="prelude-val">None</span>,
         }
-        .to_ptr(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">1</span>].id);
+        .to_ptr(<span class="kw-2">&amp;</span>Bump::new(), <span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>program.type_declarations[<span class="number">1</span>].id)
+        .unwrap_err();
+
+        <span class="kw">let </span>error = result.to_string().clone();
+        <span class="kw">let </span>error_msg = error.split(<span class="string">"\n"</span>).collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>str&gt;&gt;()[<span class="number">0</span>];
+
+        <span class="macro">assert_eq!</span>(
+            error_msg,
+            <span class="string">"An enum without variants cannot be instantiated."
+        </span>);
     }
 
     <span class="attr">#[test]
