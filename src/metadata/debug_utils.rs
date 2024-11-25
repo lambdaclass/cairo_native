@@ -44,7 +44,7 @@
 //!     info: &SignatureAndTypeConcreteLibfunc,
 //! ) -> Result<()>
 //! {
-//!     let array_val = entry.argument(0)?.into();
+//!     let array_val = entry.arg(0)?;
 //!     let elem_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
 //!
 //!     #[cfg(feature = "with-debug-utils")]

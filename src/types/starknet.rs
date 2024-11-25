@@ -221,7 +221,7 @@ pub fn build_sha256_state_handle<'ctx>(
             ods::llvm::intr_memcpy_inline(
                 context,
                 new_ptr,
-                block.argument(0)?.into(),
+                block.arg(0)?,
                 IntegerAttribute::new(IntegerType::new(context, 64).into(), 32),
                 IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                 location,
@@ -229,10 +229,7 @@ pub fn build_sha256_state_handle<'ctx>(
             .into(),
         );
 
-        block.append_operation(func::r#return(
-            &[block.argument(0)?.into(), new_ptr],
-            location,
-        ));
+        block.append_operation(func::r#return(&[block.arg(0)?, new_ptr], location));
         Ok(Some(region))
     })?;
     DropOverridesMeta::register_with(context, module, registry, metadata, info.self_ty(), |_| {
@@ -240,11 +237,7 @@ pub fn build_sha256_state_handle<'ctx>(
         let block =
             region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
-        block.append_operation(ReallocBindingsMeta::free(
-            context,
-            block.argument(0)?.into(),
-            location,
-        )?);
+        block.append_operation(ReallocBindingsMeta::free(context, block.arg(0)?, location)?);
 
         block.append_operation(func::r#return(&[], location));
         Ok(Some(region))

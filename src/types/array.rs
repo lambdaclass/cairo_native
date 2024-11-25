@@ -110,7 +110,7 @@ fn build_dup<'ctx>(
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    let src_value = entry.argument(0)?.into();
+    let src_value = entry.arg(0)?;
     let value_ptr = entry.extract_value(
         context,
         location,
@@ -136,13 +136,7 @@ fn build_dup<'ctx>(
     let value_len = entry.append_op_result(arith::subi(value_end, value_start, location))?;
 
     let k0 = entry.const_int(context, location, 0, 32)?;
-    let value_is_empty = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        value_len,
-        k0,
-        location,
-    ))?;
+    let value_is_empty = entry.cmpi(context, CmpiPredicate::Eq, value_len, k0, location)?;
 
     let null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
@@ -164,13 +158,10 @@ fn build_dup<'ctx>(
         let elem_stride = block_realloc.const_int(context, location, elem_stride, 64)?;
 
         let dst_value_len = {
-            let value_len = block_realloc.append_op_result(arith::extui(
-                value_len,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
+            let value_len =
+                block_realloc.extui(value_len, IntegerType::new(context, 64).into(), location)?;
 
-            block_realloc.append_op_result(arith::muli(value_len, elem_stride, location))?
+            block_realloc.muli(value_len, elem_stride, location)?
         };
         let dst_value_ptr = {
             block_realloc.append_op_result(ReallocBindingsMeta::realloc(
@@ -182,14 +173,10 @@ fn build_dup<'ctx>(
         };
 
         let src_value_ptr = {
-            let value_offset = block_realloc.append_op_result(arith::extui(
-                value_start,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
+            let value_offset =
+                block_realloc.extui(value_start, IntegerType::new(context, 64).into(), location)?;
 
-            let src_value_offset =
-                block_realloc.append_op_result(arith::muli(value_offset, elem_stride, location))?;
+            let src_value_offset = block_realloc.muli(value_offset, elem_stride, location)?;
             block_realloc.gep(
                 context,
                 location,
@@ -213,7 +200,7 @@ fn build_dup<'ctx>(
                             location,
                         )]));
 
-                        let idx = block.argument(0)?.into();
+                        let idx = block.arg(0)?;
 
                         let src_value_ptr = block.gep(
                             context,
@@ -266,7 +253,7 @@ fn build_dup<'ctx>(
             context,
             location,
             dst_value,
-            &[block_finish.argument(0)?.into(), k0, value_len, value_len],
+            &[block_finish.arg(0)?, k0, value_len, value_len],
         )?;
 
         block_finish.append_operation(func::r#return(&[src_value, dst_value], location));
@@ -295,7 +282,7 @@ fn build_drop<'ctx>(
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    let src_value = entry.argument(0)?.into();
+    let src_value = entry.arg(0)?;
     let value_ptr = entry.extract_value(
         context,
         location,
@@ -321,22 +308,14 @@ fn build_drop<'ctx>(
                 2,
             )?;
 
-            let value_start = entry.append_op_result(arith::extui(
-                value_start,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
-            let value_end = entry.append_op_result(arith::extui(
-                value_end,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
+            let value_start =
+                entry.extui(value_start, IntegerType::new(context, 64).into(), location)?;
+            let value_end =
+                entry.extui(value_end, IntegerType::new(context, 64).into(), location)?;
 
             let elem_stride = entry.const_int(context, location, elem_stride, 64)?;
-            let offset_start =
-                entry.append_op_result(arith::muli(value_start, elem_stride, location))?;
-            let offset_end =
-                entry.append_op_result(arith::muli(value_end, elem_stride, location))?;
+            let offset_start = entry.muli(value_start, elem_stride, location)?;
+            let offset_end = entry.muli(value_end, elem_stride, location)?;
 
             entry.append_operation(scf::r#for(
                 offset_start,
@@ -349,7 +328,7 @@ fn build_drop<'ctx>(
                         location,
                     )]));
 
-                    let elem_offset = block.argument(0)?.into();
+                    let elem_offset = block.arg(0)?;
                     let elem_ptr = block.append_op_result(llvm::get_element_ptr_dynamic(
                         context,
                         value_ptr,

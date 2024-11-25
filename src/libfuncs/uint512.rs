@@ -48,8 +48,7 @@ pub fn build_divmod_u256<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i512_ty = IntegerType::new(context, 512).into();
@@ -62,8 +61,8 @@ pub fn build_divmod_u256<'ctx, 'this>(
         &info.output_types()[0][3],
     )?;
 
-    let lhs_struct: Value = entry.argument(1)?.into();
-    let rhs_struct: Value = entry.argument(2)?.into();
+    let lhs_struct: Value = entry.arg(1)?;
+    let rhs_struct: Value = entry.arg(2)?;
 
     let dividend = (
         entry.extract_value(context, location, lhs_struct, i128_ty, 0)?,
@@ -77,14 +76,14 @@ pub fn build_divmod_u256<'ctx, 'this>(
     );
 
     let dividend = (
-        entry.append_op_result(arith::extui(dividend.0, i512_ty, location))?,
-        entry.append_op_result(arith::extui(dividend.1, i512_ty, location))?,
-        entry.append_op_result(arith::extui(dividend.2, i512_ty, location))?,
-        entry.append_op_result(arith::extui(dividend.3, i512_ty, location))?,
+        entry.extui(dividend.0, i512_ty, location)?,
+        entry.extui(dividend.1, i512_ty, location)?,
+        entry.extui(dividend.2, i512_ty, location)?,
+        entry.extui(dividend.3, i512_ty, location)?,
     );
     let divisor = (
-        entry.append_op_result(arith::extui(divisor.0, i512_ty, location))?,
-        entry.append_op_result(arith::extui(divisor.1, i512_ty, location))?,
+        entry.extui(divisor.0, i512_ty, location)?,
+        entry.extui(divisor.1, i512_ty, location)?,
     );
 
     let k128 = entry.const_int_from_type(context, location, 128, i512_ty)?;
@@ -93,14 +92,11 @@ pub fn build_divmod_u256<'ctx, 'this>(
 
     let dividend = (
         dividend.0,
-        entry.append_op_result(arith::shli(dividend.1, k128, location))?,
-        entry.append_op_result(arith::shli(dividend.2, k256, location))?,
-        entry.append_op_result(arith::shli(dividend.3, k384, location))?,
+        entry.shli(dividend.1, k128, location)?,
+        entry.shli(dividend.2, k256, location)?,
+        entry.shli(dividend.3, k384, location)?,
     );
-    let divisor = (
-        divisor.0,
-        entry.append_op_result(arith::shli(divisor.1, k128, location))?,
-    );
+    let divisor = (divisor.0, entry.shli(divisor.1, k128, location)?);
 
     let dividend = {
         let lhs_01 = entry.append_op_result(arith::ori(dividend.0, dividend.1, location))?;
@@ -114,31 +110,15 @@ pub fn build_divmod_u256<'ctx, 'this>(
     let result_rem = entry.append_op_result(arith::remui(dividend, divisor, location))?;
 
     let result_div = (
-        entry.append_op_result(arith::trunci(result_div, i128_ty, location))?,
-        entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_div, k128, location))?,
-            i128_ty,
-            location,
-        ))?,
-        entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_div, k256, location))?,
-            i128_ty,
-            location,
-        ))?,
-        entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_div, k384, location))?,
-            i128_ty,
-            location,
-        ))?,
+        entry.trunci(result_div, i128_ty, location)?,
+        entry.trunci(entry.shrui(result_div, k128, location)?, i128_ty, location)?,
+        entry.trunci(entry.shrui(result_div, k256, location)?, i128_ty, location)?,
+        entry.trunci(entry.shrui(result_div, k384, location)?, i128_ty, location)?,
     );
 
     let result_rem = (
-        entry.append_op_result(arith::trunci(result_rem, i128_ty, location))?,
-        entry.append_op_result(arith::trunci(
-            entry.append_op_result(arith::shrui(result_rem, k128, location))?,
-            i128_ty,
-            location,
-        ))?,
+        entry.trunci(result_rem, i128_ty, location)?,
+        entry.trunci(entry.shrui(result_rem, k128, location)?, i128_ty, location)?,
     );
 
     let result_div_val = entry.append_op_result(llvm::undef(

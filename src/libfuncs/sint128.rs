@@ -97,10 +97,10 @@ pub fn build_operation<'ctx, 'this>(
     info: &IntOperationConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let lhs: Value = entry.argument(1)?.into();
-    let rhs: Value = entry.argument(2)?.into();
+    let lhs: Value = entry.arg(1)?;
+    let rhs: Value = entry.arg(2)?;
 
     let op_name = match info.operator {
         IntOperator::OverflowingAdd => "llvm.intr.sadd.with.overflow",
@@ -127,13 +127,7 @@ pub fn build_operation<'ctx, 'this>(
     // Create a const operation to get the 0 value to compare against
     let zero_const = entry.const_int_from_type(context, location, 0, values_type)?;
     // Check if the result is positive
-    let is_positive = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Sge,
-        op_result,
-        zero_const,
-        location,
-    ))?;
+    let is_positive = entry.cmpi(context, CmpiPredicate::Sge, op_result, zero_const, location)?;
 
     // Check overflow flag
     let op_overflow = entry.extract_value(
@@ -180,8 +174,8 @@ pub fn build_equal<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.argument(0)?.into();
-    let arg1: Value = entry.argument(1)?.into();
+    let arg0: Value = entry.arg(0)?;
+    let arg1: Value = entry.arg(1)?;
 
     let op0 = entry.append_operation(arith::cmpi(
         context,
@@ -211,17 +205,11 @@ pub fn build_is_zero<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.argument(0)?.into();
+    let arg0: Value = entry.arg(0)?;
 
     let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
 
-    let condition = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        arg0,
-        const_0,
-        location,
-    ))?;
+    let condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, const_0, location)?;
 
     entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
 
@@ -247,20 +235,20 @@ pub fn build_to_felt252<'ctx, 'this>(
     )?;
     let prime = entry.const_int_from_type(context, location, PRIME.clone(), felt252_ty)?;
 
-    let value: Value = entry.argument(0)?.into();
+    let value: Value = entry.arg(0)?;
     let value_type = value.r#type();
 
-    let is_negative = entry.append_op_result(arith::cmpi(
+    let is_negative = entry.cmpi(
         context,
         arith::CmpiPredicate::Slt,
         value,
         entry.const_int_from_type(context, location, 0, value_type)?,
         location,
-    ))?;
+    )?;
 
     let value_abs = entry.append_op_result(math::absi(context, value, location).into())?;
 
-    let result = entry.append_op_result(arith::extui(value_abs, felt252_ty, location))?;
+    let result = entry.extui(value_abs, felt252_ty, location)?;
 
     let prime_minus_result = entry.append_op_result(arith::subi(prime, result, location))?;
 
@@ -287,9 +275,9 @@ pub fn build_from_felt252<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let value: Value = entry.argument(1)?.into();
+    let value: Value = entry.arg(1)?;
 
     let felt252_ty = registry.build_type(
         context,
@@ -317,13 +305,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         let half_prime =
             block.const_int_from_type(context, location, HALF_PRIME.clone(), felt252_ty)?;
 
-        let is_felt_neg = block.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Ugt,
-            value,
-            half_prime,
-            location,
-        ))?;
+        let is_felt_neg = block.cmpi(context, CmpiPredicate::Ugt, value, half_prime, location)?;
 
         let is_neg_block = helper.append_block(Block::new(&[]));
         let is_not_neg_block = helper.append_block(Block::new(&[]));
@@ -346,8 +328,7 @@ pub fn build_from_felt252<'ctx, 'this>(
                 is_neg_block.append_op_result(arith::subi(prime, value, location))?;
 
             let kneg1 = is_neg_block.const_int_from_type(context, location, -1, felt252_ty)?;
-            src_value_is_neg =
-                is_neg_block.append_op_result(arith::muli(src_value_is_neg, kneg1, location))?;
+            src_value_is_neg = is_neg_block.muli(src_value_is_neg, kneg1, location)?;
 
             is_neg_block.append_operation(cf::br(final_block, &[src_value_is_neg], location));
         }
@@ -355,24 +336,12 @@ pub fn build_from_felt252<'ctx, 'this>(
         is_not_neg_block.append_operation(cf::br(final_block, &[value], location));
 
         block = final_block;
-        block.argument(0)?.into()
+        block.arg(0)?
     };
 
-    let is_smaller_eq = block.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Sle,
-        value,
-        const_max,
-        location,
-    ))?;
+    let is_smaller_eq = block.cmpi(context, CmpiPredicate::Sle, value, const_max, location)?;
 
-    let is_bigger_eq = block.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Sge,
-        value,
-        const_min,
-        location,
-    ))?;
+    let is_bigger_eq = block.cmpi(context, CmpiPredicate::Sge, value, const_min, location)?;
 
     let is_ok = block.append_op_result(arith::andi(is_smaller_eq, is_bigger_eq, location))?;
 
@@ -389,7 +358,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         location,
     ));
 
-    let value = block_success.append_op_result(arith::trunci(value, result_ty, location))?;
+    let value = block_success.trunci(value, result_ty, location)?;
 
     block_success.append_operation(helper.br(0, &[range_check, value], location));
     block_failure.append_operation(helper.br(1, &[range_check], location));
@@ -407,14 +376,13 @@ pub fn build_diff<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let lhs: Value = entry.argument(1)?.into();
-    let rhs: Value = entry.argument(2)?.into();
+    let lhs: Value = entry.arg(1)?;
+    let rhs: Value = entry.arg(2)?;
 
     // Check if lhs >= rhs
-    let is_ge =
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Sge, lhs, rhs, location))?;
+    let is_ge = entry.cmpi(context, CmpiPredicate::Sge, lhs, rhs, location)?;
 
     let result = entry.append_op_result(arith::subi(lhs, rhs, location))?;
 

@@ -793,7 +793,7 @@ fn compile_func(
                         block.append_operation(llvm::store(
                             context,
                             ptr,
-                            pre_entry_block.argument(0)?.into(),
+                            pre_entry_block.arg(0)?,
                             location,
                             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
                                 IntegerType::new(context, 64).into(),

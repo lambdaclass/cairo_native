@@ -71,8 +71,8 @@ pub fn build_get<'ctx, 'this>(
     )?;
     let value_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
 
-    let dict_ptr = entry.argument(0)?.into();
-    let entry_key = entry.argument(1)?.into();
+    let dict_ptr = entry.arg(0)?;
+    let entry_key = entry.arg(1)?;
 
     let entry_key_ptr =
         helper
@@ -157,7 +157,7 @@ pub fn build_get<'ctx, 'this>(
     let entry =
         block_final.insert_values(context, location, entry, &[dict_ptr, entry_value_ptr_ptr])?;
 
-    block_final.append_operation(helper.br(0, &[entry, block_final.argument(0)?.into()], location));
+    block_final.append_operation(helper.br(0, &[entry, block_final.arg(0)?], location));
     Ok(())
 }
 
@@ -182,8 +182,8 @@ pub fn build_finalize<'ctx, 'this>(
         &info.signature.param_signatures[1].ty,
     )?;
 
-    let dict_entry = entry.argument(0)?.into();
-    let entry_value = entry.argument(1)?.into();
+    let dict_entry = entry.arg(0)?;
+    let entry_value = entry.arg(1)?;
 
     let dict_ptr = entry.extract_value(
         context,
@@ -265,12 +265,7 @@ pub fn build_finalize<'ctx, 'this>(
         block_vacant.append_operation(cf::br(block_final, &[value_ptr], location));
     }
 
-    block_final.store(
-        context,
-        location,
-        block_final.argument(0)?.into(),
-        entry_value,
-    )?;
+    block_final.store(context, location, block_final.arg(0)?, entry_value)?;
     block_final.append_operation(helper.br(0, &[dict_ptr], location));
 
     Ok(())
