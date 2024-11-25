@@ -439,7 +439,7 @@
     ))
 }
 
-<span class="kw">pub fn </span>is_complex(info: <span class="kw-2">&amp;</span>CircuitTypeConcrete) -&gt; bool {
+<span class="kw">pub const fn </span>is_complex(info: <span class="kw-2">&amp;</span>CircuitTypeConcrete) -&gt; bool {
     <span class="kw">match </span><span class="kw-2">*</span>info {
         CircuitTypeConcrete::AddMod(<span class="kw">_</span>)
         | CircuitTypeConcrete::MulMod(<span class="kw">_</span>)
@@ -462,7 +462,7 @@
     }
 }
 
-<span class="kw">pub fn </span>is_zst(info: <span class="kw-2">&amp;</span>CircuitTypeConcrete) -&gt; bool {
+<span class="kw">pub const fn </span>is_zst(info: <span class="kw-2">&amp;</span>CircuitTypeConcrete) -&gt; bool {
     <span class="kw">match </span><span class="kw-2">*</span>info {
         CircuitTypeConcrete::AddModGate(<span class="kw">_</span>)
         | CircuitTypeConcrete::SubModGate(<span class="kw">_</span>)

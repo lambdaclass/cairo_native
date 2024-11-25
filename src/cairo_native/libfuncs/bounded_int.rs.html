@@ -918,7 +918,7 @@
     </span><span class="kw">let </span>lhs_offset = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         <span class="kw-2">&amp;</span>lhs_range.lower - <span class="kw-2">&amp;</span>compute_range.lower
     } <span class="kw">else </span>{
-        lhs_range.lower.clone()
+        lhs_range.lower
     };
     <span class="kw">let </span>lhs_value = <span class="kw">if </span>lhs_offset != BigInt::ZERO {
         <span class="kw">let </span>lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)<span class="question-mark">?</span>;
@@ -930,7 +930,7 @@
     <span class="kw">let </span>rhs_offset = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         <span class="kw-2">&amp;</span>rhs_range.lower - <span class="kw-2">&amp;</span>compute_range.lower
     } <span class="kw">else </span>{
-        rhs_range.lower.clone()
+        rhs_range.lower
     };
     <span class="kw">let </span>rhs_value = <span class="kw">if </span>rhs_offset != BigInt::ZERO {
         <span class="kw">let </span>rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)<span class="question-mark">?</span>;
@@ -1046,7 +1046,7 @@
     </span><span class="kw">let </span>lhs_offset = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         <span class="kw-2">&amp;</span>lhs_range.lower - <span class="kw-2">&amp;</span>compute_range.lower
     } <span class="kw">else </span>{
-        lhs_range.lower.clone()
+        lhs_range.lower
     };
     <span class="kw">let </span>lhs_value = <span class="kw">if </span>lhs_offset != BigInt::ZERO {
         <span class="kw">let </span>lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)<span class="question-mark">?</span>;
@@ -1058,7 +1058,7 @@
     <span class="kw">let </span>rhs_offset = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>{
         <span class="kw-2">&amp;</span>rhs_range.lower - <span class="kw-2">&amp;</span>compute_range.lower
     } <span class="kw">else </span>{
-        rhs_range.lower.clone()
+        rhs_range.lower
     };
     <span class="kw">let </span>rhs_value = <span class="kw">if </span>rhs_offset != BigInt::ZERO {
         <span class="kw">let </span>rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)<span class="question-mark">?</span>;
@@ -1174,14 +1174,14 @@
     <span class="comment">// Offset the operands so that they are compatible with the operation.
     </span><span class="kw">let </span>lhs_value = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; lhs_range.lower != BigInt::ZERO {
         <span class="kw">let </span>lhs_offset =
-            entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)<span class="question-mark">?</span>;
+            entry.const_int_from_type(context, location, lhs_range.lower, compute_ty)<span class="question-mark">?</span>;
         entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))<span class="question-mark">?
     </span>} <span class="kw">else </span>{
         lhs_value
     };
     <span class="kw">let </span>rhs_value = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; rhs_range.lower != BigInt::ZERO {
         <span class="kw">let </span>rhs_offset =
-            entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)<span class="question-mark">?</span>;
+            entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)<span class="question-mark">?</span>;
         entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))<span class="question-mark">?
     </span>} <span class="kw">else </span>{
         rhs_value
@@ -1302,14 +1302,14 @@
     <span class="comment">// Offset the operands so that they are compatible with the operation.
     </span><span class="kw">let </span>lhs_value = <span class="kw">if </span>lhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; lhs_range.lower != BigInt::ZERO {
         <span class="kw">let </span>lhs_offset =
-            entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)<span class="question-mark">?</span>;
+            entry.const_int_from_type(context, location, lhs_range.lower, compute_ty)<span class="question-mark">?</span>;
         entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))<span class="question-mark">?
     </span>} <span class="kw">else </span>{
         lhs_value
     };
     <span class="kw">let </span>rhs_value = <span class="kw">if </span>rhs_ty.is_bounded_int(registry)<span class="question-mark">? </span>&amp;&amp; rhs_range.lower != BigInt::ZERO {
         <span class="kw">let </span>rhs_offset =
-            entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)<span class="question-mark">?</span>;
+            entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)<span class="question-mark">?</span>;
         entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))<span class="question-mark">?
     </span>} <span class="kw">else </span>{
         rhs_value

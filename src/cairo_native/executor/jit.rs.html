@@ -243,11 +243,11 @@
         })
     }
 
-    <span class="kw">pub fn </span>program_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
+    <span class="kw">pub const fn </span>program_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.registry
     }
 
-    <span class="kw">pub fn </span>module(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'m</span>&gt; {
+    <span class="kw">pub const fn </span>module(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'m</span>&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.module
     }
 

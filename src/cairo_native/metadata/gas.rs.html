@@ -422,9 +422,9 @@
     }
 }
 
-<span class="doccomment">/// Methods from https://github.com/starkware-libs/cairo/blob/fbdbbe4c42a6808eccbff8436078f73d0710c772/crates/cairo-lang-sierra-to-casm/src/metadata.rs#L71
+<span class="comment">// Methods from https://github.com/starkware-libs/cairo/blob/fbdbbe4c42a6808eccbff8436078f73d0710c772/crates/cairo-lang-sierra-to-casm/src/metadata.rs#L71
 
-/// Calculates the metadata for a Sierra program, with ap change info only.
+</span><span class="doccomment">/// Calculates the metadata for a Sierra program, with ap change info only.
 </span><span class="kw">fn </span>calc_metadata_ap_change_only(program: <span class="kw-2">&amp;</span>Program) -&gt; <span class="prelude-ty">Result</span>&lt;GasMetadata, GasMetadataError&gt; {
     <span class="prelude-val">Ok</span>(GasMetadata {
         ap_change_info: calc_ap_changes(program, |<span class="kw">_</span>, <span class="kw">_</span>| <span class="number">0</span>)<span class="question-mark">?</span>,

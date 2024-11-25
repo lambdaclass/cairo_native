@@ -922,7 +922,7 @@
     contract_info: NativeContractInfo,
 }
 
-<span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+<span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>NativeContractInfo {
     <span class="kw">pub </span>version: ContractInfoVersion,
     <span class="kw">pub </span>entry_points_info: BTreeMap&lt;u64, EntryPointInfo&gt;,
@@ -957,7 +957,7 @@
 }
 
 <span class="kw">impl </span>BuiltinType {
-    <span class="kw">pub fn </span>size_in_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+    <span class="kw">pub const fn </span>size_in_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
             BuiltinType::Bitwise =&gt; <span class="number">8</span>,
             BuiltinType::EcOp =&gt; <span class="number">8</span>,
@@ -1369,9 +1369,7 @@
             <span class="kw">unsafe </span>{ libc_free(array_ptr.cast()) };
         }
 
-        <span class="kw">let </span><span class="kw-2">mut </span>error_msg = <span class="prelude-val">None</span>;
-
-        <span class="kw">if </span>tag != <span class="number">0 </span>{
+        <span class="kw">let </span>error_msg = <span class="kw">if </span>tag != <span class="number">0 </span>{
             <span class="kw">let </span>bytes_err: Vec&lt;<span class="kw">_</span>&gt; = array_value
                 .iter()
                 .flat_map(|felt| felt.to_bytes_be().to_vec())
@@ -1380,8 +1378,10 @@
                 .collect();
             <span class="kw">let </span>str_error = decode_error_message(<span class="kw-2">&amp;</span>bytes_err);
 
-            error_msg = <span class="prelude-val">Some</span>(str_error);
-        }
+            <span class="prelude-val">Some</span>(str_error)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
 
         <span class="comment">// Restore the old ptr and get back our builtincost box and free it.
         </span><span class="kw">let </span>our_builtincosts_ptr = set_costs_builtin(old_builtincosts_ptr);

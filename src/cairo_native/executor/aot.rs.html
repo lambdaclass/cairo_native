@@ -386,7 +386,7 @@
 <span class="kw">unsafe impl </span>Sync <span class="kw">for </span>AotNativeExecutor {}
 
 <span class="kw">impl </span>AotNativeExecutor {
-    <span class="kw">pub fn </span>new(
+    <span class="kw">pub const fn </span>new(
         library: Library,
         registry: ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         gas_metadata: GasMetadata,

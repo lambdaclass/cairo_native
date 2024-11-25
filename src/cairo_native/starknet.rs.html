@@ -1859,7 +1859,7 @@
 }
 
 <span class="kw">impl </span>Secp256k1Point {
-    <span class="kw">pub fn </span>new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub const fn </span>new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             x: U256 { lo: x_lo, hi: x_hi },
             y: U256 { lo: y_lo, hi: y_hi },
@@ -1877,7 +1877,7 @@
 }
 
 <span class="kw">impl </span>Secp256r1Point {
-    <span class="kw">pub fn </span>new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub const fn </span>new(x_lo: u128, x_hi: u128, y_lo: u128, y_hi: u128, is_infinity: bool) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             x: U256 { lo: x_lo, hi: x_hi },
             y: U256 { lo: y_lo, hi: y_hi },
@@ -2265,21 +2265,21 @@
     }
 
     <span class="attr">#[repr(C)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">union </span>SyscallResultAbi&lt;T&gt; {
+    </span><span class="kw">pub union </span>SyscallResultAbi&lt;T&gt; {
         <span class="kw">pub </span>ok: ManuallyDrop&lt;SyscallResultAbiOk&lt;T&gt;&gt;,
         <span class="kw">pub </span>err: ManuallyDrop&lt;SyscallResultAbiErr&gt;,
     }
 
     <span class="attr">#[repr(C)]
     #[derive(Debug)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SyscallResultAbiOk&lt;T&gt; {
+    </span><span class="kw">pub struct </span>SyscallResultAbiOk&lt;T&gt; {
         <span class="kw">pub </span>tag: u8,
         <span class="kw">pub </span>payload: ManuallyDrop&lt;T&gt;,
     }
 
     <span class="attr">#[repr(C)]
     #[derive(Debug)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SyscallResultAbiErr {
+    </span><span class="kw">pub struct </span>SyscallResultAbiErr {
         <span class="kw">pub </span>tag: u8,
         <span class="kw">pub </span>payload: ArrayAbi&lt;Felt252Abi&gt;,
     }

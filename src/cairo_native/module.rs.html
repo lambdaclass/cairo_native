@@ -186,7 +186,7 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'m</span>&gt; NativeModule&lt;<span class="lifetime">'m</span>&gt; {
-    <span class="kw">pub fn </span>new(
+    <span class="kw">pub const fn </span>new(
         module: Module&lt;<span class="lifetime">'m</span>&gt;,
         registry: ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         metadata: MetadataStorage,
@@ -228,15 +228,15 @@
         <span class="self">self</span>.metadata.get::&lt;T&gt;()
     }
 
-    <span class="kw">pub fn </span>metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MetadataStorage {
+    <span class="kw">pub const fn </span>metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MetadataStorage {
         <span class="kw-2">&amp;</span><span class="self">self</span>.metadata
     }
 
-    <span class="kw">pub fn </span>module(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Module {
+    <span class="kw">pub const fn </span>module(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Module {
         <span class="kw-2">&amp;</span><span class="self">self</span>.module
     }
 
-    <span class="kw">pub fn </span>program_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
+    <span class="kw">pub const fn </span>program_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.registry
     }
 }

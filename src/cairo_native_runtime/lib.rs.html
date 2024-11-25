@@ -905,6 +905,10 @@
 <a href="#905" id="905">905</a>
 <a href="#906" id="906">906</a>
 <a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
 </span><span class="kw">use </span>cairo_lang_sierra_gas::core_libfunc_cost::{
@@ -1144,7 +1148,7 @@
     key[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
 
     </span>dict.count += <span class="number">1</span>;
-    dict.inner.entry(key).or_insert(std::ptr::null_mut()) <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_ as </span><span class="kw-2">*mut </span>c_void
+    std::ptr::from_mut(dict.inner.entry(key).or_insert(std::ptr::null_mut())).cast::&lt;c_void&gt;()
 }
 
 <span class="doccomment">/// Compute the total gas refund for the dictionary at squash time.
@@ -1409,9 +1413,9 @@
     BUILTIN_COSTS.get()
 }
 
-<span class="doccomment">/// Utility methods for the print runtime function
+<span class="comment">// Utility methods for the print runtime function
 
-/// Formats the given felts as a debug string.
+</span><span class="doccomment">/// Formats the given felts as a debug string.
 </span><span class="kw">fn </span>format_for_debug(<span class="kw-2">mut </span>felts: IntoIter&lt;Felt&gt;) -&gt; String {
     <span class="kw">let </span><span class="kw-2">mut </span>items = Vec::new();
     <span class="kw">while let </span><span class="prelude-val">Some</span>(item) = format_next_item(<span class="kw-2">&amp;mut </span>felts) {
@@ -1443,10 +1447,12 @@
 }
 <span class="kw">impl </span>FormattedItem {
     <span class="doccomment">/// Returns the formatted item as is.
+    </span><span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>get(<span class="self">self</span>) -&gt; String {
         <span class="self">self</span>.item
     }
     <span class="doccomment">/// Wraps the formatted item with quote, if it's a string. Otherwise returns it as is.
+    </span><span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>quote_if_string(<span class="self">self</span>) -&gt; String {
         <span class="kw">if </span><span class="self">self</span>.is_string {
             <span class="macro">format!</span>(<span class="string">"\"{}\""</span>, <span class="self">self</span>.item)
@@ -1492,7 +1498,7 @@
 }
 
 <span class="doccomment">/// Tries to format a string, represented as a sequence of `Felt252`s.
-/// If the sequence is not a valid serialization of a ByteArray, returns None and doesn't change the
+/// If the sequence is not a valid serialization of a `ByteArray`, returns None and doesn't change the
 /// given iterator (`values`).
 </span><span class="kw">fn </span>try_format_string&lt;T&gt;(values: <span class="kw-2">&amp;mut </span>T) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;
 <span class="kw">where
@@ -1525,6 +1531,7 @@
 }
 
 <span class="doccomment">/// Converts a bigint representing a felt252 to a Cairo short-string.
+</span><span class="attr">#[must_use]
 </span><span class="kw">pub fn </span>as_cairo_short_string(value: <span class="kw-2">&amp;</span>Felt) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>as_string = String::default();
     <span class="kw">let </span><span class="kw-2">mut </span>is_end = <span class="bool-val">false</span>;
@@ -1544,10 +1551,11 @@
 
 <span class="doccomment">/// Converts a bigint representing a felt252 to a Cairo short-string of the given length.
 /// Nulls are allowed and length must be &lt;= 31.
+</span><span class="attr">#[must_use]
 </span><span class="kw">pub fn </span>as_cairo_short_string_ex(value: <span class="kw-2">&amp;</span>Felt, length: usize) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
     <span class="kw">if </span>length == <span class="number">0 </span>{
         <span class="kw">return if </span>value.is_zero() {
-            <span class="prelude-val">Some</span>(<span class="string">""</span>.to_string())
+            <span class="prelude-val">Some</span>(String::new())
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>};
@@ -1565,7 +1573,7 @@
         </span><span class="kw">return </span><span class="prelude-val">None</span>;
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>as_string = <span class="string">""</span>.to_string();
+    <span class="kw">let </span><span class="kw-2">mut </span>as_string = String::new();
     <span class="kw">for </span>byte <span class="kw">in </span>bytes {
         <span class="kw">if </span>byte == <span class="number">0 </span>{
             as_string.push_str(<span class="string">r"\0"</span>);

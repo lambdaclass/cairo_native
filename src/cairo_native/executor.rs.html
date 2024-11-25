@@ -766,10 +766,6 @@
 <a href="#766" id="766">766</a>
 <a href="#767" id="767">767</a>
 <a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
-<a href="#770" id="770">770</a>
-<a href="#771" id="771">771</a>
-<a href="#772" id="772">772</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
@@ -801,11 +797,7 @@
 <span class="kw">use </span>libc::c_void;
 <span class="kw">use </span>num_bigint::BigInt;
 <span class="kw">use </span>num_traits::One;
-<span class="kw">use </span>std::{
-    alloc::Layout,
-    arch::global_asm,
-    ptr::{addr_of_mut, NonNull},
-};
+<span class="kw">use </span>std::{alloc::Layout, arch::global_asm, ptr::NonNull};
 
 <span class="kw">mod </span>aot;
 <span class="kw">mod </span>contract;
@@ -1151,7 +1143,8 @@
             registry,
         )<span class="question-mark">?</span>),
         CoreTypeConcrete::Box(info) =&gt; <span class="kw">unsafe </span>{
-            <span class="kw">let </span>ptr = return_ptr.unwrap_or(NonNull::new_unchecked(ret_registers[<span class="number">0</span>] <span class="kw">as </span><span class="kw-2">*mut </span>()));
+            <span class="kw">let </span>ptr =
+                return_ptr.unwrap_or_else(|| NonNull::new_unchecked(ret_registers[<span class="number">0</span>] <span class="kw">as </span><span class="kw-2">*mut </span>()));
             <span class="kw">let </span>value = Value::from_ptr(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
             libc_free(ptr.cast().as_ptr());
             <span class="prelude-val">Ok</span>(value)
@@ -1363,9 +1356,8 @@
             }
         }
         CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) | CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; <span class="kw">unsafe </span>{
-            <span class="kw">let </span>ptr = return_ptr.unwrap_or(NonNull::new_unchecked(
-                <span class="macro">addr_of_mut!</span>(ret_registers[<span class="number">0</span>]) <span class="kw">as </span><span class="kw-2">*mut </span>()
-            ));
+            <span class="kw">let </span>ptr = return_ptr
+                .unwrap_or_else(|| NonNull::new_unchecked((<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ret_registers[<span class="number">0</span>]) <span class="kw">as </span><span class="kw-2">*mut </span>()));
             <span class="prelude-val">Ok</span>(Value::from_ptr(ptr, type_id, registry)<span class="question-mark">?</span>)
         },
 

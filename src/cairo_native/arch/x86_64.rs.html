@@ -249,17 +249,6 @@
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Implementations of `AbiArgument` for the `x86_64` architecture.
 //!
 //! The x86_64 architecture uses 6 64-bit registers for arguments. This means that the first 48
@@ -366,60 +355,51 @@
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>u64 {
     <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">if </span>buffer.len() &lt; <span class="number">48 </span>{
-            buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
-        } <span class="kw">else </span>{
+        <span class="kw">if </span>buffer.len() &gt;= <span class="number">48 </span>{
             align_to(buffer, get_integer_layout(<span class="number">64</span>).align());
-            buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>i64 {
     <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">if </span>buffer.len() &lt; <span class="number">48 </span>{
-            buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
-        } <span class="kw">else </span>{
+        <span class="kw">if </span>buffer.len() &gt;= <span class="number">48 </span>{
             align_to(buffer, get_integer_layout(<span class="number">64</span>).align());
-            buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>u128 {
     <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">if </span>buffer.len() &lt; <span class="number">40 </span>{
-            buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
-        } <span class="kw">else </span>{
+        <span class="kw">if </span>buffer.len() &gt;= <span class="number">40 </span>{
             align_to(buffer, get_integer_layout(<span class="number">128</span>).align());
-            buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>i128 {
     <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">if </span>buffer.len() &lt; <span class="number">40 </span>{
-            buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
-        } <span class="kw">else </span>{
+        <span class="kw">if </span>buffer.len() &gt;= <span class="number">40 </span>{
             align_to(buffer, get_integer_layout(<span class="number">128</span>).align());
-            buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         }
+        buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_ne_bytes());
         <span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>Felt {
     <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">if </span>buffer.len() &lt; <span class="number">40 </span>{
-            buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_bytes_le());
-        } <span class="kw">else </span>{
+        <span class="kw">if </span>buffer.len() &gt;= <span class="number">40 </span>{
             align_to(buffer, get_integer_layout(<span class="number">252</span>).align());
-            buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_bytes_le());
         }
+
+        buffer.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.to_bytes_le());
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -435,14 +415,12 @@
     <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="comment">// The `bytes31` type is treated as a 248-bit integer, therefore it follows the same
         // splitting rules as them.
-        </span><span class="kw">if </span>buffer.len() &lt; <span class="number">40 </span>{
-            buffer.extend_from_slice(<span class="self">self</span>);
-            buffer.push(<span class="number">0</span>);
-        } <span class="kw">else </span>{
+        </span><span class="kw">if </span>buffer.len() &gt;= <span class="number">40 </span>{
             align_to(buffer, get_integer_layout(<span class="number">252</span>).align());
-            buffer.extend_from_slice(<span class="self">self</span>);
-            buffer.push(<span class="number">0</span>);
         }
+
+        buffer.extend_from_slice(<span class="self">self</span>);
+        buffer.push(<span class="number">0</span>);
 
         <span class="prelude-val">Ok</span>(())
     }

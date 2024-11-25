@@ -2184,7 +2184,7 @@
                     }
 
                     <span class="comment">// Store the return value in the return pointer, if there's one.
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="bool-val">true</span>) = has_return_ptr {
+                    </span><span class="kw">if </span><span class="prelude-val">Some</span>(<span class="bool-val">true</span>) == has_return_ptr {
                         <span class="kw">let </span>(_ret_type_id, ret_type_info) = return_type_infos[<span class="number">0</span>];
                         <span class="kw">let </span>ret_layout = ret_type_info.layout(registry)<span class="question-mark">?</span>;
 

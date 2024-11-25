@@ -402,7 +402,7 @@
     <span class="kw">impl </span>NativeAssertError {
         <span class="kw">pub fn </span>new(msg: String) -&gt; <span class="self">Self </span>{
             <span class="kw">let </span>backtrace = Backtrace::capture();
-            <span class="kw">let </span>info = <span class="kw">if let </span>BacktraceStatus::Captured = backtrace.status() {
+            <span class="kw">let </span>info = <span class="kw">if </span>BacktraceStatus::Captured == backtrace.status() {
                 BacktraceOrLocation::Backtrace(backtrace)
             } <span class="kw">else </span>{
                 BacktraceOrLocation::Location(std::panic::Location::caller())

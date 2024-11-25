@@ -436,7 +436,7 @@
 <span class="kw">use </span>num_bigint::BigInt;
 
 <span class="doccomment">/// Index types for LLVM GEP.
-</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq)]
+</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>GepIndex&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt; {
     <span class="doccomment">/// A compile time known index.
     </span>Const(i32),

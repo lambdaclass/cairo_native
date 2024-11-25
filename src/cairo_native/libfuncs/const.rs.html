@@ -584,7 +584,7 @@
                 <span class="kw">_ </span>=&gt; value,
             };
 
-            entry.const_int_from_type(context, location, value.clone(), inner_ty)
+            entry.const_int_from_type(context, location, value, inner_ty)
         }
         CoreTypeConcrete::Uint8(<span class="kw">_</span>)
         | CoreTypeConcrete::Uint16(<span class="kw">_</span>)
