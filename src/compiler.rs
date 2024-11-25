@@ -614,9 +614,8 @@ fn compile_func(
                         invocation
                             .branches
                             .iter()
-                            .zip(helper.results())
+                            .zip(helper.results()?)
                             .map(|(branch_info, result_values)| {
-                                let result_values = result_values?;
                                 assert_eq!(
                                     branch_info.results.len(),
                                     result_values.len(),
@@ -625,10 +624,7 @@ fn compile_func(
 
                                 Ok(edit_state::put_results(
                                     state.clone(),
-                                    branch_info
-                                        .results
-                                        .iter()
-                                        .zip(result_values.iter().copied()),
+                                    branch_info.results.iter().zip(result_values.into_iter()),
                                 )?)
                             })
                             .collect::<Result<_, Error>>()?,
@@ -789,7 +785,7 @@ fn compile_func(
                     }
 
                     // Store the return value in the return pointer, if there's one.
-                    if let Some(true) = has_return_ptr {
+                    if Some(true) == has_return_ptr {
                         let (_ret_type_id, ret_type_info) = return_type_infos[0];
                         let ret_layout = ret_type_info.layout(registry)?;
 

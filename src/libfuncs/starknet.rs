@@ -46,6 +46,20 @@ pub fn build<'ctx, 'this>(
     selector: &StarkNetConcreteLibfunc,
 ) -> Result<()> {
     match selector {
+        StarkNetConcreteLibfunc::ClassHashToFelt252(info)
+        | StarkNetConcreteLibfunc::ContractAddressToFelt252(info)
+        | StarkNetConcreteLibfunc::StorageAddressFromBase(info)
+        | StarkNetConcreteLibfunc::StorageAddressToFelt252(info)
+        | StarkNetConcreteLibfunc::Sha256StateHandleInit(info)
+        | StarkNetConcreteLibfunc::Sha256StateHandleDigest(info) => super::build_noop::<1, true>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            &info.signature.param_signatures,
+        ),
         StarkNetConcreteLibfunc::CallContract(info) => {
             build_call_contract(context, registry, entry, location, helper, metadata, info)
         }
@@ -57,19 +71,11 @@ pub fn build<'ctx, 'this>(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::ClassHashToFelt252(info) => {
-            build_class_hash_to_felt252(context, registry, entry, location, helper, metadata, info)
-        }
         StarkNetConcreteLibfunc::ContractAddressConst(info) => {
             build_contract_address_const(context, registry, entry, location, helper, metadata, info)
         }
         StarkNetConcreteLibfunc::ContractAddressTryFromFelt252(info) => {
             build_contract_address_try_from_felt252(
-                context, registry, entry, location, helper, metadata, info,
-            )
-        }
-        StarkNetConcreteLibfunc::ContractAddressToFelt252(info) => {
-            build_contract_address_to_felt252(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
@@ -87,17 +93,11 @@ pub fn build<'ctx, 'this>(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::StorageAddressFromBase(info) => build_storage_address_from_base(
-            context, registry, entry, location, helper, metadata, info,
-        ),
         StarkNetConcreteLibfunc::StorageAddressFromBaseAndOffset(info) => {
             build_storage_address_from_base_and_offset(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::StorageAddressToFelt252(info) => build_storage_address_to_felt252(
-            context, registry, entry, location, helper, metadata, info,
-        ),
         StarkNetConcreteLibfunc::StorageAddressTryFromFelt252(info) => {
             build_storage_address_try_from_felt252(
                 context, registry, entry, location, helper, metadata, info,
@@ -108,6 +108,9 @@ pub fn build<'ctx, 'this>(
         }
         StarkNetConcreteLibfunc::GetBlockHash(info) => {
             build_get_block_hash(context, registry, entry, location, helper, metadata, info)
+        }
+        StarkNetConcreteLibfunc::GetClassHashAt(info) => {
+            build_get_class_hash_at(context, registry, entry, location, helper, metadata, info)
         }
         StarkNetConcreteLibfunc::GetExecutionInfo(info) => {
             build_get_execution_info(context, registry, entry, location, helper, metadata, info)
@@ -136,15 +139,6 @@ pub fn build<'ctx, 'this>(
         StarkNetConcreteLibfunc::Sha256ProcessBlock(info) => build_sha256_process_block_syscall(
             context, registry, entry, location, helper, metadata, info,
         ),
-        StarkNetConcreteLibfunc::Sha256StateHandleInit(info) => build_sha256_state_handle_init(
-            context, registry, entry, location, helper, metadata, info,
-        ),
-        StarkNetConcreteLibfunc::Sha256StateHandleDigest(info) => build_sha256_state_handle_digest(
-            context, registry, entry, location, helper, metadata, info,
-        ),
-        StarkNetConcreteLibfunc::GetClassHashAt(info) => {
-            build_get_class_hash_at(context, registry, entry, location, helper, metadata, info)
-        }
         #[cfg(feature = "with-cheatcode")]
         StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
             self::testing::build(context, registry, entry, location, helper, metadata, info)
@@ -389,19 +383,6 @@ pub fn build_class_hash_const<'ctx, 'this>(
     Ok(())
 }
 
-pub fn build_class_hash_to_felt252<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
-    Ok(())
-}
-
 pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -504,19 +485,6 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
         [&[range_check, value], &[range_check]],
         location,
     ));
-    Ok(())
-}
-
-pub fn build_contract_address_to_felt252<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
     Ok(())
 }
 
@@ -922,19 +890,6 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
     Ok(())
 }
 
-pub fn build_storage_address_from_base<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
-    Ok(())
-}
-
 pub fn build_storage_address_from_base_and_offset<'ctx, 'this>(
     _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -952,19 +907,6 @@ pub fn build_storage_address_from_base_and_offset<'ctx, 'this>(
     let addr = entry.append_op_result(arith::addi(entry.argument(0)?.into(), offset, location))?;
 
     entry.append_operation(helper.br(0, &[addr], location));
-    Ok(())
-}
-
-pub fn build_storage_address_to_felt252<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
     Ok(())
 }
 
@@ -2644,46 +2586,6 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         ],
         location,
     ));
-    Ok(())
-}
-
-///
-/// From the corelib
-/// ```text, no_run
-/// // Initializes a new SHA-256 state handle.
-/// extern fn sha256_state_handle_init(state: Box<[u32; 8]>) -> Sha256StateHandle nopanic;
-/// ```
-pub fn build_sha256_state_handle_init<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    let value = entry.argument(0)?.into();
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
-}
-
-///
-/// From the corelib
-/// ```text, no_run
-/// // Initializes a new SHA-256 state handle.
-/// extern fn sha256_state_handle_digest(state: Sha256StateHandle) -> Box<[u32; 8]> nopanic;
-/// ```
-pub fn build_sha256_state_handle_digest<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    let value = entry.argument(0)?.into();
-    entry.append_operation(helper.br(0, &[value], location));
     Ok(())
 }
 

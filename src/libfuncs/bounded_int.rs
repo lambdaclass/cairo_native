@@ -147,7 +147,7 @@ fn build_add<'ctx, 'this>(
     let lhs_offset = if lhs_ty.is_bounded_int(registry)? {
         &lhs_range.lower - &compute_range.lower
     } else {
-        lhs_range.lower.clone()
+        lhs_range.lower
     };
     let lhs_value = if lhs_offset != BigInt::ZERO {
         let lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)?;
@@ -159,7 +159,7 @@ fn build_add<'ctx, 'this>(
     let rhs_offset = if rhs_ty.is_bounded_int(registry)? {
         &rhs_range.lower - &compute_range.lower
     } else {
-        rhs_range.lower.clone()
+        rhs_range.lower
     };
     let rhs_value = if rhs_offset != BigInt::ZERO {
         let rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)?;
@@ -275,7 +275,7 @@ fn build_sub<'ctx, 'this>(
     let lhs_offset = if lhs_ty.is_bounded_int(registry)? {
         &lhs_range.lower - &compute_range.lower
     } else {
-        lhs_range.lower.clone()
+        lhs_range.lower
     };
     let lhs_value = if lhs_offset != BigInt::ZERO {
         let lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)?;
@@ -287,7 +287,7 @@ fn build_sub<'ctx, 'this>(
     let rhs_offset = if rhs_ty.is_bounded_int(registry)? {
         &rhs_range.lower - &compute_range.lower
     } else {
-        rhs_range.lower.clone()
+        rhs_range.lower
     };
     let rhs_value = if rhs_offset != BigInt::ZERO {
         let rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)?;
@@ -403,14 +403,14 @@ fn build_mul<'ctx, 'this>(
     // Offset the operands so that they are compatible with the operation.
     let lhs_value = if lhs_ty.is_bounded_int(registry)? && lhs_range.lower != BigInt::ZERO {
         let lhs_offset =
-            entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)?;
+            entry.const_int_from_type(context, location, lhs_range.lower, compute_ty)?;
         entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))?
     } else {
         lhs_value
     };
     let rhs_value = if rhs_ty.is_bounded_int(registry)? && rhs_range.lower != BigInt::ZERO {
         let rhs_offset =
-            entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)?;
+            entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)?;
         entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))?
     } else {
         rhs_value
@@ -531,14 +531,14 @@ fn build_divrem<'ctx, 'this>(
     // Offset the operands so that they are compatible with the operation.
     let lhs_value = if lhs_ty.is_bounded_int(registry)? && lhs_range.lower != BigInt::ZERO {
         let lhs_offset =
-            entry.const_int_from_type(context, location, lhs_range.lower.clone(), compute_ty)?;
+            entry.const_int_from_type(context, location, lhs_range.lower, compute_ty)?;
         entry.append_op_result(arith::addi(lhs_value, lhs_offset, location))?
     } else {
         lhs_value
     };
     let rhs_value = if rhs_ty.is_bounded_int(registry)? && rhs_range.lower != BigInt::ZERO {
         let rhs_offset =
-            entry.const_int_from_type(context, location, rhs_range.lower.clone(), compute_ty)?;
+            entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)?;
         entry.append_op_result(arith::addi(rhs_value, rhs_offset, location))?
     } else {
         rhs_value
@@ -742,16 +742,14 @@ fn build_is_zero<'ctx, 'this>(
 
 /// Generate MLIR operations for the `bounded_int_wrap_non_zero` libfunc.
 fn build_wrap_non_zero<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let src_value = entry.argument(0)?.into();
-
     let src_range = registry
         .get_type(&info.signature.param_signatures[0].ty)?
         .integer_range(registry)?;
@@ -761,6 +759,13 @@ fn build_wrap_non_zero<'ctx, 'this>(
         "value must not be zero"
     );
 
-    entry.append_operation(helper.br(0, &[src_value], location));
-    Ok(())
+    super::build_noop::<1, true>(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        &info.signature.param_signatures,
+    )
 }
