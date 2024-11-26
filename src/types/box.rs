@@ -100,7 +100,7 @@ fn build_dup<'ctx>(
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
     let inner_len_val = entry.const_int(context, location, inner_len, 64)?;
 
-    let src_value = entry.argument(0)?.into();
+    let src_value = entry.arg(0)?;
     let dst_value = entry.append_op_result(ReallocBindingsMeta::realloc(
         context,
         null_ptr,
@@ -152,7 +152,7 @@ fn build_drop<'ctx>(
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
-    let value = entry.argument(0)?.into();
+    let value = entry.arg(0)?;
     match metadata.get::<DropOverridesMeta>() {
         Some(drop_override_meta) if drop_override_meta.is_overriden(&info.ty) => {
             let value = entry.load(context, location, value, inner_ty)?;

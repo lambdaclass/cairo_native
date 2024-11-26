@@ -80,7 +80,7 @@ fn build_match_nullable<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let arg = entry.argument(0)?.into();
+    let arg = entry.arg(0)?;
 
     let nullptr = entry
         .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;

@@ -108,13 +108,7 @@ fn build_init_circuit_data<'ctx, 'this>(
         }
         _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
-    let rc = increment_builtin_counter_by(
-        context,
-        entry,
-        location,
-        entry.argument(0)?.into(),
-        rc_usage,
-    )?;
+    let rc = increment_builtin_counter_by(context, entry, location, entry.arg(0)?, rc_usage)?;
 
     let k0 = entry.const_int(context, location, 0, 64)?;
     let accumulator_ty = &info.branch_signatures()[0].vars[1].ty;
@@ -153,7 +147,7 @@ fn build_add_input<'ctx, 'this>(
     let accumulator_ctype = registry.get_type(accumulator_type_id)?;
     let accumulator_layout = accumulator_ctype.layout(registry)?;
 
-    let accumulator: Value = entry.argument(0)?.into();
+    let accumulator: Value = entry.arg(0)?;
 
     // Get accumulator current length
     let current_length = entry.extract_value(
@@ -166,13 +160,13 @@ fn build_add_input<'ctx, 'this>(
 
     // Check if last_insert: current_length == number_of_inputs - 1
     let n_inputs_minus_1 = entry.const_int(context, location, n_inputs - 1, 64)?;
-    let last_insert = entry.append_op_result(arith::cmpi(
+    let last_insert = entry.cmpi(
         context,
         arith::CmpiPredicate::Eq,
         current_length,
         n_inputs_minus_1,
         location,
-    ))?;
+    )?;
 
     let middle_insert_block = helper.append_block(Block::new(&[]));
     let last_insert_block = helper.append_block(Block::new(&[]));
@@ -190,8 +184,7 @@ fn build_add_input<'ctx, 'this>(
     {
         // Calculate next length: next_length = current_length + 1
         let k1 = middle_insert_block.const_int(context, location, 1, 64)?;
-        let next_length =
-            middle_insert_block.append_op_result(arith::addi(current_length, k1, location))?;
+        let next_length = middle_insert_block.addi(current_length, k1, location)?;
 
         // Insert next_length into accumulator
         let accumulator =
@@ -219,7 +212,7 @@ fn build_add_input<'ctx, 'this>(
             ))?;
 
         // Interpret u384 struct (input) as u384 integer
-        let u384_struct = entry.argument(1)?.into();
+        let u384_struct = entry.arg(1)?;
         let new_input =
             u384_struct_to_integer(context, middle_insert_block, location, u384_struct)?;
 
@@ -285,7 +278,7 @@ fn build_add_input<'ctx, 'this>(
         );
 
         // Interpret u384 struct (input) as u384 integer
-        let u384_struct = entry.argument(1)?.into();
+        let u384_struct = entry.arg(1)?;
         let new_input = u384_struct_to_integer(context, last_insert_block, location, u384_struct)?;
 
         // Get pointer to data end
@@ -321,16 +314,10 @@ fn build_try_into_circuit_modulus<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let modulus = u384_struct_to_integer(context, entry, location, entry.argument(0)?.into())?;
+    let modulus = u384_struct_to_integer(context, entry, location, entry.arg(0)?)?;
     let k1 = entry.const_int(context, location, 1, 384)?;
 
-    let is_valid = entry.append_op_result(arith::cmpi(
-        context,
-        arith::CmpiPredicate::Ugt,
-        modulus,
-        k1,
-        location,
-    ))?;
+    let is_valid = entry.cmpi(context, arith::CmpiPredicate::Ugt, modulus, k1, location)?;
 
     entry.append_operation(helper.cond_br(context, is_valid, [0, 1], [&[modulus], &[]], location));
 
@@ -375,10 +362,10 @@ fn build_eval<'ctx, 'this>(
         CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => &info.circuit_info,
         _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
-    let add_mod = entry.argument(0)?.into();
-    let mul_mod = entry.argument(1)?.into();
-    let circuit_data = entry.argument(3)?.into();
-    let circuit_modulus = entry.argument(4)?.into();
+    let add_mod = entry.arg(0)?;
+    let mul_mod = entry.arg(1)?;
+    let circuit_data = entry.arg(3)?;
+    let circuit_modulus = entry.arg(4)?;
 
     // arguments 5 and 6 are used to build the gate 0 (with constant value 1)
     // let zero = entry.argument(5)?;
@@ -433,12 +420,12 @@ fn build_eval<'ctx, 'this>(
     {
         // We only consider mul gates evaluated before failure
         let mul_mod = {
-            let mul_mod_usage = err_block.append_op_result(arith::muli(
-                err_block.argument(0)?.into(),
+            let mul_mod_usage = err_block.muli(
+                err_block.arg(0)?,
                 err_block.const_int(context, location, 4, 64)?,
                 location,
-            ))?;
-            err_block.append_op_result(arith::addi(mul_mod, mul_mod_usage, location))
+            )?;
+            err_block.addi(mul_mod, mul_mod_usage, location)
         }?;
 
         let partial_type_id = &info.branch_signatures()[1].vars[2].ty;
@@ -509,67 +496,56 @@ fn build_gate_evaluation<'ctx, 'this>(
                 // ADD: lhs + rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
                     // Extend to avoid overflow
-                    let lhs_value = block.append_op_result(arith::extui(
+                    let lhs_value = block.extui(
                         lhs_value,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
-                    let rhs_value = block.append_op_result(arith::extui(
+                    )?;
+                    let rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
-                    let circuit_modulus = block.append_op_result(arith::extui(
+                    )?;
+                    let circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
+                    )?;
                     // value = (lhs_value + rhs_value) % circuit_modulus
-                    let value =
-                        block.append_op_result(arith::addi(lhs_value, rhs_value, location))?;
+                    let value = block.addi(lhs_value, rhs_value, location)?;
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
                     // Truncate back
-                    let value = block.append_op_result(arith::trunci(
-                        value,
-                        IntegerType::new(context, 384).into(),
-                        location,
-                    ))?;
+                    let value =
+                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
                     values[add_gate_offset.output] = Some(value);
                 }
                 // SUB: lhs = out - rhs
                 (None, Some(rhs_value), Some(output_value)) => {
                     // Extend to avoid overflow
-                    let rhs_value = block.append_op_result(arith::extui(
+                    let rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
-                    let output_value = block.append_op_result(arith::extui(
+                    )?;
+                    let output_value = block.extui(
                         output_value,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
-                    let circuit_modulus = block.append_op_result(arith::extui(
+                    )?;
+                    let circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, 384 + 1).into(),
                         location,
-                    ))?;
+                    )?;
                     // value = (output_value + circuit_modulus - rhs_value) % circuit_modulus
-                    let value = block.append_op_result(arith::addi(
-                        output_value,
-                        circuit_modulus,
-                        location,
-                    ))?;
+                    let value = block.addi(output_value, circuit_modulus, location)?;
                     let value = block.append_op_result(arith::subi(value, rhs_value, location))?;
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
                     // Truncate back
-                    let value = block.append_op_result(arith::trunci(
-                        value,
-                        IntegerType::new(context, 384).into(),
-                        location,
-                    ))?;
+                    let value =
+                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
                     values[add_gate_offset.lhs] = Some(value);
                 }
                 // We can't solve this add gate yet, so we break from the loop
@@ -592,47 +568,43 @@ fn build_gate_evaluation<'ctx, 'this>(
                 // MUL: lhs * rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
                     // Extend to avoid overflow
-                    let lhs_value = block.append_op_result(arith::extui(
+                    let lhs_value = block.extui(
                         lhs_value,
                         IntegerType::new(context, 384 * 2).into(),
                         location,
-                    ))?;
-                    let rhs_value = block.append_op_result(arith::extui(
+                    )?;
+                    let rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, 384 * 2).into(),
                         location,
-                    ))?;
-                    let circuit_modulus = block.append_op_result(arith::extui(
+                    )?;
+                    let circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, 384 * 2).into(),
                         location,
-                    ))?;
+                    )?;
                     // value = (lhs_value * rhs_value) % circuit_modulus
-                    let value =
-                        block.append_op_result(arith::muli(lhs_value, rhs_value, location))?;
+                    let value = block.muli(lhs_value, rhs_value, location)?;
                     let value =
                         block.append_op_result(arith::remui(value, circuit_modulus, location))?;
                     // Truncate back
-                    let value = block.append_op_result(arith::trunci(
-                        value,
-                        IntegerType::new(context, 384).into(),
-                        location,
-                    ))?;
+                    let value =
+                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
                     values[output] = Some(value)
                 }
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
                     // Extend to avoid overflow
-                    let rhs_value = block.append_op_result(arith::extui(
+                    let rhs_value = block.extui(
                         rhs_value,
                         IntegerType::new(context, 384 * 2).into(),
                         location,
-                    ))?;
-                    let circuit_modulus = block.append_op_result(arith::extui(
+                    )?;
+                    let circuit_modulus = block.extui(
                         circuit_modulus,
                         IntegerType::new(context, 384 * 2).into(),
                         location,
-                    ))?;
+                    )?;
                     let integer_type = rhs_value.r#type();
 
                     // Apply egcd to find gcd and inverse
@@ -644,8 +616,8 @@ fn build_gate_evaluation<'ctx, 'this>(
                         rhs_value,
                         circuit_modulus,
                     )?;
-                    let gcd = egcd_result_block.argument(0)?.into();
-                    let inverse = egcd_result_block.argument(1)?.into();
+                    let gcd = egcd_result_block.arg(0)?;
+                    let inverse = egcd_result_block.arg(1)?;
                     block = egcd_result_block;
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
@@ -656,13 +628,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         gate_offset_idx,
                         IntegerType::new(context, 64).into(),
                     )?;
-                    let has_inverse = block.append_op_result(arith::cmpi(
-                        context,
-                        CmpiPredicate::Eq,
-                        gcd,
-                        one,
-                        location,
-                    ))?;
+                    let has_inverse = block.cmpi(context, CmpiPredicate::Eq, gcd, one, location)?;
                     let has_inverse_block = helper.append_block(Block::new(&[]));
                     block.append_operation(cf::cond_br(
                         context,
@@ -687,8 +653,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         ))
                         .result(0)?
                         .into();
-                    let wrapped_inverse =
-                        block.append_op_result(arith::addi(inverse, circuit_modulus, location))?;
+                    let wrapped_inverse = block.addi(inverse, circuit_modulus, location)?;
                     let inverse = block.append_op_result(arith::select(
                         is_negative,
                         wrapped_inverse,
@@ -697,11 +662,8 @@ fn build_gate_evaluation<'ctx, 'this>(
                     ))?;
 
                     // Truncate back
-                    let inverse = block.append_op_result(arith::trunci(
-                        inverse,
-                        IntegerType::new(context, 384).into(),
-                        location,
-                    ))?;
+                    let inverse =
+                        block.trunci(inverse, IntegerType::new(context, 384).into(), location)?;
 
                     values[lhs] = Some(inverse);
                 }
@@ -737,8 +699,8 @@ fn build_failure_guarantee_verify<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let rc = entry.argument(0)?.into();
-    let mul_mod = entry.argument(1)?.into();
+    let rc = entry.arg(0)?;
+    let mul_mod = entry.arg(1)?;
     let rc = increment_builtin_counter_by(context, entry, location, rc, 4)?;
 
     let mul_mod = increment_builtin_counter_by(context, entry, location, mul_mod, 4)?;
@@ -834,7 +796,7 @@ fn build_get_output<'ctx, 'this>(
 
     let output_idx = output_offset_idx - circuit_info.n_inputs - 1;
 
-    let outputs = entry.argument(0)?.into();
+    let outputs = entry.arg(0)?;
     let output_integer = entry.extract_value(
         context,
         location,
@@ -862,40 +824,40 @@ fn u384_struct_to_integer<'a>(
 ) -> Result<Value<'a, 'a>> {
     let u96_type = IntegerType::new(context, 96).into();
 
-    let limb1 = block.append_op_result(arith::extui(
+    let limb1 = block.extui(
         block.extract_value(context, location, u384_struct, u96_type, 0)?,
         IntegerType::new(context, 384).into(),
         location,
-    ))?;
+    )?;
 
     let limb2 = {
-        let limb = block.append_op_result(arith::extui(
+        let limb = block.extui(
             block.extract_value(context, location, u384_struct, u96_type, 1)?,
             IntegerType::new(context, 384).into(),
             location,
-        ))?;
+        )?;
         let k96 = block.const_int(context, location, 96, 384)?;
-        block.append_op_result(arith::shli(limb, k96, location))?
+        block.shli(limb, k96, location)?
     };
 
     let limb3 = {
-        let limb = block.append_op_result(arith::extui(
+        let limb = block.extui(
             block.extract_value(context, location, u384_struct, u96_type, 2)?,
             IntegerType::new(context, 384).into(),
             location,
-        ))?;
+        )?;
         let k192 = block.const_int(context, location, 96 * 2, 384)?;
-        block.append_op_result(arith::shli(limb, k192, location))?
+        block.shli(limb, k192, location)?
     };
 
     let limb4 = {
-        let limb = block.append_op_result(arith::extui(
+        let limb = block.extui(
             block.extract_value(context, location, u384_struct, u96_type, 3)?,
             IntegerType::new(context, 384).into(),
             location,
-        ))?;
+        )?;
         let k288 = block.const_int(context, location, 96 * 3, 384)?;
-        block.append_op_result(arith::shli(limb, k288, location))?
+        block.shli(limb, k288, location)?
     };
 
     let value = block.append_op_result(arith::ori(limb1, limb2, location))?;
@@ -913,25 +875,21 @@ fn u384_integer_to_struct<'a>(
 ) -> Result<Value<'a, 'a>> {
     let u96_type = IntegerType::new(context, 96).into();
 
-    let limb1 = block.append_op_result(arith::trunci(
-        integer,
-        IntegerType::new(context, 96).into(),
-        location,
-    ))?;
+    let limb1 = block.trunci(integer, IntegerType::new(context, 96).into(), location)?;
     let limb2 = {
         let k96 = block.const_int(context, location, 96, 384)?;
-        let limb = block.append_op_result(arith::shrui(integer, k96, location))?;
-        block.append_op_result(arith::trunci(limb, u96_type, location))?
+        let limb = block.shrui(integer, k96, location)?;
+        block.trunci(limb, u96_type, location)?
     };
     let limb3 = {
         let k192 = block.const_int(context, location, 96 * 2, 384)?;
-        let limb = block.append_op_result(arith::shrui(integer, k192, location))?;
-        block.append_op_result(arith::trunci(limb, u96_type, location))?
+        let limb = block.shrui(integer, k192, location)?;
+        block.trunci(limb, u96_type, location)?
     };
     let limb4 = {
         let k288 = block.const_int(context, location, 96 * 3, 384)?;
-        let limb = block.append_op_result(arith::shrui(integer, k288, location))?;
-        block.append_op_result(arith::trunci(limb, u96_type, location))?
+        let limb = block.shrui(integer, k288, location)?;
+        block.trunci(limb, u96_type, location)?
     };
 
     let struct_type = llvm::r#type::r#struct(
@@ -997,18 +955,18 @@ fn build_euclidean_algorithm<'ctx, 'this>(
 
     // -- Loop body --
     // Arguments are rem_(i-1), rem, inv_(i-1), inv
-    let prev_remainder = loop_block.argument(0)?.into();
-    let remainder = loop_block.argument(1)?.into();
-    let prev_inverse = loop_block.argument(2)?.into();
-    let inverse = loop_block.argument(3)?.into();
+    let prev_remainder = loop_block.arg(0)?;
+    let remainder = loop_block.arg(1)?;
+    let prev_inverse = loop_block.arg(2)?;
+    let inverse = loop_block.arg(3)?;
 
     // First calculate q = rem_(i-1)/rem_i, rounded down
     let quotient =
         loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
 
     // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
-    let rem_times_quo = loop_block.append_op_result(arith::muli(remainder, quotient, location))?;
-    let inv_times_quo = loop_block.append_op_result(arith::muli(inverse, quotient, location))?;
+    let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
+    let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
     let next_remainder =
         loop_block.append_op_result(arith::subi(prev_remainder, rem_times_quo, location))?;
     let next_inverse =
@@ -1020,13 +978,8 @@ fn build_euclidean_algorithm<'ctx, 'this>(
     // - inv_i is the bezout coefficient x
 
     let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
-    let next_remainder_eq_zero = loop_block.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        next_remainder,
-        zero,
-        location,
-    ))?;
+    let next_remainder_eq_zero =
+        loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)?;
     loop_block.append_operation(cf::cond_br(
         context,
         next_remainder_eq_zero,

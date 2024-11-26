@@ -27,10 +27,6 @@ impl AbiArgument for bool {
 
 impl AbiArgument for u8 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() >= 48 {
-            align_to(buffer, get_integer_layout(8).align());
-        }
-
         buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
@@ -38,10 +34,6 @@ impl AbiArgument for u8 {
 
 impl AbiArgument for i8 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() >= 48 {
-            align_to(buffer, get_integer_layout(8).align());
-        }
-
         buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
@@ -49,10 +41,6 @@ impl AbiArgument for i8 {
 
 impl AbiArgument for u16 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() >= 48 {
-            align_to(buffer, get_integer_layout(16).align());
-        }
-
         buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
@@ -60,10 +48,6 @@ impl AbiArgument for u16 {
 
 impl AbiArgument for i16 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() >= 48 {
-            align_to(buffer, get_integer_layout(16).align());
-        }
-
         buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
@@ -71,10 +55,6 @@ impl AbiArgument for i16 {
 
 impl AbiArgument for u32 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() >= 48 {
-            align_to(buffer, get_integer_layout(32).align());
-        }
-
         buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
@@ -82,10 +62,6 @@ impl AbiArgument for u32 {
 
 impl AbiArgument for i32 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() >= 48 {
-            align_to(buffer, get_integer_layout(32).align());
-        }
-
         buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
         Ok(())
     }
@@ -93,10 +69,6 @@ impl AbiArgument for i32 {
 
 impl AbiArgument for u64 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() >= 48 {
-            align_to(buffer, get_integer_layout(64).align());
-        }
-
         buffer.extend_from_slice(&self.to_ne_bytes());
         Ok(())
     }
@@ -104,10 +76,6 @@ impl AbiArgument for u64 {
 
 impl AbiArgument for i64 {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        if buffer.len() >= 48 {
-            align_to(buffer, get_integer_layout(64).align());
-        }
-
         buffer.extend_from_slice(&self.to_ne_bytes());
         Ok(())
     }

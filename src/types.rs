@@ -40,7 +40,7 @@ mod coupon;
 mod ec_op;
 mod ec_point;
 mod ec_state;
-pub(crate) mod r#enum;
+pub mod r#enum;
 mod felt252;
 mod felt252_dict;
 mod felt252_dict_entry;
@@ -956,11 +956,11 @@ pub struct WithSelf<'a, T> {
 }
 
 impl<'a, T> WithSelf<'a, T> {
-    pub fn new(self_ty: &'a ConcreteTypeId, inner: &'a T) -> Self {
+    pub const fn new(self_ty: &'a ConcreteTypeId, inner: &'a T) -> Self {
         Self { self_ty, inner }
     }
 
-    pub fn self_ty(&self) -> &ConcreteTypeId {
+    pub const fn self_ty(&self) -> &ConcreteTypeId {
         self.self_ty
     }
 }

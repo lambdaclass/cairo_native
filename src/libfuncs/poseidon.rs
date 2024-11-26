@@ -17,7 +17,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, ods},
+    dialect::ods,
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -53,7 +53,7 @@ pub fn build_hades_permutation<'ctx>(
         .expect("Runtime library not available.");
 
     let poseidon_builtin =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let felt252_ty = registry.build_type(
         context,
@@ -66,9 +66,9 @@ pub fn build_hades_permutation<'ctx>(
     let i256_ty = IntegerType::new(context, 256).into();
     let layout_i256 = get_integer_layout(256);
 
-    let op0 = entry.argument(1)?.into();
-    let op1 = entry.argument(2)?.into();
-    let op2 = entry.argument(3)?.into();
+    let op0 = entry.arg(1)?;
+    let op1 = entry.arg(2)?;
+    let op2 = entry.arg(3)?;
 
     // We must extend to i256 because bswap must be an even number of bytes.
 
@@ -105,9 +105,9 @@ pub fn build_hades_permutation<'ctx>(
     let op1_i256 = entry.load(context, location, op1_ptr, i256_ty)?;
     let op2_i256 = entry.load(context, location, op2_ptr, i256_ty)?;
 
-    let op0 = entry.append_op_result(arith::trunci(op0_i256, felt252_ty, location))?;
-    let op1 = entry.append_op_result(arith::trunci(op1_i256, felt252_ty, location))?;
-    let op2 = entry.append_op_result(arith::trunci(op2_i256, felt252_ty, location))?;
+    let op0 = entry.trunci(op0_i256, felt252_ty, location)?;
+    let op1 = entry.trunci(op1_i256, felt252_ty, location)?;
+    let op2 = entry.trunci(op2_i256, felt252_ty, location)?;
 
     entry.append_operation(helper.br(0, &[poseidon_builtin, op0, op1, op2], location));
 

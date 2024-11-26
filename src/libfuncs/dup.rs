@@ -5,7 +5,7 @@
 //!
 //! However, types like an array need special handling.
 
-use super::LibfuncHelper;
+use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
     metadata::{dup_overrides::DupOverridesMeta, MetadataStorage},
@@ -43,7 +43,7 @@ pub fn build<'ctx, 'this>(
             entry,
             location,
             &info.signature.param_signatures[0].ty,
-            entry.argument(0)?.into(),
+            entry.arg(0)?,
         )?;
     entry.append_operation(helper.br(0, &[values.0, values.1], location));
 
