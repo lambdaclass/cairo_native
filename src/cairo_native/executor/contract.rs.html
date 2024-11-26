@@ -831,12 +831,6 @@
 <a href="#831" id="831">831</a>
 <a href="#832" id="832">832</a>
 <a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
@@ -876,7 +870,7 @@
     error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
-    metadata::gas::GasMetadata,
+    metadata::gas::MetadataComputationConfig,
     module::NativeModule,
     native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -890,12 +884,13 @@
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, starknet::StarkNetTypeConcrete,
-        ConcreteType,
+        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, gas::CostTokenType,
+        starknet::StarkNetTypeConcrete, ConcreteType,
     },
     ids::FunctionId,
     program::Program,
 };
+<span class="kw">use </span>cairo_lang_starknet_classes::casm_contract_class::ENTRY_POINT_COST;
 <span class="kw">use </span>cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 <span class="kw">use </span>educe::Educe;
 <span class="kw">use </span>libloading::Library;
@@ -937,8 +932,7 @@
 <span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub struct </span>EntryPointInfo {
     <span class="kw">pub </span>builtins: Vec&lt;BuiltinType&gt;,
-    <span class="kw">pub </span>initial_cost: BTreeMap&lt;u64, u64&gt;, <span class="comment">// cost token type offset, cost
-</span>}
+}
 
 <span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>BuiltinType {
@@ -987,20 +981,6 @@
         opt_level: OptLevel,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="kw">let </span>native_context = NativeContext::new();
-        <span class="kw">let </span>module = native_context.compile(sierra_program, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>NativeModule {
-            module,
-            registry,
-            metadata,
-        } = module;
-
-        <span class="kw">let </span>initial_gas_costs = {
-            <span class="kw">let </span>gas_meta: <span class="kw-2">&amp;</span>GasMetadata = metadata.get().ok_or(Error::MissingMetadata)<span class="question-mark">?</span>;
-            gas_meta.initial_required_gas_for_entry_points()<span class="question-mark">?
-        </span>};
-
-        <span class="kw">let </span><span class="kw-2">mut </span>infos = BTreeMap::new();
 
         <span class="kw">let </span><span class="kw-2">mut </span>entry_point_selector_to_id = BTreeMap::new();
 
@@ -1015,6 +995,32 @@
                 .insert(Felt::from(<span class="kw-2">&amp;</span>entry.selector), entry.function_idx <span class="kw">as </span>u64);
             used_function_ids.insert(entry.function_idx <span class="kw">as </span>u64);
         }
+
+        <span class="kw">let </span>module = native_context.compile(
+            sierra_program,
+            <span class="bool-val">true</span>,
+            <span class="prelude-val">Some</span>(MetadataComputationConfig {
+                function_set_costs: used_function_ids
+                    .iter()
+                    .map(|id| {
+                        (
+                            FunctionId::new(<span class="kw-2">*</span>id),
+                            [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
+                        )
+                    })
+                    .collect(),
+                linear_gas_solver: <span class="bool-val">true</span>,
+                linear_ap_change_solver: <span class="bool-val">true</span>,
+            }),
+        )<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>NativeModule {
+            module,
+            registry,
+            metadata: <span class="kw">_</span>,
+        } = module;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>infos = BTreeMap::new();
 
         <span class="kw">for </span>x <span class="kw">in </span><span class="kw-2">&amp;</span>sierra_program.funcs {
             <span class="comment">// Avoid storing function info for methods that are not contract entry points.
@@ -1064,13 +1070,7 @@
                 }
             }
 
-            infos.insert(
-                x.id.id,
-                EntryPointInfo {
-                    builtins,
-                    initial_cost: initial_gas_costs.get(<span class="kw-2">&amp;</span>x.id.id).cloned().unwrap_or_default(),
-                },
-            );
+            infos.insert(x.id.id, EntryPointInfo { builtins });
         }
 
         <span class="kw">let </span>library_path = NamedTempFile::new()<span class="question-mark">?
@@ -1120,12 +1120,20 @@
         })
     }
 
-    <span class="doccomment">/// Runs the given entry point.
+    <span class="doccomment">/// Runs the entry point by the given selector.
+    ///
+    /// - selector: The selector of the entry point to run.
+    /// - args: The calldata.
+    /// - gas: The gas for the execution.
+    /// - builtin_costs: An optional argument to customize the costs of the builtins.
+    /// - syscall_handler: The syscall handler implementation to use when executing the contract.
+    ///
+    /// The entry point gas cost is not deducted from the gas counter.
     </span><span class="kw">pub fn </span>run(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         selector: Felt,
         args: <span class="kw-2">&amp;</span>[Felt],
-        gas: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+        gas: u64,
         builtin_costs: <span class="prelude-ty">Option</span>&lt;BuiltinCosts&gt;,
         <span class="kw-2">mut </span>syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult, Error&gt; {
@@ -1156,26 +1164,6 @@
         </span>};
         <span class="comment">// We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
         </span><span class="kw">let </span>old_builtincosts_ptr = set_costs_builtin(builtin_costs.cast());
-
-        <span class="kw">let </span>initial_gas_cost = {
-            <span class="kw">let </span><span class="kw-2">mut </span>cost = <span class="number">0</span>;
-
-            <span class="kw">for </span>(offset, val) <span class="kw">in </span><span class="self">self
-                </span>.contract_info
-                .entry_points_info
-                .get(<span class="kw-2">&amp;</span>function_id.id)
-                .to_native_assert_error(<span class="string">"entry point info for function should be available"</span>)<span class="question-mark">?
-                </span>.initial_cost
-                .iter()
-            {
-                <span class="kw">let </span>token_cost = builtin_costs_stack[<span class="kw-2">*</span>offset <span class="kw">as </span>usize] * val;
-                cost += token_cost;
-            }
-            cost
-        };
-        <span class="kw">let </span>gas = gas
-            .unwrap_or(initial_gas_cost)
-            .saturating_sub(initial_gas_cost);
 
         <span class="comment">//  it can vary from contract to contract thats why we need to store/ load it.
         </span><span class="kw">let </span>builtins_size: usize = <span class="self">self</span>.contract_info.entry_points_info[<span class="kw-2">&amp;</span>function_id.id]
@@ -1559,14 +1547,14 @@
                 .run(
                     Felt::from(<span class="kw-2">&amp;</span>selector),
                     <span class="kw-2">&amp;</span>[n.into()],
-                    <span class="prelude-val">Some</span>(u64::MAX),
+                    u64::MAX,
                     <span class="prelude-val">None</span>,
                     <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
                 )
                 .unwrap();
 
             <span class="macro">assert_eq!</span>(result.return_values, <span class="macro">vec!</span>[Felt::from(n), Felt::from(n * <span class="number">2</span>)]);
-            <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709548475</span>);
+            <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709551615</span>);
         });
     }
 
@@ -1594,7 +1582,7 @@
             .run(
                 Felt::from(<span class="kw-2">&amp;</span>selector),
                 <span class="kw-2">&amp;</span>[<span class="number">2</span>.into()],
-                <span class="prelude-val">Some</span>(u64::MAX),
+                u64::MAX,
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )
@@ -1629,14 +1617,14 @@
             .run(
                 Felt::from(<span class="kw-2">&amp;</span>selector),
                 <span class="kw-2">&amp;</span>[<span class="number">10</span>.into()],
-                <span class="prelude-val">Some</span>(u64::MAX),
+                u64::MAX,
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )
             .unwrap();
 
         <span class="macro">assert_eq!</span>(result.return_values, <span class="macro">vec!</span>[Felt::from(<span class="number">3628800</span>)]);
-        <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709534105</span>);
+        <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709538915</span>);
     }
 
     <span class="attr">#[rstest]
@@ -1667,7 +1655,7 @@
             .run(
                 Felt::from(<span class="kw-2">&amp;</span>selector),
                 <span class="kw-2">&amp;</span>[],
-                <span class="prelude-val">Some</span>(u64::MAX),
+                u64::MAX,
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )

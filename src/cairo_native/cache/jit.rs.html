@@ -113,6 +113,8 @@
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::Result;
 <span class="kw">use crate</span>::{context::NativeContext, executor::JitNativeExecutor, OptLevel};
 <span class="kw">use </span>cairo_lang_sierra::program::Program;
@@ -161,7 +163,9 @@
         program: <span class="kw-2">&amp;</span>Program,
         opt_level: OptLevel,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Arc&lt;JitNativeExecutor&lt;<span class="lifetime">'a</span>&gt;&gt;&gt; {
-        <span class="kw">let </span>module = <span class="self">self</span>.context.compile(program, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>module = <span class="self">self
+            </span>.context
+            .compile(program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()))<span class="question-mark">?</span>;
         <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, opt_level)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>executor = Arc::new(executor);

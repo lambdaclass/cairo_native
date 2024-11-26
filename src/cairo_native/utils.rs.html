@@ -1830,7 +1830,7 @@
         <span class="kw">let </span>context = NativeContext::new();
 
         <span class="kw">let </span>module = context
-            .compile(program, <span class="bool-val">false</span>)
+            .compile(program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()))
             .expect(<span class="string">"Could not compile test program to MLIR."</span>);
 
         <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, OptLevel::Less).unwrap();

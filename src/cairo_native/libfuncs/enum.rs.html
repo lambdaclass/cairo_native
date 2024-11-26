@@ -646,6 +646,8 @@
 <a href="#646" id="646">646</a>
 <a href="#647" id="647">647</a>
 <a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -1291,7 +1293,9 @@
         };
 
         <span class="kw">let </span>native_context = NativeContext::new();
-        native_context.compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>).unwrap();
+        native_context
+            .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()))
+            .unwrap();
     }
 }
 </code></pre></div></section></main></body></html>

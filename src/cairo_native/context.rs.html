@@ -245,14 +245,6 @@
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::{panic::ToNativeAssertError, Error},
     ffi::{get_data_layout_rep, get_target_triple},
@@ -326,6 +318,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         program: <span class="kw-2">&amp;</span>Program,
         ignore_debug_names: bool,
+        gas_metadata_config: <span class="prelude-ty">Option</span>&lt;MetadataComputationConfig&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;NativeModule, Error&gt; {
         <span class="macro">trace!</span>(<span class="string">"starting sierra to mlir compilation"</span>);
         <span class="kw">let </span>pre_sierra_compilation_instant = Instant::now();
@@ -412,20 +405,11 @@
         <span class="kw">let </span><span class="kw-2">mut </span>module = Module::from_operation(op)
             .to_native_assert_error(<span class="string">"value should be module operation"</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>has_gas_builtin = program
-            .type_declarations
-            .iter()
-            .any(|decl| decl.long_id.generic_id.<span class="number">0</span>.as_str() == <span class="string">"GasBuiltin"</span>);
-
         <span class="kw">let </span><span class="kw-2">mut </span>metadata = MetadataStorage::new();
         <span class="comment">// Make the runtime library available.
         </span>metadata.insert(RuntimeBindingsMeta::default());
         <span class="comment">// We assume that GasMetadata will be always present when the program uses the gas builtin.
-        </span><span class="kw">let </span>gas_metadata = <span class="kw">if </span>has_gas_builtin {
-            GasMetadata::new(program, <span class="prelude-val">Some</span>(MetadataComputationConfig::default()))
-        } <span class="kw">else </span>{
-            GasMetadata::new(program, <span class="prelude-val">None</span>)
-        }<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>gas_metadata = GasMetadata::new(program, gas_metadata_config)<span class="question-mark">?</span>;
         <span class="comment">// Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
         </span>metadata.insert(gas_metadata);
