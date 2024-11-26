@@ -46,7 +46,9 @@ where
         program: &Program,
         opt_level: OptLevel,
     ) -> Result<Arc<JitNativeExecutor<'a>>> {
-        let module = self.context.compile(program, false)?;
+        let module = self
+            .context
+            .compile(program, false, Some(Default::default()))?;
         let executor = JitNativeExecutor::from_native_module(module, opt_level)?;
 
         let executor = Arc::new(executor);

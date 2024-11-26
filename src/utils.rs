@@ -702,7 +702,7 @@ pub mod test {
         let context = NativeContext::new();
 
         let module = context
-            .compile(program, false)
+            .compile(program, false, Some(Default::default()))
             .expect("Could not compile test program to MLIR.");
 
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Less).unwrap();

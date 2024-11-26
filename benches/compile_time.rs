@@ -14,7 +14,9 @@ pub fn bench_compile_time(c: &mut Criterion) {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
                     let native_context = NativeContext::new();
-                    native_context.compile(program, false).unwrap();
+                    native_context
+                        .compile(program, false, Some(Default::default()))
+                        .unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                 })
             });
@@ -29,7 +31,9 @@ pub fn bench_compile_time(c: &mut Criterion) {
         for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
-                    native_context.compile(program, false).unwrap();
+                    native_context
+                        .compile(program, false, Some(Default::default()))
+                        .unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                 })
             });
@@ -43,7 +47,9 @@ pub fn bench_compile_time(c: &mut Criterion) {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
                     let native_context = NativeContext::new();
-                    let module = native_context.compile(black_box(program), false).unwrap();
+                    let module = native_context
+                        .compile(black_box(program), false, Some(Default::default()))
+                        .unwrap();
                     let object = module_to_object(module.module(), OptLevel::None)
                         .expect("to compile correctly to a object file");
                     black_box(object)
@@ -60,7 +66,9 @@ pub fn bench_compile_time(c: &mut Criterion) {
         for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
-                    let module = native_context.compile(black_box(program), false).unwrap();
+                    let module = native_context
+                        .compile(black_box(program), false, Some(Default::default()))
+                        .unwrap();
                     let object = module_to_object(module.module(), OptLevel::None)
                         .expect("to compile correctly to a object file");
                     black_box(object)
@@ -77,7 +85,9 @@ pub fn bench_compile_time(c: &mut Criterion) {
         for (program, filename) in &programs {
             c.bench_with_input(BenchmarkId::new(filename, 1), &program, |b, program| {
                 b.iter(|| {
-                    let module = native_context.compile(black_box(program), false).unwrap();
+                    let module = native_context
+                        .compile(black_box(program), false, Some(Default::default()))
+                        .unwrap();
                     let object = module_to_object(module.module(), OptLevel::Aggressive)
                         .expect("to compile correctly to a object file");
                     black_box(object)

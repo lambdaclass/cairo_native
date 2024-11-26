@@ -71,6 +71,7 @@ impl NativeContext {
         &self,
         program: &Program,
         ignore_debug_names: bool,
+        gas_metadata_config: Option<MetadataComputationConfig>,
     ) -> Result<NativeModule, Error> {
         trace!("starting sierra to mlir compilation");
         let pre_sierra_compilation_instant = Instant::now();
@@ -157,20 +158,11 @@ impl NativeContext {
         let mut module = Module::from_operation(op)
             .to_native_assert_error("value should be module operation")?;
 
-        let has_gas_builtin = program
-            .type_declarations
-            .iter()
-            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin");
-
         let mut metadata = MetadataStorage::new();
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
-        let gas_metadata = if has_gas_builtin {
-            GasMetadata::new(program, Some(MetadataComputationConfig::default()))
-        } else {
-            GasMetadata::new(program, None)
-        }?;
+        let gas_metadata = GasMetadata::new(program, gas_metadata_config)?;
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
         metadata.insert(gas_metadata);

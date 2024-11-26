@@ -1,4 +1,4 @@
-name: Release
+name: GitHub Release
 
 permissions:
   contents: write
@@ -10,7 +10,7 @@ on:
       - "v*.*.*"
 
 jobs:
-  release:
+  release-linux:
     runs-on: ubuntu-24.04
     env:
         MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
@@ -38,15 +38,60 @@ jobs:
         run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
       - name: build release
         run: make build
-      - name: Release
+      - name: Compress into a tar file
+        run: cd target/release && tar -cJvf ../cairo-native-x86_64.tar.xz cairo-native-test \
+          scarb-native-test cairo-native-compile cairo-native-dump cairo-native-run scarb-native-test \
+          scarb-native-dump libcairo_native_runtime.a && cd ..
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: cairo-native-x86_64.tar.xz
+
+  release-macos:
+    runs-on: macos-14
+    env:
+      CARGO_TERM_COLOR: always
+      LIBRARY_PATH: /opt/homebrew/lib
+      MLIR_SYS_190_PREFIX: /opt/homebrew/opt/llvm@19
+      LLVM_SYS_191_PREFIX: /opt/homebrew/opt/llvm@19
+      TABLEGEN_190_PREFIX: /opt/homebrew/opt/llvm@19
+      RUST_LOG: cairo_native=debug,cairo_native_test=debug
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rustup toolchain install
+        uses: dtolnay/rust-toolchain@1.82.0
+        with:
+          components: clippy
+      - name: Rust `$PATH` workaround.
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Build release
+        run: make build
+      - name: Compress into a tar file
+        run: cd target/release && tar -cJvf ../cairo-native-aarch64.tar.xz cairo-native-test \
+          scarb-native-test cairo-native-compile cairo-native-dump cairo-native-run scarb-native-test \
+          scarb-native-dump libcairo_native_runtime.a && cd ..
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: cairo-native-aarch64.tar.xz
+
+  release:
+    runs-on: ubuntu-24.04
+    needs: [release-macos, release-linux]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download linux
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+      - name: Download macos
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+      - name: Release on GitHub
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/release/cairo-native-test
-            target/release/scarb-native-test
-            target/release/cairo-native-compile
-            target/release/cairo-native-dump
-            target/release/cairo-native-run
-            target/release/scarb-native-test
-            target/release/scarb-native-dump
-            target/release/libcairo_native_runtime.a
+            cairo-native-aarch64.tar.xz
+            cairo-native-x86_64.tar.xz
