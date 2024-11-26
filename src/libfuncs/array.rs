@@ -1571,6 +1571,7 @@ pub fn build_slice<'ctx, 'this>(
     let array_start =
         entry.extract_value(context, location, entry.argument(1)?.into(), len_ty, 1)?;
     let array_end = entry.extract_value(context, location, entry.argument(1)?.into(), len_ty, 2)?;
+    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
 
     let slice_start = entry.argument(2)?.into();
     let slice_len = entry.argument(3)?.into();
@@ -1578,16 +1579,16 @@ pub fn build_slice<'ctx, 'this>(
 
     let slice_lhs_bound = entry.append_op_result(arith::cmpi(
         context,
-        CmpiPredicate::Uge,
+        CmpiPredicate::Ule,
         slice_start,
-        array_start,
+        array_len,
         location,
     ))?;
     let slice_rhs_bound = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Ule,
         slice_end,
-        array_end,
+        array_len,
         location,
     ))?;
     let slice_bounds =
