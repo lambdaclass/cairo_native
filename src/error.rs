@@ -150,7 +150,7 @@ pub mod panic {
     impl NativeAssertError {
         pub fn new(msg: String) -> Self {
             let backtrace = Backtrace::capture();
-            let info = if let BacktraceStatus::Captured = backtrace.status() {
+            let info = if BacktraceStatus::Captured == backtrace.status() {
                 BacktraceOrLocation::Backtrace(backtrace)
             } else {
                 BacktraceOrLocation::Location(std::panic::Location::caller())

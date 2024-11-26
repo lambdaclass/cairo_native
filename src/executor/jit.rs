@@ -62,11 +62,11 @@ impl<'m> JitNativeExecutor<'m> {
         })
     }
 
-    pub fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
+    pub const fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
         &self.registry
     }
 
-    pub fn module(&self) -> &Module<'m> {
+    pub const fn module(&self) -> &Module<'m> {
         &self.module
     }
 

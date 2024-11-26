@@ -5,7 +5,7 @@
 //!
 //! However, types like an array need manual dropping.
 
-use super::LibfuncHelper;
+use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
@@ -47,7 +47,7 @@ pub fn build<'ctx, 'this>(
             entry,
             location,
             &info.signature.param_signatures[0].ty,
-            entry.argument(0)?.into(),
+            entry.arg(0)?,
         )?;
     }
 

@@ -55,9 +55,8 @@ pub fn build_downcast<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &DowncastConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
-    let src_value: Value = entry.argument(1)?.into();
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let src_value: Value = entry.arg(1)?;
 
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
         let k0 = entry.const_int(context, location, 0, 1)?;
@@ -110,17 +109,17 @@ pub fn build_downcast<'ctx, 'this>(
 
     let src_value = if compute_width > src_width {
         if is_signed && !src_ty.is_bounded_int(registry)? && !src_ty.is_felt252(registry)? {
-            entry.append_op_result(arith::extsi(
+            entry.extsi(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
                 location,
-            ))?
+            )?
         } else {
-            entry.append_op_result(arith::extui(
+            entry.extui(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
                 location,
-            ))?
+            )?
         }
     } else {
         src_value
@@ -138,13 +137,8 @@ pub fn build_downcast<'ctx, 'this>(
                 HALF_PRIME.clone(),
                 src_value.r#type(),
             )?;
-            let is_negative = entry.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Ugt,
-                src_value,
-                adj_offset,
-                location,
-            ))?;
+            let is_negative =
+                entry.cmpi(context, CmpiPredicate::Ugt, src_value, adj_offset, location)?;
 
             let k_prime =
                 entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
@@ -159,7 +153,7 @@ pub fn build_downcast<'ctx, 'this>(
             src_range.lower.clone(),
             src_value.r#type(),
         )?;
-        entry.append_op_result(arith::addi(src_value, dst_offset, location))?
+        entry.addi(src_value, dst_offset, location)?
     } else {
         src_value
     };
@@ -169,7 +163,7 @@ pub fn build_downcast<'ctx, 'this>(
             let dst_offset = entry.const_int_from_type(
                 context,
                 location,
-                dst_range.lower.clone(),
+                dst_range.lower,
                 src_value.r#type(),
             )?;
             entry.append_op_result(arith::subi(src_value, dst_offset, location))?
@@ -178,11 +172,11 @@ pub fn build_downcast<'ctx, 'this>(
         };
 
         let dst_value = if dst_width < compute_width {
-            entry.append_op_result(arith::trunci(
+            entry.trunci(
                 dst_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         } else {
             dst_value
         };
@@ -204,7 +198,7 @@ pub fn build_downcast<'ctx, 'this>(
                 dst_range.lower.clone(),
                 src_value.r#type(),
             )?;
-            Some(entry.append_op_result(arith::cmpi(
+            Some(entry.cmpi(
                 context,
                 if !is_signed {
                     CmpiPredicate::Uge
@@ -214,7 +208,7 @@ pub fn build_downcast<'ctx, 'this>(
                 src_value,
                 dst_lower,
                 location,
-            ))?)
+            )?)
         } else {
             None
         };
@@ -225,7 +219,7 @@ pub fn build_downcast<'ctx, 'this>(
                 dst_range.upper.clone(),
                 src_value.r#type(),
             )?;
-            Some(entry.append_op_result(arith::cmpi(
+            Some(entry.cmpi(
                 context,
                 if !is_signed {
                     CmpiPredicate::Ult
@@ -235,7 +229,7 @@ pub fn build_downcast<'ctx, 'this>(
                 src_value,
                 dst_upper,
                 location,
-            ))?)
+            )?)
         } else {
             None
         };
@@ -256,7 +250,7 @@ pub fn build_downcast<'ctx, 'this>(
             let dst_offset = entry.const_int_from_type(
                 context,
                 location,
-                dst_range.lower.clone(),
+                dst_range.lower,
                 src_value.r#type(),
             )?;
             entry.append_op_result(arith::subi(src_value, dst_offset, location))?
@@ -265,11 +259,11 @@ pub fn build_downcast<'ctx, 'this>(
         };
 
         let dst_value = if dst_width < compute_width {
-            entry.append_op_result(arith::trunci(
+            entry.trunci(
                 dst_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         } else {
             dst_value
         };
@@ -295,7 +289,7 @@ pub fn build_upcast<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let src_value = entry.argument(0)?.into();
+    let src_value = entry.arg(0)?;
 
     if info.signature.param_signatures[0].ty == info.signature.branch_signatures[0].vars[0].ty {
         entry.append_operation(helper.br(0, &[src_value], location));
@@ -345,17 +339,17 @@ pub fn build_upcast<'ctx, 'this>(
 
     let dst_value = if dst_width > src_width {
         if is_signed && !src_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extsi(
+            entry.extsi(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         } else {
-            entry.append_op_result(arith::extui(
+            entry.extui(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         }
     } else {
         src_value
@@ -372,23 +366,17 @@ pub fn build_upcast<'ctx, 'this>(
             },
             dst_value.r#type(),
         )?;
-        entry.append_op_result(arith::addi(dst_value, dst_offset, location))?
+        entry.addi(dst_value, dst_offset, location)?
     } else {
         dst_value
     };
 
     let dst_value = if dst_ty.is_felt252(registry)? && src_range.lower.sign() == Sign::Minus {
         let k0 = entry.const_int(context, location, 0, 252)?;
-        let is_negative = entry.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Slt,
-            dst_value,
-            k0,
-            location,
-        ))?;
+        let is_negative = entry.cmpi(context, CmpiPredicate::Slt, dst_value, k0, location)?;
 
         let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
-        let adj_value = entry.append_op_result(arith::addi(dst_value, k_prime, location))?;
+        let adj_value = entry.addi(dst_value, k_prime, location)?;
 
         entry.append_op_result(arith::select(is_negative, adj_value, dst_value, location))?
     } else {

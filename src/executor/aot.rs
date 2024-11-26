@@ -37,7 +37,7 @@ unsafe impl Send for AotNativeExecutor {}
 unsafe impl Sync for AotNativeExecutor {}
 
 impl AotNativeExecutor {
-    pub fn new(
+    pub const fn new(
         library: Library,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
         gas_metadata: GasMetadata,

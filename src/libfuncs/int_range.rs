@@ -56,9 +56,9 @@ pub fn build_int_range_try_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = entry.argument(0)?.into();
-    let x = entry.argument(1)?.into();
-    let y = entry.argument(2)?.into();
+    let range_check = entry.arg(0)?;
+    let x = entry.arg(1)?;
+    let y = entry.arg(2)?;
     let range_ty = registry.build_type(
         context,
         helper,
@@ -71,9 +71,9 @@ pub fn build_int_range_try_new<'ctx, 'this>(
     let inner_range = inner.integer_range(registry)?;
 
     let is_valid = if inner_range.lower < BigInt::ZERO {
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Sle, x, y, location))?
+        entry.cmpi(context, CmpiPredicate::Sle, x, y, location)?
     } else {
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Ule, x, y, location))?
+        entry.cmpi(context, CmpiPredicate::Ule, x, y, location)?
     };
 
     let range =
@@ -103,7 +103,7 @@ pub fn build_int_range_pop_front<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range = entry.argument(0)?.into();
+    let range = entry.arg(0)?;
 
     let inner_ty = registry.build_type(
         context,
@@ -117,16 +117,16 @@ pub fn build_int_range_pop_front<'ctx, 'this>(
 
     let x = entry.extract_value(context, location, range, inner_ty, 0)?;
     let k1 = entry.const_int_from_type(context, location, 1, inner_ty)?;
-    let x_p_1 = entry.append_op_result(arith::addi(x, k1, location))?;
+    let x_p_1 = entry.addi(x, k1, location)?;
     let y = entry.extract_value(context, location, range, inner_ty, 1)?;
 
     // to know if it is signed
     let inner_range = inner.integer_range(registry)?;
 
     let is_valid = if inner_range.lower < BigInt::ZERO {
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Slt, x, y, location))?
+        entry.cmpi(context, CmpiPredicate::Slt, x, y, location)?
     } else {
-        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Ult, x, y, location))?
+        entry.cmpi(context, CmpiPredicate::Ult, x, y, location)?
     };
     let range = entry.insert_value(context, location, range, x_p_1, 0)?;
 

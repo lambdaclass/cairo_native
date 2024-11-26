@@ -84,7 +84,7 @@ pub struct AotContractExecutor {
     contract_info: NativeContractInfo,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NativeContractInfo {
     pub version: ContractInfoVersion,
     pub entry_points_info: BTreeMap<u64, EntryPointInfo>,
@@ -118,7 +118,7 @@ pub enum BuiltinType {
 }
 
 impl BuiltinType {
-    pub fn size_in_bytes(&self) -> usize {
+    pub const fn size_in_bytes(&self) -> usize {
         match self {
             BuiltinType::Bitwise => 8,
             BuiltinType::EcOp => 8,
@@ -524,9 +524,7 @@ impl AotContractExecutor {
             unsafe { libc_free(array_ptr.cast()) };
         }
 
-        let mut error_msg = None;
-
-        if tag != 0 {
+        let error_msg = if tag != 0 {
             let bytes_err: Vec<_> = array_value
                 .iter()
                 .flat_map(|felt| felt.to_bytes_be().to_vec())
@@ -535,8 +533,10 @@ impl AotContractExecutor {
                 .collect();
             let str_error = decode_error_message(&bytes_err);
 
-            error_msg = Some(str_error);
-        }
+            Some(str_error)
+        } else {
+            None
+        };
 
         // Restore the old ptr and get back our builtincost box and free it.
         let our_builtincosts_ptr = set_costs_builtin(old_builtincosts_ptr);

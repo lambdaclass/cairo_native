@@ -105,7 +105,7 @@ pub fn build_deconstruct<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let container = entry.argument(0)?.into();
+    let container = entry.arg(0)?;
 
     let mut fields = Vec::<Value>::with_capacity(info.branch_signatures()[0].vars.len());
     for (i, var_info) in info.branch_signatures()[0].vars.iter().enumerate() {

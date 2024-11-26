@@ -99,6 +99,6 @@ pub fn build_store_local<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.argument(1)?.into()], location));
+    entry.append_operation(helper.br(0, &[entry.arg(1)?], location));
     Ok(())
 }

@@ -266,7 +266,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 _ => value,
             };
 
-            entry.const_int_from_type(context, location, value.clone(), inner_ty)
+            entry.const_int_from_type(context, location, value, inner_ty)
         }
         CoreTypeConcrete::Uint8(_)
         | CoreTypeConcrete::Uint16(_)
