@@ -37,6 +37,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
+    metadata::gas::MetadataComputationConfig,
     module::NativeModule,
     native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -50,12 +51,13 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, starknet::StarkNetTypeConcrete,
-        ConcreteType,
+        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, gas::CostTokenType,
+        starknet::StarkNetTypeConcrete, ConcreteType,
     },
     ids::FunctionId,
     program::Program,
 };
+use cairo_lang_starknet_classes::casm_contract_class::ENTRY_POINT_COST;
 use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 use educe::Educe;
 use libloading::Library;
@@ -146,15 +148,6 @@ impl AotContractExecutor {
         opt_level: OptLevel,
     ) -> Result<Self, Error> {
         let native_context = NativeContext::new();
-        let module = native_context.compile(sierra_program, true)?;
-
-        let NativeModule {
-            module,
-            registry,
-            metadata: _,
-        } = module;
-
-        let mut infos = BTreeMap::new();
 
         let mut entry_point_selector_to_id = BTreeMap::new();
 
@@ -169,6 +162,32 @@ impl AotContractExecutor {
                 .insert(Felt::from(&entry.selector), entry.function_idx as u64);
             used_function_ids.insert(entry.function_idx as u64);
         }
+
+        let module = native_context.compile(
+            sierra_program,
+            true,
+            Some(MetadataComputationConfig {
+                function_set_costs: used_function_ids
+                    .iter()
+                    .map(|id| {
+                        (
+                            FunctionId::new(*id),
+                            [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
+                        )
+                    })
+                    .collect(),
+                linear_gas_solver: true,
+                linear_ap_change_solver: true,
+            }),
+        )?;
+
+        let NativeModule {
+            module,
+            registry,
+            metadata: _,
+        } = module;
+
+        let mut infos = BTreeMap::new();
 
         for x in &sierra_program.funcs {
             // Avoid storing function info for methods that are not contract entry points.
@@ -702,7 +721,7 @@ mod tests {
                 .unwrap();
 
             assert_eq!(result.return_values, vec![Felt::from(n), Felt::from(n * 2)]);
-            assert_eq!(result.remaining_gas, 18446744073709549845);
+            assert_eq!(result.remaining_gas, 18446744073709551615);
         });
     }
 
@@ -772,7 +791,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709535475);
+        assert_eq!(result.remaining_gas, 18446744073709538915);
     }
 
     #[rstest]

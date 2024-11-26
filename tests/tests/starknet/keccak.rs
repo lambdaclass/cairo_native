@@ -47,7 +47,6 @@ fn keccak_test() {
     );
 
     assert!(!result_aot_ct.failure_flag);
-    // Can't compare the gas because the AotContractExecutor has a fixed initial_gas_cost of 10_000 (as per the sequencer requirements)
-    // assert_eq!(result_aot_ct.remaining_gas, result.remaining_gas);
+    assert_eq!(result_aot_ct.remaining_gas, result.remaining_gas);
     assert_eq!(result_aot_ct.return_values, vec![1.into()]);
 }

@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let program = load_program(Path::new(&args.input), args.starknet)?;
 
     // Compile the program.
-    let module = context.compile(&program, false)?;
+    let module = context.compile(&program, false, Some(Default::default()))?;
 
     // Write the output.
     let output_str = module
