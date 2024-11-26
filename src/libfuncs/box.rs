@@ -2,7 +2,7 @@
 //!
 //! A heap allocated value, which is internally a pointer that can't be null.
 
-use super::LibfuncHelper;
+use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
@@ -43,9 +43,15 @@ pub fn build<'ctx, 'this>(
         BoxConcreteLibfunc::Unbox(info) => {
             build_unbox(context, registry, entry, location, helper, metadata, info)
         }
-        BoxConcreteLibfunc::ForwardSnapshot(info) => {
-            build_forward_snapshot(context, registry, entry, location, helper, metadata, info)
-        }
+        BoxConcreteLibfunc::ForwardSnapshot(info) => super::build_noop::<1, true>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            &info.signature.param_signatures,
+        ),
     }
 }
 
@@ -92,7 +98,7 @@ pub fn build_into_box<'ctx, 'this>(
 
     entry.append_operation(llvm::store(
         context,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         ptr,
         location,
         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
@@ -127,7 +133,7 @@ pub fn build_unbox<'ctx, 'this>(
     let value = entry
         .append_operation(llvm::load(
             context,
-            entry.argument(0)?.into(),
+            entry.arg(0)?,
             inner_ty,
             location,
             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
@@ -138,26 +144,9 @@ pub fn build_unbox<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(ReallocBindingsMeta::free(
-        context,
-        entry.argument(0)?.into(),
-        location,
-    )?);
+    entry.append_operation(ReallocBindingsMeta::free(context, entry.arg(0)?, location)?);
 
     entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
-}
-
-fn build_forward_snapshot<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
     Ok(())
 }
 

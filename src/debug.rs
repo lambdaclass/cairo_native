@@ -24,6 +24,7 @@ use cairo_lang_sierra::extensions::{
     nullable::NullableConcreteLibfunc,
     pedersen::PedersenConcreteLibfunc,
     poseidon::PoseidonConcreteLibfunc,
+    range::IntRangeConcreteLibfunc,
     starknet::{
         secp256::{Secp256ConcreteLibfunc, Secp256OpConcreteLibfunc},
         testing::TestingConcreteLibfunc,
@@ -32,7 +33,7 @@ use cairo_lang_sierra::extensions::{
     structure::StructConcreteLibfunc,
 };
 
-pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
+pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
     match value {
         CoreConcreteLibfunc::ApTracking(value) => match value {
             cairo_lang_sierra::extensions::ap_tracking::ApTrackingConcreteLibfunc::Revoke(_) => {
@@ -371,6 +372,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             StarkNetConcreteLibfunc::Sha256ProcessBlock(_) => "sha256_process_block",
             StarkNetConcreteLibfunc::Sha256StateHandleInit(_) => "sha256_state_handle_init",
             StarkNetConcreteLibfunc::Sha256StateHandleDigest(_) => "sha256_state_handle_digest",
+            StarkNetConcreteLibfunc::GetClassHashAt(_) => "get_class_hash_at_syscall",
         },
         CoreConcreteLibfunc::Debug(value) => match value {
             DebugConcreteLibfunc::Print(_) => "debug_print",
@@ -406,6 +408,10 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             BoundedIntConcreteLibfunc::Constrain(_) => "bounded_int_constrain",
             BoundedIntConcreteLibfunc::IsZero(_) => "bounded_int_is_zero",
             BoundedIntConcreteLibfunc::WrapNonZero(_) => "bounded_int_wrap_non_zero",
+        },
+        CoreConcreteLibfunc::IntRange(selector) => match selector {
+            IntRangeConcreteLibfunc::TryNew(_) => "int_range_try_new",
+            IntRangeConcreteLibfunc::PopFront(_) => "int_range_pop_front",
         },
     }
 }

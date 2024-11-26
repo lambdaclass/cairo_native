@@ -3,13 +3,19 @@
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
 use crate::{
-    error::{panic::ToNativeAssertError, Error as CoreLibfuncBuilderError, Result as NativeResult},
+    error::{panic::ToNativeAssertError, Error as CoreLibfuncBuilderError, Result},
     metadata::MetadataStorage,
+    types::TypeBuilder,
     utils::BlockExt,
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
-    extensions::core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
+    extensions::{
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
+        lib_func::ParamSignature,
+        starknet::StarkNetTypeConcrete,
+        ConcreteLibfunc,
+    },
     ids::FunctionId,
     program_registry::ProgramRegistry,
 };
@@ -21,13 +27,11 @@ use melior::{
 use num_bigint::BigInt;
 use std::{cell::Cell, error::Error, ops::Deref};
 
-mod ap_tracking;
 mod array;
 mod bitwise;
 mod r#bool;
 mod bounded_int;
 mod r#box;
-mod branch_align;
 mod bytes31;
 mod cast;
 mod circuit;
@@ -43,6 +47,7 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
+mod int_range;
 mod mem;
 mod nullable;
 mod pedersen;
@@ -52,7 +57,6 @@ mod sint16;
 mod sint32;
 mod sint64;
 mod sint8;
-mod snapshot_take;
 mod starknet;
 mod r#struct;
 mod uint128;
@@ -62,8 +66,6 @@ mod uint32;
 mod uint512;
 mod uint64;
 mod uint8;
-mod unconditional_jump;
-mod unwrap_non_zero;
 
 /// Generation of MLIR operations from their Sierra counterparts.
 ///
@@ -82,7 +84,7 @@ pub trait LibfuncBuilder {
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
         metadata: &mut MetadataStorage,
-    ) -> Result<(), Self::Error>;
+    ) -> Result<()>;
 
     /// Return the target function if the statement is a function call.
     ///
@@ -102,20 +104,28 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
         location: Location<'ctx>,
         helper: &LibfuncHelper<'ctx, 'this>,
         metadata: &mut MetadataStorage,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<()> {
         match self {
-            Self::ApTracking(selector) => self::ap_tracking::build(
-                context, registry, entry, location, helper, metadata, selector,
-            ),
+            Self::ApTracking(_) | Self::BranchAlign(_) | Self::UnconditionalJump(_) => {
+                build_noop::<0, true>(
+                    context,
+                    registry,
+                    entry,
+                    location,
+                    helper,
+                    metadata,
+                    self.param_signatures(),
+                )
+            }
             Self::Array(selector) => self::array::build(
                 context, registry, entry, location, helper, metadata, selector,
-            ),
-            Self::BranchAlign(info) => self::branch_align::build(
-                context, registry, entry, location, helper, metadata, info,
             ),
             Self::Bool(selector) => self::r#bool::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            Self::BoundedInt(info) => {
+                self::bounded_int::build(context, registry, entry, location, helper, metadata, info)
+            }
             Self::Box(selector) => self::r#box::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -125,8 +135,17 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Cast(selector) => self::cast::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            Self::Circuit(info) => {
+                self::circuit::build(context, registry, entry, location, helper, metadata, info)
+            }
             Self::Const(selector) => self::r#const::build(
                 context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Coupon(info) => {
+                self::coupon::build(context, registry, entry, location, helper, metadata, info)
+            }
+            Self::CouponCall(info) => self::function_call::build(
+                context, registry, entry, location, helper, metadata, info,
             ),
             Self::Debug(selector) => self::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
@@ -134,7 +153,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Drop(info) => {
                 self::drop::build(context, registry, entry, location, helper, metadata, info)
             }
-            Self::Dup(info) => {
+            Self::Dup(info) | Self::SnapshotTake(info) => {
                 self::dup::build(context, registry, entry, location, helper, metadata, info)
             }
             Self::Ec(selector) => self::ec::build(
@@ -156,6 +175,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 context, registry, entry, location, helper, metadata, info,
             ),
             Self::Gas(selector) => self::gas::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::IntRange(selector) => self::int_range::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Mem(selector) => self::mem::build(
@@ -185,9 +207,6 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Sint128(info) => {
                 self::sint128::build(context, registry, entry, location, helper, metadata, info)
             }
-            Self::SnapshotTake(info) => self::snapshot_take::build(
-                context, registry, entry, location, helper, metadata, info,
-            ),
             Self::StarkNet(selector) => self::starknet::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -215,24 +234,15 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Uint512(selector) => self::uint512::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::UnconditionalJump(info) => self::unconditional_jump::build(
-                context, registry, entry, location, helper, metadata, info,
+            Self::UnwrapNonZero(info) => build_noop::<1, true>(
+                context,
+                registry,
+                entry,
+                location,
+                helper,
+                metadata,
+                &info.signature.param_signatures,
             ),
-            Self::UnwrapNonZero(info) => self::unwrap_non_zero::build(
-                context, registry, entry, location, helper, metadata, info,
-            ),
-            Self::Coupon(info) => {
-                self::coupon::build(context, registry, entry, location, helper, metadata, info)
-            }
-            Self::CouponCall(info) => self::function_call::build(
-                context, registry, entry, location, helper, metadata, info,
-            ),
-            Self::Circuit(info) => {
-                self::circuit::build(context, registry, entry, location, helper, metadata, info)
-            }
-            Self::BoundedInt(info) => {
-                self::bounded_int::build(context, registry, entry, location, helper, metadata, info)
-            }
         }
     }
 
@@ -274,17 +284,21 @@ where
     'this: 'ctx,
 {
     #[doc(hidden)]
-    pub(crate) fn results(self) -> impl Iterator<Item = NativeResult<Vec<Value<'ctx, 'this>>>> {
-        self.results.into_iter().enumerate().map(|(branch_idx, x)| {
-            x.into_iter()
-                .enumerate()
-                .map(|(arg_idx, x)| {
-                    x.into_inner().to_native_assert_error(&format!(
-                        "Argument #{arg_idx} of branch {branch_idx} doesn't have a value."
-                    ))
-                })
-                .collect()
-        })
+    pub(crate) fn results(self) -> Result<Vec<Vec<Value<'ctx, 'this>>>> {
+        self.results
+            .into_iter()
+            .enumerate()
+            .map(|(branch_idx, x)| {
+                x.into_iter()
+                    .enumerate()
+                    .map(|(arg_idx, x)| {
+                        x.into_inner().to_native_assert_error(&format!(
+                            "Argument #{arg_idx} of branch {branch_idx} doesn't have a value."
+                        ))
+                    })
+                    .collect()
+            })
+            .collect()
     }
 
     /// Return the initialization block.
@@ -438,4 +452,40 @@ fn increment_builtin_counter_by<'ctx: 'a, 'a>(
         block.const_int(context, location, amount, 64)?,
         location,
     ))
+}
+
+fn build_noop<'ctx, 'this, const N: usize, const PROCESS_BUILTINS: bool>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    param_signatures: &[ParamSignature],
+) -> Result<()> {
+    let mut params = Vec::with_capacity(N);
+
+    #[allow(clippy::needless_range_loop)]
+    for i in 0..N {
+        let param_ty = registry.get_type(&param_signatures[i].ty)?;
+        let mut param_val = entry.argument(i)?.into();
+
+        if PROCESS_BUILTINS
+            && param_ty.is_builtin()
+            && !matches!(
+                param_ty,
+                CoreTypeConcrete::BuiltinCosts(_)
+                    | CoreTypeConcrete::Coupon(_)
+                    | CoreTypeConcrete::GasBuiltin(_)
+                    | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+            )
+        {
+            param_val = increment_builtin_counter(context, entry, location, param_val)?;
+        }
+
+        params.push(param_val);
+    }
+
+    entry.append_operation(helper.br(0, &params, location));
+    Ok(())
 }

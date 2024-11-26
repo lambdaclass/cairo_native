@@ -40,11 +40,12 @@ mod coupon;
 mod ec_op;
 mod ec_point;
 mod ec_state;
-pub(crate) mod r#enum;
+pub mod r#enum;
 mod felt252;
 mod felt252_dict;
 mod felt252_dict_entry;
 mod gas_builtin;
+mod int_range;
 mod non_zero;
 mod nullable;
 mod pedersen;
@@ -430,6 +431,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            Self::IntRange(info) => self::int_range::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
         }
     }
 
@@ -533,7 +541,9 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(_)) => todo!(),
             CoreTypeConcrete::Coupon(_) => false,
 
-            CoreTypeConcrete::Circuit(info) => circuit::is_complex(info)
+            CoreTypeConcrete::Circuit(info) => circuit::is_complex(info),
+
+            CoreTypeConcrete::IntRange(_info) => false
         })
     }
 
@@ -613,6 +623,11 @@ impl TypeBuilder for CoreTypeConcrete {
             }
             CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::Circuit(info) => circuit::is_zst(info),
+
+            CoreTypeConcrete::IntRange(info) => {
+                let type_info = registry.get_type(&info.ty)?;
+                type_info.is_zst(registry)?
+            }
         })
     }
 
@@ -718,6 +733,11 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
             CoreTypeConcrete::RangeCheck96(_) => get_integer_layout(64),
             CoreTypeConcrete::Circuit(info) => circuit::layout(registry, info)?,
+
+            CoreTypeConcrete::IntRange(info) => {
+                let inner = registry.get_type(&info.ty)?.layout(registry)?;
+                inner.extend(inner).unwrap().0
+            }
         }
         .pad_to_align())
     }
@@ -729,6 +749,7 @@ impl TypeBuilder for CoreTypeConcrete {
         // Right now, only enums and other structures which may end up passing a flattened enum as
         // arguments.
         Ok(match self {
+            CoreTypeConcrete::IntRange(_) => false,
             CoreTypeConcrete::Array(_) => false,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => false,
@@ -945,11 +966,11 @@ pub struct WithSelf<'a, T> {
 }
 
 impl<'a, T> WithSelf<'a, T> {
-    pub fn new(self_ty: &'a ConcreteTypeId, inner: &'a T) -> Self {
+    pub const fn new(self_ty: &'a ConcreteTypeId, inner: &'a T) -> Self {
         Self { self_ty, inner }
     }
 
-    pub fn self_ty(&self) -> &ConcreteTypeId {
+    pub const fn self_ty(&self) -> &ConcreteTypeId {
         self.self_ty
     }
 }

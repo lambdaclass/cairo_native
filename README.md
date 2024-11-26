@@ -350,7 +350,7 @@ Options:
 
 ### Requirements
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.8.2](https://github.com/starkware-libs/cairo)
+- [cairo 2.9.0-dev.0](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 19 with MLIR
 

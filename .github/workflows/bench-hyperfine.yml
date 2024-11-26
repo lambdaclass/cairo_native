@@ -92,7 +92,7 @@ jobs:
     strategy:
       matrix:
         branch: [ base, head ]
-    name: Build cairo-native-run for ${{ matrix.branch }}
+    name: Build Binary for ${{ matrix.branch }}
     runs-on: ubuntu-24.04
     steps:
       - name: Cache binary
@@ -129,11 +129,9 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
-
       - name: Install Rust
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         uses: dtolnay/rust-toolchain@1.82.0
-
       - name: add llvm deb repository
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         uses: myci-actions/add-deb-repo@11
@@ -141,7 +139,6 @@ jobs:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-
       - name: Install LLVM
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         run: sudo apt-get update && sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
@@ -164,87 +161,105 @@ jobs:
           cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
           cp target/release/libcairo_native_runtime.a lib/libcairo-native-runtime-${{ matrix.branch }}.a
 
-  hyperfine-prs:
-    name: Bench PR (linux, amd64)
-    needs: [ build-binaries ]
-    runs-on: ubuntu-24.04
+  run-bench:
     env:
-      PROGRAM: fib_2M
-      OUTPUT_DIR: bench-outputs
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+      RUST_LOG: cairo_native=debug,cairo_native_test=debug
+    strategy:
+      matrix:
+        branch: [ base, head ]
+    name: Run benches for ${{ matrix.branch }}
+    runs-on: ubuntu-24.04
+    needs: [ build-binaries ]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout base commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: Install Hyperfine
         uses: taiki-e/install-action@v2
         with:
           tool: hyperfine@1.16
 
-      - name: Fetch base binary
+      - name: Fetch ${{ matrix.branch }} binary
         uses: actions/cache/restore@v3
         with:
-          path: bin/cairo-native-run-base
-          key: binary-${{ github.event.pull_request.base.sha }}
+          path: bin/cairo-native-run-${{ matrix.branch }}
+          key: binary-${{ github.event.pull_request[matrix.branch].sha }}
 
-      - name: Fetch HEAD binary
+      - name: Fetch ${{ matrix.branch }} runtime-library
         uses: actions/cache/restore@v3
         with:
-          path: bin/cairo-native-run-head
-          key: binary-${{ github.event.pull_request.head.sha }}
-
-      - name: Fetch base runtime-library
-        uses: actions/cache/restore@v3
-        with:
-          path: lib/libcairo-native-runtime-base.a
-          key: library-${{ github.event.pull_request.base.sha }}
-
-      - name: Fetch head runtime-library
-        uses: actions/cache/restore@v3
-        with:
-          path: lib/libcairo-native-runtime-head.a
-          key: library-${{ github.event.pull_request.head.sha }}
-
-      - name: Build Dependencies
-        run: make deps
+          path: lib/libcairo-native-runtime-${{ matrix.branch }}.a
+          key: library-${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: Run Program
         run: |
-          mkdir $OUTPUT_DIR
-          cp programs/benches/*.cairo $OUTPUT_DIR
-          for f in $OUTPUT_DIR/*.cairo; do
+          make deps
+          mkdir bench-results-${{ matrix.branch }}
+          cp programs/benches/*.cairo bench-results-${{ matrix.branch }}
+          for f in bench-results-${{ matrix.branch }}/*.cairo; do
             hyperfine \
+            --show-output \
             --export-markdown "${f%.*}.md" \
             --export-json "${f%.*}.json" \
             --warmup 3 \
-            -n "head $(basename $f) (JIT)" "./bin/cairo-native-run-head --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "base $(basename $f) (JIT)" "./bin/cairo-native-run-base --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "head $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-head.a ./bin/cairo-native-run-head --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "base $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-base.a ./bin/cairo-native-run-base --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "${{matrix.branch}} $(basename $f) (JIT)" "./bin/cairo-native-run-${{ matrix.branch }} --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "${{matrix.branch}} $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-${{ matrix.branch }}.a ./bin/cairo-native-run-${{ matrix.branch }} --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
             >> /dev/stderr
           done
-      - name: Print tables
-        run: |
-          {
-            echo "${bold}Benchmark results Main vs HEAD.${normal}"
-            for f in $OUTPUT_DIR/*.md; do
-              echo
-              cat $f
-            done
-          } | tee -a comment_body.md
 
-      - name: Find Bench Comment
-        continue-on-error: true
-        uses: peter-evans/find-comment@v3
-        id: fc
+      - name: Upload benches ${{matrix.branch}}
+        uses: actions/upload-artifact@v4
         with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: "github-actions[bot]"
-          body-includes: Benchmark results Main vs HEAD
+          name: results-${{matrix.branch}}
+          path: bench-results-${{matrix.branch}}
 
-      - name: Create or update bench comment
-        continue-on-error: true
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          comment-id: ${{ steps.fc.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body-path: comment_body.md
-          edit-mode: replace
+  show-outputs:
+    name: Print Bench Results
+    runs-on: ubuntu-24.04
+    needs: [ run-bench ]
+    steps:
+    - name: Fetch Base Result
+      uses: actions/download-artifact@v4
+      with:
+          name: results-base
+          path: bench-results-base
+
+    - name: Fetch Head Result
+      uses: actions/download-artifact@v4
+      with:
+          name: results-head
+          path: bench-results-head
+
+    - name: Print tables
+      run: |
+        {
+          echo "${bold}Benchmark results Main vs HEAD.${normal}"
+          for f in bench-results-base/*.md; do
+            echo
+            cat $f
+            cat bench-results-head/$(basename $f)
+          done
+        } | tee -a comment_body.md
+
+    - name: Find Bench Comment
+      continue-on-error: true
+      uses: peter-evans/find-comment@v3
+      id: fc
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: "github-actions[bot]"
+        body-includes: Benchmark results Main vs HEAD
+
+    - name: Create or update bench comment
+      continue-on-error: true
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        comment-id: ${{ steps.fc.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body-path: comment_body.md
+        edit-mode: replace

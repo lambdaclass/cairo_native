@@ -16,10 +16,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith::{self, CmpiPredicate},
-        ods,
-    },
+    dialect::{arith::CmpiPredicate, ods},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -61,14 +58,10 @@ pub fn build_get_available_gas<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let gas = entry.argument(0)?.into();
-    let gas_u128 = entry.append_op_result(arith::extui(
-        gas,
-        IntegerType::new(context, 128).into(),
-        location,
-    ))?;
+    let gas = entry.arg(0)?;
+    let gas_u128 = entry.extui(gas, IntegerType::new(context, 128).into(), location)?;
     // The gas is returned as u128 on the second arg.
-    entry.append_operation(helper.br(0, &[entry.argument(0)?.into(), gas_u128], location));
+    entry.append_operation(helper.br(0, &[entry.arg(0)?, gas_u128], location));
     Ok(())
 }
 
@@ -82,9 +75,8 @@ pub fn build_withdraw_gas<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
-    let current_gas = entry.argument(1)?.into();
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let current_gas = entry.arg(1)?;
 
     let gas_cost = metadata
         .get::<GasCost>()
@@ -134,19 +126,17 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             u64_type,
         )?;
         let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
-        let gas_cost_value =
-            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))?;
-        total_gas_cost_value =
-            entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))?;
+        let gas_cost_value = entry.muli(cost_count_value, cost_value, location)?;
+        total_gas_cost_value = entry.addi(total_gas_cost_value, gas_cost_value, location)?;
     }
 
-    let is_enough = entry.append_op_result(arith::cmpi(
+    let is_enough = entry.cmpi(
         context,
         CmpiPredicate::Uge,
         current_gas,
         total_gas_cost_value,
         location,
-    ))?;
+    )?;
 
     let resulting_gas = entry.append_op_result(
         ods::llvm::intr_usub_sat(context, current_gas, total_gas_cost_value, location).into(),
@@ -170,13 +160,12 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    metadata: &MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
-    let current_gas = entry.argument(1)?.into();
-    let builtin_ptr = entry.argument(2)?.into();
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let current_gas = entry.arg(1)?;
+    let builtin_ptr = entry.arg(2)?;
 
     let gas_cost = metadata
         .get::<GasCost>()
@@ -215,19 +204,17 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
             u64_type,
         )?;
         let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
-        let gas_cost_value =
-            entry.append_op_result(arith::muli(cost_count_value, cost_value, location))?;
-        total_gas_cost_value =
-            entry.append_op_result(arith::addi(total_gas_cost_value, gas_cost_value, location))?;
+        let gas_cost_value = entry.muli(cost_count_value, cost_value, location)?;
+        total_gas_cost_value = entry.addi(total_gas_cost_value, gas_cost_value, location)?;
     }
 
-    let is_enough = entry.append_op_result(arith::cmpi(
+    let is_enough = entry.cmpi(
         context,
         CmpiPredicate::Uge,
         current_gas,
         total_gas_cost_value,
         location,
-    ))?;
+    )?;
 
     let resulting_gas = entry.append_op_result(
         ods::llvm::intr_usub_sat(context, current_gas, total_gas_cost_value, location).into(),

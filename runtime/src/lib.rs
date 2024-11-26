@@ -237,7 +237,7 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
     dict.count += 1;
-    dict.inner.entry(key).or_insert(std::ptr::null_mut()) as *mut _ as *mut c_void
+    std::ptr::from_mut(dict.inner.entry(key).or_insert(std::ptr::null_mut())).cast::<c_void>()
 }
 
 /// Compute the total gas refund for the dictionary at squash time.
@@ -502,7 +502,7 @@ pub extern "C" fn cairo_native__get_costs_builtin() -> *const u64 {
     BUILTIN_COSTS.get()
 }
 
-/// Utility methods for the print runtime function
+// Utility methods for the print runtime function
 
 /// Formats the given felts as a debug string.
 fn format_for_debug(mut felts: IntoIter<Felt>) -> String {
@@ -536,10 +536,12 @@ pub struct FormattedItem {
 }
 impl FormattedItem {
     /// Returns the formatted item as is.
+    #[must_use]
     pub fn get(self) -> String {
         self.item
     }
     /// Wraps the formatted item with quote, if it's a string. Otherwise returns it as is.
+    #[must_use]
     pub fn quote_if_string(self) -> String {
         if self.is_string {
             format!("\"{}\"", self.item)
@@ -585,7 +587,7 @@ fn format_short_string(value: &Felt) -> String {
 }
 
 /// Tries to format a string, represented as a sequence of `Felt252`s.
-/// If the sequence is not a valid serialization of a ByteArray, returns None and doesn't change the
+/// If the sequence is not a valid serialization of a `ByteArray`, returns None and doesn't change the
 /// given iterator (`values`).
 fn try_format_string<T>(values: &mut T) -> Option<String>
 where
@@ -618,6 +620,7 @@ where
 }
 
 /// Converts a bigint representing a felt252 to a Cairo short-string.
+#[must_use]
 pub fn as_cairo_short_string(value: &Felt) -> Option<String> {
     let mut as_string = String::default();
     let mut is_end = false;
@@ -637,10 +640,11 @@ pub fn as_cairo_short_string(value: &Felt) -> Option<String> {
 
 /// Converts a bigint representing a felt252 to a Cairo short-string of the given length.
 /// Nulls are allowed and length must be <= 31.
+#[must_use]
 pub fn as_cairo_short_string_ex(value: &Felt, length: usize) -> Option<String> {
     if length == 0 {
         return if value.is_zero() {
-            Some("".to_string())
+            Some(String::new())
         } else {
             None
         };
@@ -658,7 +662,7 @@ pub fn as_cairo_short_string_ex(value: &Felt, length: usize) -> Option<String> {
         return None;
     }
 
-    let mut as_string = "".to_string();
+    let mut as_string = String::new();
     for byte in bytes {
         if byte == 0 {
             as_string.push_str(r"\0");

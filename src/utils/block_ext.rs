@@ -2,7 +2,11 @@
 
 use crate::{error::Error, utils::get_integer_layout};
 use melior::{
-    dialect::{llvm::r#type::pointer, ods},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        llvm::r#type::pointer,
+        ods,
+    },
     ir::{
         attribute::{
             DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute,
@@ -15,7 +19,7 @@ use melior::{
 use num_bigint::BigInt;
 
 /// Index types for LLVM GEP.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GepIndex<'c, 'a> {
     /// A compile time known index.
     Const(i32),
@@ -24,6 +28,67 @@ pub enum GepIndex<'c, 'a> {
 }
 
 pub trait BlockExt<'ctx> {
+    fn arg(&self, idx: usize) -> Result<Value<'ctx, '_>, Error>;
+
+    /// Creates an arith.cmpi operation.
+    fn cmpi(
+        &self,
+        context: &'ctx Context,
+        pred: CmpiPredicate,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    fn extui(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    fn extsi(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    fn trunci(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    fn shrui(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    fn shli(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    fn addi(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
+    fn muli(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error>;
+
     /// Appends the operation and returns the first result.
     fn append_op_result(&self, operation: Operation<'ctx>) -> Result<Value<'ctx, '_>, Error>;
 
@@ -165,6 +230,93 @@ pub trait BlockExt<'ctx> {
 }
 
 impl<'ctx> BlockExt<'ctx> for Block<'ctx> {
+    #[inline]
+    fn arg(&self, idx: usize) -> Result<Value<'ctx, '_>, Error> {
+        Ok(self.argument(idx)?.into())
+    }
+
+    #[inline]
+    fn cmpi(
+        &self,
+        context: &'ctx Context,
+        pred: CmpiPredicate,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::cmpi(context, pred, lhs, rhs, location))
+    }
+
+    #[inline]
+    fn extsi(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::extsi(lhs, target_type, location))
+    }
+
+    #[inline]
+    fn extui(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::extui(lhs, target_type, location))
+    }
+
+    #[inline]
+    fn trunci(
+        &self,
+        lhs: Value<'ctx, '_>,
+        target_type: Type<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::trunci(lhs, target_type, location))
+    }
+
+    #[inline]
+    fn shli(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::shli(lhs, rhs, location))
+    }
+
+    #[inline]
+    fn shrui(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::shrui(lhs, rhs, location))
+    }
+
+    #[inline]
+    fn addi(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::addi(lhs, rhs, location))
+    }
+
+    #[inline]
+    fn muli(
+        &self,
+        lhs: Value<'ctx, '_>,
+        rhs: Value<'ctx, '_>,
+        location: Location<'ctx>,
+    ) -> Result<Value<'ctx, '_>, Error> {
+        self.append_op_result(arith::muli(lhs, rhs, location))
+    }
+
     #[inline]
     fn const_int<T>(
         &self,

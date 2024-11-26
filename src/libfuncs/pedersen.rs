@@ -17,7 +17,6 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith,
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -53,7 +52,7 @@ pub fn build_pedersen<'ctx>(
         .expect("Runtime library not available.");
 
     let pedersen_builtin =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let felt252_ty = registry.build_type(
         context,
@@ -66,8 +65,8 @@ pub fn build_pedersen<'ctx>(
     let i256_ty = IntegerType::new(context, 256).into();
     let layout_i256 = get_integer_layout(256);
 
-    let lhs = entry.argument(1)?.into();
-    let rhs = entry.argument(2)?.into();
+    let lhs = entry.arg(1)?;
+    let rhs = entry.arg(2)?;
 
     // We must extend to i256 because bswap must be an even number of bytes.
 
@@ -81,8 +80,8 @@ pub fn build_pedersen<'ctx>(
         .init_block()
         .alloca1(context, location, i256_ty, layout_i256.align())?;
 
-    let lhs_i256 = entry.append_op_result(arith::extui(lhs, i256_ty, location))?;
-    let rhs_i256 = entry.append_op_result(arith::extui(rhs, i256_ty, location))?;
+    let lhs_i256 = entry.extui(lhs, i256_ty, location)?;
+    let rhs_i256 = entry.extui(rhs, i256_ty, location)?;
 
     entry.store(context, location, lhs_ptr, lhs_i256)?;
     entry.store(context, location, rhs_ptr, rhs_i256)?;
@@ -95,7 +94,7 @@ pub fn build_pedersen<'ctx>(
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)?;
 
     let result = entry.load(context, location, dst_ptr, i256_ty)?;
-    let result = entry.append_op_result(arith::trunci(result, felt252_ty, location))?;
+    let result = entry.trunci(result, felt252_ty, location)?;
 
     entry.append_operation(helper.br(0, &[pedersen_builtin, result], location));
     Ok(())

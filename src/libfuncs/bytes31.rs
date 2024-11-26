@@ -97,9 +97,9 @@ pub fn build_to_felt252<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
-    let value: Value = entry.argument(0)?.into();
+    let value: Value = entry.arg(0)?;
 
-    let result = entry.append_op_result(arith::extui(value, felt252_ty, location))?;
+    let result = entry.extui(value, felt252_ty, location)?;
 
     entry.append_operation(helper.br(0, &[result], location));
 
@@ -117,9 +117,9 @@ pub fn build_from_felt252<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let value: Value = entry.argument(1)?.into();
+    let value: Value = entry.arg(1)?;
 
     let felt252_ty = registry.build_type(
         context,
@@ -145,13 +145,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         location,
     ))?;
 
-    let is_ule = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Ule,
-        value,
-        const_max,
-        location,
-    ))?;
+    let is_ule = entry.cmpi(context, CmpiPredicate::Ule, value, const_max, location)?;
 
     let block_success = helper.append_block(Block::new(&[]));
     let block_failure = helper.append_block(Block::new(&[]));
@@ -166,7 +160,7 @@ pub fn build_from_felt252<'ctx, 'this>(
         location,
     ));
 
-    let value = block_success.append_op_result(arith::trunci(value, result_ty, location))?;
+    let value = block_success.trunci(value, result_ty, location)?;
     block_success.append_operation(helper.br(0, &[range_check, value], location));
 
     block_failure.append_operation(helper.br(1, &[range_check], location));

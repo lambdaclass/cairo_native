@@ -183,7 +183,7 @@ impl Clone for GasMetadata {
     }
 }
 
-/// Methods from https://github.com/starkware-libs/cairo/blob/fbdbbe4c42a6808eccbff8436078f73d0710c772/crates/cairo-lang-sierra-to-casm/src/metadata.rs#L71
+// Methods from https://github.com/starkware-libs/cairo/blob/fbdbbe4c42a6808eccbff8436078f73d0710c772/crates/cairo-lang-sierra-to-casm/src/metadata.rs#L71
 
 /// Calculates the metadata for a Sierra program, with ap change info only.
 fn calc_metadata_ap_change_only(program: &Program) -> Result<GasMetadata, GasMetadataError> {

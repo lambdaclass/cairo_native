@@ -641,9 +641,8 @@ fn compile_func(
                             .branches
                             .iter()
                             .zip(libfunc.branch_signatures())
-                            .zip(helper.results())
+                            .zip(helper.results()?)
                             .map(|((branch_info, signature), result_values)| {
-                                let result_values = result_values?;
                                 assert_eq!(
                                     branch_info.results.len(),
                                     result_values.len(),
@@ -836,7 +835,7 @@ fn compile_func(
                     }
 
                     // Store the return value in the return pointer, if there's one.
-                    if let Some(true) = has_return_ptr {
+                    if has_return_ptr == Some(true) {
                         let (_ret_type_id, ret_type_info) = return_type_infos[0];
                         let ret_layout = ret_type_info.layout(registry)?;
 
@@ -844,7 +843,7 @@ fn compile_func(
                         block.append_operation(llvm::store(
                             context,
                             ptr,
-                            pre_entry_block.argument(0)?.into(),
+                            pre_entry_block.arg(0)?,
                             location,
                             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
                                 IntegerType::new(context, 64).into(),
