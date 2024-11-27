@@ -1387,7 +1387,7 @@
         .filter_map(|c| c.is_ascii().then_some(c <span class="kw">as </span>u8))
         .collect();
 
-    <span class="macro">assert!</span>(values.len() &lt; <span class="number">32</span>);
+    <span class="macro">assert!</span>(values.len() &lt; <span class="number">32</span>, <span class="string">"A felt can't longer than 32 bytes"</span>);
     Felt::from_bytes_be_slice(<span class="kw-2">&amp;</span>values)
 }
 

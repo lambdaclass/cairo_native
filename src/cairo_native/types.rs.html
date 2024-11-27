@@ -1221,7 +1221,7 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            <span class="self">Self</span>::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            <span class="self">Self</span>::Const(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"todo: Const type to MLIR type"</span>),
             <span class="self">Self</span>::EcOp(info) =&gt; <span class="self">self</span>::ec_op::build(
                 context,
                 module,
@@ -1369,7 +1369,7 @@
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            <span class="self">Self</span>::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(<span class="string">"implement span type"</span>),
+            <span class="self">Self</span>::Span(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"todo: Span type to MLIR type"</span>),
             <span class="self">Self</span>::SquashedFelt252Dict(info) =&gt; <span class="self">self</span>::squashed_felt252_dict::build(
                 context,
                 module,
@@ -1558,10 +1558,10 @@
 
                 value
             },
-            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-            CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Const(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"todo: check Const is complex"</span>),
+            CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"todo: check Span is complex"</span>),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(<span class="kw">_</span>))
-            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>)) =&gt; <span class="macro">todo!</span>(),
+            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>)) =&gt; <span class="macro">native_panic!</span>(<span class="string">"todo: check Sha256StateHandle is complex"</span>),
             CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
 
             CoreTypeConcrete::Circuit(info) =&gt; circuit::is_complex(info),
@@ -1644,7 +1644,7 @@
                 <span class="kw">let </span>type_info = registry.get_type(<span class="kw-2">&amp;</span>info.inner_ty)<span class="question-mark">?</span>;
                 type_info.is_zst(registry)<span class="question-mark">?
             </span>}
-            CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"todo: check Span is zero sized"</span>),
             CoreTypeConcrete::Circuit(info) =&gt; circuit::is_zst(info),
 
             CoreTypeConcrete::IntRange(info) =&gt; {
@@ -1724,7 +1724,7 @@
             CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; Layout::new::&lt;<span class="kw-2">*mut </span>std::ffi::c_void&gt;(), <span class="comment">// ptr
             </span>CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; Layout::new::&lt;u64&gt;(),
             CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; Layout::new::&lt;u64&gt;(),
-            CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"todo: create layout for Span"</span>),
             CoreTypeConcrete::StarkNet(info) =&gt; <span class="kw">match </span>info {
                 StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">252</span>),
                 StarkNetTypeConcrete::ContractAddress(<span class="kw">_</span>) =&gt; get_integer_layout(<span class="number">252</span>),
@@ -1759,7 +1759,7 @@
 
             CoreTypeConcrete::IntRange(info) =&gt; {
                 <span class="kw">let </span>inner = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?</span>;
-                inner.extend(inner).unwrap().<span class="number">0
+                inner.extend(inner)<span class="question-mark">?</span>.<span class="number">0
             </span>}
         }
         .pad_to_align())

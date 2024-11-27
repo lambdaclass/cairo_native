@@ -648,6 +648,15 @@
 <a href="#648" id="648">648</a>
 <a href="#649" id="649">649</a>
 <a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
@@ -656,7 +665,7 @@
 <span class="kw">use crate</span>::{
     error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
-    native_panic,
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::BlockExt,
 };
@@ -860,8 +869,11 @@
         )<span class="question-mark">?
         </span>.try_into()<span class="question-mark">?</span>;
     <span class="kw">let </span>enum_type = registry.get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
-    <span class="comment">// we assume its never memory allocated since its always a enum with only a tag
-    </span><span class="macro">assert!</span>(!enum_type.is_memory_allocated(registry)<span class="question-mark">?</span>);
+    <span class="comment">// we assume its never memory allocated since its always an enum with only a tag
+    </span><span class="macro">native_assert!</span>(
+        !enum_type.is_memory_allocated(registry)<span class="question-mark">?</span>,
+        <span class="string">"an enum with only a tag should not be allocated in memory"
+    </span>);
 
     <span class="kw">let </span>enum_ty = enum_type.build(
         context,
@@ -1035,7 +1047,10 @@
                         </span><span class="kw">if </span>variant_ids.len() == <span class="number">1 </span>{
                             entry.arg(<span class="number">0</span>)<span class="question-mark">?
                         </span>} <span class="kw">else </span>{
-                            <span class="macro">assert!</span>(registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>.is_zst(registry)<span class="question-mark">?</span>);
+                            <span class="macro">native_assert!</span>(
+                                registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>.is_zst(registry)<span class="question-mark">?</span>,
+                                <span class="string">"should be zero sized"
+                            </span>);
                             block
                                 .append_operation(llvm::undef(payload_ty, location))
                                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1177,7 +1192,10 @@
                         </span><span class="kw">if </span>variant_ids.len() == <span class="number">1 </span>{
                             entry.arg(<span class="number">0</span>)<span class="question-mark">?
                         </span>} <span class="kw">else </span>{
-                            <span class="macro">assert!</span>(registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>.is_zst(registry)<span class="question-mark">?</span>);
+                            <span class="macro">native_assert!</span>(
+                                registry.get_type(<span class="kw-2">&amp;</span>variant_ids[i])<span class="question-mark">?</span>.is_zst(registry)<span class="question-mark">?</span>,
+                                <span class="string">"should be zero sized"
+                            </span>);
                             block.append_op_result(llvm::undef(payload_ty, location))<span class="question-mark">?
                         </span>}
                     }
