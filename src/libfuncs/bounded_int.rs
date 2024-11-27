@@ -190,8 +190,7 @@ fn build_add<'ctx, 'this>(
         res_value
     };
 
-    entry.append_operation(helper.br(0, &[res_value], location));
-    Ok(())
+    helper.br(entry, 0, &[res_value], location)
 }
 
 /// Generate MLIR operations for the `bounded_int_sub` libfunc.
@@ -318,8 +317,7 @@ fn build_sub<'ctx, 'this>(
         res_value
     };
 
-    entry.append_operation(helper.br(0, &[res_value], location));
-    Ok(())
+    helper.br(entry, 0, &[res_value], location)
 }
 
 /// Generate MLIR operations for the `bounded_int_mul` libfunc.
@@ -438,8 +436,7 @@ fn build_mul<'ctx, 'this>(
         res_value
     };
 
-    entry.append_operation(helper.br(0, &[res_value], location));
-    Ok(())
+    helper.br(entry, 0, &[res_value], location)
 }
 
 /// Generate MLIR operations for the `bounded_int_divrem` libfunc.
@@ -583,8 +580,7 @@ fn build_divrem<'ctx, 'this>(
         rem_value
     };
 
-    entry.append_operation(helper.br(0, &[range_check, div_value, rem_value], location));
-    Ok(())
+    helper.br(entry, 0, &[range_check, div_value, rem_value], location)
 }
 
 /// Generate MLIR operations for the `bounded_int_constrain` libfunc.
@@ -666,7 +662,7 @@ fn build_constrain<'ctx, 'this>(
             res_value
         };
 
-        lower_block.append_operation(helper.br(0, &[range_check, res_value], location));
+        helper.br(lower_block, 0, &[range_check, res_value], location)?;
     }
 
     {
@@ -693,7 +689,7 @@ fn build_constrain<'ctx, 'this>(
             res_value
         };
 
-        upper_block.append_operation(helper.br(1, &[range_check, res_value], location));
+        helper.br(upper_block, 1, &[range_check, res_value], location)?;
     }
 
     Ok(())
@@ -722,14 +718,14 @@ fn build_is_zero<'ctx, 'this>(
     let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
     let src_is_zero = entry.cmpi(context, CmpiPredicate::Eq, src_value, k0, location)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         src_is_zero,
         [0, 1],
         [&[], &[src_value]],
         location,
-    ));
-    Ok(())
+    )
 }
 
 /// Generate MLIR operations for the `bounded_int_wrap_non_zero` libfunc.

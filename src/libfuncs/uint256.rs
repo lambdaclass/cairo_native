@@ -255,12 +255,12 @@ pub fn build_divmod<'ctx, 'this>(
     let op = entry.append_operation(llvm::undef(guarantee_type, location));
     let guarantee = op.result(0)?.into();
 
-    entry.append_operation(helper.br(
+    helper.br(
+        entry,
         0,
         &[range_check, result_div, result_rem, guarantee],
         location,
-    ));
-    Ok(())
+    )
 }
 
 /// Generate MLIR operations for the `u256_is_zero` libfunc.
@@ -331,14 +331,14 @@ pub fn build_is_zero<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         val_is_zero,
         [0, 1],
         [&[], &[val_struct]],
         location,
-    ));
-    Ok(())
+    )
 }
 
 /// Generate MLIR operations for the `u256_sqrt` libfunc.
@@ -634,8 +634,7 @@ pub fn build_square_root<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(helper.br(0, &[range_check, result], location));
-    Ok(())
+    helper.br(entry, 0, &[range_check, result], location)
 }
 
 /// Generate MLIR operations for the `u256_guarantee_inv_mod_n` libfunc.
@@ -938,8 +937,9 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
     let op = entry.append_operation(llvm::undef(guarantee_type, location));
     let guarantee = op.result(0)?.into();
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         condition,
         [0, 1],
         [
@@ -958,9 +958,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
             &[entry.arg(0)?, guarantee, guarantee],
         ],
         location,
-    ));
-
-    Ok(())
+    )
 }
 
 #[cfg(test)]

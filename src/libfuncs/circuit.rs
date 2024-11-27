@@ -123,9 +123,7 @@ fn build_init_circuit_data<'ctx, 'this>(
         &[k0],
     )?;
 
-    entry.append_operation(helper.br(0, &[rc, accumulator], location));
-
-    Ok(())
+    helper.br(entry, 0, &[rc, accumulator], location)
 }
 
 /// Generate MLIR operations for the `add_circuit_input` libfunc.
@@ -223,7 +221,7 @@ fn build_add_input<'ctx, 'this>(
         let accumulator =
             middle_insert_block.load(context, location, accumulator_ptr, accumulator.r#type())?;
 
-        middle_insert_block.append_operation(helper.br(1, &[accumulator], location));
+        helper.br(middle_insert_block, 1, &[accumulator], location)?;
     }
 
     // If is last insert, then:
@@ -297,7 +295,7 @@ fn build_add_input<'ctx, 'this>(
         // Load data from pointer
         let data = last_insert_block.load(context, location, data_ptr, data_type)?;
 
-        last_insert_block.append_operation(helper.br(0, &[data], location));
+        helper.br(last_insert_block, 0, &[data], location)?;
     }
 
     Ok(())
@@ -319,9 +317,14 @@ fn build_try_into_circuit_modulus<'ctx, 'this>(
 
     let is_valid = entry.cmpi(context, arith::CmpiPredicate::Ugt, modulus, k1, location)?;
 
-    entry.append_operation(helper.cond_br(context, is_valid, [0, 1], [&[modulus], &[]], location));
-
-    Ok(())
+    helper.cond_br(
+        context,
+        entry,
+        is_valid,
+        [0, 1],
+        [&[modulus], &[]],
+        location,
+    )
 }
 
 /// Generate MLIR operations for the `get_circuit_descriptor` libfunc.
@@ -342,9 +345,7 @@ fn build_get_descriptor<'ctx, 'this>(
 
     let unit = entry.append_op_result(llvm::undef(descriptor_type, location))?;
 
-    entry.append_operation(helper.br(0, &[unit], location));
-
-    Ok(())
+    helper.br(entry, 0, &[unit], location)
 }
 
 /// Generate MLIR operations for the `eval_circuit` libfunc.
@@ -413,7 +414,7 @@ fn build_eval<'ctx, 'this>(
             &gates,
         )?;
 
-        ok_block.append_operation(helper.br(0, &[add_mod, mul_mod, outputs], location));
+        helper.br(ok_block, 0, &[add_mod, mul_mod, outputs], location)?;
     }
 
     // Error case
@@ -438,7 +439,12 @@ fn build_eval<'ctx, 'this>(
             registry.build_type(context, helper, registry, metadata, failure_type_id)?,
             location,
         ))?;
-        err_block.append_operation(helper.br(1, &[add_mod, mul_mod, partial, failure], location));
+        helper.br(
+            err_block,
+            1,
+            &[add_mod, mul_mod, partial, failure],
+            location,
+        )?;
     }
 
     Ok(())
@@ -711,9 +717,7 @@ fn build_failure_guarantee_verify<'ctx, 'this>(
 
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
-    entry.append_operation(helper.br(0, &[rc, mul_mod, guarantee], location));
-
-    Ok(())
+    helper.br(entry, 0, &[rc, mul_mod, guarantee], location)
 }
 
 /// Generate MLIR operations for the `u96_limbs_less_than_guarantee_verify` libfunc.
@@ -740,15 +744,14 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
 
     let kfalse = entry.const_int(context, location, 0, 64)?;
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         kfalse,
         [0, 1],
         [&[guarantee], &[u96]],
         location,
-    ));
-
-    Ok(())
+    )
 }
 
 /// Generate MLIR operations for the `u96_single_limb_less_than_guarantee_verify` libfunc.
@@ -767,9 +770,7 @@ fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
     let u96_type = registry.build_type(context, helper, registry, metadata, u96_type_id)?;
     let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
 
-    entry.append_operation(helper.br(0, &[u96], location));
-
-    Ok(())
+    helper.br(entry, 0, &[u96], location)
 }
 
 /// Generate MLIR operations for the `get_circuit_output` libfunc.
@@ -811,9 +812,7 @@ fn build_get_output<'ctx, 'this>(
         registry.build_type(context, helper, registry, metadata, guarantee_type_id)?;
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
-    entry.append_operation(helper.br(0, &[output_struct, guarantee], location));
-
-    Ok(())
+    helper.br(entry, 0, &[output_struct, guarantee], location)
 }
 
 fn u384_struct_to_integer<'a>(

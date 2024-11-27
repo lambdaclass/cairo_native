@@ -56,8 +56,7 @@ pub fn build_new<'ctx, 'this>(
 
     let dict_ptr = runtime_bindings.dict_new(context, helper, entry, location)?;
 
-    entry.append_operation(helper.br(0, &[segment_arena, dict_ptr], location));
-    Ok(())
+    helper.br(entry, 0, &[segment_arena, dict_ptr], location)
 }
 
 pub fn build_squash<'ctx, 'this>(
@@ -85,13 +84,12 @@ pub fn build_squash<'ctx, 'this>(
 
     let new_gas_builtin = entry.addi(gas_builtin, gas_refund, location)?;
 
-    entry.append_operation(helper.br(
+    helper.br(
+        entry,
         0,
         &[range_check, new_gas_builtin, segment_arena, entry.arg(3)?],
         location,
-    ));
-
-    Ok(())
+    )
 }
 
 #[cfg(test)]

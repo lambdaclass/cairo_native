@@ -73,9 +73,7 @@ pub fn build_buy<'ctx, 'this>(
     )?;
     let coupon = entry.append_op_result(llvm::undef(ty, location))?;
 
-    entry.append_operation(helper.br(0, &[coupon], location));
-
-    Ok(())
+    helper.br(entry, 0, &[coupon], location)
 }
 
 /// Generate MLIR operations for the `coupon` libfunc.
@@ -92,7 +90,5 @@ pub fn build_refund<'ctx, 'this>(
     // let gas = metadata.get::<GasMetadata>().ok_or(Error::MissingMetadata)?;
     // let gas_cost = gas.initial_required_gas(&info.function.id);
 
-    entry.append_operation(helper.br(0, &[], location));
-
-    Ok(())
+    helper.br(entry, 0, &[], location)
 }

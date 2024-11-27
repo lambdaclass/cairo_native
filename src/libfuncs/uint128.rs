@@ -97,8 +97,7 @@ pub fn build_byte_reverse<'ctx, 'this>(
 
     let res = entry.append_op_result(ods::llvm::intr_bswap(context, arg1, location).into())?;
 
-    entry.append_operation(helper.br(0, &[bitwise, res], location));
-    Ok(())
+    helper.br(entry, 0, &[bitwise, res], location)
 }
 
 /// Generate MLIR operations for the `u128_const` libfunc.
@@ -123,9 +122,7 @@ pub fn build_const<'ctx, 'this>(
 
     let value = entry.const_int_from_type(context, location, value, value_ty)?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 /// Generate MLIR operations for the `u128_safe_divmod` libfunc.
@@ -146,8 +143,7 @@ pub fn build_divmod<'ctx, 'this>(
     let result_div = entry.append_op_result(arith::divui(lhs, rhs, location))?;
     let result_rem = entry.append_op_result(arith::remui(lhs, rhs, location))?;
 
-    entry.append_operation(helper.br(0, &[range_check, result_div, result_rem], location));
-    Ok(())
+    helper.br(entry, 0, &[range_check, result_div, result_rem], location)
 }
 
 /// Generate MLIR operations for the `u128_equal` libfunc.
@@ -171,15 +167,14 @@ pub fn build_equal<'ctx, 'this>(
         location,
     ));
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         op0.result(0)?.into(),
         [1, 0],
         [&[]; 2],
         location,
-    ));
-
-    Ok(())
+    )
 }
 
 /// Generate MLIR operations for the `u128s_from_felt252` libfunc.
@@ -207,14 +202,14 @@ pub fn build_from_felt252<'ctx, 'this>(
     let msb_bits = entry.shrui(value, k128, location)?;
     let msb_bits = entry.trunci(msb_bits, IntegerType::new(context, 128).into(), location)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         is_wide,
         [1, 0],
         [&[range_check, msb_bits, lsb_bits], &[range_check, lsb_bits]],
         location,
-    ));
-    Ok(())
+    )
 }
 
 /// Generate MLIR operations for the `u128_is_zero` libfunc.
@@ -227,14 +222,12 @@ pub fn build_is_zero<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.arg(0)?;
+    let value = entry.arg(0)?;
 
-    let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
+    let k0 = entry.const_int_from_type(context, location, 0, value.r#type())?;
+    let is_zero = entry.cmpi(context, CmpiPredicate::Eq, value, k0, location)?;
 
-    let condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, const_0, location)?;
-
-    entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
-    Ok(())
+    helper.cond_br(context, entry, is_zero, [0, 1], [&[], &[value]], location)
 }
 
 /// Generate MLIR operations for the `u128_add` and `u128_sub` libfuncs.
@@ -282,14 +275,14 @@ pub fn build_operation<'ctx, 'this>(
         1,
     )?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         overflow,
         [1, 0],
         [&[range_check, result], &[range_check, result]],
         location,
-    ));
-    Ok(())
+    )
 }
 
 /// Generate MLIR operations for the `u128_sqrt` libfunc.
@@ -427,8 +420,7 @@ pub fn build_square_root<'ctx, 'this>(
 
     let result = entry.trunci(result, i64_ty, location)?;
 
-    entry.append_operation(helper.br(0, &[range_check, result], location));
-    Ok(())
+    helper.br(entry, 0, &[range_check, result], location)
 }
 
 /// Generate MLIR operations for the `u128_to_felt252` libfunc.
@@ -447,8 +439,7 @@ pub fn build_to_felt252<'ctx, 'this>(
         location,
     ));
 
-    entry.append_operation(helper.br(0, &[op.result(0)?.into()], location));
-    Ok(())
+    helper.br(entry, 0, &[op.result(0)?.into()], location)
 }
 
 /// Generate MLIR operations for the `u128_guarantee_mul` libfunc.
@@ -487,8 +478,7 @@ pub fn build_guarantee_mul<'ctx, 'this>(
 
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
-    entry.append_operation(helper.br(0, &[result_hi, result_lo, guarantee], location));
-    Ok(())
+    helper.br(entry, 0, &[result_hi, result_lo, guarantee], location)
 }
 
 /// Generate MLIR operations for the `u128_guarantee_verify` libfunc.
@@ -503,8 +493,7 @@ pub fn build_guarantee_verify<'ctx, 'this>(
 ) -> Result<()> {
     let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    entry.append_operation(helper.br(0, &[range_check], location));
-    Ok(())
+    helper.br(entry, 0, &[range_check], location)
 }
 
 #[cfg(test)]
