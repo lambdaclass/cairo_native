@@ -80,25 +80,6 @@ fn criterion_benchmark(c: &mut Criterion) {
         .expect("failed to find main logistic map function");
 
     {
-        let mut logistic_map_compilation_group = c.benchmark_group("logistic_map_compilation");
-
-        logistic_map_compilation_group.bench_function("Native", |b| {
-            b.iter(|| {
-                let context = NativeContext::new();
-                let module = context.compile(&logistic_map, false).unwrap();
-                AotNativeExecutor::from_native_module(module, OptLevel::Aggressive).unwrap();
-            });
-        });
-        logistic_map_compilation_group.bench_function("VM", |b| {
-            b.iter(|| {
-                load_contract_for_vm("programs/benches/logistic_map.cairo");
-            });
-        });
-
-        logistic_map_compilation_group.finish();
-    }
-
-    {
         let mut linear_search_group = c.benchmark_group("linear_search");
 
         linear_search_group.bench_function("Cached JIT", |b| {
