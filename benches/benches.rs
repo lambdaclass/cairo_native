@@ -9,7 +9,6 @@ use cairo_lang_utils::Upcast;
 use cairo_native::{
     cache::{AotProgramCache, JitProgramCache},
     context::NativeContext,
-    executor::AotNativeExecutor,
     utils::find_function_id,
     OptLevel, Value,
 };
