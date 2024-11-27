@@ -40,8 +40,7 @@ jobs:
         run: make build
       - name: Compress into a tar file
         run: cd target/release && tar -cJvf ../cairo-native-x86_64.tar.xz cairo-native-test \
-          scarb-native-test cairo-native-compile cairo-native-dump cairo-native-run scarb-native-test \
-          scarb-native-dump libcairo_native_runtime.a && cd ..
+          cairo-native-compile cairo-native-dump cairo-native-run libcairo_native_runtime.a && cd ..
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
@@ -68,8 +67,7 @@ jobs:
         run: make build
       - name: Compress into a tar file
         run: cd target/release && tar -cJvf ../cairo-native-aarch64.tar.xz cairo-native-test \
-          scarb-native-test cairo-native-compile cairo-native-dump cairo-native-run scarb-native-test \
-          scarb-native-dump libcairo_native_runtime.a && cd ..
+          cairo-native-compile cairo-native-dump cairo-native-run libcairo_native_runtime.a && cd ..
       - uses: actions/upload-artifact@v4
         with:
           name: macos-build
