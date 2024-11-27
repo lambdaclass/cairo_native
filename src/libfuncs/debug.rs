@@ -61,21 +61,21 @@ pub fn build_print<'ctx>(
     let values_ptr = entry.extract_value(
         context,
         location,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         llvm::r#type::pointer(context, 0),
         0,
     )?;
     let values_start = entry.extract_value(
         context,
         location,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         IntegerType::new(context, 32).into(),
         1,
     )?;
     let values_end = entry.extract_value(
         context,
         location,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         IntegerType::new(context, 32).into(),
         2,
     )?;
@@ -87,11 +87,8 @@ pub fn build_print<'ctx>(
     let values_len = entry.append_op_result(arith::subi(values_end, values_start, location))?;
 
     let values_ptr = {
-        let values_start = entry.append_op_result(arith::extui(
-            values_start,
-            IntegerType::new(context, 64).into(),
-            location,
-        ))?;
+        let values_start =
+            entry.extui(values_start, IntegerType::new(context, 64).into(), location)?;
 
         entry.append_op_result(llvm::get_element_ptr_dynamic(
             context,
@@ -112,22 +109,11 @@ pub fn build_print<'ctx>(
     metadata
         .get::<DropOverridesMeta>()
         .ok_or(Error::MissingMetadata)?
-        .invoke_override(
-            context,
-            entry,
-            location,
-            input_ty,
-            entry.argument(0)?.into(),
-        )?;
+        .invoke_override(context, entry, location, input_ty, entry.arg(0)?)?;
 
     let k0 = entry.const_int(context, location, 0, 32)?;
-    let return_code_is_ok = entry.append_op_result(arith::cmpi(
-        context,
-        arith::CmpiPredicate::Eq,
-        return_code,
-        k0,
-        location,
-    ))?;
+    let return_code_is_ok =
+        entry.cmpi(context, arith::CmpiPredicate::Eq, return_code, k0, location)?;
     cf::assert(
         context,
         return_code_is_ok,

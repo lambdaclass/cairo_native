@@ -140,7 +140,7 @@ fn build_dup<'ctx>(
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(self_ty, location)]));
 
-    let mut src_value = entry.argument(0)?.into();
+    let mut src_value = entry.arg(0)?;
     let mut dst_value = entry.append_op_result(llvm::undef(self_ty, location))?;
 
     for (idx, member_id) in info.members.iter().enumerate() {
@@ -175,7 +175,7 @@ fn build_drop<'ctx>(
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(self_ty, location)]));
 
-    let value = entry.argument(0)?.into();
+    let value = entry.arg(0)?;
     for (idx, member_id) in info.members.iter().enumerate() {
         let member_ty = registry.build_type(context, module, registry, metadata, member_id)?;
         let member_val = entry.extract_value(context, location, value, member_ty, idx)?;

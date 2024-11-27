@@ -15,7 +15,6 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith,
     ir::{Block, Location},
     Context,
 };
@@ -49,8 +48,7 @@ pub fn build_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let segment_arena =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let segment_arena = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -71,12 +69,10 @@ pub fn build_squash<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
-    let gas_builtin = entry.argument(1)?.into();
-    let segment_arena =
-        super::increment_builtin_counter(context, entry, location, entry.argument(2)?.into())?;
-    let dict_ptr = entry.argument(3)?.into();
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let gas_builtin = entry.arg(1)?;
+    let segment_arena = super::increment_builtin_counter(context, entry, location, entry.arg(2)?)?;
+    let dict_ptr = entry.arg(3)?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -87,16 +83,11 @@ pub fn build_squash<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let new_gas_builtin = entry.append_op_result(arith::addi(gas_builtin, gas_refund, location))?;
+    let new_gas_builtin = entry.addi(gas_builtin, gas_refund, location)?;
 
     entry.append_operation(helper.br(
         0,
-        &[
-            range_check,
-            new_gas_builtin,
-            segment_arena,
-            entry.argument(3)?.into(),
-        ],
+        &[range_check, new_gas_builtin, segment_arena, entry.arg(3)?],
         location,
     ));
 

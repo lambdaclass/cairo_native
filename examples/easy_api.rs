@@ -15,7 +15,9 @@ fn main() {
     let sierra_program = cairo_to_sierra(program_path).unwrap();
 
     // Compile the sierra program into a MLIR module.
-    let native_program = native_context.compile(&sierra_program, false).unwrap();
+    let native_program = native_context
+        .compile(&sierra_program, false, Some(Default::default()))
+        .unwrap();
 
     // The parameters of the entry point.
     let params = &[Value::Felt252(Felt::from_bytes_be_slice(b"user"))];

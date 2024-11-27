@@ -28,7 +28,8 @@ use cairo_lang_starknet::{
     starknet_plugin_suite,
 };
 use cairo_lang_starknet_classes::{
-    casm_contract_class::CasmContractClass, contract_class::ContractClass,
+    casm_contract_class::{CasmContractClass, ENTRY_POINT_COST},
+    contract_class::ContractClass,
 };
 use cairo_lang_utils::Upcast;
 use cairo_native::{
@@ -232,7 +233,7 @@ pub fn run_native_program(
     let context = NativeContext::new();
 
     let module = context
-        .compile(program, false)
+        .compile(program, false, Some(Default::default()))
         .expect("Could not compile test program to MLIR.");
 
     assert!(
@@ -427,7 +428,9 @@ pub fn run_native_starknet_contract(
 ) -> ContractExecutionResult {
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(sierra_program, false).unwrap();
+    let native_program = native_context
+        .compile(sierra_program, false, Some(Default::default()))
+        .unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
     let entry_point_id = &entry_point_fn.id;
@@ -452,7 +455,14 @@ pub fn run_native_starknet_aot_contract(
     )
     .unwrap();
     native_executor
-        .run(Felt::from(selector), args, u64::MAX.into(), None, handler)
+        // substract ENTRY_POINT_COST so gas matches
+        .run(
+            Felt::from(selector),
+            args,
+            u64::MAX - ENTRY_POINT_COST as u64,
+            None,
+            handler,
+        )
         .expect("failed to execute the given contract")
 }
 

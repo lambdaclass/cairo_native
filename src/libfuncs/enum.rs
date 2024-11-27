@@ -89,7 +89,7 @@ pub fn build_init<'ctx, 'this>(
         location,
         helper,
         metadata,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         &info.branch_signatures()[0].vars[0].ty,
         &info.signature.param_signatures[0].ty,
         info.index,
@@ -224,7 +224,7 @@ pub fn build_from_bounded_int<'ctx, 'this>(
     let tag_bits = info.n_variants.next_power_of_two().trailing_zeros();
     let tag_type = IntegerType::new(context, tag_bits);
 
-    let mut tag_value: Value = entry.argument(0)?.into();
+    let mut tag_value: Value = entry.arg(0)?;
 
     match tag_type.width().cmp(&varaint_selector_type.width()) {
         std::cmp::Ordering::Less => {
@@ -280,7 +280,7 @@ pub fn build_match<'ctx, 'this>(
             entry.append_operation(llvm::unreachable(location));
         }
         1 => {
-            entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
+            entry.append_operation(helper.br(0, &[entry.arg(0)?], location));
         }
         _ => {
             let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
@@ -304,7 +304,7 @@ pub fn build_match<'ctx, 'this>(
                     )?,
                     layout.align(),
                 )?;
-                entry.store(context, location, stack_ptr, entry.argument(0)?.into())?;
+                entry.store(context, location, stack_ptr, entry.arg(0)?)?;
                 let tag_val = entry.load(context, location, stack_ptr, tag_ty)?;
 
                 (Some(stack_ptr), tag_val)
@@ -312,7 +312,7 @@ pub fn build_match<'ctx, 'this>(
                 let tag_val = entry
                     .append_operation(llvm::extract_value(
                         context,
-                        entry.argument(0)?.into(),
+                        entry.arg(0)?,
                         DenseI64ArrayAttribute::new(context, &[0]),
                         tag_ty,
                         location,
@@ -383,7 +383,7 @@ pub fn build_match<'ctx, 'this>(
                         //   - Either it's a C-style enum and all payloads have the same type.
                         //   - Or the enum only has a single non-memory-allocated variant.
                         if variant_ids.len() == 1 {
-                            entry.argument(0)?.into()
+                            entry.arg(0)?
                         } else {
                             assert!(registry.get_type(&variant_ids[i])?.is_zst(registry)?);
                             block
@@ -438,7 +438,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
             entry.append_operation(llvm::unreachable(location));
         }
         1 => {
-            entry.append_operation(helper.br(0, &[entry.argument(0)?.into()], location));
+            entry.append_operation(helper.br(0, &[entry.arg(0)?], location));
         }
         _ => {
             let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
@@ -462,13 +462,12 @@ pub fn build_snapshot_match<'ctx, 'this>(
                     )?,
                     layout.align(),
                 )?;
-                entry.store(context, location, stack_ptr, entry.argument(0)?.into())?;
+                entry.store(context, location, stack_ptr, entry.arg(0)?)?;
                 let tag_val = entry.load(context, location, stack_ptr, tag_ty)?;
 
                 (Some(stack_ptr), tag_val)
             } else {
-                let tag_val =
-                    entry.extract_value(context, location, entry.argument(0)?.into(), tag_ty, 0)?;
+                let tag_val = entry.extract_value(context, location, entry.arg(0)?, tag_ty, 0)?;
 
                 (None, tag_val)
             };
@@ -526,7 +525,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
                         //   - Either it's a C-style enum and all payloads have the same type.
                         //   - Or the enum only has a single non-memory-allocated variant.
                         if variant_ids.len() == 1 {
-                            entry.argument(0)?.into()
+                            entry.arg(0)?
                         } else {
                             assert!(registry.get_type(&variant_ids[i])?.is_zst(registry)?);
                             block.append_op_result(llvm::undef(payload_ty, location))?
@@ -644,6 +643,8 @@ mod test {
         };
 
         let native_context = NativeContext::new();
-        native_context.compile(&program, false).unwrap();
+        native_context
+            .compile(&program, false, Some(Default::default()))
+            .unwrap();
     }
 }

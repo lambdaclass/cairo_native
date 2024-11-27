@@ -574,19 +574,13 @@ fn build_dup<'ctx>(
             let values = metadata
                 .get::<DupOverridesMeta>()
                 .ok_or(Error::MissingMetadata)?
-                .invoke_override(
-                    context,
-                    &entry,
-                    location,
-                    &info.variants[0],
-                    entry.argument(0)?.into(),
-                )?;
+                .invoke_override(context, &entry, location, &info.variants[0], entry.arg(0)?)?;
 
             entry.append_operation(func::r#return(&[values.0, values.1], location));
         }
         _ => {
             let ptr = entry.alloca1(context, location, self_ty, layout.align())?;
-            entry.store(context, location, ptr, entry.argument(0)?.into())?;
+            entry.store(context, location, ptr, entry.arg(0)?)?;
 
             let mut variant_blocks = HashMap::new();
             for (variant_id, variant_ty) in info
@@ -678,19 +672,13 @@ fn build_drop<'ctx>(
             metadata
                 .get::<DropOverridesMeta>()
                 .ok_or(Error::MissingMetadata)?
-                .invoke_override(
-                    context,
-                    &entry,
-                    location,
-                    &info.variants[0],
-                    entry.argument(0)?.into(),
-                )?;
+                .invoke_override(context, &entry, location, &info.variants[0], entry.arg(0)?)?;
 
             entry.append_operation(func::r#return(&[], location));
         }
         _ => {
             let ptr = entry.alloca1(context, location, self_ty, layout.align())?;
-            entry.store(context, location, ptr, entry.argument(0)?.into())?;
+            entry.store(context, location, ptr, entry.arg(0)?)?;
 
             let mut variant_blocks = HashMap::new();
             for (variant_id, variant_ty) in info

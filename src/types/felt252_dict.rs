@@ -102,7 +102,7 @@ fn build_dup<'ctx>(
             entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
         let inner_len = entry.const_int(context, location, inner_len, 64)?;
 
-        let old_ptr = entry.argument(0)?.into();
+        let old_ptr = entry.arg(0)?;
         let new_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, inner_len, location,
         )?)?;
@@ -155,7 +155,7 @@ fn build_dup<'ctx>(
     )?;
 
     // The following unwrap is unreachable because the registration logic will always insert it.
-    let value0 = entry.argument(0)?.into();
+    let value0 = entry.arg(0)?;
     let value1 = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
@@ -186,7 +186,7 @@ fn build_drop<'ctx>(
             let entry =
                 region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
-            let value = entry.load(context, location, entry.argument(0)?.into(), inner_ty)?;
+            let value = entry.load(context, location, entry.arg(0)?, inner_ty)?;
             drop_overrides_meta.invoke_override(context, &entry, location, &info.ty, value)?;
 
             entry.append_operation(llvm::r#return(None, location));
@@ -242,14 +242,7 @@ fn build_drop<'ctx>(
     let runtime_bindings_meta = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?;
-    runtime_bindings_meta.dict_drop(
-        context,
-        module,
-        &entry,
-        entry.argument(0)?.into(),
-        drop_fn,
-        location,
-    )?;
+    runtime_bindings_meta.dict_drop(context, module, &entry, entry.arg(0)?, drop_fn, location)?;
 
     entry.append_operation(func::r#return(&[], location));
     Ok(region)
