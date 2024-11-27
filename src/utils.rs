@@ -259,7 +259,7 @@ pub fn felt252_short_str(value: &str) -> Felt {
         .filter_map(|c| c.is_ascii().then_some(c as u8))
         .collect();
 
-    assert!(values.len() < 32);
+    assert!(values.len() < 32, "A felt can't longer than 32 bytes");
     Felt::from_bytes_be_slice(&values)
 }
 
