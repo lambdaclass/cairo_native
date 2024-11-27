@@ -5,7 +5,7 @@ pub(crate) use self::{
     program_registry_ext::ProgramRegistryExt,
     range_ext::RangeExt,
 };
-use crate::{error::Result as NativeResult, metadata::MetadataStorage, native_assert, OptLevel};
+use crate::{metadata::MetadataStorage, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
@@ -253,14 +253,14 @@ pub fn felt252_bigint(value: impl Into<BigInt>) -> Felt {
 }
 
 /// Parse a short string into a felt that can be used in the cairo-native input.
-pub fn felt252_short_str(value: &str) -> NativeResult<Felt> {
+pub fn felt252_short_str(value: &str) -> Felt {
     let values: Vec<_> = value
         .chars()
         .filter_map(|c| c.is_ascii().then_some(c as u8))
         .collect();
 
-    native_assert!(values.len() < 32, "A felt can't longer than 32 bytes");
-    Ok(Felt::from_bytes_be_slice(&values))
+    assert!(values.len() < 32, "A felt can't longer than 32 bytes");
+    Felt::from_bytes_be_slice(&values)
 }
 
 /// Creates the execution engine, with all symbols registered.
@@ -984,34 +984,34 @@ pub mod test {
     #[test]
     fn test_felt252_short_str_short_numeric_string() {
         let value = "12345";
-        let result = felt252_short_str(value).unwrap();
+        let result = felt252_short_str(value);
         assert_eq!(result, 211295614005u64.into());
     }
 
     #[test]
     fn test_felt252_short_str_short_string_with_non_numeric_characters() {
         let value = "hello";
-        let result = felt252_short_str(value).unwrap();
+        let result = felt252_short_str(value);
         assert_eq!(result, 448378203247u64.into());
     }
 
     #[test]
     #[should_panic]
     fn test_felt252_short_str_long_numeric_string() {
-        felt252_short_str("1234567890123456789012345678901234567890").unwrap();
+        felt252_short_str("1234567890123456789012345678901234567890");
     }
 
     #[test]
     fn test_felt252_short_str_empty_string() {
         let value = "";
-        let result = felt252_short_str(value).unwrap();
+        let result = felt252_short_str(value);
         assert_eq!(result, Felt::ZERO);
     }
 
     #[test]
     fn test_felt252_short_str_string_with_non_ascii_characters() {
         let value = "h€llø";
-        let result = felt252_short_str(value).unwrap();
+        let result = felt252_short_str(value);
         assert_eq!(result, 6843500.into());
     }
 
