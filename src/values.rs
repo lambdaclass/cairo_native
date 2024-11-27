@@ -235,7 +235,7 @@ impl Value {
                     ptr
                 }
 
-                Self::Bytes31(_) => todo!(),
+                Self::Bytes31(_) => native_panic!("todo: allocate type Bytes31"),
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry)? {
                         let elem_ty = registry.get_type(&info.ty)?;
@@ -513,8 +513,8 @@ impl Value {
 
                     ptr
                 }
-                Self::Secp256K1Point { .. } => todo!(),
-                Self::Secp256R1Point { .. } => todo!(),
+                Self::Secp256K1Point { .. } => native_panic!("todo: allocate type Secp256K1Point"),
+                Self::Secp256R1Point { .. } => native_panic!("todo: allocate type Secp256R1Point"),
                 Self::Null => {
                     native_panic!(
                         "unimplemented: null is meant as return value for nullable for now"
@@ -654,7 +654,9 @@ impl Value {
                 CoreTypeConcrete::Uint32(_) => Self::Uint32(*ptr.cast::<u32>().as_ref()),
                 CoreTypeConcrete::Uint64(_) => Self::Uint64(*ptr.cast::<u64>().as_ref()),
                 CoreTypeConcrete::Uint128(_) => Self::Uint128(*ptr.cast::<u128>().as_ref()),
-                CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+                CoreTypeConcrete::Uint128MulGuarantee(_) => {
+                    native_panic!("todo: implement uint128mulguarantee from_ptr")
+                }
                 CoreTypeConcrete::Sint8(_) => Self::Sint8(*ptr.cast::<i8>().as_ref()),
                 CoreTypeConcrete::Sint16(_) => Self::Sint16(*ptr.cast::<i16>().as_ref()),
                 CoreTypeConcrete::Sint32(_) => Self::Sint32(*ptr.cast::<i32>().as_ref()),
@@ -676,7 +678,7 @@ impl Value {
                     }
                 }
                 CoreTypeConcrete::Uninitialized(_) => {
-                    todo!("implement uninit from_ptr or ignore the return value")
+                    native_panic!("todo: implement uninit from_ptr or ignore the return value")
                 }
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
@@ -825,16 +827,18 @@ impl Value {
                             Self::Secp256R1Point(*data)
                         }
                     },
-                    StarkNetTypeConcrete::Sha256StateHandle(_) => todo!(),
+                    StarkNetTypeConcrete::Sha256StateHandle(_) => {
+                        native_panic!("todo: implement Sha256StateHandle from_ptr")
+                    }
                 },
-                CoreTypeConcrete::Span(_) => todo!("implement span from_ptr"),
+                CoreTypeConcrete::Span(_) => native_panic!("todo: implement span from_ptr"),
                 CoreTypeConcrete::Snapshot(info) => Self::from_ptr(ptr, &info.ty, registry)?,
                 CoreTypeConcrete::Bytes31(_) => {
                     let data = *ptr.cast::<[u8; 31]>().as_ref();
                     Self::Bytes31(data)
                 }
 
-                CoreTypeConcrete::Const(_) => todo!(),
+                CoreTypeConcrete::Const(_) => native_panic!("implement const from_ptr"),
                 CoreTypeConcrete::BoundedInt(info) => {
                     let mut data = BigInt::from_biguint(
                         Sign::Plus,
@@ -854,20 +858,25 @@ impl Value {
                 }
                 CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::Circuit(_)
-                | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+                | CoreTypeConcrete::RangeCheck96(_) => native_panic!("implement from_ptr"),
                 CoreTypeConcrete::IntRange(info) => {
                     let member = registry.get_type(&info.ty)?;
                     let member_layout = member.layout(registry)?;
 
-                    let x =
-                        Self::from_ptr(NonNull::new(ptr.as_ptr()).unwrap(), &info.ty, registry)?;
+                    let x = Self::from_ptr(
+                        NonNull::new(ptr.as_ptr()).to_native_assert_error(
+                            "tried to make a non-null ptr out of a null one",
+                        )?,
+                        &info.ty,
+                        registry,
+                    )?;
 
                     let y = Self::from_ptr(
                         NonNull::new(
                             ptr.as_ptr()
                                 .byte_add(member_layout.extend(member_layout)?.1),
                         )
-                        .unwrap(),
+                        .to_native_assert_error("tried to make a non-null ptr out of a null one")?,
                         &info.ty,
                         registry,
                     )?;
