@@ -1607,9 +1607,6 @@ pub fn build_slice<'ctx, 'this>(
     ));
 
     {
-        // TODO: If shared -> Clone and drop.
-        // TODO: If not shared -> Move and manually free (same as in array_get but with different offsets).
-
         let (elem_ty, elem_layout) =
             registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
         let elem_stride =
@@ -1675,6 +1672,7 @@ pub fn build_slice<'ctx, 'this>(
 
                 match metadata.get::<DupOverridesMeta>() {
                     Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
+                        let k0 = valid_block.const_int(context, location, 0, 64)?;
                         valid_block.append_operation(scf::r#for(
                             k0,
                             slice_size,
