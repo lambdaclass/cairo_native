@@ -63,7 +63,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -89,7 +89,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -115,7 +115,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -141,7 +141,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
