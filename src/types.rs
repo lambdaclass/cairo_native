@@ -195,7 +195,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::Const(_) => todo!(),
+            Self::Const(_) => native_panic!("todo: Const type to MLIR type"),
             Self::EcOp(info) => self::ec_op::build(
                 context,
                 module,
@@ -343,7 +343,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::Span(_) => todo!("implement span type"),
+            Self::Span(_) => native_panic!("todo: Span type to MLIR type"),
             Self::SquashedFelt252Dict(info) => self::squashed_felt252_dict::build(
                 context,
                 module,
@@ -532,10 +532,10 @@ impl TypeBuilder for CoreTypeConcrete {
 
                 value
             },
-            CoreTypeConcrete::Const(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Const(_) => native_panic!("todo: check Const is complex"),
+            CoreTypeConcrete::Span(_) => native_panic!("todo: check Span is complex"),
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_))
-            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(_)) => todo!(),
+            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(_)) => native_panic!("todo: check Sha256StateHandle is complex"),
             CoreTypeConcrete::Coupon(_) => false,
 
             CoreTypeConcrete::Circuit(info) => circuit::is_complex(info),
@@ -618,7 +618,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.inner_ty)?;
                 type_info.is_zst(registry)?
             }
-            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Span(_) => native_panic!("todo: check Span is zero sized"),
             CoreTypeConcrete::Circuit(info) => circuit::is_zst(info),
 
             CoreTypeConcrete::IntRange(info) => {
@@ -698,7 +698,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::SquashedFelt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
             CoreTypeConcrete::Pedersen(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Poseidon(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Span(_) => native_panic!("todo: create layout for Span"),
             CoreTypeConcrete::StarkNet(info) => match info {
                 StarkNetTypeConcrete::ClassHash(_) => get_integer_layout(252),
                 StarkNetTypeConcrete::ContractAddress(_) => get_integer_layout(252),
@@ -733,7 +733,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::IntRange(info) => {
                 let inner = registry.get_type(&info.ty)?.layout(registry)?;
-                inner.extend(inner).unwrap().0
+                inner.extend(inner)?.0
             }
         }
         .pad_to_align())
