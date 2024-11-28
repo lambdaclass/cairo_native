@@ -256,7 +256,7 @@ pub fn run_native_program(
 pub fn run_vm_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
-    args: &[Arg],
+    args: Vec<Arg>,
     gas: Option<usize>,
 ) -> Result<RunResultStarknet, RunnerError> {
     let runner = &program.2;
@@ -401,7 +401,7 @@ pub fn compare_inputless_program(program_path: &str) {
     let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
     let program = &program;
 
-    let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_vm = run_vm_program(program, "main", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
         program,
         "main",
