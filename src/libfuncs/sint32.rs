@@ -76,7 +76,6 @@ pub fn build_const<'ctx, 'this>(
     let value_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.branch_signatures[0].vars[0].ty,
     )?;
@@ -226,13 +225,7 @@ pub fn build_widemul<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let target_type = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.output_types()[0][0],
-    )?;
+    let target_type = registry.build_type(context, helper, metadata, &info.output_types()[0][0])?;
     let lhs: Value = entry.arg(0)?;
     let rhs: Value = entry.arg(1)?;
 
@@ -258,7 +251,6 @@ pub fn build_to_felt252<'ctx, 'this>(
     let felt252_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
@@ -308,17 +300,11 @@ pub fn build_from_felt252<'ctx, 'this>(
 
     let value: Value = entry.arg(1)?;
 
-    let felt252_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[1].ty,
-    )?;
+    let felt252_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
     let result_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[1].ty,
     )?;

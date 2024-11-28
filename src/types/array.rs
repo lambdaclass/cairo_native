@@ -102,7 +102,7 @@ fn build_dup<'ctx>(
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_stride = elem_ty.layout(registry)?.pad_to_align().size();
     let elem_ty = elem_ty.build(context, module, registry, metadata, &info.ty)?;
@@ -274,7 +274,7 @@ fn build_drop<'ctx>(
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_stride = elem_ty.layout(registry)?.pad_to_align().size();
     let elem_ty = elem_ty.build(context, module, registry, metadata, &info.ty)?;
