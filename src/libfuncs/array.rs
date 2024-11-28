@@ -118,8 +118,7 @@ pub fn build_new<'ctx, 'this>(
     let value = entry.insert_value(context, location, value, k0, 2)?;
     let value = entry.insert_value(context, location, value, k0, 3)?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 /// Generate MLIR operations for the `array_append` libfunc.
@@ -310,7 +309,7 @@ pub fn build_append<'ctx, 'this>(
         let value =
             append_block.insert_value(context, location, append_block.arg(0)?, array_len, 2)?;
 
-        append_block.append_operation(helper.br(0, &[value], location));
+        helper.br(append_block, 0, &[value], location)?;
     }
 
     Ok(())
@@ -357,8 +356,7 @@ pub fn build_len<'ctx, 'this>(
         _ => {}
     }
 
-    entry.append_operation(helper.br(0, &[array_len], location));
-    Ok(())
+    helper.br(entry, 0, &[array_len], location)
 }
 
 /// Generate MLIR operations for the `array_get` libfunc.
@@ -528,20 +526,22 @@ pub fn build_get<'ctx, 'this>(
         }
         valid_block.append_operation(ReallocBindingsMeta::free(context, ptr, location)?);
 
-        valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
+        helper.br(valid_block, 0, &[range_check, target_ptr], location)?;
     }
 
-    metadata
-        .get::<DropOverridesMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .invoke_override(
-            context,
-            error_block,
-            location,
-            &info.param_signatures()[1].ty,
-            value,
-        )?;
-    error_block.append_operation(helper.br(1, &[range_check], location));
+    {
+        metadata
+            .get::<DropOverridesMeta>()
+            .ok_or(Error::MissingMetadata)?
+            .invoke_override(
+                context,
+                error_block,
+                location,
+                &info.param_signatures()[1].ty,
+                value,
+            )?;
+        helper.br(error_block, 1, &[range_check], location)?;
+    }
 
     Ok(())
 }
@@ -629,10 +629,11 @@ pub fn build_pop_front<'ctx, 'this>(
         let new_start = valid_block.addi(array_start, k1, location)?;
         let value = valid_block.insert_value(context, location, value, new_start, 1)?;
 
-        valid_block.append_operation(helper.br(0, &[value, target_ptr], location));
+        helper.br(valid_block, 0, &[value, target_ptr], location)?;
     }
 
-    empty_block.append_operation(helper.br(1, &[value], location));
+    helper.br(empty_block, 1, &[value], location)?;
+
     Ok(())
 }
 
@@ -719,20 +720,22 @@ pub fn build_pop_front_consume<'ctx, 'this>(
         let new_start = valid_block.addi(array_start, k1, location)?;
         let value = valid_block.insert_value(context, location, value, new_start, 1)?;
 
-        valid_block.append_operation(helper.br(0, &[value, target_ptr], location));
+        helper.br(valid_block, 0, &[value, target_ptr], location)?;
     }
 
-    metadata
-        .get::<DropOverridesMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .invoke_override(
-            context,
-            empty_block,
-            location,
-            &info.param_signatures()[0].ty,
-            value,
-        )?;
-    empty_block.append_operation(helper.br(1, &[], location));
+    {
+        metadata
+            .get::<DropOverridesMeta>()
+            .ok_or(Error::MissingMetadata)?
+            .invoke_override(
+                context,
+                empty_block,
+                location,
+                &info.param_signatures()[0].ty,
+                value,
+            )?;
+        helper.br(empty_block, 1, &[], location)?;
+    }
 
     Ok(())
 }
@@ -833,10 +836,11 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
 
         let value = valid_block.insert_value(context, location, value, new_end, 2)?;
 
-        valid_block.append_operation(helper.br(0, &[value, target_ptr], location));
+        helper.br(valid_block, 0, &[value, target_ptr], location)?;
     }
 
-    empty_block.append_operation(helper.br(1, &[value], location));
+    helper.br(empty_block, 1, &[value], location)?;
+
     Ok(())
 }
 
@@ -954,10 +958,10 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
             valid_block.insert_value(context, location, array, new_array_start, 1)?
         };
 
-        valid_block.append_operation(helper.br(0, &[range_check, array, return_ptr], location));
+        helper.br(valid_block, 0, &[range_check, array, return_ptr], location)?;
     }
 
-    invalid_block.append_operation(helper.br(1, &[range_check, array], location));
+    helper.br(invalid_block, 1, &[range_check, array], location)?;
 
     Ok(())
 }
@@ -1080,10 +1084,10 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
             valid_block.insert_value(context, location, array, new_array_end, 2)?
         };
 
-        valid_block.append_operation(helper.br(0, &[range_check, array, return_ptr], location));
+        helper.br(valid_block, 0, &[range_check, array, return_ptr], location)?;
     }
 
-    invalid_block.append_operation(helper.br(1, &[range_check, array], location));
+    helper.br(invalid_block, 1, &[range_check, array], location)?;
 
     Ok(())
 }
@@ -1206,7 +1210,7 @@ pub fn build_slice<'ctx, 'this>(
             _ => {}
         };
 
-        slice_block.append_operation(helper.br(0, &[range_check, value], location));
+        helper.br(slice_block, 0, &[range_check, value], location)?;
     }
 
     {
@@ -1231,7 +1235,7 @@ pub fn build_slice<'ctx, 'this>(
                 entry.arg(1)?,
             )?;
 
-        error_block.append_operation(helper.br(1, &[range_check], location));
+        helper.br(error_block, 1, &[range_check], location)?;
     }
 
     Ok(())
@@ -1317,9 +1321,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     let array_container = entry.insert_value(context, location, array_container, ptr, 0)?;
 
-    entry.append_operation(helper.br(0, &[array_container], location));
-
-    Ok(())
+    helper.br(entry, 0, &[array_container], location)
 }
 
 fn assert_nonnull<'ctx, 'this>(
@@ -1508,10 +1510,10 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             );
 
             block_clone.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
-            block_clone.append_operation(helper.br(0, &[box_ptr], location));
+            helper.br(block_clone, 0, &[box_ptr], location)?;
         }
 
-        block_forward.append_operation(helper.br(0, &[array_ptr], location));
+        helper.br(block_forward, 0, &[array_ptr], location)?;
     }
 
     {
@@ -1536,7 +1538,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 entry.arg(0)?,
             )?;
 
-        block_err.append_operation(helper.br(1, &[], location));
+        helper.br(block_err, 1, &[], location)?;
     }
 
     Ok(())

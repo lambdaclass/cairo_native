@@ -126,8 +126,7 @@ fn build_bool_binary<'ctx, 'this>(
 
     let res = entry.insert_value(context, location, res, new_tag_value, 0)?;
 
-    entry.append_operation(helper.br(0, &[res], location));
-    Ok(())
+    helper.br(entry, 0, &[res], location)
 }
 
 /// Generate MLIR operations for the `bool_not_impl` libfunc.
@@ -168,8 +167,7 @@ pub fn build_bool_not<'ctx, 'this>(
     ))?;
     let res = entry.insert_value(context, location, res, new_tag_value, 0)?;
 
-    entry.append_operation(helper.br(0, &[res], location));
-    Ok(())
+    helper.br(entry, 0, &[res], location)
 }
 
 /// Generate MLIR operations for the `unbox` libfunc.
@@ -204,8 +202,7 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
 
     let result = entry.extui(tag_value, felt252_ty, location)?;
 
-    entry.append_operation(helper.br(0, &[result], location));
-    Ok(())
+    helper.br(entry, 0, &[result], location)
 }
 
 #[cfg(test)]

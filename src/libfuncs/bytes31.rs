@@ -75,9 +75,7 @@ pub fn build_const<'ctx, 'this>(
         location,
     ));
 
-    entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
-
-    Ok(())
+    helper.br(entry, 0, &[op0.result(0)?.into()], location)
 }
 
 /// Generate MLIR operations for the `bytes31_to_felt252` libfunc.
@@ -101,9 +99,7 @@ pub fn build_to_felt252<'ctx, 'this>(
 
     let result = entry.extui(value, felt252_ty, location)?;
 
-    entry.append_operation(helper.br(0, &[result], location));
-
-    Ok(())
+    helper.br(entry, 0, &[result], location)
 }
 
 /// Generate MLIR operations for the `u8_from_felt252` libfunc.
@@ -161,9 +157,9 @@ pub fn build_from_felt252<'ctx, 'this>(
     ));
 
     let value = block_success.trunci(value, result_ty, location)?;
-    block_success.append_operation(helper.br(0, &[range_check, value], location));
+    helper.br(block_success, 0, &[range_check, value], location)?;
 
-    block_failure.append_operation(helper.br(1, &[range_check], location));
+    helper.br(block_failure, 1, &[range_check], location)?;
 
     Ok(())
 }

@@ -153,11 +153,18 @@ pub fn build_get<'ctx, 'this>(
         block_vacant.append_operation(cf::br(block_final, &[value], location));
     }
 
-    let entry = block_final.append_op_result(llvm::undef(entry_ty, location))?;
-    let entry =
-        block_final.insert_values(context, location, entry, &[dict_ptr, entry_value_ptr_ptr])?;
+    {
+        let entry = block_final.append_op_result(llvm::undef(entry_ty, location))?;
+        let entry = block_final.insert_values(
+            context,
+            location,
+            entry,
+            &[dict_ptr, entry_value_ptr_ptr],
+        )?;
 
-    block_final.append_operation(helper.br(0, &[entry, block_final.arg(0)?], location));
+        helper.br(block_final, 0, &[entry, block_final.arg(0)?], location)?;
+    }
+
     Ok(())
 }
 
@@ -265,8 +272,10 @@ pub fn build_finalize<'ctx, 'this>(
         block_vacant.append_operation(cf::br(block_final, &[value_ptr], location));
     }
 
-    block_final.store(context, location, block_final.arg(0)?, entry_value)?;
-    block_final.append_operation(helper.br(0, &[dict_ptr], location));
+    {
+        block_final.store(context, location, block_final.arg(0)?, entry_value)?;
+        helper.br(block_final, 0, &[dict_ptr], location)?;
+    }
 
     Ok(())
 }
