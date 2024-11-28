@@ -54,6 +54,7 @@ impl ProfilerMeta {
         Ok(Self { _private: () })
     }
 
+    #[cfg(target_arch = "x86_64")]
     pub fn measure_timestamp<'c, 'a>(
         &self,
         context: &'c Context,
@@ -97,6 +98,39 @@ impl ProfilerMeta {
         let value_lo = block.extui(value_lo, i64_ty, location)?;
         let value = block.shli(value_hi, k32, location)?;
         let value = block.append_op_result(arith::ori(value, value_lo, location))?;
+
+        Ok((value, core_idx))
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    pub fn measure_timestamp<'c, 'a>(
+        &self,
+        context: &'c Context,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+    ) -> Result<(Value<'c, 'a>, Value<'c, 'a>)> {
+        let i64_ty = IntegerType::new(context, 64).into();
+
+        let value = block.append_op_result(
+            OperationBuilder::new("llvm.inline_asm", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "asm_string"),
+                        StringAttribute::new(context, "isb\nmrs $0, CNTVCT_EL0\nisb").into(),
+                    ),
+                    (
+                        Identifier::new(context, "has_side_effects"),
+                        Attribute::unit(context),
+                    ),
+                    (
+                        Identifier::new(context, "constraints"),
+                        StringAttribute::new(context, "=r").into(),
+                    ),
+                ])
+                .add_results(&[i64_ty])
+                .build()?,
+        )?;
+        let core_idx = block.const_int(context, location, 0, 64)?;
 
         Ok((value, core_idx))
     }
