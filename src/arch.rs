@@ -57,7 +57,7 @@ impl<'a> ValueWithInfoWrapper<'a> {
     }
 }
 
-impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
+impl AbiArgument for ValueWithInfoWrapper<'_> {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<()> {
         match (self.value, self.info) {
             (value, CoreTypeConcrete::Box(info)) => {
