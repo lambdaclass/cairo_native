@@ -22,7 +22,7 @@ jobs:
         block: [742001, 769597, 779328, 801008, 803072]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.82.0
+      - uses: dtolnay/rust-toolchain@1.83.0
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2

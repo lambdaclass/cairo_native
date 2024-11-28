@@ -77,7 +77,7 @@ where
     }
 }
 
-impl<'a, K> Debug for AotProgramCache<'a, K>
+impl<K> Debug for AotProgramCache<'_, K>
 where
     K: PartialEq + Eq + Hash,
 {
