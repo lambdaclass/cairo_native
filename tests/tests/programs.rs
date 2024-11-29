@@ -118,7 +118,7 @@ fn fib() {
     let result_vm = run_vm_program(
         &FIB,
         "run_test",
-        &[Arg::Value(Felt::from(10))],
+        vec![Arg::Value(Felt::from(10))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -144,7 +144,7 @@ fn logistic_map() {
     let result_vm = run_vm_program(
         &LOGISTIC_MAP,
         "run_test",
-        &[Arg::Value(Felt::from(1000))],
+        vec![Arg::Value(Felt::from(1000))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -170,7 +170,7 @@ fn pedersen() {
     let result_vm = run_vm_program(
         &PEDERSEN,
         "run_test",
-        &[
+        vec![
             Arg::Value(
                 Felt::from_dec_str(
                     "2163739901324492107409690946633517860331020929182861814098856895601180685",
@@ -216,7 +216,7 @@ fn factorial() {
     let result_vm = run_vm_program(
         &FACTORIAL,
         "run_test",
-        &[Arg::Value(Felt::from(13))],
+        vec![Arg::Value(Felt::from(13))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -243,7 +243,7 @@ proptest! {
         let result_vm = run_vm_program(
             &FIB,
             "run_test",
-            &[Arg::Value(Felt::from(n))],
+            vec![Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -268,7 +268,7 @@ proptest! {
         let result_vm = run_vm_program(
             &LOGISTIC_MAP,
             "run_test",
-            &[Arg::Value(Felt::from(n))],
+            vec![Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -293,7 +293,7 @@ proptest! {
         let result_vm = run_vm_program(
             &FACTORIAL,
             "run_test",
-            &[Arg::Value(Felt::from(n))],
+            vec![Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -318,7 +318,7 @@ proptest! {
         let result_vm = run_vm_program(
             &PEDERSEN,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -344,7 +344,7 @@ proptest! {
         let result_vm = run_vm_program(
             &POSEIDON,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())),
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())),
              Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be())),
             Arg::Value(Felt::from_bytes_be(&c.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
@@ -373,7 +373,7 @@ fn self_referencing_struct() {
     let result_vm = run_vm_program(
         &SELF_REFERENCING,
         "run_test",
-        &[],
+        vec![],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -396,7 +396,7 @@ fn self_referencing_struct() {
 
 #[test]
 fn no_op() {
-    let result_vm = run_vm_program(&NO_OP, "run_test", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_vm = run_vm_program(&NO_OP, "run_test", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
         &NO_OP,
         "run_test",
