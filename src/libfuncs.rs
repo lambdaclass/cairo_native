@@ -47,6 +47,7 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
+mod int;
 mod int_range;
 mod mem;
 mod nullable;
