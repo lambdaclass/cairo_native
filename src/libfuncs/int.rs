@@ -1,5 +1,10 @@
 use super::{BlockExt, LibfuncHelper};
-use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{
+    error::Result,
+    metadata::MetadataStorage,
+    types::TypeBuilder,
+    utils::{ProgramRegistryExt, PRIME},
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -14,10 +19,15 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith::{self, CmpiPredicate},
-    ir::{Block, Location, ValueLike},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        scf,
+    },
+    ir::{Block, Location, Region, ValueLike},
     Context,
 };
+use num_bigint::{BigInt, Sign};
+use num_traits::Zero;
 
 pub fn build_unsigned<'ctx, 'this, T>(
     context: &'ctx Context,
@@ -91,13 +101,13 @@ where
         SintConcrete::IsZero(info) => {
             build_is_zero(context, registry, entry, location, helper, metadata, info)
         }
-        SintConcrete::Operation(_) => {
+        SintConcrete::Operation(info) => {
             build_operation(context, registry, entry, location, helper, metadata, info)
         }
-        SintConcrete::ToFelt252(_) => {
+        SintConcrete::ToFelt252(info) => {
             build_to_felt252(context, registry, entry, location, helper, metadata, info)
         }
-        SintConcrete::WideMul(_) => {
+        SintConcrete::WideMul(info) => {
             build_wide_mul(context, registry, entry, location, helper, metadata, info)
         }
     }
@@ -197,66 +207,124 @@ fn build_equal<'ctx, 'this>(
 }
 
 fn build_from_felt252<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    // let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    // let value_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
-    // let threshold = value_ty.integer_range(registry)?;
+    let value_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
+    let threshold = value_ty.integer_range(registry)?;
 
-    // let value_ty = value_ty.build(
-    //     context,
-    //     helper,
-    //     registry,
-    //     metadata,
-    //     &info.signature.branch_signatures[0].vars[1].ty,
-    // )?;
+    let value_ty = value_ty.build(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.branch_signatures[0].vars[1].ty,
+    )?;
 
-    // let input = entry.arg(1)?;
-    // let is_in_range = if threshold.lower.is_zero() {
-    //     let upper_threshold =
-    //         entry.const_int_from_type(context, location, threshold.upper, input.r#type())?;
-    //     entry.cmpi(
-    //         context,
-    //         CmpiPredicate::Ult,
-    //         input,
-    //         upper_threshold,
-    //         location,
-    //     )?
-    // } else {
-    //     let lower_threshold =
-    //         entry.const_int_from_type(context, location, threshold.lower, input.r#type())?;
-    //     let upper_threshold =
-    //         entry.const_int_from_type(context, location, threshold.upper, input.r#type())?;
+    let input = entry.arg(1)?;
 
-    //     let lower_check = entry.cmpi(
-    //         context,
-    //         CmpiPredicate::Sge,
-    //         input,
-    //         lower_threshold,
-    //         location,
-    //     )?;
-    //     let upper_check = entry.cmpi(
-    //         context,
-    //         CmpiPredicate::Slt,
-    //         input,
-    //         upper_threshold,
-    //         location,
-    //     )?;
+    // Handle signedness separately.
+    let (is_in_range, value) = if threshold.lower.is_zero() {
+        let upper_threshold =
+            entry.const_int_from_type(context, location, threshold.upper, input.r#type())?;
+        let is_in_range = entry.cmpi(
+            context,
+            CmpiPredicate::Ult,
+            input,
+            upper_threshold,
+            location,
+        )?;
 
-    //     entry.append_op_result(arith::andi(lower_check, upper_check, location))?
-    // };
+        (is_in_range, input)
+    } else {
+        let lower_threshold = entry.const_int_from_type(
+            context,
+            location,
+            if threshold.lower.sign() == Sign::Minus {
+                &*PRIME - threshold.lower.magnitude()
+            } else {
+                threshold.lower.magnitude().clone()
+            },
+            input.r#type(),
+        )?;
+        let upper_threshold = entry.const_int_from_type(
+            context,
+            location,
+            if threshold.upper.sign() == Sign::Minus {
+                &*PRIME - threshold.upper.magnitude()
+            } else {
+                threshold.upper.magnitude().clone()
+            },
+            input.r#type(),
+        )?;
 
-    // let value =
+        let lower_check = entry.cmpi(
+            context,
+            CmpiPredicate::Sge,
+            input,
+            lower_threshold,
+            location,
+        )?;
+        let upper_check = entry.cmpi(
+            context,
+            CmpiPredicate::Slt,
+            input,
+            upper_threshold,
+            location,
+        )?;
 
-    // Ok(())
-    todo!()
+        let is_in_range =
+            entry.append_op_result(arith::andi(lower_check, upper_check, location))?;
+
+        let value = entry.append_op_result(scf::r#if(
+            lower_check,
+            &[input.r#type()],
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                let prime = block.const_int_from_type(
+                    context,
+                    location,
+                    BigInt::from_biguint(Sign::Plus, PRIME.clone()),
+                    input.r#type(),
+                )?;
+                let value = block.append_op_result(arith::subi(input, prime, location))?;
+
+                block.append_operation(scf::r#yield(&[value], location));
+                region
+            },
+            {
+                let region = Region::new();
+                let block = region.append_block(Block::new(&[]));
+
+                block.append_operation(scf::r#yield(&[input], location));
+                region
+            },
+            location,
+        ))?;
+
+        (is_in_range, value)
+    };
+
+    let value = entry.trunci(value, value_ty, location)?;
+
+    entry.append_operation(helper.cond_br(
+        context,
+        is_in_range,
+        [0, 1],
+        [&[range_check], &[range_check, value]],
+        location,
+    ));
+
+    Ok(())
 }
 
 fn build_is_zero<'ctx, 'this>(
@@ -331,11 +399,11 @@ mod test {
     use cairo_lang_sierra::ProgramParser;
     use itertools::Itertools;
     use num_traits::{Bounded, Num};
+    use starknet_types_core::felt::Felt;
     use std::{
         fmt::Display,
         mem,
         ops::{BitAnd, BitOr, BitXor},
-        u8,
     };
 
     fn test_bitwise<T>() -> Result<(), Box<dyn std::error::Error>>
@@ -370,7 +438,7 @@ mod test {
                     return([3], [7]);
 
                     [0]@0([0]: Bitwise, [1]: {type_id}, [2]: {type_id}) -> (Bitwise, Tuple<{type_id}, {type_id}, {type_id}>);
-                "#
+                "#,
             ))
             .map_err(|e| e.to_string())?;
 
@@ -436,7 +504,7 @@ mod test {
                         test_zero@0() -> ({type_id});
                         test_one@2() -> ({type_id});
                         test_max@4() -> ({type_id});
-                    "#
+                    "#,
                 ))
                 .map_err(|e| e.to_string())?
         } else {
@@ -463,7 +531,7 @@ mod test {
                         test_zero@2() -> ({type_id});
                         test_one@4() -> ({type_id});
                         test_max@6() -> ({type_id});
-                    "#
+                    "#,
                 ))
                 .map_err(|e| e.to_string())?
         };
@@ -548,7 +616,7 @@ mod test {
                     return([3], [6]);
 
                     [0]@0([0]: RangeCheck, [1]: {type_id}, [2]: NonZero<{type_id}>) -> (RangeCheck, Tuple<{type_id}, {type_id}>);
-                "#
+                "#,
             ))
             .map_err(|e| e.to_string())?;
 
@@ -615,7 +683,7 @@ mod test {
                     return([3]);
 
                     [0]@0([0]: {type_id}, [1]: {type_id}) -> (core::bool);
-                "#
+                "#,
             ))
             .map_err(|e| e.to_string())?;
 
@@ -647,7 +715,70 @@ mod test {
         Ok(())
     }
 
-    // TODO: Implement `test_from_felt252`.
+    fn test_from_felt252<T>() -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Bounded + Copy + Num,
+        Felt: From<T>,
+        Value: From<T>,
+    {
+        let n_bits = 8 * mem::size_of::<T>();
+        let type_id = format!(
+            "{}{n_bits}",
+            if T::min_value().is_zero() { 'u' } else { 'i' }
+        );
+
+        let program = ProgramParser::new()
+            .parse(&format!(
+                r#"
+                    type RangeCheck = RangeCheck;
+                    type felt252 = felt252;
+                    type {type_id} = {type_id};
+                    type Unit = Struct<ut@Tuple>;
+                    type core::option::Option::<core::integer::{type_id}> = Enum<ut@core::option::Option::<core::integer::{type_id}>, {type_id}, Unit>;
+
+                    libfunc {type_id}_try_from_felt252 = {type_id}_try_from_felt252;
+                    libfunc branch_align = branch_align;
+                    libfunc enum_init<core::option::Option::<core::integer::{type_id}>, 0> = enum_init<core::option::Option::<core::integer::{type_id}>, 0>;
+                    libfunc struct_construct<Unit> = struct_construct<Unit>;
+                    libfunc enum_init<core::option::Option::<core::integer::{type_id}>, 1> = enum_init<core::option::Option::<core::integer::{type_id}>, 1>;
+
+                    {type_id}_try_from_felt252([0], [1]) {{ fallthrough([2], [3]) 4([2]) }};
+                    branch_align() -> ();
+                    enum_init<core::option::Option::<core::integer::{type_id}>, 0>([3]) -> ([4]);
+                    return([2], [4]);
+                    branch_align() -> ();
+                    struct_construct<Unit>() -> ([3]);
+                    enum_init<core::option::Option::<core::integer::{type_id}>, 1>([3]) -> ([4]);
+                    return([2], [4]);
+
+                    [0]@0([0]: RangeCheck, [1]: felt252) -> (RangeCheck, core::option::Option::<core::integer::{type_id}>);
+                "#,
+            ))
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        // TODO: Test invalid values too.
+        let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
+        for value in data {
+            let result =
+                executor.invoke_dynamic(&program.funcs[0].id, &[Felt::from(value).into()], None)?;
+
+            assert_eq!(
+                result.return_value,
+                Value::Enum {
+                    tag: 0,
+                    value: Box::new(value.into()),
+                    debug_name: None,
+                },
+            );
+        }
+
+        Ok(())
+    }
+
     // TODO: Implement `test_is_zero`.
     // TODO: Implement `test_operation`.
     // TODO: Implement `test_square_root`.
@@ -772,6 +903,46 @@ mod test {
     #[test]
     fn i64_equal() {
         test_equal::<i64>().unwrap();
+    }
+
+    #[test]
+    fn u8_from_felt252() {
+        test_from_felt252::<u8>().unwrap();
+    }
+
+    #[test]
+    fn u16_from_felt252() {
+        test_from_felt252::<u16>().unwrap();
+    }
+
+    #[test]
+    fn u32_from_felt252() {
+        test_from_felt252::<u32>().unwrap();
+    }
+
+    #[test]
+    fn u64_from_felt252() {
+        test_from_felt252::<u64>().unwrap();
+    }
+
+    #[test]
+    fn i8_from_felt252() {
+        test_from_felt252::<i8>().unwrap();
+    }
+
+    #[test]
+    fn i16_from_felt252() {
+        test_from_felt252::<i16>().unwrap();
+    }
+
+    #[test]
+    fn i32_from_felt252() {
+        test_from_felt252::<i32>().unwrap();
+    }
+
+    #[test]
+    fn i64_from_felt252() {
+        test_from_felt252::<i64>().unwrap();
     }
 
     // TODO: Test `build_from_felt252`.
