@@ -329,12 +329,12 @@ fn build_from_felt252<'ctx, 'this>(
 
 fn build_is_zero<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let input = entry.arg(0)?;
 
@@ -408,13 +408,7 @@ mod test {
 
     fn test_bitwise<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded
-            + Copy
-            + Display
-            + Num
-            + BitAnd<Output = T>
-            + BitOr<Output = T>
-            + BitXor<Output = T>,
+        T: Bounded + Copy + Num + BitAnd<Output = T> + BitOr<Output = T> + BitXor<Output = T>,
         Value: From<T>,
     {
         let n_bits = 8 * mem::size_of::<T>();
@@ -591,7 +585,7 @@ mod test {
 
     fn test_divmod<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded + Copy + Display + Num,
+        T: Bounded + Copy + Num,
         Value: From<T>,
     {
         let n_bits = 8 * mem::size_of::<T>();
@@ -651,7 +645,7 @@ mod test {
 
     fn test_equal<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded + Copy + Display + Num,
+        T: Bounded + Copy + Num,
         Value: From<T>,
     {
         let n_bits = 8 * mem::size_of::<T>();
@@ -766,6 +760,7 @@ mod test {
             let result =
                 executor.invoke_dynamic(&program.funcs[0].id, &[Felt::from(value).into()], None)?;
 
+            assert_eq!(result.builtin_stats.range_check, 1);
             assert_eq!(
                 result.return_value,
                 Value::Enum {
@@ -779,174 +774,143 @@ mod test {
         Ok(())
     }
 
-    // TODO: Implement `test_is_zero`.
+    fn test_is_zero<T>() -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Bounded + Copy + Num,
+        Value: From<T>,
+    {
+        let n_bits = 8 * mem::size_of::<T>();
+        let type_id = format!(
+            "{}{n_bits}",
+            if T::min_value().is_zero() { 'u' } else { 'i' }
+        );
+
+        let program = ProgramParser::new()
+            .parse(&format!(
+                r#"
+                    type {type_id} = {type_id};
+                    type Unit = Struct<ut@Tuple>;
+                    type NonZero<{type_id}> = NonZero<{type_id}>;
+                    type IsZeroResult<{type_id}> = Enum<ut@core::zeroable::IsZeroResult::<core::integer::{type_id}>, Unit, NonZero<{type_id}>>;
+
+                    libfunc {type_id}_is_zero = {type_id}_is_zero;
+                    libfunc branch_align = branch_align;
+                    libfunc struct_construct<Unit> = struct_construct<Unit>;
+                    libfunc enum_init<IsZeroResult<{type_id}>, 0> = enum_init<IsZeroResult<{type_id}>, 0>;
+                    libfunc enum_init<IsZeroResult<{type_id}>, 1> = enum_init<IsZeroResult<{type_id}>, 1>;
+
+                    {type_id}_is_zero([0]) {{ fallthrough() 5([2]) }};
+                    branch_align() -> ();
+                    struct_construct<Unit>() -> ([2]);
+                    enum_init<IsZeroResult<{type_id}>, 0>([2]) -> ([3]);
+                    return([3]);
+                    branch_align() -> ();
+                    enum_init<IsZeroResult<{type_id}>, 1>([2]) -> ([3]);
+                    return([3]);
+
+                    [0]@0([0]: {type_id}) -> (IsZeroResult<{type_id}>);
+                "#,
+            ))
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
+        for value in data.into_iter() {
+            let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
+
+            assert_eq!(
+                result.return_value,
+                Value::Enum {
+                    tag: !value.is_zero() as usize,
+                    value: Box::new(if value.is_zero() {
+                        Value::Struct {
+                            fields: Vec::new(),
+                            debug_name: None,
+                        }
+                    } else {
+                        value.into()
+                    }),
+                    debug_name: None,
+                },
+            );
+        }
+
+        Ok(())
+    }
+
     // TODO: Implement `test_operation`.
     // TODO: Implement `test_square_root`.
     // TODO: Implement `test_to_felt252`.
     // TODO: Implement `test_wide_mul`.
 
-    #[test]
-    fn u8_bitwise() {
-        test_bitwise::<u8>().unwrap();
+    macro_rules! impl_tests {
+        ( $( $target:ident for $( $ty:ty as $name:ident ),+ ; )+ ) => {
+            $( $(
+                #[test]
+                fn $name() {
+                    $target::<$ty>().unwrap();
+                }
+            )+ )+
+        };
     }
 
-    #[test]
-    fn u16_bitwise() {
-        test_bitwise::<u16>().unwrap();
+    impl_tests! {
+        test_bitwise for
+            u8 as u8_bitwise,
+            u16 as u16_bitwise,
+            u32 as u32_bitwise,
+            u64 as u64_bitwise;
+
+        test_const for
+            u8 as u8_const,
+            u16 as u16_const,
+            u32 as u32_const,
+            u64 as u64_const,
+            i8 as i8_const,
+            i16 as i16_const,
+            i32 as i32_const,
+            i64 as i64_const;
+
+        test_divmod for
+            u8 as u8_divmod,
+            u16 as u16_divmod,
+            u32 as u32_divmod,
+            u64 as u64_divmod;
+
+        test_equal for
+            u8 as u8_equal,
+            u16 as u16_equal,
+            u32 as u32_equal,
+            u64 as u64_equal,
+            i8 as i8_equal,
+            i16 as i16_equal,
+            i32 as i32_equal,
+            i64 as i64_equal;
+
+        test_from_felt252 for
+            u8 as u8_from_felt252,
+            u16 as u16_from_felt252,
+            u32 as u32_from_felt252,
+            u64 as u64_from_felt252,
+            i8 as i8_from_felt252,
+            i16 as i16_from_felt252,
+            i32 as i32_from_felt252,
+            i64 as i64_from_felt252;
+
+        test_is_zero for
+            u8 as u8_is_zero,
+            u16 as u16_is_zero,
+            u32 as u32_is_zero,
+            u64 as u64_is_zero,
+            i8 as i8_is_zero,
+            i16 as i16_is_zero,
+            i32 as i32_is_zero,
+            i64 as i64_is_zero;
     }
 
-    #[test]
-    fn u32_bitwise() {
-        test_bitwise::<u32>().unwrap();
-    }
-
-    #[test]
-    fn u64_bitwise() {
-        test_bitwise::<u64>().unwrap();
-    }
-
-    #[test]
-    fn u8_const() {
-        test_const::<u8>().unwrap();
-    }
-
-    #[test]
-    fn u16_const() {
-        test_const::<u16>().unwrap();
-    }
-
-    #[test]
-    fn u32_const() {
-        test_const::<u32>().unwrap();
-    }
-
-    #[test]
-    fn u64_const() {
-        test_const::<u64>().unwrap();
-    }
-
-    #[test]
-    fn i8_const() {
-        test_const::<i8>().unwrap();
-    }
-
-    #[test]
-    fn i16_const() {
-        test_const::<i16>().unwrap();
-    }
-
-    #[test]
-    fn i32_const() {
-        test_const::<i32>().unwrap();
-    }
-
-    #[test]
-    fn i64_const() {
-        test_const::<i64>().unwrap();
-    }
-
-    #[test]
-    fn u8_divmod() {
-        test_divmod::<u8>().unwrap();
-    }
-
-    #[test]
-    fn u16_divmod() {
-        test_divmod::<u16>().unwrap();
-    }
-
-    #[test]
-    fn u32_divmod() {
-        test_divmod::<u32>().unwrap();
-    }
-
-    #[test]
-    fn u64_divmod() {
-        test_divmod::<u64>().unwrap();
-    }
-
-    #[test]
-    fn u8_equal() {
-        test_equal::<u8>().unwrap();
-    }
-
-    #[test]
-    fn u16_equal() {
-        test_equal::<u16>().unwrap();
-    }
-
-    #[test]
-    fn u32_equal() {
-        test_equal::<u32>().unwrap();
-    }
-
-    #[test]
-    fn u64_equal() {
-        test_equal::<u64>().unwrap();
-    }
-
-    #[test]
-    fn i8_equal() {
-        test_equal::<i8>().unwrap();
-    }
-
-    #[test]
-    fn i16_equal() {
-        test_equal::<i16>().unwrap();
-    }
-
-    #[test]
-    fn i32_equal() {
-        test_equal::<i32>().unwrap();
-    }
-
-    #[test]
-    fn i64_equal() {
-        test_equal::<i64>().unwrap();
-    }
-
-    #[test]
-    fn u8_from_felt252() {
-        test_from_felt252::<u8>().unwrap();
-    }
-
-    #[test]
-    fn u16_from_felt252() {
-        test_from_felt252::<u16>().unwrap();
-    }
-
-    #[test]
-    fn u32_from_felt252() {
-        test_from_felt252::<u32>().unwrap();
-    }
-
-    #[test]
-    fn u64_from_felt252() {
-        test_from_felt252::<u64>().unwrap();
-    }
-
-    #[test]
-    fn i8_from_felt252() {
-        test_from_felt252::<i8>().unwrap();
-    }
-
-    #[test]
-    fn i16_from_felt252() {
-        test_from_felt252::<i16>().unwrap();
-    }
-
-    #[test]
-    fn i32_from_felt252() {
-        test_from_felt252::<i32>().unwrap();
-    }
-
-    #[test]
-    fn i64_from_felt252() {
-        test_from_felt252::<i64>().unwrap();
-    }
-
-    // TODO: Test `build_from_felt252`.
-    // TODO: Test `build_is_zero`.
     // TODO: Test `build_operation`.
     // TODO: Test `build_square_root`.
     // TODO: Test `build_to_felt252`.
