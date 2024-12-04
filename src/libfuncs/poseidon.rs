@@ -55,13 +55,8 @@ pub fn build_hades_permutation<'ctx>(
     let poseidon_builtin =
         super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let felt252_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[1].ty,
-    )?;
+    let felt252_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
 
     let i256_ty = IntegerType::new(context, 256).into();
     let layout_i256 = get_integer_layout(256);

@@ -116,7 +116,6 @@ pub fn build_const<'ctx, 'this>(
     let value_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
@@ -467,13 +466,8 @@ pub fn build_guarantee_mul<'ctx, 'this>(
     let origin_type = lhs.r#type();
 
     let target_type = IntegerType::new(context, 256).into();
-    let guarantee_type = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.output_types()[0][2],
-    )?;
+    let guarantee_type =
+        registry.build_type(context, helper, metadata, &info.output_types()[0][2])?;
 
     let lhs = entry.extui(lhs, target_type, location)?;
     let rhs = entry.extui(rhs, target_type, location)?;

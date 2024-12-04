@@ -103,7 +103,6 @@ pub fn build_new<'ctx, 'this>(
     let array_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
@@ -142,13 +141,8 @@ pub fn build_append<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let array_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[0].ty,
-    )?;
+    let array_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[0].ty)?;
 
     let ptr_ty = crate::ffi::get_struct_field_type_at(&array_ty, 0);
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
@@ -326,13 +320,8 @@ pub fn build_len<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let array_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[0].ty,
-    )?;
+    let array_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[0].ty)?;
 
     let len_ty = crate::ffi::get_struct_field_type_at(&array_ty, 1);
     let array_value = entry.arg(0)?;
@@ -377,13 +366,8 @@ pub fn build_get<'ctx, 'this>(
 
     let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let array_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[1].ty,
-    )?;
+    let array_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
 
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_layout = elem_ty.layout(registry)?;
@@ -560,13 +544,8 @@ pub fn build_pop_front<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let array_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[0].ty,
-    )?;
+    let array_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[0].ty)?;
 
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_layout = elem_ty.layout(registry)?;
@@ -650,13 +629,8 @@ pub fn build_pop_front_consume<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let array_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[0].ty,
-    )?;
+    let array_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[0].ty)?;
 
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_layout = elem_ty.layout(registry)?;
@@ -764,13 +738,8 @@ pub fn build_snapshot_pop_back<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let array_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[0].ty,
-    )?;
+    let array_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[0].ty)?;
 
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_layout = elem_ty.layout(registry)?;
@@ -857,13 +826,8 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
 
     // Get type information
 
-    let array_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[1].ty,
-    )?;
+    let array_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
 
     let popped_cty = registry.get_type(&info.popped_ty)?;
     let popped_size = popped_cty.layout(registry)?.size();
@@ -918,7 +882,7 @@ pub fn build_snapshot_multi_pop_front<'ctx, 'this>(
 
         let popped_ptr = {
             let single_popped_ty =
-                registry.build_type(context, helper, registry, metadata, &popped_ctys[0])?;
+                registry.build_type(context, helper, metadata, &popped_ctys[0])?;
 
             valid_block.append_op_result(llvm::get_element_ptr_dynamic(
                 context,
@@ -979,13 +943,8 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
 
     // Get type information
 
-    let array_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[1].ty,
-    )?;
+    let array_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
 
     let popped_cty = registry.get_type(&info.popped_ty)?;
     let popped_size = popped_cty.layout(registry)?.size();
@@ -1040,7 +999,7 @@ pub fn build_snapshot_multi_pop_back<'ctx, 'this>(
 
         let popped_ptr = {
             let single_popped_ty =
-                registry.build_type(context, helper, registry, metadata, &popped_ctys[0])?;
+                registry.build_type(context, helper, metadata, &popped_ctys[0])?;
 
             let popped_start =
                 valid_block.append_op_result(arith::subi(array_end, popped_len_value, location))?;
@@ -1213,7 +1172,6 @@ pub fn build_slice<'ctx, 'this>(
         registry.build_type(
             context,
             helper,
-            registry,
             metadata,
             &info.signature.param_signatures[1].ty,
         )?;
@@ -1254,7 +1212,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     let struct_type_info = registry.get_type(&info.ty)?;
 
-    let struct_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let struct_ty = registry.build_type(context, helper, metadata, &info.ty)?;
 
     let container: Value = {
         // load box
@@ -1265,13 +1223,12 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     let fields = struct_type_info.fields().expect("should have fields");
     let (field_ty, field_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, &fields[0])?;
+        registry.build_type_with_layout(context, helper, metadata, &fields[0])?;
     let field_stride = field_layout.pad_to_align().size();
 
     let array_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
@@ -1518,7 +1475,6 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         registry.build_type(
             context,
             helper,
-            registry,
             metadata,
             &info.signature.param_signatures[0].ty,
         )?;

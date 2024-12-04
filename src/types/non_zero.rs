@@ -37,5 +37,5 @@ pub fn build<'ctx>(
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
     // TODO: Can its inner type require dup or drop?
-    registry.build_type(context, module, registry, metadata, &info.ty)
+    registry.build_type(context, module, metadata, &info.ty)
 }

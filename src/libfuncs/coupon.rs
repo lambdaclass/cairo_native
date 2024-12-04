@@ -67,7 +67,6 @@ pub fn build_buy<'ctx, 'this>(
     let ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;

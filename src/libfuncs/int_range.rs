@@ -62,7 +62,6 @@ pub fn build_int_range_try_new<'ctx, 'this>(
     let range_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[1].ty,
     )?;
@@ -108,7 +107,6 @@ pub fn build_int_range_pop_front<'ctx, 'this>(
     let inner_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[1].vars[1].ty,
     )?;
