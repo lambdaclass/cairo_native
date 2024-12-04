@@ -380,6 +380,7 @@ fn build_operation<'ctx, 'this>(
             .build()?,
     )?;
 
+    // TODO: For signed operands, distinguish underflow and overflow cases.
     let result = entry.extract_value(context, location, result_with_overflow, value_ty, 0)?;
     let overflow = entry.extract_value(
         context,
@@ -412,27 +413,57 @@ fn build_square_root<'ctx, 'this>(
 }
 
 fn build_to_felt252<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    let value_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
+    let is_signed = !value_ty.integer_range(registry)?.lower.is_zero();
+
+    let felt252_ty = registry.build_type(
+        context,
+        helper,
+        metadata,
+        &info.signature.branch_signatures[0].vars[0].ty,
+    )?;
+
+    let value = if is_signed {
+        // TODO: Check if negative. If negative, `PRIME - value`.
+        todo!()
+    } else {
+        entry.extui(entry.arg(0)?, felt252_ty, location)?
+    };
+
+    entry.append_operation(helper.br(0, &[value], location));
+    Ok(())
 }
 
 fn build_wide_mul<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    let result_ty = registry.build_type(
+        context,
+        helper,
+        metadata,
+        &info.signature.branch_signatures[0].vars[0].ty,
+    )?;
+
+    let lhs = entry.extui(entry.arg(0)?, result_ty, location)?;
+    let rhs = entry.extui(entry.arg(0)?, result_ty, location)?;
+    let result = entry.muli(lhs, rhs, location)?;
+
+    entry.append_operation(helper.br(0, &[result], location));
+    Ok(())
 }
 
 #[cfg(test)]
