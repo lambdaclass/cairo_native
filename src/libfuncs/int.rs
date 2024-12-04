@@ -11,7 +11,8 @@ use cairo_lang_sierra::{
         int::{
             signed::{SintConcrete, SintTraits},
             unsigned::{UintConcrete, UintTraits},
-            IntConstConcreteLibfunc, IntMulTraits, IntOperationConcreteLibfunc, IntTraits,
+            IntConstConcreteLibfunc, IntMulTraits, IntOperationConcreteLibfunc, IntOperator,
+            IntTraits,
         },
         is_zero::IsZeroTraits,
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -23,7 +24,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         scf,
     },
-    ir::{Block, Location, Region, ValueLike},
+    ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location, Region, ValueLike},
     Context,
 };
 use num_bigint::{BigInt, Sign};
@@ -346,15 +347,56 @@ fn build_is_zero<'ctx, 'this>(
 }
 
 fn build_operation<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &IntOperationConcreteLibfunc,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &IntOperationConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+
+    let value_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
+    let is_signed = !value_ty.integer_range(registry)?.lower.is_zero();
+    let value_ty = value_ty.build(
+        context,
+        helper,
+        registry,
+        metadata,
+        &info.signature.param_signatures[1].ty,
+    )?;
+
+    let op_name = match (is_signed, info.operator) {
+        (false, IntOperator::OverflowingAdd) => "llvm.intr.uadd.with.overflow",
+        (false, IntOperator::OverflowingSub) => "llvm.intr.usub.with.overflow",
+        (true, IntOperator::OverflowingAdd) => "llvm.intr.sadd.with.overflow",
+        (true, IntOperator::OverflowingSub) => "llvm.intr.ssub.with.overflow",
+    };
+    let result_with_overflow = entry.append_op_result(
+        OperationBuilder::new(op_name, location)
+            .add_operands(&[entry.arg(1)?, entry.arg(1)?])
+            .add_results(&[value_ty])
+            .build()?,
+    )?;
+
+    let result = entry.extract_value(context, location, result_with_overflow, value_ty, 0)?;
+    let overflow = entry.extract_value(
+        context,
+        location,
+        result_with_overflow,
+        IntegerType::new(context, 1).into(),
+        1,
+    )?;
+
+    entry.append_operation(helper.cond_br(
+        context,
+        overflow,
+        [1, 0],
+        [&[range_check, result]; 2],
+        location,
+    ));
+    Ok(())
 }
 
 fn build_square_root<'ctx, 'this>(
