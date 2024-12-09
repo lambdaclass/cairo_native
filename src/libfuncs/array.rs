@@ -875,7 +875,8 @@ enum PopInfo<'a> {
 /// Template arguments:
 ///   - Consume: Whether to consume or not the array on failure.
 ///   - Reverse: False for front-popping, true for back-popping.
-///   - Multiple: True for multi-popping.
+///
+/// The `info` argument contains how many items to pop.
 fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
