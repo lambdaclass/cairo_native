@@ -51,6 +51,5 @@ pub fn build<'ctx, 'this>(
         )?;
     }
 
-    entry.append_operation(helper.br(0, &[], location));
-    Ok(())
+    helper.br(entry, 0, &[], location)
 }

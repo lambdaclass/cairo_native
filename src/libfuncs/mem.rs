@@ -85,8 +85,7 @@ pub fn build_alloc_local<'ctx, 'this>(
 
     let value = entry.append_op_result(llvm::undef(target_type, location))?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 /// Generate MLIR operations for the `store_local` libfunc.
@@ -99,6 +98,5 @@ pub fn build_store_local<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.arg(1)?], location));
-    Ok(())
+    helper.br(entry, 0, &[entry.arg(1)?], location)
 }

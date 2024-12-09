@@ -93,9 +93,7 @@ pub fn build_const<'ctx, 'this>(
 
     let value = entry.const_int_from_type(context, location, value, value_ty)?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 /// Generate MLIR operations for the u32 operation libfunc.
@@ -143,14 +141,14 @@ pub fn build_operation<'ctx, 'this>(
         1,
     )?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         op_overflow,
         [1, 0],
         [&[range_check, op_result], &[range_check, op_result]],
         location,
-    ));
-    Ok(())
+    )
 }
 
 /// Generate MLIR operations for the `u32_eq` libfunc.
@@ -173,15 +171,14 @@ pub fn build_equal<'ctx, 'this>(
         location,
     ));
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         op0.result(0)?.into(),
         [1, 0],
         [&[]; 2],
         location,
-    ));
-
-    Ok(())
+    )
 }
 
 /// Generate MLIR operations for the `u32_is_zero` libfunc.
@@ -193,15 +190,12 @@ pub fn build_is_zero<'ctx, 'this>(
     helper: &LibfuncHelper<'ctx, 'this>,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let arg0: Value = entry.arg(0)?;
+    let value = entry.arg(0)?;
 
-    let const_0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
+    let k0 = entry.const_int_from_type(context, location, 0, value.r#type())?;
+    let is_zero = entry.cmpi(context, CmpiPredicate::Eq, value, k0, location)?;
 
-    let condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, const_0, location)?;
-
-    entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
-
-    Ok(())
+    helper.cond_br(context, entry, is_zero, [0, 1], [&[], &[value]], location)
 }
 
 /// Generate MLIR operations for the `u32_safe_divmod` libfunc.
@@ -221,8 +215,7 @@ pub fn build_divmod<'ctx, 'this>(
     let result_div = entry.append_op_result(arith::divui(lhs, rhs, location))?;
     let result_rem = entry.append_op_result(arith::remui(lhs, rhs, location))?;
 
-    entry.append_operation(helper.br(0, &[range_check, result_div, result_rem], location));
-    Ok(())
+    helper.br(entry, 0, &[range_check, result_div, result_rem], location)
 }
 
 /// Generate MLIR operations for the `u32_widemul` libfunc.
@@ -249,8 +242,7 @@ pub fn build_widemul<'ctx, 'this>(
     let rhs = entry.extui(rhs, target_type, location)?;
     let result = entry.muli(lhs, rhs, location)?;
 
-    entry.append_operation(helper.br(0, &[result], location));
-    Ok(())
+    helper.br(entry, 0, &[result], location)
 }
 
 /// Generate MLIR operations for the `u32_to_felt252` libfunc.
@@ -274,9 +266,7 @@ pub fn build_to_felt252<'ctx, 'this>(
 
     let result = entry.extui(value, felt252_ty, location)?;
 
-    entry.append_operation(helper.br(0, &[result], location));
-
-    Ok(())
+    helper.br(entry, 0, &[result], location)
 }
 
 /// Generate MLIR operations for the `u32_sqrt` libfunc.
@@ -414,8 +404,7 @@ pub fn build_square_root<'ctx, 'this>(
 
     let result = entry.trunci(result, i16_ty, location)?;
 
-    entry.append_operation(helper.br(0, &[range_check, result], location));
-    Ok(())
+    helper.br(entry, 0, &[range_check, result], location)
 }
 
 /// Generate MLIR operations for the `u32_from_felt252` libfunc.
@@ -467,8 +456,8 @@ pub fn build_from_felt252<'ctx, 'this>(
 
     let value = block_success.trunci(value, result_ty, location)?;
 
-    block_success.append_operation(helper.br(0, &[range_check, value], location));
-    block_failure.append_operation(helper.br(1, &[range_check], location));
+    helper.br(block_success, 0, &[range_check, value], location)?;
+    helper.br(block_failure, 1, &[range_check], location)?;
 
     Ok(())
 }
