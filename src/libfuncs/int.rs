@@ -471,7 +471,10 @@ mod test {
     use crate::{context::NativeContext, executor::JitNativeExecutor, OptLevel, Value};
     use cairo_lang_sierra::ProgramParser;
     use itertools::Itertools;
-    use num_traits::{Bounded, Num};
+    use num_traits::{
+        ops::overflowing::{OverflowingAdd, OverflowingSub},
+        Bounded, Num,
+    };
     use starknet_types_core::felt::Felt;
     use std::{
         fmt::Display,
@@ -914,7 +917,187 @@ mod test {
         Ok(())
     }
 
-    // TODO: Implement `test_operation`.
+    fn test_unsigned_operation<T>() -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Bounded + Copy + Num + OverflowingAdd + OverflowingSub,
+        Value: From<T>,
+    {
+        let n_bits = 8 * size_of::<T>();
+        let type_id = format!("u{n_bits}");
+
+        let program = ProgramParser::new()
+            .parse(&format!(
+                r#"
+                    type {type_id} = {type_id};
+                    type Result<{type_id}, {type_id}> = Enum<ut@core::result::Result::<core::integer::{type_id}, core::integer::{type_id}>, {type_id}, {type_id}>;
+                    type Tuple<Result<{type_id}, {type_id}>, Result<{type_id}, {type_id}>> = Struct<ut@Tuple, Result<{type_id}, {type_id}>, Result<{type_id}, {type_id}>>;
+                    type RangeCheck = RangeCheck;
+
+                    libfunc dup<{type_id}> = dup<{type_id}>;
+                    libfunc {type_id}_overflowing_add = {type_id}_overflowing_add;
+                    libfunc branch_align = branch_align;
+                    libfunc enum_init<Result<{type_id}, {type_id}>, 0> = enum_init<Result<{type_id}, {type_id}>, 0>;
+                    libfunc jump = jump;
+                    libfunc enum_init<Result<{type_id}, {type_id}>, 1> = enum_init<Result<{type_id}, {type_id}>, 1>;
+                    libfunc {type_id}_overflowing_sub = {type_id}_overflowing_sub;
+                    libfunc struct_construct<Tuple<Result<{type_id}, {type_id}>, Result<{type_id}, {type_id}>>> = struct_construct<Tuple<Result<{type_id}, {type_id}>, Result<{type_id}, {type_id}>>>;
+
+                    dup<{type_id}>([1]) -> ([1], [3]);
+                    dup<{type_id}>([2]) -> ([2], [4]);
+                    {type_id}_overflowing_add([0], [1], [2]) {{ fallthrough([5], [6]) 6([5], [6]) }};
+                    branch_align() -> ();
+                    enum_init<Result<{type_id}, {type_id}>, 0>([6]) -> ([6]);
+                    jump() {{ 8() }};
+                    branch_align() -> ();
+                    enum_init<Result<{type_id}, {type_id}>, 1>([6]) -> ([6]);
+                    {type_id}_overflowing_sub([5], [3], [4]) {{ fallthrough([7], [8]) 12([7], [8]) }};
+                    branch_align() -> ();
+                    enum_init<Result<{type_id}, {type_id}>, 0>([8]) -> ([8]);
+                    jump() {{ 14() }};
+                    branch_align() -> ();
+                    enum_init<Result<{type_id}, {type_id}>, 1>([8]) -> ([8]);
+                    struct_construct<Tuple<Result<{type_id}, {type_id}>, Result<{type_id}, {type_id}>>>([6], [8]) -> ([9]);
+                    return([7], [9]);
+
+                    [0]@0([0]: RangeCheck, [1]: {type_id}, [2]: {type_id}) -> (RangeCheck, Tuple<Result<{type_id}, {type_id}>, Result<{type_id}, {type_id}>>);
+                "#,
+            ))
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
+        for values in data.into_iter().permutations(2) {
+            let lhs = values[0];
+            let rhs = values[1];
+
+            let result =
+                executor.invoke_dynamic(&program.funcs[0].id, &[lhs.into(), rhs.into()], None)?;
+
+            let (add_result, add_overflow) = lhs.overflowing_add(&rhs);
+            let (sub_result, sub_overflow) = lhs.overflowing_sub(&rhs);
+            assert_eq!(
+                result.return_value,
+                Value::Struct {
+                    fields: vec![
+                        Value::Enum {
+                            tag: add_overflow as usize,
+                            value: Box::new(add_result.into()),
+                            debug_name: None,
+                        },
+                        Value::Enum {
+                            tag: sub_overflow as usize,
+                            value: Box::new(sub_result.into()),
+                            debug_name: None,
+                        },
+                    ],
+                    debug_name: None
+                },
+            );
+        }
+
+        Ok(())
+    }
+
+    fn test_signed_operation<T>() -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Bounded + Copy + Num + Ord + OverflowingAdd + OverflowingSub,
+        Value: From<T>,
+    {
+        let n_bits = 8 * size_of::<T>();
+        let type_id = format!("i{n_bits}");
+
+        let program = ProgramParser::new()
+            .parse(&format!(
+                r#"
+                    type {type_id} = {type_id};
+                    type SignedIntegerResult<{type_id}> = Enum<ut@core::integer::SignedIntegerResult::<core::integer::{type_id}>, {type_id}, {type_id}, {type_id}>;
+                    type Tuple<SignedIntegerResult<{type_id}>, SignedIntegerResult<{type_id}>> = Struct<ut@Tuple, SignedIntegerResult<{type_id}>, SignedIntegerResult<{type_id}>>;
+                    type RangeCheck = RangeCheck;
+
+                    libfunc dup<{type_id}> = dup<{type_id}>;
+                    libfunc {type_id}_overflowing_add_impl = {type_id}_overflowing_add_impl;
+                    libfunc branch_align = branch_align;
+                    libfunc enum_init<SignedIntegerResult<{type_id}>, 0> = enum_init<SignedIntegerResult<{type_id}>, 0>;
+                    libfunc jump = jump;
+                    libfunc enum_init<SignedIntegerResult<{type_id}>, 1> = enum_init<SignedIntegerResult<{type_id}>, 1>;
+                    libfunc enum_init<SignedIntegerResult<{type_id}>, 2> = enum_init<SignedIntegerResult<{type_id}>, 2>;
+                    libfunc {type_id}_overflowing_sub_impl = {type_id}_overflowing_sub_impl;
+                    libfunc struct_construct<Tuple<SignedIntegerResult<{type_id}>, SignedIntegerResult<{type_id}>>> = struct_construct<Tuple<SignedIntegerResult<{type_id}>, SignedIntegerResult<{type_id}>>>;
+
+                    dup<{type_id}>([1]) -> ([1], [3]);
+                    dup<{type_id}>([2]) -> ([2], [4]);
+                    {type_id}_overflowing_add_impl([0], [1], [2]) {{ fallthrough([5], [6]) 6([5], [6]) 9([5], [6]) }};
+                    branch_align() -> ();
+                    enum_init<SignedIntegerResult<{type_id}>, 0>([6]) -> ([6]);
+                    jump() {{ 11() }};
+                    branch_align() -> ();
+                    enum_init<SignedIntegerResult<{type_id}>, 1>([6]) -> ([6]);
+                    jump() {{ 11() }};
+                    branch_align() -> ();
+                    enum_init<SignedIntegerResult<{type_id}>, 2>([6]) -> ([6]);
+                    {type_id}_overflowing_sub_impl([5], [3], [4]) {{ fallthrough([7], [8]) 15([7], [8]) 18([7], [8]) }};
+                    branch_align() -> ();
+                    enum_init<SignedIntegerResult<{type_id}>, 0>([8]) -> ([8]);
+                    jump() {{ 20() }};
+                    branch_align() -> ();
+                    enum_init<SignedIntegerResult<{type_id}>, 1>([8]) -> ([8]);
+                    jump() {{ 20() }};
+                    branch_align() -> ();
+                    enum_init<SignedIntegerResult<{type_id}>, 2>([8]) -> ([8]);
+                    struct_construct<Tuple<SignedIntegerResult<{type_id}>, SignedIntegerResult<{type_id}>>>([6], [8]) -> ([9]);
+                    return([7], [9]);
+
+                    [0]@0([0]: RangeCheck, [1]: {type_id}, [2]: {type_id}) -> (RangeCheck, Tuple<SignedIntegerResult<{type_id}>, SignedIntegerResult<{type_id}>>);
+                "#,
+            ))
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
+        for values in data.into_iter().permutations(2) {
+            let lhs = values[0];
+            let rhs = values[1];
+
+            let result =
+                executor.invoke_dynamic(&program.funcs[0].id, &[lhs.into(), rhs.into()], None)?;
+
+            let (add_result, add_overflow) = lhs.overflowing_add(&rhs);
+            let (sub_result, sub_overflow) = lhs.overflowing_sub(&rhs);
+            assert_eq!(
+                result.return_value,
+                Value::Struct {
+                    fields: vec![
+                        Value::Enum {
+                            tag: add_overflow
+                                .then(|| lhs >= T::zero() || rhs >= T::zero())
+                                .map(|x| (x as usize) + 1)
+                                .unwrap_or_default(),
+                            value: Box::new(add_result.into()),
+                            debug_name: None,
+                        },
+                        Value::Enum {
+                            tag: sub_overflow
+                                .then(|| lhs > rhs)
+                                .map(|x| (x as usize) + 1)
+                                .unwrap_or_default(),
+                            value: Box::new(sub_result.into()),
+                            debug_name: None,
+                        },
+                    ],
+                    debug_name: None
+                },
+            );
+        }
+
+        Ok(())
+    }
+
     // TODO: Implement `test_square_root`.
     // TODO: Implement `test_to_felt252`.
     // TODO: Implement `test_wide_mul`.
@@ -982,9 +1165,19 @@ mod test {
             i16 as i16_is_zero,
             i32 as i32_is_zero,
             i64 as i64_is_zero;
+
+        test_unsigned_operation for
+            u8 as u8_operation,
+            u16 as u16_operation,
+            u32 as u32_operation,
+            u64 as u64_operation;
+        test_signed_operation for
+            i8 as i8_operation,
+            i16 as i16_operation,
+            i32 as i32_operation,
+            i64 as i64_operation;
     }
 
-    // TODO: Test `build_operation`.
     // TODO: Test `build_square_root`.
     // TODO: Test `build_to_felt252`.
     // TODO: Test `build_wide_mul`.
