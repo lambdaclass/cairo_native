@@ -10,7 +10,9 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         int::{
             signed::{SintConcrete, SintTraits},
+            signed128::Sint128Concrete,
             unsigned::{UintConcrete, UintTraits},
+            unsigned128::Uint128Concrete,
             IntConstConcreteLibfunc, IntMulTraits, IntOperationConcreteLibfunc, IntOperator,
             IntTraits,
         },
@@ -121,6 +123,89 @@ where
     }
 }
 
+pub fn build_u128<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    selector: &Uint128Concrete,
+) -> Result<()> {
+    match selector {
+        Uint128Concrete::Bitwise(info) => {
+            build_bitwise(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::ByteReverse(info) => {
+            build_byte_reverse(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::Const(info) => {
+            build_const(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::Divmod(info) => {
+            build_divmod(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::Equal(info) => {
+            build_equal(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::FromFelt252(info) => {
+            build_u128s_from_felt252(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::GuaranteeMul(info) => {
+            build_guarantee_mul(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::IsZero(info) => {
+            build_is_zero(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::MulGuaranteeVerify(info) => {
+            build_mul_guarantee_verify(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::Operation(info) => {
+            build_operation(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::SquareRoot(info) => {
+            build_square_root(context, registry, entry, location, helper, metadata, info)
+        }
+        Uint128Concrete::ToFelt252(info) => {
+            build_to_felt252(context, registry, entry, location, helper, metadata, info)
+        }
+    }
+}
+
+pub fn build_i128<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    selector: &Sint128Concrete,
+) -> Result<()> {
+    match selector {
+        Sint128Concrete::Const(info) => {
+            build_const(context, registry, entry, location, helper, metadata, info)
+        }
+        Sint128Concrete::Diff(info) => {
+            build_diff(context, registry, entry, location, helper, metadata, info)
+        }
+        Sint128Concrete::Equal(info) => {
+            build_equal(context, registry, entry, location, helper, metadata, info)
+        }
+        Sint128Concrete::FromFelt252(info) => {
+            build_from_felt252(context, registry, entry, location, helper, metadata, info)
+        }
+        Sint128Concrete::IsZero(info) => {
+            build_is_zero(context, registry, entry, location, helper, metadata, info)
+        }
+        Sint128Concrete::Operation(info) => {
+            build_operation(context, registry, entry, location, helper, metadata, info)
+        }
+        Sint128Concrete::ToFelt252(info) => {
+            build_to_felt252(context, registry, entry, location, helper, metadata, info)
+        }
+    }
+}
+
 fn build_bitwise<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -144,6 +229,24 @@ fn build_bitwise<'ctx, 'this>(
         &[bitwise, logical_and, logical_xor, logical_or],
         location,
     ));
+    Ok(())
+}
+
+fn build_byte_reverse<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let bitwise = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+
+    let value =
+        entry.append_op_result(ods::llvm::intr_bswap(context, entry.arg(1)?, location).into())?;
+
+    entry.append_operation(helper.br(0, &[bitwise, value], location));
     Ok(())
 }
 
@@ -364,6 +467,22 @@ fn build_from_felt252<'ctx, 'this>(
     Ok(())
 }
 
+fn build_guarantee_mul<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let value =
+        entry.append_op_result(llvm::undef(IntegerType::new(context, 128).into(), location))?;
+
+    entry.append_operation(helper.br(0, &[value, value, value], location));
+    Ok(())
+}
+
 fn build_is_zero<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -379,6 +498,21 @@ fn build_is_zero<'ctx, 'this>(
     let is_zero = entry.cmpi(context, CmpiPredicate::Eq, input, k0, location)?;
 
     entry.append_operation(helper.cond_br(context, is_zero, [0, 1], [&[], &[input]], location));
+    Ok(())
+}
+
+fn build_mul_guarantee_verify<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+
+    entry.append_operation(helper.br(0, &[range_check], location));
     Ok(())
 }
 
@@ -680,6 +814,38 @@ fn build_to_felt252<'ctx, 'this>(
     Ok(())
 }
 
+fn build_u128s_from_felt252<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+
+    let target_ty = IntegerType::new(context, 128).into();
+
+    let lo = entry.trunci(entry.arg(1)?, target_ty, location)?;
+
+    let k128 = entry.const_int_from_type(context, location, 128, entry.arg(1)?.r#type())?;
+    let hi = entry.shrui(entry.arg(1)?, k128, location)?;
+    let hi = entry.trunci(hi, target_ty, location)?;
+
+    let k0 = entry.const_int_from_type(context, location, 0, target_ty)?;
+    let is_wide = entry.cmpi(context, CmpiPredicate::Ne, hi, k0, location)?;
+
+    entry.append_operation(helper.cond_br(
+        context,
+        is_wide,
+        [1, 0],
+        [&[range_check, lo, hi], &[range_check, lo]],
+        location,
+    ));
+    Ok(())
+}
+
 fn build_wide_mul<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -718,9 +884,12 @@ fn build_wide_mul<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{context::NativeContext, executor::JitNativeExecutor, OptLevel, Value};
+    use crate::{
+        context::NativeContext, executor::JitNativeExecutor, utils::HALF_PRIME, OptLevel, Value,
+    };
     use cairo_lang_sierra::ProgramParser;
     use itertools::Itertools;
+    use num_bigint::{BigInt, Sign};
     use num_integer::Roots;
     use num_traits::{
         ops::overflowing::{OverflowingAdd, OverflowingSub},
@@ -731,6 +900,7 @@ mod test {
         fmt::Display,
         mem,
         ops::{BitAnd, BitOr, BitXor},
+        u128,
     };
 
     fn test_bitwise<T>() -> Result<(), Box<dyn std::error::Error>>
@@ -751,15 +921,20 @@ mod test {
                     type {type_id} = {type_id};
                     type Tuple<{type_id}, {type_id}, {type_id}> = Struct<ut@Tuple, {type_id}, {type_id}, {type_id}>;
 
-                    libfunc {type_id}_bitwise = {type_id}_bitwise;
+                    libfunc {0} = {0};
                     libfunc struct_construct<Tuple<{type_id}, {type_id}, {type_id}>> = struct_construct<Tuple<{type_id}, {type_id}, {type_id}>>;
 
-                    {type_id}_bitwise([0], [1], [2]) -> ([3], [4], [5], [6]);
+                    {0}([0], [1], [2]) -> ([3], [4], [5], [6]);
                     struct_construct<Tuple<{type_id}, {type_id}, {type_id}>>([4], [5], [6]) -> ([7]);
                     return([3], [7]);
 
                     [0]@0([0]: Bitwise, [1]: {type_id}, [2]: {type_id}) -> (Bitwise, Tuple<{type_id}, {type_id}, {type_id}>);
                 "#,
+                if n_bits == 128 {
+                    "bitwise".to_string()
+                } else {
+                    format!("{type_id}_bitwise")
+                }
             ))
             .map_err(|e| e.to_string())?;
 
@@ -787,6 +962,38 @@ mod test {
                     debug_name: None,
                 },
             );
+        }
+
+        Ok(())
+    }
+
+    fn test_byte_reverse() -> Result<(), Box<dyn std::error::Error>> {
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                    type Bitwise = Bitwise;
+                    type u128 = u128;
+
+                    libfunc u128_byte_reverse = u128_byte_reverse;
+
+                    u128_byte_reverse([0], [1]) -> ([2], [3]);
+                    return([2], [3]);
+
+                    [0]@0([0]: Bitwise, [1]: u128) -> (Bitwise, u128);
+                "#,
+            )
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        let data = [0u128, 1u128, u128::MAX];
+        for value in data.into_iter() {
+            let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
+
+            assert_eq!(result.builtin_stats.bitwise, 1);
+            assert_eq!(result.return_value, Value::Uint128(value.swap_bytes()));
         }
 
         Ok(())
@@ -970,6 +1177,9 @@ mod test {
                 }
                 (Value::Sint64(lhs), Value::Sint64(rhs)) => {
                     Value::Uint64((lhs.wrapping_sub(rhs)) as _)
+                }
+                (Value::Sint128(lhs), Value::Sint128(rhs)) => {
+                    Value::Uint128((lhs.wrapping_sub(rhs)) as _)
                 }
                 _ => unreachable!(),
             };
@@ -1477,6 +1687,9 @@ mod test {
                 (Value::Uint64(target), Value::Uint32(result)) => {
                     assert_eq!(result as u64, target.sqrt());
                 }
+                (Value::Uint128(target), Value::Uint64(result)) => {
+                    assert_eq!(result as u128, target.sqrt());
+                }
                 _ => unreachable!(),
             }
         }
@@ -1521,6 +1734,74 @@ mod test {
             let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
 
             assert_eq!(result.return_value, Value::Felt252(value.into()));
+        }
+
+        Ok(())
+    }
+
+    fn test_u128s_from_felt252() -> Result<(), Box<dyn std::error::Error>> {
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                    type RangeCheck = RangeCheck;
+                    type felt252 = felt252;
+                    type u128 = u128;
+                    type Tuple<u128, u128> = Struct<ut@Tuple, u128, u128>;
+                    type U128sFromFelt252Result = Enum<ut@sample::sample::U128sFromFelt252Result, u128, Tuple<u128, u128>>;
+
+                    libfunc u128s_from_felt252 = u128s_from_felt252;
+                    libfunc branch_align = branch_align;
+                    libfunc enum_init<U128sFromFelt252Result, 0> = enum_init<U128sFromFelt252Result, 0>;
+                    libfunc enum_init<U128sFromFelt252Result, 1> = enum_init<U128sFromFelt252Result, 1>;
+                    libfunc struct_construct<Tuple<u128, u128>> = struct_construct<Tuple<u128, u128>>;
+
+                    u128s_from_felt252([0], [1]) { fallthrough([2], [3]) 4([2], [3], [4]) };
+                    branch_align() -> ();
+                    enum_init<U128sFromFelt252Result, 0>([3]) -> ([4]);
+                    return([2], [4]);
+                    branch_align() -> ();
+                    struct_construct<Tuple<u128, u128>>([3], [4]) -> ([5]);
+                    enum_init<U128sFromFelt252Result, 1>([5]) -> ([6]);
+                    return([2], [6]);
+
+                    [0]@0([0]: RangeCheck, [1]: felt252) -> (RangeCheck, U128sFromFelt252Result);
+                "#,
+            )
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        let data = [
+            Felt::from(BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone())),
+            Felt::from(BigInt::ZERO),
+            Felt::from(BigInt::from(1)),
+            Felt::from(BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone())),
+        ];
+        for value in data.into_iter() {
+            let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
+
+            let value_bytes = value.to_bytes_le();
+            let lo = u128::from_le_bytes(value_bytes[..16].try_into().unwrap());
+            let hi = u128::from_le_bytes(value_bytes[16..].try_into().unwrap());
+
+            assert_eq!(result.builtin_stats.range_check, 1);
+            assert_eq!(
+                result.return_value,
+                Value::Enum {
+                    tag: (hi != 0) as usize,
+                    value: Box::new(if hi == 0 {
+                        Value::Uint128(lo)
+                    } else {
+                        Value::Struct {
+                            fields: vec![Value::Uint128(hi), Value::Uint128(lo)],
+                            debug_name: None,
+                        }
+                    }),
+                    debug_name: None,
+                },
+            );
         }
 
         Ok(())
@@ -1622,39 +1903,46 @@ mod test {
             u8 as u8_bitwise,
             u16 as u16_bitwise,
             u32 as u32_bitwise,
-            u64 as u64_bitwise;
+            u64 as u64_bitwise,
+            u128 as u128_bitwise;
 
         test_const for
             u8 as u8_const,
             u16 as u16_const,
             u32 as u32_const,
             u64 as u64_const,
+            u128 as u128_const,
             i8 as i8_const,
             i16 as i16_const,
             i32 as i32_const,
-            i64 as i64_const;
+            i64 as i64_const,
+            i128 as i128_const;
 
         test_diff for
             i8 as i8_diff,
             i16 as i16_diff,
             i32 as i32_diff,
-            i64 as i64_diff;
+            i64 as i64_diff,
+            i128 as i128_diff;
 
         test_divmod for
             u8 as u8_divmod,
             u16 as u16_divmod,
             u32 as u32_divmod,
-            u64 as u64_divmod;
+            u64 as u64_divmod,
+            u128 as u128_divmod;
 
         test_equal for
             u8 as u8_equal,
             u16 as u16_equal,
             u32 as u32_equal,
             u64 as u64_equal,
+            u128 as u128_equal,
             i8 as i8_equal,
             i16 as i16_equal,
             i32 as i32_equal,
-            i64 as i64_equal;
+            i64 as i64_equal,
+            i128 as i128_equal;
 
         test_from_felt252 for
             u8 as u8_from_felt252,
@@ -1664,44 +1952,52 @@ mod test {
             i8 as i8_from_felt252,
             i16 as i16_from_felt252,
             i32 as i32_from_felt252,
-            i64 as i64_from_felt252;
+            i64 as i64_from_felt252,
+            i128 as i128_from_felt252;
 
         test_is_zero for
             u8 as u8_is_zero,
             u16 as u16_is_zero,
             u32 as u32_is_zero,
             u64 as u64_is_zero,
+            u128 as u128_is_zero,
             i8 as i8_is_zero,
             i16 as i16_is_zero,
             i32 as i32_is_zero,
-            i64 as i64_is_zero;
+            i64 as i64_is_zero,
+            i128 as i128_is_zero;
 
         test_unsigned_operation for
             u8 as u8_operation,
             u16 as u16_operation,
             u32 as u32_operation,
-            u64 as u64_operation;
+            u64 as u64_operation,
+            u128 as u128_operation;
         test_signed_operation for
             i8 as i8_operation,
             i16 as i16_operation,
             i32 as i32_operation,
-            i64 as i64_operation;
+            i64 as i64_operation,
+            i128 as i128_operation;
 
         test_square_root for
             u8 as u8_square_root,
             u16 as u16_square_root,
             u32 as u32_square_root,
-            u64 as u64_square_root;
+            u64 as u64_square_root,
+            u128 as u128_square_root;
 
         test_to_felt252 for
             u8 as u8_to_felt252,
             u16 as u16_to_felt252,
             u32 as u32_to_felt252,
             u64 as u64_to_felt252,
+            u128 as u128_to_felt252,
             i8 as i8_to_felt252,
             i16 as i16_to_felt252,
             i32 as i32_to_felt252,
-            i64 as i64_to_felt252;
+            i64 as i64_to_felt252,
+            i128 as i128_to_felt252;
 
         test_wide_mul for
             u8 as u8_wide_mul,
@@ -1712,5 +2008,15 @@ mod test {
             i16 as i16_wide_mul,
             i32 as i32_wide_mul,
             i64 as i64_wide_mul;
+    }
+
+    #[test]
+    fn u128_byte_reverse() {
+        test_byte_reverse().unwrap();
+    }
+
+    #[test]
+    fn u128s_from_felt252() {
+        test_u128s_from_felt252().unwrap();
     }
 }
