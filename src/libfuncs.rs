@@ -12,6 +12,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
+        int::unsigned::{Uint16Traits, Uint32Traits, Uint64Traits, Uint8Traits},
         lib_func::ParamSignature,
         starknet::StarkNetTypeConcrete,
         ConcreteLibfunc,
@@ -214,16 +215,16 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Struct(selector) => self::r#struct::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint8(selector) => self::uint8::build(
+            Self::Uint8(selector) => self::int::build_unsigned::<Uint8Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint16(selector) => self::uint16::build(
+            Self::Uint16(selector) => self::int::build_unsigned::<Uint16Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint32(selector) => self::uint32::build(
+            Self::Uint32(selector) => self::int::build_unsigned::<Uint32Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint64(selector) => self::uint64::build(
+            Self::Uint64(selector) => self::int::build_unsigned::<Uint64Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Uint128(selector) => self::uint128::build(

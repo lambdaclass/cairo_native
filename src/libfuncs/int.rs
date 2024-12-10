@@ -22,7 +22,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        ods, scf,
+        llvm, ods, scf,
     },
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
@@ -128,8 +128,8 @@ fn build_bitwise<'ctx, 'this>(
 ) -> Result<()> {
     let bitwise = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let lhs = entry.arg(0)?;
-    let rhs = entry.arg(1)?;
+    let lhs = entry.arg(1)?;
+    let rhs = entry.arg(2)?;
 
     let logical_and = entry.append_op_result(arith::andi(lhs, rhs, location))?;
     let logical_xor = entry.append_op_result(arith::xori(lhs, rhs, location))?;
@@ -324,7 +324,7 @@ fn build_from_felt252<'ctx, 'this>(
         context,
         is_in_range,
         [0, 1],
-        [&[range_check], &[range_check, value]],
+        [&[range_check, value], &[range_check]],
         location,
     ));
 
@@ -378,8 +378,12 @@ fn build_operation<'ctx, 'this>(
     };
     let result_with_overflow = entry.append_op_result(
         OperationBuilder::new(op_name, location)
-            .add_operands(&[entry.arg(1)?, entry.arg(1)?])
-            .add_results(&[value_ty])
+            .add_operands(&[entry.arg(1)?, entry.arg(2)?])
+            .add_results(&[llvm::r#type::r#struct(
+                context,
+                &[value_ty, IntegerType::new(context, 1).into()],
+                false,
+            )])
             .build()?,
     )?;
 
@@ -409,7 +413,7 @@ fn build_square_root<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
@@ -418,9 +422,9 @@ fn build_square_root<'ctx, 'this>(
     let (input_bits, value_bits) =
         match registry.get_type(&info.signature.param_signatures[1].ty)? {
             CoreTypeConcrete::Uint8(_) => (8, 8),
-            CoreTypeConcrete::Uint16(_) => (8, 16),
-            CoreTypeConcrete::Uint32(_) => (16, 32),
-            CoreTypeConcrete::Uint64(_) => (32, 64),
+            CoreTypeConcrete::Uint16(_) => (16, 8),
+            CoreTypeConcrete::Uint32(_) => (32, 16),
+            CoreTypeConcrete::Uint64(_) => (64, 32),
             _ => unreachable!(),
         };
 
@@ -475,7 +479,10 @@ fn build_square_root<'ctx, 'this>(
                 ],
                 {
                     let region = Region::new();
-                    let block = region.append_block(Block::new(&[]));
+                    let block = region.append_block(Block::new(&[
+                        (IntegerType::new(context, input_bits).into(), location),
+                        (IntegerType::new(context, input_bits).into(), location),
+                    ]));
 
                     let value = block.shli(block.arg(0)?, k1, location)?;
                     let large_candidate =
@@ -483,7 +490,7 @@ fn build_square_root<'ctx, 'this>(
                     let large_candidate_squared =
                         block.muli(large_candidate, large_candidate, location)?;
 
-                    let threshold = block.shrui(entry.arg(1)?, block.arg(1)?, location)?;
+                    let threshold = block.shrui(input, block.arg(1)?, location)?;
                     let threshold_is_poison =
                         block.cmpi(context, CmpiPredicate::Eq, block.arg(1)?, k_bits, location)?;
                     let threshold = block.append_op_result(arith::select(
@@ -534,7 +541,17 @@ fn build_square_root<'ctx, 'this>(
                 location,
             ))?;
 
-            block.append_operation(scf::r#yield(&[], location));
+            let value = if input_bits == value_bits {
+                value
+            } else {
+                block.trunci(
+                    value,
+                    IntegerType::new(context, value_bits).into(),
+                    location,
+                )?
+            };
+
+            block.append_operation(scf::r#yield(&[value], location));
             region
         },
         location,
@@ -553,7 +570,7 @@ fn build_to_felt252<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let value_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
+    let value_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let is_signed = !value_ty.integer_range(registry)?.lower.is_zero();
 
     let felt252_ty = registry.build_type(
@@ -564,8 +581,15 @@ fn build_to_felt252<'ctx, 'this>(
     )?;
 
     let value = if is_signed {
-        // TODO: Check if negative. If negative, `PRIME - value`.
-        todo!()
+        let prime = entry.const_int_from_type(
+            context,
+            location,
+            BigInt::from_biguint(Sign::Plus, PRIME.clone()),
+            felt252_ty,
+        )?;
+
+        let value = entry.extui(entry.arg(0)?, felt252_ty, location)?;
+        entry.append_op_result(arith::subi(prime, value, location))?
     } else {
         entry.extui(entry.arg(0)?, felt252_ty, location)?
     };
@@ -591,7 +615,7 @@ fn build_wide_mul<'ctx, 'this>(
     )?;
 
     let lhs = entry.extui(entry.arg(0)?, result_ty, location)?;
-    let rhs = entry.extui(entry.arg(0)?, result_ty, location)?;
+    let rhs = entry.extui(entry.arg(1)?, result_ty, location)?;
     let result = entry.muli(lhs, rhs, location)?;
 
     entry.append_operation(helper.br(0, &[result], location));
