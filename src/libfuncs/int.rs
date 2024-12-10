@@ -1288,7 +1288,48 @@ mod test {
         Ok(())
     }
 
-    // TODO: Implement `test_to_felt252`.
+    fn test_to_felt252<T>() -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Bounded + Copy + Num,
+        Felt: From<T>,
+        Value: From<T>,
+    {
+        let n_bits = 8 * size_of::<T>();
+        let type_id = format!(
+            "{}{n_bits}",
+            if T::min_value().is_zero() { 'u' } else { 'i' }
+        );
+
+        let program = ProgramParser::new()
+            .parse(&format!(
+                r#"
+                    type felt252 = felt252;
+                    type {type_id} = {type_id};
+
+                    libfunc {type_id}_to_felt252 = {type_id}_to_felt252;
+
+                    {type_id}_to_felt252([0]) -> ([1]);
+                    return([1]);
+
+                    [0]@0([0]: {type_id}) -> (felt252);
+                "#
+            ))
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
+        for value in data.into_iter() {
+            let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
+
+            assert_eq!(result.return_value, Value::Felt252(value.into()));
+        }
+
+        Ok(())
+    }
+
     // TODO: Implement `test_wide_mul`.
 
     macro_rules! impl_tests {
@@ -1371,9 +1412,18 @@ mod test {
             u16 as u16_square_root,
             u32 as u32_square_root,
             u64 as u64_square_root;
+
+        test_to_felt252 for
+            u8 as u8_to_felt252,
+            u16 as u16_to_felt252,
+            u32 as u32_to_felt252,
+            u64 as u64_to_felt252,
+            i8 as i8_to_felt252,
+            i16 as i16_to_felt252,
+            i32 as i32_to_felt252,
+            i64 as i64_to_felt252;
     }
 
-    // TODO: Test `build_square_root`.
     // TODO: Test `build_to_felt252`.
     // TODO: Test `build_wide_mul`.
 }
