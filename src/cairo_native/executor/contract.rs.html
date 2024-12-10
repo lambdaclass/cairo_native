@@ -831,6 +831,24 @@
 <a href="#831" id="831">831</a>
 <a href="#832" id="832">832</a>
 <a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
@@ -867,7 +885,7 @@
 </span><span class="kw">use crate</span>::{
     arch::AbiArgument,
     context::NativeContext,
-    error::{panic::ToNativeAssertError, Error},
+    error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
     metadata::gas::MetadataComputationConfig,
@@ -979,7 +997,7 @@
         sierra_program: <span class="kw-2">&amp;</span>Program,
         entry_points: <span class="kw-2">&amp;</span>ContractEntryPoints,
         opt_level: OptLevel,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>native_context = NativeContext::new();
 
         <span class="kw">let </span><span class="kw-2">mut </span>entry_point_selector_to_id = BTreeMap::new();
@@ -1094,7 +1112,7 @@
     }
 
     <span class="doccomment">/// Save the library to the desired path, alongside it is saved also a json file with additional info.
-    </span><span class="kw">pub fn </span>save(<span class="kw-2">&amp;mut </span><span class="self">self</span>, to: <span class="kw">impl </span>AsRef&lt;Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    </span><span class="kw">pub fn </span>save(<span class="kw-2">&amp;mut </span><span class="self">self</span>, to: <span class="kw">impl </span>AsRef&lt;Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>to = to.as_ref();
         std::fs::copy(<span class="kw-2">&amp;</span><span class="self">self</span>.path, to)<span class="question-mark">?</span>;
 
@@ -1109,7 +1127,7 @@
     }
 
     <span class="doccomment">/// Load the executor from an already compiled library with the additional info json file.
-    </span><span class="kw">pub fn </span>load(library_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
+    </span><span class="kw">pub fn </span>load(library_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>info_str = std::fs::read_to_string(library_path.with_extension(<span class="string">"json"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>contract_info: NativeContractInfo = serde_json::from_str(<span class="kw-2">&amp;</span>info_str)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
@@ -1136,7 +1154,7 @@
         gas: u64,
         builtin_costs: <span class="prelude-ty">Option</span>&lt;BuiltinCosts&gt;,
         <span class="kw-2">mut </span>syscall_handler: <span class="kw">impl </span>StarknetSyscallHandler,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult, Error&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractExecutionResult&gt; {
         <span class="kw">let </span>arena = Bump::new();
         <span class="kw">let </span><span class="kw-2">mut </span>invoke_data = Vec::&lt;u8&gt;::new();
 
@@ -1150,12 +1168,7 @@
         };
         <span class="kw">let </span>function_ptr = <span class="self">self</span>.find_function_ptr(<span class="kw-2">&amp;</span>function_id, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>builtin_costs = builtin_costs.unwrap_or_default();
-        <span class="kw">let </span>builtin_costs_stack: [u64; <span class="number">7</span>] = builtin_costs.into();
-        <span class="comment">// Note: the ptr into a slice is valid, it can be used with cast()
-        // Care should be taken if you dereference it and take the .as_ptr() of the slice, since when you
-        // deref it, it will be a copy on the stack, so you will get the ptr of the value in the stack.
-        </span><span class="kw">let </span>builtin_costs: <span class="kw-2">*mut </span>[u64; <span class="number">7</span>] = Box::into_raw(Box::new(builtin_costs_stack));
+        <span class="kw">let </span>builtin_costs: [u64; <span class="number">7</span>] = builtin_costs.unwrap_or_default().into();
         <span class="kw">let </span>set_costs_builtin = <span class="kw">unsafe </span>{
             <span class="self">self</span>.library
                 .get::&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*const </span>u64) -&gt; <span class="kw-2">*const </span>u64&gt;(
@@ -1163,7 +1176,7 @@
                 )<span class="question-mark">?
         </span>};
         <span class="comment">// We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-        </span><span class="kw">let </span>old_builtincosts_ptr = set_costs_builtin(builtin_costs.cast());
+        </span><span class="kw">let </span>old_builtincosts_ptr = set_costs_builtin(builtin_costs.as_ptr());
 
         <span class="comment">//  it can vary from contract to contract thats why we need to store/ load it.
         </span><span class="kw">let </span>builtins_size: usize = <span class="self">self</span>.contract_info.entry_points_info[<span class="kw-2">&amp;</span>function_id.id]
@@ -1189,7 +1202,7 @@
                 }
                 BuiltinType::BuiltinCosts =&gt; {
                     <span class="comment">// todo: check if valid
-                    </span>builtin_costs_stack.as_ptr().to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
+                    </span>builtin_costs.as_ptr().to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
                 }
                 BuiltinType::System =&gt; {
                     (<span class="kw-2">&amp;mut </span>syscall_handler <span class="kw">as </span><span class="kw-2">*mut </span>StarknetSyscallHandlerCallbacks&lt;<span class="kw">_</span>&gt;)
@@ -1202,18 +1215,42 @@
         }
 
         <span class="kw">let </span>felt_layout = get_integer_layout(<span class="number">252</span>).pad_to_align();
-        <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() = <span class="kw">unsafe </span>{ libc_malloc(felt_layout.size() * args.len()).cast() };
+        <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
+            .align_to(felt_layout.align())
+            .unwrap()
+            .pad_to_align()
+            .size();
+
+        <span class="kw">let </span>ptr = <span class="kw">match </span>args.len() {
+            <span class="number">0 </span>=&gt; std::ptr::null_mut(),
+            <span class="kw">_ </span>=&gt; <span class="kw">unsafe </span>{
+                <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() =
+                    libc_malloc(felt_layout.size() * args.len() + refcount_offset).cast();
+
+                <span class="comment">// Write reference count.
+                </span>ptr.cast::&lt;u32&gt;().write(<span class="number">1</span>);
+                ptr.byte_add(refcount_offset)
+            },
+        };
         <span class="kw">let </span>len: u32 = args
             .len()
             .try_into()
             .to_native_assert_error(<span class="string">"number of arguments should fit into a u32"</span>)<span class="question-mark">?</span>;
 
         ptr.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
-        <span class="number">0u32</span>.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// start
-        </span>len.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// end
-        </span>len.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// cap
+        <span class="kw">if </span><span class="macro">cfg!</span>(target_arch = <span class="string">"aarch64"</span>) {
+            <span class="number">0u32</span>.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// start
+            </span>len.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// end
+            </span>len.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// cap
+        </span>} <span class="kw">else if </span><span class="macro">cfg!</span>(target_arch = <span class="string">"x86_64"</span>) {
+            (<span class="number">0u32 </span><span class="kw">as </span>u64).to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// start
+            </span>(len <span class="kw">as </span>u64).to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// end
+            </span>(len <span class="kw">as </span>u64).to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// cap
+        </span>} <span class="kw">else </span>{
+            <span class="macro">unreachable!</span>(<span class="string">"unsupported architecture"</span>);
+        }
 
-        </span><span class="kw">for </span>(idx, elem) <span class="kw">in </span>args.iter().enumerate() {
+        <span class="kw">for </span>(idx, elem) <span class="kw">in </span>args.iter().enumerate() {
             <span class="kw">let </span>f = elem.to_bytes_le();
             <span class="kw">unsafe </span>{
                 std::ptr::copy_nonoverlapping(
@@ -1354,7 +1391,12 @@
         }
 
         <span class="kw">if </span>!array_ptr.is_null() {
-            <span class="kw">unsafe </span>{ libc_free(array_ptr.cast()) };
+            <span class="kw">unsafe </span>{
+                <span class="kw">let </span>ptr = array_ptr.byte_sub(refcount_offset);
+                <span class="macro">assert_eq!</span>(ptr.cast::&lt;u32&gt;().read(), <span class="number">1</span>);
+
+                libc_free(ptr.cast());
+            }
         }
 
         <span class="kw">let </span>error_msg = <span class="kw">if </span>tag != <span class="number">0 </span>{
@@ -1371,14 +1413,8 @@
             <span class="prelude-val">None
         </span>};
 
-        <span class="comment">// Restore the old ptr and get back our builtincost box and free it.
-        </span><span class="kw">let </span>our_builtincosts_ptr = set_costs_builtin(old_builtincosts_ptr);
-
-        <span class="kw">if </span>!our_builtincosts_ptr.is_null() &amp;&amp; old_builtincosts_ptr.is_aligned() {
-            <span class="kw">unsafe </span>{
-                <span class="kw">let _ </span>= Box::&lt;[u64; <span class="number">7</span>]&gt;::from_raw(our_builtincosts_ptr.cast_mut().cast());
-            };
-        }
+        <span class="comment">// Restore the original builtin costs pointer.
+        </span>set_costs_builtin(old_builtincosts_ptr);
 
         <span class="attr">#[cfg(feature = <span class="string">"with-mem-tracing"</span>)]
         </span><span class="kw">crate</span>::utils::mem_tracing::report_stats();
@@ -1395,7 +1431,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         function_id: <span class="kw-2">&amp;</span>FunctionId,
         is_for_contract_executor: bool,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">*mut </span>c_void, Error&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">*mut </span>c_void&gt; {
         <span class="kw">let </span>function_name = generate_function_name(function_id, is_for_contract_executor);
         <span class="kw">let </span>function_name = <span class="macro">format!</span>(<span class="string">"_mlir_ciface_{function_name}"</span>);
 

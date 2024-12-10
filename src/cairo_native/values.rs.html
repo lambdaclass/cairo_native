@@ -1713,6 +1713,81 @@
 <a href="#1713" id="1713">1713</a>
 <a href="#1714" id="1714">1714</a>
 <a href="#1715" id="1715">1715</a>
+<a href="#1716" id="1716">1716</a>
+<a href="#1717" id="1717">1717</a>
+<a href="#1718" id="1718">1718</a>
+<a href="#1719" id="1719">1719</a>
+<a href="#1720" id="1720">1720</a>
+<a href="#1721" id="1721">1721</a>
+<a href="#1722" id="1722">1722</a>
+<a href="#1723" id="1723">1723</a>
+<a href="#1724" id="1724">1724</a>
+<a href="#1725" id="1725">1725</a>
+<a href="#1726" id="1726">1726</a>
+<a href="#1727" id="1727">1727</a>
+<a href="#1728" id="1728">1728</a>
+<a href="#1729" id="1729">1729</a>
+<a href="#1730" id="1730">1730</a>
+<a href="#1731" id="1731">1731</a>
+<a href="#1732" id="1732">1732</a>
+<a href="#1733" id="1733">1733</a>
+<a href="#1734" id="1734">1734</a>
+<a href="#1735" id="1735">1735</a>
+<a href="#1736" id="1736">1736</a>
+<a href="#1737" id="1737">1737</a>
+<a href="#1738" id="1738">1738</a>
+<a href="#1739" id="1739">1739</a>
+<a href="#1740" id="1740">1740</a>
+<a href="#1741" id="1741">1741</a>
+<a href="#1742" id="1742">1742</a>
+<a href="#1743" id="1743">1743</a>
+<a href="#1744" id="1744">1744</a>
+<a href="#1745" id="1745">1745</a>
+<a href="#1746" id="1746">1746</a>
+<a href="#1747" id="1747">1747</a>
+<a href="#1748" id="1748">1748</a>
+<a href="#1749" id="1749">1749</a>
+<a href="#1750" id="1750">1750</a>
+<a href="#1751" id="1751">1751</a>
+<a href="#1752" id="1752">1752</a>
+<a href="#1753" id="1753">1753</a>
+<a href="#1754" id="1754">1754</a>
+<a href="#1755" id="1755">1755</a>
+<a href="#1756" id="1756">1756</a>
+<a href="#1757" id="1757">1757</a>
+<a href="#1758" id="1758">1758</a>
+<a href="#1759" id="1759">1759</a>
+<a href="#1760" id="1760">1760</a>
+<a href="#1761" id="1761">1761</a>
+<a href="#1762" id="1762">1762</a>
+<a href="#1763" id="1763">1763</a>
+<a href="#1764" id="1764">1764</a>
+<a href="#1765" id="1765">1765</a>
+<a href="#1766" id="1766">1766</a>
+<a href="#1767" id="1767">1767</a>
+<a href="#1768" id="1768">1768</a>
+<a href="#1769" id="1769">1769</a>
+<a href="#1770" id="1770">1770</a>
+<a href="#1771" id="1771">1771</a>
+<a href="#1772" id="1772">1772</a>
+<a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
+<a href="#1777" id="1777">1777</a>
+<a href="#1778" id="1778">1778</a>
+<a href="#1779" id="1779">1779</a>
+<a href="#1780" id="1780">1780</a>
+<a href="#1781" id="1781">1781</a>
+<a href="#1782" id="1782">1782</a>
+<a href="#1783" id="1783">1783</a>
+<a href="#1784" id="1784">1784</a>
+<a href="#1785" id="1785">1785</a>
+<a href="#1786" id="1786">1786</a>
+<a href="#1787" id="1787">1787</a>
+<a href="#1788" id="1788">1788</a>
+<a href="#1789" id="1789">1789</a>
+<a href="#1790" id="1790">1790</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
 //!
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
@@ -1956,16 +2031,29 @@
                         <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
                         <span class="kw">let </span>elem_layout = elem_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align();
 
-                        <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() = <span class="kw">match </span>elem_layout.size() * data.len() {
+                        <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
+                            .align_to(elem_layout.align())
+                            .unwrap()
+                            .pad_to_align()
+                            .size();
+                        <span class="kw">let </span>ptr = <span class="kw">match </span>elem_layout.size() * data.len() {
                             <span class="number">0 </span>=&gt; std::ptr::null_mut(),
-                            len =&gt; libc_malloc(len).cast(),
+                            len =&gt; {
+                                <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() = libc_malloc(len + refcount_offset).cast();
+
+                                <span class="comment">// Write reference count.
+                                </span>ptr.cast::&lt;u32&gt;().write(<span class="number">1</span>);
+
+                                ptr.byte_add(refcount_offset)
+                            }
                         };
                         <span class="kw">let </span>len: u32 = data
                             .len()
                             .try_into()
                             .map_err(|<span class="kw">_</span>| Error::IntegerConversion)<span class="question-mark">?</span>;
 
-                        <span class="kw">for </span>(idx, elem) <span class="kw">in </span>data.iter().enumerate() {
+                        <span class="comment">// Write the data.
+                        </span><span class="kw">for </span>(idx, elem) <span class="kw">in </span>data.iter().enumerate() {
                             <span class="kw">let </span>elem = elem.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
                             std::ptr::copy_nonoverlapping(
@@ -2276,6 +2364,7 @@
         ptr: NonNull&lt;()&gt;,
         type_id: <span class="kw-2">&amp;</span>ConcreteTypeId,
         registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+        should_drop: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="kw">let </span>ty = registry.get_type(type_id)<span class="question-mark">?</span>;
 
@@ -2301,10 +2390,31 @@
                         </span>.cast::&lt;u32&gt;()
                         .as_ref();
 
-                    <span class="comment">// this pointer can be null if the array has a size of 0.
+                    <span class="comment">// This pointer can be null if the array is empty.
                     </span><span class="kw">let </span>init_data_ptr = <span class="kw-2">*</span>ptr.cast::&lt;<span class="kw-2">*mut </span>()&gt;().as_ref();
                     <span class="kw">let </span>data_ptr =
                         init_data_ptr.byte_add(elem_stride * start_offset_value <span class="kw">as </span>usize);
+
+                    <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
+                        .align_to(elem_layout.align())
+                        .unwrap()
+                        .pad_to_align()
+                        .size();
+                    <span class="kw">let </span>should_drop = <span class="kw">if </span>!init_data_ptr.is_null()
+                        &amp;&amp; init_data_ptr.byte_sub(refcount_offset).cast::&lt;u32&gt;().read() == <span class="number">1
+                    </span>{
+                        should_drop
+                    } <span class="kw">else </span>{
+                        <span class="kw">if </span>!init_data_ptr.is_null() &amp;&amp; should_drop {
+                            <span class="kw-2">*</span>init_data_ptr
+                                .byte_sub(refcount_offset)
+                                .cast::&lt;u32&gt;()
+                                .as_mut()
+                                .unwrap() -= <span class="number">1</span>;
+                        }
+
+                        <span class="bool-val">false
+                    </span>};
 
                     <span class="macro">native_assert!</span>(
                         end_offset_value &gt;= start_offset_value,
@@ -2320,19 +2430,28 @@
                                 <span class="string">"tried to make a non-null ptr out of a null one"</span>,
                             )<span class="question-mark">?</span>;
 
-                        array_value.push(<span class="self">Self</span>::from_ptr(cur_elem_ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>);
+                        array_value.push(<span class="self">Self</span>::from_ptr(
+                            cur_elem_ptr,
+                            <span class="kw-2">&amp;</span>info.ty,
+                            registry,
+                            should_drop,
+                        )<span class="question-mark">?</span>);
                     }
 
-                    <span class="kw">if </span>!init_data_ptr.is_null() {
-                        libc_free(init_data_ptr.cast());
+                    <span class="kw">if </span>should_drop &amp;&amp; !init_data_ptr.is_null() {
+                        libc_free(init_data_ptr.byte_sub(refcount_offset).cast());
                     }
 
                     <span class="self">Self</span>::Array(array_value)
                 }
                 CoreTypeConcrete::Box(info) =&gt; {
                     <span class="kw">let </span>inner = <span class="kw-2">*</span>ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ptr();
-                    <span class="kw">let </span>value = <span class="self">Self</span>::from_ptr(inner, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>;
-                    libc_free(inner.as_ptr().cast());
+                    <span class="kw">let </span>value = <span class="self">Self</span>::from_ptr(inner, <span class="kw-2">&amp;</span>info.ty, registry, should_drop)<span class="question-mark">?</span>;
+
+                    <span class="kw">if </span>should_drop {
+                        libc_free(inner.as_ptr().cast());
+                    }
+
                     value
                 }
                 CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; {
@@ -2377,7 +2496,9 @@
                 CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Sint32(<span class="kw-2">*</span>ptr.cast::&lt;i32&gt;().as_ref()),
                 CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Sint64(<span class="kw-2">*</span>ptr.cast::&lt;i64&gt;().as_ref()),
                 CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::Sint128(<span class="kw-2">*</span>ptr.cast::&lt;i128&gt;().as_ref()),
-                CoreTypeConcrete::NonZero(info) =&gt; <span class="self">Self</span>::from_ptr(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>,
+                CoreTypeConcrete::NonZero(info) =&gt; {
+                    <span class="self">Self</span>::from_ptr(ptr, <span class="kw-2">&amp;</span>info.ty, registry, should_drop)<span class="question-mark">?
+                </span>}
                 CoreTypeConcrete::Nullable(info) =&gt; {
                     <span class="kw">let </span>inner_ptr = <span class="kw-2">*</span>ptr.cast::&lt;<span class="kw-2">*mut </span>()&gt;().as_ptr();
                     <span class="kw">if </span>inner_ptr.is_null() {
@@ -2387,8 +2508,13 @@
                             NonNull::new_unchecked(inner_ptr).cast(),
                             <span class="kw-2">&amp;</span>info.ty,
                             registry,
+                            should_drop,
                         )<span class="question-mark">?</span>;
-                        libc_free(inner_ptr.cast());
+
+                        <span class="kw">if </span>should_drop {
+                            libc_free(inner_ptr.cast());
+                        }
+
                         value
                     }
                 }
@@ -2430,7 +2556,12 @@
                         ptr.as_ptr().byte_add(tag_layout.extend(payload_layout)<span class="question-mark">?</span>.<span class="number">1</span>),
                     )
                     .to_native_assert_error(<span class="string">"tried to make a non-null ptr out of a null one"</span>)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>payload = <span class="self">Self</span>::from_ptr(payload_ptr, <span class="kw-2">&amp;</span>info.variants[tag_value], registry)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>payload = <span class="self">Self</span>::from_ptr(
+                        payload_ptr,
+                        <span class="kw-2">&amp;</span>info.variants[tag_value],
+                        registry,
+                        should_drop,
+                    )<span class="question-mark">?</span>;
 
                     <span class="self">Self</span>::Enum {
                         tag: tag_value,
@@ -2458,6 +2589,7 @@
                             )<span class="question-mark">?</span>,
                             member_ty,
                             registry,
+                            should_drop,
                         )<span class="question-mark">?</span>);
                     }
 
@@ -2468,19 +2600,20 @@
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) =&gt; {
-                    <span class="kw">let </span>FeltDict { inner, .. } = <span class="kw-2">*</span>Box::from_raw(
-                        ptr.cast::&lt;NonNull&lt;()&gt;&gt;()
-                            .as_ref()
-                            .cast::&lt;FeltDict&gt;()
-                            .as_ptr(),
-                    );
+                    <span class="kw">let </span>inner = <span class="kw-2">&amp;</span>ptr
+                        .cast::&lt;NonNull&lt;()&gt;&gt;()
+                        .as_ref()
+                        .cast::&lt;FeltDict&gt;()
+                        .as_ref()
+                        .inner;
 
                     <span class="kw">let </span><span class="kw-2">mut </span>output_map = HashMap::with_capacity(inner.len());
-                    <span class="kw">for </span>(<span class="kw-2">mut </span>key, val_ptr) <span class="kw">in </span>inner.into_iter() {
+                    <span class="kw">for </span>(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;</span>val_ptr) <span class="kw">in </span>inner.iter() {
                         <span class="kw">if </span>val_ptr.is_null() {
                             <span class="kw">continue</span>;
                         }
 
+                        <span class="kw">let </span><span class="kw-2">mut </span>key = key;
                         key[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
 
                         </span><span class="kw">let </span>key = Felt::from_bytes_le(<span class="kw-2">&amp;</span>key);
@@ -2494,9 +2627,22 @@
                                     </span>.cast(),
                                 <span class="kw-2">&amp;</span>info.ty,
                                 registry,
+                                should_drop,
                             )<span class="question-mark">?</span>,
                         );
-                        libc_free(val_ptr);
+
+                        <span class="kw">if </span>should_drop {
+                            libc_free(val_ptr);
+                        }
+                    }
+
+                    <span class="kw">if </span>should_drop {
+                        drop(Box::from_raw(
+                            ptr.cast::&lt;NonNull&lt;()&gt;&gt;()
+                                .as_ref()
+                                .cast::&lt;FeltDict&gt;()
+                                .as_ptr(),
+                        ));
                     }
 
                     <span class="self">Self</span>::Felt252Dict {
@@ -2546,8 +2692,10 @@
                         <span class="macro">native_panic!</span>(<span class="string">"todo: implement Sha256StateHandle from_ptr"</span>)
                     }
                 },
-                CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"todo: implement span from_ptr"</span>),
-                CoreTypeConcrete::Snapshot(info) =&gt; <span class="self">Self</span>::from_ptr(ptr, <span class="kw-2">&amp;</span>info.ty, registry)<span class="question-mark">?</span>,
+                CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"implement span from_ptr"</span>),
+                CoreTypeConcrete::Snapshot(info) =&gt; {
+                    <span class="self">Self</span>::from_ptr(ptr, <span class="kw-2">&amp;</span>info.ty, registry, should_drop)<span class="question-mark">?
+                </span>}
                 CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; {
                     <span class="kw">let </span>data = <span class="kw-2">*</span>ptr.cast::&lt;[u8; <span class="number">31</span>]&gt;().as_ref();
                     <span class="self">Self</span>::Bytes31(data)
@@ -2584,6 +2732,7 @@
                         )<span class="question-mark">?</span>,
                         <span class="kw-2">&amp;</span>info.ty,
                         registry,
+                        should_drop,
                     )<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>y = <span class="self">Self</span>::from_ptr(
@@ -2594,6 +2743,7 @@
                         .to_native_assert_error(<span class="string">"tried to make a non-null ptr out of a null one"</span>)<span class="question-mark">?</span>,
                         <span class="kw-2">&amp;</span>info.ty,
                         registry,
+                        should_drop,
                     )<span class="question-mark">?</span>;
 
                     <span class="self">Self</span>::IntRange {

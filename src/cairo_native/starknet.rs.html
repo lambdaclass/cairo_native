@@ -1703,6 +1703,33 @@
 <a href="#1703" id="1703">1703</a>
 <a href="#1704" id="1704">1704</a>
 <a href="#1705" id="1705">1705</a>
+<a href="#1706" id="1706">1706</a>
+<a href="#1707" id="1707">1707</a>
+<a href="#1708" id="1708">1708</a>
+<a href="#1709" id="1709">1709</a>
+<a href="#1710" id="1710">1710</a>
+<a href="#1711" id="1711">1711</a>
+<a href="#1712" id="1712">1712</a>
+<a href="#1713" id="1713">1713</a>
+<a href="#1714" id="1714">1714</a>
+<a href="#1715" id="1715">1715</a>
+<a href="#1716" id="1716">1716</a>
+<a href="#1717" id="1717">1717</a>
+<a href="#1718" id="1718">1718</a>
+<a href="#1719" id="1719">1719</a>
+<a href="#1720" id="1720">1720</a>
+<a href="#1721" id="1721">1721</a>
+<a href="#1722" id="1722">1722</a>
+<a href="#1723" id="1723">1723</a>
+<a href="#1724" id="1724">1724</a>
+<a href="#1725" id="1725">1725</a>
+<a href="#1726" id="1726">1726</a>
+<a href="#1727" id="1727">1727</a>
+<a href="#1728" id="1728">1728</a>
+<a href="#1729" id="1729">1729</a>
+<a href="#1730" id="1730">1730</a>
+<a href="#1731" id="1731">1731</a>
+<a href="#1732" id="1732">1732</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -2245,12 +2272,11 @@
 <span class="comment">// TODO: Move to the correct place or remove if unused.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>handler {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span><span class="kw">crate</span>::utils::{libc_free, libc_malloc};
+    <span class="kw">use </span><span class="kw">crate</span>::utils::{get_integer_layout, libc_free, libc_malloc};
     <span class="kw">use </span>std::{
         alloc::Layout,
-        ffi::c_void,
         fmt::Debug,
-        mem::{size_of, ManuallyDrop, MaybeUninit},
+        mem::{<span class="self">self</span>, size_of, ManuallyDrop, MaybeUninit},
         ptr::{null_mut, NonNull},
     };
 
@@ -2614,7 +2640,17 @@
                     capacity: <span class="number">0</span>,
                 },
                 <span class="kw">_ </span>=&gt; {
-                    <span class="kw">let </span>ptr = libc_malloc(Layout::array::&lt;E&gt;(data.len()).unwrap().size()) <span class="kw">as </span><span class="kw-2">*mut </span>E;
+                    <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
+                        .align_to(mem::align_of::&lt;E&gt;())
+                        .unwrap()
+                        .pad_to_align()
+                        .size();
+                    <span class="kw">let </span>ptr = libc_malloc(
+                        Layout::array::&lt;E&gt;(data.len()).unwrap().size() + refcount_offset,
+                    ) <span class="kw">as </span><span class="kw-2">*mut </span>E;
+
+                    ptr.cast::&lt;u32&gt;().write(<span class="number">1</span>);
+                    <span class="kw">let </span>ptr = ptr.byte_add(refcount_offset);
 
                     <span class="kw">let </span>len: u32 = data.len().try_into().unwrap();
                     <span class="kw">for </span>(i, val) <span class="kw">in </span>data.iter().enumerate() {
@@ -2628,6 +2664,24 @@
                         capacity: len,
                     }
                 }
+            }
+        }
+
+        <span class="kw">unsafe fn </span>drop_mlir_array&lt;E&gt;(data: <span class="kw-2">&amp;</span>ArrayAbi&lt;E&gt;) {
+            <span class="kw">if </span>data.ptr.is_null() {
+                <span class="kw">return</span>;
+            }
+
+            <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
+                .align_to(mem::align_of::&lt;E&gt;())
+                .unwrap()
+                .pad_to_align()
+                .size();
+
+            <span class="kw">let </span>ptr = data.ptr.byte_sub(refcount_offset);
+            <span class="kw">match </span>ptr.cast::&lt;u32&gt;().read() {
+                <span class="number">1 </span>=&gt; libc_free(ptr.cast()),
+                n =&gt; ptr.cast::&lt;u32&gt;().write(n - <span class="number">1</span>),
             }
         }
 
@@ -2673,7 +2727,7 @@
             <span class="kw">let </span>input_vec: Vec&lt;<span class="kw">_</span>&gt; = input.into();
 
             <span class="kw">unsafe </span>{
-                libc_free(input.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+                <span class="self">Self</span>::drop_mlir_array(input);
             }
 
             <span class="kw">let </span>result = ptr
@@ -2860,7 +2914,7 @@
             <span class="kw">let </span>calldata_vec: Vec&lt;<span class="kw">_</span>&gt; = calldata.into();
 
             <span class="kw">unsafe </span>{
-                libc_free(calldata.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+                <span class="self">Self</span>::drop_mlir_array(calldata);
             }
 
             <span class="kw">let </span>result = ptr.deploy(
@@ -2920,7 +2974,7 @@
             <span class="kw">let </span>calldata_vec: Vec&lt;Felt&gt; = calldata.into();
 
             <span class="kw">unsafe </span>{
-                libc_free(calldata.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+                <span class="self">Self</span>::drop_mlir_array(calldata);
             }
 
             <span class="kw">let </span>result = ptr.library_call(class_hash, function_selector, <span class="kw-2">&amp;</span>calldata_vec, gas);
@@ -2954,7 +3008,7 @@
             <span class="kw">let </span>calldata_vec: Vec&lt;Felt&gt; = calldata.into();
 
             <span class="kw">unsafe </span>{
-                libc_free(calldata.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+                <span class="self">Self</span>::drop_mlir_array(calldata);
             }
 
             <span class="kw">let </span>result = ptr.call_contract(address, entry_point_selector, <span class="kw-2">&amp;</span>calldata_vec, gas);
@@ -3028,13 +3082,13 @@
             <span class="kw">let </span>keys_vec: Vec&lt;<span class="kw">_</span>&gt; = keys.into();
 
             <span class="kw">unsafe </span>{
-                libc_free(keys.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+                <span class="self">Self</span>::drop_mlir_array(keys);
             }
 
             <span class="kw">let </span>data_vec: Vec&lt;<span class="kw">_</span>&gt; = data.into();
 
             <span class="kw">unsafe </span>{
-                libc_free(data.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+                <span class="self">Self</span>::drop_mlir_array(data);
             }
 
             <span class="kw">let </span>result = ptr.emit_event(<span class="kw-2">&amp;</span>keys_vec, <span class="kw-2">&amp;</span>data_vec, gas);
@@ -3061,7 +3115,7 @@
             <span class="kw">let </span>payload_vec: Vec&lt;<span class="kw">_</span>&gt; = payload.into();
 
             <span class="kw">unsafe </span>{
-                libc_free(payload.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+                <span class="self">Self</span>::drop_mlir_array(payload);
             }
 
             <span class="kw">let </span>result = ptr.send_message_to_l1(to_address, <span class="kw-2">&amp;</span>payload_vec, gas);
@@ -3096,7 +3150,7 @@
 
             <span class="kw">let </span>result = ptr.keccak(input_vec, gas);
             <span class="kw">unsafe </span>{
-                libc_free(input.ptr <span class="kw">as </span><span class="kw-2">*mut </span>c_void);
+                <span class="self">Self</span>::drop_mlir_array(input);
             }
 
             <span class="kw-2">*</span>result_ptr = <span class="kw">match </span>result {

@@ -1563,7 +1563,7 @@
 <span class="kw">unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>dump_mem_impl(ptr: <span class="kw-2">*const </span>(), len: u64) {
     <span class="macro">println!</span>(<span class="string">"[DEBUG] Memory dump at {ptr:?}:"</span>);
     <span class="kw">for </span>chunk <span class="kw">in </span>(<span class="number">0</span>..len).step_by(<span class="number">8</span>) {
-        <span class="macro">print!</span>(<span class="string">"  {ptr:?}:"</span>);
+        <span class="macro">print!</span>(<span class="string">"  {:?}:"</span>, ptr.byte_add(chunk <span class="kw">as </span>usize));
         <span class="kw">for </span>offset <span class="kw">in </span>chunk..chunk + <span class="number">8 </span>{
             <span class="macro">print!</span>(<span class="string">" {:02x}"</span>, ptr.byte_add(offset <span class="kw">as </span>usize).cast::&lt;u8&gt;().read());
         }
