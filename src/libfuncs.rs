@@ -32,7 +32,6 @@ use num_bigint::BigInt;
 use std::{cell::Cell, error::Error, ops::Deref};
 
 mod array;
-mod bitwise;
 mod r#bool;
 mod bounded_int;
 mod r#box;
@@ -57,10 +56,8 @@ mod mem;
 mod nullable;
 mod pedersen;
 mod poseidon;
-mod sint128;
 mod starknet;
 mod r#struct;
-mod uint128;
 mod uint256;
 mod uint512;
 

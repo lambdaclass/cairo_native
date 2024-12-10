@@ -901,7 +901,6 @@ mod test {
         fmt::Display,
         mem,
         ops::{BitAnd, BitOr, BitXor},
-        u128,
     };
 
     fn test_bitwise<T>() -> Result<(), Box<dyn std::error::Error>>
