@@ -636,7 +636,7 @@ mod test {
     use std::{
         fmt::Display,
         mem,
-        ops::{BitAnd, BitOr, BitXor, Bound},
+        ops::{BitAnd, BitOr, BitXor},
     };
 
     fn test_bitwise<T>() -> Result<(), Box<dyn std::error::Error>>

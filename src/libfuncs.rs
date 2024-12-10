@@ -62,12 +62,8 @@ mod sint8;
 mod starknet;
 mod r#struct;
 mod uint128;
-mod uint16;
 mod uint256;
-mod uint32;
 mod uint512;
-mod uint64;
-mod uint8;
 
 /// Generation of MLIR operations from their Sierra counterparts.
 ///
