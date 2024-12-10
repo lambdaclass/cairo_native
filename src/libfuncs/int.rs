@@ -95,7 +95,9 @@ where
         SintConcrete::Const(info) => {
             build_const(context, registry, entry, location, helper, metadata, info)
         }
-        SintConcrete::Diff(_) => todo!(),
+        SintConcrete::Diff(info) => {
+            build_diff(context, registry, entry, location, helper, metadata, info)
+        }
         SintConcrete::Equal(info) => {
             build_equal(context, registry, entry, location, helper, metadata, info)
         }
@@ -165,6 +167,33 @@ where
     let value = entry.const_int_from_type(context, location, info.c, value_ty)?;
 
     entry.append_operation(helper.br(0, &[value], location));
+    Ok(())
+}
+
+fn build_diff<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+
+    let lhs = entry.arg(1)?;
+    let rhs = entry.arg(2)?;
+
+    let is_greater_equal = entry.cmpi(context, CmpiPredicate::Sge, lhs, rhs, location)?;
+    let value_difference = entry.append_op_result(arith::subi(lhs, rhs, location))?;
+
+    entry.append_operation(helper.cond_br(
+        context,
+        is_greater_equal,
+        [0, 1],
+        [&[range_check, value_difference]; 2],
+        location,
+    ));
     Ok(())
 }
 
@@ -816,6 +845,84 @@ mod test {
         Ok(())
     }
 
+    fn test_diff<T>() -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Bounded + Copy + Num + Ord,
+        Value: From<T>,
+    {
+        let n_bits = 8 * mem::size_of::<T>();
+        let type_id = format!("i{n_bits}");
+        let target_type_id = format!("u{n_bits}");
+
+        let program = ProgramParser::new()
+            .parse(&format!(
+                r#"
+                    type RangeCheck = RangeCheck;
+                    type {type_id} = {type_id};
+                    type {target_type_id} = {target_type_id};
+                    type Result<{target_type_id}, {target_type_id}> = Enum<ut@core::result::Result::<core::integer::{target_type_id}, core::integer::{target_type_id}>, {target_type_id}, {target_type_id}>;
+
+                    libfunc {type_id}_diff = {type_id}_diff;
+                    libfunc branch_align = branch_align;
+                    libfunc enum_init<Result<{target_type_id}, {target_type_id}>, 0> = enum_init<Result<{target_type_id}, {target_type_id}>, 0>;
+                    libfunc enum_init<Result<{target_type_id}, {target_type_id}>, 1> = enum_init<Result<{target_type_id}, {target_type_id}>, 1>;
+
+                    {type_id}_diff([0], [1], [2]) {{ fallthrough([3], [4]) 4([3], [4]) }};
+                    branch_align() -> ();
+                    enum_init<Result<{target_type_id}, {target_type_id}>, 0>([4]) -> ([5]);
+                    return([3], [5]);
+                    branch_align() -> ();
+                    enum_init<Result<{target_type_id}, {target_type_id}>, 1>([4]) -> ([5]);
+                    return([3], [5]);
+
+                    [0]@0([0]: RangeCheck, [1]: {type_id}, [2]: {type_id}) -> (RangeCheck, Result<{target_type_id}, {target_type_id}>);
+                "#
+            ))
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
+        for perm in Itertools::permutations(data.into_iter(), 2) {
+            let lhs = Value::from(perm[0]);
+            let rhs = Value::from(perm[1]);
+
+            let result =
+                executor.invoke_dynamic(&program.funcs[0].id, &[lhs.clone(), rhs.clone()], None)?;
+
+            let is_greater_equal = perm[0] >= perm[1];
+            let value_difference = match (lhs, rhs) {
+                (Value::Sint8(lhs), Value::Sint8(rhs)) => {
+                    Value::Uint8((lhs.wrapping_sub(rhs)) as _)
+                }
+                (Value::Sint16(lhs), Value::Sint16(rhs)) => {
+                    Value::Uint16((lhs.wrapping_sub(rhs)) as _)
+                }
+                (Value::Sint32(lhs), Value::Sint32(rhs)) => {
+                    Value::Uint32((lhs.wrapping_sub(rhs)) as _)
+                }
+                (Value::Sint64(lhs), Value::Sint64(rhs)) => {
+                    Value::Uint64((lhs.wrapping_sub(rhs)) as _)
+                }
+                _ => unreachable!(),
+            };
+
+            assert_eq!(result.builtin_stats.range_check, 1);
+            assert_eq!(
+                result.return_value,
+                Value::Enum {
+                    tag: (!is_greater_equal) as usize,
+                    value: Box::new(value_difference),
+                    debug_name: None,
+                },
+            );
+        }
+
+        Ok(())
+    }
+
     fn test_divmod<T>() -> Result<(), Box<dyn std::error::Error>>
     where
         T: Bounded + Copy + Num,
@@ -1461,6 +1568,12 @@ mod test {
             i16 as i16_const,
             i32 as i32_const,
             i64 as i64_const;
+
+        test_diff for
+            i8 as i8_diff,
+            i16 as i16_diff,
+            i32 as i32_diff,
+            i64 as i64_diff;
 
         test_divmod for
             u8 as u8_divmod,
