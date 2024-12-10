@@ -1330,7 +1330,85 @@ mod test {
         Ok(())
     }
 
-    // TODO: Implement `test_wide_mul`.
+    fn test_wide_mul<T>() -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Bounded + Copy + Num,
+        Value: From<T>,
+    {
+        let n_bits = 8 * size_of::<T>();
+        let type_id = format!(
+            "{}{n_bits}",
+            if T::min_value().is_zero() { 'u' } else { 'i' }
+        );
+        let target_type_id = format!(
+            "{}{}",
+            if T::min_value().is_zero() { 'u' } else { 'i' },
+            n_bits << 1,
+        );
+
+        let program = ProgramParser::new()
+            .parse(&format!(
+                r#"
+                    type {type_id} = {type_id};
+                    type {target_type_id} = {target_type_id};
+
+                    libfunc {type_id}_wide_mul = {type_id}_wide_mul;
+
+                    {type_id}_wide_mul([0], [1]) -> ([2]);
+                    return([2]);
+
+                    [0]@0([0]: {type_id}, [1]: {type_id}) -> ({target_type_id});
+                "#
+            ))
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
+        for values in data.into_iter().permutations(2) {
+            let result = executor.invoke_dynamic(
+                &program.funcs[0].id,
+                &[values[0].into(), values[1].into()],
+                None,
+            )?;
+
+            match (
+                Value::from(values[0]),
+                Value::from(values[1]),
+                result.return_value,
+            ) {
+                (Value::Uint8(lhs), Value::Uint8(rhs), Value::Uint16(result)) => {
+                    assert_eq!(result, (lhs as u16) * (rhs as u16));
+                }
+                (Value::Uint16(lhs), Value::Uint16(rhs), Value::Uint32(result)) => {
+                    assert_eq!(result, (lhs as u32) * (rhs as u32));
+                }
+                (Value::Uint32(lhs), Value::Uint32(rhs), Value::Uint64(result)) => {
+                    assert_eq!(result, (lhs as u64) * (rhs as u64));
+                }
+                (Value::Uint64(lhs), Value::Uint64(rhs), Value::Uint128(result)) => {
+                    assert_eq!(result, (lhs as u128) * (rhs as u128));
+                }
+                (Value::Sint8(lhs), Value::Sint8(rhs), Value::Sint16(result)) => {
+                    assert_eq!(result, (lhs as i16) * (rhs as i16));
+                }
+                (Value::Sint16(lhs), Value::Sint16(rhs), Value::Sint32(result)) => {
+                    assert_eq!(result, (lhs as i32) * (rhs as i32));
+                }
+                (Value::Sint32(lhs), Value::Sint32(rhs), Value::Sint64(result)) => {
+                    assert_eq!(result, (lhs as i64) * (rhs as i64));
+                }
+                (Value::Sint64(lhs), Value::Sint64(rhs), Value::Sint128(result)) => {
+                    assert_eq!(result, (lhs as i128) * (rhs as i128));
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(())
+    }
 
     macro_rules! impl_tests {
         ( $( $target:ident for $( $ty:ty as $name:ident ),+ ; )+ ) => {
@@ -1422,8 +1500,15 @@ mod test {
             i16 as i16_to_felt252,
             i32 as i32_to_felt252,
             i64 as i64_to_felt252;
-    }
 
-    // TODO: Test `build_to_felt252`.
-    // TODO: Test `build_wide_mul`.
+        test_wide_mul for
+            u8 as u8_wide_mul,
+            u16 as u16_wide_mul,
+            u32 as u32_wide_mul,
+            u64 as u64_wide_mul,
+            i8 as i8_wide_mul,
+            i16 as i16_wide_mul,
+            i32 as i32_wide_mul,
+            i64 as i64_wide_mul;
+    }
 }
