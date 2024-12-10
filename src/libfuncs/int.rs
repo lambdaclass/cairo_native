@@ -22,7 +22,9 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm, ods, scf,
+        cf, llvm,
+        ods::{self, math},
+        scf,
     },
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
@@ -316,8 +318,10 @@ fn build_from_felt252<'ctx, 'this>(
         let is_in_range =
             entry.append_op_result(arith::andi(lower_check, upper_check, location))?;
 
+        let k0 = entry.const_int_from_type(context, location, 0, input.r#type())?;
+        let is_negative = entry.cmpi(context, CmpiPredicate::Slt, input, k0, location)?;
         let value = entry.append_op_result(scf::r#if(
-            lower_check,
+            is_negative,
             &[input.r#type()],
             {
                 let region = Region::new();
@@ -416,7 +420,6 @@ fn build_operation<'ctx, 'this>(
             .build()?,
     )?;
 
-    // TODO: For signed operands, distinguish underflow and overflow cases.
     let result = entry.extract_value(context, location, result_with_overflow, value_ty, 0)?;
     let overflow = entry.extract_value(
         context,
@@ -426,13 +429,43 @@ fn build_operation<'ctx, 'this>(
         1,
     )?;
 
-    entry.append_operation(helper.cond_br(
-        context,
-        overflow,
-        [1, 0],
-        [&[range_check, result]; 2],
-        location,
-    ));
+    if is_signed {
+        let block_in_range = helper.append_block(Block::new(&[]));
+        let block_overflow = helper.append_block(Block::new(&[]));
+
+        entry.append_operation(cf::cond_br(
+            context,
+            overflow,
+            block_overflow,
+            block_in_range,
+            &[],
+            &[],
+            location,
+        ));
+
+        block_in_range.append_operation(helper.br(0, &[range_check, result], location));
+
+        {
+            let k0 = block_overflow.const_int_from_type(context, location, 0, result.r#type())?;
+            let is_positive =
+                block_overflow.cmpi(context, CmpiPredicate::Sge, result, k0, location)?;
+            block_overflow.append_operation(helper.cond_br(
+                context,
+                is_positive,
+                [1, 2],
+                [&[range_check, result]; 2],
+                location,
+            ));
+        }
+    } else {
+        entry.append_operation(helper.cond_br(
+            context,
+            overflow,
+            [1, 0],
+            [&[range_check, result]; 2],
+            location,
+        ));
+    }
     Ok(())
 }
 
@@ -617,8 +650,28 @@ fn build_to_felt252<'ctx, 'this>(
             felt252_ty,
         )?;
 
+        let k0 = entry.const_int_from_type(
+            context,
+            location,
+            0,
+            value_ty.build(
+                context,
+                helper,
+                registry,
+                metadata,
+                &info.signature.param_signatures[0].ty,
+            )?,
+        )?;
+        let is_negative = entry.cmpi(context, CmpiPredicate::Slt, entry.arg(0)?, k0, location)?;
+
         let value = entry.extui(entry.arg(0)?, felt252_ty, location)?;
-        entry.append_op_result(arith::subi(prime, value, location))?
+
+        let neg_value =
+            entry.append_op_result(math::absi(context, entry.arg(0)?, location).into())?;
+        let neg_value = entry.extui(neg_value, felt252_ty, location)?;
+        let neg_value = entry.append_op_result(arith::subi(prime, neg_value, location))?;
+
+        entry.append_op_result(arith::select(is_negative, neg_value, value, location))?
     } else {
         entry.extui(entry.arg(0)?, felt252_ty, location)?
     };
@@ -643,8 +696,20 @@ fn build_wide_mul<'ctx, 'this>(
         &info.signature.branch_signatures[0].vars[0].ty,
     )?;
 
-    let lhs = entry.extui(entry.arg(0)?, result_ty, location)?;
-    let rhs = entry.extui(entry.arg(1)?, result_ty, location)?;
+    let ext_fn = if registry
+        .get_type(&info.signature.param_signatures[0].ty)?
+        .integer_range(registry)
+        .unwrap()
+        .lower
+        .is_zero()
+    {
+        BlockExt::extui
+    } else {
+        BlockExt::extsi
+    };
+
+    let lhs = ext_fn(entry, entry.arg(0)?, result_ty, location)?;
+    let rhs = ext_fn(entry, entry.arg(1)?, result_ty, location)?;
     let result = entry.muli(lhs, rhs, location)?;
 
     entry.append_operation(helper.br(0, &[result], location));

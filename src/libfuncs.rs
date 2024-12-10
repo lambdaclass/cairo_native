@@ -12,7 +12,10 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
-        int::unsigned::{Uint16Traits, Uint32Traits, Uint64Traits, Uint8Traits},
+        int::{
+            signed::{Sint16Traits, Sint32Traits, Sint64Traits, Sint8Traits},
+            unsigned::{Uint16Traits, Uint32Traits, Uint64Traits, Uint8Traits},
+        },
         lib_func::ParamSignature,
         starknet::StarkNetTypeConcrete,
         ConcreteLibfunc,
@@ -190,18 +193,30 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Poseidon(selector) => self::poseidon::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Sint8(info) => {
-                self::sint8::build(context, registry, entry, location, helper, metadata, info)
-            }
-            Self::Sint16(info) => {
-                self::sint16::build(context, registry, entry, location, helper, metadata, info)
-            }
-            Self::Sint32(info) => {
-                self::sint32::build(context, registry, entry, location, helper, metadata, info)
-            }
-            Self::Sint64(info) => {
-                self::sint64::build(context, registry, entry, location, helper, metadata, info)
-            }
+            // Self::Sint8(info) => {
+            //     self::sint8::build(context, registry, entry, location, helper, metadata, info)
+            // }
+            // Self::Sint16(info) => {
+            //     self::sint16::build(context, registry, entry, location, helper, metadata, info)
+            // }
+            // Self::Sint32(info) => {
+            //     self::sint32::build(context, registry, entry, location, helper, metadata, info)
+            // }
+            // Self::Sint64(info) => {
+            //     self::sint64::build(context, registry, entry, location, helper, metadata, info)
+            // }
+            Self::Sint8(selector) => self::int::build_signed::<Sint8Traits>(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Sint16(selector) => self::int::build_signed::<Sint16Traits>(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Sint32(selector) => self::int::build_signed::<Sint32Traits>(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Sint64(selector) => self::int::build_signed::<Sint64Traits>(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Sint128(info) => {
                 self::sint128::build(context, registry, entry, location, helper, metadata, info)
             }
