@@ -621,6 +621,7 @@ fn build_square_root<'ctx, 'this>(
             CoreTypeConcrete::Uint16(_) => (16, 8),
             CoreTypeConcrete::Uint32(_) => (32, 16),
             CoreTypeConcrete::Uint64(_) => (64, 32),
+            CoreTypeConcrete::Uint128(_) => (128, 64),
             _ => unreachable!(),
         };
 
@@ -816,12 +817,12 @@ fn build_to_felt252<'ctx, 'this>(
 
 fn build_u128s_from_felt252<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
@@ -840,7 +841,7 @@ fn build_u128s_from_felt252<'ctx, 'this>(
         context,
         is_wide,
         [1, 0],
-        [&[range_check, lo, hi], &[range_check, lo]],
+        [&[range_check, hi, lo], &[range_check, lo]],
         location,
     ));
     Ok(())

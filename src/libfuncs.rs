@@ -201,9 +201,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Sint64(selector) => self::int::build_signed::<Sint64Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Sint128(info) => {
-                self::sint128::build(context, registry, entry, location, helper, metadata, info)
-            }
+            Self::Sint128(selector) => self::int::build_i128(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::StarkNet(selector) => self::starknet::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -222,7 +222,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Uint64(selector) => self::int::build_unsigned::<Uint64Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint128(selector) => self::uint128::build(
+            Self::Uint128(selector) => self::int::build_u128(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Uint256(selector) => self::uint256::build(
