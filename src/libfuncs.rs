@@ -58,10 +58,6 @@ mod nullable;
 mod pedersen;
 mod poseidon;
 mod sint128;
-mod sint16;
-mod sint32;
-mod sint64;
-mod sint8;
 mod starknet;
 mod r#struct;
 mod uint128;
@@ -193,18 +189,6 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Poseidon(selector) => self::poseidon::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            // Self::Sint8(info) => {
-            //     self::sint8::build(context, registry, entry, location, helper, metadata, info)
-            // }
-            // Self::Sint16(info) => {
-            //     self::sint16::build(context, registry, entry, location, helper, metadata, info)
-            // }
-            // Self::Sint32(info) => {
-            //     self::sint32::build(context, registry, entry, location, helper, metadata, info)
-            // }
-            // Self::Sint64(info) => {
-            //     self::sint64::build(context, registry, entry, location, helper, metadata, info)
-            // }
             Self::Sint8(selector) => self::int::build_signed::<Sint8Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
