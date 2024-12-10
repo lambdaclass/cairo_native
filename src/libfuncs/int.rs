@@ -7,7 +7,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         int::{
             signed::{SintConcrete, SintTraits},
             unsigned::{UintConcrete, UintTraits},
@@ -22,9 +22,12 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        scf,
+        ods, scf,
     },
-    ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location, Region, ValueLike},
+    ir::{
+        attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        Location, Region, ValueLike,
+    },
     Context,
 };
 use num_bigint::{BigInt, Sign};
@@ -401,15 +404,144 @@ fn build_operation<'ctx, 'this>(
 }
 
 fn build_square_root<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+
+    let input = entry.arg(1)?;
+    let (input_bits, value_bits) =
+        match registry.get_type(&info.signature.param_signatures[1].ty)? {
+            CoreTypeConcrete::Uint8(_) => (8, 8),
+            CoreTypeConcrete::Uint16(_) => (8, 16),
+            CoreTypeConcrete::Uint32(_) => (16, 32),
+            CoreTypeConcrete::Uint64(_) => (32, 64),
+            _ => unreachable!(),
+        };
+
+    let k1 = entry.const_int(context, location, 1, input_bits)?;
+    let is_small = entry.cmpi(context, CmpiPredicate::Ule, input, k1, location)?;
+
+    let value = entry.append_op_result(scf::r#if(
+        is_small,
+        &[IntegerType::new(context, value_bits).into()],
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            let value = block.trunci(
+                input,
+                IntegerType::new(context, value_bits).into(),
+                location,
+            )?;
+
+            block.append_operation(scf::r#yield(&[value], location));
+            region
+        },
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            let leading_zeros = block.append_op_result(
+                ods::llvm::intr_ctlz(
+                    context,
+                    IntegerType::new(context, input_bits).into(),
+                    input,
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 1),
+                    location,
+                )
+                .into(),
+            )?;
+
+            let k_bits = block.const_int(context, location, input_bits, input_bits)?;
+            let num_bits = block.append_op_result(arith::subi(k_bits, leading_zeros, location))?;
+            let shift_amount = block.addi(num_bits, k1, location)?;
+
+            let parity_mask = block.const_int(context, location, -2, input_bits)?;
+            let shift_amount =
+                block.append_op_result(arith::andi(shift_amount, parity_mask, location))?;
+
+            let k0 = block.const_int(context, location, 0, input_bits)?;
+            let value = block.append_op_result(scf::r#while(
+                &[k0, shift_amount],
+                &[
+                    IntegerType::new(context, input_bits).into(),
+                    IntegerType::new(context, input_bits).into(),
+                ],
+                {
+                    let region = Region::new();
+                    let block = region.append_block(Block::new(&[]));
+
+                    let value = block.shli(block.arg(0)?, k1, location)?;
+                    let large_candidate =
+                        block.append_op_result(arith::xori(value, k1, location))?;
+                    let large_candidate_squared =
+                        block.muli(large_candidate, large_candidate, location)?;
+
+                    let threshold = block.shrui(entry.arg(1)?, block.arg(1)?, location)?;
+                    let threshold_is_poison =
+                        block.cmpi(context, CmpiPredicate::Eq, block.arg(1)?, k_bits, location)?;
+                    let threshold = block.append_op_result(arith::select(
+                        threshold_is_poison,
+                        k0,
+                        threshold,
+                        location,
+                    ))?;
+
+                    let is_in_range = block.cmpi(
+                        context,
+                        CmpiPredicate::Ule,
+                        large_candidate_squared,
+                        threshold,
+                        location,
+                    )?;
+                    let value = block.append_op_result(arith::select(
+                        is_in_range,
+                        large_candidate,
+                        value,
+                        location,
+                    ))?;
+
+                    let k2 = block.const_int(context, location, 2, input_bits)?;
+                    let shift_amount =
+                        block.append_op_result(arith::subi(block.arg(1)?, k2, location))?;
+
+                    let should_continue =
+                        block.cmpi(context, CmpiPredicate::Sge, shift_amount, k0, location)?;
+                    block.append_operation(scf::condition(
+                        should_continue,
+                        &[value, shift_amount],
+                        location,
+                    ));
+
+                    region
+                },
+                {
+                    let region = Region::new();
+                    let block = region.append_block(Block::new(&[
+                        (IntegerType::new(context, input_bits).into(), location),
+                        (IntegerType::new(context, input_bits).into(), location),
+                    ]));
+
+                    block.append_operation(scf::r#yield(&[block.arg(0)?, block.arg(1)?], location));
+                    region
+                },
+                location,
+            ))?;
+
+            block.append_operation(scf::r#yield(&[], location));
+            region
+        },
+        location,
+    ))?;
+
+    entry.append_operation(helper.br(0, &[range_check, value], location));
+    Ok(())
 }
 
 fn build_to_felt252<'ctx, 'this>(
@@ -471,6 +603,7 @@ mod test {
     use crate::{context::NativeContext, executor::JitNativeExecutor, OptLevel, Value};
     use cairo_lang_sierra::ProgramParser;
     use itertools::Itertools;
+    use num_integer::Roots;
     use num_traits::{
         ops::overflowing::{OverflowingAdd, OverflowingSub},
         Bounded, Num,
@@ -479,7 +612,7 @@ mod test {
     use std::{
         fmt::Display,
         mem,
-        ops::{BitAnd, BitOr, BitXor},
+        ops::{BitAnd, BitOr, BitXor, Bound},
     };
 
     fn test_bitwise<T>() -> Result<(), Box<dyn std::error::Error>>
@@ -1098,7 +1231,63 @@ mod test {
         Ok(())
     }
 
-    // TODO: Implement `test_square_root`.
+    fn test_square_root<T>() -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Bounded + Copy + Num + Eq,
+        Value: From<T>,
+    {
+        let n_bits = 8 * size_of::<T>();
+        let type_id = format!("u{n_bits}");
+        let target_type_id = format!("u{}", (n_bits >> 1).max(8));
+
+        let program = ProgramParser::new()
+            .parse(&format!(
+                r#"
+                    type RangeCheck = RangeCheck;
+                    type {type_id} = {type_id};{}
+
+                    libfunc {type_id}_sqrt = {type_id}_sqrt;
+
+                    {type_id}_sqrt([0], [1]) -> ([2], [3]);
+                    return([2], [3]);
+
+                    [0]@0([0]: RangeCheck, [1]: {type_id}) -> (RangeCheck, {target_type_id});
+                "#,
+                match n_bits {
+                    8 => "".to_string(),
+                    _ => format!("\ntype {target_type_id} = {target_type_id};"),
+                }
+            ))
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
+        for value in data.into_iter() {
+            let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
+
+            match (Value::from(value), result.return_value) {
+                (Value::Uint8(target), Value::Uint8(result)) => {
+                    assert_eq!(result, target.sqrt());
+                }
+                (Value::Uint16(target), Value::Uint8(result)) => {
+                    assert_eq!(result as u16, target.sqrt());
+                }
+                (Value::Uint32(target), Value::Uint16(result)) => {
+                    assert_eq!(result as u32, target.sqrt());
+                }
+                (Value::Uint64(target), Value::Uint32(result)) => {
+                    assert_eq!(result as u64, target.sqrt());
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(())
+    }
+
     // TODO: Implement `test_to_felt252`.
     // TODO: Implement `test_wide_mul`.
 
@@ -1176,6 +1365,12 @@ mod test {
             i16 as i16_operation,
             i32 as i32_operation,
             i64 as i64_operation;
+
+        test_square_root for
+            u8 as u8_square_root,
+            u16 as u16_square_root,
+            u32 as u32_square_root,
+            u64 as u64_square_root;
     }
 
     // TODO: Test `build_square_root`.
