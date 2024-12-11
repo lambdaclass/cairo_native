@@ -36,7 +36,6 @@ pub fn build<'ctx, 'this>(
     registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[0].ty,
     )?;

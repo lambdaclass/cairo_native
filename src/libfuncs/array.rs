@@ -169,8 +169,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();
-    let (_, tuple_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+    let (_, tuple_layout) = registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
 
     let array_len_bytes = tuple_layout.pad_to_align().size();
     let array_len_bytes_with_offset = entry.const_int(
@@ -265,10 +264,9 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();
-    let (_, elem_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, elem_id)?;
+    let (_, elem_layout) = registry.build_type_with_layout(context, helper, metadata, elem_id)?;
     let (tuple_ty, tuple_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+        registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
 
     let array_ptr = entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
     let array_start =
@@ -301,7 +299,6 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[0].ty,
     )?;
@@ -437,7 +434,6 @@ pub fn build_append<'ctx, 'this>(
     let self_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[0].ty,
     )?;
@@ -446,7 +442,7 @@ pub fn build_append<'ctx, 'this>(
     let len_ty = IntegerType::new(context, 32).into();
 
     let (elem_ty, elem_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+        registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
     let elem_stride = entry.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
 
     let k0 = entry.const_int(context, location, 0, 32)?;
@@ -946,11 +942,11 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
         }
     };
 
-    registry.build_type(context, helper, registry, metadata, self_ty)?;
+    registry.build_type(context, helper, metadata, self_ty)?;
     let extract_len_value = entry.const_int_from_type(context, location, extract_len, len_ty)?;
 
     let (elem_type, elem_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, elem_ty)?;
+        registry.build_type_with_layout(context, helper, metadata, elem_ty)?;
 
     let array_start = entry.extract_value(context, location, array_value, len_ty, 1)?;
     let array_end = entry.extract_value(context, location, array_value, len_ty, 2)?;
@@ -1324,7 +1320,6 @@ pub fn build_get<'ctx, 'this>(
     registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[1].ty,
     )?;
@@ -1359,7 +1354,7 @@ pub fn build_get<'ctx, 'this>(
 
     {
         let (elem_ty, elem_layout) =
-            registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+            registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
         let elem_stride =
             valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
 
@@ -1558,7 +1553,6 @@ pub fn build_slice<'ctx, 'this>(
     let self_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[1].ty,
     )?;
@@ -1609,7 +1603,7 @@ pub fn build_slice<'ctx, 'this>(
 
     {
         let (elem_ty, elem_layout) =
-            registry.build_type_with_layout(context, helper, registry, metadata, &info.ty)?;
+            registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
         let elem_stride =
             valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
 

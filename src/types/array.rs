@@ -106,7 +106,7 @@ fn build_dup<'ctx>(
     info: &WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
-    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
     let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
     let refcount_offset = get_integer_layout(32)
@@ -199,7 +199,7 @@ fn build_drop<'ctx>(
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_stride = elem_ty.layout(registry)?.pad_to_align().size();

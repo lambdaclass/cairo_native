@@ -24,5 +24,5 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
-    registry.build_type(context, module, registry, metadata, &info.ty)
+    registry.build_type(context, module, metadata, &info.ty)
 }

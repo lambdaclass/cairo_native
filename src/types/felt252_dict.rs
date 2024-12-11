@@ -87,7 +87,7 @@ fn build_dup<'ctx>(
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
     let inner_ty = registry.get_type(&info.ty)?;
     let inner_len = inner_ty.layout(registry)?.pad_to_align().size();
     let inner_ty = inner_ty.build(context, module, registry, metadata, &info.ty)?;
@@ -177,8 +177,8 @@ fn build_drop<'ctx>(
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
-    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+    let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+    let inner_ty = registry.build_type(context, module, metadata, &info.ty)?;
 
     let drop_fn_symbol = match metadata.get::<DropOverridesMeta>() {
         Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
