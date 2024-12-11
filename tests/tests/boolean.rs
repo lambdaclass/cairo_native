@@ -113,7 +113,7 @@ fn felt252_to_bool_bug() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(Felt::from(a))],
+        vec![Arg::Value(Felt::from(a))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -137,7 +137,7 @@ fn felt252_to_bool_bug() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(Felt::from(a))],
+        vec![Arg::Value(Felt::from(a))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -162,7 +162,7 @@ proptest! {
     #[test]
     fn bool_to_felt252_proptest(a: bool) {
         let program = &BOOL_TO_FELT252;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
         ], Some(DEFAULT_GAS as usize)).unwrap();
         let result_native = run_native_program(
@@ -185,7 +185,7 @@ proptest! {
     #[test]
     fn bool_not_proptest(a: bool) {
         let program = &BOOL_NOT;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
         ], Some(DEFAULT_GAS as usize)).unwrap();
         let result_native = run_native_program(
@@ -208,7 +208,7 @@ proptest! {
     #[test]
     fn bool_and_proptest(a: bool, b: bool) {
         let program = &BOOL_AND;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
             Arg::Value(Felt::from(b))
         ], Some(DEFAULT_GAS as usize)).unwrap();
@@ -232,7 +232,7 @@ proptest! {
     #[test]
     fn bool_or_proptest(a: bool, b: bool) {
         let program = &BOOL_OR;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
             Arg::Value(Felt::from(b))
         ], Some(DEFAULT_GAS as usize)).unwrap();
@@ -256,7 +256,7 @@ proptest! {
     #[test]
     fn bool_xor_proptest(a: bool, b: bool) {
         let program = &BOOL_XOR;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
             Arg::Value(Felt::from(b))
         ], Some(DEFAULT_GAS as usize)).unwrap();

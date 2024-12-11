@@ -965,13 +965,13 @@ impl<'a, T> WithSelf<'a, T> {
     }
 }
 
-impl<'a, T> AsRef<T> for WithSelf<'a, T> {
+impl<T> AsRef<T> for WithSelf<'_, T> {
     fn as_ref(&self) -> &T {
         self.inner
     }
 }
 
-impl<'a, T> Deref for WithSelf<'a, T> {
+impl<T> Deref for WithSelf<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
