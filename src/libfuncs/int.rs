@@ -469,17 +469,31 @@ fn build_from_felt252<'ctx, 'this>(
 
 fn build_guarantee_mul<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let value =
-        entry.append_op_result(llvm::undef(IntegerType::new(context, 128).into(), location))?;
+    let guarantee_ty = registry.build_type(
+        context,
+        helper,
+        metadata,
+        &info.signature.branch_signatures[0].vars[2].ty,
+    )?;
 
-    entry.append_operation(helper.br(0, &[value, value, value], location));
+    let mul_op = entry.append_operation(arith::mului_extended(
+        entry.arg(0)?,
+        entry.arg(1)?,
+        location,
+    ));
+
+    let lo = mul_op.result(0)?.into();
+    let hi = mul_op.result(1)?.into();
+
+    let guarantee = entry.append_op_result(llvm::undef(guarantee_ty, location))?;
+    entry.append_operation(helper.br(0, &[hi, lo, guarantee], location));
     Ok(())
 }
 
@@ -890,7 +904,7 @@ mod test {
     };
     use cairo_lang_sierra::ProgramParser;
     use itertools::Itertools;
-    use num_bigint::{BigInt, Sign};
+    use num_bigint::{BigInt, BigUint, Sign};
     use num_integer::Roots;
     use num_traits::{
         ops::overflowing::{OverflowingAdd, OverflowingSub},
@@ -1326,7 +1340,7 @@ mod test {
 
     fn test_from_felt252<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded + Copy + Num,
+        T: Bounded + Copy + Num + TryFrom<Value>,
         Felt: From<T>,
         Value: From<T>,
     {
@@ -1369,18 +1383,101 @@ mod test {
         let module = context.compile(&program, false, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
-        // TODO: Test invalid values too.
-        let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
-        for value in data {
-            let result =
-                executor.invoke_dynamic(&program.funcs[0].id, &[Felt::from(value).into()], None)?;
+        let data = [
+            (Felt::from(T::min_value()), Some(T::min_value())),
+            (Felt::from(T::zero()), Some(T::zero())),
+            (Felt::from(T::one()), Some(T::one())),
+            (Felt::from(T::max_value()), Some(T::max_value())),
+            (Felt::ZERO, Some(T::zero())),
+            (
+                Felt::MAX,
+                (T::min_value() != T::zero()).then(|| T::zero() - T::one()),
+            ),
+            (
+                BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()).into(),
+                None,
+            ),
+            (
+                BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()).into(),
+                None,
+            ),
+        ];
+        for (value, target) in data {
+            let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
 
             assert_eq!(result.builtin_stats.range_check, 1);
             assert_eq!(
                 result.return_value,
-                Value::Enum {
-                    tag: 0,
-                    value: Box::new(value.into()),
+                match target {
+                    Some(x) => Value::Enum {
+                        tag: 0,
+                        value: Box::new(x.into()),
+                        debug_name: None,
+                    },
+                    None => Value::Enum {
+                        tag: 1,
+                        value: Box::new(Value::Struct {
+                            fields: Vec::new(),
+                            debug_name: None,
+                        }),
+                        debug_name: None,
+                    },
+                },
+            );
+        }
+
+        Ok(())
+    }
+
+    fn test_guarantee_mul() -> Result<(), Box<dyn std::error::Error>> {
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                    type RangeCheck = RangeCheck;
+                    type u128 = u128;
+                    type U128MulGuarantee = U128MulGuarantee;
+                    type Tuple<u128, u128> = Struct<ut@Tuple, u128, u128>;
+
+                    libfunc u128_guarantee_mul = u128_guarantee_mul;
+                    libfunc u128_mul_guarantee_verify = u128_mul_guarantee_verify;
+                    libfunc struct_construct<Tuple<u128, u128>> = struct_construct<Tuple<u128, u128>>;
+
+                    u128_guarantee_mul([1], [2]) -> ([3], [4], [5]);
+                    u128_mul_guarantee_verify([0], [5]) -> ([0]);
+                    struct_construct<Tuple<u128, u128>>([3], [4]) -> ([6]);
+                    return([0], [6]);
+
+                    [0]@0([0]: RangeCheck, [1]: u128, [2]: u128) -> (RangeCheck, Tuple<u128, u128>);
+                "#,
+            )
+            .map_err(|e| e.to_string())?;
+
+        let context = NativeContext::new();
+        let module = context.compile(&program, false, None)?;
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
+
+        let data = [0u128, 1u128, u128::MAX];
+        for values in data.into_iter().permutations(2) {
+            let result = executor.invoke_dynamic(
+                &program.funcs[0].id,
+                &[values[0].into(), values[1].into()],
+                None,
+            )?;
+
+            let lhs = BigUint::from(values[0]);
+            let rhs = BigUint::from(values[1]);
+            let res = lhs * rhs;
+
+            let mut res_bytes = res.to_bytes_le();
+            res_bytes.resize(size_of::<u128>() * 2, 0);
+            let lo = u128::from_le_bytes(res_bytes[..16].try_into().unwrap());
+            let hi = u128::from_le_bytes(res_bytes[16..].try_into().unwrap());
+
+            assert_eq!(result.builtin_stats.range_check, 1);
+            assert_eq!(
+                result.return_value,
+                Value::Struct {
+                    fields: vec![Value::Uint128(hi), Value::Uint128(lo)],
                     debug_name: None,
                 },
             );
@@ -2018,5 +2115,10 @@ mod test {
     #[test]
     fn u128s_from_felt252() {
         test_u128s_from_felt252().unwrap();
+    }
+
+    #[test]
+    fn u128_guarantee_mul() {
+        test_guarantee_mul().unwrap();
     }
 }

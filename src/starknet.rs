@@ -540,12 +540,11 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
-    use crate::utils::{libc_free, libc_malloc};
+    use crate::utils::{get_integer_layout, libc_free, libc_malloc};
     use std::{
         alloc::Layout,
-        ffi::c_void,
         fmt::Debug,
-        mem::{size_of, ManuallyDrop, MaybeUninit},
+        mem::{self, size_of, ManuallyDrop, MaybeUninit},
         ptr::{null_mut, NonNull},
     };
 
@@ -909,7 +908,17 @@ pub(crate) mod handler {
                     capacity: 0,
                 },
                 _ => {
-                    let ptr = libc_malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
+                    let refcount_offset = get_integer_layout(32)
+                        .align_to(mem::align_of::<E>())
+                        .unwrap()
+                        .pad_to_align()
+                        .size();
+                    let ptr = libc_malloc(
+                        Layout::array::<E>(data.len()).unwrap().size() + refcount_offset,
+                    ) as *mut E;
+
+                    ptr.cast::<u32>().write(1);
+                    let ptr = ptr.byte_add(refcount_offset);
 
                     let len: u32 = data.len().try_into().unwrap();
                     for (i, val) in data.iter().enumerate() {
@@ -923,6 +932,24 @@ pub(crate) mod handler {
                         capacity: len,
                     }
                 }
+            }
+        }
+
+        unsafe fn drop_mlir_array<E>(data: &ArrayAbi<E>) {
+            if data.ptr.is_null() {
+                return;
+            }
+
+            let refcount_offset = get_integer_layout(32)
+                .align_to(mem::align_of::<E>())
+                .unwrap()
+                .pad_to_align()
+                .size();
+
+            let ptr = data.ptr.byte_sub(refcount_offset);
+            match ptr.cast::<u32>().read() {
+                1 => libc_free(ptr.cast()),
+                n => ptr.cast::<u32>().write(n - 1),
             }
         }
 
@@ -968,7 +995,7 @@ pub(crate) mod handler {
             let input_vec: Vec<_> = input.into();
 
             unsafe {
-                libc_free(input.ptr as *mut c_void);
+                Self::drop_mlir_array(input);
             }
 
             let result = ptr
@@ -1155,7 +1182,7 @@ pub(crate) mod handler {
             let calldata_vec: Vec<_> = calldata.into();
 
             unsafe {
-                libc_free(calldata.ptr as *mut c_void);
+                Self::drop_mlir_array(calldata);
             }
 
             let result = ptr.deploy(
@@ -1215,7 +1242,7 @@ pub(crate) mod handler {
             let calldata_vec: Vec<Felt> = calldata.into();
 
             unsafe {
-                libc_free(calldata.ptr as *mut c_void);
+                Self::drop_mlir_array(calldata);
             }
 
             let result = ptr.library_call(class_hash, function_selector, &calldata_vec, gas);
@@ -1249,7 +1276,7 @@ pub(crate) mod handler {
             let calldata_vec: Vec<Felt> = calldata.into();
 
             unsafe {
-                libc_free(calldata.ptr as *mut c_void);
+                Self::drop_mlir_array(calldata);
             }
 
             let result = ptr.call_contract(address, entry_point_selector, &calldata_vec, gas);
@@ -1323,13 +1350,13 @@ pub(crate) mod handler {
             let keys_vec: Vec<_> = keys.into();
 
             unsafe {
-                libc_free(keys.ptr as *mut c_void);
+                Self::drop_mlir_array(keys);
             }
 
             let data_vec: Vec<_> = data.into();
 
             unsafe {
-                libc_free(data.ptr as *mut c_void);
+                Self::drop_mlir_array(data);
             }
 
             let result = ptr.emit_event(&keys_vec, &data_vec, gas);
@@ -1356,7 +1383,7 @@ pub(crate) mod handler {
             let payload_vec: Vec<_> = payload.into();
 
             unsafe {
-                libc_free(payload.ptr as *mut c_void);
+                Self::drop_mlir_array(payload);
             }
 
             let result = ptr.send_message_to_l1(to_address, &payload_vec, gas);
@@ -1391,7 +1418,7 @@ pub(crate) mod handler {
 
             let result = ptr.keccak(input_vec, gas);
             unsafe {
-                libc_free(input.ptr as *mut c_void);
+                Self::drop_mlir_array(input);
             }
 
             *result_ptr = match result {
