@@ -105,7 +105,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 let result = linear_search_runner
                     .run_function_with_starknet_context(
                         linear_search_function,
-                        &[],
+                        vec![],
                         Some(usize::MAX),
                         StarknetState::default(),
                     )
@@ -145,7 +145,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 let result = factorial_runner
                     .run_function_with_starknet_context(
                         factorial_function,
-                        &[],
+                        vec![],
                         Some(usize::MAX),
                         StarknetState::default(),
                     )
@@ -184,7 +184,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 let result = fibonacci_runner
                     .run_function_with_starknet_context(
                         fibonacci_function,
-                        &[],
+                        vec![],
                         Some(usize::MAX),
                         StarknetState::default(),
                     )
@@ -225,7 +225,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 let result = logistic_map_runner
                     .run_function_with_starknet_context(
                         logistic_map_function,
-                        &[],
+                        vec![],
                         Some(usize::MAX),
                         StarknetState::default(),
                     )
