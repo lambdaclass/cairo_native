@@ -138,21 +138,7 @@ pub fn build_get<'ctx, 'this>(
     {
         // If the entry is occupied, then we load the previous value from the pointer
         let value = block_occupied.load(context, location, entry_value_ptr, value_ty)?;
-        let values = match metadata.get::<DupOverridesMeta>() {
-            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
-                dup_overrides_meta.invoke_override(
-                    context,
-                    block_occupied,
-                    location,
-                    &info.ty,
-                    value,
-                )?
-            }
-            _ => (value, value),
-        };
-
-        block_occupied.store(context, location, entry_value_ptr, values.0)?;
-        block_occupied.append_operation(cf::br(block_final, &[values.1], location));
+        block_occupied.append_operation(cf::br(block_final, &[value], location));
     }
 
     {
