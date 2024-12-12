@@ -82,7 +82,7 @@ impl DropOverridesMeta {
 
         match f(metadata)? {
             Some(region) => {
-                let ty = registry.build_type(context, module, registry, metadata, id)?;
+                let ty = registry.build_type(context, module, metadata, id)?;
                 module.body().append_operation(func::func(
                     context,
                     StringAttribute::new(context, &format!("drop${}", id.id)),

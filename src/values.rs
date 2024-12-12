@@ -87,70 +87,39 @@ pub enum Value {
 
 // Conversions
 
-impl From<Felt> for Value {
-    fn from(value: Felt) -> Self {
-        Self::Felt252(value)
-    }
+macro_rules! impl_conversions {
+    ( $( $t:ty as $i:ident ; )+ ) => { $(
+        impl From<$t> for Value {
+            fn from(value: $t) -> Self {
+                Self::$i(value)
+            }
+        }
+
+        impl TryFrom<Value> for $t {
+            type Error = Value;
+
+            fn try_from(value: Value) -> Result<Self, Self::Error> {
+                match value {
+                    Value::$i(value) => Ok(value),
+                    _ => Err(value),
+                }
+            }
+        }
+    )+ };
 }
 
-impl From<u8> for Value {
-    fn from(value: u8) -> Self {
-        Self::Uint8(value)
-    }
-}
-
-impl From<u16> for Value {
-    fn from(value: u16) -> Self {
-        Self::Uint16(value)
-    }
-}
-
-impl From<u32> for Value {
-    fn from(value: u32) -> Self {
-        Self::Uint32(value)
-    }
-}
-
-impl From<u64> for Value {
-    fn from(value: u64) -> Self {
-        Self::Uint64(value)
-    }
-}
-
-impl From<u128> for Value {
-    fn from(value: u128) -> Self {
-        Self::Uint128(value)
-    }
-}
-
-impl From<i8> for Value {
-    fn from(value: i8) -> Self {
-        Self::Sint8(value)
-    }
-}
-
-impl From<i16> for Value {
-    fn from(value: i16) -> Self {
-        Self::Sint16(value)
-    }
-}
-
-impl From<i32> for Value {
-    fn from(value: i32) -> Self {
-        Self::Sint32(value)
-    }
-}
-
-impl From<i64> for Value {
-    fn from(value: i64) -> Self {
-        Self::Sint64(value)
-    }
-}
-
-impl From<i128> for Value {
-    fn from(value: i128) -> Self {
-        Self::Sint128(value)
-    }
+impl_conversions! {
+    Felt as Felt252;
+    u8   as Uint8;
+    u16  as Uint16;
+    u32  as Uint32;
+    u64  as Uint64;
+    u128 as Uint128;
+    i8   as Sint8;
+    i16  as Sint16;
+    i32  as Sint32;
+    i64  as Sint64;
+    i128 as Sint128;
 }
 
 impl<T: Into<Value> + Clone> From<&[T]> for Value {
