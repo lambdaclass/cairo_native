@@ -4,7 +4,6 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::{
-        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
@@ -21,8 +20,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{cf, llvm, ods},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    dialect::{llvm, ods, scf},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Region},
     Context,
 };
 
@@ -46,6 +45,18 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+/// The felt252_dict_entry_get libfunc receives the dictionary and the key and
+/// returns the associated dict entry, along with it's value.
+///
+/// The dict entry also contains a pointer to the dictionary.
+///
+/// If the key doesn't yet exist, it is created and the type's default value is returned.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn felt252_dict_entry_get<T>(dict: Felt252Dict<T>, key: felt252) -> (Felt252DictEntry<T>, T) nopanic;
+/// ```
 pub fn build_get<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -78,7 +89,9 @@ pub fn build_get<'ctx, 'this>(
             .alloca1(context, location, key_ty, key_layout.align())?;
     entry.store(context, location, entry_key_ptr, entry_key)?;
 
-    // Double pointer. Avoid allocating an element on a dict getter.
+    // Runtime's dict_get returnes a pointer to the entry's value, which is a
+    // pointer itself. Effectively, we have a double pointer to the value,
+    // avoiding a second call into the runtime when finalizing the entry.
     let entry_value_ptr_ptr = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
@@ -92,6 +105,8 @@ pub fn build_get<'ctx, 'this>(
 
     let null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+
+    // If the entry_value_ptr is null, then the entry is vacant
     let is_vacant = entry.append_op_result(
         ods::llvm::icmp(
             context,
@@ -104,61 +119,82 @@ pub fn build_get<'ctx, 'this>(
         .into(),
     )?;
 
-    let block_occupied = helper.append_block(Block::new(&[]));
-    let block_vacant = helper.append_block(Block::new(&[]));
-    let block_final = helper.append_block(Block::new(&[(value_ty, location)]));
-    entry.append_operation(cf::cond_br(
-        context,
+    let value = entry.append_op_result(scf::r#if(
         is_vacant,
-        block_vacant,
-        block_occupied,
-        &[],
-        &[],
-        location,
-    ));
+        &[value_ty],
+        {
+            // If the entry is vacant, then create the default value
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+            let helper = LibfuncHelper {
+                module: helper.module,
+                init_block: helper.init_block,
+                region: &region,
+                blocks_arena: helper.blocks_arena,
+                last_block: std::cell::Cell::new(&block),
+                branches: vec![],
+                results: vec![],
+            };
 
-    {
-        let value = block_occupied.load(context, location, entry_value_ptr, value_ty)?;
-        let values = match metadata.get::<DupOverridesMeta>() {
-            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
-                dup_overrides_meta.invoke_override(
+            let value = registry
+                .get_type(&info.branch_signatures()[0].vars[1].ty)?
+                .build_default(
                     context,
-                    block_occupied,
+                    registry,
+                    &block,
                     location,
-                    &info.ty,
-                    value,
-                )?
-            }
-            _ => (value, value),
-        };
+                    &helper,
+                    metadata,
+                    &info.branch_signatures()[0].vars[1].ty,
+                )?;
+            block.append_operation(scf::r#yield(&[value], location));
 
-        block_occupied.store(context, location, entry_value_ptr, values.0)?;
-        block_occupied.append_operation(cf::br(block_final, &[values.1], location));
-    }
+            region
+        },
+        {
+            // If the entry is occupied, then load the previous value from the pointer
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
 
-    {
-        let value = registry
-            .get_type(&info.branch_signatures()[0].vars[1].ty)?
-            .build_default(
-                context,
-                registry,
-                block_vacant,
-                location,
-                helper,
-                metadata,
-                &info.branch_signatures()[0].vars[1].ty,
-            )?;
-        block_vacant.append_operation(cf::br(block_final, &[value], location));
-    }
+            let value = block.load(context, location, entry_value_ptr, value_ty)?;
 
-    let entry = block_final.append_op_result(llvm::undef(entry_ty, location))?;
-    let entry =
-        block_final.insert_values(context, location, entry, &[dict_ptr, entry_value_ptr_ptr])?;
+            block.append_operation(scf::r#yield(&[value], location));
 
-    block_final.append_operation(helper.br(0, &[entry, block_final.arg(0)?], location));
+            region
+        },
+        location,
+    ))?;
+
+    // Build the dict entry struct: `Felt252DictEntry<T>`.
+    let dict_entry = entry.append_op_result(llvm::undef(entry_ty, location))?;
+    let dict_entry = entry.insert_values(
+        context,
+        location,
+        dict_entry,
+        &[dict_ptr, entry_value_ptr_ptr],
+    )?;
+
+    // The `Felt252DictEntry<T>` holds both the `Felt252Dict<T>` and the pointer
+    // to the space where the new value will be written when the entry is finalized.
+    // If the entry were to be dropped (without being consumed by the finalizer), which
+    // shouldn't be possible under normal conditions, and the type `T` requires a
+    // custom drop implementation (ex. arrays, dictionaries), it'll cause undefined
+    // behavior because when the value is moved out of the dictionary (on `get`), the
+    // memory it occupied is not modified because we're expecting it to be overwritten
+    // by the finalizer (in other words, the extracted element will be dropped twice).
+
+    entry.append_operation(helper.br(0, &[dict_entry, value], location));
     Ok(())
 }
 
+/// The felt252_dict_entry_finalize libfunc receives the dict entry and a new value,
+/// inserts the new value in the entry, and returns the full dictionary.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn felt252_dict_entry_finalize<T>(dict_entry: Felt252DictEntry<T>, new_value: T) -> Felt252Dict<T> nopanic;
+/// ```
 pub fn build_finalize<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -172,15 +208,16 @@ pub fn build_finalize<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let (value_ty, value_layout) = registry.build_type_with_layout(
+    let (_value_ty, value_layout) = registry.build_type_with_layout(
         context,
         helper,
         metadata,
         &info.signature.param_signatures[1].ty,
     )?;
 
+    // Get the dict entry struct: `crate::types::felt252_dict_entry`
     let dict_entry = entry.arg(0)?;
-    let entry_value = entry.arg(1)?;
+    let new_entry_value = entry.arg(1)?;
 
     let dict_ptr = entry.extract_value(
         context,
@@ -189,28 +226,29 @@ pub fn build_finalize<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         0,
     )?;
-    let value_ptr_ptr = entry.extract_value(
+    let entry_value_ptr_ptr = entry.extract_value(
         context,
         location,
         dict_entry,
         llvm::r#type::pointer(context, 0),
         1,
     )?;
-
-    let value_ptr = entry.load(
+    let entry_value_ptr = entry.load(
         context,
         location,
-        value_ptr_ptr,
+        entry_value_ptr_ptr,
         llvm::r#type::pointer(context, 0),
     )?;
 
     let null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+
+    // If the entry_value_ptr is null, then the entry is vacant
     let is_vacant = entry.append_op_result(
         ods::llvm::icmp(
             context,
             IntegerType::new(context, 1).into(),
-            value_ptr,
+            entry_value_ptr,
             null_ptr,
             IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             location,
@@ -218,52 +256,39 @@ pub fn build_finalize<'ctx, 'this>(
         .into(),
     )?;
 
-    let block_occupied = helper.append_block(Block::new(&[]));
-    let block_vacant = helper.append_block(Block::new(&[]));
-    let block_final =
-        helper.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
-    entry.append_operation(cf::cond_br(
-        context,
+    let entry_value_ptr = entry.append_op_result(scf::r#if(
         is_vacant,
-        block_vacant,
-        block_occupied,
-        &[],
-        &[],
+        &[llvm::r#type::pointer(context, 0)],
+        {
+            // If the entry is vacant, then alloc space for the new value
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            let value_len = block.const_int(context, location, value_layout.size(), 64)?;
+            let entry_value_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                context, null_ptr, value_len, location,
+            )?)?;
+            block.store(context, location, entry_value_ptr_ptr, entry_value_ptr)?;
+            block.append_operation(scf::r#yield(&[entry_value_ptr], location));
+
+            region
+        },
+        {
+            // If the entry is occupied, do nothing
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            block.append_operation(scf::r#yield(&[entry_value_ptr], location));
+
+            region
+        },
         location,
-    ));
+    ))?;
 
-    {
-        match metadata.get::<DropOverridesMeta>() {
-            Some(drop_overrides_meta)
-                if drop_overrides_meta.is_overriden(&info.signature.param_signatures[1].ty) =>
-            {
-                let value = block_occupied.load(context, location, value_ptr, value_ty)?;
-                drop_overrides_meta.invoke_override(
-                    context,
-                    block_occupied,
-                    location,
-                    &info.signature.param_signatures[1].ty,
-                    value,
-                )?;
-            }
-            _ => {}
-        }
+    // Write the new value to the entry pointer
+    entry.store(context, location, entry_value_ptr, new_entry_value)?;
 
-        block_occupied.append_operation(cf::br(block_final, &[value_ptr], location));
-    }
-
-    {
-        let value_len = block_vacant.const_int(context, location, value_layout.size(), 64)?;
-        let value_ptr = block_vacant.append_op_result(ReallocBindingsMeta::realloc(
-            context, null_ptr, value_len, location,
-        )?)?;
-
-        block_vacant.store(context, location, value_ptr_ptr, value_ptr)?;
-        block_vacant.append_operation(cf::br(block_final, &[value_ptr], location));
-    }
-
-    block_final.store(context, location, block_final.arg(0)?, entry_value)?;
-    block_final.append_operation(helper.br(0, &[dict_ptr], location));
+    entry.append_operation(helper.br(0, &[dict_ptr], location));
 
     Ok(())
 }
