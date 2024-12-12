@@ -143,6 +143,7 @@ pub struct FeltDict {
     pub count: u64,
 
     pub free_fn: unsafe extern "C" fn(*mut c_void),
+    pub dup_fn: unsafe extern "C" fn(*mut c_void) -> *mut c_void,
 }
 
 /// Allocate a new dictionary.
@@ -154,11 +155,13 @@ pub struct FeltDict {
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_new(
     free_fn: extern "C" fn(*mut c_void),
+    dup_fn: extern "C" fn(*mut c_void) -> *mut c_void,
 ) -> *mut FeltDict {
     Box::into_raw(Box::new(FeltDict {
         inner: HashMap::default(),
         count: 0,
         free_fn,
+        dup_fn,
     }))
 }
 
@@ -197,22 +200,20 @@ pub unsafe extern "C" fn cairo_native__dict_drop(
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_dup(
-    ptr: *mut FeltDict,
-    dup_fn: extern "C" fn(*mut c_void) -> *mut c_void,
-) -> *mut FeltDict {
+pub unsafe extern "C" fn cairo_native__dict_dup(ptr: *mut FeltDict) -> *mut FeltDict {
     let old_dict = &*ptr;
     let mut new_dict = Box::new(FeltDict {
         inner: HashMap::default(),
         count: 0,
         free_fn: old_dict.free_fn,
+        dup_fn: old_dict.dup_fn,
     });
 
     new_dict.inner.extend(
         old_dict
             .inner
             .iter()
-            .filter_map(|(&k, &v)| (!v.is_null()).then_some((k, dup_fn(v)))),
+            .filter_map(|(&k, &v)| (!v.is_null()).then_some((k, (new_dict.dup_fn)(v)))),
     );
 
     Box::into_raw(new_dict)
@@ -793,7 +794,7 @@ mod tests {
 
     #[test]
     fn test_dict() {
-        let dict = unsafe { cairo_native__dict_new(free_fn_test) };
+        let dict = unsafe { cairo_native__dict_new(free_fn_test, dup_fn_test) };
 
         let key = Felt::ONE.to_bytes_le();
 
@@ -814,7 +815,7 @@ mod tests {
             assert_eq!(refund, 4050);
         }
 
-        let cloned_dict = unsafe { cairo_native__dict_dup(dict, dup_fn_test) };
+        let cloned_dict = unsafe { cairo_native__dict_dup(dict) };
 
         unsafe { cairo_native__dict_drop(dict, None) };
 
