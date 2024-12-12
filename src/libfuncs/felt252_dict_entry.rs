@@ -21,8 +21,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{cf, llvm, ods},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    dialect::{cf, llvm, ods, scf},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Region},
     Context,
 };
 
@@ -122,46 +122,53 @@ pub fn build_get<'ctx, 'this>(
         .into(),
     )?;
 
-    let block_occupied = helper.append_block(Block::new(&[]));
-    let block_vacant = helper.append_block(Block::new(&[]));
-    let block_final = helper.append_block(Block::new(&[(value_ty, location)]));
-    entry.append_operation(cf::cond_br(
-        context,
+    let value = entry.append_op_result(scf::r#if(
         is_vacant,
-        block_vacant,
-        block_occupied,
-        &[],
-        &[],
+        &[value_ty],
+        {
+            // If the entry is vacant, then create the default value
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            let value = registry
+                .get_type(&info.branch_signatures()[0].vars[1].ty)?
+                .build_default(
+                    context,
+                    registry,
+                    &block,
+                    location,
+                    helper,
+                    metadata,
+                    &info.branch_signatures()[0].vars[1].ty,
+                )?;
+            block.append_operation(scf::r#yield(&[value], location));
+
+            region
+        },
+        {
+            // If the entry is occupied, then load the previous value from the pointer
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            let value = block.load(context, location, entry_value_ptr, value_ty)?;
+
+            block.append_operation(scf::r#yield(&[value], location));
+
+            region
+        },
         location,
-    ));
+    ))?;
 
-    {
-        // If the entry is occupied, then we load the previous value from the pointer
-        let value = block_occupied.load(context, location, entry_value_ptr, value_ty)?;
-        block_occupied.append_operation(cf::br(block_final, &[value], location));
-    }
+    // Build the dict entry struct: `crate::types::felt252_dict_entry`
+    let dict_entry = entry.append_op_result(llvm::undef(entry_ty, location))?;
+    let dict_entry = entry.insert_values(
+        context,
+        location,
+        dict_entry,
+        &[dict_ptr, entry_value_ptr_ptr],
+    )?;
 
-    {
-        // If the entry is vacant, then we create the default value
-        let value = registry
-            .get_type(&info.branch_signatures()[0].vars[1].ty)?
-            .build_default(
-                context,
-                registry,
-                block_vacant,
-                location,
-                helper,
-                metadata,
-                &info.branch_signatures()[0].vars[1].ty,
-            )?;
-        block_vacant.append_operation(cf::br(block_final, &[value], location));
-    }
-
-    let entry = block_final.append_op_result(llvm::undef(entry_ty, location))?;
-    let entry =
-        block_final.insert_values(context, location, entry, &[dict_ptr, entry_value_ptr_ptr])?;
-
-    block_final.append_operation(helper.br(0, &[entry, block_final.arg(0)?], location));
+    entry.append_operation(helper.br(0, &[dict_entry, value], location));
     Ok(())
 }
 
