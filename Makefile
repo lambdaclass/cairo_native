@@ -66,7 +66,7 @@ test: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: test-cairo
-test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
+test-cairo: check-llvm needs-cairo2 runtime-ci
 	cargo r --profile ci --bin cairo-native-test -- corelib
 
 .PHONY: proptest
