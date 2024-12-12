@@ -1015,6 +1015,7 @@ dependencies = [
  "lazy_static",
  "num-traits",
  "rand",
+ "slab",
  "starknet-curve 0.5.1",
  "starknet-types-core",
 ]
