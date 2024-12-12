@@ -53,7 +53,6 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `AP` tracking libfuncs
 //!
 //! Most types are trivial and don't need dropping (or rather, they will be dropped automatically
@@ -92,7 +91,6 @@
     registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;

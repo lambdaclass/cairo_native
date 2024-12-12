@@ -266,7 +266,7 @@
             // before calling this closure.
             </span><span class="kw">let </span><span class="kw-2">mut </span>needs_override = <span class="bool-val">false</span>;
             <span class="kw">for </span>member <span class="kw">in </span><span class="kw-2">&amp;</span>info.members {
-                registry.build_type(context, module, registry, metadata, member)<span class="question-mark">?</span>;
+                registry.build_type(context, module, metadata, member)<span class="question-mark">?</span>;
                 <span class="kw">if </span>metadata
                     .get::&lt;DupOverridesMeta&gt;()
                     .ok_or(Error::MissingMetadata)<span class="question-mark">?
@@ -293,7 +293,7 @@
             // before calling this closure.
             </span><span class="kw">let </span><span class="kw-2">mut </span>needs_override = <span class="bool-val">false</span>;
             <span class="kw">for </span>member <span class="kw">in </span><span class="kw-2">&amp;</span>info.members {
-                registry.build_type(context, module, registry, metadata, member)<span class="question-mark">?</span>;
+                registry.build_type(context, module, metadata, member)<span class="question-mark">?</span>;
                 <span class="kw">if </span>metadata
                     .get::&lt;DropOverridesMeta&gt;()
                     .ok_or(Error::MissingMetadata)<span class="question-mark">?
@@ -313,7 +313,7 @@
     <span class="kw">let </span>members = info
         .members
         .iter()
-        .map(|member| registry.build_type(context, module, registry, metadata, member))
+        .map(|member| registry.build_type(context, module, metadata, member))
         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;&gt;()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span>members, <span class="bool-val">false</span>))
 }
@@ -327,7 +327,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
     <span class="kw">let </span>location = Location::unknown(context);
 
-    <span class="kw">let </span>self_ty = registry.build_type(context, module, registry, metadata, info.self_ty())<span class="question-mark">?</span>;
+    <span class="kw">let </span>self_ty = registry.build_type(context, module, metadata, info.self_ty())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(self_ty, location)]));
@@ -336,7 +336,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>dst_value = entry.append_op_result(llvm::undef(self_ty, location))<span class="question-mark">?</span>;
 
     <span class="kw">for </span>(idx, member_id) <span class="kw">in </span>info.members.iter().enumerate() {
-        <span class="kw">let </span>member_ty = registry.build_type(context, module, registry, metadata, member_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>member_ty = registry.build_type(context, module, metadata, member_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>member_val = entry.extract_value(context, location, src_value, member_ty, idx)<span class="question-mark">?</span>;
 
         <span class="comment">// The following unwrap is unreachable because the registration logic will always insert it.
@@ -362,14 +362,14 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
     <span class="kw">let </span>location = Location::unknown(context);
 
-    <span class="kw">let </span>self_ty = registry.build_type(context, module, registry, metadata, info.self_ty())<span class="question-mark">?</span>;
+    <span class="kw">let </span>self_ty = registry.build_type(context, module, metadata, info.self_ty())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(self_ty, location)]));
 
     <span class="kw">let </span>value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">for </span>(idx, member_id) <span class="kw">in </span>info.members.iter().enumerate() {
-        <span class="kw">let </span>member_ty = registry.build_type(context, module, registry, metadata, member_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>member_ty = registry.build_type(context, module, metadata, member_id)<span class="question-mark">?</span>;
         <span class="kw">let </span>member_val = entry.extract_value(context, location, value, member_ty, idx)<span class="question-mark">?</span>;
 
         <span class="comment">// The following unwrap is unreachable because the registration logic will always insert it.

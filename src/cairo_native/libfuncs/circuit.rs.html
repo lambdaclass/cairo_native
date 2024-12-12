@@ -1311,10 +1311,6 @@
 <a href="#1311" id="1311">1311</a>
 <a href="#1312" id="1312">1312</a>
 <a href="#1313" id="1313">1313</a>
-<a href="#1314" id="1314">1314</a>
-<a href="#1315" id="1315">1315</a>
-<a href="#1316" id="1316">1316</a>
-<a href="#1317" id="1317">1317</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Circuit libfuncs
 
 </span><span class="kw">use super</span>::{increment_builtin_counter_by, LibfuncHelper};
@@ -1547,7 +1543,7 @@
     </span>{
         <span class="kw">let </span>data_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty;
         <span class="kw">let </span>(data_type, data_layout) =
-            registry.build_type_with_layout(context, helper, registry, metadata, data_type_id)<span class="question-mark">?</span>;
+            registry.build_type_with_layout(context, helper, metadata, data_type_id)<span class="question-mark">?</span>;
 
         <span class="comment">// Alloc return data
         </span><span class="kw">let </span>data_ptr =
@@ -1654,8 +1650,7 @@
     info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>descriptor_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty;
-    <span class="kw">let </span>descriptor_type =
-        registry.build_type(context, helper, registry, metadata, descriptor_type_id)<span class="question-mark">?</span>;
+    <span class="kw">let </span>descriptor_type = registry.build_type(context, helper, metadata, descriptor_type_id)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>unit = entry.append_op_result(llvm::undef(descriptor_type, location))<span class="question-mark">?</span>;
 
@@ -1747,12 +1742,12 @@
 
         <span class="kw">let </span>partial_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">1</span>].vars[<span class="number">2</span>].ty;
         <span class="kw">let </span>partial = err_block.append_op_result(llvm::undef(
-            registry.build_type(context, helper, registry, metadata, partial_type_id)<span class="question-mark">?</span>,
+            registry.build_type(context, helper, metadata, partial_type_id)<span class="question-mark">?</span>,
             location,
         ))<span class="question-mark">?</span>;
         <span class="kw">let </span>failure_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">1</span>].vars[<span class="number">3</span>].ty;
         <span class="kw">let </span>failure = err_block.append_op_result(llvm::undef(
-            registry.build_type(context, helper, registry, metadata, failure_type_id)<span class="question-mark">?</span>,
+            registry.build_type(context, helper, metadata, failure_type_id)<span class="question-mark">?</span>,
             location,
         ))<span class="question-mark">?</span>;
         err_block.append_operation(helper.br(<span class="number">1</span>, <span class="kw-2">&amp;</span>[add_mod, mul_mod, partial, failure], location));
@@ -2023,8 +2018,7 @@
     <span class="kw">let </span>mul_mod = increment_builtin_counter_by(context, entry, location, mul_mod, <span class="number">4</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>guarantee_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">2</span>].ty;
-    <span class="kw">let </span>guarantee_type =
-        registry.build_type(context, helper, registry, metadata, guarantee_type_id)<span class="question-mark">?</span>;
+    <span class="kw">let </span>guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))<span class="question-mark">?</span>;
 
@@ -2046,13 +2040,12 @@
     info: <span class="kw-2">&amp;</span>ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>guarantee_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty;
-    <span class="kw">let </span>guarantee_type =
-        registry.build_type(context, helper, registry, metadata, guarantee_type_id)<span class="question-mark">?</span>;
+    <span class="kw">let </span>guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>u96_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">1</span>].vars[<span class="number">0</span>].ty;
-    <span class="kw">let </span>u96_type = registry.build_type(context, helper, registry, metadata, u96_type_id)<span class="question-mark">?</span>;
+    <span class="kw">let </span>u96_type = registry.build_type(context, helper, metadata, u96_type_id)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>u96 = entry.append_op_result(llvm::undef(u96_type, location))<span class="question-mark">?</span>;
 
@@ -2081,7 +2074,7 @@
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>u96_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty;
-    <span class="kw">let </span>u96_type = registry.build_type(context, helper, registry, metadata, u96_type_id)<span class="question-mark">?</span>;
+    <span class="kw">let </span>u96_type = registry.build_type(context, helper, metadata, u96_type_id)<span class="question-mark">?</span>;
     <span class="kw">let </span>u96 = entry.append_op_result(llvm::undef(u96_type, location))<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[u96], location));
@@ -2124,8 +2117,7 @@
     <span class="kw">let </span>output_struct = u384_integer_to_struct(context, entry, location, output_integer)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>guarantee_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty;
-    <span class="kw">let </span>guarantee_type =
-        registry.build_type(context, helper, registry, metadata, guarantee_type_id)<span class="question-mark">?</span>;
+    <span class="kw">let </span>guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)<span class="question-mark">?</span>;
     <span class="kw">let </span>guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[output_struct, guarantee], location));

@@ -82,7 +82,7 @@
     info: WithSelf&lt;InfoAndTypeConcreteType&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Type&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
     <span class="comment">// TODO: Can its inner type require dup or drop? probably not since they are integers
-    </span><span class="kw">let </span>inner = registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>inner = registry.build_type(context, module, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(melior::dialect::llvm::r#type::r#struct(
         context,

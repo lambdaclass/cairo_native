@@ -483,12 +483,6 @@
 <a href="#483" id="483">483</a>
 <a href="#484" id="484">484</a>
 <a href="#485" id="485">485</a>
-<a href="#486" id="486">486</a>
-<a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
@@ -503,6 +497,10 @@
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
+        int::{
+            signed::{Sint16Traits, Sint32Traits, Sint64Traits, Sint8Traits},
+            unsigned::{Uint16Traits, Uint32Traits, Uint64Traits, Uint8Traits},
+        },
         lib_func::ParamSignature,
         starknet::StarkNetTypeConcrete,
         ConcreteLibfunc,
@@ -519,7 +517,6 @@
 <span class="kw">use </span>std::{cell::Cell, error::Error, ops::Deref};
 
 <span class="kw">mod </span>array;
-<span class="kw">mod </span>bitwise;
 <span class="kw">mod </span>r#bool;
 <span class="kw">mod </span>bounded_int;
 <span class="kw">mod </span>r#box;
@@ -538,25 +535,16 @@
 <span class="kw">mod </span>felt252_dict_entry;
 <span class="kw">mod </span>function_call;
 <span class="kw">mod </span>gas;
+<span class="kw">mod </span>int;
 <span class="kw">mod </span>int_range;
 <span class="kw">mod </span>mem;
 <span class="kw">mod </span>nullable;
 <span class="kw">mod </span>pedersen;
 <span class="kw">mod </span>poseidon;
-<span class="kw">mod </span>sint128;
-<span class="kw">mod </span>sint16;
-<span class="kw">mod </span>sint32;
-<span class="kw">mod </span>sint64;
-<span class="kw">mod </span>sint8;
 <span class="kw">mod </span>starknet;
 <span class="kw">mod </span>r#struct;
-<span class="kw">mod </span>uint128;
-<span class="kw">mod </span>uint16;
 <span class="kw">mod </span>uint256;
-<span class="kw">mod </span>uint32;
 <span class="kw">mod </span>uint512;
-<span class="kw">mod </span>uint64;
-<span class="kw">mod </span>uint8;
 
 <span class="doccomment">/// Generation of MLIR operations from their Sierra counterparts.
 ///
@@ -683,40 +671,40 @@
             <span class="self">Self</span>::Poseidon(selector) =&gt; <span class="self">self</span>::poseidon::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Sint8(info) =&gt; {
-                <span class="self">self</span>::sint8::build(context, registry, entry, location, helper, metadata, info)
-            }
-            <span class="self">Self</span>::Sint16(info) =&gt; {
-                <span class="self">self</span>::sint16::build(context, registry, entry, location, helper, metadata, info)
-            }
-            <span class="self">Self</span>::Sint32(info) =&gt; {
-                <span class="self">self</span>::sint32::build(context, registry, entry, location, helper, metadata, info)
-            }
-            <span class="self">Self</span>::Sint64(info) =&gt; {
-                <span class="self">self</span>::sint64::build(context, registry, entry, location, helper, metadata, info)
-            }
-            <span class="self">Self</span>::Sint128(info) =&gt; {
-                <span class="self">self</span>::sint128::build(context, registry, entry, location, helper, metadata, info)
-            }
+            <span class="self">Self</span>::Sint8(selector) =&gt; <span class="self">self</span>::int::build_signed::&lt;Sint8Traits&gt;(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Sint16(selector) =&gt; <span class="self">self</span>::int::build_signed::&lt;Sint16Traits&gt;(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Sint32(selector) =&gt; <span class="self">self</span>::int::build_signed::&lt;Sint32Traits&gt;(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Sint64(selector) =&gt; <span class="self">self</span>::int::build_signed::&lt;Sint64Traits&gt;(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            <span class="self">Self</span>::Sint128(selector) =&gt; <span class="self">self</span>::int::build_i128(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             <span class="self">Self</span>::StarkNet(selector) =&gt; <span class="self">self</span>::starknet::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             <span class="self">Self</span>::Struct(selector) =&gt; <span class="self">self</span>::r#struct::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Uint8(selector) =&gt; <span class="self">self</span>::uint8::build(
+            <span class="self">Self</span>::Uint8(selector) =&gt; <span class="self">self</span>::int::build_unsigned::&lt;Uint8Traits&gt;(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Uint16(selector) =&gt; <span class="self">self</span>::uint16::build(
+            <span class="self">Self</span>::Uint16(selector) =&gt; <span class="self">self</span>::int::build_unsigned::&lt;Uint16Traits&gt;(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Uint32(selector) =&gt; <span class="self">self</span>::uint32::build(
+            <span class="self">Self</span>::Uint32(selector) =&gt; <span class="self">self</span>::int::build_unsigned::&lt;Uint32Traits&gt;(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Uint64(selector) =&gt; <span class="self">self</span>::uint64::build(
+            <span class="self">Self</span>::Uint64(selector) =&gt; <span class="self">self</span>::int::build_unsigned::&lt;Uint64Traits&gt;(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::Uint128(selector) =&gt; <span class="self">self</span>::uint128::build(
+            <span class="self">Self</span>::Uint128(selector) =&gt; <span class="self">self</span>::int::build_u128(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             <span class="self">Self</span>::Uint256(selector) =&gt; <span class="self">self</span>::uint256::build(

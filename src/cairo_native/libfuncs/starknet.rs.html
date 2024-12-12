@@ -3010,24 +3010,6 @@
 <a href="#3010" id="3010">3010</a>
 <a href="#3011" id="3011">3011</a>
 <a href="#3012" id="3012">3012</a>
-<a href="#3013" id="3013">3013</a>
-<a href="#3014" id="3014">3014</a>
-<a href="#3015" id="3015">3015</a>
-<a href="#3016" id="3016">3016</a>
-<a href="#3017" id="3017">3017</a>
-<a href="#3018" id="3018">3018</a>
-<a href="#3019" id="3019">3019</a>
-<a href="#3020" id="3020">3020</a>
-<a href="#3021" id="3021">3021</a>
-<a href="#3022" id="3022">3022</a>
-<a href="#3023" id="3023">3023</a>
-<a href="#3024" id="3024">3024</a>
-<a href="#3025" id="3025">3025</a>
-<a href="#3026" id="3026">3026</a>
-<a href="#3027" id="3027">3027</a>
-<a href="#3028" id="3028">3028</a>
-<a href="#3029" id="3029">3029</a>
-<a href="#3030" id="3030">3030</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Starknet libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -3231,7 +3213,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -3550,7 +3531,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -3708,7 +3688,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -3984,7 +3963,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -4183,7 +4161,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -4332,7 +4309,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -4475,7 +4451,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -4595,14 +4570,12 @@
                 <span class="kw">let </span>(p0_ty, p0_layout) = registry.build_type_with_layout(
                     context,
                     helper,
-                    registry,
                     metadata,
                     <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">2</span>].ty,
                 )<span class="question-mark">?</span>;
                 <span class="kw">let </span>(p1_ty, p1_layout) = registry.build_type_with_layout(
                     context,
                     helper,
-                    registry,
                     metadata,
                     <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">3</span>].ty,
                 )<span class="question-mark">?</span>;
@@ -4622,7 +4595,6 @@
                 <span class="kw">let </span>(payload_ty, payload_layout) = registry.build_type_with_layout(
                     context,
                     helper,
-                    registry,
                     metadata,
                     <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">1</span>].vars[<span class="number">2</span>].ty,
                 )<span class="question-mark">?</span>;
@@ -4661,7 +4633,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -4873,7 +4844,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -5032,7 +5002,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -5216,7 +5185,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -5366,7 +5334,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -5541,7 +5508,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -5587,7 +5553,6 @@
     registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">3</span>].ty,
     )<span class="question-mark">?</span>;
@@ -5689,7 +5654,6 @@
     </span><span class="kw">let </span>(gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;

@@ -153,11 +153,6 @@
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Poseidon hashing libfuncs
 //!
 
@@ -215,13 +210,8 @@
     <span class="kw">let </span>poseidon_builtin =
         <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>felt252_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">1</span>].ty,
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>felt252_ty =
+        registry.build_type(context, helper, metadata, <span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">1</span>].ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>i256_ty = IntegerType::new(context, <span class="number">256</span>).into();
     <span class="kw">let </span>layout_i256 = get_integer_layout(<span class="number">256</span>);

@@ -232,7 +232,7 @@
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>input_ty = <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty;
-    registry.build_type(context, helper, registry, metadata, input_ty)<span class="question-mark">?</span>;
+    registry.build_type(context, helper, metadata, input_ty)<span class="question-mark">?</span>;
     metadata
         .get::&lt;DropOverridesMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?

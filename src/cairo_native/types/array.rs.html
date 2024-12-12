@@ -535,7 +535,7 @@
     info: <span class="kw-2">&amp;</span>WithSelf&lt;InfoAndTypeConcreteType&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
     <span class="kw">let </span>location = Location::unknown(context);
-    <span class="kw">let </span>value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())<span class="question-mark">?</span>;
+    <span class="kw">let </span>value_ty = registry.build_type(context, module, metadata, info.self_ty())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>elem_layout = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?</span>;
     <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
@@ -628,7 +628,7 @@
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    <span class="kw">let </span>value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())<span class="question-mark">?</span>;
+    <span class="kw">let </span>value_ty = registry.build_type(context, module, metadata, info.self_ty())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>elem_stride = elem_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align().size();

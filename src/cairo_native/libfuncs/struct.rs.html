@@ -211,7 +211,7 @@
     struct_type: <span class="kw-2">&amp;</span>ConcreteTypeId,
     fields: <span class="kw-2">&amp;</span>[Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt; {
-    <span class="kw">let </span>struct_ty = registry.build_type(context, helper, registry, metadata, struct_type)<span class="question-mark">?</span>;
+    <span class="kw">let </span>struct_ty = registry.build_type(context, helper, metadata, struct_type)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>acc = entry.append_operation(llvm::undef(struct_ty, location));
 

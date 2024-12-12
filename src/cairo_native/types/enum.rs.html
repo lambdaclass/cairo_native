@@ -1288,7 +1288,7 @@
             // before calling this closure.
             </span><span class="kw">let </span><span class="kw-2">mut </span>needs_override = <span class="bool-val">false</span>;
             <span class="kw">for </span>variant <span class="kw">in </span><span class="kw-2">&amp;</span>info.variants {
-                registry.build_type(context, module, registry, metadata, variant)<span class="question-mark">?</span>;
+                registry.build_type(context, module, metadata, variant)<span class="question-mark">?</span>;
                 <span class="kw">if </span>metadata
                     .get::&lt;DupOverridesMeta&gt;()
                     .ok_or(Error::MissingMetadata)<span class="question-mark">?
@@ -1315,7 +1315,7 @@
             // before calling this closure.
             </span><span class="kw">let </span><span class="kw-2">mut </span>needs_override = <span class="bool-val">false</span>;
             <span class="kw">for </span>variant <span class="kw">in </span><span class="kw-2">&amp;</span>info.variants {
-                registry.build_type(context, module, registry, metadata, variant)<span class="question-mark">?</span>;
+                registry.build_type(context, module, metadata, variant)<span class="question-mark">?</span>;
                 <span class="kw">if </span>metadata
                     .get::&lt;DropOverridesMeta&gt;()
                     .ok_or(Error::MissingMetadata)<span class="question-mark">?
@@ -1349,7 +1349,7 @@
     <span class="kw">let </span>i8_ty = IntegerType::new(context, <span class="number">8</span>).into();
     <span class="prelude-val">Ok</span>(<span class="kw">match </span>info.variants.len() {
         <span class="number">0 </span>=&gt; llvm::r#type::array(IntegerType::new(context, <span class="number">8</span>).into(), <span class="number">0</span>),
-        <span class="number">1 </span>=&gt; registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.variants[<span class="number">0</span>])<span class="question-mark">?</span>,
+        <span class="number">1 </span>=&gt; registry.build_type(context, module, metadata, <span class="kw-2">&amp;</span>info.variants[<span class="number">0</span>])<span class="question-mark">?</span>,
         <span class="kw">_ if </span><span class="lifetime">'block</span>: {
             <span class="kw">for </span>type_id <span class="kw">in </span><span class="kw-2">&amp;</span>info.variants {
                 <span class="kw">if </span>!registry.get_type(type_id)<span class="question-mark">?</span>.is_zst(registry)<span class="question-mark">? </span>{
@@ -1388,7 +1388,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
     <span class="kw">let </span>location = Location::unknown(context);
 
-    <span class="kw">let </span>self_ty = registry.build_type(context, module, registry, metadata, info.self_ty())<span class="question-mark">?</span>;
+    <span class="kw">let </span>self_ty = registry.build_type(context, module, metadata, info.self_ty())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(self_ty, location)]));
@@ -1486,7 +1486,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
     <span class="kw">let </span>location = Location::unknown(context);
 
-    <span class="kw">let </span>self_ty = registry.build_type(context, module, registry, metadata, info.self_ty())<span class="question-mark">?</span>;
+    <span class="kw">let </span>self_ty = registry.build_type(context, module, metadata, info.self_ty())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(self_ty, location)]));
@@ -1612,7 +1612,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>output = Vec::with_capacity(variants.len());
     <span class="kw">for </span>variant <span class="kw">in </span>variants {
         <span class="kw">let </span>(payload_ty, payload_layout) =
-            registry.build_type_with_layout(context, module, registry, metadata, variant)<span class="question-mark">?</span>;
+            registry.build_type_with_layout(context, module, metadata, variant)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>full_layout = tag_layout.extend(payload_layout)<span class="question-mark">?</span>.<span class="number">0</span>;
         layout = Layout::from_size_align(

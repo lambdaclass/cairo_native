@@ -453,7 +453,7 @@
     //   type of the const type must be the same as the corresponding enum variant type.
 
     </span><span class="kw">let </span>inner_type = registry.get_type(<span class="kw-2">&amp;</span>info.inner_ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>inner_ty = registry.build_type(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.inner_ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>inner_ty = registry.build_type(context, helper, metadata, <span class="kw-2">&amp;</span>info.inner_ty)<span class="question-mark">?</span>;
 
     <span class="kw">match </span>inner_type {
         CoreTypeConcrete::Struct(<span class="kw">_</span>) =&gt; {

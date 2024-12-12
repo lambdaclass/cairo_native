@@ -211,7 +211,7 @@
         metadata,
         info.self_ty(),
         |metadata| {
-            registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+            registry.build_type(context, module, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
             <span class="comment">// The following unwrap is unreachable because `register_with` will always insert it before
             // calling this closure.
@@ -231,7 +231,7 @@
         metadata,
         info.self_ty(),
         |metadata| {
-            registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+            registry.build_type(context, module, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
             <span class="comment">// The following unwrap is unreachable because `register_with` will always insert it before
             // calling this closure.
@@ -244,7 +244,7 @@
         },
     )<span class="question-mark">?</span>;
 
-    registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)
+    registry.build_type(context, module, metadata, <span class="kw-2">&amp;</span>info.ty)
 }
 
 <span class="kw">fn </span>build_dup&lt;<span class="lifetime">'ctx</span>&gt;(
@@ -256,7 +256,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
     <span class="kw">let </span>location = Location::unknown(context);
 
-    <span class="kw">let </span>inner_ty = registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>inner_ty = registry.build_type(context, module, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(inner_ty, location)]));
@@ -280,7 +280,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
     <span class="kw">let </span>location = Location::unknown(context);
 
-    <span class="kw">let </span>inner_ty = registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>inner_ty = registry.build_type(context, module, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(inner_ty, location)]));

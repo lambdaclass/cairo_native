@@ -2944,12 +2944,6 @@
 <a href="#2944" id="2944">2944</a>
 <a href="#2945" id="2945">2945</a>
 <a href="#2946" id="2946">2946</a>
-<a href="#2947" id="2947">2947</a>
-<a href="#2948" id="2948">2948</a>
-<a href="#2949" id="2949">2949</a>
-<a href="#2950" id="2950">2950</a>
-<a href="#2951" id="2951">2951</a>
-<a href="#2952" id="2952">2952</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -3121,8 +3115,7 @@
 
     <span class="kw">let </span>ptr_ty = llvm::r#type::pointer(context, <span class="number">0</span>);
     <span class="kw">let </span>len_ty = IntegerType::new(context, <span class="number">32</span>).into();
-    <span class="kw">let </span>(<span class="kw">_</span>, tuple_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(<span class="kw">_</span>, tuple_layout) = registry.build_type_with_layout(context, helper, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>array_len_bytes = tuple_layout.pad_to_align().size();
     <span class="kw">let </span>array_len_bytes_with_offset = entry.const_int(
@@ -3217,10 +3210,9 @@
 
     <span class="kw">let </span>ptr_ty = llvm::r#type::pointer(context, <span class="number">0</span>);
     <span class="kw">let </span>len_ty = IntegerType::new(context, <span class="number">32</span>).into();
-    <span class="kw">let </span>(<span class="kw">_</span>, elem_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, elem_id)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(<span class="kw">_</span>, elem_layout) = registry.build_type_with_layout(context, helper, metadata, elem_id)<span class="question-mark">?</span>;
     <span class="kw">let </span>(tuple_ty, tuple_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+        registry.build_type_with_layout(context, helper, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>array_ptr = entry.extract_value(context, location, entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(), ptr_ty, <span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>array_start =
@@ -3253,7 +3245,6 @@
     </span>registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -3389,7 +3380,6 @@
     <span class="kw">let </span>self_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty,
     )<span class="question-mark">?</span>;
@@ -3398,7 +3388,7 @@
     <span class="kw">let </span>len_ty = IntegerType::new(context, <span class="number">32</span>).into();
 
     <span class="kw">let </span>(elem_ty, elem_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+        registry.build_type_with_layout(context, helper, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>elem_stride = entry.const_int(context, location, elem_layout.pad_to_align().size(), <span class="number">64</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">32</span>)<span class="question-mark">?</span>;
@@ -3898,11 +3888,11 @@
         }
     };
 
-    registry.build_type(context, helper, registry, metadata, self_ty)<span class="question-mark">?</span>;
+    registry.build_type(context, helper, metadata, self_ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>extract_len_value = entry.const_int_from_type(context, location, extract_len, len_ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>(elem_type, elem_layout) =
-        registry.build_type_with_layout(context, helper, registry, metadata, elem_ty)<span class="question-mark">?</span>;
+        registry.build_type_with_layout(context, helper, metadata, elem_ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>array_start = entry.extract_value(context, location, array_value, len_ty, <span class="number">1</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>array_end = entry.extract_value(context, location, array_value, len_ty, <span class="number">2</span>)<span class="question-mark">?</span>;
@@ -4276,7 +4266,6 @@
     </span>registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
     )<span class="question-mark">?</span>;
@@ -4311,7 +4300,7 @@
 
     {
         <span class="kw">let </span>(elem_ty, elem_layout) =
-            registry.build_type_with_layout(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+            registry.build_type_with_layout(context, helper, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
         <span class="kw">let </span>elem_stride =
             valid_block.const_int(context, location, elem_layout.pad_to_align().size(), <span class="number">64</span>)<span class="question-mark">?</span>;
 
@@ -4510,7 +4499,6 @@
     <span class="kw">let </span>self_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
     )<span class="question-mark">?</span>;
@@ -4561,7 +4549,7 @@
 
     {
         <span class="kw">let </span>(elem_ty, elem_layout) =
-            registry.build_type_with_layout(context, helper, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+            registry.build_type_with_layout(context, helper, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
         <span class="kw">let </span>elem_stride =
             valid_block.const_int(context, location, elem_layout.pad_to_align().size(), <span class="number">64</span>)<span class="question-mark">?</span>;
 

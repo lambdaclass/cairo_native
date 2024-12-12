@@ -461,7 +461,7 @@
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    <span class="kw">let </span>inner_ty = registry.build_type(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
+    <span class="kw">let </span>inner_ty = registry.build_type(context, module, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
