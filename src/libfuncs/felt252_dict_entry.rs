@@ -51,6 +51,8 @@ pub fn build<'ctx, 'this>(
 ///
 /// The dict entry also contains a pointer to the dictionary.
 ///
+/// If the key doesn't yet exist, it is created and the type's zero-value is returned.
+///
 /// # Cairo Signature
 ///
 /// ```cairo
