@@ -109,7 +109,7 @@ pub fn build_get<'ctx, 'this>(
     let null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
 
-    // If the entry_value_ptr is null, then there is no previous value
+    // If the entry_value_ptr is null, then the entry is vacant
     let is_vacant = entry.append_op_result(
         ods::llvm::icmp(
             context,
@@ -229,7 +229,7 @@ pub fn build_finalize<'ctx, 'this>(
     let null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
 
-    // If the entry_value_ptr is null, then there is no previous value
+    // If the entry_value_ptr is null, then the entry is vacant
     let is_vacant = entry.append_op_result(
         ods::llvm::icmp(
             context,
