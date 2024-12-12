@@ -4,7 +4,6 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::{
-        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
@@ -21,7 +20,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{cf, llvm, ods, scf},
+    dialect::{llvm, ods, scf},
     ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Region},
     Context,
 };
@@ -129,6 +128,15 @@ pub fn build_get<'ctx, 'this>(
             // If the entry is vacant, then create the default value
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
+            let helper = LibfuncHelper {
+                module: helper.module,
+                init_block: helper.init_block,
+                region: &region,
+                blocks_arena: helper.blocks_arena,
+                last_block: std::cell::Cell::new(&block),
+                branches: vec![],
+                results: vec![],
+            };
 
             let value = registry
                 .get_type(&info.branch_signatures()[0].vars[1].ty)?
@@ -137,7 +145,7 @@ pub fn build_get<'ctx, 'this>(
                     registry,
                     &block,
                     location,
-                    helper,
+                    &helper,
                     metadata,
                     &info.branch_signatures()[0].vars[1].ty,
                 )?;
@@ -198,7 +206,7 @@ pub fn build_finalize<'ctx, 'this>(
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    let (value_ty, value_layout) = registry.build_type_with_layout(
+    let (_value_ty, value_layout) = registry.build_type_with_layout(
         context,
         helper,
         registry,
@@ -277,9 +285,9 @@ pub fn build_finalize<'ctx, 'this>(
     ))?;
 
     // Write the new value to the entry pointer
-    block_final.store(context, location, entry_value_ptr, new_entry_value)?;
+    entry.store(context, location, entry_value_ptr, new_entry_value)?;
 
-    block_final.append_operation(helper.br(0, &[dict_ptr], location));
+    entry.append_operation(helper.br(0, &[dict_ptr], location));
 
     Ok(())
 }
