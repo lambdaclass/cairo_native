@@ -91,9 +91,9 @@ pub fn build_get<'ctx, 'this>(
             .alloca1(context, location, key_ty, key_layout.align())?;
     entry.store(context, location, entry_key_ptr, entry_key)?;
 
-    // Runtime's dict_get returnes a pointer to the key value, which is a
+    // Runtime's dict_get returnes a pointer to the entry's value, which is a
     // pointer itself. Effectively, we have a double pointer to the value,
-    // avoiding allocating an element from inside the runtime.
+    // avoiding a second call into the runtime when finalizing the entry.
     let entry_value_ptr_ptr = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
