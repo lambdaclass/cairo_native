@@ -78,40 +78,19 @@ pub fn build_get<'ctx, 'this>(
             .alloca1(context, location, key_ty, key_layout.align())?;
     entry.store(context, location, entry_key_ptr, entry_key)?;
 
-    // Double pointer. Avoid allocating an element on a dict getter.
-    let entry_value_ptr_ptr = metadata
+    let (is_present, entry_value_ptr) = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
         .dict_get(context, helper, entry, dict_ptr, entry_key_ptr, location)?;
-    let entry_value_ptr = entry.load(
-        context,
-        location,
-        entry_value_ptr_ptr,
-        llvm::r#type::pointer(context, 0),
-    )?;
-
-    let null_ptr =
-        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
-    let is_vacant = entry.append_op_result(
-        ods::llvm::icmp(
-            context,
-            IntegerType::new(context, 1).into(),
-            entry_value_ptr,
-            null_ptr,
-            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
-            location,
-        )
-        .into(),
-    )?;
 
     let block_occupied = helper.append_block(Block::new(&[]));
     let block_vacant = helper.append_block(Block::new(&[]));
     let block_final = helper.append_block(Block::new(&[(value_ty, location)]));
     entry.append_operation(cf::cond_br(
         context,
-        is_vacant,
-        block_vacant,
+        is_present,
         block_occupied,
+        block_vacant,
         &[],
         &[],
         location,
@@ -153,7 +132,7 @@ pub fn build_get<'ctx, 'this>(
 
     let entry = block_final.append_op_result(llvm::undef(entry_ty, location))?;
     let entry =
-        block_final.insert_values(context, location, entry, &[dict_ptr, entry_value_ptr_ptr])?;
+        block_final.insert_values(context, location, entry, &[dict_ptr, entry_value_ptr])?;
 
     block_final.append_operation(helper.br(0, &[entry, block_final.arg(0)?], location));
     Ok(())

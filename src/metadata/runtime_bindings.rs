@@ -5,6 +5,7 @@
 
 use crate::{
     error::{Error, Result},
+    libfuncs::LibfuncHelper,
     utils::BlockExt,
 };
 use melior::{
@@ -16,7 +17,7 @@ use melior::{
     },
     Context,
 };
-use std::{alloc::Layout, collections::HashSet, marker::PhantomData};
+use std::{alloc::Layout, collections::HashSet, ffi::c_int, marker::PhantomData};
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum RuntimeBinding {
@@ -721,17 +722,17 @@ impl RuntimeBindingsMeta {
     pub fn dict_get<'c, 'a>(
         &mut self,
         context: &'c Context,
-        module: &Module,
+        helper: &LibfuncHelper<'c, 'a>,
         block: &'a Block<'c>,
         dict_ptr: Value<'c, 'a>, // ptr to the dict
         key_ptr: Value<'c, 'a>,  // key must be a ptr to Felt
         location: Location<'c>,
-    ) -> Result<Value<'c, 'a>>
+    ) -> Result<(Value<'c, 'a>, Value<'c, 'a>)>
     where
         'c: 'a,
     {
         if self.active_map.insert(RuntimeBinding::DictGet) {
-            module.body().append_operation(func::func(
+            helper.body().append_operation(func::func(
                 context,
                 StringAttribute::new(context, "cairo_native__dict_get"),
                 TypeAttribute::new(
@@ -740,8 +741,9 @@ impl RuntimeBindingsMeta {
                         &[
                             llvm::r#type::pointer(context, 0),
                             llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
                         ],
-                        &[llvm::r#type::pointer(context, 0)],
+                        &[IntegerType::new(context, c_int::BITS).into()],
                     )
                     .into(),
                 ),
@@ -761,73 +763,29 @@ impl RuntimeBindingsMeta {
             ));
         }
 
-        block.append_op_result(func::call(
+        let value_ptr = helper.init_block().alloca1(
+            context,
+            location,
+            llvm::r#type::pointer(context, 0),
+            align_of::<*mut ()>(),
+        )?;
+
+        let is_present = block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_get"),
-            &[dict_ptr, key_ptr],
-            &[llvm::r#type::pointer(context, 0)],
-            location,
-        ))
-    }
-
-    /// Register if necessary, then invoke the `dict_insert()` function.
-    ///
-    /// Inserts the provided key value. Returning the old one or nullptr if there was none.
-    ///
-    /// Returns a opaque pointer as the result.
-    #[allow(clippy::too_many_arguments)]
-    pub fn dict_insert<'c, 'a>(
-        &mut self,
-        context: &'c Context,
-        module: &Module,
-        block: &'a Block<'c>,
-        dict_ptr: Value<'c, 'a>,  // ptr to the dict
-        key_ptr: Value<'c, 'a>,   // key must be a ptr to Felt
-        value_ptr: Value<'c, 'a>, // value must be a opaque non null ptr
-        location: Location<'c>,
-    ) -> Result<OperationRef<'c, 'a>>
-    where
-        'c: 'a,
-    {
-        if self.active_map.insert(RuntimeBinding::DictInsert) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__dict_insert"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[llvm::r#type::pointer(context, 0)],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__dict_insert"),
             &[dict_ptr, key_ptr, value_ptr],
             &[llvm::r#type::pointer(context, 0)],
             location,
-        )))
+        ))?;
+
+        let value_ptr = block.load(
+            context,
+            location,
+            value_ptr,
+            llvm::r#type::pointer(context, 0),
+        )?;
+
+        Ok((is_present, value_ptr))
     }
 
     /// Register if necessary, then invoke the `dict_gas_refund()` function.

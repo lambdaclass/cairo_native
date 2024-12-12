@@ -25,7 +25,6 @@ use cairo_native_runtime::FeltDict;
 use educe::Educe;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{Euclid, One};
-use slab::Slab;
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::{alloc, dealloc, Layout},
@@ -387,8 +386,7 @@ impl Value {
                             mappings: HashMap::with_capacity(map.len()),
 
                             layout: elem_layout,
-                            mem_slots: Slab::with_capacity(map.len()),
-                            mem_data: if map.is_empty() {
+                            elements: if map.is_empty() {
                                 null_mut()
                             } else {
                                 alloc(Layout::from_size_align_unchecked(
@@ -407,13 +405,13 @@ impl Value {
                             let key = key.to_bytes_le();
                             let value = value.to_ptr(arena, registry, &info.ty)?;
 
-                            let index = value_map.mem_slots.insert(());
+                            let index = value_map.mappings.len();
                             value_map.mappings.insert(key, index);
 
                             std::ptr::copy_nonoverlapping(
                                 value.cast::<u8>().as_ptr(),
                                 value_map
-                                    .mem_data
+                                    .elements
                                     .byte_add(elem_layout.pad_to_align().size() * index)
                                     .cast(),
                                 elem_layout.size(),
@@ -816,7 +814,7 @@ impl Value {
                             key,
                             Self::from_ptr(
                                 NonNull::new(
-                                    dict.mem_data
+                                    dict.elements
                                         .byte_add(dict.layout.pad_to_align().size() * index),
                                 )
                                 .to_native_assert_error(
@@ -839,9 +837,9 @@ impl Value {
                         );
 
                         dealloc(
-                            dict.mem_data.cast(),
+                            dict.elements.cast(),
                             Layout::from_size_align_unchecked(
-                                dict.layout.pad_to_align().size() * dict.mem_slots.capacity(),
+                                dict.layout.pad_to_align().size() * dict.mappings.capacity(),
                                 dict.layout.align(),
                             ),
                         );
@@ -855,7 +853,7 @@ impl Value {
                     }
                 }
                 CoreTypeConcrete::Felt252DictEntry(_) => {
-                    native_panic!("unimplemented: shouldn't be possible to return")
+                    native_panic!("unimplemented: should be impossible to return")
                 }
                 CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)

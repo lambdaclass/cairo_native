@@ -995,7 +995,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "slab",
  "starknet-types-core",
  "stats_alloc",
  "tempfile",
@@ -1016,7 +1015,6 @@ dependencies = [
  "lazy_static",
  "num-traits",
  "rand",
- "slab",
  "starknet-curve 0.5.1",
  "starknet-types-core",
 ]

@@ -18,7 +18,6 @@ starknet-types-core = { version = "0.1.7", default-features = false, features = 
 cairo-lang-sierra-gas = "2.9.0-dev.0"
 starknet-curve = "0.5.1"
 lazy_static = "1.5.0"
-slab = "0.4.9"
 rand = "0.8.5"
 itertools = "0.13.0"
 num-traits = "0.2"

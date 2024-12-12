@@ -7,7 +7,6 @@ use itertools::Itertools;
 use lazy_static::lazy_static;
 use num_traits::{ToPrimitive, Zero};
 use rand::Rng;
-use slab::Slab;
 use starknet_curve::curve_params::BETA;
 use starknet_types_core::{
     curve::{AffinePoint, ProjectivePoint},
@@ -150,8 +149,7 @@ pub struct FeltDict {
     pub mappings: HashMap<[u8; 32], usize>,
 
     pub layout: Layout,
-    pub mem_slots: Slab<()>,
-    pub mem_data: *mut (),
+    pub elements: *mut (),
 
     pub count: u64,
 }
@@ -168,8 +166,7 @@ pub unsafe extern "C" fn cairo_native__dict_new(size: u64, align: u64) -> *mut F
         mappings: HashMap::default(),
 
         layout: Layout::from_size_align_unchecked(size as usize, align as usize),
-        mem_slots: Slab::new(),
-        mem_data: null_mut(),
+        elements: null_mut(),
 
         count: 0,
     }))
@@ -193,9 +190,9 @@ pub unsafe extern "C" fn cairo_native__dict_drop(
 
     // Free the entries manually.
     if let Some(drop_fn) = drop_fn {
-        for (_, index) in dict.mappings.into_iter() {
+        for (_, &index) in dict.mappings.iter() {
             let value_ptr = dict
-                .mem_data
+                .elements
                 .byte_add(dict.layout.pad_to_align().size() * index);
 
             drop_fn(value_ptr.cast());
@@ -203,11 +200,11 @@ pub unsafe extern "C" fn cairo_native__dict_drop(
     }
 
     // Free the value data.
-    if !dict.mem_data.is_null() {
+    if !dict.elements.is_null() {
         dealloc(
-            dict.mem_data.cast(),
+            dict.elements.cast(),
             Layout::from_size_align_unchecked(
-                dict.layout.pad_to_align().size() * dict.mem_slots.capacity(),
+                dict.layout.pad_to_align().size() * dict.mappings.capacity(),
                 dict.layout.align(),
             ),
         );
@@ -229,8 +226,7 @@ pub unsafe extern "C" fn cairo_native__dict_dup(
         mappings: HashMap::with_capacity(old_dict.mappings.len()),
 
         layout: old_dict.layout,
-        mem_slots: Slab::with_capacity(old_dict.mappings.len()),
-        mem_data: if old_dict.mappings.is_empty() {
+        elements: if old_dict.mappings.is_empty() {
             null_mut()
         } else {
             alloc(Layout::from_size_align_unchecked(
@@ -246,12 +242,12 @@ pub unsafe extern "C" fn cairo_native__dict_dup(
 
     for (&key, &old_index) in old_dict.mappings.iter() {
         let old_value_ptr = old_dict
-            .mem_data
+            .elements
             .byte_add(old_dict.layout.pad_to_align().size() * old_index);
 
-        let new_index = new_dict.mem_slots.insert(());
+        let new_index = new_dict.mappings.len();
         let new_value_ptr = new_dict
-            .mem_data
+            .elements
             .byte_add(new_dict.layout.pad_to_align().size() * new_index);
 
         new_dict.mappings.insert(key, new_index);
@@ -287,21 +283,22 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     let mut key = *key;
     key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
+    let old_capacity = dict.mappings.capacity();
+    let index = dict.mappings.len();
     let (index, is_present) = match dict.mappings.entry(key) {
         Entry::Occupied(entry) => (*entry.get(), 1),
         Entry::Vacant(entry) => {
-            let old_capacity = dict.mem_slots.capacity();
-            let index = *entry.insert(dict.mem_slots.insert(()));
+            entry.insert(index);
 
             // Reallocate `mem_data` to match the slab's capacity.
-            if old_capacity != dict.mem_slots.capacity() {
-                dict.mem_data = realloc(
-                    dict.mem_data.cast(),
+            if old_capacity != dict.mappings.capacity() {
+                dict.elements = realloc(
+                    dict.elements.cast(),
                     Layout::from_size_align_unchecked(
                         dict.layout.pad_to_align().size() * old_capacity,
                         dict.layout.align(),
                     ),
-                    dict.layout.pad_to_align().size() * dict.mem_slots.capacity(),
+                    dict.layout.pad_to_align().size() * dict.mappings.capacity(),
                 )
                 .cast();
             }
@@ -311,7 +308,7 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     };
 
     value_ptr.write(
-        dict.mem_data
+        dict.elements
             .byte_add(dict.layout.pad_to_align().size() * index)
             .cast(),
     );
