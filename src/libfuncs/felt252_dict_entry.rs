@@ -46,6 +46,16 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+/// The felt252_dict_entry_get libfunc receives the dictionary and the key and
+/// returns the associated dict entry, along with a clone of it's value.
+///
+/// The dict entry also contains a pointer to the dictionary.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn felt252_dict_entry_get<T>(dict: Felt252Dict<T>, key: felt252) -> (Felt252DictEntry<T>, T) nopanic;
+/// ```
 pub fn build_get<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -161,6 +171,14 @@ pub fn build_get<'ctx, 'this>(
     Ok(())
 }
 
+/// The felt252_dict_entry_finalize libfunc receives the dict entry and a new value,
+/// inserts the new value in the entry, and returns the full dictionary.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn felt252_dict_entry_finalize<T>(dict_entry: Felt252DictEntry<T>, new_value: T) -> Felt252Dict<T> nopanic;
+/// ```
 pub fn build_finalize<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
