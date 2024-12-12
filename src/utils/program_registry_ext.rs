@@ -15,7 +15,6 @@ pub trait ProgramRegistryExt {
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
     ) -> Result<Type<'ctx>>;
@@ -24,7 +23,6 @@ pub trait ProgramRegistryExt {
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
     ) -> Result<(Type<'ctx>, Layout)>;
@@ -35,28 +33,25 @@ impl ProgramRegistryExt for ProgramRegistry<CoreType, CoreLibfunc> {
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
     ) -> Result<Type<'ctx>> {
-        registry
-            .get_type(id)?
-            .build(context, module, registry, metadata, id)
+        self.get_type(id)?
+            .build(context, module, self, metadata, id)
     }
 
     fn build_type_with_layout<'ctx>(
         &self,
         context: &'ctx Context,
         module: &Module<'ctx>,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
     ) -> Result<(Type<'ctx>, Layout)> {
-        let concrete_type = registry.get_type(id)?;
+        let concrete_type = self.get_type(id)?;
 
         Ok((
-            concrete_type.build(context, module, registry, metadata, id)?,
-            concrete_type.layout(registry)?,
+            concrete_type.build(context, module, self, metadata, id)?,
+            concrete_type.layout(self)?,
         ))
     }
 }

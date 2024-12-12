@@ -438,7 +438,6 @@ pub fn build_unwrap_point<'ctx, 'this>(
         registry.build_type(
             context,
             helper,
-            registry,
             metadata,
             &info.branch_signatures()[0].vars[0].ty,
         )?,
@@ -452,7 +451,6 @@ pub fn build_unwrap_point<'ctx, 'this>(
         registry.build_type(
             context,
             helper,
-            registry,
             metadata,
             &info.branch_signatures()[0].vars[1].ty,
         )?,
@@ -476,7 +474,6 @@ pub fn build_zero<'ctx, 'this>(
     let ec_point_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;

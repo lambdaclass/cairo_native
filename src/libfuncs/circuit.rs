@@ -230,7 +230,7 @@ fn build_add_input<'ctx, 'this>(
     {
         let data_type_id = &info.branch_signatures()[0].vars[0].ty;
         let (data_type, data_layout) =
-            registry.build_type_with_layout(context, helper, registry, metadata, data_type_id)?;
+            registry.build_type_with_layout(context, helper, metadata, data_type_id)?;
 
         // Alloc return data
         let data_ptr =
@@ -337,8 +337,7 @@ fn build_get_descriptor<'ctx, 'this>(
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     let descriptor_type_id = &info.branch_signatures()[0].vars[0].ty;
-    let descriptor_type =
-        registry.build_type(context, helper, registry, metadata, descriptor_type_id)?;
+    let descriptor_type = registry.build_type(context, helper, metadata, descriptor_type_id)?;
 
     let unit = entry.append_op_result(llvm::undef(descriptor_type, location))?;
 
@@ -430,12 +429,12 @@ fn build_eval<'ctx, 'this>(
 
         let partial_type_id = &info.branch_signatures()[1].vars[2].ty;
         let partial = err_block.append_op_result(llvm::undef(
-            registry.build_type(context, helper, registry, metadata, partial_type_id)?,
+            registry.build_type(context, helper, metadata, partial_type_id)?,
             location,
         ))?;
         let failure_type_id = &info.branch_signatures()[1].vars[3].ty;
         let failure = err_block.append_op_result(llvm::undef(
-            registry.build_type(context, helper, registry, metadata, failure_type_id)?,
+            registry.build_type(context, helper, metadata, failure_type_id)?,
             location,
         ))?;
         err_block.append_operation(helper.br(1, &[add_mod, mul_mod, partial, failure], location));
@@ -706,8 +705,7 @@ fn build_failure_guarantee_verify<'ctx, 'this>(
     let mul_mod = increment_builtin_counter_by(context, entry, location, mul_mod, 4)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[2].ty;
-    let guarantee_type =
-        registry.build_type(context, helper, registry, metadata, guarantee_type_id)?;
+    let guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)?;
 
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
@@ -729,13 +727,12 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     info: &ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
 ) -> Result<()> {
     let guarantee_type_id = &info.branch_signatures()[0].vars[0].ty;
-    let guarantee_type =
-        registry.build_type(context, helper, registry, metadata, guarantee_type_id)?;
+    let guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)?;
 
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
     let u96_type_id = &info.branch_signatures()[1].vars[0].ty;
-    let u96_type = registry.build_type(context, helper, registry, metadata, u96_type_id)?;
+    let u96_type = registry.build_type(context, helper, metadata, u96_type_id)?;
 
     let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
 
@@ -764,7 +761,7 @@ fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let u96_type_id = &info.branch_signatures()[0].vars[0].ty;
-    let u96_type = registry.build_type(context, helper, registry, metadata, u96_type_id)?;
+    let u96_type = registry.build_type(context, helper, metadata, u96_type_id)?;
     let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
 
     entry.append_operation(helper.br(0, &[u96], location));
@@ -807,8 +804,7 @@ fn build_get_output<'ctx, 'this>(
     let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
-    let guarantee_type =
-        registry.build_type(context, helper, registry, metadata, guarantee_type_id)?;
+    let guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)?;
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
     entry.append_operation(helper.br(0, &[output_struct, guarantee], location));

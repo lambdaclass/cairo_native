@@ -69,18 +69,16 @@ pub fn build_get<'ctx, 'this>(
     let (key_ty, key_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[1].ty,
     )?;
     let entry_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
-    let value_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
+    let value_ty = registry.build_type(context, helper, metadata, &info.ty)?;
 
     let dict_ptr = entry.arg(0)?;
     let entry_key = entry.arg(1)?;
@@ -213,7 +211,6 @@ pub fn build_finalize<'ctx, 'this>(
     let (_value_ty, value_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[1].ty,
     )?;
