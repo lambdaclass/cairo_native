@@ -176,10 +176,14 @@ pub fn build_get<'ctx, 'this>(
         &[dict_ptr, entry_value_ptr_ptr],
     )?;
 
-    // A this point, the internal state holds two references to the current dict
-    // entry value until the finalize libfunc is called. If the compiler were to drop
-    // the dict entry as well as the value, then there would be undefined behaviour.
-    // This should never happen, as a dict entry must always be finalized.
+    // The `Felt252DictEntry<T>` holds both the `Felt252Dict<T>` and the pointer
+    // to the space where the new value will be written when the entry is finalized.
+    // If the entry were to be dropped (without being consumed by the finalizer), which
+    // shouldn't be possible under normal conditions, and the type `T` requires a
+    // custom drop implementation (ex. arrays, dictionaries), it'll cause undefined
+    // behavior because when the value is moved out of the dictionary (on `get`), the
+    // memory it occupied is not modified because we're expecting it to be overwritten
+    // by the finalizer (in other words, the extracted element will be dropped twice).
 
     entry.append_operation(helper.br(0, &[dict_entry, value], location));
     Ok(())
