@@ -92,7 +92,9 @@ pub fn build_get<'ctx, 'this>(
             .alloca1(context, location, key_ty, key_layout.align())?;
     entry.store(context, location, entry_key_ptr, entry_key)?;
 
-    // Double pointer. Avoid allocating an element on a dict getter.
+    // Runtime's dict_get returnes a pointer to the key value, which is a
+    // pointer itself. Effectively, we have a double pointer to the value,
+    // avoiding allocating an element from inside the runtime.
     let entry_value_ptr_ptr = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
@@ -106,6 +108,8 @@ pub fn build_get<'ctx, 'this>(
 
     let null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+
+    // If the entry_value_ptr is null, then there is no previous value
     let is_vacant = entry.append_op_result(
         ods::llvm::icmp(
             context,
@@ -132,6 +136,7 @@ pub fn build_get<'ctx, 'this>(
     ));
 
     {
+        // If the entry is occupied, then we load the previous value from the pointer
         let value = block_occupied.load(context, location, entry_value_ptr, value_ty)?;
         let values = match metadata.get::<DupOverridesMeta>() {
             Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
@@ -151,6 +156,7 @@ pub fn build_get<'ctx, 'this>(
     }
 
     {
+        // If the entry is vacant, then we create the default value
         let value = registry
             .get_type(&info.branch_signatures()[0].vars[1].ty)?
             .build_default(
