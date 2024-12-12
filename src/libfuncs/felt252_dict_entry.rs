@@ -167,7 +167,7 @@ pub fn build_get<'ctx, 'this>(
         location,
     ))?;
 
-    // Build the dict entry struct: `crate::types::felt252_dict_entry`
+    // Build the dict entry struct: `Felt252DictEntry<T>`.
     let dict_entry = entry.append_op_result(llvm::undef(entry_ty, location))?;
     let dict_entry = entry.insert_values(
         context,
