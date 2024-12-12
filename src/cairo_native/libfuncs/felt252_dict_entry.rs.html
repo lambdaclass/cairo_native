@@ -359,13 +359,37 @@
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary entry libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
     error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{
-        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
@@ -382,8 +406,8 @@
     program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>melior::{
-    dialect::{cf, llvm, ods},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    dialect::{llvm, ods, scf},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Region},
     Context,
 };
 
@@ -407,7 +431,19 @@
     }
 }
 
-<span class="kw">pub fn </span>build_get&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+<span class="doccomment">/// The felt252_dict_entry_get libfunc receives the dictionary and the key and
+/// returns the associated dict entry, along with it's value.
+///
+/// The dict entry also contains a pointer to the dictionary.
+///
+/// If the key doesn't yet exist, it is created and the type's default value is returned.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn felt252_dict_entry_get&lt;T&gt;(dict: Felt252Dict&lt;T&gt;, key: felt252) -&gt; (Felt252DictEntry&lt;T&gt;, T) nopanic;
+/// ```
+</span><span class="kw">pub fn </span>build_get&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
@@ -439,7 +475,9 @@
             .alloca1(context, location, key_ty, key_layout.align())<span class="question-mark">?</span>;
     entry.store(context, location, entry_key_ptr, entry_key)<span class="question-mark">?</span>;
 
-    <span class="comment">// Double pointer. Avoid allocating an element on a dict getter.
+    <span class="comment">// Runtime's dict_get returnes a pointer to the entry's value, which is a
+    // pointer itself. Effectively, we have a double pointer to the value,
+    // avoiding a second call into the runtime when finalizing the entry.
     </span><span class="kw">let </span>entry_value_ptr_ptr = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?
@@ -453,7 +491,9 @@
 
     <span class="kw">let </span>null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>is_vacant = entry.append_op_result(
+
+    <span class="comment">// If the entry_value_ptr is null, then the entry is vacant
+    </span><span class="kw">let </span>is_vacant = entry.append_op_result(
         ods::llvm::icmp(
             context,
             IntegerType::new(context, <span class="number">1</span>).into(),
@@ -465,62 +505,83 @@
         .into(),
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>block_occupied = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
-    <span class="kw">let </span>block_vacant = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
-    <span class="kw">let </span>block_final = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[(value_ty, location)]));
-    entry.append_operation(cf::cond_br(
-        context,
+    <span class="kw">let </span>value = entry.append_op_result(scf::r#if(
         is_vacant,
-        block_vacant,
-        block_occupied,
-        <span class="kw-2">&amp;</span>[],
-        <span class="kw-2">&amp;</span>[],
-        location,
-    ));
+        <span class="kw-2">&amp;</span>[value_ty],
+        {
+            <span class="comment">// If the entry is vacant, then create the default value
+            </span><span class="kw">let </span>region = Region::new();
+            <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+            <span class="kw">let </span>helper = LibfuncHelper {
+                module: helper.module,
+                init_block: helper.init_block,
+                region: <span class="kw-2">&amp;</span>region,
+                blocks_arena: helper.blocks_arena,
+                last_block: std::cell::Cell::new(<span class="kw-2">&amp;</span>block),
+                branches: <span class="macro">vec!</span>[],
+                results: <span class="macro">vec!</span>[],
+            };
 
-    {
-        <span class="kw">let </span>value = block_occupied.load(context, location, entry_value_ptr, value_ty)<span class="question-mark">?</span>;
-        <span class="kw">let </span>values = <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
-            <span class="prelude-val">Some</span>(dup_overrides_meta) <span class="kw">if </span>dup_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
-                dup_overrides_meta.invoke_override(
+            <span class="kw">let </span>value = registry
+                .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
+                </span>.build_default(
                     context,
-                    block_occupied,
+                    registry,
+                    <span class="kw-2">&amp;</span>block,
                     location,
-                    <span class="kw-2">&amp;</span>info.ty,
-                    value,
-                )<span class="question-mark">?
-            </span>}
-            <span class="kw">_ </span>=&gt; (value, value),
-        };
+                    <span class="kw-2">&amp;</span>helper,
+                    metadata,
+                    <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
+                )<span class="question-mark">?</span>;
+            block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[value], location));
 
-        block_occupied.store(context, location, entry_value_ptr, values.<span class="number">0</span>)<span class="question-mark">?</span>;
-        block_occupied.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[values.<span class="number">1</span>], location));
-    }
+            region
+        },
+        {
+            <span class="comment">// If the entry is occupied, then load the previous value from the pointer
+            </span><span class="kw">let </span>region = Region::new();
+            <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
-    {
-        <span class="kw">let </span>value = registry
-            .get_type(<span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">?
-            </span>.build_default(
-                context,
-                registry,
-                block_vacant,
-                location,
-                helper,
-                metadata,
-                <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty,
-            )<span class="question-mark">?</span>;
-        block_vacant.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[value], location));
-    }
+            <span class="kw">let </span>value = block.load(context, location, entry_value_ptr, value_ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>entry = block_final.append_op_result(llvm::undef(entry_ty, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>entry =
-        block_final.insert_values(context, location, entry, <span class="kw-2">&amp;</span>[dict_ptr, entry_value_ptr_ptr])<span class="question-mark">?</span>;
+            block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[value], location));
 
-    block_final.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry, block_final.arg(<span class="number">0</span>)<span class="question-mark">?</span>], location));
+            region
+        },
+        location,
+    ))<span class="question-mark">?</span>;
+
+    <span class="comment">// Build the dict entry struct: `Felt252DictEntry&lt;T&gt;`.
+    </span><span class="kw">let </span>dict_entry = entry.append_op_result(llvm::undef(entry_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>dict_entry = entry.insert_values(
+        context,
+        location,
+        dict_entry,
+        <span class="kw-2">&amp;</span>[dict_ptr, entry_value_ptr_ptr],
+    )<span class="question-mark">?</span>;
+
+    <span class="comment">// The `Felt252DictEntry&lt;T&gt;` holds both the `Felt252Dict&lt;T&gt;` and the pointer
+    // to the space where the new value will be written when the entry is finalized.
+    // If the entry were to be dropped (without being consumed by the finalizer), which
+    // shouldn't be possible under normal conditions, and the type `T` requires a
+    // custom drop implementation (ex. arrays, dictionaries), it'll cause undefined
+    // behavior because when the value is moved out of the dictionary (on `get`), the
+    // memory it occupied is not modified because we're expecting it to be overwritten
+    // by the finalizer (in other words, the extracted element will be dropped twice).
+
+    </span>entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[dict_entry, value], location));
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">pub fn </span>build_finalize&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+<span class="doccomment">/// The felt252_dict_entry_finalize libfunc receives the dict entry and a new value,
+/// inserts the new value in the entry, and returns the full dictionary.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn felt252_dict_entry_finalize&lt;T&gt;(dict_entry: Felt252DictEntry&lt;T&gt;, new_value: T) -&gt; Felt252Dict&lt;T&gt; nopanic;
+/// ```
+</span><span class="kw">pub fn </span>build_finalize&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
@@ -533,15 +594,16 @@
         metadata.insert(ReallocBindingsMeta::new(context, helper));
     }
 
-    <span class="kw">let </span>(value_ty, value_layout) = registry.build_type_with_layout(
+    <span class="kw">let </span>(_value_ty, value_layout) = registry.build_type_with_layout(
         context,
         helper,
         metadata,
         <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>dict_entry = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>entry_value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="comment">// Get the dict entry struct: `crate::types::felt252_dict_entry`
+    </span><span class="kw">let </span>dict_entry = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>new_entry_value = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>dict_ptr = entry.extract_value(
         context,
@@ -550,28 +612,29 @@
         llvm::r#type::pointer(context, <span class="number">0</span>),
         <span class="number">0</span>,
     )<span class="question-mark">?</span>;
-    <span class="kw">let </span>value_ptr_ptr = entry.extract_value(
+    <span class="kw">let </span>entry_value_ptr_ptr = entry.extract_value(
         context,
         location,
         dict_entry,
         llvm::r#type::pointer(context, <span class="number">0</span>),
         <span class="number">1</span>,
     )<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>value_ptr = entry.load(
+    <span class="kw">let </span>entry_value_ptr = entry.load(
         context,
         location,
-        value_ptr_ptr,
+        entry_value_ptr_ptr,
         llvm::r#type::pointer(context, <span class="number">0</span>),
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>is_vacant = entry.append_op_result(
+
+    <span class="comment">// If the entry_value_ptr is null, then the entry is vacant
+    </span><span class="kw">let </span>is_vacant = entry.append_op_result(
         ods::llvm::icmp(
             context,
             IntegerType::new(context, <span class="number">1</span>).into(),
-            value_ptr,
+            entry_value_ptr,
             null_ptr,
             IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>).into(),
             location,
@@ -579,52 +642,39 @@
         .into(),
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>block_occupied = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
-    <span class="kw">let </span>block_vacant = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
-    <span class="kw">let </span>block_final =
-        helper.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
-    entry.append_operation(cf::cond_br(
-        context,
+    <span class="kw">let </span>entry_value_ptr = entry.append_op_result(scf::r#if(
         is_vacant,
-        block_vacant,
-        block_occupied,
-        <span class="kw-2">&amp;</span>[],
-        <span class="kw-2">&amp;</span>[],
+        <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
+        {
+            <span class="comment">// If the entry is vacant, then alloc space for the new value
+            </span><span class="kw">let </span>region = Region::new();
+            <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+
+            <span class="kw">let </span>value_len = block.const_int(context, location, value_layout.size(), <span class="number">64</span>)<span class="question-mark">?</span>;
+            <span class="kw">let </span>entry_value_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                context, null_ptr, value_len, location,
+            )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+            block.store(context, location, entry_value_ptr_ptr, entry_value_ptr)<span class="question-mark">?</span>;
+            block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[entry_value_ptr], location));
+
+            region
+        },
+        {
+            <span class="comment">// If the entry is occupied, do nothing
+            </span><span class="kw">let </span>region = Region::new();
+            <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+
+            block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[entry_value_ptr], location));
+
+            region
+        },
         location,
-    ));
+    ))<span class="question-mark">?</span>;
 
-    {
-        <span class="kw">match </span>metadata.get::&lt;DropOverridesMeta&gt;() {
-            <span class="prelude-val">Some</span>(drop_overrides_meta)
-                <span class="kw">if </span>drop_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty) =&gt;
-            {
-                <span class="kw">let </span>value = block_occupied.load(context, location, value_ptr, value_ty)<span class="question-mark">?</span>;
-                drop_overrides_meta.invoke_override(
-                    context,
-                    block_occupied,
-                    location,
-                    <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
-                    value,
-                )<span class="question-mark">?</span>;
-            }
-            <span class="kw">_ </span>=&gt; {}
-        }
+    <span class="comment">// Write the new value to the entry pointer
+    </span>entry.store(context, location, entry_value_ptr, new_entry_value)<span class="question-mark">?</span>;
 
-        block_occupied.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[value_ptr], location));
-    }
-
-    {
-        <span class="kw">let </span>value_len = block_vacant.const_int(context, location, value_layout.size(), <span class="number">64</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>value_ptr = block_vacant.append_op_result(ReallocBindingsMeta::realloc(
-            context, null_ptr, value_len, location,
-        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-
-        block_vacant.store(context, location, value_ptr_ptr, value_ptr)<span class="question-mark">?</span>;
-        block_vacant.append_operation(cf::br(block_final, <span class="kw-2">&amp;</span>[value_ptr], location));
-    }
-
-    block_final.store(context, location, block_final.arg(<span class="number">0</span>)<span class="question-mark">?</span>, entry_value)<span class="question-mark">?</span>;
-    block_final.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[dict_ptr], location));
+    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[dict_ptr], location));
 
     <span class="prelude-val">Ok</span>(())
 }
