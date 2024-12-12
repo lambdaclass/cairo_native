@@ -1,7 +1,9 @@
 use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::gas::GasMetadata,
+    metadata::{
+        felt252_dict::Felt252DictOverrides, gas::GasMetadata, runtime_bindings::setup_runtime,
+    },
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{create_engine, generate_function_name},
@@ -10,13 +12,14 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
-    ids::FunctionId,
+    ids::{ConcreteTypeId, FunctionId},
     program::FunctionSignature,
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
 use melior::{ir::Module, ExecutionEngine};
 use starknet_types_core::felt::Felt;
+use std::mem::transmute;
 
 /// A MLIR JIT execution engine in the context of Cairo Native.
 pub struct JitNativeExecutor<'m> {
@@ -26,10 +29,11 @@ pub struct JitNativeExecutor<'m> {
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
 
     gas_metadata: GasMetadata,
+    dict_overrides: Felt252DictOverrides,
 }
 
-unsafe impl<'a> Send for JitNativeExecutor<'a> {}
-unsafe impl<'a> Sync for JitNativeExecutor<'a> {}
+unsafe impl Send for JitNativeExecutor<'_> {}
+unsafe impl Sync for JitNativeExecutor<'_> {}
 
 impl std::fmt::Debug for JitNativeExecutor<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -48,18 +52,26 @@ impl<'m> JitNativeExecutor<'m> {
         let NativeModule {
             module,
             registry,
-            metadata,
+            mut metadata,
         } = native_module;
 
-        Ok(Self {
+        let executor = Self {
             engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
-            gas_metadata: metadata
-                .get::<GasMetadata>()
-                .cloned()
-                .ok_or(Error::MissingMetadata)?,
-        })
+            gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)?,
+            dict_overrides: metadata.remove().unwrap_or_default(),
+        };
+
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        #[cfg(feature = "with-debug-utils")]
+        crate::metadata::debug_utils::setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        #[cfg(feature = "with-trace-dump")]
+        crate::metadata::trace_dump::setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        Ok(executor)
     }
 
     pub const fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
@@ -82,17 +94,14 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
-            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
-
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            set_builtin_costs_fnptr,
             self.extract_signature(function_id)?,
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
+            self.build_find_dict_drop_override(),
         )
     }
 
@@ -109,17 +118,14 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
-            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
-
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            set_builtin_costs_fnptr,
             self.extract_signature(function_id)?,
             args,
             available_gas,
             Some(syscall_handler),
+            self.build_find_dict_drop_override(),
         )
     }
 
@@ -135,13 +141,9 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
-            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
-
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            set_builtin_costs_fnptr,
             self.extract_signature(function_id)?,
             &[Value::Struct {
                 fields: vec![Value::Array(
@@ -151,6 +153,7 @@ impl<'m> JitNativeExecutor<'m> {
             }],
             available_gas,
             Some(syscall_handler),
+            self.build_find_dict_drop_override(),
         )?)
     }
 
@@ -177,5 +180,16 @@ impl<'m> JitNativeExecutor<'m> {
             .program_registry()
             .get_function(function_id)
             .map(|func| &func.signature)?)
+    }
+
+    fn build_find_dict_drop_override(
+        &self,
+    ) -> impl '_ + Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)> {
+        |type_id| {
+            self.dict_overrides
+                .get_drop_fn(type_id)
+                .and_then(|symbol| self.find_symbol_ptr(symbol))
+                .map(|ptr| unsafe { transmute(ptr as *const ()) })
+        }
     }
 }

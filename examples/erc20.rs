@@ -282,12 +282,20 @@ impl StarknetSyscallHandler for SyscallHandler {
     ) -> SyscallResult<Felt> {
         unimplemented!()
     }
+
+    fn meta_tx_v0(
+        &mut self,
+        _address: Felt,
+        _entry_point_selector: Felt,
+        _calldata: &[Felt],
+        _signature: &[Felt],
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Vec<Felt>> {
+        unimplemented!()
+    }
 }
 
 fn main() {
-    #[cfg(not(feature = "with-runtime"))]
-    compile_error!("This example requires the `with-runtime` feature to be active.");
-
     // Configure logging and error handling.
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
@@ -314,7 +322,7 @@ fn main() {
     let native_context = NativeContext::new();
 
     let native_program = native_context
-        .compile(&sierra_program, false, Some(Default::default()))
+        .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
     let entry_point_fn =

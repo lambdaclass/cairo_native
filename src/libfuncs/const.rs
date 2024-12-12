@@ -17,13 +17,14 @@ use cairo_lang_sierra::{
             ConstConcreteType,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        starknet::StarknetTypeConcrete,
     },
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::llvm::{self, r#type::pointer},
-    ir::{Block, Location, Value},
+    ir::{Block, BlockLike, Location, Value},
     Context,
 };
 use num_bigint::Sign;
@@ -135,7 +136,7 @@ pub fn build_const_type_value<'ctx, 'this>(
     //   type of the const type must be the same as the corresponding enum variant type.
 
     let inner_type = registry.get_type(&info.inner_ty)?;
-    let inner_ty = registry.build_type(context, helper, registry, metadata, &info.inner_ty)?;
+    let inner_ty = registry.build_type(context, helper, metadata, &info.inner_ty)?;
 
     match inner_type {
         CoreTypeConcrete::Struct(_) => {
@@ -268,6 +269,22 @@ pub fn build_const_type_value<'ctx, 'this>(
 
             entry.const_int_from_type(context, location, value, inner_ty)
         }
+        CoreTypeConcrete::Starknet(
+            StarknetTypeConcrete::ClassHash(_) | StarknetTypeConcrete::ContractAddress(_),
+        ) => {
+            let value = match &info.inner_data.as_slice() {
+                [GenericArg::Value(value)] => value.clone(),
+                _ => return Err(Error::ConstDataMismatch),
+            };
+
+            let (sign, value) = value.into_parts();
+            let value = match sign {
+                Sign::Minus => PRIME.clone() - value,
+                _ => value,
+            };
+
+            entry.const_int_from_type(context, location, value, inner_ty)
+        }
         CoreTypeConcrete::Uint8(_)
         | CoreTypeConcrete::Uint16(_)
         | CoreTypeConcrete::Uint32(_)
@@ -284,7 +301,7 @@ pub fn build_const_type_value<'ctx, 'this>(
             }
             _ => Err(Error::ConstDataMismatch),
         },
-        _ => todo!("const for type {}", info.inner_ty),
+        _ => native_panic!("const for type {} not implemented", info.inner_ty),
     }
 }
 

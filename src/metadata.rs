@@ -19,10 +19,12 @@ pub mod debug_utils;
 pub mod drop_overrides;
 pub mod dup_overrides;
 pub mod enum_snapshot_variants;
+pub mod felt252_dict;
 pub mod gas;
 pub mod realloc_bindings;
 pub mod runtime_bindings;
 pub mod tail_recursion;
+pub mod trace_dump;
 
 /// Metadata container.
 #[cfg_attr(not(feature = "with-debug-utils"), derive(Default))]

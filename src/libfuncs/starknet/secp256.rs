@@ -18,7 +18,7 @@ use melior::{
     dialect::llvm::{self, LoadStoreOptions},
     ir::{
         attribute::DenseI32ArrayAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Location,
+        BlockLike, Location,
     },
     Context,
 };
@@ -127,7 +127,6 @@ pub fn build_k1_new<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -146,14 +145,12 @@ pub fn build_k1_new<'ctx, 'this>(
     let (x_ty, x_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[2].ty,
     )?;
     let (y_ty, y_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[3].ty,
     )?;
@@ -339,7 +336,6 @@ pub fn build_k1_add<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -358,14 +354,12 @@ pub fn build_k1_add<'ctx, 'this>(
     let (p0_ty, p0_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[2].ty,
     )?;
     let (p1_ty, p1_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[3].ty,
     )?;
@@ -552,7 +546,6 @@ pub fn build_k1_mul<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -571,14 +564,12 @@ pub fn build_k1_mul<'ctx, 'this>(
     let (p_ty, p_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[2].ty,
     )?;
     let (scalar_ty, scalar_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[3].ty,
     )?;
@@ -765,7 +756,6 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -784,7 +774,6 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
     let (x_ty, x_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[2].ty,
     )?;
@@ -959,7 +948,6 @@ pub fn build_k1_get_xy<'ctx, 'this>(
         let (err_ty, err_layout) = registry.build_type_with_layout(
             context,
             helper,
-            registry,
             metadata,
             &info.branch_signatures()[1].vars[2].ty,
         )?;
@@ -999,7 +987,6 @@ pub fn build_k1_get_xy<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -1018,7 +1005,6 @@ pub fn build_k1_get_xy<'ctx, 'this>(
     let (p_ty, p_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[2].ty,
     )?;
@@ -1222,7 +1208,6 @@ pub fn build_r1_new<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -1241,14 +1226,12 @@ pub fn build_r1_new<'ctx, 'this>(
     let (x_ty, x_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[2].ty,
     )?;
     let (y_ty, y_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[3].ty,
     )?;
@@ -1435,7 +1418,6 @@ pub fn build_r1_add<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -1454,14 +1436,12 @@ pub fn build_r1_add<'ctx, 'this>(
     let (p0_ty, p0_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[2].ty,
     )?;
     let (p1_ty, p1_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[3].ty,
     )?;
@@ -1648,7 +1628,6 @@ pub fn build_r1_mul<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -1667,7 +1646,6 @@ pub fn build_r1_mul<'ctx, 'this>(
     let (p_ty, p_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[2].ty,
     )?;
@@ -1675,7 +1653,6 @@ pub fn build_r1_mul<'ctx, 'this>(
     let (scalar_ty, scalar_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[3].ty,
     )?;
@@ -1864,7 +1841,6 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -2059,7 +2035,6 @@ pub fn build_r1_get_xy<'ctx, 'this>(
         let (err_ty, err_layout) = registry.build_type_with_layout(
             context,
             helper,
-            registry,
             metadata,
             &info.branch_signatures()[1].vars[2].ty,
         )?;
@@ -2099,7 +2074,6 @@ pub fn build_r1_get_xy<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -2118,7 +2092,6 @@ pub fn build_r1_get_xy<'ctx, 'this>(
     let (p_ty, p_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[2].ty,
     )?;

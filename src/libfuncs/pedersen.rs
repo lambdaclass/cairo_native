@@ -3,7 +3,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
@@ -17,7 +17,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{r#type::IntegerType, Block, Location},
+    ir::{r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };
 
@@ -49,18 +49,13 @@ pub fn build_pedersen<'ctx>(
 ) -> Result<()> {
     metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
 
     let pedersen_builtin =
         super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let felt252_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.param_signatures()[1].ty,
-    )?;
+    let felt252_ty =
+        registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
 
     let i256_ty = IntegerType::new(context, 256).into();
     let layout_i256 = get_integer_layout(256);
@@ -88,7 +83,7 @@ pub fn build_pedersen<'ctx>(
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
 
     runtime_bindings
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)?;

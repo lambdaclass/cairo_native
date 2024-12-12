@@ -43,7 +43,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
-      - uses: dtolnay/rust-toolchain@1.82.0
+      - uses: dtolnay/rust-toolchain@1.84.1
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -96,18 +96,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Cache binary
-        uses: actions/cache@v3
+        uses: actions/cache@v4.2.0
         id: cache-binary
         with:
           path: bin/cairo-native-run-${{ matrix.branch }}
           key: binary-${{ github.event.pull_request[matrix.branch].sha }}
-
-      - name: Cache runtime-library
-        uses: actions/cache@v3
-        id: cache-library
-        with:
-          path: lib/libcairo-native-runtime-${{ matrix.branch }}.a
-          key: library-${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: check and free hdd space left
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
@@ -131,7 +124,7 @@ jobs:
           df -h
       - name: Install Rust
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
-        uses: dtolnay/rust-toolchain@1.82.0
+        uses: dtolnay/rust-toolchain@1.84.1
       - name: add llvm deb repository
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         uses: myci-actions/add-deb-repo@11
@@ -159,7 +152,6 @@ jobs:
           make build
           mkdir lib bin
           cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
-          cp target/release/libcairo_native_runtime.a lib/libcairo-native-runtime-${{ matrix.branch }}.a
 
   run-bench:
     env:
@@ -185,16 +177,10 @@ jobs:
           tool: hyperfine@1.16
 
       - name: Fetch ${{ matrix.branch }} binary
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4.2.0
         with:
           path: bin/cairo-native-run-${{ matrix.branch }}
           key: binary-${{ github.event.pull_request[matrix.branch].sha }}
-
-      - name: Fetch ${{ matrix.branch }} runtime-library
-        uses: actions/cache/restore@v3
-        with:
-          path: lib/libcairo-native-runtime-${{ matrix.branch }}.a
-          key: library-${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: Run Program
         run: |
@@ -208,7 +194,7 @@ jobs:
             --export-json "${f%.*}.json" \
             --warmup 3 \
             -n "${{matrix.branch}} $(basename $f) (JIT)" "./bin/cairo-native-run-${{ matrix.branch }} --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "${{matrix.branch}} $(basename $f) (AOT)" "CAIRO_NATIVE_RUNTIME_LIBRARY=lib/libcairo-native-runtime-${{ matrix.branch }}.a ./bin/cairo-native-run-${{ matrix.branch }} --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "${{matrix.branch}} $(basename $f) (AOT)" "./bin/cairo-native-run-${{ matrix.branch }} --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
             >> /dev/stderr
           done
 
@@ -238,11 +224,16 @@ jobs:
     - name: Print tables
       run: |
         {
-          echo "${bold}Benchmark results Main vs HEAD.${normal}"
+          echo "## **Benchmark results Main vs HEAD.**"
           for f in bench-results-base/*.md; do
+            echo "### Base"
             echo
             cat $f
+            echo
+            echo "### Head"
+            echo
             cat bench-results-head/$(basename $f)
+            echo
           done
         } | tee -a comment_body.md
 

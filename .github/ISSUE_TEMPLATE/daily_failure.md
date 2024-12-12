@@ -1,19 +1,15 @@
 ---
-title: "Daily Workflow Failure: Block Range {{ env.BLOCK_START }}-{{ env.BLOCK_END }}"
+title: "Daily Workflow Failure"
 labels: bug
 ---
 
-Comparing VM execution against Native in the given block range produced diffs:
+Comparing VM execution against Native produced diffs:
 
 - Commit: {{ env.COMMIT_SHA }}
-- Block Start: {{ env.BLOCK_START }}
-- Block End: {{ env.BLOCK_END }}
 - Workflow URL: {{ env.WORKFLOW_URL }}
 
 ## Compare Output
 
-The transaction were not compared in order. You should rerun the whole block to find the error root
+The transaction were not compared in order. You should rerun the whole failing block to find the error root
 
-```
-{{ env.OUTPUT }}
-```
+- State Diffs Comparison: {{ env.COMPARISON_RESULT }}

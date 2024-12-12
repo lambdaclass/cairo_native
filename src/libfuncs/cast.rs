@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::MetadataStorage,
-    native_panic,
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
 };
@@ -19,7 +19,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
-    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Value, ValueLike},
     Context,
 };
 use num_bigint::{BigInt, Sign};
@@ -301,7 +301,7 @@ pub fn build_upcast<'ctx, 'this>(
 
     let src_range = src_ty.integer_range(registry)?;
     let dst_range = dst_ty.integer_range(registry)?;
-    assert!(
+    native_assert!(
         if dst_ty.is_felt252(registry)? {
             let alt_range = Range {
                 lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
@@ -330,10 +330,11 @@ pub fn build_upcast<'ctx, 'this>(
     };
 
     // If the source can be negative, the target type must also contain negatives when upcasting.
-    assert!(
+    native_assert!(
         src_range.lower.sign() != Sign::Minus
             || dst_ty.is_felt252(registry)?
-            || dst_range.lower.sign() == Sign::Minus
+            || dst_range.lower.sign() == Sign::Minus,
+        "if the source range contains negatives, the target range must always contain negatives",
     );
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
@@ -398,7 +399,7 @@ mod test {
 
     lazy_static! {
         static ref DOWNCAST: (String, Program) = load_cairo! {
-            use core::integer::downcast;
+            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
 
             fn run_test(
                 v8: u8, v16: u16, v32: u32, v64: u64, v128: u128
@@ -419,7 +420,7 @@ mod test {
             }
         };
         static ref UPCAST: (String, Program) = load_cairo! {
-            use core::integer::upcast;
+            extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
 
             fn run_test(
                 v8: u8, v16: u16, v32: u32, v64: u64, v128: u128, v248: bytes31

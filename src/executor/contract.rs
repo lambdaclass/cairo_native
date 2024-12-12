@@ -33,14 +33,17 @@
 
 use crate::{
     arch::AbiArgument,
+    clone_option_mut,
     context::NativeContext,
+    debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
-    executor::invoke_trampoline,
-    metadata::gas::MetadataComputationConfig,
+    executor::{invoke_trampoline, BuiltinCostsGuard},
+    metadata::runtime_bindings::setup_runtime,
     module::NativeModule,
-    native_panic,
+    native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
+    statistics::Statistics,
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
@@ -51,25 +54,36 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, gas::CostTokenType,
-        starknet::StarkNetTypeConcrete, ConcreteType,
+        circuit::CircuitTypeConcrete,
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        gas::CostTokenType,
+        starknet::StarknetTypeConcrete,
     },
     ids::FunctionId,
-    program::Program,
+    program::{GenFunction, GenStatement, Program, StatementIdx},
+    program_registry::ProgramRegistry,
 };
-use cairo_lang_starknet_classes::casm_contract_class::ENTRY_POINT_COST;
+use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
+use cairo_lang_starknet_classes::{
+    casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
+};
 use educe::Educe;
+use itertools::{chain, Itertools};
 use libloading::Library;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
-    collections::{BTreeMap, HashSet},
+    cmp::Ordering,
+    collections::BTreeMap,
     ffi::c_void,
+    fs::{self, File},
+    io,
     path::{Path, PathBuf},
-    ptr::NonNull,
+    ptr::{self, NonNull},
     sync::Arc,
+    time::Instant,
 };
 use tempfile::NamedTempFile;
 
@@ -80,24 +94,23 @@ pub struct AotContractExecutor {
     #[educe(Debug(ignore))]
     library: Arc<Library>,
     path: PathBuf,
-    is_temp_path: bool,
     contract_info: NativeContractInfo,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NativeContractInfo {
     pub version: ContractInfoVersion,
-    pub entry_points_info: BTreeMap<u64, EntryPointInfo>,
-    pub entry_point_selector_to_id: BTreeMap<Felt, u64>,
+    pub entry_points: BTreeMap<Felt, EntryPointInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ContractInfoVersion {
-    Version0,
+    V0,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntryPointInfo {
+    pub function_id: u64,
     pub builtins: Vec<BuiltinType>,
 }
 
@@ -119,172 +132,205 @@ pub enum BuiltinType {
 
 impl BuiltinType {
     pub const fn size_in_bytes(&self) -> usize {
-        match self {
-            BuiltinType::Bitwise => 8,
-            BuiltinType::EcOp => 8,
-            BuiltinType::RangeCheck => 8,
-            BuiltinType::SegmentArena => 8,
-            BuiltinType::Poseidon => 8,
-            BuiltinType::Pedersen => 8,
-            BuiltinType::RangeCheck96 => 8,
-            BuiltinType::CircuitAdd => 8,
-            BuiltinType::CircuitMul => 8,
-            BuiltinType::Gas => 16,
-            BuiltinType::System => 8,
-            BuiltinType::BuiltinCosts => 8,
-        }
+        size_of::<u64>()
     }
 }
 
 impl AotContractExecutor {
-    /// Create the executor from a sierra program with the given optimization level.
-    /// You can save the library on the desired location later using `save`.
-    /// If not saved, the path is treated as
-    /// a temporary file an deleted when dropped.
-    /// If you loaded a ContractExecutor using [`load`] then it will not be treated as a temp file.
+    /// Compile and load a program using a temporary shared library.
+    ///
+    /// When enabled, compilation stats will be saved to the `stats`. The
+    /// initial statistics can be build using the default builder.
     pub fn new(
-        sierra_program: &Program,
+        program: &Program,
         entry_points: &ContractEntryPoints,
+        sierra_version: VersionId,
         opt_level: OptLevel,
+        stats: Option<&mut Statistics>,
     ) -> Result<Self> {
-        let native_context = NativeContext::new();
-
-        let mut entry_point_selector_to_id = BTreeMap::new();
-
-        let mut used_function_ids = HashSet::new();
-        for entry in entry_points
-            .constructor
-            .iter()
-            .chain(entry_points.external.iter())
-            .chain(entry_points.l1_handler.iter())
-        {
-            entry_point_selector_to_id
-                .insert(Felt::from(&entry.selector), entry.function_idx as u64);
-            used_function_ids.insert(entry.function_idx as u64);
-        }
-
-        let module = native_context.compile(
-            sierra_program,
-            true,
-            Some(MetadataComputationConfig {
-                function_set_costs: used_function_ids
-                    .iter()
-                    .map(|id| {
-                        (
-                            FunctionId::new(*id),
-                            [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
-                        )
-                    })
-                    .collect(),
-                linear_gas_solver: true,
-                linear_ap_change_solver: true,
-            }),
-        )?;
-
-        let NativeModule {
-            module,
-            registry,
-            metadata: _,
-        } = module;
-
-        let mut infos = BTreeMap::new();
-
-        for x in &sierra_program.funcs {
-            // Avoid storing function info for methods that are not contract entry points.
-            if !used_function_ids.contains(&x.id.id) {
-                continue;
-            }
-
-            let mut builtins = Vec::new();
-
-            for p in &x.params {
-                let ty = registry.get_type(&p.ty)?;
-                if ty.is_builtin() {
-                    // Skip zero sized builtins
-                    if ty.is_zst(&registry)? {
-                        continue;
-                    }
-
-                    match ty {
-                        CoreTypeConcrete::Bitwise(_) => builtins.push(BuiltinType::Bitwise),
-                        CoreTypeConcrete::EcOp(_) => builtins.push(BuiltinType::EcOp),
-                        CoreTypeConcrete::RangeCheck(_) => builtins.push(BuiltinType::RangeCheck),
-                        CoreTypeConcrete::Pedersen(_) => builtins.push(BuiltinType::Pedersen),
-                        CoreTypeConcrete::Poseidon(_) => builtins.push(BuiltinType::Poseidon),
-                        CoreTypeConcrete::BuiltinCosts(_) => {
-                            builtins.push(BuiltinType::BuiltinCosts)
-                        }
-                        CoreTypeConcrete::SegmentArena(_) => {
-                            builtins.push(BuiltinType::SegmentArena)
-                        }
-                        CoreTypeConcrete::RangeCheck96(_) => {
-                            builtins.push(BuiltinType::RangeCheck96)
-                        }
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
-                            builtins.push(BuiltinType::CircuitAdd)
-                        }
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
-                            builtins.push(BuiltinType::CircuitMul)
-                        }
-                        CoreTypeConcrete::GasBuiltin(_) => builtins.push(BuiltinType::Gas),
-                        CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
-                            builtins.push(BuiltinType::System)
-                        }
-                        _ => native_panic!("given type should be a builtin {:?}", ty.info()),
-                    }
-                } else {
-                    break;
-                }
-            }
-
-            infos.insert(x.id.id, EntryPointInfo { builtins });
-        }
-
-        let library_path = NamedTempFile::new()?
+        let output_path = NamedTempFile::new()?
             .into_temp_path()
             .keep()
             .to_native_assert_error("can only fail on windows")?;
 
-        let object_data = crate::module_to_object(&module, opt_level)?;
-        crate::object_to_shared_lib(&object_data, &library_path)?;
+        let executor = Self::new_into(
+            program,
+            entry_points,
+            sierra_version,
+            output_path,
+            opt_level,
+            stats,
+        )?
+        .to_native_assert_error("temporary contract path collision")?;
 
-        Ok(Self {
-            library: Arc::new(unsafe { Library::new(&library_path)? }),
-            path: library_path,
-            is_temp_path: true,
-            contract_info: NativeContractInfo {
-                version: ContractInfoVersion::Version0,
-                entry_points_info: infos,
-                entry_point_selector_to_id,
-            },
+        fs::remove_file(&executor.path)?;
+        fs::remove_file(executor.path.with_extension("json"))?;
+        Ok(executor)
+    }
+
+    /// Compile and load a program into a shared library.
+    ///
+    /// This function uses a lockfile to support cache sharing between multiple processes. An
+    /// attempt to compile a program while the `output_path` is already locked will result in
+    /// `Ok(None)` being returned. When this happens, the user should wait until the lock is
+    /// released, at which point they can use `AotContractExecutor::from_path` to load it.
+    ///
+    /// When enabled, compilation stats will be saved to the `stats`. The
+    /// initial statistics can be build using the default builder.
+    pub fn new_into(
+        program: &Program,
+        entry_points: &ContractEntryPoints,
+        sierra_version: VersionId,
+        output_path: impl Into<PathBuf>,
+        opt_level: OptLevel,
+        stats: Option<&mut Statistics>,
+    ) -> Result<Option<Self>> {
+        let output_path = output_path.into();
+        let lock_file = match LockFile::new(&output_path)? {
+            Some(x) => x,
+            None => return Ok(None),
+        };
+
+        let pre_compilation_instant = Instant::now();
+
+        let context = NativeContext::new();
+
+        let no_eq_solver = match sierra_version.major.cmp(&1) {
+            Ordering::Less => false,
+            Ordering::Equal => sierra_version.minor >= 4,
+            Ordering::Greater => true,
+        };
+
+        if let Some(&mut ref mut stats) = stats {
+            stats.sierra_type_count = Some(program.type_declarations.len());
+            stats.sierra_libfunc_count = Some(program.libfunc_declarations.len());
+            stats.sierra_statement_count = Some(program.statements.len());
+            stats.sierra_func_count = Some(program.funcs.len());
+        }
+
+        // Compile the Sierra program.
+        let NativeModule {
+            module, registry, ..
+        } = context.compile(
+            program,
+            true,
+            Some(MetadataComputationConfig {
+                function_set_costs: chain!(
+                    entry_points.constructor.iter(),
+                    entry_points.external.iter(),
+                    entry_points.l1_handler.iter(),
+                )
+                .map(|x| {
+                    (
+                        FunctionId::new(x.function_idx as u64),
+                        [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
+                    )
+                })
+                .collect(),
+                linear_gas_solver: no_eq_solver,
+                linear_ap_change_solver: no_eq_solver,
+                skip_non_linear_solver_comparisons: false,
+                compute_runtime_costs: false,
+            }),
+            clone_option_mut!(stats),
+        )?;
+
+        if let Some(&mut ref mut stats) = stats {
+            for statement in &program.statements {
+                if let GenStatement::Invocation(invocation) = statement {
+                    let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
+                    let name = libfunc_to_name(libfunc).to_string();
+                    *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
+                }
+            }
+        }
+
+        // Generate mappings between the entry point's selectors and their function indexes.
+        let entry_point_mappings = chain!(
+            entry_points.constructor.iter(),
+            entry_points.external.iter(),
+            entry_points.l1_handler.iter(),
+        )
+        .map(|x| {
+            let function_id = x.function_idx as u64;
+            let function = registry
+                .get_function(&FunctionId::new(function_id))
+                .to_native_assert_error("unreachable")?;
+
+            let builtins = find_entrypoint_builtins(function, &registry)?;
+
+            Ok((
+                Felt::from(&x.selector),
+                EntryPointInfo {
+                    function_id: x.function_idx as u64,
+                    builtins,
+                },
+            ))
         })
+        .collect::<Result<BTreeMap<_, _>>>()?;
+
+        let object_data = crate::module_to_object(&module, opt_level, clone_option_mut!(stats))?;
+        if let Some(&mut ref mut stats) = stats {
+            stats.object_size_bytes = Some(object_data.len());
+        }
+
+        // Build the shared library into the lockfile, to avoid using a tmp file.
+        crate::object_to_shared_lib(&object_data, &lock_file.0, clone_option_mut!(stats))?;
+
+        let compilation_time = pre_compilation_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_total_time_ms = Some(compilation_time);
+        }
+
+        // Write the contract info.
+        fs::write(
+            output_path.with_extension("json"),
+            serde_json::to_string(&NativeContractInfo {
+                version: ContractInfoVersion::V0,
+                entry_points: entry_point_mappings,
+            })?,
+        )?;
+
+        if let Some(&mut ref mut stats) = stats {
+            native_assert!(stats.validate(), "some statistics are missing");
+        }
+
+        // Atomically move the built shared library to the correct path. This will avoid data races
+        // when loading contracts.
+        lock_file.rename(&output_path)?;
+
+        Self::from_path(output_path)
     }
 
-    /// Save the library to the desired path, alongside it is saved also a json file with additional info.
-    pub fn save(&mut self, to: impl AsRef<Path>) -> Result<()> {
-        let to = to.as_ref();
-        std::fs::copy(&self.path, to)?;
+    /// Load a program from a shared library.
+    ///
+    /// This function will check for the existence of a lockfile. If found, it'll return `Ok(None)`.
+    /// When this happens, the user should wait until the lock is released, then try loading it
+    /// again.
+    pub fn from_path(path: impl Into<PathBuf>) -> Result<Option<Self>> {
+        let path = path.into();
 
-        let contract_info = serde_json::to_string(&self.contract_info)?;
-        let path = to.with_extension("json");
-        std::fs::write(path, contract_info)?;
+        // Note: Library should load first, otherwise there could theoretically be a race condition.
+        //   See the `new_into` function's code for details.
+        let library = Arc::new(unsafe { Library::new(&path)? });
+        let contract_info =
+            serde_json::from_str(&fs::read_to_string(path.with_extension("json"))?)?;
 
-        self.path = to.to_path_buf();
-        self.is_temp_path = false;
-
-        Ok(())
-    }
-
-    /// Load the executor from an already compiled library with the additional info json file.
-    pub fn load(library_path: &Path) -> Result<Self> {
-        let info_str = std::fs::read_to_string(library_path.with_extension("json"))?;
-        let contract_info: NativeContractInfo = serde_json::from_str(&info_str)?;
-        Ok(Self {
-            library: Arc::new(unsafe { Library::new(library_path)? }),
-            path: library_path.to_path_buf(),
-            is_temp_path: false,
+        let executor = Self {
+            library,
+            path,
             contract_info,
-        })
+        };
+
+        setup_runtime(|x| executor.find_symbol_ptr(x));
+
+        #[cfg(feature = "with-debug-utils")]
+        crate::metadata::debug_utils::setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        #[cfg(feature = "with-trace-dump")]
+        crate::metadata::trace_dump::setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        Ok(Some(executor))
     }
 
     /// Runs the entry point by the given selector.
@@ -308,27 +354,24 @@ impl AotContractExecutor {
         let mut invoke_data = Vec::<u8>::new();
 
         let function_id = FunctionId {
-            id: *self
+            id: self
                 .contract_info
-                .entry_point_selector_to_id
+                .entry_points
                 .get(&selector)
-                .ok_or(Error::SelectorNotFound)?,
+                .ok_or(Error::SelectorNotFound)?
+                .function_id,
             debug_name: None,
         };
         let function_ptr = self.find_function_ptr(&function_id, true)?;
 
-        let builtin_costs: [u64; 7] = builtin_costs.unwrap_or_default().into();
-        let set_costs_builtin = unsafe {
-            self.library
-                .get::<extern "C" fn(*const u64) -> *const u64>(
-                    b"cairo_native__set_costs_builtin",
-                )?
-        };
+        // Initialize syscall handler and builtin costs.
         // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-        let old_builtincosts_ptr = set_costs_builtin(builtin_costs.as_ptr());
+        let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
+        let builtin_costs = builtin_costs.unwrap_or_default();
+        let builtin_costs_guard = BuiltinCostsGuard::install(builtin_costs);
 
         //  it can vary from contract to contract thats why we need to store/ load it.
-        let builtins_size: usize = self.contract_info.entry_points_info[&function_id.id]
+        let builtins_size: usize = self.contract_info.entry_points[&selector]
             .builtins
             .iter()
             .map(|x| x.size_in_bytes())
@@ -340,74 +383,80 @@ impl AotContractExecutor {
             Layout::from_size_align_unchecked(128 + builtins_size, 16)
         });
 
-        return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
+        return_ptr
+            .as_ptr()
+            .to_bytes(&mut invoke_data, |_| unreachable!())?;
 
-        let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
-
-        for b in &self.contract_info.entry_points_info[&function_id.id].builtins {
+        for b in &self.contract_info.entry_points[&selector].builtins {
             match b {
                 BuiltinType::Gas => {
-                    gas.to_bytes(&mut invoke_data)?;
+                    gas.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 BuiltinType::BuiltinCosts => {
-                    // todo: check if valid
-                    builtin_costs.as_ptr().to_bytes(&mut invoke_data)?;
+                    builtin_costs.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 BuiltinType::System => {
                     (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
-                        .to_bytes(&mut invoke_data)?;
+                        .to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 _ => {
-                    0u64.to_bytes(&mut invoke_data)?;
+                    0u64.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
             }
         }
 
         let felt_layout = get_integer_layout(252).pad_to_align();
-        let refcount_offset = get_integer_layout(32)
-            .align_to(felt_layout.align())
-            .unwrap()
-            .pad_to_align()
-            .size();
+        let refcount_offset = crate::types::array::calc_data_prefix_offset(felt_layout);
 
-        let ptr = match args.len() {
-            0 => std::ptr::null_mut(),
-            _ => unsafe {
-                let ptr: *mut () =
-                    libc_malloc(felt_layout.size() * args.len() + refcount_offset).cast();
-
-                // Write reference count.
-                ptr.cast::<u32>().write(1);
-                ptr.byte_add(refcount_offset)
-            },
-        };
-        let len: u32 = args
+        let len_u32: u32 = args
             .len()
             .try_into()
             .to_native_assert_error("number of arguments should fit into a u32")?;
+        let array_ptr = match args.len() {
+            0 => std::ptr::null_mut(),
+            _ => unsafe {
+                let array_ptr: *mut () =
+                    libc_malloc(felt_layout.size() * args.len() + refcount_offset).cast();
 
-        ptr.to_bytes(&mut invoke_data)?;
-        if cfg!(target_arch = "aarch64") {
-            0u32.to_bytes(&mut invoke_data)?; // start
-            len.to_bytes(&mut invoke_data)?; // end
-            len.to_bytes(&mut invoke_data)?; // cap
-        } else if cfg!(target_arch = "x86_64") {
-            (0u32 as u64).to_bytes(&mut invoke_data)?; // start
-            (len as u64).to_bytes(&mut invoke_data)?; // end
-            (len as u64).to_bytes(&mut invoke_data)?; // cap
-        } else {
-            unreachable!("unsupported architecture");
-        }
+                // Write reference count.
+                array_ptr.cast::<(u32, u32)>().write((1, len_u32));
+                array_ptr.byte_add(refcount_offset)
+            },
+        };
 
         for (idx, elem) in args.iter().enumerate() {
             let f = elem.to_bytes_le();
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     f.as_ptr().cast::<u8>(),
-                    ptr.byte_add(idx * felt_layout.size()).cast::<u8>(),
+                    array_ptr.byte_add(idx * felt_layout.size()).cast::<u8>(),
                     felt_layout.size(),
                 )
             };
+        }
+
+        // Make double pointer.
+        let array_ptr_ptr = if array_ptr.is_null() {
+            ptr::null_mut()
+        } else {
+            unsafe {
+                let array_ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut ()>();
+                array_ptr_ptr.write(array_ptr);
+                array_ptr_ptr
+            }
+        };
+
+        array_ptr_ptr.to_bytes(&mut invoke_data, |_| unreachable!())?;
+        if cfg!(target_arch = "aarch64") {
+            0u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // start
+            len_u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // end
+            len_u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // cap
+        } else if cfg!(target_arch = "x86_64") {
+            (0u32 as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // start
+            (len_u32 as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // end
+            (len_u32 as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // cap
+        } else {
+            unreachable!("unsupported architecture");
         }
 
         // Pad invoke data to the 16 byte boundary avoid segfaults.
@@ -428,14 +477,19 @@ impl AotContractExecutor {
         #[cfg(target_arch = "aarch64")]
         let mut ret_registers = [0; 4];
 
-        unsafe {
+        #[allow(unused_mut)]
+        let mut run_trampoline = || unsafe {
             invoke_trampoline(
                 function_ptr,
                 invoke_data.as_ptr().cast(),
                 invoke_data.len() >> 3,
                 ret_registers.as_mut_ptr(),
             );
-        }
+        };
+        #[cfg(feature = "with-segfault-catcher")]
+        crate::utils::safe_runner::run_safely(run_trampoline).map_err(Error::SafeRunner)?;
+        #[cfg(not(feature = "with-segfault-catcher"))]
+        run_trampoline();
 
         // Parse final gas.
         unsafe fn read_value<T>(ptr: &mut NonNull<()>) -> &T {
@@ -454,7 +508,7 @@ impl AotContractExecutor {
 
         let return_ptr = &mut return_ptr.cast();
 
-        for b in &self.contract_info.entry_points_info[&function_id.id].builtins {
+        for b in &self.contract_info.entry_points[&selector].builtins {
             match b {
                 BuiltinType::Gas => {
                     remaining_gas = unsafe { *read_value::<u64>(return_ptr) };
@@ -504,66 +558,55 @@ impl AotContractExecutor {
         let tag = *unsafe { enum_ptr.cast::<u8>().as_ref() } as usize;
         let tag = tag & 0x01; // Filter out bits that are not part of the enum's tag.
 
-        // layout of both enum variants, both are a array of felts
         let value_layout = unsafe { Layout::from_size_align_unchecked(24, 8) };
-        let value_ptr = unsafe {
-            enum_ptr
-                .cast::<u8>()
-                .add(tag_layout.extend(value_layout)?.1)
-        };
+        let mut value_ptr = unsafe { enum_ptr.byte_add(tag_layout.extend(value_layout)?.1).cast() };
 
-        let value_ptr = &mut value_ptr.cast();
+        let array_ptr_ptr = unsafe { *read_value::<*mut NonNull<()>>(&mut value_ptr) };
+        let array_start = unsafe { *read_value::<u32>(&mut value_ptr) };
+        let array_end = unsafe { *read_value::<u32>(&mut value_ptr) };
+        let _array_capacity = unsafe { *read_value::<u32>(&mut value_ptr) };
 
-        let array_ptr: *mut u8 = unsafe { *read_value(value_ptr) };
-        let start: u32 = unsafe { *read_value(value_ptr) };
-        let end: u32 = unsafe { *read_value(value_ptr) };
-        let _cap: u32 = unsafe { *read_value(value_ptr) };
+        let mut array_value = Vec::with_capacity((array_end - array_start) as usize);
+        if !array_ptr_ptr.is_null() {
+            let array_ptr = unsafe { array_ptr_ptr.read() };
 
-        let elem_stride = felt_layout.pad_to_align().size();
+            let elem_stride = felt_layout.pad_to_align().size();
+            for i in array_start..array_end {
+                let cur_elem_ptr = unsafe { array_ptr.byte_add(elem_stride * i as usize) };
 
-        // this pointer can be null if the array has a size of 0.
-        let data_ptr = unsafe { array_ptr.byte_add(elem_stride * start as usize) };
+                let mut data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().read() };
+                data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-        assert!(end >= start);
-        let num_elems = (end - start) as usize;
-        let mut array_value = Vec::with_capacity(num_elems);
+                array_value.push(Felt::from_bytes_le(&data));
+            }
 
-        for i in 0..num_elems {
-            // safe to create a NonNull because if the array has elements, the data_ptr can't be null.
-            let cur_elem_ptr = NonNull::new(unsafe { data_ptr.byte_add(elem_stride * i) })
-                .to_native_assert_error("data_ptr should not be null")?;
-            let data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().as_mut() };
-            data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-            let data = Felt::from_bytes_le_slice(data);
-
-            array_value.push(data);
-        }
-
-        if !array_ptr.is_null() {
             unsafe {
-                let ptr = array_ptr.byte_sub(refcount_offset);
-                assert_eq!(ptr.cast::<u32>().read(), 1);
-
-                libc_free(ptr.cast());
+                let array_ptr = array_ptr.byte_sub(refcount_offset);
+                native_assert!(
+                    array_ptr.cast::<u32>().read() == 1,
+                    "return array should have a reference count of 1"
+                );
+                libc_free(array_ptr.as_ptr().cast());
+                libc_free(array_ptr_ptr.cast());
             }
         }
 
-        let error_msg = if tag != 0 {
-            let bytes_err: Vec<_> = array_value
-                .iter()
-                .flat_map(|felt| felt.to_bytes_be().to_vec())
-                // remove null chars
-                .filter(|b| *b != 0)
-                .collect();
-            let str_error = decode_error_message(&bytes_err);
-
-            Some(str_error)
-        } else {
-            None
+        let error_msg = match tag {
+            0 => None,
+            _ => {
+                Some(decode_error_message(
+                    &array_value
+                        .iter()
+                        .flat_map(|felt| felt.to_bytes_be().to_vec())
+                        // remove null chars
+                        .filter(|b| *b != 0)
+                        .collect::<Vec<_>>(),
+                ))
+            }
         };
 
         // Restore the original builtin costs pointer.
-        set_costs_builtin(old_builtincosts_ptr);
+        drop(builtin_costs_guard);
 
         #[cfg(feature = "with-mem-tracing")]
         crate::utils::mem_tracing::report_stats();
@@ -603,12 +646,76 @@ impl AotContractExecutor {
     }
 }
 
-impl Drop for AotContractExecutor {
-    fn drop(&mut self) {
-        if self.is_temp_path {
-            std::fs::remove_file(&self.path).ok();
-            std::fs::remove_file(self.path.with_extension("json")).ok();
+fn find_entrypoint_builtins(
+    function: &GenFunction<StatementIdx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+) -> Result<Vec<BuiltinType>> {
+    let param_type_infos = function
+        .params
+        .iter()
+        .map(|x| -> Result<_> {
+            let ty = registry.get_type(&x.ty)?;
+            let is_zst = ty.is_zst(registry)?;
+            Ok((ty, is_zst))
+        })
+        .try_collect::<_, Vec<_>, _>()?;
+
+    param_type_infos
+        .iter()
+        .take_while(|(ty, _)| ty.is_builtin())
+        .filter(|(_, is_zst)| !is_zst)
+        .map(|(ty, _)| -> Result<_> {
+            Ok(match ty {
+                CoreTypeConcrete::Bitwise(_) => BuiltinType::Bitwise,
+                CoreTypeConcrete::EcOp(_) => BuiltinType::EcOp,
+                CoreTypeConcrete::RangeCheck(_) => BuiltinType::RangeCheck,
+                CoreTypeConcrete::Pedersen(_) => BuiltinType::Pedersen,
+                CoreTypeConcrete::Poseidon(_) => BuiltinType::Poseidon,
+                CoreTypeConcrete::BuiltinCosts(_) => BuiltinType::BuiltinCosts,
+                CoreTypeConcrete::SegmentArena(_) => BuiltinType::SegmentArena,
+                CoreTypeConcrete::RangeCheck96(_) => BuiltinType::RangeCheck96,
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                    BuiltinType::CircuitAdd
+                }
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                    BuiltinType::CircuitMul
+                }
+                CoreTypeConcrete::GasBuiltin(_) => BuiltinType::Gas,
+                CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => BuiltinType::System,
+                _ => native_panic!("unknown builtin type for function {}", function),
+            })
+        })
+        .try_collect()
+}
+
+#[derive(Debug)]
+struct LockFile(PathBuf);
+
+impl LockFile {
+    pub fn new(path: impl Into<PathBuf>) -> io::Result<Option<Self>> {
+        let path: PathBuf = path.into();
+        let path = path.with_extension("lock");
+
+        match File::create_new(&path) {
+            Ok(_) => Ok(Some(Self(path))),
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(None),
+            Err(e) => Err(e),
         }
+    }
+
+    pub fn rename(self, path: impl AsRef<Path>) -> io::Result<()> {
+        fs::rename(&self.0, path.as_ref())?;
+
+        // don't remove lockfile, as we just renamed it
+        std::mem::forget(self);
+
+        Ok(())
+    }
+}
+
+impl Drop for LockFile {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.0);
     }
 }
 
@@ -616,7 +723,9 @@ impl Drop for AotContractExecutor {
 mod tests {
     use super::*;
     use crate::{starknet_stub::StubSyscallHandler, utils::test::load_starknet_contract};
-    use cairo_lang_starknet_classes::contract_class::ContractClass;
+    use cairo_lang_starknet_classes::contract_class::{
+        version_id_from_serialized_sierra_program, ContractClass,
+    };
     use rayon::iter::ParallelBridge;
     use rstest::*;
 
@@ -709,11 +818,15 @@ mod tests {
     ) {
         use rayon::iter::ParallelIterator;
 
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program.sierra_program).unwrap();
         let executor = Arc::new(
             AotContractExecutor::new(
                 &starknet_program.extract_sierra_program().unwrap(),
                 &starknet_program.entry_points_by_type,
+                sierra_version,
                 optlevel,
+                None,
             )
             .unwrap(),
         );
@@ -737,7 +850,6 @@ mod tests {
                     &mut StubSyscallHandler::default(),
                 )
                 .unwrap();
-
             assert_eq!(result.return_values, vec![Felt::from(n), Felt::from(n * 2)]);
             assert_eq!(result.remaining_gas, 18446744073709551615);
         });
@@ -747,10 +859,14 @@ mod tests {
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
     fn test_contract_executor(starknet_program: ContractClass, #[case] optlevel: OptLevel) {
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program.sierra_program).unwrap();
         let executor = AotContractExecutor::new(
             &starknet_program.extract_sierra_program().unwrap(),
             &starknet_program.entry_points_by_type,
+            sierra_version,
             optlevel,
+            None,
         )
         .unwrap();
 
@@ -782,10 +898,15 @@ mod tests {
         starknet_program_factorial: ContractClass,
         #[case] optlevel: OptLevel,
     ) {
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program_factorial.sierra_program)
+                .unwrap();
         let executor = AotContractExecutor::new(
             &starknet_program_factorial.extract_sierra_program().unwrap(),
             &starknet_program_factorial.entry_points_by_type,
+            sierra_version,
             optlevel,
+            None,
         )
         .unwrap();
 
@@ -807,9 +928,8 @@ mod tests {
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
-
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709538915);
+        assert_eq!(result.remaining_gas, 18446744073709545475);
     }
 
     #[rstest]
@@ -819,14 +939,18 @@ mod tests {
         starknet_program_empty: ContractClass,
         #[case] optlevel: OptLevel,
     ) {
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program_empty.sierra_program)
+                .unwrap();
         let executor = AotContractExecutor::new(
             &starknet_program_empty.extract_sierra_program().unwrap(),
             &starknet_program_empty.entry_points_by_type,
+            sierra_version,
             optlevel,
+            None,
         )
         .unwrap();
 
-        // The last function in the program is the `get` wrapper function.
         // The last function in the program is the `get` wrapper function.
         let selector = starknet_program_empty
             .entry_points_by_type

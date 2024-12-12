@@ -6,7 +6,7 @@ use cairo_lang_semantic::plugin::PluginSuite;
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use cairo_lang_starknet::{
     compile::compile_contract_in_prepared_db, inline_macros::selector::SelectorMacro,
-    plugin::StarkNetPlugin,
+    plugin::StarknetPlugin,
 };
 use cairo_native::context::NativeContext;
 use clap::Parser;
@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let program = load_program(Path::new(&args.input), args.starknet)?;
 
     // Compile the program.
-    let module = context.compile(&program, false, Some(Default::default()))?;
+    let module = context.compile(&program, false, Some(Default::default()), None)?;
 
     // Write the output.
     let output_str = module
@@ -70,11 +70,11 @@ fn load_program(path: &Path, is_contract: bool) -> Result<Program, Box<dyn std::
             // mimics cairo_lang_starknet::contract_class::compile_path
             let mut plugins = PluginSuite::default();
             plugins
-                .add_plugin::<StarkNetPlugin>()
+                .add_plugin::<StarknetPlugin>()
                 .add_inline_macro_plugin_ex(SelectorMacro::NAME, Arc::new(SelectorMacro));
             let mut db = RootDatabase::builder()
                 .detect_corelib()
-                .with_plugin_suite(plugins)
+                .with_default_plugin_suite(plugins)
                 .build()?;
 
             let main_crate_ids = setup_project(&mut db, Path::new(&path))?;

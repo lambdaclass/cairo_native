@@ -1,8 +1,3 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::{Arc, Mutex},
-};
-
 use crate::common::{load_cairo_path, run_native_program};
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
@@ -16,6 +11,10 @@ use cairo_native::{
 use lazy_static::lazy_static;
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use starknet_types_core::felt::Felt;
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{Arc, Mutex},
+};
 
 type Log = (Vec<Felt>, Vec<Felt>);
 type L2ToL1Message = (Felt, Vec<Felt>);
@@ -399,6 +398,47 @@ impl StarknetSyscallHandler for SyscallHandler {
         unimplemented!()
     }
 
+    fn sha256_process_block(
+        &mut self,
+        _state: &mut [u32; 8],
+        _block: &[u32; 16],
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<()> {
+        Ok(())
+    }
+
+    fn get_class_hash_at(
+        &mut self,
+        contract_address: Felt,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt> {
+        Ok(contract_address)
+    }
+
+    fn meta_tx_v0(
+        &mut self,
+        _address: Felt,
+        _entry_point_selector: Felt,
+        _calldata: &[Felt],
+        _signature: &[Felt],
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Vec<Felt>> {
+        Ok(vec![
+            Felt::from_dec_str(
+                "3358892263739032253767642605669710712087178958719188919195252597609334880396",
+            )
+            .unwrap(),
+            Felt::from_dec_str(
+                "1104291043781086177955655234103730593173963850634630109574183288837411031513",
+            )
+            .unwrap(),
+            Felt::from_dec_str(
+                "3346377229881115874907650557159666001431249650068516742483979624047277128413",
+            )
+            .unwrap(),
+        ])
+    }
+
     fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt> {
         let selector_bytes = selector.to_bytes_be();
 
@@ -492,23 +532,6 @@ impl StarknetSyscallHandler for SyscallHandler {
                 .unwrap_or_default(),
             _ => vec![],
         }
-    }
-
-    fn sha256_process_block(
-        &mut self,
-        _state: &mut [u32; 8],
-        _block: &[u32; 16],
-        _remaining_gas: &mut u64,
-    ) -> SyscallResult<()> {
-        Ok(())
-    }
-
-    fn get_class_hash_at(
-        &mut self,
-        contract_address: Felt,
-        _remaining_gas: &mut u64,
-    ) -> SyscallResult<Felt> {
-        Ok(contract_address)
     }
 }
 

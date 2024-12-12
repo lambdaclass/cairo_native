@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
 use crate::{
-    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
-    module::NativeModule, utils::SHARED_LIBRARY_EXT, OptLevel,
+    context::NativeContext, executor::AotNativeExecutor, module::NativeModule,
+    utils::SHARED_LIBRARY_EXT, OptLevel,
 };
 use cairo_lang_sierra::program::Program;
 use libloading::Library;
@@ -44,13 +44,13 @@ where
         let NativeModule {
             module,
             registry,
-            metadata,
+            mut metadata,
         } = self
             .context
-            .compile(program, false, Some(Default::default()))?;
+            .compile(program, false, Some(Default::default()), None)?;
 
         // Compile module into an object.
-        let object_data = crate::ffi::module_to_object(&module, opt_level)?;
+        let object_data = crate::ffi::module_to_object(&module, opt_level, None)?;
 
         // Compile object into a shared library.
         let shared_library_path = tempfile::Builder::new()
@@ -58,16 +58,14 @@ where
             .suffix(SHARED_LIBRARY_EXT)
             .tempfile()?
             .into_temp_path();
-        crate::ffi::object_to_shared_lib(&object_data, &shared_library_path)?;
+        crate::ffi::object_to_shared_lib(&object_data, &shared_library_path, None)?;
 
         let shared_library = unsafe { Library::new(shared_library_path)? };
         let executor = AotNativeExecutor::new(
             shared_library,
             registry,
-            metadata
-                .get::<GasMetadata>()
-                .cloned()
-                .ok_or(Error::MissingMetadata)?,
+            metadata.remove().ok_or(Error::MissingMetadata)?,
+            metadata.remove().unwrap_or_default(),
         );
 
         let executor = Arc::new(executor);
@@ -77,7 +75,7 @@ where
     }
 }
 
-impl<'a, K> Debug for AotProgramCache<'a, K>
+impl<K> Debug for AotProgramCache<'_, K>
 where
     K: PartialEq + Eq + Hash,
 {

@@ -11,10 +11,9 @@ use crate::{
     error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
-        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
-        MetadataStorage,
+        felt252_dict::Felt252DictOverrides, realloc_bindings::ReallocBindingsMeta,
+        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
-    types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -25,11 +24,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{func, llvm, ods},
-    ir::{
-        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        Attribute, Block, Identifier, Location, Module, Region, Type,
-    },
+    dialect::{func, llvm},
+    ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
 };
 
@@ -87,79 +83,17 @@ fn build_dup<'ctx>(
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
-    let inner_ty = registry.get_type(&info.ty)?;
-    let inner_len = inner_ty.layout(registry)?.pad_to_align().size();
-    let inner_ty = inner_ty.build(context, module, registry, metadata, &info.ty)?;
-
-    let dup_fn_symbol = format!("dup${}$item", info.self_ty().id);
-    {
-        let region = Region::new();
-        let entry =
-            region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
-
-        let null_ptr =
-            entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
-        let inner_len = entry.const_int(context, location, inner_len, 64)?;
-
-        let old_ptr = entry.arg(0)?;
-        let new_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
-            context, null_ptr, inner_len, location,
-        )?)?;
-
-        let value = entry.load(context, location, old_ptr, inner_ty)?;
-        let values = metadata
-            .get_or_insert_with(DupOverridesMeta::default)
-            .invoke_override(context, &entry, location, &info.ty, value)?;
-
-        entry.store(context, location, old_ptr, values.0)?;
-        entry.store(context, location, new_ptr, values.1)?;
-
-        entry.append_operation(llvm::r#return(Some(new_ptr), location));
-
-        module.body().append_operation(llvm::func(
-            context,
-            StringAttribute::new(context, &dup_fn_symbol),
-            TypeAttribute::new(llvm::r#type::function(
-                llvm::r#type::pointer(context, 0),
-                &[llvm::r#type::pointer(context, 0)],
-                false,
-            )),
-            region,
-            &[
-                (
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "public").into(),
-                ),
-                (
-                    Identifier::new(context, "linkage"),
-                    Attribute::parse(context, "#llvm.linkage<private>")
-                        .ok_or(Error::ParseAttributeError)?,
-                ),
-            ],
-            location,
-        ));
-    }
+    let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
-
-    let dup_fn = entry.append_op_result(
-        ods::llvm::mlir_addressof(
-            context,
-            llvm::r#type::pointer(context, 0),
-            FlatSymbolRefAttribute::new(context, &dup_fn_symbol),
-            location,
-        )
-        .into(),
-    )?;
 
     // The following unwrap is unreachable because the registration logic will always insert it.
     let value0 = entry.arg(0)?;
     let value1 = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
-        .dict_dup(context, module, &entry, value0, dup_fn, location)?;
+        .dict_dup(context, module, &entry, value0, location)?;
 
     entry.append_operation(func::r#return(&[value0, value1], location));
     Ok(region)
@@ -177,72 +111,24 @@ fn build_drop<'ctx>(
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let value_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
-    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+    let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
-    let drop_fn_symbol = match metadata.get::<DropOverridesMeta>() {
-        Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
-            let region = Region::new();
-            let entry =
-                region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
-
-            let value = entry.load(context, location, entry.arg(0)?, inner_ty)?;
-            drop_overrides_meta.invoke_override(context, &entry, location, &info.ty, value)?;
-
-            entry.append_operation(llvm::r#return(None, location));
-
-            let drop_fn_symbol = format!("drop${}$item", info.self_ty().id);
-            module.body().append_operation(llvm::func(
-                context,
-                StringAttribute::new(context, &drop_fn_symbol),
-                TypeAttribute::new(llvm::r#type::function(
-                    llvm::r#type::void(context),
-                    &[llvm::r#type::pointer(context, 0)],
-                    false,
-                )),
-                region,
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "public").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<private>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                location,
-            ));
-
-            Some(drop_fn_symbol)
-        }
-        _ => None,
-    };
+    {
+        let mut dict_overrides = metadata
+            .remove::<Felt252DictOverrides>()
+            .unwrap_or_default();
+        dict_overrides.build_drop_fn(context, module, registry, metadata, &info.ty)?;
+        metadata.insert(dict_overrides);
+    }
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
-
-    let drop_fn = match drop_fn_symbol {
-        Some(drop_fn_symbol) => Some(
-            entry.append_op_result(
-                ods::llvm::mlir_addressof(
-                    context,
-                    llvm::r#type::pointer(context, 0),
-                    FlatSymbolRefAttribute::new(context, &drop_fn_symbol),
-                    location,
-                )
-                .into(),
-            )?,
-        ),
-        None => None,
-    };
 
     // The following unwrap is unreachable because the registration logic will always insert it.
     let runtime_bindings_meta = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?;
-    runtime_bindings_meta.dict_drop(context, module, &entry, entry.arg(0)?, drop_fn, location)?;
+    runtime_bindings_meta.dict_drop(context, module, &entry, entry.arg(0)?, location)?;
 
     entry.append_operation(func::r#return(&[], location));
     Ok(region)
@@ -308,7 +194,6 @@ mod test {
 
                 @dict
             }
-
         };
         let program2 = load_cairo! {
             fn run_test() -> Felt252Dict<Nullable<Array<u32>>> {
@@ -317,8 +202,8 @@ mod test {
 
                 dict
             }
-
         };
+
         let result1 = run_program(&program, "run_test", &[]).return_value;
         let result2 = run_program(&program2, "run_test", &[]).return_value;
 

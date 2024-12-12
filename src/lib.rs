@@ -11,6 +11,7 @@
 pub use self::{
     compiler::compile,
     ffi::{module_to_object, object_to_shared_lib, OptLevel},
+    runtime::FormattedItem,
     values::Value,
 };
 
@@ -27,8 +28,10 @@ mod ffi;
 mod libfuncs;
 pub mod metadata;
 pub mod module;
+mod runtime;
 pub mod starknet;
 pub mod starknet_stub;
+pub mod statistics;
 mod types;
 pub mod utils;
 mod values;

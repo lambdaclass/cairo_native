@@ -16,227 +16,80 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use starknet_types_core::felt::Felt;
 use std::path::Path;
 
-fn criterion_benchmark(c: &mut Criterion) {
+fn compare(c: &mut Criterion, path: impl AsRef<Path>) {
     let context = NativeContext::new();
     let mut aot_cache = AotProgramCache::new(&context);
     let mut jit_cache = JitProgramCache::new(&context);
 
-    let factorial = load_contract("programs/benches/factorial_2M.cairo");
-    let fibonacci = load_contract("programs/benches/fib_2M.cairo");
-    let logistic_map = load_contract("programs/benches/logistic_map.cairo");
-    let linear_search = load_contract("programs/benches/linear_search.cairo");
+    let stem = path
+        .as_ref()
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
 
-    let aot_factorial = aot_cache
-        .compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive)
+    let program = load_contract(&path);
+    let aot_executor = aot_cache
+        .compile_and_insert(Felt::ZERO, &program, OptLevel::Aggressive)
         .unwrap();
-    let aot_fibonacci = aot_cache
-        .compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive)
-        .unwrap();
-    let aot_logistic_map = aot_cache
-        .compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive)
-        .unwrap();
-    let aot_linear_search = aot_cache
-        .compile_and_insert(Felt::from(2), &linear_search, OptLevel::Aggressive)
+    let jit_executor = jit_cache
+        .compile_and_insert(Felt::ZERO, &program, OptLevel::Aggressive)
         .unwrap();
 
-    let jit_factorial = jit_cache
-        .compile_and_insert(Felt::ZERO, &factorial, OptLevel::Aggressive)
-        .unwrap();
-    let jit_fibonacci = jit_cache
-        .compile_and_insert(Felt::ONE, &fibonacci, OptLevel::Aggressive)
-        .unwrap();
-    let jit_logistic_map = jit_cache
-        .compile_and_insert(Felt::from(2), &logistic_map, OptLevel::Aggressive)
-        .unwrap();
-    let jit_linear_search = jit_cache
-        .compile_and_insert(Felt::from(2), &linear_search, OptLevel::Aggressive)
-        .unwrap();
+    let main_name = format!("{stem}::{stem}::main");
+    let main_id = find_function_id(&program, &main_name).unwrap();
 
-    let factorial_function_id =
-        find_function_id(&factorial, "factorial_2M::factorial_2M::main").unwrap();
-    let fibonacci_function_id = find_function_id(&fibonacci, "fib_2M::fib_2M::main").unwrap();
-    let logistic_map_function_id =
-        find_function_id(&logistic_map, "logistic_map::logistic_map::main").unwrap();
-    let linear_search_function_id =
-        find_function_id(&linear_search, "linear_search::linear_search::main").unwrap();
-
-    let factorial_runner = load_contract_for_vm("programs/benches/factorial_2M.cairo");
-    let fibonacci_runner = load_contract_for_vm("programs/benches/fib_2M.cairo");
-    let logistic_map_runner = load_contract_for_vm("programs/benches/logistic_map.cairo");
-    let linear_search_runner = load_contract_for_vm("programs/benches/linear_search.cairo");
-
-    let factorial_function = factorial_runner
+    let vm_runner = load_contract_for_vm(&path);
+    let vm_main_id = vm_runner
         .find_function("main")
-        .expect("failed to find main factorial function");
-    let fibonacci_function = fibonacci_runner
-        .find_function("main")
-        .expect("failed to find main fibonacci function");
-    let logistic_map_function = logistic_map_runner
-        .find_function("main")
-        .expect("failed to find main logistic map function");
-    let linear_search_function = linear_search_runner
-        .find_function("main")
-        .expect("failed to find main logistic map function");
+        .expect("failed to find main function");
 
-    {
-        let mut linear_search_group = c.benchmark_group("linear_search");
+    let mut group = c.benchmark_group(stem);
 
-        linear_search_group.bench_function("Cached JIT", |b| {
-            b.iter(|| {
-                let result = jit_linear_search
-                    .invoke_dynamic(linear_search_function_id, &[], Some(u64::MAX))
-                    .unwrap();
-                let value = result.return_value;
-                assert!(matches!(value, Value::Enum { tag: 0, .. }))
-            });
+    group.bench_function("Cached JIT", |b| {
+        b.iter(|| {
+            let result = jit_executor
+                .invoke_dynamic(main_id, &[], Some(u64::MAX))
+                .unwrap();
+            let value = result.return_value;
+            assert!(matches!(value, Value::Enum { tag: 0, .. }))
         });
-        linear_search_group.bench_function("Cached AOT", |b| {
-            b.iter(|| {
-                let result = aot_linear_search
-                    .invoke_dynamic(linear_search_function_id, &[], Some(u64::MAX))
-                    .unwrap();
-                let value = result.return_value;
-                assert!(matches!(value, Value::Enum { tag: 0, .. }))
-            });
+    });
+    group.bench_function("Cached AOT", |b| {
+        b.iter(|| {
+            let result = aot_executor
+                .invoke_dynamic(main_id, &[], Some(u64::MAX))
+                .unwrap();
+            let value = result.return_value;
+            assert!(matches!(value, Value::Enum { tag: 0, .. }))
         });
-
-        linear_search_group.bench_function("VM", |b| {
-            b.iter(|| {
-                let result = linear_search_runner
-                    .run_function_with_starknet_context(
-                        linear_search_function,
-                        &[],
-                        Some(usize::MAX),
-                        StarknetState::default(),
-                    )
-                    .unwrap();
-                let value = result.value;
-                assert!(matches!(value, RunResultValue::Success(_)))
-            });
+    });
+    group.bench_function("VM", |b| {
+        b.iter(|| {
+            let result = vm_runner
+                .run_function_with_starknet_context(
+                    vm_main_id,
+                    vec![],
+                    Some(usize::MAX),
+                    StarknetState::default(),
+                )
+                .unwrap();
+            let value = result.value;
+            assert!(matches!(value, RunResultValue::Success(_)))
         });
+    });
 
-        linear_search_group.finish();
-    }
+    group.finish();
+}
 
-    {
-        let mut factorial_group = c.benchmark_group("factorial_2M");
-
-        factorial_group.bench_function("Cached JIT", |b| {
-            b.iter(|| {
-                let result = jit_factorial
-                    .invoke_dynamic(factorial_function_id, &[], Some(u64::MAX))
-                    .unwrap();
-                let value = result.return_value;
-                assert!(matches!(value, Value::Enum { tag: 0, .. }))
-            });
-        });
-        factorial_group.bench_function("Cached AOT", |b| {
-            b.iter(|| {
-                let result = aot_factorial
-                    .invoke_dynamic(factorial_function_id, &[], Some(u64::MAX))
-                    .unwrap();
-                let value = result.return_value;
-                assert!(matches!(value, Value::Enum { tag: 0, .. }))
-            });
-        });
-
-        factorial_group.bench_function("VM", |b| {
-            b.iter(|| {
-                let result = factorial_runner
-                    .run_function_with_starknet_context(
-                        factorial_function,
-                        &[],
-                        Some(usize::MAX),
-                        StarknetState::default(),
-                    )
-                    .unwrap();
-                let value = result.value;
-                assert!(matches!(value, RunResultValue::Success(_)))
-            });
-        });
-
-        factorial_group.finish();
-    }
-
-    {
-        let mut fibonacci_group = c.benchmark_group("fibonacci_2M");
-
-        fibonacci_group.bench_function("Cached JIT", |b| {
-            b.iter(|| {
-                let result = jit_fibonacci
-                    .invoke_dynamic(fibonacci_function_id, &[], Some(u64::MAX))
-                    .unwrap();
-                let value = result.return_value;
-                assert!(matches!(value, Value::Enum { tag: 0, .. }))
-            });
-        });
-        fibonacci_group.bench_function("Cached AOT", |b| {
-            b.iter(|| {
-                let result = aot_fibonacci
-                    .invoke_dynamic(fibonacci_function_id, &[], Some(u64::MAX))
-                    .unwrap();
-                let value = result.return_value;
-                assert!(matches!(value, Value::Enum { tag: 0, .. }))
-            })
-        });
-        fibonacci_group.bench_function("VM", |b| {
-            b.iter(|| {
-                let result = fibonacci_runner
-                    .run_function_with_starknet_context(
-                        fibonacci_function,
-                        &[],
-                        Some(usize::MAX),
-                        StarknetState::default(),
-                    )
-                    .unwrap();
-                let value = result.value;
-                assert!(matches!(value, RunResultValue::Success(_)))
-            });
-        });
-
-        fibonacci_group.finish();
-    }
-
-    {
-        let mut logistic_map_group = c.benchmark_group("logistic_map");
-
-        logistic_map_group.bench_function("Cached JIT", |b| {
-            b.iter(|| {
-                let result = jit_logistic_map
-                    .invoke_dynamic(logistic_map_function_id, &[], Some(u64::MAX))
-                    .unwrap();
-                let value = result.return_value;
-                assert!(matches!(value, Value::Enum { tag: 0, .. }))
-            });
-        });
-
-        logistic_map_group.bench_function("Cached AOT", |b| {
-            b.iter(|| {
-                let result = aot_logistic_map
-                    .invoke_dynamic(logistic_map_function_id, &[], Some(u64::MAX))
-                    .unwrap();
-                let value = result.return_value;
-                assert!(matches!(value, Value::Enum { tag: 0, .. }))
-            });
-        });
-
-        logistic_map_group.bench_function("VM", |b| {
-            b.iter(|| {
-                let result = logistic_map_runner
-                    .run_function_with_starknet_context(
-                        logistic_map_function,
-                        &[],
-                        Some(usize::MAX),
-                        StarknetState::default(),
-                    )
-                    .unwrap();
-                let value = result.value;
-                assert!(matches!(value, RunResultValue::Success(_)))
-            });
-        });
-
-        logistic_map_group.finish();
-    }
+fn criterion_benchmark(c: &mut Criterion) {
+    compare(c, "programs/benches/dict_snapshot.cairo");
+    compare(c, "programs/benches/dict_insert.cairo");
+    compare(c, "programs/benches/factorial_2M.cairo");
+    compare(c, "programs/benches/fib_2M.cairo");
+    compare(c, "programs/benches/linear_search.cairo");
+    compare(c, "programs/benches/logistic_map.cairo");
 }
 
 fn load_contract(path: impl AsRef<Path>) -> Program {

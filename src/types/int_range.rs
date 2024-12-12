@@ -36,7 +36,7 @@ pub fn build<'ctx>(
     info: WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<Type<'ctx>> {
     // TODO: Can its inner type require dup or drop? probably not since they are integers
-    let inner = registry.build_type(context, module, registry, metadata, &info.ty)?;
+    let inner = registry.build_type(context, module, metadata, &info.ty)?;
 
     Ok(melior::dialect::llvm::r#type::r#struct(
         context,

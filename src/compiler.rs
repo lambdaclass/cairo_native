@@ -45,6 +45,7 @@
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
+    clone_option_mut,
     debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
@@ -53,9 +54,10 @@ use crate::{
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
-    native_panic,
+    native_assert, native_panic,
+    statistics::Statistics,
     types::TypeBuilder,
-    utils::{generate_function_name, BlockExt},
+    utils::{generate_function_name, walk_ir::walk_mlir_block, BlockExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -84,8 +86,8 @@ use melior::{
         },
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
-        Value,
+        Attribute, AttributeLike, Block, BlockLike, BlockRef, Identifier, Location, Module, Region,
+        Type, Value,
     },
     Context,
 };
@@ -98,6 +100,7 @@ use mlir_sys::{
 use std::{
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
+    ffi::c_void,
     ops::Deref,
 };
 
@@ -121,6 +124,7 @@ type BlockStorage<'c, 'a> =
 ///
 /// Additionally, it needs a reference to the MLIR context, the output module and the metadata
 /// storage. The last one is passed externally so that stuff can be initialized if necessary.
+#[allow(clippy::too_many_arguments)]
 pub fn compile(
     context: &Context,
     module: &Module,
@@ -129,6 +133,7 @@ pub fn compile(
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
     ignore_debug_names: bool,
+    stats: Option<&mut Statistics>,
 ) -> Result<(), Error> {
     if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
         if x == "1" || x == "true" {
@@ -158,6 +163,7 @@ pub fn compile(
             di_compile_unit_id,
             sierra_stmt_start_offset,
             ignore_debug_names,
+            clone_option_mut!(stats),
         )?;
     }
 
@@ -184,6 +190,7 @@ fn compile_func(
     di_compile_unit_id: Attribute,
     sierra_stmt_start_offset: usize,
     ignore_debug_names: bool,
+    stats: Option<&mut Statistics>,
 ) -> Result<(), Error> {
     let fn_location = Location::new(
         context,
@@ -211,6 +218,9 @@ fn compile_func(
         metadata,
     )
     .collect::<Result<Vec<_>, _>>()?;
+
+    #[cfg(feature = "with-trace-dump")]
+    let mut var_types: HashMap<VarId, ConcreteTypeId> = HashMap::new();
 
     // Replace memory-allocated arguments with pointers.
     for (ty, type_info) in
@@ -415,6 +425,9 @@ fn compile_func(
                     value
                 },
             ));
+
+            #[cfg(feature = "with-trace-dump")]
+            var_types.insert(param.id.clone(), param.ty.clone());
         }
 
         values.into_iter()
@@ -521,6 +534,19 @@ fn compile_func(
                         format!("{}(stmt_idx={})", libfunc_to_name(libf), statement_idx)
                     };
 
+                    #[cfg(feature = "with-trace-dump")]
+                    crate::utils::trace_dump::build_state_snapshot(
+                        context,
+                        registry,
+                        module,
+                        block,
+                        location,
+                        metadata,
+                        statement_idx,
+                        &state,
+                        &var_types,
+                    );
+
                     let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
                     let helper = LibfuncHelper {
@@ -601,11 +627,43 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
-                    assert!(block.terminator().is_some());
+
+                    // When statistics are enabled, we iterate from the start
+                    // to the end block of the compiled libfunc, and count all the operations.
+                    if let Some(&mut ref mut stats) = stats {
+                        unsafe extern "C" fn callback(
+                            _: mlir_sys::MlirOperation,
+                            data: *mut c_void,
+                        ) -> mlir_sys::MlirWalkResult {
+                            let data = data.cast::<u128>().as_mut().unwrap();
+                            *data += 1;
+                            0
+                        }
+                        let data = walk_mlir_block(*block, *helper.last_block.get(), callback, 0);
+                        let name = libfunc_to_name(libfunc).to_string();
+                        *stats.mlir_operations_by_libfunc.entry(name).or_insert(0) += data;
+                    }
+
+                    native_assert!(
+                        block.terminator().is_some(),
+                        "libfunc {} had no terminator",
+                        libfunc_name
+                    );
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
                         if let Some(return_block) = tailrec_meta.return_target() {
                             tailrec_state = Some((tailrec_meta.depth_counter(), return_block));
+                        }
+                    }
+
+                    #[cfg(feature = "with-trace-dump")]
+                    for (branch_signature, branch_info) in
+                        libfunc.branch_signatures().iter().zip(&invocation.branches)
+                    {
+                        for (var_info, var_id) in
+                            branch_signature.vars.iter().zip(&branch_info.results)
+                        {
+                            var_types.insert(var_id.clone(), var_info.ty.clone());
                         }
                     }
 
@@ -615,9 +673,8 @@ fn compile_func(
                             .iter()
                             .zip(helper.results()?)
                             .map(|(branch_info, result_values)| {
-                                assert_eq!(
-                                    branch_info.results.len(),
-                                    result_values.len(),
+                                native_assert!(
+                                    branch_info.results.len() == result_values.len(),
                                     "Mismatched number of returned values from branch."
                                 );
 
@@ -642,6 +699,21 @@ fn compile_func(
                             0,
                         ),
                     );
+
+                    #[cfg(feature = "with-trace-dump")]
+                    if !is_recursive || tailrec_state.is_some() {
+                        crate::utils::trace_dump::build_state_snapshot(
+                            context,
+                            registry,
+                            module,
+                            block,
+                            location,
+                            metadata,
+                            statement_idx,
+                            &state,
+                            &var_types,
+                        );
+                    }
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
@@ -757,7 +829,7 @@ fn compile_func(
                                             }
                                         })
                                         .collect::<Result<Vec<_>, _>>()?,
-                                    None => todo!(),
+                                    None => native_panic!("not yet implemented"),
                                 };
 
                                 block.append_operation(cf::cond_br(
@@ -1052,7 +1124,7 @@ fn generate_function_structure<'c, 'a>(
                                         Entry::Occupied(entry) => entry.into_mut(),
                                         Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
                                     };
-                                assert!(
+                                native_assert!(
                                     prev_state.eq_unordered(&state),
                                     "Branch target states do not match."
                                 );
@@ -1069,7 +1141,7 @@ fn generate_function_structure<'c, 'a>(
                     );
 
                     let (state, types) = edit_state::take_args(state.clone(), var_ids.iter())?;
-                    assert!(
+                    native_assert!(
                         state.is_empty(),
                         "State must be empty after a return statement."
                     );

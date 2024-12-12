@@ -35,7 +35,7 @@ use melior::{
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Attribute, Block, Identifier, Location, Module, Region, Value, ValueLike,
+        Attribute, Block, BlockLike, Identifier, Location, Module, Region, Value, ValueLike,
     },
     Context,
 };
@@ -82,7 +82,7 @@ impl DupOverridesMeta {
 
         match f(metadata)? {
             Some(region) => {
-                let ty = registry.build_type(context, module, registry, metadata, id)?;
+                let ty = registry.build_type(context, module, metadata, id)?;
                 module.body().append_operation(func::func(
                     context,
                     StringAttribute::new(context, &format!("dup${}", id.id)),

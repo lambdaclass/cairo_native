@@ -19,7 +19,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{Block, Location, Value},
+    ir::{Block, BlockLike, Location, Value},
     Context,
 };
 
@@ -88,7 +88,7 @@ pub fn build_struct_value<'ctx, 'this>(
     struct_type: &ConcreteTypeId,
     fields: &[Value<'ctx, 'this>],
 ) -> Result<Value<'ctx, 'this>> {
-    let struct_ty = registry.build_type(context, helper, registry, metadata, struct_type)?;
+    let struct_ty = registry.build_type(context, helper, metadata, struct_type)?;
 
     let acc = entry.append_operation(llvm::undef(struct_ty, location));
 

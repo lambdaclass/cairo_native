@@ -19,7 +19,7 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
-        Block, Location,
+        Block, BlockLike, Location,
     },
     Context,
 };
@@ -37,7 +37,6 @@ pub fn build<'ctx, 'this>(
     let (result_type, result_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;

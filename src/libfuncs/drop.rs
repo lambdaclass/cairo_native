@@ -19,7 +19,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Block, Location},
+    ir::{Block, BlockLike, Location},
     Context,
 };
 
@@ -36,7 +36,6 @@ pub fn build<'ctx, 'this>(
     registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[0].ty,
     )?;

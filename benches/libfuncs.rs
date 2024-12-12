@@ -38,7 +38,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                         let res = vm_runner
                             .run_function_with_starknet_context(
                                 entry,
-                                &[],
+                                vec![],
                                 Some(usize::MAX),
                                 StarknetState::default(),
                             )
@@ -55,7 +55,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                     let native_context = NativeContext::new();
                     b.iter(|| {
                         let module = native_context
-                            .compile(program, false, Some(Default::default()))
+                            .compile(program, false, Some(Default::default()), None)
                             .unwrap();
                         // pass manager internally verifies the MLIR output is correct.
                         let native_executor =
@@ -77,7 +77,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 |b, program| {
                     let native_context = NativeContext::new();
                     let module = native_context
-                        .compile(program, false, Some(Default::default()))
+                        .compile(program, false, Some(Default::default()), None)
                         .unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                     let native_executor =
@@ -108,7 +108,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                     let native_context = NativeContext::new();
                     b.iter(|| {
                         let module = native_context
-                            .compile(program, false, Some(Default::default()))
+                            .compile(program, false, Some(Default::default()), None)
                             .unwrap();
                         // pass manager internally verifies the MLIR output is correct.
                         let native_executor =
@@ -130,7 +130,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                 |b, program| {
                     let native_context = NativeContext::new();
                     let module = native_context
-                        .compile(program, false, Some(Default::default()))
+                        .compile(program, false, Some(Default::default()), None)
                         .unwrap();
                     // pass manager internally verifies the MLIR output is correct.
                     let native_executor =

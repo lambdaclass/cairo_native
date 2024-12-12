@@ -14,7 +14,7 @@ use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
         ConcreteType,
     },
     ids::{ConcreteTypeId, FunctionId},
@@ -29,7 +29,7 @@ use cairo_lang_starknet::{
 };
 use cairo_lang_starknet_classes::{
     casm_contract_class::{CasmContractClass, ENTRY_POINT_COST},
-    contract_class::ContractClass,
+    contract_class::{version_id_from_serialized_sierra_program, ContractClass},
 };
 use cairo_lang_utils::Upcast;
 use cairo_native::{
@@ -194,7 +194,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
 pub fn load_cairo_contract_path(path: &str) -> ContractClass {
     let mut db = RootDatabase::builder()
         .detect_corelib()
-        .with_plugin_suite(starknet_plugin_suite())
+        .with_default_plugin_suite(starknet_plugin_suite())
         .build()
         .expect("failed to build database");
 
@@ -233,7 +233,7 @@ pub fn run_native_program(
     let context = NativeContext::new();
 
     let module = context
-        .compile(program, false, Some(Default::default()))
+        .compile(program, false, Some(Default::default()), None)
         .expect("Could not compile test program to MLIR.");
 
     assert!(
@@ -256,7 +256,7 @@ pub fn run_native_program(
 pub fn run_vm_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
-    args: &[Arg],
+    args: Vec<Arg>,
     gas: Option<usize>,
 ) -> Result<RunResultStarknet, RunnerError> {
     let runner = &program.2;
@@ -271,7 +271,7 @@ pub fn run_vm_program(
 /// Runs the contract on the cairo-vm
 pub fn run_vm_contract(
     cairo_contract: &ContractClass,
-    entrypoint: usize,
+    selector: &BigUint,
     args: &[Felt],
 ) -> Vec<Felt> {
     let args = args
@@ -289,15 +289,16 @@ pub fn run_vm_contract(
         .expect("failed to extract program from casm contract");
 
     // Initialize runner and builtins
-    let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, None, false, false)
+    let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, None, false, false, false)
         .expect("failed to build runner");
 
-    let program_builtins = contract
+    let entrypoint = contract
         .entry_points_by_type
         .external
         .iter()
-        .find(|e| e.offset == entrypoint)
-        .expect("given entrypoint index should exist")
+        .find(|e| e.selector == *selector)
+        .expect("given entrypoint index should exist");
+    let program_builtins = entrypoint
         .builtins
         .iter()
         .map(|s| BuiltinName::from_str(s).expect("invalid builtin name"))
@@ -365,7 +366,7 @@ pub fn run_vm_contract(
         Cairo1HintProcessor::new(&contract.hints, RunResources::default(), false);
     runner
         .run_from_entrypoint(
-            entrypoint,
+            entrypoint.offset,
             &entrypoint_args,
             true,
             Some(runner.get_program().data_len() + program_extra_data.len()),
@@ -401,7 +402,7 @@ pub fn compare_inputless_program(program_path: &str) {
     let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
     let program = &program;
 
-    let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_vm = run_vm_program(program, "main", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
         program,
         "main",
@@ -429,7 +430,7 @@ pub fn run_native_starknet_contract(
     let native_context = NativeContext::new();
 
     let native_program = native_context
-        .compile(sierra_program, false, Some(Default::default()))
+        .compile(sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
@@ -448,10 +449,14 @@ pub fn run_native_starknet_aot_contract(
     args: &[Felt],
     handler: impl StarknetSyscallHandler,
 ) -> ContractExecutionResult {
+    let (sierra_version, _) =
+        version_id_from_serialized_sierra_program(&contract.sierra_program).unwrap();
     let native_executor = AotContractExecutor::new(
         &contract.extract_sierra_program().unwrap(),
         &contract.entry_points_by_type,
+        sierra_version,
         Default::default(),
+        None,
     )
     .unwrap();
     native_executor
@@ -750,7 +755,7 @@ pub fn compare_outputs(
 
     let mut size_cache = HashMap::new();
     let ty = function.signature.ret_types.last();
-    let is_builtin = ty.map_or(false, |ty| {
+    let is_builtin = ty.is_some_and(|ty| {
         matches!(
             registry.get_type(ty).unwrap(),
             CoreTypeConcrete::Bitwise(_)
@@ -762,13 +767,13 @@ pub fn compare_outputs(
                 | CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
                 | CoreTypeConcrete::Coupon(_)
-                | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+                | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_))
                 | CoreTypeConcrete::SegmentArena(_)
                 | CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_))
                 | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
         )
     });
-    let returns_panic = ty.map_or(false, |ty| {
+    let returns_panic = ty.is_some_and(|ty| {
         ty.debug_name
             .as_ref()
             .map(|x| x.starts_with("core::panics::PanicResult"))

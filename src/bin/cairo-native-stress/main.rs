@@ -280,7 +280,7 @@ where
     ) -> Arc<AotNativeExecutor> {
         let native_module = self
             .context
-            .compile(program, false, Some(Default::default()))
+            .compile(program, false, Some(Default::default()), None)
             .expect("failed to compile program");
 
         let registry = ProgramRegistry::new(program).expect("failed to get program registry");
@@ -291,7 +291,7 @@ where
             .expect("module should have gas metadata");
 
         let shared_library = {
-            let object_data = module_to_object(native_module.module(), opt_level)
+            let object_data = module_to_object(native_module.module(), opt_level, None)
                 .expect("failed to convert MLIR to object");
 
             let shared_library_dir = Path::new(AOT_CACHE_DIR);
@@ -299,7 +299,7 @@ where
             let shared_library_name = format!("lib{key}{SHARED_LIBRARY_EXT}");
             let shared_library_path = shared_library_dir.join(shared_library_name);
 
-            object_to_shared_lib(&object_data, &shared_library_path)
+            object_to_shared_lib(&object_data, &shared_library_path, None)
                 .expect("failed to link object into shared library");
 
             unsafe {
@@ -307,7 +307,12 @@ where
             }
         };
 
-        let executor = AotNativeExecutor::new(shared_library, registry, metadata);
+        let executor = AotNativeExecutor::new(
+            shared_library,
+            registry,
+            metadata,
+            native_module.metadata().get().cloned().unwrap_or_default(),
+        );
         let executor = Arc::new(executor);
 
         self.cache.insert(key, executor.clone());

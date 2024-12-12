@@ -21,7 +21,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         ods,
     },
-    ir::{Block, Location},
+    ir::{Block, BlockLike, Location},
     Context,
 };
 use num_bigint::BigInt;
@@ -62,7 +62,6 @@ pub fn build_int_range_try_new<'ctx, 'this>(
     let range_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[1].ty,
     )?;
@@ -108,7 +107,6 @@ pub fn build_int_range_pop_front<'ctx, 'this>(
     let inner_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[1].vars[1].ty,
     )?;
@@ -151,8 +149,9 @@ mod test {
 
     lazy_static! {
         static ref INT_RANGE_TRY_NEW: (String, Program) = load_cairo! {
-            #[derive(Copy, Drop)]
             pub extern type IntRange<T>;
+            impl IntRangeDrop<T> of Drop<IntRange<T>>;
+
             pub extern fn int_range_try_new<T>(
                 x: T, y: T
             ) -> Result<IntRange<T>, IntRange<T>> implicits(core::RangeCheck) nopanic;

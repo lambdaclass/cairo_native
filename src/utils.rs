@@ -5,7 +5,7 @@ pub(crate) use self::{
     program_registry_ext::ProgramRegistryExt,
     range_ext::RangeExt,
 };
-use crate::{metadata::MetadataStorage, OptLevel};
+use crate::{error::Result as NativeResult, metadata::MetadataStorage, native_panic, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
@@ -34,6 +34,11 @@ mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
+#[cfg(feature = "with-segfault-catcher")]
+pub mod safe_runner;
+pub mod sierra_gen;
+pub mod trace_dump;
+pub mod walk_ir;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
@@ -52,7 +57,14 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
         .expect("hardcoded half prime constant should be valid")
 });
 
+/// Represents the gas cost of each cost token type
+///
+/// See `crate::metadata::gas` for more documentation.
+///
+/// Order matters, for the libfunc impl
+/// https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[repr(C)]
 pub struct BuiltinCosts {
     pub r#const: u64,
     pub pedersen: u64,
@@ -63,19 +75,20 @@ pub struct BuiltinCosts {
     pub mul_mod: u64,
 }
 
-impl From<BuiltinCosts> for [u64; 7] {
-    // Order matters, for the libfunc impl
-    // https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
-    fn from(value: BuiltinCosts) -> Self {
-        [
-            value.r#const,
-            value.pedersen,
-            value.bitwise,
-            value.ecop,
-            value.poseidon,
-            value.add_mod,
-            value.mul_mod,
-        ]
+impl BuiltinCosts {
+    pub fn index_for_token_type(token_type: &CostTokenType) -> NativeResult<usize> {
+        let index = match token_type {
+            CostTokenType::Const => 0,
+            CostTokenType::Pedersen => 1,
+            CostTokenType::Bitwise => 2,
+            CostTokenType::EcOp => 3,
+            CostTokenType::Poseidon => 4,
+            CostTokenType::AddMod => 5,
+            CostTokenType::MulMod => 6,
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
+        };
+
+        Ok(index)
     }
 }
 
@@ -90,6 +103,27 @@ impl Default for BuiltinCosts {
             add_mod: token_gas_cost(CostTokenType::AddMod) as u64,
             mul_mod: token_gas_cost(CostTokenType::MulMod) as u64,
         }
+    }
+}
+
+impl crate::arch::AbiArgument for BuiltinCosts {
+    fn to_bytes(
+        &self,
+        buffer: &mut Vec<u8>,
+        find_dict_drop_override: impl Copy
+            + Fn(
+                &cairo_lang_sierra::ids::ConcreteTypeId,
+            ) -> Option<extern "C" fn(*mut std::ffi::c_void)>,
+    ) -> crate::error::Result<()> {
+        self.r#const.to_bytes(buffer, find_dict_drop_override)?;
+        self.pedersen.to_bytes(buffer, find_dict_drop_override)?;
+        self.bitwise.to_bytes(buffer, find_dict_drop_override)?;
+        self.ecop.to_bytes(buffer, find_dict_drop_override)?;
+        self.poseidon.to_bytes(buffer, find_dict_drop_override)?;
+        self.add_mod.to_bytes(buffer, find_dict_drop_override)?;
+        self.mul_mod.to_bytes(buffer, find_dict_drop_override)?;
+
+        Ok(())
     }
 }
 
@@ -162,12 +196,12 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else {
         // According to the docs this should never return an error.
         Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16)
-            .expect("only fails if size is greater than ISIZE::MAX")
+            .expect("layout size rounded up to the next multiple of 16 should never be greater than ISIZE::MAX")
     }
 }
 
 /// Compile a cairo program found at the given path to sierra.
-pub fn cairo_to_sierra(program: &Path) -> anyhow::Result<Arc<Program>> {
+pub fn cairo_to_sierra(program: &Path) -> crate::error::Result<Arc<Program>> {
     if program
         .extension()
         .map(|x| {
@@ -184,14 +218,14 @@ pub fn cairo_to_sierra(program: &Path) -> anyhow::Result<Arc<Program>> {
                 ..Default::default()
             },
         )
-        .map(Arc::new)
+        .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
     } else {
         let source = std::fs::read_to_string(program)?;
         cairo_lang_sierra::ProgramParser::new()
             .parse(&source)
-            .map_err(|err| anyhow::Error::msg(err.to_string()))
-            .map(Arc::new)
+            .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
     }
+    .map(Arc::new)
 }
 
 /// Returns the given entry point if present.
@@ -272,15 +306,6 @@ pub fn create_engine(
     // Create the JIT engine.
     let engine = ExecutionEngine::new(module, opt_level.into(), &[], false);
 
-    #[cfg(feature = "with-runtime")]
-    register_runtime_symbols(&engine);
-
-    #[cfg(feature = "with-debug-utils")]
-    _metadata
-        .get::<crate::metadata::debug_utils::DebugUtils>()
-        .unwrap()
-        .register_impls(&engine);
-
     #[cfg(feature = "with-mem-tracing")]
     self::mem_tracing::register_bindings(&engine);
 
@@ -294,124 +319,6 @@ pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Er
     pass_manager.add_pass(pass::conversion::create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
     pass_manager.add_pass(pass::conversion::create_to_llvm());
     pass_manager.run(module)
-}
-
-#[cfg(feature = "with-runtime")]
-pub fn register_runtime_symbols(engine: &ExecutionEngine) {
-    use cairo_native_runtime::FeltDict;
-
-    unsafe {
-        engine.register_symbol(
-            "cairo_native__libfunc__debug__print",
-            cairo_native_runtime::cairo_native__libfunc__debug__print
-                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__pedersen",
-            cairo_native_runtime::cairo_native__libfunc__pedersen
-                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__hades_permutation",
-            cairo_native_runtime::cairo_native__libfunc__hades_permutation
-                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_point_from_x_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_from_x_nz
-                as *const fn(*mut [[u8; 32]; 2]) -> bool as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_add",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add
-                as *const fn(*mut [[u8; 32]; 4], *const [[u8; 32]; 2]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_init",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_init
-                as *const fn(*mut [[u8; 32]; 4]) as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_add_mul",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul
-                as *const fn(*mut [[u8; 32]; 4], *const [u8; 32], *const [[u8; 32]; 2]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_try_finalize_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_try_finalize_nz
-                as *const fn(*const [[u8; 32]; 2], *mut [[u8; 32]; 4]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_point_try_new_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_try_new_nz
-                as *const fn(*const [[u8; 32]; 2]) -> bool as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_new",
-            cairo_native_runtime::cairo_native__dict_new as *const fn() -> *mut FeltDict as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_drop",
-            cairo_native_runtime::cairo_native__dict_drop
-                as *const fn(*mut FeltDict, Option<extern "C" fn(*mut std::ffi::c_void)>) -> ()
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_dup",
-            cairo_native_runtime::cairo_native__dict_dup
-                as *const fn(
-                    *mut FeltDict,
-                    extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
-                ) -> *mut FeltDict as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_get",
-            cairo_native_runtime::cairo_native__dict_get
-                as *const fn(*mut FeltDict, &[u8; 32]) -> *mut std::ffi::c_void
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_gas_refund",
-            cairo_native_runtime::cairo_native__dict_gas_refund as *const fn(*const FeltDict) -> u64
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__set_costs_builtin",
-            cairo_native_runtime::cairo_native__set_costs_builtin as *const fn(*const u64) -> ()
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__get_costs_builtin",
-            cairo_native_runtime::cairo_native__get_costs_builtin as *const fn() -> *const u64
-                as *mut (),
-        );
-
-        #[cfg(feature = "with-cheatcode")]
-        {
-            engine.register_symbol(
-                "cairo_native__vtable_cheatcode",
-                crate::starknet::cairo_native__vtable_cheatcode as *mut (),
-            );
-        }
-    }
 }
 
 /// Return a type that calls a closure when formatted using [Debug](std::fmt::Debug).
@@ -606,7 +513,7 @@ pub mod test {
         compile_program(
             program_str,
             RootDatabase::builder()
-                .with_plugin_suite(starknet_plugin_suite())
+                .with_default_plugin_suite(starknet_plugin_suite())
                 .build()
                 .unwrap(),
         )
@@ -616,7 +523,7 @@ pub mod test {
         compile_contract(
             program_str,
             RootDatabase::builder()
-                .with_plugin_suite(starknet_plugin_suite())
+                .with_default_plugin_suite(starknet_plugin_suite())
                 .build()
                 .unwrap(),
         )
@@ -702,7 +609,7 @@ pub mod test {
         let context = NativeContext::new();
 
         let module = context
-            .compile(program, false, Some(Default::default()))
+            .compile(program, false, Some(Default::default()), None)
             .expect("Could not compile test program to MLIR.");
 
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Less).unwrap();

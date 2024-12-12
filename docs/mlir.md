@@ -1,5 +1,7 @@
 # MLIR Resources
 
+Check out the new MLIR Workshop: https://lambdaclass.github.io/mlir-workshop/
+
 ## How MLIR Works
 MLIR is composed of **dialects**, which is like a IR of it's own, and this
 IR can be converted to another dialect IR (if the functionality exists).
@@ -30,6 +32,7 @@ to the LLVM dialect, which then gets converted to LLVM IR.
 ## Learning Resources
 Resources marked with **→** are best.
 
+- [LambdaClass MLIR Workshop](https://lambdaclass.github.io/mlir-workshop/)
 - Introduction
     - **→** [2019 EuroLLVM Developers’ Meeting: MLIR: Multi-Level Intermediate Representation Compiler Infrastructure](https://www.youtube.com/watch?v=qzljG6DKgic)
     - → [MLIR: A Compiler Infrastructure for the End of Moore’s Law](https://arxiv.org/pdf/2002.11054.pdf) The paper introducing the MLIR framework

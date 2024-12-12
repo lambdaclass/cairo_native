@@ -17,7 +17,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
-    ir::{r#type::IntegerType, Block, Location, Value},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Value},
     Context,
 };
 
@@ -53,13 +53,8 @@ pub fn build_divmod_u256<'ctx, 'this>(
     let i128_ty = IntegerType::new(context, 128).into();
     let i512_ty = IntegerType::new(context, 512).into();
 
-    let guarantee_type = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.output_types()[0][3],
-    )?;
+    let guarantee_type =
+        registry.build_type(context, helper, metadata, &info.output_types()[0][3])?;
 
     let lhs_struct: Value = entry.arg(1)?;
     let rhs_struct: Value = entry.arg(2)?;

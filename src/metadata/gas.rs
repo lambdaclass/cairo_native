@@ -1,39 +1,42 @@
-use crate::{error::Result as NativeResult, native_panic};
+//! This file contains the gas calculation metadata.
+//!
+//! Each statement has an associated `GasCost`, which represents the cost of
+//! executing that statement, in terms of tokens.
+//!
+//! To calculate the actual cost, the amount of tokens is multiplied by the cost
+//! of the given token type. The cost of each token type is specified on runtime,
+//! with the `BuiltinCosts` structure.
+//!
+//! When implementing libfuncs, the `GasCost` metadata entry already contains
+//! the `GasCost` for the current sierra statement
+
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::gas::CostTokenType,
     ids::FunctionId,
     program::{Program, StatementIdx},
 };
-use cairo_lang_sierra_ap_change::{
-    ap_change_info::ApChangeInfo, calc_ap_changes,
-    compute::calc_ap_changes as linear_calc_ap_changes, ApChangeError,
+use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, ApChangeError};
+use cairo_lang_sierra_gas::{gas_info::GasInfo, CostError};
+use cairo_lang_sierra_to_casm::metadata::{
+    calc_metadata, calc_metadata_ap_change_only, Metadata as CairoGasMetadata,
+    MetadataComputationConfig, MetadataError as CairoGasMetadataError,
 };
-use cairo_lang_sierra_gas::{
-    compute_postcost_info, compute_precost_info, gas_info::GasInfo, CostError,
-};
-use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
-use std::collections::BTreeMap;
+
+use crate::{error::Result as NativeResult, native_panic};
+
+use std::{collections::BTreeMap, fmt, ops::Deref};
 
 /// Holds global gas info.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct GasMetadata {
-    pub ap_change_info: ApChangeInfo,
-    pub gas_info: GasInfo,
-}
+#[derive(Default)]
+pub struct GasMetadata(pub CairoGasMetadata);
 
+/// The gas cost associated to a determined sierra statement.
+///
+/// It contains the amount of tokens for each token type,
+/// that a given sierra statement costs.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-// Cost, token type (index into builtin costs).
 pub struct GasCost(pub Vec<(u64, CostTokenType)>);
-
-/// Configuration for metadata computation.
-#[derive(Debug, Clone)]
-pub struct MetadataComputationConfig {
-    pub function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>>,
-    // ignored, its always used
-    pub linear_gas_solver: bool,
-    pub linear_ap_change_solver: bool,
-}
 
 /// Error for metadata calculations.
 #[derive(Debug, thiserror::Error, Eq, PartialEq)]
@@ -46,26 +49,18 @@ pub enum GasMetadataError {
     NotEnoughGas { gas: Box<(u64, u64)> },
 }
 
-impl Default for MetadataComputationConfig {
-    fn default() -> Self {
-        Self {
-            function_set_costs: Default::default(),
-            linear_gas_solver: true,
-            linear_ap_change_solver: true,
-        }
-    }
-}
-
 impl GasMetadata {
     pub fn new(
         sierra_program: &Program,
         config: Option<MetadataComputationConfig>,
     ) -> Result<GasMetadata, GasMetadataError> {
-        if let Some(metadata_config) = config {
-            calc_metadata(sierra_program, metadata_config)
+        let cairo_gas_metadata = if let Some(metadata_config) = config {
+            calc_metadata(sierra_program, metadata_config)?
         } else {
-            calc_metadata_ap_change_only(sierra_program)
-        }
+            calc_metadata_ap_change_only(sierra_program)?
+        };
+
+        Ok(GasMetadata::from(cairo_gas_metadata))
     }
 
     /// Returns the initial value for the gas counter.
@@ -166,9 +161,32 @@ impl GasMetadata {
     }
 }
 
+impl From<CairoGasMetadata> for GasMetadata {
+    fn from(value: CairoGasMetadata) -> Self {
+        Self(value)
+    }
+}
+
+impl Deref for GasMetadata {
+    type Target = CairoGasMetadata;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl fmt::Debug for GasMetadata {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GasMetadata")
+            .field("ap_change_info", &self.ap_change_info)
+            .field("gas_info", &self.gas_info)
+            .finish()
+    }
+}
+
 impl Clone for GasMetadata {
     fn clone(&self) -> Self {
-        Self {
+        Self(CairoGasMetadata {
             ap_change_info: ApChangeInfo {
                 variable_values: self.ap_change_info.variable_values.clone(),
                 function_ap_change: self.ap_change_info.function_ap_change.clone(),
@@ -177,61 +195,15 @@ impl Clone for GasMetadata {
                 variable_values: self.gas_info.variable_values.clone(),
                 function_costs: self.gas_info.function_costs.clone(),
             },
-        }
+        })
     }
 }
 
-// Methods from https://github.com/starkware-libs/cairo/blob/fbdbbe4c42a6808eccbff8436078f73d0710c772/crates/cairo-lang-sierra-to-casm/src/metadata.rs#L71
-
-/// Calculates the metadata for a Sierra program, with ap change info only.
-fn calc_metadata_ap_change_only(program: &Program) -> Result<GasMetadata, GasMetadataError> {
-    Ok(GasMetadata {
-        ap_change_info: calc_ap_changes(program, |_, _| 0)?,
-        gas_info: GasInfo {
-            variable_values: Default::default(),
-            function_costs: Default::default(),
-        },
-    })
-}
-
-/// Calculates the metadata for a Sierra program.
-///
-/// `no_eq_solver` uses a linear-time algorithm for calculating the gas, instead of solving
-/// equations.
-fn calc_metadata(
-    program: &Program,
-    config: MetadataComputationConfig,
-) -> Result<GasMetadata, GasMetadataError> {
-    let pre_gas_info = compute_precost_info(program)?;
-
-    let ap_change_info = if config.linear_ap_change_solver {
-        linear_calc_ap_changes
-    } else {
-        calc_ap_changes
-    }(program, |idx, token_type| {
-        pre_gas_info.variable_values[&(idx, token_type)] as usize
-    })?;
-
-    let enforced_function_costs: OrderedHashMap<FunctionId, i32> = config
-        .function_set_costs
-        .iter()
-        .map(|(func, costs)| (func.clone(), costs[&CostTokenType::Const]))
-        .collect();
-    let post_gas_info = compute_postcost_info(
-        program,
-        &|idx| {
-            ap_change_info
-                .variable_values
-                .get(idx)
-                .copied()
-                .unwrap_or_default()
-        },
-        &pre_gas_info,
-        &enforced_function_costs,
-    )?;
-
-    Ok(GasMetadata {
-        ap_change_info,
-        gas_info: pre_gas_info.combine(post_gas_info),
-    })
+impl From<CairoGasMetadataError> for GasMetadataError {
+    fn from(value: CairoGasMetadataError) -> Self {
+        match value {
+            CairoGasMetadataError::ApChangeError(x) => GasMetadataError::ApChangeError(x),
+            CairoGasMetadataError::CostError(x) => GasMetadataError::CostError(x),
+        }
+    }
 }

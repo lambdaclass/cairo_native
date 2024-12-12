@@ -31,7 +31,10 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm, ods},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Region, Type},
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module,
+        Region, Type,
+    },
     Context,
 };
 
@@ -147,7 +150,7 @@ fn build_drop<'ctx>(
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+    let inner_ty = registry.build_type(context, module, metadata, &info.ty)?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));

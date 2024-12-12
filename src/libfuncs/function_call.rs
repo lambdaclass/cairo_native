@@ -7,6 +7,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
+    native_assert,
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
 };
@@ -23,7 +24,7 @@ use melior::{
         attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Identifier, Location, Type, Value,
+        Attribute, Block, BlockLike, Identifier, Location, Type, Value,
     },
     Context,
 };
@@ -175,7 +176,7 @@ pub fn build<'ctx, 'this>(
             arguments.insert(0, stack_ptr);
 
             Some(true)
-        } else if return_types.first().is_some() {
+        } else if !return_types.is_empty() {
             let (type_id, type_info) = return_types[0];
             result_types.push(type_info.build(context, helper, registry, metadata, type_id)?);
 
@@ -270,7 +271,10 @@ pub fn build<'ctx, 'this>(
                 let mut count = 0;
                 for (idx, type_id) in info.function.signature.ret_types.iter().enumerate() {
                     let type_info = registry.get_type(type_id)?;
-                    assert!(!type_info.is_memory_allocated(registry)?);
+                    native_assert!(
+                        !type_info.is_memory_allocated(registry)?,
+                        "if there is no return pointer, return data must not be memory allocated"
+                    );
 
                     if type_info.is_builtin() && type_info.is_zst(registry)? {
                         results.push(entry.argument(idx)?.into());

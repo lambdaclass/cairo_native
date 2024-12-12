@@ -48,7 +48,7 @@ where
     ) -> Result<Arc<JitNativeExecutor<'a>>> {
         let module = self
             .context
-            .compile(program, false, Some(Default::default()))?;
+            .compile(program, false, Some(Default::default()), None)?;
         let executor = JitNativeExecutor::from_native_module(module, opt_level)?;
 
         let executor = Arc::new(executor);
@@ -58,7 +58,7 @@ where
     }
 }
 
-impl<'a, K> Debug for JitProgramCache<'a, K>
+impl<K> Debug for JitProgramCache<'_, K>
 where
     K: Eq + Hash + PartialEq,
 {

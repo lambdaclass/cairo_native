@@ -87,6 +87,13 @@ pub enum Error {
 
     #[error(transparent)]
     SerdeJsonError(#[from] serde_json::Error),
+
+    #[error("Failed to parse a Cairo/Sierra program: {0}")]
+    ProgramParser(String),
+
+    #[cfg(feature = "with-segfault-catcher")]
+    #[error(transparent)]
+    SafeRunner(crate::utils::safe_runner::SafeRunnerError),
 }
 
 impl Error {
@@ -148,6 +155,7 @@ pub mod panic {
     impl std::error::Error for NativeAssertError {}
 
     impl NativeAssertError {
+        #[track_caller]
         pub fn new(msg: String) -> Self {
             let backtrace = Backtrace::capture();
             let info = if BacktraceStatus::Captured == backtrace.status() {

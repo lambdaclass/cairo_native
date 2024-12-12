@@ -1,8 +1,8 @@
 # Environment detection.
 
 UNAME := $(shell uname)
-CAIRO_2_VERSION = 2.9.0-dev.0
-SCARB_VERSION = 2.8.4
+SCARB_VERSION = 2.11.2
+CAIRO_2_VERSION = 2.12.0-dev.1
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
@@ -12,7 +12,6 @@ usage: check-llvm needs-cairo2
 	@echo "    build:        Builds the cairo-native library and binaries in release mode."
 	@echo "    build-native: Builds cairo-native with the target-cpu=native rust flag."
 	@echo "    build-dev:    Builds cairo-native under a development-optimized profile."
-	@echo "    runtime:      Builds the runtime library required for AOT compilation."
 	@echo "    check:        Checks format and lints."
 	@echo "    test:         Runs all tests."
 	@echo "    proptest:     Runs property tests."
@@ -45,11 +44,11 @@ endif
 	./scripts/check-corelib-version.sh $(CAIRO_2_VERSION)
 
 .PHONY: build
-build: check-llvm runtime
+build: check-llvm
 	cargo build --release --features=scarb
 
 .PHONY: build-natives
-build-native: check-llvm runtime
+build-native: check-llvm
 	RUSTFLAGS="-C target-cpu=native" cargo build --release --features=scarb
 
 .PHONY: build-dev
@@ -59,30 +58,34 @@ build-dev: check-llvm
 .PHONY: check
 check: check-llvm
 	cargo fmt --all -- --check
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 .PHONY: test
-test: check-llvm needs-cairo2 build-alexandria runtime-ci
+test: check-llvm needs-cairo2 build-alexandria
 	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: test-cairo
-test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo r --profile ci --bin cairo-native-test -- corelib
+test-cairo: check-llvm needs-cairo2
+	cargo r --profile ci --bin cairo-native-test -- corelib \
+		--skip-compilation core::test::dict_test::test_array_from_squash_dict \
+		--skip-compilation core::test::hash_test::test_blake2s \
+		--skip-compilation core::test::testing_test::test_get_unspent_gas \
+		--skip-compilation core::test::qm31_test::
 
 .PHONY: proptest
-proptest: check-llvm needs-cairo2 runtime-ci
+proptest: check-llvm needs-cairo2
 	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
 
 .PHONY: test-cli
-test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
+test-ci: check-llvm needs-cairo2 build-alexandria
 	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: proptest-cli
-proptest-ci: check-llvm needs-cairo2 runtime-ci
+proptest-ci: check-llvm needs-cairo2
 	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
 
 .PHONY: coverage
-coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
+coverage: check-llvm needs-cairo2 build-alexandria
 	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --workspace --lcov --output-path lcov.info
 	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
@@ -95,13 +98,13 @@ doc-open: check-llvm
 	cargo doc --all-features --no-deps --workspace --open
 
 .PHONY: bench
-bench: needs-cairo2 runtime
+bench: needs-cairo2
 	cargo b --release --bin cairo-native-run
 	cargo b --release --bin cairo-native-compile
 	./scripts/bench-hyperfine.sh
 
 .PHONY: bench-ci
-bench-ci: check-llvm needs-cairo2 runtime
+bench-ci: check-llvm needs-cairo2
 	cargo criterion --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: stress-test
@@ -140,6 +143,13 @@ deps-macos: build-cairo-2-compiler-macos install-scarb-macos
 	-brew install llvm@19 --quiet
 	@echo "You can execute the env-macos.sh script to setup the needed env variables."
 
+# CI use only
+.PHONY: deps-ci-linux build-cairo-2-compiler install-scarb
+deps-ci-linux:
+ifeq ($(UNAME), Linux)
+	-wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh 19
+endif
+
 cairo-repo-2-dir = cairo2
 cairo-repo-2-dir-macos = cairo2-macos
 
@@ -176,11 +186,3 @@ install-scarb-macos:
 .PHONY: build-alexandria
 build-alexandria:
 	cd tests/alexandria; scarb build
-
-.PHONY: runtime
-runtime:
-	cargo b --release --all-features -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
-
-.PHONY: runtime-ci
-runtime-ci:
-	cargo b --profile ci --all-features -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .

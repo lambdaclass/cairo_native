@@ -23,7 +23,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
-    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Value, ValueLike},
     Context,
 };
 use num_bigint::{BigInt, Sign};
@@ -68,7 +68,6 @@ pub fn build_binary_operation<'ctx, 'this>(
     let felt252_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
@@ -302,7 +301,6 @@ pub fn build_const<'ctx, 'this>(
     let felt252_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
