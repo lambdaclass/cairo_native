@@ -46,7 +46,7 @@ pub fn build<'ctx, 'this>(
 }
 
 /// The felt252_dict_entry_get libfunc receives the dictionary and the key and
-/// returns the associated dict entry, along with a clone of it's value.
+/// returns the associated dict entry, along with it's value.
 ///
 /// The dict entry also contains a pointer to the dictionary.
 ///
