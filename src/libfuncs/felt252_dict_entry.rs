@@ -242,53 +242,38 @@ pub fn build_finalize<'ctx, 'this>(
         .into(),
     )?;
 
-    let block_occupied = helper.append_block(Block::new(&[]));
-    let block_vacant = helper.append_block(Block::new(&[]));
-    let block_final =
-        helper.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
-    entry.append_operation(cf::cond_br(
-        context,
+    let entry_value_ptr = entry.append_op_result(scf::r#if(
         is_vacant,
-        block_vacant,
-        block_occupied,
-        &[],
-        &[],
+        &[llvm::r#type::pointer(context, 0)],
+        {
+            // If the entry is vacant, then alloc space for the new value
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            let value_len = block.const_int(context, location, value_layout.size(), 64)?;
+            let entry_value_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                context, null_ptr, value_len, location,
+            )?)?;
+            block.store(context, location, entry_value_ptr_ptr, entry_value_ptr)?;
+            block.append_operation(scf::r#yield(&[entry_value_ptr], location));
+
+            region
+        },
+        {
+            // If the entry is occupied, do nothing
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+
+            block.append_operation(scf::r#yield(&[entry_value_ptr], location));
+
+            region
+        },
         location,
-    ));
+    ))?;
 
-    {
-        // If the entry is occupied, drop the original value.
-        match metadata.get::<DropOverridesMeta>() {
-            Some(drop_overrides_meta)
-                if drop_overrides_meta.is_overriden(&info.signature.param_signatures[1].ty) =>
-            {
-                let value = block_occupied.load(context, location, entry_value_ptr, value_ty)?;
-                drop_overrides_meta.invoke_override(
-                    context,
-                    block_occupied,
-                    location,
-                    &info.signature.param_signatures[1].ty,
-                    value,
-                )?;
-            }
-            _ => {}
-        }
+    // Write the new value to the entry pointer
+    block_final.store(context, location, entry_value_ptr, new_entry_value)?;
 
-        block_occupied.append_operation(cf::br(block_final, &[entry_value_ptr], location));
-    }
-
-    {
-        // If the entry is vacant, we alloc space for the element
-        let value_len = block_vacant.const_int(context, location, value_layout.size(), 64)?;
-        let value_ptr = block_vacant.append_op_result(ReallocBindingsMeta::realloc(
-            context, null_ptr, value_len, location,
-        )?)?;
-
-        block_vacant.store(context, location, entry_value_ptr_ptr, value_ptr)?;
-        block_vacant.append_operation(cf::br(block_final, &[value_ptr], location));
-    }
-
-    block_final.store(context, location, block_final.arg(0)?, new_entry_value)?;
     block_final.append_operation(helper.br(0, &[dict_ptr], location));
 
     Ok(())
