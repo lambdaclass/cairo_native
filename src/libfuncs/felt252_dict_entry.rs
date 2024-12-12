@@ -168,6 +168,11 @@ pub fn build_get<'ctx, 'this>(
         &[dict_ptr, entry_value_ptr_ptr],
     )?;
 
+    // A this point, the internal state holds two references to the current dict
+    // entry value until the finalize libfunc is called. If the compiler were to drop
+    // the dict entry as well as the value, then there would be undefined behaviour.
+    // This should never happen, as a dict entry must always be finalized.
+
     entry.append_operation(helper.br(0, &[dict_entry, value], location));
     Ok(())
 }
