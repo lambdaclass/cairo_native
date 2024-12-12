@@ -4,11 +4,12 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    types::TypeBuilder,
     utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         felt252_dict::Felt252DictConcreteLibfunc,
         lib_func::SignatureOnlyConcreteLibfunc,
     },
@@ -41,12 +42,12 @@ pub fn build<'ctx, 'this>(
 
 pub fn build_new<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let segment_arena = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
@@ -54,7 +55,18 @@ pub fn build_new<'ctx, 'this>(
         .get_mut::<RuntimeBindingsMeta>()
         .expect("Runtime library not available.");
 
-    let dict_ptr = runtime_bindings.dict_new(context, helper, entry, location)?;
+    let value_type_id = match registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)? {
+        CoreTypeConcrete::Felt252Dict(info) => &info.ty,
+        _ => unreachable!(),
+    };
+
+    let dict_ptr = runtime_bindings.dict_new(
+        context,
+        helper,
+        entry,
+        location,
+        registry.get_type(value_type_id)?.layout(registry)?,
+    )?;
 
     entry.append_operation(helper.br(0, &[segment_arena, dict_ptr], location));
     Ok(())

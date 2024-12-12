@@ -8,7 +8,7 @@ use crate::{
     utils::BlockExt,
 };
 use melior::{
-    dialect::{func, llvm, ods},
+    dialect::{func, llvm},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
@@ -16,7 +16,7 @@ use melior::{
     },
     Context,
 };
-use std::{collections::HashSet, marker::PhantomData};
+use std::{alloc::Layout, collections::HashSet, marker::PhantomData};
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum RuntimeBinding {
@@ -539,10 +539,13 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         location: Location<'c>,
+        layout: Layout,
     ) -> Result<Value<'c, 'a>>
     where
         'c: 'a,
     {
+        let i64_ty = IntegerType::new(context, 64).into();
+
         if self.active_map.insert(RuntimeBinding::DictNew) {
             module.body().append_operation(func::func(
                 context,
@@ -550,7 +553,7 @@ impl RuntimeBindingsMeta {
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
-                        &[llvm::r#type::pointer(context, 0)],
+                        &[i64_ty, i64_ty],
                         &[llvm::r#type::pointer(context, 0)],
                     )
                     .into(),
@@ -571,20 +574,13 @@ impl RuntimeBindingsMeta {
             ));
         }
 
-        let free_fn = block.append_op_result(
-            ods::llvm::mlir_addressof(
-                context,
-                llvm::r#type::pointer(context, 0),
-                FlatSymbolRefAttribute::new(context, "free"),
-                location,
-            )
-            .into(),
-        )?;
+        let size = block.const_int_from_type(context, location, layout.size(), i64_ty)?;
+        let align = block.const_int_from_type(context, location, layout.align(), i64_ty)?;
 
         block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_new"),
-            &[free_fn],
+            &[size, align],
             &[llvm::r#type::pointer(context, 0)],
             location,
         ))
@@ -663,7 +659,7 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         ptr: Value<'c, 'a>,
-        dup_fn: Value<'c, 'a>,
+        dup_fn: Option<Value<'c, 'a>>,
         location: Location<'c>,
     ) -> Result<Value<'c, 'a>>
     where
@@ -699,6 +695,13 @@ impl RuntimeBindingsMeta {
                 Location::unknown(context),
             ));
         }
+
+        let dup_fn = match dup_fn {
+            Some(x) => x,
+            None => {
+                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?
+            }
+        };
 
         block.append_op_result(func::call(
             context,

@@ -158,8 +158,6 @@ pub struct FeltDict {
 
 /// Allocate a new dictionary.
 ///
-/// The `free_fn` argument is for freeing the entire
-///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
