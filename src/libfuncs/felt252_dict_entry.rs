@@ -201,8 +201,9 @@ pub fn build_finalize<'ctx, 'this>(
         &info.signature.param_signatures[1].ty,
     )?;
 
+    // Get the dict entry struct: `crate::types::felt252_dict_entry`
     let dict_entry = entry.arg(0)?;
-    let entry_value = entry.arg(1)?;
+    let new_entry_value = entry.arg(1)?;
 
     let dict_ptr = entry.extract_value(
         context,
@@ -211,28 +212,29 @@ pub fn build_finalize<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
         0,
     )?;
-    let value_ptr_ptr = entry.extract_value(
+    let entry_value_ptr_ptr = entry.extract_value(
         context,
         location,
         dict_entry,
         llvm::r#type::pointer(context, 0),
         1,
     )?;
-
-    let value_ptr = entry.load(
+    let entry_value_ptr = entry.load(
         context,
         location,
-        value_ptr_ptr,
+        entry_value_ptr_ptr,
         llvm::r#type::pointer(context, 0),
     )?;
 
     let null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+
+    // If the entry_value_ptr is null, then there is no previous value
     let is_vacant = entry.append_op_result(
         ods::llvm::icmp(
             context,
             IntegerType::new(context, 1).into(),
-            value_ptr,
+            entry_value_ptr,
             null_ptr,
             IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             location,
@@ -255,11 +257,12 @@ pub fn build_finalize<'ctx, 'this>(
     ));
 
     {
+        // If the entry is occupied, drop the original value.
         match metadata.get::<DropOverridesMeta>() {
             Some(drop_overrides_meta)
                 if drop_overrides_meta.is_overriden(&info.signature.param_signatures[1].ty) =>
             {
-                let value = block_occupied.load(context, location, value_ptr, value_ty)?;
+                let value = block_occupied.load(context, location, entry_value_ptr, value_ty)?;
                 drop_overrides_meta.invoke_override(
                     context,
                     block_occupied,
@@ -271,20 +274,21 @@ pub fn build_finalize<'ctx, 'this>(
             _ => {}
         }
 
-        block_occupied.append_operation(cf::br(block_final, &[value_ptr], location));
+        block_occupied.append_operation(cf::br(block_final, &[entry_value_ptr], location));
     }
 
     {
+        // If the entry is vacant, we alloc space for the element
         let value_len = block_vacant.const_int(context, location, value_layout.size(), 64)?;
         let value_ptr = block_vacant.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, value_len, location,
         )?)?;
 
-        block_vacant.store(context, location, value_ptr_ptr, value_ptr)?;
+        block_vacant.store(context, location, entry_value_ptr_ptr, value_ptr)?;
         block_vacant.append_operation(cf::br(block_final, &[value_ptr], location));
     }
 
-    block_final.store(context, location, block_final.arg(0)?, entry_value)?;
+    block_final.store(context, location, block_final.arg(0)?, new_entry_value)?;
     block_final.append_operation(helper.br(0, &[dict_ptr], location));
 
     Ok(())
