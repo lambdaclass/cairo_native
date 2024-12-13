@@ -2354,12 +2354,16 @@ mod test {
 
         assert_eq!(
             result,
-            Value::Struct {
-                fields: vec![Value::Struct {
-                    fields: vec![Value::Array(vec![])],
+            Value::Enum {
+                tag: 0,
+                value: Box::new(Value::Struct {
+                    fields: vec![Value::Struct {
+                        fields: vec![Value::Array(vec![])],
+                        debug_name: None,
+                    }],
                     debug_name: None,
-                }],
-                debug_name: None,
+                }),
+                debug_name: None
             },
         );
     }
