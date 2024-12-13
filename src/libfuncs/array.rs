@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result, SierraAssertError},
+    error::{panic::ToNativeAssertError, Error, Result, SierraAssertError},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
@@ -119,7 +119,13 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Generate MLIR operations for the `array_new` libfunc.
+/// Buils a new array with no initial capacity
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// extern fn array_new<T>() -> Array<T> nopanic;
+/// ```
 pub fn build_new<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -145,9 +151,15 @@ pub fn build_new<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `span_from_tuple` libfunc.
+/// Buils a span (a cairo native array) from a box of a tuple (struct with elements of the same type)
 ///
 /// Note: The `&info.ty` field has the entire `[T; N]` tuple. It is not the `T` in `Array<T>`.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// extern fn span_from_tuple<T, impl Info: FixedSizedArrayInfo<T>>(struct_like: Box<@T>) -> @Array<Info::Element> nopanic;
+/// ```
 pub fn build_span_from_tuple<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -184,22 +196,25 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
     let k1 = entry.const_int_from_type(context, location, 1, len_ty)?;
 
-    let array_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
-    let array_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+    // build the new span (array)
+    let allocation_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
+    let allocation_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context,
-        array_ptr,
+        allocation_ptr,
         array_len_bytes_with_offset,
         location,
     )?)?;
-    entry.store(context, location, array_ptr, k1)?;
-
+    entry.store(context, location, allocation_ptr, k1)?;
     let array_ptr = entry.gep(
         context,
         location,
-        array_ptr,
+        allocation_ptr,
         &[GepIndex::Const(calc_refcount_offset(tuple_layout) as i32)],
         IntegerType::new(context, 8).into(),
     )?;
+
+    // as a tuple has the same representation as the array data,
+    // we just memcpy into the new array.
     entry.memcpy(
         context,
         location,
@@ -228,9 +243,16 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `tuple_from_span` libfunc.
+/// Buils a tuple (struct) from an span (a cairo native array)
 ///
 /// Note: The `&info.ty` field has the entire `[T; N]` tuple. It is not the `T` in `Array<T>`.
+/// The tuple size `N` must match the span length.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn tuple_from_span<T, impl Info: FixedSizedArrayInfo<T>>(span: @Array<Info::Element>  -> Option<@Box<T>> nopanic;
+/// ```
 pub fn build_tuple_from_span<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -283,6 +305,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         location,
     ))?;
 
+    // check if the expected tuple matches the array length
     let valid_block = helper.append_block(Block::new(&[]));
     let error_block = helper.append_block(Block::new(&[]));
     entry.append_operation(cf::cond_br(
@@ -304,6 +327,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     )?;
 
     {
+        // if the length matches...
+
         let value_size = valid_block.const_int(context, location, tuple_layout.size(), 64)?;
 
         let value = valid_block.append_op_result(llvm::zero(ptr_ty, location))?;
@@ -311,6 +336,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             context, value, value_size, location,
         )?)?;
 
+        // check if the array is shared
         let is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)?;
 
         let array_start_offset = valid_block.append_op_result(arith::extui(
@@ -323,7 +349,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?,
             location,
         ))?;
-        let array_ptr = valid_block.gep(
+        let array_data_start_ptr = valid_block.gep(
             context,
             location,
             array_ptr,
@@ -335,28 +361,33 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             is_shared,
             &[],
             {
+                // if the array is shared we clone the inner data,
+                // as a tuple does not contain a reference counter.
+
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
                 match metadata.get::<DupOverridesMeta>() {
                     Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
-                        let src_ptr = array_ptr;
+                        let src_ptr = array_data_start_ptr;
                         let dst_ptr = value;
 
                         let value = block.load(context, location, src_ptr, tuple_ty)?;
+
+                        // as the array data has the same representation as the tuple,
+                        // we can use the tuple override, which is simpler.
                         let values = dup_overrides_meta
                             .invoke_override(context, &block, location, &info.ty, value)?;
                         block.store(context, location, src_ptr, values.0)?;
                         block.store(context, location, dst_ptr, values.1)?;
                     }
-                    _ => block.memcpy(context, location, array_ptr, value, value_size),
+                    _ => block.memcpy(context, location, array_data_start_ptr, value, value_size),
                 }
 
-                // The following unwrap should be unreachable because an array always has a drop
-                // implementation.
+                // drop the original array (decreasing its reference counter)
                 metadata
                     .get::<DropOverridesMeta>()
-                    .unwrap()
+                    .to_native_assert_error("array always has a drop implementation")?
                     .invoke_override(
                         context,
                         &block,
@@ -369,19 +400,30 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 region
             },
             {
+                // if the array is not shared, then move the data to the new tuple
+                // and manually free the allocation (without calling drop on its elements).
+
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
-                block.memcpy(context, location, array_ptr, value, value_size);
+                block.memcpy(context, location, array_data_start_ptr, value, value_size);
 
-                let array_ptr = block.gep(
+                // NOTE: If the target tuple has no elements, and the array is not shared,
+                // then we will attempt to free 0xfffffffffffffff0. This is not possible and
+                // disallowed by the cairo compiler.
+
+                let array_allocation_ptr = block.gep(
                     context,
                     location,
                     array_ptr,
                     &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
                     IntegerType::new(context, 8).into(),
                 )?;
-                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
+                block.append_operation(ReallocBindingsMeta::free(
+                    context,
+                    array_allocation_ptr,
+                    location,
+                )?);
 
                 block.append_operation(scf::r#yield(&[], location));
                 region
@@ -393,6 +435,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     }
 
     {
+        // if the length doesn't match, free the tuple.
+
         metadata
             .get::<DropOverridesMeta>()
             .ok_or(Error::MissingMetadata)?
