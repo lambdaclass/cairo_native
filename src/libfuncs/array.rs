@@ -305,6 +305,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         location,
     ))?;
 
+    // check if the expected tuple matches the array length
     let valid_block = helper.append_block(Block::new(&[]));
     let error_block = helper.append_block(Block::new(&[]));
     entry.append_operation(cf::cond_br(
@@ -326,6 +327,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     )?;
 
     {
+        // if the length matches...
+
         let value_size = valid_block.const_int(context, location, tuple_layout.size(), 64)?;
 
         let value = valid_block.append_op_result(llvm::zero(ptr_ty, location))?;
@@ -333,6 +336,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             context, value, value_size, location,
         )?)?;
 
+        // check if the array is shared
         let is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)?;
 
         let array_start_offset = valid_block.append_op_result(arith::extui(
@@ -357,6 +361,9 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             is_shared,
             &[],
             {
+                // if the array is shared we clone the inner data,
+                // as a tuple does not contain a reference counter.
+
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
@@ -366,6 +373,9 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                         let dst_ptr = value;
 
                         let value = block.load(context, location, src_ptr, tuple_ty)?;
+
+                        // as the array data has the same representation as the tuple,
+                        // we can use the tuple override, which is simpler.
                         let values = dup_overrides_meta
                             .invoke_override(context, &block, location, &info.ty, value)?;
                         block.store(context, location, src_ptr, values.0)?;
@@ -374,11 +384,10 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                     _ => block.memcpy(context, location, array_ptr, value, value_size),
                 }
 
-                // The following unwrap should be unreachable because an array always has a drop
-                // implementation.
+                // drop the original array (decreasing its reference counter)
                 metadata
                     .get::<DropOverridesMeta>()
-                    .unwrap()
+                    .expect("array always has a drop implementation")
                     .invoke_override(
                         context,
                         &block,
@@ -391,6 +400,9 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 region
             },
             {
+                // if the array is not shared, then move the data to the new tuple
+                // and manually free the allocation (without calling drop on its elements).
+
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
@@ -415,6 +427,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     }
 
     {
+        // if the length doesn't match, free the tuple.
+
         metadata
             .get::<DropOverridesMeta>()
             .ok_or(Error::MissingMetadata)?
