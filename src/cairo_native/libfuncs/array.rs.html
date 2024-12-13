@@ -2988,6 +2988,81 @@
 <a href="#2988" id="2988">2988</a>
 <a href="#2989" id="2989">2989</a>
 <a href="#2990" id="2990">2990</a>
+<a href="#2991" id="2991">2991</a>
+<a href="#2992" id="2992">2992</a>
+<a href="#2993" id="2993">2993</a>
+<a href="#2994" id="2994">2994</a>
+<a href="#2995" id="2995">2995</a>
+<a href="#2996" id="2996">2996</a>
+<a href="#2997" id="2997">2997</a>
+<a href="#2998" id="2998">2998</a>
+<a href="#2999" id="2999">2999</a>
+<a href="#3000" id="3000">3000</a>
+<a href="#3001" id="3001">3001</a>
+<a href="#3002" id="3002">3002</a>
+<a href="#3003" id="3003">3003</a>
+<a href="#3004" id="3004">3004</a>
+<a href="#3005" id="3005">3005</a>
+<a href="#3006" id="3006">3006</a>
+<a href="#3007" id="3007">3007</a>
+<a href="#3008" id="3008">3008</a>
+<a href="#3009" id="3009">3009</a>
+<a href="#3010" id="3010">3010</a>
+<a href="#3011" id="3011">3011</a>
+<a href="#3012" id="3012">3012</a>
+<a href="#3013" id="3013">3013</a>
+<a href="#3014" id="3014">3014</a>
+<a href="#3015" id="3015">3015</a>
+<a href="#3016" id="3016">3016</a>
+<a href="#3017" id="3017">3017</a>
+<a href="#3018" id="3018">3018</a>
+<a href="#3019" id="3019">3019</a>
+<a href="#3020" id="3020">3020</a>
+<a href="#3021" id="3021">3021</a>
+<a href="#3022" id="3022">3022</a>
+<a href="#3023" id="3023">3023</a>
+<a href="#3024" id="3024">3024</a>
+<a href="#3025" id="3025">3025</a>
+<a href="#3026" id="3026">3026</a>
+<a href="#3027" id="3027">3027</a>
+<a href="#3028" id="3028">3028</a>
+<a href="#3029" id="3029">3029</a>
+<a href="#3030" id="3030">3030</a>
+<a href="#3031" id="3031">3031</a>
+<a href="#3032" id="3032">3032</a>
+<a href="#3033" id="3033">3033</a>
+<a href="#3034" id="3034">3034</a>
+<a href="#3035" id="3035">3035</a>
+<a href="#3036" id="3036">3036</a>
+<a href="#3037" id="3037">3037</a>
+<a href="#3038" id="3038">3038</a>
+<a href="#3039" id="3039">3039</a>
+<a href="#3040" id="3040">3040</a>
+<a href="#3041" id="3041">3041</a>
+<a href="#3042" id="3042">3042</a>
+<a href="#3043" id="3043">3043</a>
+<a href="#3044" id="3044">3044</a>
+<a href="#3045" id="3045">3045</a>
+<a href="#3046" id="3046">3046</a>
+<a href="#3047" id="3047">3047</a>
+<a href="#3048" id="3048">3048</a>
+<a href="#3049" id="3049">3049</a>
+<a href="#3050" id="3050">3050</a>
+<a href="#3051" id="3051">3051</a>
+<a href="#3052" id="3052">3052</a>
+<a href="#3053" id="3053">3053</a>
+<a href="#3054" id="3054">3054</a>
+<a href="#3055" id="3055">3055</a>
+<a href="#3056" id="3056">3056</a>
+<a href="#3057" id="3057">3057</a>
+<a href="#3058" id="3058">3058</a>
+<a href="#3059" id="3059">3059</a>
+<a href="#3060" id="3060">3060</a>
+<a href="#3061" id="3061">3061</a>
+<a href="#3062" id="3062">3062</a>
+<a href="#3063" id="3063">3063</a>
+<a href="#3064" id="3064">3064</a>
+<a href="#3065" id="3065">3065</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
@@ -4654,197 +4729,250 @@
             location,
         ))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>slice_ptr = valid_block.append_op_result(llvm::zero(ptr_ty, location))<span class="question-mark">?</span>;
-        <span class="kw">let </span>slice_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
-            context,
-            slice_ptr,
-            slice_size_with_offset,
-            location,
-        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-        valid_block.store(context, location, slice_ptr, k1)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>slice_ptr = valid_block.gep(
-            context,
-            location,
-            slice_ptr,
-            <span class="kw-2">&amp;</span>[GepIndex::Const(calc_refcount_offset(elem_layout) <span class="kw">as </span>i32)],
-            IntegerType::new(context, <span class="number">8</span>).into(),
-        )<span class="question-mark">?</span>;
-
         <span class="kw">let </span>array_ptr =
             valid_block.extract_value(context, location, entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(), ptr_ty, <span class="number">0</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>offset =
-            valid_block.append_op_result(arith::addi(array_start, slice_start, location))<span class="question-mark">?</span>;
-        <span class="kw">let </span>offset = valid_block.append_op_result(arith::extui(
-            offset,
-            IntegerType::new(context, <span class="number">64</span>).into(),
-            location,
-        ))<span class="question-mark">?</span>;
-        <span class="kw">let </span>offset = valid_block.append_op_result(arith::muli(offset, elem_stride, location))<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>source_ptr = valid_block.gep(
-            context,
-            location,
-            array_ptr,
-            <span class="kw-2">&amp;</span>[GepIndex::Value(offset)],
-            IntegerType::new(context, <span class="number">8</span>).into(),
+        <span class="kw">let </span>null_ptr = valid_block.append_op_result(llvm::zero(ptr_ty, location))<span class="question-mark">?</span>;
+        <span class="kw">let </span>is_null_source = valid_block.append_op_result(
+            ods::llvm::icmp(
+                context,
+                IntegerType::new(context, <span class="number">1</span>).into(),
+                array_ptr,
+                null_ptr,
+                IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>).into(),
+                location,
+            )
+            .into(),
         )<span class="question-mark">?</span>;
-
-        valid_block.append_operation(scf::r#if(
-            is_shared,
-            <span class="kw-2">&amp;</span>[],
+        <span class="kw">let </span>slice_ptr = valid_block.append_op_result(scf::r#if(
+            is_null_source,
+            <span class="kw-2">&amp;</span>[ptr_ty],
             {
                 <span class="kw">let </span>region = Region::new();
                 <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
-                <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
-                    <span class="prelude-val">Some</span>(dup_overrides_meta) <span class="kw">if </span>dup_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
-                        <span class="kw">let </span>k0 = valid_block.const_int(context, location, <span class="number">0</span>, <span class="number">64</span>)<span class="question-mark">?</span>;
-                        valid_block.append_operation(scf::r#for(
-                            k0,
-                            slice_size,
-                            elem_stride,
-                            {
-                                <span class="kw">let </span>region = Region::new();
-                                <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(
-                                    IntegerType::new(context, <span class="number">64</span>).into(),
-                                    location,
-                                )]));
-
-                                <span class="kw">let </span>offset = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
-                                <span class="kw">let </span>source_ptr = block.gep(
-                                    context,
-                                    location,
-                                    source_ptr,
-                                    <span class="kw-2">&amp;</span>[GepIndex::Value(offset)],
-                                    IntegerType::new(context, <span class="number">8</span>).into(),
-                                )<span class="question-mark">?</span>;
-                                <span class="kw">let </span>target_ptr = block.gep(
-                                    context,
-                                    location,
-                                    slice_ptr,
-                                    <span class="kw-2">&amp;</span>[GepIndex::Value(offset)],
-                                    IntegerType::new(context, <span class="number">8</span>).into(),
-                                )<span class="question-mark">?</span>;
-
-                                <span class="kw">let </span>value = block.load(context, location, source_ptr, elem_ty)<span class="question-mark">?</span>;
-                                <span class="kw">let </span>values = dup_overrides_meta
-                                    .invoke_override(context, <span class="kw-2">&amp;</span>block, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
-                                block.store(context, location, source_ptr, values.<span class="number">0</span>)<span class="question-mark">?</span>;
-                                block.store(context, location, target_ptr, values.<span class="number">1</span>)<span class="question-mark">?</span>;
-
-                                block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
-                                region
-                            },
-                            location,
-                        ));
-                    }
-                    <span class="kw">_ </span>=&gt; block.memcpy(context, location, source_ptr, slice_ptr, slice_size),
-                }
-
-                metadata
-                    .get::&lt;DropOverridesMeta&gt;()
-                    .unwrap()
-                    .invoke_override(
-                        context,
-                        <span class="kw-2">&amp;</span>block,
-                        location,
-                        <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
-                        entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
-                    )<span class="question-mark">?</span>;
-
-                block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
+                block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[null_ptr], location));
                 region
             },
             {
                 <span class="kw">let </span>region = Region::new();
                 <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
-                block.memcpy(context, location, source_ptr, slice_ptr, slice_size);
+                <span class="kw">let </span>slice_ptr = block.append_op_result(llvm::zero(ptr_ty, location))<span class="question-mark">?</span>;
+                <span class="kw">let </span>slice_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                    context,
+                    slice_ptr,
+                    slice_size_with_offset,
+                    location,
+                )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+                block.store(context, location, slice_ptr, k1)<span class="question-mark">?</span>;
 
-                <span class="kw">match </span>metadata.get::&lt;DropOverridesMeta&gt;() {
-                    <span class="prelude-val">Some</span>(drop_overrides_meta) <span class="kw">if </span>drop_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
-                        <span class="kw">let </span>drop_loop = |o0, o1| {
-                            block.append_operation(scf::r#for(
-                                o0,
-                                o1,
-                                elem_stride,
-                                {
-                                    <span class="kw">let </span>region = Region::new();
-                                    <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(
-                                        IntegerType::new(context, <span class="number">64</span>).into(),
-                                        location,
-                                    )]));
+                <span class="kw">let </span>slice_ptr = block.gep(
+                    context,
+                    location,
+                    slice_ptr,
+                    <span class="kw-2">&amp;</span>[GepIndex::Const(calc_refcount_offset(elem_layout) <span class="kw">as </span>i32)],
+                    IntegerType::new(context, <span class="number">8</span>).into(),
+                )<span class="question-mark">?</span>;
 
-                                    <span class="kw">let </span>value_ptr = block.gep(
-                                        context,
-                                        location,
-                                        array_ptr,
-                                        <span class="kw-2">&amp;</span>[GepIndex::Value(block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())],
-                                        IntegerType::new(context, <span class="number">8</span>).into(),
-                                    )<span class="question-mark">?</span>;
-                                    <span class="kw">let </span>value =
-                                        block.load(context, location, value_ptr, elem_ty)<span class="question-mark">?</span>;
-                                    drop_overrides_meta.invoke_override(
-                                        context, <span class="kw-2">&amp;</span>block, location, <span class="kw-2">&amp;</span>info.ty, value,
-                                    )<span class="question-mark">?</span>;
+                <span class="kw">let </span>is_shared = is_shared(context, <span class="kw-2">&amp;</span>block, location, array_ptr, elem_layout)<span class="question-mark">?</span>;
 
-                                    block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
-                                    region
-                                },
-                                location,
-                            ));
+                <span class="kw">let </span>offset =
+                    block.append_op_result(arith::addi(array_start, slice_start, location))<span class="question-mark">?</span>;
+                <span class="kw">let </span>offset = block.append_op_result(arith::extui(
+                    offset,
+                    IntegerType::new(context, <span class="number">64</span>).into(),
+                    location,
+                ))<span class="question-mark">?</span>;
+                <span class="kw">let </span>offset = block.append_op_result(arith::muli(offset, elem_stride, location))<span class="question-mark">?</span>;
 
-                            Result::Ok(())
-                        };
-
-                        <span class="kw">let </span>o0 = block.append_op_result(arith::extui(
-                            array_start,
-                            IntegerType::new(context, <span class="number">64</span>).into(),
-                            location,
-                        ))<span class="question-mark">?</span>;
-                        <span class="kw">let </span>o1 = block.append_op_result(arith::addi(
-                            array_start,
-                            slice_start,
-                            location,
-                        ))<span class="question-mark">?</span>;
-                        <span class="kw">let </span>o1 = block.append_op_result(arith::extui(
-                            o1,
-                            IntegerType::new(context, <span class="number">64</span>).into(),
-                            location,
-                        ))<span class="question-mark">?</span>;
-                        <span class="kw">let </span>o0 = block.append_op_result(arith::muli(o0, elem_stride, location))<span class="question-mark">?</span>;
-                        <span class="kw">let </span>o1 = block.append_op_result(arith::muli(o1, elem_stride, location))<span class="question-mark">?</span>;
-                        drop_loop(o0, o1)<span class="question-mark">?</span>;
-
-                        <span class="kw">let </span>o0 = block.append_op_result(arith::addi(o1, slice_size, location))<span class="question-mark">?</span>;
-                        <span class="kw">let </span>o1 = block.append_op_result(arith::extui(
-                            array_end,
-                            IntegerType::new(context, <span class="number">64</span>).into(),
-                            location,
-                        ))<span class="question-mark">?</span>;
-                        <span class="kw">let </span>o1 = block.append_op_result(arith::muli(o1, elem_stride, location))<span class="question-mark">?</span>;
-                        drop_loop(o0, o1)<span class="question-mark">?</span>;
-                    }
-                    <span class="kw">_ </span>=&gt; {}
-                }
-
-                <span class="kw">let </span>array_ptr = block.gep(
+                <span class="kw">let </span>source_ptr = block.gep(
                     context,
                     location,
                     array_ptr,
-                    <span class="kw-2">&amp;</span>[GepIndex::Const(-(calc_refcount_offset(elem_layout) <span class="kw">as </span>i32))],
+                    <span class="kw-2">&amp;</span>[GepIndex::Value(offset)],
                     IntegerType::new(context, <span class="number">8</span>).into(),
                 )<span class="question-mark">?</span>;
-                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)<span class="question-mark">?</span>);
 
-                block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
+                block.append_operation(scf::r#if(
+                    is_shared,
+                    <span class="kw-2">&amp;</span>[],
+                    {
+                        <span class="kw">let </span>region = Region::new();
+                        <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+
+                        <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
+                            <span class="prelude-val">Some</span>(dup_overrides_meta)
+                                <span class="kw">if </span>dup_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt;
+                            {
+                                <span class="kw">let </span>k0 = block.const_int(context, location, <span class="number">0</span>, <span class="number">64</span>)<span class="question-mark">?</span>;
+                                block.append_operation(scf::r#for(
+                                    k0,
+                                    slice_size,
+                                    elem_stride,
+                                    {
+                                        <span class="kw">let </span>region = Region::new();
+                                        <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(
+                                            IntegerType::new(context, <span class="number">64</span>).into(),
+                                            location,
+                                        )]));
+
+                                        <span class="kw">let </span>offset = block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into();
+                                        <span class="kw">let </span>source_ptr = block.gep(
+                                            context,
+                                            location,
+                                            source_ptr,
+                                            <span class="kw-2">&amp;</span>[GepIndex::Value(offset)],
+                                            IntegerType::new(context, <span class="number">8</span>).into(),
+                                        )<span class="question-mark">?</span>;
+                                        <span class="kw">let </span>target_ptr = block.gep(
+                                            context,
+                                            location,
+                                            slice_ptr,
+                                            <span class="kw-2">&amp;</span>[GepIndex::Value(offset)],
+                                            IntegerType::new(context, <span class="number">8</span>).into(),
+                                        )<span class="question-mark">?</span>;
+
+                                        <span class="kw">let </span>value =
+                                            block.load(context, location, source_ptr, elem_ty)<span class="question-mark">?</span>;
+                                        <span class="kw">let </span>values = dup_overrides_meta.invoke_override(
+                                            context, <span class="kw-2">&amp;</span>block, location, <span class="kw-2">&amp;</span>info.ty, value,
+                                        )<span class="question-mark">?</span>;
+                                        block.store(context, location, source_ptr, values.<span class="number">0</span>)<span class="question-mark">?</span>;
+                                        block.store(context, location, target_ptr, values.<span class="number">1</span>)<span class="question-mark">?</span>;
+
+                                        block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
+                                        region
+                                    },
+                                    location,
+                                ));
+                            }
+                            <span class="kw">_ </span>=&gt; block.memcpy(context, location, source_ptr, slice_ptr, slice_size),
+                        }
+
+                        metadata
+                            .get::&lt;DropOverridesMeta&gt;()
+                            .unwrap()
+                            .invoke_override(
+                                context,
+                                <span class="kw-2">&amp;</span>block,
+                                location,
+                                <span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">1</span>].ty,
+                                entry.argument(<span class="number">1</span>)<span class="question-mark">?</span>.into(),
+                            )<span class="question-mark">?</span>;
+
+                        block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
+                        region
+                    },
+                    {
+                        <span class="kw">let </span>region = Region::new();
+                        <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+
+                        block.memcpy(context, location, source_ptr, slice_ptr, slice_size);
+
+                        <span class="kw">match </span>metadata.get::&lt;DropOverridesMeta&gt;() {
+                            <span class="prelude-val">Some</span>(drop_overrides_meta)
+                                <span class="kw">if </span>drop_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt;
+                            {
+                                <span class="kw">let </span>drop_loop = |o0, o1| {
+                                    block.append_operation(scf::r#for(
+                                        o0,
+                                        o1,
+                                        elem_stride,
+                                        {
+                                            <span class="kw">let </span>region = Region::new();
+                                            <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(
+                                                IntegerType::new(context, <span class="number">64</span>).into(),
+                                                location,
+                                            )]));
+
+                                            <span class="kw">let </span>value_ptr = block.gep(
+                                                context,
+                                                location,
+                                                array_ptr,
+                                                <span class="kw-2">&amp;</span>[GepIndex::Value(block.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into())],
+                                                IntegerType::new(context, <span class="number">8</span>).into(),
+                                            )<span class="question-mark">?</span>;
+                                            <span class="kw">let </span>value = block
+                                                .load(context, location, value_ptr, elem_ty)<span class="question-mark">?</span>;
+                                            drop_overrides_meta.invoke_override(
+                                                context, <span class="kw-2">&amp;</span>block, location, <span class="kw-2">&amp;</span>info.ty, value,
+                                            )<span class="question-mark">?</span>;
+
+                                            block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
+                                            region
+                                        },
+                                        location,
+                                    ));
+
+                                    Result::Ok(())
+                                };
+
+                                <span class="kw">let </span>o0 = block.append_op_result(arith::extui(
+                                    array_start,
+                                    IntegerType::new(context, <span class="number">64</span>).into(),
+                                    location,
+                                ))<span class="question-mark">?</span>;
+                                <span class="kw">let </span>o1 = block.append_op_result(arith::addi(
+                                    array_start,
+                                    slice_start,
+                                    location,
+                                ))<span class="question-mark">?</span>;
+                                <span class="kw">let </span>o1 = block.append_op_result(arith::extui(
+                                    o1,
+                                    IntegerType::new(context, <span class="number">64</span>).into(),
+                                    location,
+                                ))<span class="question-mark">?</span>;
+                                <span class="kw">let </span>o0 = block.append_op_result(arith::muli(
+                                    o0,
+                                    elem_stride,
+                                    location,
+                                ))<span class="question-mark">?</span>;
+                                <span class="kw">let </span>o1 = block.append_op_result(arith::muli(
+                                    o1,
+                                    elem_stride,
+                                    location,
+                                ))<span class="question-mark">?</span>;
+                                drop_loop(o0, o1)<span class="question-mark">?</span>;
+
+                                <span class="kw">let </span>o0 = block
+                                    .append_op_result(arith::addi(o1, slice_size, location))<span class="question-mark">?</span>;
+                                <span class="kw">let </span>o1 = block.append_op_result(arith::extui(
+                                    array_end,
+                                    IntegerType::new(context, <span class="number">64</span>).into(),
+                                    location,
+                                ))<span class="question-mark">?</span>;
+                                <span class="kw">let </span>o1 = block.append_op_result(arith::muli(
+                                    o1,
+                                    elem_stride,
+                                    location,
+                                ))<span class="question-mark">?</span>;
+                                drop_loop(o0, o1)<span class="question-mark">?</span>;
+                            }
+                            <span class="kw">_ </span>=&gt; {}
+                        }
+
+                        <span class="kw">let </span>array_ptr = block.gep(
+                            context,
+                            location,
+                            array_ptr,
+                            <span class="kw-2">&amp;</span>[GepIndex::Const(-(calc_refcount_offset(elem_layout) <span class="kw">as </span>i32))],
+                            IntegerType::new(context, <span class="number">8</span>).into(),
+                        )<span class="question-mark">?</span>;
+                        block.append_operation(ReallocBindingsMeta::free(
+                            context, array_ptr, location,
+                        )<span class="question-mark">?</span>);
+
+                        block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
+                        region
+                    },
+                    location,
+                ));
+
+                block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[slice_ptr], location));
                 region
             },
             location,
-        ));
+        ))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>slice_value = valid_block.append_op_result(llvm::undef(self_ty, location))<span class="question-mark">?</span>;
         <span class="kw">let </span>slice_value = valid_block.insert_values(
@@ -4923,23 +5051,19 @@
     array_ptr: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     elem_layout: Layout,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;&gt; {
-    <span class="kw">let </span>k0 = block.const_int(context, location, <span class="number">0</span>, <span class="number">64</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>ptr_as_int = block.append_op_result(
-        ods::llvm::ptrtoint(
+    <span class="kw">let </span>null_ptr =
+        block.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>ptr_is_null = block.append_op_result(
+        ods::llvm::icmp(
             context,
-            IntegerType::new(context, <span class="number">64</span>).into(),
+            IntegerType::new(context, <span class="number">1</span>).into(),
             array_ptr,
+            null_ptr,
+            IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), <span class="number">0</span>).into(),
             location,
         )
         .into(),
     )<span class="question-mark">?</span>;
-    <span class="kw">let </span>ptr_is_null = block.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        ptr_as_int,
-        k0,
-        location,
-    ))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>is_shared = block.append_op_result(scf::r#if(
         ptr_is_null,
@@ -5324,6 +5448,32 @@
             <span class="macro">jit_panic!</span>(felt252_str(
                 <span class="string">"1637570914057682275393755530660268060279989363"
             </span>))
+        );
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>run_slice_empty_array() {
+        <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
+            <span class="kw">fn </span>run_test() -&gt; Span&lt;felt252&gt; {
+                <span class="kw">let </span>x: Span&lt;felt252&gt; = <span class="macro">array!</span>[].span();
+                x.slice(<span class="number">0</span>, <span class="number">0</span>)
+            }
+        );
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
+
+        <span class="macro">assert_eq!</span>(
+            result,
+            Value::Enum {
+                tag: <span class="number">0</span>,
+                value: Box::new(Value::Struct {
+                    fields: <span class="macro">vec!</span>[Value::Struct {
+                        fields: <span class="macro">vec!</span>[Value::Array(<span class="macro">vec!</span>[])],
+                        debug_name: <span class="prelude-val">None</span>,
+                    }],
+                    debug_name: <span class="prelude-val">None</span>,
+                }),
+                debug_name: <span class="prelude-val">None
+            </span>},
         );
     }
 
