@@ -408,14 +408,18 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
                 block.memcpy(context, location, array_data_start_ptr, value, value_size);
 
-                let array_ptr = block.gep(
+                let array_allocation_ptr = block.gep(
                     context,
                     location,
                     array_ptr,
                     &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
                     IntegerType::new(context, 8).into(),
                 )?;
-                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
+                block.append_operation(ReallocBindingsMeta::free(
+                    context,
+                    array_allocation_ptr,
+                    location,
+                )?);
 
                 block.append_operation(scf::r#yield(&[], location));
                 region
