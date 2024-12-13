@@ -119,7 +119,13 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Generate MLIR operations for the `array_new` libfunc.
+/// Buils a new array with no initial capacity
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// extern fn array_new<T>() -> Array<T> nopanic;
+/// ```
 pub fn build_new<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
