@@ -151,9 +151,15 @@ pub fn build_new<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `span_from_tuple` libfunc.
+/// Buils a span (a cairo native array) from a box of a tuple (struct with elements of the same type)
 ///
 /// Note: The `&info.ty` field has the entire `[T; N]` tuple. It is not the `T` in `Array<T>`.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// extern fn span_from_tuple<T, impl Info: FixedSizedArrayInfo<T>>(struct_like: Box<@T>) -> @Array<Info::Element> nopanic;
+/// ```
 pub fn build_span_from_tuple<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
