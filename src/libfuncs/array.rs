@@ -349,7 +349,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?,
             location,
         ))?;
-        let array_ptr = valid_block.gep(
+        let array_data_start_ptr = valid_block.gep(
             context,
             location,
             array_ptr,
@@ -369,7 +369,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
                 match metadata.get::<DupOverridesMeta>() {
                     Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
-                        let src_ptr = array_ptr;
+                        let src_ptr = array_data_start_ptr;
                         let dst_ptr = value;
 
                         let value = block.load(context, location, src_ptr, tuple_ty)?;
@@ -381,7 +381,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                         block.store(context, location, src_ptr, values.0)?;
                         block.store(context, location, dst_ptr, values.1)?;
                     }
-                    _ => block.memcpy(context, location, array_ptr, value, value_size),
+                    _ => block.memcpy(context, location, array_data_start_ptr, value, value_size),
                 }
 
                 // drop the original array (decreasing its reference counter)
@@ -406,7 +406,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
-                block.memcpy(context, location, array_ptr, value, value_size);
+                block.memcpy(context, location, array_data_start_ptr, value, value_size);
 
                 let array_ptr = block.gep(
                     context,
