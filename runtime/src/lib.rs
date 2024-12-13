@@ -240,12 +240,11 @@ pub unsafe extern "C" fn cairo_native__dict_dup(
         count: 0,
     });
 
-    for (&key, &old_index) in old_dict.mappings.iter() {
+    for (new_index, (&key, &old_index)) in old_dict.mappings.iter().enumerate() {
         let old_value_ptr = old_dict
             .elements
             .byte_add(old_dict.layout.pad_to_align().size() * old_index);
 
-        let new_index = new_dict.mappings.len();
         let new_value_ptr = new_dict
             .elements
             .byte_add(new_dict.layout.pad_to_align().size() * new_index);
