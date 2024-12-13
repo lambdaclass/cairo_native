@@ -98,7 +98,7 @@ jobs:
       - name: Patch dependencies
         run: |
           # Patches native dependency to local path, to use current cairo native version
-          echo -e "\n[patch]\ncairo-native = { path = \"../cairo-native\" }" >> Cargo.toml
+          echo -e "\n[patch.crates-io]\ncairo-native = { path = \"../cairo-native\" }" >> Cargo.toml
 
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
