@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result, SierraAssertError},
+    error::{panic::ToNativeAssertError, Error, Result, SierraAssertError},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
@@ -387,7 +387,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 // drop the original array (decreasing its reference counter)
                 metadata
                     .get::<DropOverridesMeta>()
-                    .expect("array always has a drop implementation")
+                    .to_native_assert_error("array always has a drop implementation")?
                     .invoke_override(
                         context,
                         &block,
