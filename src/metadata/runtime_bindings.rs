@@ -773,7 +773,7 @@ impl RuntimeBindingsMeta {
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_get"),
             &[dict_ptr, key_ptr, value_ptr],
-            &[llvm::r#type::pointer(context, 0)],
+            &[IntegerType::new(context, c_int::BITS).into()],
             location,
         ))?;
 

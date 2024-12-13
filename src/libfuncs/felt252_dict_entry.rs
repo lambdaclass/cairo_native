@@ -18,7 +18,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{llvm, scf},
-    ir::{Block, Location, Region},
+    ir::{r#type::IntegerType, Block, Location, Region},
     Context,
 };
 use std::cell::Cell;
@@ -70,6 +70,12 @@ pub fn build_get<'ctx, 'this>(
         metadata,
         &info.param_signatures()[1].ty,
     )?;
+    let entry_ty = registry.build_type(
+        context,
+        helper,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
     let concrete_value_type = registry.get_type(&info.ty)?;
     let value_ty = concrete_value_type.build(context, helper, registry, metadata, &info.ty)?;
 
@@ -86,6 +92,7 @@ pub fn build_get<'ctx, 'this>(
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
         .dict_get(context, helper, entry, dict_ptr, entry_key_ptr, location)?;
+    let is_present = entry.trunci(is_present, IntegerType::new(context, 1).into(), location)?;
 
     let value = entry.append_op_result(scf::r#if(
         is_present,
@@ -123,7 +130,10 @@ pub fn build_get<'ctx, 'this>(
         location,
     ))?;
 
-    entry.append_operation(helper.br(0, &[value], location));
+    let dict_entry = entry.append_op_result(llvm::undef(entry_ty, location))?;
+    let dict_entry = entry.insert_values(context, location, dict_entry, &[dict_ptr, value_ptr])?;
+
+    entry.append_operation(helper.br(0, &[dict_entry, value], location));
     Ok(())
 }
 
