@@ -14,6 +14,9 @@ pub use self::{
     values::Value,
 };
 
+#[cfg(feature = "with-trace-dump")]
+pub use cairo_native_runtime as runtime;
+
 mod arch;
 pub mod cache;
 mod compiler;
@@ -24,11 +27,11 @@ pub mod error;
 pub mod execution_result;
 pub mod executor;
 mod ffi;
-mod libfuncs;
+pub mod libfuncs;
 pub mod metadata;
 pub mod module;
 pub mod starknet;
 pub mod starknet_stub;
-mod types;
+pub mod types;
 pub mod utils;
 mod values;

@@ -9,6 +9,14 @@ keywords = ["starknet", "cairo", "runtime"]
 [lib]
 crate-type = ["rlib", "cdylib", "staticlib"]
 
+[features]
+with-trace-dump = [
+    "dep:cairo-lang-sierra",
+    "dep:cairo-lang-utils",
+    "dep:sierra-emu",
+    "dep:num-bigint",
+]
+
 [dependencies]
 starknet-types-core = { version = "0.1.7", default-features = false, features = [
     "std",
@@ -16,8 +24,13 @@ starknet-types-core = { version = "0.1.7", default-features = false, features = 
     "hash",
 ] }
 cairo-lang-sierra-gas = "2.9.0-dev.0"
-starknet-curve = "0.5.1"
+itertools = "0.13.0"
 lazy_static = "1.5.0"
 rand = "0.8.5"
-itertools = "0.13.0"
-num-traits = "0.2"
+starknet-curve = "0.5.1"
+
+num-bigint = { version = "0.4.4", optional = true }
+num-traits = { version = "0.2" }
+cairo-lang-sierra = { version = "2.9.0-dev.0", optional = true }
+cairo-lang-utils = { version = "2.9.0-dev.0", optional = true }
+sierra-emu = { git = "https://github.com/lambdaclass/sierra-emu", optional = true }
