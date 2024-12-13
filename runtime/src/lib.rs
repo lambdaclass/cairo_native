@@ -174,6 +174,8 @@ pub unsafe extern "C" fn cairo_native__dict_new(size: u64, align: u64) -> *mut F
 
 /// Free a dictionary using an optional callback to drop each element.
 ///
+/// The `drop_fn` callback is present when the value implements `Drop`.
+///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
@@ -212,6 +214,9 @@ pub unsafe extern "C" fn cairo_native__dict_drop(
 }
 
 /// Duplicate a dictionary using a provided callback to clone each element.
+///
+/// The `dup_fn` callback is present when the value is not `Copy`, but `Clone`. The first argument
+/// is the original value while the second is the target pointer.
 ///
 /// # Safety
 ///
