@@ -30,7 +30,6 @@ enum RuntimeBinding {
     EcPointTryNewNz,
     EcPointFromXNz,
     DictNew,
-    DictInsert,
     DictGet,
     DictGasRefund,
     DictDrop,
