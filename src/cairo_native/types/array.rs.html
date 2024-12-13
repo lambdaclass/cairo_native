@@ -427,6 +427,19 @@
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array type
 //!
 //! An array type is a dynamically allocated list of items.
@@ -616,7 +629,9 @@
     <span class="prelude-val">Ok</span>(region)
 }
 
-<span class="kw">fn </span>build_drop&lt;<span class="lifetime">'ctx</span>&gt;(
+<span class="doccomment">/// This function decreases the reference counter of the array by one.
+/// If the reference counter reaches zero, then all the resources are freed.
+</span><span class="kw">fn </span>build_drop&lt;<span class="lifetime">'ctx</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'ctx</span>&gt;,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
@@ -659,7 +674,7 @@
         <span class="number">3</span>,
     )<span class="question-mark">?</span>;
     <span class="kw">let </span>k0 = entry.const_int(context, location, <span class="number">0</span>, <span class="number">32</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>is_empty = entry.append_op_result(arith::cmpi(
+    <span class="kw">let </span>zero_capacity = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Eq,
         array_cap,
@@ -668,20 +683,26 @@
     ))<span class="question-mark">?</span>;
 
     entry.append_operation(scf::r#if(
-        is_empty,
+        zero_capacity,
         <span class="kw-2">&amp;</span>[],
         {
-            <span class="kw">let </span>region = Region::new();
+            <span class="comment">// if the array has no capacity, do nothing, as there is no allocation
+
+            </span><span class="kw">let </span>region = Region::new();
             <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
             block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
             region
         },
         {
-            <span class="kw">let </span>region = Region::new();
+            <span class="comment">// if the array has capacity, decrease the reference counter
+            // and, in case it reaches zero, free all the resources.
+
+            </span><span class="kw">let </span>region = Region::new();
             <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
-            <span class="kw">let </span>refcount_ptr = block.gep(
+            <span class="comment">// obtain the reference counter
+            </span><span class="kw">let </span>refcount_ptr = block.gep(
                 context,
                 location,
                 array_ptr,
@@ -695,7 +716,8 @@
                 IntegerType::new(context, <span class="number">32</span>).into(),
             )<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>k1 = block.const_int(context, location, <span class="number">1</span>, <span class="number">32</span>)<span class="question-mark">?</span>;
+            <span class="comment">// if the reference counter is greater than 1, then it's shared
+            </span><span class="kw">let </span>k1 = block.const_int(context, location, <span class="number">1</span>, <span class="number">32</span>)<span class="question-mark">?</span>;
             <span class="kw">let </span>is_shared = block.append_op_result(arith::cmpi(
                 context,
                 CmpiPredicate::Ne,
@@ -708,7 +730,8 @@
                 is_shared,
                 <span class="kw-2">&amp;</span>[],
                 {
-                    <span class="kw">let </span>region = Region::new();
+                    <span class="comment">// if the array is shared, decrease the reference counter by one
+                    </span><span class="kw">let </span>region = Region::new();
                     <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
                     <span class="kw">let </span>ref_count = block.append_op_result(arith::subi(ref_count, k1, location))<span class="question-mark">?</span>;
@@ -718,7 +741,8 @@
                     region
                 },
                 {
-                    <span class="kw">let </span>region = Region::new();
+                    <span class="comment">// if the array is not shared, drop all elements and free the memory
+                    </span><span class="kw">let </span>region = Region::new();
                     <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
                     <span class="kw">match </span>metadata.get::&lt;DropOverridesMeta&gt;() {
@@ -762,7 +786,8 @@
                                 location,
                             ))<span class="question-mark">?</span>;
 
-                            block.append_operation(scf::r#for(
+                            <span class="comment">// for each element in the aray, invoke its drop implementation
+                            </span>block.append_operation(scf::r#for(
                                 offset_start,
                                 offset_end,
                                 elem_stride,
@@ -797,7 +822,8 @@
                         <span class="kw">_ </span>=&gt; {}
                     }
 
-                    block.append_operation(ReallocBindingsMeta::free(
+                    <span class="comment">// finally, free the array allocation
+                    </span>block.append_operation(ReallocBindingsMeta::free(
                         context,
                         refcount_ptr,
                         location,

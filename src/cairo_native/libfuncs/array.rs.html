@@ -2944,11 +2944,55 @@
 <a href="#2944" id="2944">2944</a>
 <a href="#2945" id="2945">2945</a>
 <a href="#2946" id="2946">2946</a>
+<a href="#2947" id="2947">2947</a>
+<a href="#2948" id="2948">2948</a>
+<a href="#2949" id="2949">2949</a>
+<a href="#2950" id="2950">2950</a>
+<a href="#2951" id="2951">2951</a>
+<a href="#2952" id="2952">2952</a>
+<a href="#2953" id="2953">2953</a>
+<a href="#2954" id="2954">2954</a>
+<a href="#2955" id="2955">2955</a>
+<a href="#2956" id="2956">2956</a>
+<a href="#2957" id="2957">2957</a>
+<a href="#2958" id="2958">2958</a>
+<a href="#2959" id="2959">2959</a>
+<a href="#2960" id="2960">2960</a>
+<a href="#2961" id="2961">2961</a>
+<a href="#2962" id="2962">2962</a>
+<a href="#2963" id="2963">2963</a>
+<a href="#2964" id="2964">2964</a>
+<a href="#2965" id="2965">2965</a>
+<a href="#2966" id="2966">2966</a>
+<a href="#2967" id="2967">2967</a>
+<a href="#2968" id="2968">2968</a>
+<a href="#2969" id="2969">2969</a>
+<a href="#2970" id="2970">2970</a>
+<a href="#2971" id="2971">2971</a>
+<a href="#2972" id="2972">2972</a>
+<a href="#2973" id="2973">2973</a>
+<a href="#2974" id="2974">2974</a>
+<a href="#2975" id="2975">2975</a>
+<a href="#2976" id="2976">2976</a>
+<a href="#2977" id="2977">2977</a>
+<a href="#2978" id="2978">2978</a>
+<a href="#2979" id="2979">2979</a>
+<a href="#2980" id="2980">2980</a>
+<a href="#2981" id="2981">2981</a>
+<a href="#2982" id="2982">2982</a>
+<a href="#2983" id="2983">2983</a>
+<a href="#2984" id="2984">2984</a>
+<a href="#2985" id="2985">2985</a>
+<a href="#2986" id="2986">2986</a>
+<a href="#2987" id="2987">2987</a>
+<a href="#2988" id="2988">2988</a>
+<a href="#2989" id="2989">2989</a>
+<a href="#2990" id="2990">2990</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::{Error, <span class="prelude-ty">Result</span>, SierraAssertError},
+    error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>, SierraAssertError},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
@@ -3065,7 +3109,13 @@
     }
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `array_new` libfunc.
+<span class="doccomment">/// Buils a new array with no initial capacity
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// extern fn array_new&lt;T&gt;() -&gt; Array&lt;T&gt; nopanic;
+/// ```
 </span><span class="kw">pub fn </span>build_new&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
@@ -3091,9 +3141,15 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `span_from_tuple` libfunc.
+<span class="doccomment">/// Buils a span (a cairo native array) from a box of a tuple (struct with elements of the same type)
 ///
 /// Note: The `&amp;info.ty` field has the entire `[T; N]` tuple. It is not the `T` in `Array&lt;T&gt;`.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// extern fn span_from_tuple&lt;T, impl Info: FixedSizedArrayInfo&lt;T&gt;&gt;(struct_like: Box&lt;@T&gt;) -&gt; @Array&lt;Info::Element&gt; nopanic;
+/// ```
 </span><span class="kw">pub fn </span>build_span_from_tuple&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
@@ -3130,23 +3186,26 @@
     <span class="kw">let </span>k0 = entry.const_int_from_type(context, location, <span class="number">0</span>, len_ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>k1 = entry.const_int_from_type(context, location, <span class="number">1</span>, len_ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>array_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))<span class="question-mark">?</span>;
-    <span class="kw">let </span>array_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+    <span class="comment">// build the new span (array)
+    </span><span class="kw">let </span>allocation_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>allocation_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context,
-        array_ptr,
+        allocation_ptr,
         array_len_bytes_with_offset,
         location,
     )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-    entry.store(context, location, array_ptr, k1)<span class="question-mark">?</span>;
-
+    entry.store(context, location, allocation_ptr, k1)<span class="question-mark">?</span>;
     <span class="kw">let </span>array_ptr = entry.gep(
         context,
         location,
-        array_ptr,
+        allocation_ptr,
         <span class="kw-2">&amp;</span>[GepIndex::Const(calc_refcount_offset(tuple_layout) <span class="kw">as </span>i32)],
         IntegerType::new(context, <span class="number">8</span>).into(),
     )<span class="question-mark">?</span>;
-    entry.memcpy(
+
+    <span class="comment">// as a tuple has the same representation as the array data,
+    // we just memcpy into the new array.
+    </span>entry.memcpy(
         context,
         location,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -3174,9 +3233,16 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Generate MLIR operations for the `tuple_from_span` libfunc.
+<span class="doccomment">/// Buils a tuple (struct) from an span (a cairo native array)
 ///
 /// Note: The `&amp;info.ty` field has the entire `[T; N]` tuple. It is not the `T` in `Array&lt;T&gt;`.
+/// The tuple size `N` must match the span length.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn tuple_from_span&lt;T, impl Info: FixedSizedArrayInfo&lt;T&gt;&gt;(span: @Array&lt;Info::Element&gt;  -&gt; Option&lt;@Box&lt;T&gt;&gt; nopanic;
+/// ```
 </span><span class="kw">pub fn </span>build_tuple_from_span&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
@@ -3229,7 +3295,8 @@
         location,
     ))<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>valid_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+    <span class="comment">// check if the expected tuple matches the array length
+    </span><span class="kw">let </span>valid_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     <span class="kw">let </span>error_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
     entry.append_operation(cf::cond_br(
         context,
@@ -3250,14 +3317,17 @@
     )<span class="question-mark">?</span>;
 
     {
-        <span class="kw">let </span>value_size = valid_block.const_int(context, location, tuple_layout.size(), <span class="number">64</span>)<span class="question-mark">?</span>;
+        <span class="comment">// if the length matches...
+
+        </span><span class="kw">let </span>value_size = valid_block.const_int(context, location, tuple_layout.size(), <span class="number">64</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>value = valid_block.append_op_result(llvm::zero(ptr_ty, location))<span class="question-mark">?</span>;
         <span class="kw">let </span>value = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, value, value_size, location,
         )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)<span class="question-mark">?</span>;
+        <span class="comment">// check if the array is shared
+        </span><span class="kw">let </span>is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>array_start_offset = valid_block.append_op_result(arith::extui(
             array_start,
@@ -3269,7 +3339,7 @@
             valid_block.const_int(context, location, elem_layout.pad_to_align().size(), <span class="number">64</span>)<span class="question-mark">?</span>,
             location,
         ))<span class="question-mark">?</span>;
-        <span class="kw">let </span>array_ptr = valid_block.gep(
+        <span class="kw">let </span>array_data_start_ptr = valid_block.gep(
             context,
             location,
             array_ptr,
@@ -3281,29 +3351,34 @@
             is_shared,
             <span class="kw-2">&amp;</span>[],
             {
-                <span class="kw">let </span>region = Region::new();
+                <span class="comment">// if the array is shared we clone the inner data,
+                // as a tuple does not contain a reference counter.
+
+                </span><span class="kw">let </span>region = Region::new();
                 <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
                 <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
                     <span class="prelude-val">Some</span>(dup_overrides_meta) <span class="kw">if </span>dup_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
-                        <span class="kw">let </span>src_ptr = array_ptr;
+                        <span class="kw">let </span>src_ptr = array_data_start_ptr;
                         <span class="kw">let </span>dst_ptr = value;
 
                         <span class="kw">let </span>value = block.load(context, location, src_ptr, tuple_ty)<span class="question-mark">?</span>;
-                        <span class="kw">let </span>values = dup_overrides_meta
+
+                        <span class="comment">// as the array data has the same representation as the tuple,
+                        // we can use the tuple override, which is simpler.
+                        </span><span class="kw">let </span>values = dup_overrides_meta
                             .invoke_override(context, <span class="kw-2">&amp;</span>block, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
                         block.store(context, location, src_ptr, values.<span class="number">0</span>)<span class="question-mark">?</span>;
                         block.store(context, location, dst_ptr, values.<span class="number">1</span>)<span class="question-mark">?</span>;
                     }
-                    <span class="kw">_ </span>=&gt; block.memcpy(context, location, array_ptr, value, value_size),
+                    <span class="kw">_ </span>=&gt; block.memcpy(context, location, array_data_start_ptr, value, value_size),
                 }
 
-                <span class="comment">// The following unwrap should be unreachable because an array always has a drop
-                // implementation.
+                <span class="comment">// drop the original array (decreasing its reference counter)
                 </span>metadata
                     .get::&lt;DropOverridesMeta&gt;()
-                    .unwrap()
-                    .invoke_override(
+                    .to_native_assert_error(<span class="string">"array always has a drop implementation"</span>)<span class="question-mark">?
+                    </span>.invoke_override(
                         context,
                         <span class="kw-2">&amp;</span>block,
                         location,
@@ -3315,19 +3390,30 @@
                 region
             },
             {
-                <span class="kw">let </span>region = Region::new();
+                <span class="comment">// if the array is not shared, then move the data to the new tuple
+                // and manually free the allocation (without calling drop on its elements).
+
+                </span><span class="kw">let </span>region = Region::new();
                 <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
-                block.memcpy(context, location, array_ptr, value, value_size);
+                block.memcpy(context, location, array_data_start_ptr, value, value_size);
 
-                <span class="kw">let </span>array_ptr = block.gep(
+                <span class="comment">// NOTE: If the target tuple has no elements, and the array is not shared,
+                // then we will attempt to free 0xfffffffffffffff0. This is not possible and
+                // disallowed by the cairo compiler.
+
+                </span><span class="kw">let </span>array_allocation_ptr = block.gep(
                     context,
                     location,
                     array_ptr,
                     <span class="kw-2">&amp;</span>[GepIndex::Const(-(calc_refcount_offset(elem_layout) <span class="kw">as </span>i32))],
                     IntegerType::new(context, <span class="number">8</span>).into(),
                 )<span class="question-mark">?</span>;
-                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)<span class="question-mark">?</span>);
+                block.append_operation(ReallocBindingsMeta::free(
+                    context,
+                    array_allocation_ptr,
+                    location,
+                )<span class="question-mark">?</span>);
 
                 block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
                 region
@@ -3339,7 +3425,9 @@
     }
 
     {
-        metadata
+        <span class="comment">// if the length doesn't match, free the tuple.
+
+        </span>metadata
             .get::&lt;DropOverridesMeta&gt;()
             .ok_or(Error::MissingMetadata)<span class="question-mark">?
             </span>.invoke_override(
