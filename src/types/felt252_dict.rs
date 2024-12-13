@@ -94,8 +94,10 @@ fn build_dup<'ctx>(
     let dup_fn = match metadata.get::<DupOverridesMeta>() {
         Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
             let region = Region::new();
-            let entry =
-                region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
+            let entry = region.append_block(Block::new(&[
+                (llvm::r#type::pointer(context, 0), location),
+                (llvm::r#type::pointer(context, 0), location),
+            ]));
 
             let source_ptr = entry.arg(0)?;
             let target_ptr = entry.arg(1)?;
