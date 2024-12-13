@@ -196,22 +196,25 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
     let k1 = entry.const_int_from_type(context, location, 1, len_ty)?;
 
-    let array_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
-    let array_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+    // build the new span (array)
+    let allocation_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
+    let allocation_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context,
-        array_ptr,
+        allocation_ptr,
         array_len_bytes_with_offset,
         location,
     )?)?;
-    entry.store(context, location, array_ptr, k1)?;
-
+    entry.store(context, location, allocation_ptr, k1)?;
     let array_ptr = entry.gep(
         context,
         location,
-        array_ptr,
+        allocation_ptr,
         &[GepIndex::Const(calc_refcount_offset(tuple_layout) as i32)],
         IntegerType::new(context, 8).into(),
     )?;
+
+    // as a tuple has the same representation as the array data,
+    // we just memcpy into the new array.
     entry.memcpy(
         context,
         location,
