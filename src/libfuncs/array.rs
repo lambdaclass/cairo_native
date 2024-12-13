@@ -408,6 +408,10 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
                 block.memcpy(context, location, array_data_start_ptr, value, value_size);
 
+                // NOTE: If the target tuple has no elements, and the array is not shared,
+                // then we will attempt to free 0xfffffffffffffff0. This is not possible and
+                // disallowed by the cairo compiler.
+
                 let array_allocation_ptr = block.gep(
                     context,
                     location,
