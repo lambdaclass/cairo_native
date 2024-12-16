@@ -634,7 +634,7 @@ jobs:
           path: starknet-replay/state_dumps/${{matrix.runner}}
 
   compare:
-    needs: [run]
+    needs: [run-part7]
     runs-on: ubuntu-latest
     # We always run the compare job, to ensure that a single run job failing
     # would not cancel the whole comparison.
