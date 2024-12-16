@@ -411,7 +411,7 @@ where
     }
 }
 
-impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
+impl<'ctx> Deref for LibfuncHelper<'ctx, '_> {
     type Target = Module<'ctx>;
 
     fn deref(&self) -> &Self::Target {
