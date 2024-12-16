@@ -6,7 +6,7 @@ on:
     - cron: "0 0 * * *"
 
 env:
-  RANGE_SIZE: 25
+  RANGE_SIZE: 10
 
 jobs:
   run:
