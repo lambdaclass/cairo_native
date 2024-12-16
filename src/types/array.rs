@@ -187,6 +187,8 @@ fn build_dup<'ctx>(
     Ok(region)
 }
 
+/// This function decreases the reference counter of the array by one.
+/// If the reference counter reaches zero, then all the resources are freed.
 fn build_drop<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
@@ -230,7 +232,7 @@ fn build_drop<'ctx>(
         3,
     )?;
     let k0 = entry.const_int(context, location, 0, 32)?;
-    let is_empty = entry.append_op_result(arith::cmpi(
+    let zero_capacity = entry.append_op_result(arith::cmpi(
         context,
         CmpiPredicate::Eq,
         array_cap,
@@ -239,9 +241,11 @@ fn build_drop<'ctx>(
     ))?;
 
     entry.append_operation(scf::r#if(
-        is_empty,
+        zero_capacity,
         &[],
         {
+            // if the array has no capacity, do nothing, as there is no allocation
+
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
@@ -249,9 +253,13 @@ fn build_drop<'ctx>(
             region
         },
         {
+            // if the array has capacity, decrease the reference counter
+            // and, in case it reaches zero, free all the resources.
+
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
+            // obtain the reference counter
             let refcount_ptr = block.gep(
                 context,
                 location,
@@ -266,6 +274,7 @@ fn build_drop<'ctx>(
                 IntegerType::new(context, 32).into(),
             )?;
 
+            // if the reference counter is greater than 1, then it's shared
             let k1 = block.const_int(context, location, 1, 32)?;
             let is_shared = block.append_op_result(arith::cmpi(
                 context,
@@ -279,6 +288,7 @@ fn build_drop<'ctx>(
                 is_shared,
                 &[],
                 {
+                    // if the array is shared, decrease the reference counter by one
                     let region = Region::new();
                     let block = region.append_block(Block::new(&[]));
 
@@ -289,6 +299,7 @@ fn build_drop<'ctx>(
                     region
                 },
                 {
+                    // if the array is not shared, drop all elements and free the memory
                     let region = Region::new();
                     let block = region.append_block(Block::new(&[]));
 
@@ -333,6 +344,7 @@ fn build_drop<'ctx>(
                                 location,
                             ))?;
 
+                            // for each element in the aray, invoke its drop implementation
                             block.append_operation(scf::r#for(
                                 offset_start,
                                 offset_end,
@@ -368,6 +380,7 @@ fn build_drop<'ctx>(
                         _ => {}
                     }
 
+                    // finally, free the array allocation
                     block.append_operation(ReallocBindingsMeta::free(
                         context,
                         refcount_ptr,
