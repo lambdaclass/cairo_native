@@ -17,7 +17,7 @@ typedef struct factorial_return_values
     } result;
 } factorial_return_values_t;
 
-static void run_bench(factorial_return_values_t*, uint64_t)
+static void run_bench(factorial_return_values_t*, uint64_t, uint64_t)
 __attribute__((weakref("_mlir_ciface_factorial_2M::factorial_2M::main(f1)")));
 
 extern uint64_t* cairo_native__set_costs_builtin(uint64_t*);
@@ -30,7 +30,7 @@ int main()
 
     cairo_native__set_costs_builtin(&BuiltinCosts[0]);
 
-    run_bench(&return_values, 0xFFFFFFFFFFFFFFFF);
+    run_bench(&return_values, 0, 0xFFFFFFFFFFFFFFFF);
     assert((return_values.result.discriminant & 0x1) == 0);
 
     return 0;
