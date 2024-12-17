@@ -152,8 +152,8 @@ pub struct FeltDict {
     pub layout: Layout,
     pub elements: *mut (),
 
-    dup_fn: Option<extern "C" fn(*mut c_void, *mut c_void)>,
-    drop_fn: Option<extern "C" fn(*mut c_void)>,
+    pub dup_fn: Option<extern "C" fn(*mut c_void, *mut c_void)>,
+    pub drop_fn: Option<extern "C" fn(*mut c_void)>,
 
     pub count: u64,
 }
@@ -313,43 +313,42 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     key: &[u8; 32],
     value_ptr: *mut *mut c_void,
 ) -> c_int {
-    todo!()
+    let mut dict_rc = Rc::from_raw(dict);
+    let dict = Rc::make_mut(&mut dict_rc);
 
-    // let mut key = *key;
-    // key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    let num_mappings = dict.mappings.len();
+    let has_capacity = num_mappings != dict.mappings.capacity();
 
-    // let old_capacity = dict.mappings.capacity();
-    // let index = dict.mappings.len();
-    // let (index, is_present) = match dict.mappings.entry(key) {
-    //     Entry::Occupied(entry) => (*entry.get(), 1),
-    //     Entry::Vacant(entry) => {
-    //         entry.insert(index);
+    let (is_present, index) = match dict.mappings.entry(*key) {
+        Entry::Occupied(entry) => (true, *entry.get()),
+        Entry::Vacant(entry) => {
+            entry.insert(num_mappings);
+            (false, num_mappings)
+        }
+    };
 
-    //         // Reallocate `mem_data` to match the slab's capacity.
-    //         if old_capacity != dict.mappings.capacity() {
-    //             dict.elements = realloc(
-    //                 dict.elements.cast(),
-    //                 Layout::from_size_align_unchecked(
-    //                     dict.layout.pad_to_align().size() * old_capacity,
-    //                     dict.layout.align(),
-    //                 ),
-    //                 dict.layout.pad_to_align().size() * dict.mappings.capacity(),
-    //             )
-    //             .cast();
-    //         }
+    // TODO: Maybe realloc (conditions: !has_capacity && !is_present).
+    if !has_capacity && !is_present {
+        dict.elements = realloc(
+            dict.elements.cast(),
+            Layout::from_size_align_unchecked(
+                dict.layout.pad_to_align().size() * dict.mappings.len(),
+                dict.layout.align(),
+            ),
+            dict.layout.pad_to_align().size() * dict.mappings.capacity(),
+        )
+        .cast();
+    }
 
-    //         (index, 0)
-    //     }
-    // };
+    *value_ptr = dict
+        .elements
+        .byte_add(dict.layout.pad_to_align().size() * index)
+        .cast();
 
-    // value_ptr.write(
-    //     dict.elements
-    //         .byte_add(dict.layout.pad_to_align().size() * index)
-    //         .cast(),
-    // );
-    // dict.count += 1;
+    dict.count += 1;
+    forget(dict_rc);
 
-    // is_present
+    is_present as c_int
 }
 
 /// Compute the total gas refund for the dictionary at squash time.
@@ -885,21 +884,27 @@ mod tests {
 
     #[test]
     fn test_dict() {
-        let dict =
-            unsafe { cairo_native__dict_new(size_of::<u64>() as u64, align_of::<u64>() as u64) };
+        let dict = unsafe {
+            cairo_native__dict_new(
+                size_of::<u64>() as u64,
+                align_of::<u64>() as u64,
+                None,
+                None,
+            )
+        };
 
         let key = Felt::ONE.to_bytes_le();
         let mut ptr = null_mut::<u64>();
 
         assert_eq!(
-            unsafe { cairo_native__dict_get(&mut *dict, &key, (&raw mut ptr).cast()) },
+            unsafe { cairo_native__dict_get(dict, &key, (&raw mut ptr).cast()) },
             0,
         );
         assert!(!ptr.is_null());
         unsafe { *ptr = 24 };
 
         assert_eq!(
-            unsafe { cairo_native__dict_get(&mut *dict, &key, (&raw mut ptr).cast()) },
+            unsafe { cairo_native__dict_get(dict, &key, (&raw mut ptr).cast()) },
             1,
         );
         assert!(!ptr.is_null());
@@ -909,17 +914,17 @@ mod tests {
         let refund = unsafe { cairo_native__dict_gas_refund(dict) };
         assert_eq!(refund, 4050);
 
-        let cloned_dict = unsafe { cairo_native__dict_dup(&*dict, None) };
-        unsafe { cairo_native__dict_drop(dict, None) };
+        let cloned_dict = unsafe { cairo_native__dict_dup(&*dict) };
+        unsafe { cairo_native__dict_drop(dict) };
 
         assert_eq!(
-            unsafe { cairo_native__dict_get(&mut *cloned_dict, &key, (&raw mut ptr).cast()) },
+            unsafe { cairo_native__dict_get(cloned_dict, &key, (&raw mut ptr).cast()) },
             1,
         );
         assert!(!ptr.is_null());
         assert_eq!(unsafe { *ptr }, 42);
 
-        unsafe { cairo_native__dict_drop(cloned_dict, None) };
+        unsafe { cairo_native__dict_drop(cloned_dict) };
     }
 
     #[test]

@@ -3,7 +3,9 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    metadata::{
+        felt252_dict::Felt252DictOverrides, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+    },
     types::TypeBuilder,
     utils::BlockExt,
 };
@@ -16,6 +18,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
+    dialect::{llvm, ods},
     ir::{Block, Location},
     Context,
 };
@@ -51,20 +54,71 @@ pub fn build_new<'ctx, 'this>(
 ) -> Result<()> {
     let segment_arena = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
-    let runtime_bindings = metadata
-        .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
-
     let value_type_id = match registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)? {
         CoreTypeConcrete::Felt252Dict(info) => &info.ty,
         _ => unreachable!(),
     };
 
+    let (dup_fn, drop_fn) = {
+        let mut dict_overrides = metadata
+            .remove::<Felt252DictOverrides>()
+            .unwrap_or_default();
+
+        let dup_fn = match dict_overrides.build_dup_fn(
+            context,
+            helper,
+            registry,
+            metadata,
+            value_type_id,
+        )? {
+            Some(dup_fn) => Some(
+                entry.append_op_result(
+                    ods::llvm::mlir_addressof(
+                        context,
+                        llvm::r#type::pointer(context, 0),
+                        dup_fn,
+                        location,
+                    )
+                    .into(),
+                )?,
+            ),
+            None => None,
+        };
+        let drop_fn = match dict_overrides.build_drop_fn(
+            context,
+            helper,
+            registry,
+            metadata,
+            value_type_id,
+        )? {
+            Some(drop_fn_symbol) => Some(
+                entry.append_op_result(
+                    ods::llvm::mlir_addressof(
+                        context,
+                        llvm::r#type::pointer(context, 0),
+                        drop_fn_symbol,
+                        location,
+                    )
+                    .into(),
+                )?,
+            ),
+            None => None,
+        };
+
+        metadata.insert(dict_overrides);
+        (dup_fn, drop_fn)
+    };
+
+    let runtime_bindings = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .expect("Runtime library not available.");
     let dict_ptr = runtime_bindings.dict_new(
         context,
         helper,
         entry,
         location,
+        dup_fn,
+        drop_fn,
         registry.get_type(value_type_id)?.layout(registry)?,
     )?;
 
