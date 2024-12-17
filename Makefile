@@ -2,7 +2,7 @@
 
 UNAME := $(shell uname)
 CAIRO_2_VERSION = 2.9.2
-SCARB_VERSION = 2.9.2 # todo update once scarb 2.9.2 is released
+SCARB_VERSION = 2.9.2
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
