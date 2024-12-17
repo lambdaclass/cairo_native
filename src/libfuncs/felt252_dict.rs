@@ -4,6 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    native_panic,
     types::TypeBuilder,
     utils::BlockExt,
 };
@@ -57,7 +58,7 @@ pub fn build_new<'ctx, 'this>(
 
     let value_type_id = match registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)? {
         CoreTypeConcrete::Felt252Dict(info) => &info.ty,
-        _ => unreachable!(),
+        _ => native_panic!("entered unreachable code"),
     };
 
     let dict_ptr = runtime_bindings.dict_new(
