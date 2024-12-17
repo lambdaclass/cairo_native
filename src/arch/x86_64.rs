@@ -11,8 +11,10 @@
 
 use super::AbiArgument;
 use crate::{error::Error, starknet::U256, utils::get_integer_layout};
+use cairo_lang_sierra::ids::ConcreteTypeId;
 use num_traits::ToBytes;
 use starknet_types_core::felt::Felt;
+use std::ffi::c_void;
 
 fn align_to(buffer: &mut Vec<u8>, align: usize) {
     buffer.resize(buffer.len().next_multiple_of(align), 0);
@@ -315,7 +317,7 @@ mod test {
     #[test]
     fn u128_stack_split() {
         let mut buffer = vec![0; 40];
-        u128::MAX.to_bytes(&mut buffer).unwrap();
+        u128::MAX.to_bytes(&mut buffer, |_| unreachable!()).unwrap();
         assert_eq!(
             buffer,
             [0; 48].into_iter().chain([0xFF; 16]).collect::<Vec<_>>()
@@ -328,7 +330,7 @@ mod test {
         let mut buffer = vec![0; 24];
         Felt::from_hex("0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
             .unwrap()
-            .to_bytes(&mut buffer)
+            .to_bytes(&mut buffer, |_| unreachable!())
             .unwrap();
         assert_eq!(
             buffer,
@@ -343,7 +345,7 @@ mod test {
         let mut buffer = vec![0; 32];
         Felt::from_hex("0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
             .unwrap()
-            .to_bytes(&mut buffer)
+            .to_bytes(&mut buffer, |_| unreachable!())
             .unwrap();
         assert_eq!(
             buffer,
@@ -358,7 +360,7 @@ mod test {
         let mut buffer = vec![0; 40];
         Felt::from_hex("0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
             .unwrap()
-            .to_bytes(&mut buffer)
+            .to_bytes(&mut buffer, |_| unreachable!())
             .unwrap();
         assert_eq!(
             buffer,
