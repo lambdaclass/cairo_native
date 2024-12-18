@@ -494,7 +494,13 @@
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a></pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary type
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a></pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary type
 //!
 //! A key value storage for values whose type implement Copy. The key is always a felt.
 //!
@@ -585,70 +591,76 @@
 
     <span class="kw">let </span>value_ty = registry.build_type(context, module, metadata, info.self_ty())<span class="question-mark">?</span>;
     <span class="kw">let </span>inner_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
-    <span class="kw">let </span>inner_len = inner_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align().size();
     <span class="kw">let </span>inner_ty = inner_ty.build(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>dup_fn_symbol = <span class="macro">format!</span>(<span class="string">"dup${}$item"</span>, info.self_ty().id);
-    {
-        <span class="kw">let </span>region = Region::new();
-        <span class="kw">let </span>entry =
-            region.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
+    <span class="kw">let </span>dup_fn = <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
+        <span class="prelude-val">Some</span>(dup_overrides_meta) <span class="kw">if </span>dup_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
+            <span class="kw">let </span>region = Region::new();
+            <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[
+                (llvm::r#type::pointer(context, <span class="number">0</span>), location),
+                (llvm::r#type::pointer(context, <span class="number">0</span>), location),
+            ]));
 
-        <span class="kw">let </span>null_ptr =
-            entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?</span>;
-        <span class="kw">let </span>inner_len = entry.const_int(context, location, inner_len, <span class="number">64</span>)<span class="question-mark">?</span>;
+            <span class="kw">let </span>source_ptr = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+            <span class="kw">let </span>target_ptr = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>old_ptr = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>new_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
-            context, null_ptr, inner_len, location,
-        )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+            <span class="kw">let </span>value = entry.load(context, location, source_ptr, inner_ty)<span class="question-mark">?</span>;
+            <span class="kw">let </span>values =
+                dup_overrides_meta.invoke_override(context, <span class="kw-2">&amp;</span>entry, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
+            entry.store(context, location, source_ptr, values.<span class="number">0</span>)<span class="question-mark">?</span>;
+            entry.store(context, location, target_ptr, values.<span class="number">1</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>value = entry.load(context, location, old_ptr, inner_ty)<span class="question-mark">?</span>;
-        <span class="kw">let </span>values = metadata
-            .get_or_insert_with(DupOverridesMeta::default)
-            .invoke_override(context, <span class="kw-2">&amp;</span>entry, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
+            entry.append_operation(llvm::r#return(<span class="prelude-val">None</span>, location));
 
-        entry.store(context, location, old_ptr, values.<span class="number">0</span>)<span class="question-mark">?</span>;
-        entry.store(context, location, new_ptr, values.<span class="number">1</span>)<span class="question-mark">?</span>;
+            <span class="kw">let </span>dup_fn_symbol = <span class="macro">format!</span>(<span class="string">"dup${}$item"</span>, info.self_ty().id);
+            module.body().append_operation(llvm::func(
+                context,
+                StringAttribute::new(context, <span class="kw-2">&amp;</span>dup_fn_symbol),
+                TypeAttribute::new(llvm::r#type::function(
+                    llvm::r#type::void(context),
+                    <span class="kw-2">&amp;</span>[
+                        llvm::r#type::pointer(context, <span class="number">0</span>),
+                        llvm::r#type::pointer(context, <span class="number">0</span>),
+                    ],
+                    <span class="bool-val">false</span>,
+                )),
+                region,
+                <span class="kw-2">&amp;</span>[
+                    (
+                        Identifier::new(context, <span class="string">"sym_visibility"</span>),
+                        StringAttribute::new(context, <span class="string">"public"</span>).into(),
+                    ),
+                    (
+                        Identifier::new(context, <span class="string">"linkage"</span>),
+                        Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>)
+                            .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
+                    ),
+                ],
+                location,
+            ));
 
-        entry.append_operation(llvm::r#return(<span class="prelude-val">Some</span>(new_ptr), location));
-
-        module.body().append_operation(llvm::func(
-            context,
-            StringAttribute::new(context, <span class="kw-2">&amp;</span>dup_fn_symbol),
-            TypeAttribute::new(llvm::r#type::function(
-                llvm::r#type::pointer(context, <span class="number">0</span>),
-                <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
-                <span class="bool-val">false</span>,
-            )),
-            region,
-            <span class="kw-2">&amp;</span>[
-                (
-                    Identifier::new(context, <span class="string">"sym_visibility"</span>),
-                    StringAttribute::new(context, <span class="string">"public"</span>).into(),
-                ),
-                (
-                    Identifier::new(context, <span class="string">"linkage"</span>),
-                    Attribute::parse(context, <span class="string">"#llvm.linkage&lt;private&gt;"</span>)
-                        .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
-                ),
-            ],
-            location,
-        ));
-    }
+            <span class="prelude-val">Some</span>(dup_fn_symbol)
+        }
+        <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+    };
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(value_ty, location)]));
 
-    <span class="kw">let </span>dup_fn = entry.append_op_result(
-        ods::llvm::mlir_addressof(
-            context,
-            llvm::r#type::pointer(context, <span class="number">0</span>),
-            FlatSymbolRefAttribute::new(context, <span class="kw-2">&amp;</span>dup_fn_symbol),
-            location,
-        )
-        .into(),
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>dup_fn = <span class="kw">match </span>dup_fn {
+        <span class="prelude-val">Some</span>(dup_fn) =&gt; <span class="prelude-val">Some</span>(
+            entry.append_op_result(
+                ods::llvm::mlir_addressof(
+                    context,
+                    llvm::r#type::pointer(context, <span class="number">0</span>),
+                    FlatSymbolRefAttribute::new(context, <span class="kw-2">&amp;</span>dup_fn),
+                    location,
+                )
+                .into(),
+            )<span class="question-mark">?</span>,
+        ),
+        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+    };
 
     <span class="comment">// The following unwrap is unreachable because the registration logic will always insert it.
     </span><span class="kw">let </span>value0 = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;

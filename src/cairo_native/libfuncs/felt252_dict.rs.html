@@ -285,17 +285,32 @@
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a></pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary libfuncs
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a></pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
     error::Result,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    native_panic,
+    types::TypeBuilder,
     utils::BlockExt,
 };
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         felt252_dict::Felt252DictConcreteLibfunc,
         lib_func::SignatureOnlyConcreteLibfunc,
     },
@@ -328,12 +343,12 @@
 
 <span class="kw">pub fn </span>build_new&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+    info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>segment_arena = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
@@ -341,7 +356,18 @@
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
         .expect(<span class="string">"Runtime library not available."</span>);
 
-    <span class="kw">let </span>dict_ptr = runtime_bindings.dict_new(context, helper, entry, location)<span class="question-mark">?</span>;
+    <span class="kw">let </span>value_type_id = <span class="kw">match </span>registry.get_type(<span class="kw-2">&amp;</span>info.signature.branch_signatures[<span class="number">0</span>].vars[<span class="number">1</span>].ty)<span class="question-mark">? </span>{
+        CoreTypeConcrete::Felt252Dict(info) =&gt; <span class="kw-2">&amp;</span>info.ty,
+        <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"entered unreachable code"</span>),
+    };
+
+    <span class="kw">let </span>dict_ptr = runtime_bindings.dict_new(
+        context,
+        helper,
+        entry,
+        location,
+        registry.get_type(value_type_id)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?</span>,
+    )<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[segment_arena, dict_ptr], location));
     <span class="prelude-val">Ok</span>(())

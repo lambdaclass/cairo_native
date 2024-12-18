@@ -955,57 +955,18 @@
 <a href="#954" id="954">954</a>
 <a href="#955" id="955">955</a>
 <a href="#956" id="956">956</a>
-<a href="#957" id="957">957</a>
-<a href="#958" id="958">958</a>
-<a href="#959" id="959">959</a>
-<a href="#960" id="960">960</a>
-<a href="#961" id="961">961</a>
-<a href="#962" id="962">962</a>
-<a href="#963" id="963">963</a>
-<a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
-<a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
-<a href="#969" id="969">969</a>
-<a href="#970" id="970">970</a>
-<a href="#971" id="971">971</a>
-<a href="#972" id="972">972</a>
-<a href="#973" id="973">973</a>
-<a href="#974" id="974">974</a>
-<a href="#975" id="975">975</a>
-<a href="#976" id="976">976</a>
-<a href="#977" id="977">977</a>
-<a href="#978" id="978">978</a>
-<a href="#979" id="979">979</a>
-<a href="#980" id="980">980</a>
-<a href="#981" id="981">981</a>
-<a href="#982" id="982">982</a>
-<a href="#983" id="983">983</a>
-<a href="#984" id="984">984</a>
-<a href="#985" id="985">985</a>
-<a href="#986" id="986">986</a>
-<a href="#987" id="987">987</a>
-<a href="#988" id="988">988</a>
-<a href="#989" id="989">989</a>
-<a href="#990" id="990">990</a>
-<a href="#991" id="991">991</a>
-<a href="#992" id="992">992</a>
-<a href="#993" id="993">993</a>
-<a href="#994" id="994">994</a>
-<a href="#995" id="995">995</a>
-<a href="#996" id="996">996</a>
-<a href="#997" id="997">997</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Runtime library bindings
+<a href="#957" id="957">957</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Runtime library bindings
 //!
 //! This metadata ensures that the bindings to the runtime functions exist in the current
 //! compilation context.
 
 </span><span class="kw">use crate</span>::{
     error::{Error, <span class="prelude-ty">Result</span>},
+    libfuncs::LibfuncHelper,
     utils::BlockExt,
 };
 <span class="kw">use </span>melior::{
-    dialect::{func, llvm, ods},
+    dialect::{func, llvm},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
@@ -1013,7 +974,7 @@
     },
     Context,
 };
-<span class="kw">use </span>std::{collections::HashSet, marker::PhantomData};
+<span class="kw">use </span>std::{alloc::Layout, collections::HashSet, ffi::c_int, marker::PhantomData};
 
 <span class="attr">#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 </span><span class="kw">enum </span>RuntimeBinding {
@@ -1026,7 +987,6 @@
     EcPointTryNewNz,
     EcPointFromXNz,
     DictNew,
-    DictInsert,
     DictGet,
     DictGasRefund,
     DictDrop,
@@ -1536,10 +1496,13 @@
         module: <span class="kw-2">&amp;</span>Module,
         block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
         location: Location&lt;<span class="lifetime">'c</span>&gt;,
+        layout: Layout,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;
     <span class="kw">where
         </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
     {
+        <span class="kw">let </span>i64_ty = IntegerType::new(context, <span class="number">64</span>).into();
+
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(RuntimeBinding::DictNew) {
             module.body().append_operation(func::func(
                 context,
@@ -1547,7 +1510,7 @@
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
-                        <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
+                        <span class="kw-2">&amp;</span>[i64_ty, i64_ty],
                         <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
                     )
                     .into(),
@@ -1568,20 +1531,13 @@
             ));
         }
 
-        <span class="kw">let </span>free_fn = block.append_op_result(
-            ods::llvm::mlir_addressof(
-                context,
-                llvm::r#type::pointer(context, <span class="number">0</span>),
-                FlatSymbolRefAttribute::new(context, <span class="string">"free"</span>),
-                location,
-            )
-            .into(),
-        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>size = block.const_int_from_type(context, location, layout.size(), i64_ty)<span class="question-mark">?</span>;
+        <span class="kw">let </span>align = block.const_int_from_type(context, location, layout.align(), i64_ty)<span class="question-mark">?</span>;
 
         block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_new"</span>),
-            <span class="kw-2">&amp;</span>[free_fn],
+            <span class="kw-2">&amp;</span>[size, align],
             <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
             location,
         ))
@@ -1660,7 +1616,7 @@
         module: <span class="kw-2">&amp;</span>Module,
         block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
         ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
-        dup_fn: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
+        dup_fn: <span class="prelude-ty">Option</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;,
         location: Location&lt;<span class="lifetime">'c</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;
     <span class="kw">where
@@ -1697,6 +1653,13 @@
             ));
         }
 
+        <span class="kw">let </span>dup_fn = <span class="kw">match </span>dup_fn {
+            <span class="prelude-val">Some</span>(x) =&gt; x,
+            <span class="prelude-val">None </span>=&gt; {
+                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?
+            </span>}
+        };
+
         block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_dup"</span>),
@@ -1715,17 +1678,17 @@
     </span><span class="kw">pub fn </span>dict_get&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
-        module: <span class="kw-2">&amp;</span>Module,
+        helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
         block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
         dict_ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;, <span class="comment">// ptr to the dict
         </span>key_ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,  <span class="comment">// key must be a ptr to Felt
         </span>location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;, Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;)&gt;
     <span class="kw">where
         </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
     {
         <span class="kw">if </span><span class="self">self</span>.active_map.insert(RuntimeBinding::DictGet) {
-            module.body().append_operation(func::func(
+            helper.body().append_operation(func::func(
                 context,
                 StringAttribute::new(context, <span class="string">"cairo_native__dict_get"</span>),
                 TypeAttribute::new(
@@ -1734,8 +1697,9 @@
                         <span class="kw-2">&amp;</span>[
                             llvm::r#type::pointer(context, <span class="number">0</span>),
                             llvm::r#type::pointer(context, <span class="number">0</span>),
+                            llvm::r#type::pointer(context, <span class="number">0</span>),
                         ],
-                        <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
+                        <span class="kw-2">&amp;</span>[IntegerType::new(context, c_int::BITS).into()],
                     )
                     .into(),
                 ),
@@ -1755,73 +1719,29 @@
             ));
         }
 
-        block.append_op_result(func::call(
+        <span class="kw">let </span>value_ptr = helper.init_block().alloca1(
+            context,
+            location,
+            llvm::r#type::pointer(context, <span class="number">0</span>),
+            align_of::&lt;<span class="kw-2">*mut </span>()&gt;(),
+        )<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>is_present = block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_get"</span>),
-            <span class="kw-2">&amp;</span>[dict_ptr, key_ptr],
-            <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
-            location,
-        ))
-    }
-
-    <span class="doccomment">/// Register if necessary, then invoke the `dict_insert()` function.
-    ///
-    /// Inserts the provided key value. Returning the old one or nullptr if there was none.
-    ///
-    /// Returns a opaque pointer as the result.
-    </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>dict_insert&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
-        module: <span class="kw-2">&amp;</span>Module,
-        block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
-        dict_ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,  <span class="comment">// ptr to the dict
-        </span>key_ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,   <span class="comment">// key must be a ptr to Felt
-        </span>value_ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;, <span class="comment">// value must be a opaque non null ptr
-        </span>location: Location&lt;<span class="lifetime">'c</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;
-    <span class="kw">where
-        </span><span class="lifetime">'c</span>: <span class="lifetime">'a</span>,
-    {
-        <span class="kw">if </span><span class="self">self</span>.active_map.insert(RuntimeBinding::DictInsert) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, <span class="string">"cairo_native__dict_insert"</span>),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        <span class="kw-2">&amp;</span>[
-                            llvm::r#type::pointer(context, <span class="number">0</span>),
-                            llvm::r#type::pointer(context, <span class="number">0</span>),
-                            llvm::r#type::pointer(context, <span class="number">0</span>),
-                        ],
-                        <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                <span class="kw-2">&amp;</span>[
-                    (
-                        Identifier::new(context, <span class="string">"sym_visibility"</span>),
-                        StringAttribute::new(context, <span class="string">"private"</span>).into(),
-                    ),
-                    (
-                        Identifier::new(context, <span class="string">"llvm.linkage"</span>),
-                        Attribute::parse(context, <span class="string">"#llvm.linkage&lt;external&gt;"</span>)
-                            .ok_or(Error::ParseAttributeError)<span class="question-mark">?</span>,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        <span class="prelude-val">Ok</span>(block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_insert"</span>),
             <span class="kw-2">&amp;</span>[dict_ptr, key_ptr, value_ptr],
-            <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
+            <span class="kw-2">&amp;</span>[IntegerType::new(context, c_int::BITS).into()],
             location,
-        )))
+        ))<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>value_ptr = block.load(
+            context,
+            location,
+            value_ptr,
+            llvm::r#type::pointer(context, <span class="number">0</span>),
+        )<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>((is_present, value_ptr))
     }
 
     <span class="doccomment">/// Register if necessary, then invoke the `dict_gas_refund()` function.

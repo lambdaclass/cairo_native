@@ -1757,7 +1757,30 @@
 <a href="#1756" id="1756">1756</a>
 <a href="#1757" id="1757">1757</a>
 <a href="#1758" id="1758">1758</a>
-<a href="#1759" id="1759">1759</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
+<a href="#1759" id="1759">1759</a>
+<a href="#1760" id="1760">1760</a>
+<a href="#1761" id="1761">1761</a>
+<a href="#1762" id="1762">1762</a>
+<a href="#1763" id="1763">1763</a>
+<a href="#1764" id="1764">1764</a>
+<a href="#1765" id="1765">1765</a>
+<a href="#1766" id="1766">1766</a>
+<a href="#1767" id="1767">1767</a>
+<a href="#1768" id="1768">1768</a>
+<a href="#1769" id="1769">1769</a>
+<a href="#1770" id="1770">1770</a>
+<a href="#1771" id="1771">1771</a>
+<a href="#1772" id="1772">1772</a>
+<a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
+<a href="#1777" id="1777">1777</a>
+<a href="#1778" id="1778">1778</a>
+<a href="#1779" id="1779">1779</a>
+<a href="#1780" id="1780">1780</a>
+<a href="#1781" id="1781">1781</a>
+<a href="#1782" id="1782">1782</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
 //!
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
@@ -1785,7 +1808,12 @@
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, Sign};
 <span class="kw">use </span>num_traits::{Euclid, One};
 <span class="kw">use </span>starknet_types_core::felt::Felt;
-<span class="kw">use </span>std::{alloc::Layout, collections::HashMap, ptr::NonNull, slice};
+<span class="kw">use </span>std::{
+    alloc::{alloc, dealloc, Layout},
+    collections::HashMap,
+    ptr::{null_mut, NonNull},
+    slice,
+};
 
 <span class="doccomment">/// A Value is a value that can be passed to either the JIT engine or a compiled program as an argument or received as a result.
 ///
@@ -2137,9 +2165,20 @@
                         <span class="kw">let </span>elem_layout = elem_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align();
 
                         <span class="kw">let </span><span class="kw-2">mut </span>value_map = Box::new(FeltDict {
-                            inner: HashMap::default(),
+                            mappings: HashMap::with_capacity(map.len()),
+
+                            layout: elem_layout,
+                            elements: <span class="kw">if </span>map.is_empty() {
+                                null_mut()
+                            } <span class="kw">else </span>{
+                                alloc(Layout::from_size_align_unchecked(
+                                    elem_layout.pad_to_align().size() * map.len(),
+                                    elem_layout.align(),
+                                ))
+                                .cast()
+                            },
+
                             count: <span class="number">0</span>,
-                            free_fn: <span class="kw">crate</span>::utils::libc_free,
                         });
 
                         <span class="comment">// next key must be called before next_value
@@ -2148,14 +2187,17 @@
                             <span class="kw">let </span>key = key.to_bytes_le();
                             <span class="kw">let </span>value = value.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 
-                            <span class="kw">let </span>value_malloc_ptr = libc_malloc(elem_layout.size());
+                            <span class="kw">let </span>index = value_map.mappings.len();
+                            value_map.mappings.insert(key, index);
+
                             std::ptr::copy_nonoverlapping(
                                 value.cast::&lt;u8&gt;().as_ptr(),
-                                value_malloc_ptr.cast(),
+                                value_map
+                                    .elements
+                                    .byte_add(elem_layout.pad_to_align().size() * index)
+                                    .cast(),
                                 elem_layout.size(),
                             );
-
-                            value_map.inner.insert(key, value_malloc_ptr);
                         }
 
                         NonNull::new_unchecked(Box::into_raw(value_map)).cast()
@@ -2538,19 +2580,14 @@
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) =&gt; {
-                    <span class="kw">let </span>inner = <span class="kw-2">&amp;</span>ptr
+                    <span class="kw">let </span>dict = <span class="kw-2">&amp;</span>ptr
                         .cast::&lt;NonNull&lt;()&gt;&gt;()
                         .as_ref()
                         .cast::&lt;FeltDict&gt;()
-                        .as_ref()
-                        .inner;
+                        .as_ref();
 
-                    <span class="kw">let </span><span class="kw-2">mut </span>output_map = HashMap::with_capacity(inner.len());
-                    <span class="kw">for </span>(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;</span>val_ptr) <span class="kw">in </span>inner.iter() {
-                        <span class="kw">if </span>val_ptr.is_null() {
-                            <span class="kw">continue</span>;
-                        }
-
+                    <span class="kw">let </span><span class="kw-2">mut </span>output_map = HashMap::with_capacity(dict.mappings.len());
+                    <span class="kw">for </span>(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;</span>index) <span class="kw">in </span>dict.mappings.iter() {
                         <span class="kw">let </span><span class="kw-2">mut </span>key = key;
                         key[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
 
@@ -2558,29 +2595,38 @@
                         output_map.insert(
                             key,
                             <span class="self">Self</span>::from_ptr(
-                                NonNull::new(val_ptr)
-                                    .to_native_assert_error(
-                                        <span class="string">"tried to make a non-null ptr out of a null one"</span>,
-                                    )<span class="question-mark">?
-                                    </span>.cast(),
+                                NonNull::new(
+                                    dict.elements
+                                        .byte_add(dict.layout.pad_to_align().size() * index),
+                                )
+                                .to_native_assert_error(
+                                    <span class="string">"tried to make a non-null ptr out of a null one"</span>,
+                                )<span class="question-mark">?
+                                </span>.cast(),
                                 <span class="kw-2">&amp;</span>info.ty,
                                 registry,
                                 should_drop,
                             )<span class="question-mark">?</span>,
                         );
-
-                        <span class="kw">if </span>should_drop {
-                            libc_free(val_ptr);
-                        }
                     }
 
                     <span class="kw">if </span>should_drop {
-                        drop(Box::from_raw(
+                        <span class="kw">let </span>dict = Box::from_raw(
                             ptr.cast::&lt;NonNull&lt;()&gt;&gt;()
                                 .as_ref()
                                 .cast::&lt;FeltDict&gt;()
                                 .as_ptr(),
-                        ));
+                        );
+
+                        dealloc(
+                            dict.elements.cast(),
+                            Layout::from_size_align_unchecked(
+                                dict.layout.pad_to_align().size() * dict.mappings.capacity(),
+                                dict.layout.align(),
+                            ),
+                        );
+
+                        drop(dict);
                     }
 
                     <span class="self">Self</span>::Felt252Dict {
@@ -2589,7 +2635,7 @@
                     }
                 }
                 CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">native_panic!</span>(<span class="string">"unimplemented: shouldn't be possible to return"</span>)
+                    <span class="macro">native_panic!</span>(<span class="string">"unimplemented: should be impossible to return"</span>)
                 }
                 CoreTypeConcrete::Pedersen(<span class="kw">_</span>)
                 | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
