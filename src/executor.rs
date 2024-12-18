@@ -63,6 +63,7 @@ extern "C" {
 /// constructs the function call in place.
 ///
 /// To pass the arguments, they are stored in a arena.
+#[allow(clippy::too_many_arguments)]
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
@@ -71,6 +72,13 @@ fn invoke_dynamic(
     args: &[Value],
     gas: u64,
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
+    find_dict_overrides: impl Copy
+        + Fn(
+            &ConcreteTypeId,
+        ) -> (
+            Option<extern "C" fn(*mut c_void, *mut c_void)>,
+            Option<extern "C" fn(*mut c_void)>,
+        ),
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
     let arena = Bump::new();
@@ -116,7 +124,9 @@ fn invoke_dynamic(
         })?;
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
-        return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
+        return_ptr
+            .as_ptr()
+            .to_bytes(&mut invoke_data, |_| unreachable!())?;
 
         Some(return_ptr)
     } else {
@@ -164,19 +174,23 @@ fn invoke_dynamic(
 
         // Process gas requirements and syscall handler.
         match type_info {
-            CoreTypeConcrete::GasBuiltin(_) => gas.to_bytes(&mut invoke_data)?,
+            CoreTypeConcrete::GasBuiltin(_) => {
+                gas.to_bytes(&mut invoke_data, |_| unreachable!())?
+            }
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
                     .to_native_assert_error("syscall handler should be available")?;
 
                 (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
-                    .to_bytes(&mut invoke_data)?;
+                    .to_bytes(&mut invoke_data, |_| unreachable!())?;
             }
             CoreTypeConcrete::BuiltinCosts(_) => {
-                builtin_costs.to_bytes(&mut invoke_data)?;
+                builtin_costs.to_bytes(&mut invoke_data, |_| unreachable!())?;
             }
-            type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
+            type_info if type_info.is_builtin() => {
+                0u64.to_bytes(&mut invoke_data, |_| unreachable!())?
+            }
             type_info => ValueWithInfoWrapper {
                 value: iter
                     .next()
@@ -187,7 +201,7 @@ fn invoke_dynamic(
                 arena: &arena,
                 registry,
             }
-            .to_bytes(&mut invoke_data)?,
+            .to_bytes(&mut invoke_data, find_dict_overrides)?,
         }
     }
 

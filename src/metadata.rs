@@ -19,6 +19,7 @@ pub mod debug_utils;
 pub mod drop_overrides;
 pub mod dup_overrides;
 pub mod enum_snapshot_variants;
+pub mod felt252_dict;
 pub mod gas;
 pub mod realloc_bindings;
 pub mod runtime_bindings;

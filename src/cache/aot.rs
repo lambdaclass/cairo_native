@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
 use crate::{
-    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
-    module::NativeModule, utils::SHARED_LIBRARY_EXT, OptLevel,
+    context::NativeContext, executor::AotNativeExecutor, module::NativeModule,
+    utils::SHARED_LIBRARY_EXT, OptLevel,
 };
 use cairo_lang_sierra::program::Program;
 use libloading::Library;
@@ -44,7 +44,7 @@ where
         let NativeModule {
             module,
             registry,
-            metadata,
+            mut metadata,
         } = self
             .context
             .compile(program, false, Some(Default::default()))?;
@@ -64,10 +64,8 @@ where
         let executor = AotNativeExecutor::new(
             shared_library,
             registry,
-            metadata
-                .get::<GasMetadata>()
-                .cloned()
-                .ok_or(Error::MissingMetadata)?,
+            metadata.remove().ok_or(Error::MissingMetadata)?,
+            metadata.remove().unwrap_or_default(),
         );
 
         let executor = Arc::new(executor);
