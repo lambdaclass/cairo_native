@@ -66,7 +66,6 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         run: cargo b --release
       - name: Build runtime
-        if: ${{ matrix.runner == 'native' }}
         run: |
           make runtime
           cargo update
