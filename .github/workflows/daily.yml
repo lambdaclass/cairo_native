@@ -18,6 +18,7 @@ jobs:
       RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
       RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
     strategy:
+      max-parallel: 10
       matrix:
         block:
           - 740000
