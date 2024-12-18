@@ -58,7 +58,7 @@ where
     }
 }
 
-impl<'a, K> Debug for JitProgramCache<'a, K>
+impl<K> Debug for JitProgramCache<'_, K>
 where
     K: Eq + Hash + PartialEq,
 {

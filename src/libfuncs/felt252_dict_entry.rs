@@ -101,6 +101,7 @@ pub fn build_get<'ctx, 'this>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
+            // If the entry is present we can load the current value.
             let value = block.load(context, location, value_ptr, value_ty)?;
 
             block.append_operation(scf::r#yield(&[value], location));
@@ -120,6 +121,7 @@ pub fn build_get<'ctx, 'this>(
                 results: Vec::new(),
             };
 
+            // When the entry is vacant we need to create the default value.
             let value = concrete_value_type.build_default(
                 context, registry, &block, location, &helper, metadata, &info.ty,
             )?;
@@ -132,6 +134,14 @@ pub fn build_get<'ctx, 'this>(
 
     let dict_entry = entry.append_op_result(llvm::undef(entry_ty, location))?;
     let dict_entry = entry.insert_values(context, location, dict_entry, &[dict_ptr, value_ptr])?;
+
+    // The `Felt252DictEntry<T>` holds both the `Felt252Dict<T>` and the pointer to the space where
+    // the new value will be written when the entry is finalized. If the entry were to be dropped
+    // (without being consumed by the finalizer), which shouldn't be possible under normal
+    // conditions, and the type `T` requires a custom drop implementation (ex. arrays, dicts...),
+    // it'll cause undefined behavior because when the value is moved out of the dictionary (on
+    // `get`), the memory it occupied is not modified because we're expecting it to be overwritten
+    // by the finalizer (in other words, the extracted element will be dropped twice).
 
     entry.append_operation(helper.br(0, &[dict_entry, value], location));
     Ok(())

@@ -399,7 +399,7 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let (dup_fn, drop_fn) = dbg!(find_dict_overrides(&info.ty));
+                        let (dup_fn, drop_fn) = find_dict_overrides(&info.ty);
                         let mut value_map = FeltDict {
                             mappings: HashMap::with_capacity(map.len()),
 
