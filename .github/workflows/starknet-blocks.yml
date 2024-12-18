@@ -85,7 +85,7 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         run: |
           cd replay
-          sed -r -i 's/cairo-native.*/cairo-native = { path = ".." }/' Cargo.toml
+          echo -e '[patch.crates-io]\ncairo-native = { path = ".." }'' >> Cargo.toml
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}
