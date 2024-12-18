@@ -10,10 +10,10 @@ fn init_dict(length: u64) -> Felt252Dict<felt252> {
 }
 
 fn main() {
-    let mut dict = init_dict(1001);
-    let last = dict.get(1000);
+    let mut dict = init_dict(1000001);
+    let last = dict.get(1000000);
     assert(
-        last == 1000,
+        last == 1000000,
         'invalid result'
     );
 }
