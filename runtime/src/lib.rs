@@ -327,7 +327,7 @@ pub unsafe extern "C" fn cairo_native__dict_get(
         }
     };
 
-    // TODO: Maybe realloc (conditions: !has_capacity && !is_present).
+    // Maybe realloc (conditions: !has_capacity && !is_present).
     if !has_capacity && !is_present {
         dict.elements = realloc(
             dict.elements.cast(),
