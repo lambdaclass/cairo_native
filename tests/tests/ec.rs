@@ -39,7 +39,8 @@ lazy_static! {
 #[test]
 fn ec_point_zero() {
     let program = &EC_POINT_ZERO;
-    let result_vm = run_vm_program(program, "run_test", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_vm =
+        run_vm_program(program, "run_test", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
         program,
         "run_test",
@@ -69,7 +70,7 @@ fn ec_point_from_x_big() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(x)],
+        vec![Arg::Value(x)],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -97,7 +98,7 @@ fn ec_point_from_x_small() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(x)],
+        vec![Arg::Value(x)],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -125,7 +126,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -151,7 +152,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be()))],
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();

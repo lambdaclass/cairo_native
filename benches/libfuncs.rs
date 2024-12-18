@@ -38,7 +38,7 @@ pub fn bench_libfuncs(c: &mut Criterion) {
                         let res = vm_runner
                             .run_function_with_starknet_context(
                                 entry,
-                                &[],
+                                vec![],
                                 Some(usize::MAX),
                                 StarknetState::default(),
                             )

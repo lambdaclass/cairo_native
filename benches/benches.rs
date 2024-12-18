@@ -70,7 +70,7 @@ fn compare(c: &mut Criterion, path: impl AsRef<Path>) {
             let result = vm_runner
                 .run_function_with_starknet_context(
                     vm_main_id,
-                    &[],
+                    vec![],
                     Some(usize::MAX),
                     StarknetState::default(),
                 )
