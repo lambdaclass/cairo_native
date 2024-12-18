@@ -1,8 +1,8 @@
 # Environment detection.
 
 UNAME := $(shell uname)
-CAIRO_2_VERSION = 2.9.0-dev.0
-SCARB_VERSION = 2.8.4
+CAIRO_2_VERSION = 2.9.2
+SCARB_VERSION = 2.9.2
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
@@ -66,7 +66,7 @@ test: check-llvm needs-cairo2 build-alexandria runtime-ci
 	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: test-cairo
-test-cairo: check-llvm needs-cairo2 build-alexandria runtime-ci
+test-cairo: check-llvm needs-cairo2 runtime-ci
 	cargo r --profile ci --bin cairo-native-test -- corelib
 
 .PHONY: proptest
