@@ -26,7 +26,12 @@ use educe::Educe;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{Euclid, One};
 use starknet_types_core::felt::Felt;
-use std::{alloc::Layout, collections::HashMap, ptr::NonNull, slice};
+use std::{
+    alloc::{alloc, dealloc, Layout},
+    collections::HashMap,
+    ptr::{null_mut, NonNull},
+    slice,
+};
 
 /// A Value is a value that can be passed to either the JIT engine or a compiled program as an argument or received as a result.
 ///
@@ -378,9 +383,20 @@ impl Value {
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
                         let mut value_map = Box::new(FeltDict {
-                            inner: HashMap::default(),
+                            mappings: HashMap::with_capacity(map.len()),
+
+                            layout: elem_layout,
+                            elements: if map.is_empty() {
+                                null_mut()
+                            } else {
+                                alloc(Layout::from_size_align_unchecked(
+                                    elem_layout.pad_to_align().size() * map.len(),
+                                    elem_layout.align(),
+                                ))
+                                .cast()
+                            },
+
                             count: 0,
-                            free_fn: crate::utils::libc_free,
                         });
 
                         // next key must be called before next_value
@@ -389,14 +405,17 @@ impl Value {
                             let key = key.to_bytes_le();
                             let value = value.to_ptr(arena, registry, &info.ty)?;
 
-                            let value_malloc_ptr = libc_malloc(elem_layout.size());
+                            let index = value_map.mappings.len();
+                            value_map.mappings.insert(key, index);
+
                             std::ptr::copy_nonoverlapping(
                                 value.cast::<u8>().as_ptr(),
-                                value_malloc_ptr.cast(),
+                                value_map
+                                    .elements
+                                    .byte_add(elem_layout.pad_to_align().size() * index)
+                                    .cast(),
                                 elem_layout.size(),
                             );
-
-                            value_map.inner.insert(key, value_malloc_ptr);
                         }
 
                         NonNull::new_unchecked(Box::into_raw(value_map)).cast()
@@ -779,19 +798,14 @@ impl Value {
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
-                    let inner = &ptr
+                    let dict = &ptr
                         .cast::<NonNull<()>>()
                         .as_ref()
                         .cast::<FeltDict>()
-                        .as_ref()
-                        .inner;
+                        .as_ref();
 
-                    let mut output_map = HashMap::with_capacity(inner.len());
-                    for (&key, &val_ptr) in inner.iter() {
-                        if val_ptr.is_null() {
-                            continue;
-                        }
-
+                    let mut output_map = HashMap::with_capacity(dict.mappings.len());
+                    for (&key, &index) in dict.mappings.iter() {
                         let mut key = key;
                         key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
@@ -799,29 +813,38 @@ impl Value {
                         output_map.insert(
                             key,
                             Self::from_ptr(
-                                NonNull::new(val_ptr)
-                                    .to_native_assert_error(
-                                        "tried to make a non-null ptr out of a null one",
-                                    )?
-                                    .cast(),
+                                NonNull::new(
+                                    dict.elements
+                                        .byte_add(dict.layout.pad_to_align().size() * index),
+                                )
+                                .to_native_assert_error(
+                                    "tried to make a non-null ptr out of a null one",
+                                )?
+                                .cast(),
                                 &info.ty,
                                 registry,
                                 should_drop,
                             )?,
                         );
-
-                        if should_drop {
-                            libc_free(val_ptr);
-                        }
                     }
 
                     if should_drop {
-                        drop(Box::from_raw(
+                        let dict = Box::from_raw(
                             ptr.cast::<NonNull<()>>()
                                 .as_ref()
                                 .cast::<FeltDict>()
                                 .as_ptr(),
-                        ));
+                        );
+
+                        dealloc(
+                            dict.elements.cast(),
+                            Layout::from_size_align_unchecked(
+                                dict.layout.pad_to_align().size() * dict.mappings.capacity(),
+                                dict.layout.align(),
+                            ),
+                        );
+
+                        drop(dict);
                     }
 
                     Self::Felt252Dict {
@@ -830,7 +853,7 @@ impl Value {
                     }
                 }
                 CoreTypeConcrete::Felt252DictEntry(_) => {
-                    native_panic!("unimplemented: shouldn't be possible to return")
+                    native_panic!("unimplemented: should be impossible to return")
                 }
                 CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
