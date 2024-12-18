@@ -399,6 +399,9 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
+                        // We need `find_dict_overrides` to obtain the function pointers of the dup and drop
+                        // implementations (if any) for the value type. This is required to be able to clone and drop
+                        // the dictionary automatically when their reference count drops to zero.
                         let (dup_fn, drop_fn) = find_dict_overrides(&info.ty);
                         let mut value_map = FeltDict {
                             mappings: HashMap::with_capacity(map.len()),
