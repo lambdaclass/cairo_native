@@ -89,70 +89,76 @@ fn build_dup<'ctx>(
 
     let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
     let inner_ty = registry.get_type(&info.ty)?;
-    let inner_len = inner_ty.layout(registry)?.pad_to_align().size();
     let inner_ty = inner_ty.build(context, module, registry, metadata, &info.ty)?;
 
-    let dup_fn_symbol = format!("dup${}$item", info.self_ty().id);
-    {
-        let region = Region::new();
-        let entry =
-            region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
+    let dup_fn = match metadata.get::<DupOverridesMeta>() {
+        Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
+            let region = Region::new();
+            let entry = region.append_block(Block::new(&[
+                (llvm::r#type::pointer(context, 0), location),
+                (llvm::r#type::pointer(context, 0), location),
+            ]));
 
-        let null_ptr =
-            entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
-        let inner_len = entry.const_int(context, location, inner_len, 64)?;
+            let source_ptr = entry.arg(0)?;
+            let target_ptr = entry.arg(1)?;
 
-        let old_ptr = entry.arg(0)?;
-        let new_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
-            context, null_ptr, inner_len, location,
-        )?)?;
+            let value = entry.load(context, location, source_ptr, inner_ty)?;
+            let values =
+                dup_overrides_meta.invoke_override(context, &entry, location, &info.ty, value)?;
+            entry.store(context, location, source_ptr, values.0)?;
+            entry.store(context, location, target_ptr, values.1)?;
 
-        let value = entry.load(context, location, old_ptr, inner_ty)?;
-        let values = metadata
-            .get_or_insert_with(DupOverridesMeta::default)
-            .invoke_override(context, &entry, location, &info.ty, value)?;
+            entry.append_operation(llvm::r#return(None, location));
 
-        entry.store(context, location, old_ptr, values.0)?;
-        entry.store(context, location, new_ptr, values.1)?;
+            let dup_fn_symbol = format!("dup${}$item", info.self_ty().id);
+            module.body().append_operation(llvm::func(
+                context,
+                StringAttribute::new(context, &dup_fn_symbol),
+                TypeAttribute::new(llvm::r#type::function(
+                    llvm::r#type::void(context),
+                    &[
+                        llvm::r#type::pointer(context, 0),
+                        llvm::r#type::pointer(context, 0),
+                    ],
+                    false,
+                )),
+                region,
+                &[
+                    (
+                        Identifier::new(context, "sym_visibility"),
+                        StringAttribute::new(context, "public").into(),
+                    ),
+                    (
+                        Identifier::new(context, "linkage"),
+                        Attribute::parse(context, "#llvm.linkage<private>")
+                            .ok_or(Error::ParseAttributeError)?,
+                    ),
+                ],
+                location,
+            ));
 
-        entry.append_operation(llvm::r#return(Some(new_ptr), location));
-
-        module.body().append_operation(llvm::func(
-            context,
-            StringAttribute::new(context, &dup_fn_symbol),
-            TypeAttribute::new(llvm::r#type::function(
-                llvm::r#type::pointer(context, 0),
-                &[llvm::r#type::pointer(context, 0)],
-                false,
-            )),
-            region,
-            &[
-                (
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "public").into(),
-                ),
-                (
-                    Identifier::new(context, "linkage"),
-                    Attribute::parse(context, "#llvm.linkage<private>")
-                        .ok_or(Error::ParseAttributeError)?,
-                ),
-            ],
-            location,
-        ));
-    }
+            Some(dup_fn_symbol)
+        }
+        _ => None,
+    };
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    let dup_fn = entry.append_op_result(
-        ods::llvm::mlir_addressof(
-            context,
-            llvm::r#type::pointer(context, 0),
-            FlatSymbolRefAttribute::new(context, &dup_fn_symbol),
-            location,
-        )
-        .into(),
-    )?;
+    let dup_fn = match dup_fn {
+        Some(dup_fn) => Some(
+            entry.append_op_result(
+                ods::llvm::mlir_addressof(
+                    context,
+                    llvm::r#type::pointer(context, 0),
+                    FlatSymbolRefAttribute::new(context, &dup_fn),
+                    location,
+                )
+                .into(),
+            )?,
+        ),
+        None => None,
+    };
 
     // The following unwrap is unreachable because the registration logic will always insert it.
     let value0 = entry.arg(0)?;
