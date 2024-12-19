@@ -119,20 +119,7 @@ pub enum BuiltinType {
 
 impl BuiltinType {
     pub const fn size_in_bytes(&self) -> usize {
-        match self {
-            BuiltinType::Bitwise => 8,
-            BuiltinType::EcOp => 8,
-            BuiltinType::RangeCheck => 8,
-            BuiltinType::SegmentArena => 8,
-            BuiltinType::Poseidon => 8,
-            BuiltinType::Pedersen => 8,
-            BuiltinType::RangeCheck96 => 8,
-            BuiltinType::CircuitAdd => 8,
-            BuiltinType::CircuitMul => 8,
-            BuiltinType::Gas => 16,
-            BuiltinType::System => 8,
-            BuiltinType::BuiltinCosts => 8,
-        }
+        size_of::<u64>()
     }
 }
 
@@ -279,8 +266,25 @@ impl AotContractExecutor {
     pub fn load(library_path: &Path) -> Result<Self> {
         let info_str = std::fs::read_to_string(library_path.with_extension("json"))?;
         let contract_info: NativeContractInfo = serde_json::from_str(&info_str)?;
+
+        let library = Arc::new(unsafe { Library::new(library_path)? });
+        unsafe {
+            let get_version = library
+                .get::<extern "C" fn(*mut u8, usize) -> usize>(b"cairo_native__get_version")?;
+
+            let mut version_buffer = [0u8; 16];
+            let version_len = get_version(version_buffer.as_mut_ptr(), version_buffer.len());
+
+            let target_version = env!("CARGO_PKG_VERSION");
+            assert_eq!(
+                &version_buffer[..version_len],
+                target_version.as_bytes(),
+                "aot-compiled contract version mismatch"
+            );
+        };
+
         Ok(Self {
-            library: Arc::new(unsafe { Library::new(library_path)? }),
+            library,
             path: library_path.to_path_buf(),
             is_temp_path: false,
             contract_info,

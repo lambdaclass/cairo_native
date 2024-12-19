@@ -23,6 +23,7 @@ use std::{
     mem::ManuallyDrop,
     os::fd::FromRawFd,
     ptr::{self, null, null_mut},
+    slice,
 };
 use std::{ops::Mul, vec::IntoIter};
 
@@ -33,6 +34,20 @@ lazy_static! {
     .unwrap();
     pub static ref DICT_GAS_REFUND_PER_ACCESS: u64 =
         (DICT_SQUASH_UNIQUE_KEY_COST.cost() - DICT_SQUASH_REPEATED_ACCESS_COST.cost()) as u64;
+}
+
+#[no_mangle]
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn cairo_native__get_version(target: *mut u8, length: usize) -> usize {
+    let target = slice::from_raw_parts_mut(target, length);
+
+    let version = env!("CARGO_PKG_VERSION");
+    assert!(length > version.len(), "version buffer not big enough");
+
+    target.copy_from_slice(version.as_bytes());
+    target[version.len()] = b'\0';
+
+    version.len()
 }
 
 /// Based on `cairo-lang-runner`'s implementation.

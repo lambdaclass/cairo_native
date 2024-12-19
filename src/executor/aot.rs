@@ -1,5 +1,3 @@
-use std::io;
-
 use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -20,6 +18,7 @@ use educe::Educe;
 use libc::c_void;
 use libloading::Library;
 use starknet_types_core::felt::Felt;
+use std::io;
 use tempfile::NamedTempFile;
 
 #[derive(Educe)]
