@@ -539,6 +539,8 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         location: Location<'c>,
+        dup_fn: Option<Value<'c, 'a>>,
+        drop_fn: Option<Value<'c, 'a>>,
         layout: Layout,
     ) -> Result<Value<'c, 'a>>
     where
@@ -553,7 +555,12 @@ impl RuntimeBindingsMeta {
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
-                        &[i64_ty, i64_ty],
+                        &[
+                            i64_ty,
+                            i64_ty,
+                            llvm::r#type::pointer(context, 0),
+                            llvm::r#type::pointer(context, 0),
+                        ],
                         &[llvm::r#type::pointer(context, 0)],
                     )
                     .into(),
@@ -577,10 +584,23 @@ impl RuntimeBindingsMeta {
         let size = block.const_int_from_type(context, location, layout.size(), i64_ty)?;
         let align = block.const_int_from_type(context, location, layout.align(), i64_ty)?;
 
+        let dup_fn = match dup_fn {
+            Some(x) => x,
+            None => {
+                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?
+            }
+        };
+        let drop_fn = match drop_fn {
+            Some(x) => x,
+            None => {
+                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?
+            }
+        };
+
         block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_new"),
-            &[size, align],
+            &[size, align, dup_fn, drop_fn],
             &[llvm::r#type::pointer(context, 0)],
             location,
         ))
@@ -596,7 +616,6 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         ptr: Value<'c, 'a>,
-        drop_fn: Option<Value<'c, 'a>>,
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where
@@ -607,15 +626,7 @@ impl RuntimeBindingsMeta {
                 context,
                 StringAttribute::new(context, "cairo_native__dict_drop"),
                 TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[],
-                    )
-                    .into(),
+                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
                 ),
                 Region::new(),
                 &[
@@ -633,17 +644,10 @@ impl RuntimeBindingsMeta {
             ));
         }
 
-        let drop_fn = match drop_fn {
-            Some(x) => x,
-            None => {
-                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?
-            }
-        };
-
         Ok(block.append_operation(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_drop"),
-            &[ptr, drop_fn],
+            &[ptr],
             &[],
             location,
         )))
@@ -659,7 +663,6 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         ptr: Value<'c, 'a>,
-        dup_fn: Option<Value<'c, 'a>>,
         location: Location<'c>,
     ) -> Result<Value<'c, 'a>>
     where
@@ -672,10 +675,7 @@ impl RuntimeBindingsMeta {
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
+                        &[llvm::r#type::pointer(context, 0)],
                         &[llvm::r#type::pointer(context, 0)],
                     )
                     .into(),
@@ -696,17 +696,10 @@ impl RuntimeBindingsMeta {
             ));
         }
 
-        let dup_fn = match dup_fn {
-            Some(x) => x,
-            None => {
-                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?
-            }
-        };
-
         block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, "cairo_native__dict_dup"),
-            &[ptr, dup_fn],
+            &[ptr],
             &[llvm::r#type::pointer(context, 0)],
             location,
         ))
