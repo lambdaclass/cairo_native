@@ -1780,7 +1780,19 @@
 <a href="#1779" id="1779">1779</a>
 <a href="#1780" id="1780">1780</a>
 <a href="#1781" id="1781">1781</a>
-<a href="#1782" id="1782">1782</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
+<a href="#1782" id="1782">1782</a>
+<a href="#1783" id="1783">1783</a>
+<a href="#1784" id="1784">1784</a>
+<a href="#1785" id="1785">1785</a>
+<a href="#1786" id="1786">1786</a>
+<a href="#1787" id="1787">1787</a>
+<a href="#1788" id="1788">1788</a>
+<a href="#1789" id="1789">1789</a>
+<a href="#1790" id="1790">1790</a>
+<a href="#1791" id="1791">1791</a>
+<a href="#1792" id="1792">1792</a>
+<a href="#1793" id="1793">1793</a>
+<a href="#1794" id="1794">1794</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
 //!
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
@@ -1803,16 +1815,18 @@
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-<span class="kw">use </span>cairo_native_runtime::FeltDict;
 <span class="kw">use </span>educe::Educe;
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, Sign};
 <span class="kw">use </span>num_traits::{Euclid, One};
 <span class="kw">use </span>starknet_types_core::felt::Felt;
-<span class="kw">use </span>std::{
-    alloc::{alloc, dealloc, Layout},
-    collections::HashMap,
-    ptr::{null_mut, NonNull},
-    slice,
+<span class="kw">use </span>std::{alloc::Layout, collections::HashMap, ptr::NonNull, slice};
+<span class="attr">#[cfg(feature = <span class="string">"with-runtime"</span>)]
+</span><span class="kw">use </span>{
+    cairo_native_runtime::FeltDict,
+    std::{
+        alloc::{alloc, dealloc},
+        ptr::null_mut,
+    },
 };
 
 <span class="doccomment">/// A Value is a value that can be passed to either the JIT engine or a compiled program as an argument or received as a result.
@@ -2159,7 +2173,8 @@
                         )))<span class="question-mark">?
                     </span>}
                 }
-                <span class="self">Self</span>::Felt252Dict { value: map, .. } =&gt; {
+                <span class="attr">#[cfg(feature = <span class="string">"with-runtime"</span>)]
+                </span><span class="self">Self</span>::Felt252Dict { value: map, .. } =&gt; {
                     <span class="kw">if let </span>CoreTypeConcrete::Felt252Dict(info) = <span class="self">Self</span>::resolve_type(ty, registry)<span class="question-mark">? </span>{
                         <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
                         <span class="kw">let </span>elem_layout = elem_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align();
@@ -2207,6 +2222,10 @@
                             type_id.debug_name
                         )))<span class="question-mark">?
                     </span>}
+                }
+                <span class="attr">#[cfg(not(feature = <span class="string">"with-runtime"</span>))]
+                </span><span class="self">Self</span>::Felt252Dict { .. } =&gt; {
+                    <span class="macro">native_panic!</span>(<span class="string">"runtime is disabled, dicts are not available"</span>);
                 }
                 <span class="self">Self</span>::Uint8(value) =&gt; {
                     <span class="kw">let </span>ptr = arena.alloc_layout(Layout::new::&lt;u8&gt;()).cast();
@@ -2578,7 +2597,8 @@
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
                 }
-                CoreTypeConcrete::Felt252Dict(info)
+                <span class="attr">#[cfg(feature = <span class="string">"with-runtime"</span>)]
+                </span>CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) =&gt; {
                     <span class="kw">let </span>dict = <span class="kw-2">&amp;</span>ptr
                         .cast::&lt;NonNull&lt;()&gt;&gt;()
@@ -2633,6 +2653,10 @@
                         value: output_map,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
+                }
+                <span class="attr">#[cfg(not(feature = <span class="string">"with-runtime"</span>))]
+                </span>CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) | CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; {
+                    <span class="macro">native_panic!</span>(<span class="string">"runtime is disabled, dicts are not available"</span>)
                 }
                 CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; {
                     <span class="macro">native_panic!</span>(<span class="string">"unimplemented: should be impossible to return"</span>)

@@ -250,7 +250,10 @@
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a></pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a></pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
 </span><span class="kw">use </span><span class="kw">crate</span>::metadata::gas::GasMetadataError;
 <span class="kw">use </span>cairo_lang_sierra::extensions::modules::utils::Range;
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -339,6 +342,9 @@
 
     <span class="attr">#[error(transparent)]
     </span>SerdeJsonError(<span class="attr">#[from] </span>serde_json::Error),
+
+    <span class="attr">#[error(<span class="string">"Failed to parse a Cairo/Sierra program: {0}"</span>)]
+    </span>ProgramParser(String),
 }
 
 <span class="kw">impl </span>Error {

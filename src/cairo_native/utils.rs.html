@@ -1295,7 +1295,7 @@
 }
 
 <span class="doccomment">/// Compile a cairo program found at the given path to sierra.
-</span><span class="kw">pub fn </span>cairo_to_sierra(program: <span class="kw-2">&amp;</span>Path) -&gt; anyhow::Result&lt;Arc&lt;Program&gt;&gt; {
+</span><span class="kw">pub fn </span>cairo_to_sierra(program: <span class="kw-2">&amp;</span>Path) -&gt; <span class="kw">crate</span>::error::Result&lt;Arc&lt;Program&gt;&gt; {
     <span class="kw">if </span>program
         .extension()
         .map(|x| {
@@ -1312,14 +1312,14 @@
                 ..Default::default()
             },
         )
-        .map(Arc::new)
+        .map_err(|err| <span class="kw">crate</span>::error::Error::ProgramParser(err.to_string()))
     } <span class="kw">else </span>{
         <span class="kw">let </span>source = std::fs::read_to_string(program)<span class="question-mark">?</span>;
         cairo_lang_sierra::ProgramParser::new()
             .parse(<span class="kw-2">&amp;</span>source)
-            .map_err(|err| anyhow::Error::msg(err.to_string()))
-            .map(Arc::new)
+            .map_err(|err| <span class="kw">crate</span>::error::Error::ProgramParser(err.to_string()))
     }
+    .map(Arc::new)
 }
 
 <span class="doccomment">/// Returns the given entry point if present.

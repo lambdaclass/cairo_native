@@ -196,7 +196,10 @@
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Result,
     native_panic,
     starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
@@ -344,13 +347,16 @@
                 <span class="attr">#[cfg(not(feature = <span class="string">"with-runtime"</span>))]
                 </span><span class="macro">native_panic!</span>(<span class="string">"enable the `with-runtime` feature to use felt252 dicts"</span>);
 
-                <span class="comment">// TODO: Assert that `info.ty` matches all the values' types.
+                <span class="attr">#[cfg(feature = <span class="string">"with-runtime"</span>)]
+                </span>{
+                    <span class="comment">// TODO: Assert that `info.ty` matches all the values' types.
 
-                </span><span class="self">self</span>.value
-                    .to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?
-                    </span>.as_ptr()
-                    .to_bytes(buffer)<span class="question-mark">?
-            </span>}
+                    </span><span class="self">self</span>.value
+                        .to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?
+                        </span>.as_ptr()
+                        .to_bytes(buffer)<span class="question-mark">?
+                </span>}
+            }
             (
                 Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),
                 CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
