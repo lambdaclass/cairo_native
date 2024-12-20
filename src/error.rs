@@ -87,6 +87,9 @@ pub enum Error {
 
     #[error(transparent)]
     SerdeJsonError(#[from] serde_json::Error),
+
+    #[error("Failed to parse a Cairo/Sierra program: {0}")]
+    ProgramParser(String),
 }
 
 impl Error {
