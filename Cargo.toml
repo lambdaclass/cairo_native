@@ -91,7 +91,7 @@ cairo-lang-sierra-gas = "2.9.2"
 cairo-lang-starknet = "2.9.2"
 cairo-lang-utils = "2.9.2"
 cairo-lang-starknet-classes = "2.9.2"
-cairo-native-runtime = { version = "0.2.5", path = "runtime", optional = true }
+cairo-native-runtime = { path = "runtime", optional = true, artifact = "staticlib", lib = true }
 clap = { version = "4.5.23", features = ["derive"], optional = true }
 libloading = "0.8.6"
 tracing-subscriber = { version = "0.3.19", features = [
