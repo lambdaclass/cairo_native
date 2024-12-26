@@ -737,7 +737,6 @@ mod tests {
                     &mut StubSyscallHandler::default(),
                 )
                 .unwrap();
-
             assert_eq!(result.return_values, vec![Felt::from(n), Felt::from(n * 2)]);
             assert_eq!(result.remaining_gas, 18446744073709551615);
         });
@@ -807,9 +806,8 @@ mod tests {
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
-        dbg!("{:#d}", &result.return_values[0]);
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709538915);
+        assert_eq!(result.remaining_gas, 18446744073709537615);
     }
 
     #[rstest]

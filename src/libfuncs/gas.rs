@@ -16,10 +16,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{
-        arith::CmpiPredicate,
-        ods::{self, arith},
-    },
+    dialect::{arith::CmpiPredicate, ods},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -85,7 +82,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
 
     let gas_cost = metadata
         .get::<GasCost>()
-        .expect("builtin_withdraw_gas should always have a gas cost")
+        .expect("withdraw_gas should always have a gas cost")
         .clone();
 
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
@@ -168,9 +165,10 @@ pub fn build_redeposit_gas<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let current_gas = entry.arg(0)?;
+
     let gas_cost = metadata
         .get::<GasCost>()
-        .expect("builtin_withdraw_gas should always have a gas cost")
+        .expect("redeposit_gas should always have a gas cost")
         .clone();
 
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
@@ -221,7 +219,7 @@ pub fn build_redeposit_gas<'ctx, 'this>(
     }
 
     let resulting_gas = entry.append_op_result(
-        arith::addi(context, current_gas, total_gas_cost_value, location).into(),
+        ods::llvm::intr_uadd_sat(context, current_gas, total_gas_cost_value, location).into(),
     )?;
 
     entry.append_operation(helper.br(0, &[resulting_gas], location));
@@ -365,6 +363,6 @@ mod test {
         );
 
         let result = run_program(&program, "run_test", &[]);
-        assert_eq!(result.remaining_gas, Some(18446744073709545195));
+        assert_eq!(result.remaining_gas, Some(18446744073709545265));
     }
 }

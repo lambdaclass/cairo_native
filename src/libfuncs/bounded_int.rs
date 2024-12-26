@@ -63,7 +63,7 @@ pub fn build<'ctx, 'this>(
         BoundedIntConcreteLibfunc::WrapNonZero(info) => {
             build_wrap_non_zero(context, registry, entry, location, helper, metadata, info)
         }
-        BoundedIntConcreteLibfunc::Trim(_) => todo!("implement trim libfunc"),
+        BoundedIntConcreteLibfunc::Trim(_) => todo!("Implement trim libfunc"),
     }
 }
 
