@@ -58,7 +58,6 @@ fn compare_inputless_function(function_name: &str) {
 #[test_case("base64_encode")]
 #[test_case("reverse_bits")]
 #[test_case("reverse_bytes")]
-#[ignore = "needs alexandria with cairo-lang 2.10 to work"]
 fn test_cases(function_name: &str) {
     compare_inputless_function(function_name)
 }
